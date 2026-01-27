@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import router from "next/router";
 
 type Post = {
   id: string;
   text: string;
-  type: string;
-  status: string;
+  type: "need" | "provide";
+  status: "open" | "accepted";
   created_at: string;
 };
 
-export default function Dashboard() {
+export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [text, setText] = useState("");
-  const [type, setType] = useState("need");
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [type, setType] = useState<"need" | "provide">("need");
 
+  useEffect(() => {
+    loadPosts();
+  }, []);
 
   const loadPosts = async () => {
     const { data } = await supabase
@@ -27,42 +26,22 @@ export default function Dashboard() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    setPosts(data || []);
+    if (data) setPosts(data as Post[]);
   };
-
-  useEffect(() => {
-  const exchangeSession = async () => {
-    await supabase.auth.getSession();
-  };
-
-  exchangeSession();
-}, []);
-
-useEffect(() => {
-  const checkUser = async () => {
-    const { data } = await supabase.auth.getUser();
-
-    if (!data.user) {
-      router.push("/");
-    } else {
-      loadPosts();
-    }
-  };
-
-  checkUser();
-}, []);
-
 
   const createPost = async () => {
+    if (!text.trim()) return;
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !text) return;
+    if (!user) return;
 
     await supabase.from("posts").insert({
       text,
       type,
+      status: "open",
       user_id: user.id,
     });
 
@@ -70,65 +49,82 @@ useEffect(() => {
     loadPosts();
   };
 
-  const acceptJob = async (id: string) => {
-    await supabase.from("posts").update({ status: "accepted" }).eq("id", id);
-    loadPosts();
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-2xl font-bold mb-4">Local Marketplace</h1>
+    <div className="space-y-6">
+      {/* CREATE CARD */}
+      <div className="bg-white rounded-xl shadow p-4">
+        <h2 className="font-semibold mb-2">
+          Create a Marketplace Post
+        </h2>
 
-      <div className="bg-white p-4 rounded shadow mb-6">
-        <div className="flex gap-2 mb-2">
-          <select
-            className="border p-2 rounded"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="need">I Need</option>
-            <option value="provide">I Provide</option>
-          </select>
+        <select
+          className="border p-2 rounded w-full mb-2"
+          value={type}
+          onChange={(e) =>
+            setType(e.target.value as "need" | "provide")
+          }
+        >
+          <option value="need">I Need</option>
+          <option value="provide">I Provide</option>
+        </select>
 
-          <input
-            className="border p-2 rounded flex-1"
-            placeholder="What do you need or provide?"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
+        <textarea
+          className="border p-2 rounded w-full mb-2"
+          rows={3}
+          placeholder="Example: Looking for a delivery partner near me"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
 
-          <button
-            className="bg-black text-white px-4 rounded"
-            onClick={createPost}
-          >
-            Post
-          </button>
-        </div>
+        <button
+          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          onClick={createPost}
+        >
+          Post
+        </button>
       </div>
 
-      <div className="space-y-3">
+      {/* FEED */}
+      <div className="grid gap-4 md:grid-cols-2">
         {posts.map((p) => (
           <div
             key={p.id}
-            className="bg-white p-4 rounded shadow flex justify-between items-center"
+            className="bg-white rounded-xl shadow p-4 hover:shadow-lg transition"
           >
-            <div>
-              <div className="font-semibold">
-                {p.type.toUpperCase()} — {p.text}
-              </div>
-              <div className="text-sm text-gray-500">
-                Status: {p.status}
-              </div>
+            <div className="flex justify-between mb-2">
+              <span
+                className={`px-2 py-1 text-xs font-bold rounded-full ${
+                  p.type === "need"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-green-100 text-green-700"
+                }`}
+              >
+                {p.type.toUpperCase()}
+              </span>
+              <span className="text-xs text-gray-400">
+                {new Date(p.created_at).toLocaleString()}
+              </span>
             </div>
 
-            {p.status === "open" && (
-              <button
-                className="bg-green-600 text-white px-4 py-2 rounded"
-                onClick={() => acceptJob(p.id)}
+            <p className="mb-3">{p.text}</p>
+
+            <div className="flex justify-between items-center">
+              <span
+                className={`text-xs font-semibold ${
+                  p.status === "open"
+                    ? "text-yellow-600"
+                    : "text-green-600"
+                }`}
               >
-                Accept
-              </button>
-            )}
+                {p.status.toUpperCase()}
+              </span>
+
+              {p.status === "open" && (
+                <button className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+                  Connect
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
