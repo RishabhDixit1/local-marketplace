@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, MapPin, Clock, Plus } from "lucide-react";
+import Image from "next/image";
+
 
 type Post = {
   id: string;
@@ -15,7 +17,7 @@ type Post = {
   category: "need" | "provide";
 };
 
-// Sample data - replace with actual data from Supabase
+// Sample data (fallback / demo)
 const SAMPLE_POSTS: Post[] = [
   {
     id: "1",
@@ -92,20 +94,23 @@ const SAMPLE_POSTS: Post[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Fetch user created posts from localStorage
+  // ✅ Correct state initialization (no useEffect, no warnings)
+  const [posts] = useState<Post[]>(() => {
+    if (typeof window === "undefined") return SAMPLE_POSTS;
+
     const userPosts = localStorage.getItem("userPosts");
-    if (userPosts) {
-      const parsedUserPosts = JSON.parse(userPosts);
-      setPosts([...parsedUserPosts, ...SAMPLE_POSTS]);
+    if (!userPosts) return SAMPLE_POSTS;
+
+    try {
+      const parsedUserPosts: Post[] = JSON.parse(userPosts);
+      return [...parsedUserPosts, ...SAMPLE_POSTS];
+    } catch {
+      return SAMPLE_POSTS;
     }
-  }, []);
+  });
 
   const handleMessage = (postId: string) => {
-    setSelectedPostId(postId);
     console.log("Message clicked for post:", postId);
   };
 
@@ -117,14 +122,21 @@ export default function DashboardPage() {
     <div className="min-h-screen w-full p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-3">
-            Marketplace
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Find services you need or offer your skills to the community
-          </p>
-        </div>
+<div className="mb-12 text-center animate-fade-in-up">
+  <h1 className="text-5xl md:text-6xl font-extrabold 
+                 text-black-900 dark:text-black
+                 mb-4 tracking-tight">
+    Marketplace
+  </h1>
+
+  <p className="text-lg md:text-xl 
+              text-black dark:text-gray-300 
+              max-w-2xl mx-auto">
+  Find services you need or offer your skills to the community
+</p>
+
+</div>
+
 
         {/* Posts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -133,95 +145,74 @@ export default function DashboardPage() {
               key={post.id}
               className="bg-gray-50 dark:bg-slate-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-purple-500 flex items-center p-4 md:p-6 gap-4"
             >
-              {/* User Image - Circular */}
-              <div className="flex-shrink-0 w-20 h-20 rounded-full bg-gray-200 dark:bg-slate-800 overflow-hidden border-2 border-gray-300 dark:border-slate-700">
-                <img
-                  src={post.userImage}
-                  alt={post.userName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {/* User Image */}
+              <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 dark:border-slate-700">
+  <Image
+    src={post.userImage}
+    alt={post.userName}
+    fill
+    sizes="80px"
+    className="object-cover"
+  />
+</div>
+
 
               {/* Content */}
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                {/* Category Badge */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                      post.category === "need"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
-                    }`}
-                  >
-                    {post.category === "need" ? "NEED" : "PROVIDE"}
-                  </span>
-                </div>
+              <div className="flex-1 flex flex-col">
+                <span
+                  className={`mb-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full w-fit ${
+                    post.category === "need"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {post.category.toUpperCase()}
+                </span>
 
-                {/* User Name */}
-                <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 truncate">
+                <h2 className="text-base font-bold truncate">
                   {post.userName}
                 </h2>
 
-                {/* Queries/Tags */}
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {post.queries.slice(0, 2).map((query, idx) => (
+                <div className="flex flex-wrap gap-1 my-2">
+                  {post.queries.slice(0, 2).map((query) => (
                     <span
-                      key={idx}
-                      className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 rounded font-medium"
+                      key={query}
+                      className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded"
                     >
                       {query}
                     </span>
                   ))}
                 </div>
 
-                {/* Description */}
-                <p className="text-gray-600 dark:text-gray-300 text-xs mb-2 line-clamp-2">
+                <p className="text-xs text-gray-600 line-clamp-2 mb-2">
                   {post.description}
                 </p>
 
-                {/* Location and Time */}
-                <div className="flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  <div className="flex items-center gap-1">
-                    <MapPin size={12} />
-                    <span className="truncate">{post.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock size={12} />
-                    <span>{post.timeAgo}</span>
-                  </div>
+                <div className="flex gap-3 text-xs text-gray-500 mb-3">
+                  <span className="flex items-center gap-1">
+                    <MapPin size={12} /> {post.location}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} /> {post.timeAgo}
+                  </span>
                 </div>
 
-                {/* Message Button */}
                 <button
                   onClick={() => handleMessage(post.id)}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-700 dark:to-purple-700 dark:hover:from-indigo-800 dark:hover:to-purple-800 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs"
+                  className="mt-auto w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2"
                 >
-                  <MessageCircle size={14} />
-                  Connect
+                  <MessageCircle size={14} /> Connect
                 </button>
               </div>
             </div>
           ))}
         </div>
-
-        {/* Empty State */}
-        {posts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16">
-            <MessageCircle
-              size={56}
-              className="text-gray-300 dark:text-gray-600 mb-4"
-            />
-            <p className="text-gray-600 dark:text-gray-300 text-xl font-medium">
-              No posts available yet
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Floating Create Post Button */}
+      {/* Floating Button */}
       <button
         onClick={handleCreatePost}
-        className="fixed bottom-8 right-8 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+        className="fixed bottom-8 right-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full px-6 py-4 shadow-lg flex items-center gap-2"
       >
         <Plus size={20} />
         <span className="text-sm font-semibold">Create Post</span>
