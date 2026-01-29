@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Button animations */
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease infinite;
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Small checkmark pop animation */
+.check-pop {
+  animation: checkPop 420ms cubic-bezier(.2,.9,.3,1);
+}
+@keyframes checkPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Subtle focus pulse for accessibility */
+.btn-focus-pulse:focus {
+  box-shadow: 0 0 0 6px rgba(99,102,241,0.12);
+  outline: none;
+}

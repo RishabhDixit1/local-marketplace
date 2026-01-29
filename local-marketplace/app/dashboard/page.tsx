@@ -14,7 +14,6 @@ type Post = {
   description: string;
   location: string;
   timeAgo: string;
-  category: "need" | "provide";
 };
 
 // Sample data (fallback / demo)
@@ -29,7 +28,6 @@ const SAMPLE_POSTS: Post[] = [
       "Looking for professional carpet laying services for my living room and bedroom.",
     location: "Downtown, City",
     timeAgo: "2 hours ago",
-    category: "need",
   },
   {
     id: "2",
@@ -41,7 +39,6 @@ const SAMPLE_POSTS: Post[] = [
       "Need a skilled plumber to fix leaks in the bathroom and kitchen.",
     location: "Midtown, City",
     timeAgo: "4 hours ago",
-    category: "need",
   },
   {
     id: "3",
@@ -53,7 +50,6 @@ const SAMPLE_POSTS: Post[] = [
       "Professional electrician offering rewiring and installation services.",
     location: "North District, City",
     timeAgo: "6 hours ago",
-    category: "provide",
   },
   {
     id: "4",
@@ -65,7 +61,6 @@ const SAMPLE_POSTS: Post[] = [
       "Looking for reliable house cleaning service for weekly maintenance.",
     location: "South End, City",
     timeAgo: "1 day ago",
-    category: "need",
   },
   {
     id: "5",
@@ -77,7 +72,6 @@ const SAMPLE_POSTS: Post[] = [
       "Expert painter providing interior and exterior painting services.",
     location: "West Side, City",
     timeAgo: "1 day ago",
-    category: "provide",
   },
   {
     id: "6",
@@ -88,12 +82,14 @@ const SAMPLE_POSTS: Post[] = [
     description: "Need help with garden design and landscaping for backyard.",
     location: "East Park, City",
     timeAgo: "2 days ago",
-    category: "need",
   },
 ];
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [acceptedPostIds, setAcceptedPostIds] = useState<string[]>([]);
 
   // ✅ Correct state initialization (no useEffect, no warnings)
   const [posts] = useState<Post[]>(() => {
@@ -112,6 +108,13 @@ export default function DashboardPage() {
 
   const handleMessage = (postId: string) => {
     console.log("Message clicked for post:", postId);
+  };
+
+  const handleAccept = (postId: string) => {
+    if (!acceptedPostIds.includes(postId)) {
+      setAcceptedPostIds((prev) => [...prev, postId]);
+      console.log("Accepted post:", postId);
+    }
   };
 
   const handleCreatePost = () => {
@@ -170,6 +173,9 @@ export default function DashboardPage() {
                 </span>
 
                 <h2 className="text-base font-bold truncate">
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
+                {/* User Name */}
+                <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 truncate">
                   {post.userName}
                 </h2>
 
@@ -203,6 +209,24 @@ export default function DashboardPage() {
                 >
                   <MessageCircle size={14} /> Connect
                 </button>
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleMessage(post.id)}
+                    className="flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs border border-indigo-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-200 bg-transparent hover:bg-indigo-50 dark:hover:bg-slate-800"
+                  >
+                    <MessageCircle size={14} />
+                    Connect
+                  </button>
+
+                  <button
+                    onClick={() => handleAccept(post.id)}
+                    disabled={acceptedPostIds.includes(post.id)}
+                    className={`flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${acceptedPostIds.includes(post.id) ? "bg-indigo-300 text-white opacity-70 cursor-not-allowed" : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"}`}
+                  >
+                    {acceptedPostIds.includes(post.id) ? "Accepted" : "Accept"}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
