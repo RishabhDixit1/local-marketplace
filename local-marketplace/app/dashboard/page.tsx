@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [acceptedPostIds, setAcceptedPostIds] = useState<string[]>([]);
 
   useEffect(() => {
     // Fetch user created posts from localStorage
@@ -100,6 +101,13 @@ export default function DashboardPage() {
   const handleMessage = (postId: string) => {
     setSelectedPostId(postId);
     console.log("Message clicked for post:", postId);
+  };
+
+  const handleAccept = (postId: string) => {
+    if (!acceptedPostIds.includes(postId)) {
+      setAcceptedPostIds((prev) => [...prev, postId]);
+      console.log("Accepted post:", postId);
+    }
   };
 
   const handleCreatePost = () => {
@@ -171,14 +179,24 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Message Button */}
-                <button
-                  onClick={() => handleMessage(post.id)}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:from-indigo-700 dark:to-purple-700 dark:hover:from-indigo-800 dark:hover:to-purple-800 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs"
-                >
-                  <MessageCircle size={14} />
-                  Connect
-                </button>
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleMessage(post.id)}
+                    className="flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs border border-indigo-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-200 bg-transparent hover:bg-indigo-50 dark:hover:bg-slate-800"
+                  >
+                    <MessageCircle size={14} />
+                    Connect
+                  </button>
+
+                  <button
+                    onClick={() => handleAccept(post.id)}
+                    disabled={acceptedPostIds.includes(post.id)}
+                    className={`flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${acceptedPostIds.includes(post.id) ? "bg-indigo-300 text-white opacity-70 cursor-not-allowed" : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"}`}
+                  >
+                    {acceptedPostIds.includes(post.id) ? "Accepted" : "Accept"}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

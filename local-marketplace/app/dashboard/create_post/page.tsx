@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 
 type CreatePostForm = {
   title: string;
   description: string;
-  queries: string[];
   location: string;
   budget?: string;
   timeline?: string;
@@ -18,13 +17,13 @@ export default function CreatePostPage() {
   const [formData, setFormData] = useState<CreatePostForm>({
     title: "",
     description: "",
-    queries: [],
     location: "",
     budget: "",
     timeline: "",
   });
 
-  const [currentQuery, setCurrentQuery] = useState("");
+  const [imageData, setImageData] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -38,21 +37,28 @@ export default function CreatePostPage() {
     }));
   };
 
-  const handleAddQuery = () => {
-    if (currentQuery.trim() && formData.queries.length < 5) {
-      setFormData((prev) => ({
-        ...prev,
-        queries: [...prev.queries, currentQuery.trim()],
-      }));
-      setCurrentQuery("");
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImageData(null);
+      setImageName(null);
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      console.warn("Image too large (max 5MB).");
+      setImageData(null);
+      setImageName(null);
+      return;
+    }
+    setImageName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImageData(ev.target?.result as string);
+    reader.readAsDataURL(file);
   };
 
-  const handleRemoveQuery = (idx: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      queries: prev.queries.filter((_, i) => i !== idx),
-    }));
+  const clearImage = () => {
+    setImageData(null);
+    setImageName(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -64,10 +70,10 @@ export default function CreatePostPage() {
       userImage:
         "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
       userName: "Current User",
-      queries: formData.queries,
       description: formData.description,
       location: formData.location,
       timeAgo: "just now",
+      image: imageData || null,
       // category removed (only "need" implied)
     };
 
@@ -136,44 +142,55 @@ export default function CreatePostPage() {
             />
           </div>
 
-          {/* Queries/Tags */}
+          {/* Optional Image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tags/Skills
+              Image (optional)
             </label>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {formData.queries.map((query, idx) => (
-                <span
-                  key={idx}
-                  className="flex items-center bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200 rounded-full px-3 py-1 text-xs font-medium"
-                >
-                  {query}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveQuery(idx)}
-                    className="ml-2 text-gray-400 hover:text-gray-500 transition-colors duration-200"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={currentQuery}
-                onChange={(e) => setCurrentQuery(e.target.value)}
-                className="flex-1 p-3 rounded-lg border border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-indigo-600 dark:focus:ring-purple-600 transition-all duration-200 text-sm"
-                placeholder="e.g. Plumbing, Electrical"
-              />
-              <button
-                type="button"
-                onClick={handleAddQuery}
-                className="bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="image-upload"
+                className="inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold cursor-pointer"
               >
-                Add
-              </button>
+                Choose file
+                {imageName && (
+                  <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500">
+                    <Check size={14} className="text-white check-pop" />
+                  </span>
+                )}
+              </label>
+
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                {imageName ? imageName : "No file chosen"}
+              </div>
+
+              {imageData && (
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="ml-auto text-sm text-red-600 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              )}
             </div>
+
+            {imageData && (
+              <img
+                src={imageData}
+                alt="Preview"
+                className="mt-3 max-h-40 rounded-md object-cover"
+              />
+            )}
           </div>
 
           {/* Location */}
