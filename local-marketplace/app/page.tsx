@@ -7,27 +7,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
 
   const login = async () => {
     if (!email) return;
 
     setLoading(true);
-    setError("");
 
-    const { error } = await supabase.auth.signInWithOtp({
+    await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: "http://localhost:3000/dashboard",
       },
     });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setSent(true);
-    }
-
+    setSent(true);
     setLoading(false);
   };
 
@@ -38,7 +31,7 @@ export default function LoginPage() {
       <div className="absolute w-72 h-72 bg-indigo-400/30 rounded-full blur-3xl bottom-10 right-10 animate-pulse" />
 
       <div className="relative max-w-5xl w-full grid md:grid-cols-2 gap-8 items-center">
-        {/* LEFT — Product Message */}
+        {/* LEFT */}
         <div className="text-white space-y-6">
           <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
             Find Local Services.
@@ -64,7 +57,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* RIGHT — Login Card */}
+        {/* RIGHT */}
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 animate-fade-in">
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold">Join Your Local Network</h2>
@@ -87,12 +80,6 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-
-              {error && (
-                <div className="text-red-500 text-sm bg-red-100 p-2 rounded">
-                  {error}
-                </div>
-              )}
 
               <button
                 onClick={login}
