@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 type CreatePostForm = {
-  type: "need" | "provide";
   title: string;
   description: string;
   queries: string[];
@@ -17,7 +16,6 @@ type CreatePostForm = {
 export default function CreatePostPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<CreatePostForm>({
-    type: "need",
     title: "",
     description: "",
     queries: [],
@@ -70,7 +68,7 @@ export default function CreatePostPage() {
       description: formData.description,
       location: formData.location,
       timeAgo: "just now",
-      category: formData.type,
+      // category removed (only "need" implied)
     };
 
     // Store in localStorage temporarily
@@ -87,15 +85,16 @@ export default function CreatePostPage() {
     <div className="min-h-screen w-full p-6 md:p-10">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            aria-label="Go back"
+            title="Go back"
+            className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200"
           >
-            <ArrowLeft className="mr-2" />
-            Back
+            <ArrowLeft />
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mt-2">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
             Create a Post
           </h1>
         </div>
@@ -105,37 +104,6 @@ export default function CreatePostPage() {
           onSubmit={handleSubmit}
           className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 md:p-8 space-y-6"
         >
-          {/* Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              I want to:
-            </label>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, type: "need" })}
-                className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-                  formData.type === "need"
-                    ? "bg-indigo-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Need a Service
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, type: "provide" })}
-                className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-                  formData.type === "provide"
-                    ? "bg-purple-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Provide a Service
-              </button>
-            </div>
-          </div>
-
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

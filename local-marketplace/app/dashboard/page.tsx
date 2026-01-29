@@ -12,7 +12,6 @@ type Post = {
   description: string;
   location: string;
   timeAgo: string;
-  category: "need" | "provide";
 };
 
 // Sample data - replace with actual data from Supabase
@@ -27,7 +26,6 @@ const SAMPLE_POSTS: Post[] = [
       "Looking for professional carpet laying services for my living room and bedroom.",
     location: "Downtown, City",
     timeAgo: "2 hours ago",
-    category: "need",
   },
   {
     id: "2",
@@ -39,7 +37,6 @@ const SAMPLE_POSTS: Post[] = [
       "Need a skilled plumber to fix leaks in the bathroom and kitchen.",
     location: "Midtown, City",
     timeAgo: "4 hours ago",
-    category: "need",
   },
   {
     id: "3",
@@ -51,7 +48,6 @@ const SAMPLE_POSTS: Post[] = [
       "Professional electrician offering rewiring and installation services.",
     location: "North District, City",
     timeAgo: "6 hours ago",
-    category: "provide",
   },
   {
     id: "4",
@@ -63,7 +59,6 @@ const SAMPLE_POSTS: Post[] = [
       "Looking for reliable house cleaning service for weekly maintenance.",
     location: "South End, City",
     timeAgo: "1 day ago",
-    category: "need",
   },
   {
     id: "5",
@@ -75,7 +70,6 @@ const SAMPLE_POSTS: Post[] = [
       "Expert painter providing interior and exterior painting services.",
     location: "West Side, City",
     timeAgo: "1 day ago",
-    category: "provide",
   },
   {
     id: "6",
@@ -86,7 +80,6 @@ const SAMPLE_POSTS: Post[] = [
     description: "Need help with garden design and landscaping for backyard.",
     location: "East Park, City",
     timeAgo: "2 days ago",
-    category: "need",
   },
 ];
 
@@ -144,19 +137,6 @@ export default function DashboardPage() {
 
               {/* Content */}
               <div className="flex-1 min-w-0 flex flex-col justify-between">
-                {/* Category Badge */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                      post.category === "need"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
-                    }`}
-                  >
-                    {post.category === "need" ? "NEED" : "PROVIDE"}
-                  </span>
-                </div>
-
                 {/* User Name */}
                 <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 truncate">
                   {post.userName}
