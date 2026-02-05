@@ -10,11 +10,13 @@ type Post = {
   id: string;
   userImage: string;
   userName: string;
-  queries: string[];
+  queries?: string[];
+  tags?: string[];
   description: string;
   location: string;
   timeAgo: string;
 };
+
 
 // Sample data (fallback / demo)
 const SAMPLE_POSTS: Post[] = [
@@ -166,7 +168,7 @@ export default function DashboardPage() {
                 </h2>
 
                 <div className="flex flex-wrap gap-1 my-2">
-                  {post.queries.slice(0, 2).map((query) => (
+                  {post.queries?.slice(0, 2).map((query) => (
                     <span
                       key={query}
                       className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded"
@@ -209,6 +211,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            
           ))}
         </div>
       </div>

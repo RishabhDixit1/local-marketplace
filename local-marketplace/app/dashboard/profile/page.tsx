@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { 
   User, 
-  MapPin, 
   Briefcase, 
   Plus, 
   X, 
@@ -15,7 +14,6 @@ import {
   Mail,
   Phone,
   Globe,
-  Camera,
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
