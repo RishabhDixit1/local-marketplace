@@ -10,11 +10,13 @@ type Post = {
   id: string;
   userImage: string;
   userName: string;
-  queries: string[];
+  queries?: string[];
+  tags?: string[];
   description: string;
   location: string;
   timeAgo: string;
 };
+
 
 // Sample data (fallback / demo)
 const SAMPLE_POSTS: Post[] = [
@@ -87,8 +89,6 @@ const SAMPLE_POSTS: Post[] = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [acceptedPostIds, setAcceptedPostIds] = useState<string[]>([]);
 
   // ✅ Correct state initialization (no useEffect, no warnings)
@@ -162,25 +162,13 @@ export default function DashboardPage() {
 
               {/* Content */}
               <div className="flex-1 flex flex-col">
-                <span
-                  className={`mb-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full w-fit ${
-                    post.category === "need"
-                      ? "bg-red-100 text-red-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
-                  {post.category.toUpperCase()}
-                </span>
-
-                <h2 className="text-base font-bold truncate">
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
                 {/* User Name */}
                 <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 truncate">
                   {post.userName}
                 </h2>
 
                 <div className="flex flex-wrap gap-1 my-2">
-                  {post.queries.slice(0, 2).map((query) => (
+                  {post.queries?.slice(0, 2).map((query) => (
                     <span
                       key={query}
                       className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded"
@@ -203,14 +191,8 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <button
-                  onClick={() => handleMessage(post.id)}
-                  className="mt-auto w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2"
-                >
-                  <MessageCircle size={14} /> Connect
-                </button>
                 {/* Actions */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-auto">
                   <button
                     onClick={() => handleMessage(post.id)}
                     className="flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs border border-indigo-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-200 bg-transparent hover:bg-indigo-50 dark:hover:bg-slate-800"
@@ -229,6 +211,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            
           ))}
         </div>
       </div>

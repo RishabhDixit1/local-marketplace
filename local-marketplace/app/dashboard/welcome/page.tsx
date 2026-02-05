@@ -1,397 +1,570 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Sparkles, 
-  Users, 
-  Star, 
-  TrendingUp, 
-  MessageCircle, 
+import {
+  Bell,
   CheckCircle2,
-  ArrowRight,
-  Zap,
+  Clock,
+  MapPin,
+  MessageCircle,
+  Plus,
   Shield,
-  Clock
+  Star,
+  Timer,
+  TrendingUp,
+  Users,
+  Zap,
 } from "lucide-react";
 
-const features = [
-  {
-    title: "Post a Request",
-    desc: "Share your service needs or offer your skills to people nearby in real-time",
-    icon: Sparkles,
-    gradient: "from-blue-500 to-cyan-500",
-    path: "/dashboard",
-  },
-  {
-    title: "Discover People",
-    desc: "Find trusted providers, collaborators, and businesses in your local area",
-    icon: Users,
-    gradient: "from-purple-500 to-pink-500",
-    path: "/dashboard/people",
-  },
-  {
-    title: "Build Trust",
-    desc: "Earn ratings and grow your local reputation with every interaction",
-    icon: Star,
-    gradient: "from-orange-500 to-red-500",
-    path: "/dashboard/ratings",
-  },
-];
+type FeedTab = "needs" | "offers";
+type Radius = 1 | 3 | 5;
+type Urgency = "now" | "today" | "flexible";
 
-const stats = [
-  { value: "10K+", label: "Active Users", icon: Users },
-  { value: "50K+", label: "Services Posted", icon: Sparkles },
-  { value: "98%", label: "Satisfaction Rate", icon: Star },
-  { value: "24/7", label: "Support", icon: Clock },
-];
+type Post = {
+  id: string;
+  type: FeedTab;
+  title: string;
+  name: string;
+  rating: number;
+  distanceKm: number;
+  minutesAgo: number;
+  priceLabel: string;
+  urgency: Urgency;
+};
 
-const benefits = [
-  "Connect with verified local service providers",
-  "Real-time messaging and notifications",
-  "Secure payment and escrow system",
-  "Review and rating system",
-  "Community-driven quality assurance",
-  "Mobile-friendly interface",
-];
+type NotificationItem = {
+  id: string;
+  text: string;
+  minutesAgo: number;
+};
+
+const cn = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ");
 
 export default function WelcomePage() {
   const router = useRouter();
+
+  // --- Mocked data (replace with API later) ---
+  const userName = "Rishabh";
   const profileStrength = 60;
 
+  const notifications: NotificationItem[] = [
+    { id: "n1", text: "New request posted near you: AC repair", minutesAgo: 6 },
+    { id: "n2", text: "You received a message from Aman", minutesAgo: 18 },
+    { id: "n3", text: "Task updated: Delivery • In progress", minutesAgo: 42 },
+  ];
+
+  const taskSummary = { pending: 2, inProgress: 1, completed: 5 };
+
+  const allPosts = useMemo<Post[]>(
+    () => [
+      {
+        id: "p1",
+        type: "needs",
+        title: "Need electrician for switch repair",
+        name: "Ramesh",
+        rating: 4.6,
+        distanceKm: 1.2,
+        minutesAgo: 5,
+        priceLabel: "₹500",
+        urgency: "now",
+      },
+      {
+        id: "p2",
+        type: "needs",
+        title: "Need cook for dinner (today)",
+        name: "Priya",
+        rating: 4.3,
+        distanceKm: 2.8,
+        minutesAgo: 12,
+        priceLabel: "₹800–₹1200",
+        urgency: "today",
+      },
+      {
+        id: "p3",
+        type: "offers",
+        title: "I can fix laptops & desktops",
+        name: "Aman",
+        rating: 4.8,
+        distanceKm: 1.7,
+        minutesAgo: 20,
+        priceLabel: "From ₹399",
+        urgency: "flexible",
+      },
+      {
+        id: "p4",
+        type: "offers",
+        title: "Home cleaning service available",
+        name: "Sana",
+        rating: 4.5,
+        distanceKm: 3.9,
+        minutesAgo: 33,
+        priceLabel: "From ₹699",
+        urgency: "today",
+      },
+    ],
+    []
+  );
+
+  // --- Feed state ---
+  const [tab, setTab] = useState<FeedTab>("needs");
+  const [radiusKm, setRadiusKm] = useState<Radius>(3);
+  const [urgency, setUrgency] = useState<Urgency>("today");
+
+  const filteredPosts = useMemo(() => {
+    return allPosts
+      .filter((p) => p.type === tab)
+      .filter((p) => p.distanceKm <= radiusKm)
+      .filter((p) => (urgency ? p.urgency === urgency : true))
+      .sort((a, b) => a.minutesAgo - b.minutesAgo);
+  }, [allPosts, tab, radiusKm, urgency]);
+
+  const nearbyCount = useMemo(
+    () => allPosts.filter((p) => p.distanceKm <= radiusKm).length,
+    [allPosts, radiusKm]
+  );
+
+  // --- Actions ---
+  const onCreatePost = () => router.push("/dashboard");
+  const onChat = () => router.push("/dashboard/chat");
+  const onAccept = () => router.push("/dashboard/tasks");
+
+  const onViewNearby = () => {
+    const el = document.getElementById("live-feed");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Checklist
+  const checklist = [
+    { id: "photo", label: "Add profile photo", done: false, points: 10, path: "/dashboard/profile" },
+    { id: "category", label: "Add service category", done: false, points: 10, path: "/dashboard/profile" },
+    { id: "phone", label: "Verify phone number", done: true, points: 15, path: "/dashboard/profile" },
+    { id: "bio", label: "Write a short bio", done: false, points: 5, path: "/dashboard/profile" },
+  ];
+
+  const personalStats = [
+    { label: "New nearby posts", value: `${nearbyCount}`, icon: MapPin },
+    { label: "Unread messages", value: "1", icon: MessageCircle },
+    { label: "Active tasks", value: `${taskSummary.pending + taskSummary.inProgress}`, icon: Clock },
+    { label: "Trust score", value: "4.6", icon: Star },
+  ];
+
+  // --- UI tokens ---
+  const pageBg = "bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-950";
+  const card =
+    "rounded-2xl bg-white/80 dark:bg-slate-900/70 backdrop-blur border border-slate-200/70 dark:border-slate-800/70 shadow-sm hover:shadow-md transition-shadow";
+  const cardPad = "p-5 sm:p-6";
+  const subtle = "text-slate-600 dark:text-slate-400";
+  const title = "text-slate-900 dark:text-white";
+
+  const primaryBtn =
+    "h-10 px-4 rounded-xl bg-indigo-600 text-white font-medium shadow-sm hover:shadow-md hover:bg-indigo-700 transition flex items-center gap-2";
+  const secondaryBtn =
+    "h-10 px-4 rounded-xl bg-white/70 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-800/70 text-slate-900 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-900 transition flex items-center gap-2";
+
+  const chipBase =
+    "h-9 px-3 rounded-xl text-sm font-semibold border transition flex items-center gap-2";
+  const chipOn =
+    "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-sm";
+  const chipOff =
+    "bg-white/70 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 border-slate-200/70 dark:border-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-900";
+
   return (
-    <div className="space-y-8 lg:space-y-12">
-      
-      {/* HERO SECTION */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 lg:p-12 text-white shadow-2xl"
-      >
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-10 right-10 w-72 h-72 bg-white rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-10 left-10 w-96 h-96 bg-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
-
-        <div className="relative z-10 max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/30"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-semibold">Welcome to Your Local Marketplace</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6"
-          >
-            Your Local Network,
-            <br />
-            <span className="bg-gradient-to-r from-yellow-300 to-pink-300 bg-clip-text text-transparent">
-              Powered in Real-Time
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-lg lg:text-xl text-white/90 mb-8 max-w-2xl"
-          >
-            A community-driven marketplace where neighbors connect to find
-            services, offer skills, and build trusted local reputations — all in
-            one seamless platform.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap gap-4"
-          >
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="group px-8 py-4 bg-white text-indigo-700 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-2"
-            >
-              Explore Marketplace
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={() => router.push("/dashboard/profile")}
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-bold hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
-            >
-              <Shield className="w-5 h-5" />
-              Complete Profile
-            </button>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* STATS SECTION */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * i }}
-            className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-200 dark:border-slate-700 text-center group hover:scale-105 transition-all duration-300"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
-              <stat.icon className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
-              {stat.value}
-            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              {stat.label}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* PROFILE STRENGTH */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6 lg:p-8 shadow-xl border border-slate-200 dark:border-slate-700"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Profile Strength
-              </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Build trust with a complete profile
-              </p>
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-            {profileStrength}%
-          </div>
-        </div>
-
-        <div className="relative h-4 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${profileStrength}%` }}
-            transition={{ duration: 1, delay: 0.3 }}
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-green-500 via-blue-500 to-purple-500"
-          />
-        </div>
-
-        <div className="mt-4 flex items-start gap-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-          <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-900 dark:text-blue-100">
-            Complete your profile to increase visibility and build trust in your
-            local community. Add services, bio, and contact information.
-          </p>
-        </div>
-      </motion.div>
-
-      {/* FEATURES GRID */}
-      <div>
+    <div className={cn(pageBg, "min-h-screen")}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* CONTEXT BAR */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-center mb-8"
+          transition={{ duration: 0.35 }}
+          className={cn(card, cardPad)}
         >
-          <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white mb-3">
-            Everything You Need
-          </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Powerful features designed to help you connect, collaborate, and grow
-          </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <div className={cn("text-xs uppercase tracking-wide", subtle)}>
+                Dashboard
+              </div>
+              <div className={cn("text-2xl md:text-3xl font-semibold", title)}>
+                Good evening, {userName} 👋
+              </div>
+              <div className={cn("text-sm flex items-center gap-2", subtle)}>
+                <MapPin className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                {nearbyCount} new posts near you • within {radiusKm}km
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button onClick={onCreatePost} className={primaryBtn}>
+                <Plus className="w-4 h-4" />
+                Create Post
+              </button>
+              <button onClick={onViewNearby} className={secondaryBtn}>
+                <MapPin className="w-4 h-4" />
+                View Nearby
+              </button>
+              <button
+                onClick={() => router.push("/dashboard/profile")}
+                className={secondaryBtn}
+              >
+                <Shield className="w-4 h-4" />
+                Profile
+              </button>
+            </div>
+          </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {features.map((item, i) => (
+        {/* PERSONAL STATS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {personalStats.map((s, i) => (
             <motion.div
-              key={item.title}
-              initial={{ opacity: 0, y: 20 }}
+              key={s.label}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * i + 0.4 }}
-              onClick={() => router.push(item.path)}
-              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-8 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:scale-105"
+              transition={{ delay: 0.04 * i }}
+              className={cn(card, "p-4 sm:p-5 hover:-translate-y-0.5 transition-transform")}
             >
-              {/* Gradient Background on Hover */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-
-              <div className="relative z-10">
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-lg`}>
-                  <item.icon className="w-7 h-7 text-white" />
-                </div>
-
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                  {item.title}
-                </h3>
-
-                <p className="text-slate-600 dark:text-slate-400 mb-6">
-                  {item.desc}
-                </p>
-
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold group-hover:gap-3 transition-all duration-300">
-                  <span>Explore</span>
-                  <ArrowRight className="w-5 h-5" />
+              <div className="flex items-start justify-between">
+                <div className={cn("text-sm font-medium", subtle)}>{s.label}</div>
+                <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+                  <s.icon className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                 </div>
               </div>
+              <div className={cn("mt-2 text-2xl font-semibold", title)}>{s.value}</div>
             </motion.div>
           ))}
         </div>
-      </div>
 
-      {/* BENEFITS SECTION */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-3xl p-8 lg:p-12 text-white shadow-2xl border border-slate-700"
-      >
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6 border border-white/20">
-              <Shield className="w-4 h-4" />
-              <span className="text-sm font-semibold">Why Choose Us</span>
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* FEED */}
+          <motion.section
+            id="live-feed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08 }}
+            className="lg:col-span-8 space-y-4"
+          >
+            {/* Feed header + filters */}
+            <div className={cn(card, cardPad)}>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className={cn("text-lg font-semibold", title)}>Live Feed</div>
+                  <div className={cn("text-sm", subtle)}>
+                    Real-time requests & offers near you
+                  </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex rounded-2xl border border-slate-200/70 dark:border-slate-800/70 bg-white/60 dark:bg-slate-900/40 p-1">
+                  <button
+                    onClick={() => setTab("needs")}
+                    className={cn(
+                      "px-4 h-9 rounded-xl font-semibold text-sm transition",
+                      tab === "needs"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-slate-900/60"
+                    )}
+                  >
+                    Needs
+                  </button>
+                  <button
+                    onClick={() => setTab("offers")}
+                    className={cn(
+                      "px-4 h-9 rounded-xl font-semibold text-sm transition",
+                      tab === "offers"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-slate-900/60"
+                    )}
+                  >
+                    Offers
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[1, 3, 5].map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRadiusKm(r as Radius)}
+                    className={cn(chipBase, radiusKm === r ? chipOn : chipOff)}
+                  >
+                    {r}km
+                  </button>
+                ))}
+
+                {[
+                  { key: "now", label: "Now", icon: Timer },
+                  { key: "today", label: "Today", icon: Clock },
+                  { key: "flexible", label: "Flexible", icon: Zap },
+                ].map((u) => (
+                  <button
+                    key={u.key}
+                    onClick={() => setUrgency(u.key as Urgency)}
+                    className={cn(chipBase, urgency === u.key ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : chipOff)}
+                  >
+                    <u.icon className="w-4 h-4" />
+                    {u.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              Built for Your
-              <br />
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Local Community
-              </span>
-            </h2>
-
-            <p className="text-lg text-white/80 mb-8">
-              We bring together the best features to help you connect with trusted
-              service providers and grow your local network.
-            </p>
-
+            {/* Posts */}
             <div className="space-y-4">
-              {benefits.map((benefit, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.7 + i * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 className="w-4 h-4 text-white" />
+              {filteredPosts.length === 0 ? (
+                <div className={cn(card, "p-8 text-center")}>
+                  <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-3">
+                    <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-300" />
                   </div>
-                  <span className="text-white/90">{benefit}</span>
-                </motion.div>
-              ))}
+                  <div className={cn("text-lg font-semibold", title)}>
+                    No posts found in {radiusKm}km
+                  </div>
+                  <div className={cn("text-sm mt-1", subtle)}>
+                    Create a post to start getting responses instantly.
+                  </div>
+                  <button onClick={onCreatePost} className={cn(primaryBtn, "mt-4 mx-auto")}>
+                    <Plus className="w-4 h-4" />
+                    Create Post
+                  </button>
+                </div>
+              ) : (
+                filteredPosts.map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.03 * i }}
+                    className={cn(card, "p-5 hover:-translate-y-0.5 transition-transform")}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* left */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-3">
+                          {/* avatar */}
+                          <div className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 flex items-center justify-center">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                              {p.name.slice(0, 1).toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className={cn("font-semibold truncate", title)}>{p.name}</div>
+                              <div className="flex items-center gap-1 text-sm text-slate-700 dark:text-slate-300">
+                                <Star className="w-4 h-4 text-amber-500" />
+                                {p.rating.toFixed(1)}
+                              </div>
+                            </div>
+                            <div className={cn("text-xs flex items-center gap-2 mt-0.5", subtle)}>
+                              <MapPin className="w-3.5 h-3.5" />
+                              {p.distanceKm}km • {p.minutesAgo} min ago
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={cn("mt-3 text-base font-semibold", title)}>{p.title}</div>
+
+                        {/* chips */}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 text-slate-700 dark:text-slate-200">
+                            {p.priceLabel}
+                          </span>
+
+                          <span className="px-2.5 py-1 text-xs rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/70 dark:border-indigo-400/20 text-indigo-700 dark:text-indigo-200">
+                            {p.urgency.toUpperCase()}
+                          </span>
+
+                          <span className="px-2.5 py-1 text-xs rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-400/20 text-emerald-700 dark:text-emerald-200">
+                            {p.type === "needs" ? "REQUEST" : "OFFER"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* right actions */}
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <button
+                          onClick={() => onChat()}
+                          className={cn(secondaryBtn, "w-28 justify-center")}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Chat
+                        </button>
+
+                        <button
+                          onClick={() => onAccept()}
+                          className={cn(primaryBtn, "w-28 justify-center")}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {p.type === "needs" ? "Accept" : "Request"}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
-          </div>
+          </motion.section>
 
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl blur-3xl"></div>
-            <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-white" />
+          {/* SIDEBAR */}
+          <motion.aside
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.12 }}
+            className="lg:col-span-4 space-y-4 lg:sticky lg:top-20"
+          >
+            {/* Notifications */}
+            <div className={cn(card, cardPad)}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+                    <Bell className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
                   </div>
                   <div>
-                    <div className="font-bold text-lg">Real-Time Chat</div>
-                    <div className="text-sm text-white/70">
-                      Connect instantly with providers
-                    </div>
+                    <div className={cn("font-semibold", title)}>Notifications</div>
+                    <div className={cn("text-xs", subtle)}>Latest updates</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Star className="w-6 h-6 text-white" />
+                <button
+                  onClick={() => router.push("/dashboard/notifications")}
+                  className="text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"
+                >
+                  View all
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/30 p-3"
+                  >
+                    <div className={cn("text-sm", title)}>{n.text}</div>
+                    <div className={cn("text-xs mt-1", subtle)}>{n.minutesAgo} min ago</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Profile Strength */}
+            <div className={cn(card, cardPad)}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
                   </div>
                   <div>
-                    <div className="font-bold text-lg">Trust System</div>
-                    <div className="text-sm text-white/70">
-                      Build reputation through reviews
-                    </div>
+                    <div className={cn("font-semibold", title)}>Profile Strength</div>
+                    <div className={cn("text-xs", subtle)}>Improve trust & visibility</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-lg">Secure Platform</div>
-                    <div className="text-sm text-white/70">
-                      Your data is always protected
+                <div className="text-lg font-semibold text-indigo-600 dark:text-indigo-300">
+                  {profileStrength}%
+                </div>
+              </div>
+
+              <div className="relative h-3 w-full rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${profileStrength}%` }}
+                  transition={{ duration: 0.7 }}
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500"
+                />
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {checklist.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => router.push(c.path)}
+                    className="w-full flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/30 hover:bg-slate-100/70 dark:hover:bg-slate-900/50 transition text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={cn(
+                          "h-6 w-6 rounded-full flex items-center justify-center shrink-0",
+                          c.done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                        )}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </span>
+
+                      <div className="min-w-0">
+                        <div className={cn("text-sm font-semibold truncate", title)}>
+                          {c.label}
+                        </div>
+                        <div className={cn("text-xs", subtle)}>+{c.points}% strength</div>
+                      </div>
                     </div>
-                  </div>
+
+                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                      Fix →
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-900/20 border border-blue-200/70 dark:border-blue-800/60">
+                <Zap className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5" />
+                <div className="text-xs text-blue-900 dark:text-blue-100">
+                  Completing your profile increases visibility and improves trust.
                 </div>
               </div>
             </div>
-          </div>
+
+            {/* Tasks */}
+            <div className={cn(card, cardPad)}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div>
+                    <div className={cn("font-semibold", title)}>My Tasks</div>
+                    <div className={cn("text-xs", subtle)}>Track your work</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => router.push("/dashboard/tasks")}
+                  className="text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"
+                >
+                  Open
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Pending", value: taskSummary.pending },
+                  { label: "In progress", value: taskSummary.inProgress },
+                  { label: "Completed", value: taskSummary.completed },
+                ].map((x) => (
+                  <div
+                    key={x.label}
+                    className="rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-900/30 p-3"
+                  >
+                    <div className={cn("text-xs", subtle)}>{x.label}</div>
+                    <div className={cn("text-xl font-semibold", title)}>{x.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => router.push("/dashboard/tasks")}
+                className={cn(primaryBtn, "mt-4 w-full justify-center")}
+              >
+                View Tasks
+              </button>
+            </div>
+          </motion.aside>
         </div>
-      </motion.div>
-
-      {/* CTA SECTION */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.8 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-8 lg:p-12 text-center text-white shadow-2xl"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,white,transparent_70%)] opacity-10"></div>
-
-        <div className="relative z-10">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.9, type: "spring" }}
-            className="w-20 h-20 mx-auto mb-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-4 border-white/30"
-          >
-            <Sparkles className="w-10 h-10" />
-          </motion.div>
-
-          <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-            Ready to Activate Your Local Network?
-          </h2>
-
-          <p className="text-lg text-white/90 max-w-2xl mx-auto mb-8">
-            The more you engage with your community, the stronger your presence
-            becomes. Start posting, connecting, and building your local brand
-            today.
-          </p>
-
-          <div className="flex justify-center gap-4 flex-wrap">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="group px-8 py-4 bg-white text-indigo-700 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-2"
-            >
-              Start Posting
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={() => router.push("/dashboard/profile")}
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-bold hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
-            >
-              <Shield className="w-5 h-5" />
-              Update Profile
-            </button>
-          </div>
-        </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

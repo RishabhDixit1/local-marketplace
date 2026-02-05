@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import {
   CheckCircle2,
@@ -10,7 +11,6 @@ import {
   Calendar,
   DollarSign,
   MapPin,
-  User,
   MessageCircle,
   MoreVertical,
   TrendingUp
@@ -212,7 +212,7 @@ export default function TasksPage() {
           {tabs.map((tab) => (
             <button
               key={tab.value}
-              onClick={() => setSelectedTab(tab.value as any)}
+              onClick={() => setSelectedTab(tab.value as "all" | "posted" | "accepted")}
               className={`flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                 selectedTab === tab.value
                   ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
@@ -352,9 +352,11 @@ export default function TasksPage() {
               <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <img
+                    <Image
                       src={task.postedBy.image}
                       alt={task.postedBy.name}
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
                     />
                     <div>
@@ -367,9 +369,11 @@ export default function TasksPage() {
                     <>
                       <div className="text-slate-300 dark:text-slate-600">→</div>
                       <div className="flex items-center gap-2">
-                        <img
+                        <Image
                           src={task.assignedTo.image}
                           alt={task.assignedTo.name}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
                         />
                         <div>

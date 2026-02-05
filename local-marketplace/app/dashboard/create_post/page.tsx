@@ -1,29 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, X, MapPin, DollarSign, Clock, Tag, FileText, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, X, MapPin, DollarSign, Clock, Tag, FileText, Sparkles, Check } from "lucide-react";
 
 type PostType = "need" | "provide";
 
-interface CreatePostForm {
+type CreatePostForm = {
   type: PostType;
   title: string;
   description: string;
   tags: string[];
-import { ArrowLeft, Check } from "lucide-react";
-
-type CreatePostForm = {
-  title: string;
-  description: string;
   location: string;
   budget?: string;
   timeline?: string;
-}
+};
 
 export default function CreatePostPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<CreatePostForm>({
+    type: "need",
     title: "",
     description: "",
     tags: [],
@@ -60,6 +57,9 @@ export default function CreatePostPage() {
         tags: [...prev.tags, trimmedTag],
       }));
       setCurrentTag("");
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -84,6 +84,8 @@ export default function CreatePostPage() {
       ...prev,
       tags: prev.tags.filter((_, i) => i !== idx),
     }));
+  };
+
   const clearImage = () => {
     setImageData(null);
     setImageName(null);
@@ -123,71 +125,58 @@ export default function CreatePostPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+  try {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const newPost = {
-        id: Date.now().toString(),
-        userImage:
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
-        userName: "Current User",
-        tags: formData.tags,
-        title: formData.title,
-        description: formData.description,
-        location: formData.location,
-        budget: formData.budget,
-        timeline: formData.timeline,
-        timeAgo: "just now",
-        category: formData.type,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Store in localStorage
-      const existingPosts = localStorage.getItem("userPosts");
-      const userPosts = existingPosts ? JSON.parse(existingPosts) : [];
-      userPosts.unshift(newPost);
-      localStorage.setItem("userPosts", JSON.stringify(userPosts));
-
-      // Navigate back to dashboard
-      router.push("/dashboard");
-    } catch (error) {
-      console.error("Error creating post:", error);
-      setErrors({ submit: "Failed to create post. Please try again." });
-    } finally {
-      setIsSubmitting(false);
-    }
-    // Create new post object
+    // ✅ Create ONE consistent post object (matches dashboard shape)
     const newPost = {
       id: Date.now().toString(),
       userImage:
         "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
       userName: "Current User",
+
+      // ✅ IMPORTANT: dashboard expects "queries"
+      queries: formData.tags,
+
+      // (optional) keep tags too (useful later)
+      tags: formData.tags,
+
+      title: formData.title,
       description: formData.description,
       location: formData.location,
       timeAgo: "just now",
+
+      // optional extras (future use)
+      budget: formData.budget || "",
+      timeline: formData.timeline || "",
+      postType: formData.type, // need | provide
       image: imageData || null,
-      // category removed (only "need" implied)
+      createdAt: new Date().toISOString(),
     };
 
-    // Store in localStorage temporarily
+    // ✅ Store in localStorage
     const existingPosts = localStorage.getItem("userPosts");
     const userPosts = existingPosts ? JSON.parse(existingPosts) : [];
     userPosts.unshift(newPost);
     localStorage.setItem("userPosts", JSON.stringify(userPosts));
 
-    // Navigate back to dashboard
+    // ✅ Navigate back to dashboard
     router.push("/dashboard");
-  };
+  } catch (error) {
+    console.error("Error creating post:", error);
+    setErrors({ submit: "Failed to create post. Please try again." });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -213,7 +202,7 @@ export default function CreatePostPage() {
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="space-y-8">
           {/* Post Type Selection */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
@@ -259,131 +248,85 @@ export default function CreatePostPage() {
           </div>
 
           {/* Main Form Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700 space-y-6">
+          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700 space-y-6">
             
-            {/* Title */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                <FileText className="w-4 h-4" />
-                Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
-                  errors.title
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                    : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
-                }`}
-                placeholder="e.g., Looking for an experienced plumber for kitchen renovation"
-              />
-              {errors.title && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.title}</p>
-              )}
-            </div>
-        <div className="mb-8 flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            aria-label="Go back"
-            title="Go back"
-            className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200"
-          >
-            <ArrowLeft />
-          </button>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-            Create a Post
-          </h1>
+        {/* Title */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+            <FileText className="w-4 h-4" />
+            Title
+          </label>
+          <input
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+              errors.title
+                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
+            }`}
+            placeholder="e.g., Looking for an experienced plumber for kitchen renovation"
+          />
+          {errors.title && (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.title}</p>
+          )}
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 md:p-8 space-y-6"
-        >
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              required
-              className="w-full p-3 rounded-lg border border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-indigo-600 dark:focus:ring-purple-600 transition-all duration-200 text-sm"
-              placeholder="e.g. Looking for a plumber"
-            />
-          </div>
+        {/* Image */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+            <FileText className="w-4 h-4" />
+            Image <span className="text-xs font-normal text-slate-500">(Optional)</span>
+          </label>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              required
-              className="w-full p-3 rounded-lg border border-gray-300 dark:border-slate-700 focus:ring-2 focus:ring-indigo-600 dark:focus:ring-purple-600 transition-all duration-200 text-sm"
-              rows={4}
-              placeholder="Describe the service you need or provide"
-            />
-          </div>
-
-          {/* Optional Image */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Image (optional)
-            </label>
-
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="image-upload"
-                className="inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold cursor-pointer"
-              >
-                Choose file
-                {imageName && (
-                  <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500">
-                    <Check size={14} className="text-white check-pop" />
-                  </span>
-                )}
-              </label>
-
-              <input
-                id="image-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
-
-              <div className="text-sm text-gray-600 dark:text-gray-300">
-                {imageName ? imageName : "No file chosen"}
-              </div>
-
-              {imageData && (
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="ml-auto text-sm text-red-600 hover:text-red-700"
-                >
-                  Remove
-                </button>
+          <div className="flex items-center gap-3 mb-3">
+            <label
+              htmlFor="image-upload"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-semibold cursor-pointer"
+            >
+              Choose file
+              {imageName && (
+                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500">
+                  <Check size={14} className="text-white check-pop" />
+                </span>
               )}
+            </label>
+
+            <input
+              id="image-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              {imageName ? imageName : "No file chosen"}
             </div>
 
             {imageData && (
-              <img
-                src={imageData}
-                alt="Preview"
-                className="mt-3 max-h-40 rounded-md object-cover"
-              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="ml-auto text-sm text-red-600 hover:text-red-700"
+              >
+                Remove
+              </button>
             )}
           </div>
+
+          {imageData && (
+            <Image
+              src={imageData}
+              alt="Preview"
+              unoptimized
+              width={320}
+              height={160}
+              className="mt-3 max-h-40 rounded-md object-cover"
+            />
+          )}
+        </div>
 
             {/* Description */}
             <div>
@@ -556,8 +499,8 @@ export default function CreatePostPage() {
                 )}
               </button>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
