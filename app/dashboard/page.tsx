@@ -1,229 +1,252 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { MessageCircle, MapPin, Clock, Plus } from "lucide-react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
+import {
+  Search,
+  MapPin,
+  Star,
+  MessageCircle,
+  Bookmark,
+  Filter,
+  TrendingUp,
+} from "lucide-react";
 
-
-type Post = {
+type Listing = {
   id: string;
-  userImage: string;
-  userName: string;
-  queries?: string[];
-  tags?: string[];
-  description: string;
-  location: string;
-  timeAgo: string;
+  title: string;
+  price: number;
+  category: string;
+  provider_id: string;
+  type: "service" | "product";
 };
 
+export default function MarketplacePage() {
+  const [feed, setFeed] = useState<Listing[]>([]);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
 
-// Sample data (fallback / demo)
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: "1",
-    userImage:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
-    userName: "John Doe",
-    queries: ["Carpet Laying", "Interior Design"],
-    description:
-      "Looking for professional carpet laying services for my living room and bedroom.",
-    location: "Downtown, City",
-    timeAgo: "2 hours ago",
-  },
-  {
-    id: "2",
-    userImage:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
-    userName: "Sarah Smith",
-    queries: ["Plumbing", "Leak Repair"],
-    description:
-      "Need a skilled plumber to fix leaks in the bathroom and kitchen.",
-    location: "Midtown, City",
-    timeAgo: "4 hours ago",
-  },
-  {
-    id: "3",
-    userImage:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop",
-    userName: "Mike Johnson",
-    queries: ["Electrical Work", "Wiring"],
-    description:
-      "Professional electrician offering rewiring and installation services.",
-    location: "North District, City",
-    timeAgo: "6 hours ago",
-  },
-  {
-    id: "4",
-    userImage:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
-    userName: "Emma Wilson",
-    queries: ["House Cleaning", "Deep Clean"],
-    description:
-      "Looking for reliable house cleaning service for weekly maintenance.",
-    location: "South End, City",
-    timeAgo: "1 day ago",
-  },
-  {
-    id: "5",
-    userImage:
-      "https://images.unsplash.com/photo-1507527173864-658ba7c44d8a?w=150&h=150&fit=crop",
-    userName: "Alex Brown",
-    queries: ["Painting", "Home Renovation"],
-    description:
-      "Expert painter providing interior and exterior painting services.",
-    location: "West Side, City",
-    timeAgo: "1 day ago",
-  },
-  {
-    id: "6",
-    userImage:
-      "https://images.unsplash.com/photo-1517046220202-51e0b8b0e3c9?w=150&h=150&fit=crop",
-    userName: "Lisa Chen",
-    queries: ["Gardening", "Landscaping"],
-    description: "Need help with garden design and landscaping for backyard.",
-    location: "East Park, City",
-    timeAgo: "2 days ago",
-  },
-];
+  useEffect(() => {
+    fetchFeed();
+  }, []);
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const [acceptedPostIds, setAcceptedPostIds] = useState<string[]>([]);
+  const fetchFeed = async () => {
+    const { data: services } = await supabase
+      .from("service_listings")
+      .select("*");
 
-  // ✅ Correct state initialization (no useEffect, no warnings)
-  const [posts] = useState<Post[]>(() => {
-    if (typeof window === "undefined") return SAMPLE_POSTS;
+    const { data: products } = await supabase
+      .from("product_catalog")
+      .select("*");
 
-    const userPosts = localStorage.getItem("userPosts");
-    if (!userPosts) return SAMPLE_POSTS;
+    const combined = [
+      ...(services || []).map((s) => ({
+        ...s,
+        type: "service",
+      })),
+      ...(products || []).map((p) => ({
+        ...p,
+        type: "product",
+      })),
+    ];
 
-    try {
-      const parsedUserPosts: Post[] = JSON.parse(userPosts);
-      return [...parsedUserPosts, ...SAMPLE_POSTS];
-    } catch {
-      return SAMPLE_POSTS;
-    }
+    setFeed(combined);
+  };
+
+  const filtered = feed.filter((item) => {
+    const matchesSearch = item.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesCategory =
+      category === "all" ||
+      item.category === category;
+
+    return matchesSearch && matchesCategory;
   });
 
-  const handleMessage = (postId: string) => {
-    console.log("Message clicked for post:", postId);
+  const bookNow = async (
+    listingId: string,
+    price: number,
+    providerId: string,
+    type: string
+  ) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return alert("Login required");
+
+    await supabase.from("orders").insert({
+      listing_id: listingId,
+      listing_type: type,
+      consumer_id: user.id,
+      provider_id: providerId,
+      price,
+      status: "pending",
+    });
+
+    alert("Booking request sent 🚀");
   };
 
-  const handleAccept = (postId: string) => {
-    if (!acceptedPostIds.includes(postId)) {
-      setAcceptedPostIds((prev) => [...prev, postId]);
-      console.log("Accepted post:", postId);
-    }
-  };
-
-  const handleCreatePost = () => {
-    router.push("/dashboard/create_post");
-  };
+  const categories = [
+    "all",
+    "Cleaning",
+    "Repair",
+    "Delivery",
+    "Food",
+    "Electrician",
+  ];
 
   return (
-    <div className="min-h-screen w-full p-6 md:p-10">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-<div className="mb-12 text-center animate-fade-in-up">
-  <h1 className="text-5xl md:text-6xl font-extrabold 
-                 text-black-900 dark:text-black
-                 mb-4 tracking-tight">
-    Marketplace
-  </h1>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black text-white">
 
-  <p className="text-lg md:text-xl 
-              text-black dark:text-gray-300 
-              max-w-2xl mx-auto">
-  Find services you need or offer your skills to the community
-</p>
+      {/* ================= HERO ================= */}
+      <div className="max-w-7xl mx-auto px-6 pt-8 pb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 shadow-xl"
+        >
+          <h1 className="text-3xl font-bold">
+            Discover Local Services & Products
+          </h1>
+          <p className="mt-2 text-white/90">
+            Find trusted providers near you in real-time.
+          </p>
 
-</div>
-
-
-        {/* Posts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="bg-gray-50 dark:bg-slate-800 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-purple-500 flex items-center p-4 md:p-6 gap-4"
-            >
-              {/* User Image */}
-              <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 dark:border-slate-700">
-  <Image
-    src={post.userImage}
-    alt={post.userName}
-    fill
-    sizes="80px"
-    className="object-cover"
-  />
-</div>
-
-
-              {/* Content */}
-              <div className="flex-1 flex flex-col">
-                {/* User Name */}
-                <h2 className="text-base font-bold text-gray-900 dark:text-white mb-1 truncate">
-                  {post.userName}
-                </h2>
-
-                <div className="flex flex-wrap gap-1 my-2">
-                  {post.queries?.slice(0, 2).map((query) => (
-                    <span
-                      key={query}
-                      className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded"
-                    >
-                      {query}
-                    </span>
-                  ))}
-                </div>
-
-                <p className="text-xs text-gray-600 line-clamp-2 mb-2">
-                  {post.description}
-                </p>
-
-                <div className="flex gap-3 text-xs text-gray-500 mb-3">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} /> {post.location}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} /> {post.timeAgo}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 mt-auto">
-                  <button
-                    onClick={() => handleMessage(post.id)}
-                    className="flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-xs border border-indigo-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-200 bg-transparent hover:bg-indigo-50 dark:hover:bg-slate-800"
-                  >
-                    <MessageCircle size={14} />
-                    Connect
-                  </button>
-
-                  <button
-                    onClick={() => handleAccept(post.id)}
-                    disabled={acceptedPostIds.includes(post.id)}
-                    className={`flex-1 text-sm font-semibold py-2 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${acceptedPostIds.includes(post.id) ? "bg-indigo-300 text-white opacity-70 cursor-not-allowed" : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"}`}
-                  >
-                    {acceptedPostIds.includes(post.id) ? "Accepted" : "Accept"}
-                  </button>
-                </div>
+          <div className="flex gap-6 mt-6 text-sm">
+            <div>
+              <div className="font-bold text-lg">
+                {feed.length}
               </div>
+              <div>Active Listings</div>
             </div>
-            
+            <div>
+              <div className="font-bold text-lg">4.8</div>
+              <div>Avg Rating</div>
+            </div>
+            <div>
+              <div className="font-bold text-lg">24/7</div>
+              <div>Availability</div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ================= FILTER BAR ================= */}
+      <div className="max-w-7xl mx-auto px-6 mb-6">
+
+        {/* Search */}
+        <div className="flex items-center gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800 mb-4">
+          <Search size={18} />
+          <input
+            placeholder="Search services or products..."
+            className="bg-transparent outline-none flex-1"
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+          />
+          <Filter size={18} />
+        </div>
+
+        {/* Categories */}
+        <div className="flex gap-3 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm transition ${
+                category === cat
+                  ? "bg-indigo-600 shadow-lg"
+                  : "bg-slate-800 hover:bg-slate-700"
+              }`}
+            >
+              {cat}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Floating Button */}
-      <button
-        onClick={handleCreatePost}
-        className="fixed bottom-8 right-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full px-6 py-4 shadow-lg flex items-center gap-2"
-      >
-        <Plus size={20} />
-        <span className="text-sm font-semibold">Create Post</span>
-      </button>
+      {/* ================= MAIN LAYOUT ================= */}
+      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-6 pb-12">
+
+        {/* ---------- FEED COLUMN ---------- */}
+        <div className="md:col-span-2 space-y-5">
+
+          {/* Trending strip */}
+          <div className="flex items-center gap-2 text-indigo-400 mb-2">
+            <TrendingUp size={16} />
+            Trending Near You
+          </div>
+
+          {filtered.map((item) => (
+            <motion.div
+              key={item.id}
+              whileHover={{ scale: 1.02 }}
+              className="p-6 bg-slate-900 border border-slate-800 rounded-2xl hover:border-indigo-500 transition"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-xs text-slate-400 uppercase mb-1">
+                    {item.type}
+                  </div>
+
+                  <h3 className="text-lg font-semibold">
+                    {item.title}
+                  </h3>
+
+                  <div className="flex items-center gap-3 text-sm text-slate-400 mt-2">
+                    <Star size={14} /> 4.8
+                    <MapPin size={14} /> 2.3 km
+                  </div>
+
+                  <div className="mt-3 text-indigo-400 font-bold">
+                    ₹ {item.price}
+                  </div>
+                </div>
+
+                <Bookmark className="opacity-60 hover:opacity-100 cursor-pointer" />
+              </div>
+
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() =>
+                    bookNow(
+                      item.id,
+                      item.price,
+                      item.provider_id,
+                      item.type
+                    )
+                  }
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-2 rounded-xl"
+                >
+                  Book Now
+                </button>
+
+                <button className="px-4 bg-slate-800 rounded-xl hover:bg-slate-700">
+                  <MessageCircle size={16} />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ---------- MAP COLUMN ---------- */}
+        <div className="sticky top-24 h-fit">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <MapPin size={18} /> Nearby Map
+            </h2>
+
+            <div className="h-72 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
+              Live Map Coming Soon 🚀
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

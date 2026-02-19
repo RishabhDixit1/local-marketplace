@@ -9,7 +9,6 @@ import {
   Users,
   Package,
   MessageCircle,
-  Star,
   User,
   LogOut,
   Menu,
@@ -25,7 +24,6 @@ const navigationTabs = [
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: Package },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
-  { name: "Ratings", path: "/dashboard/ratings", icon: Star },
 ];
 
 export default function DashboardLayout({
