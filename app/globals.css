@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #ffffff;
@@ -48,7 +49,7 @@ body {
   box-shadow: 0 0 0 6px rgba(99,102,241,0.12);
   outline: none;
 }
-@import "leaflet/dist/leaflet.css";
+
 
 .leaflet-container {
   width: 100%;
