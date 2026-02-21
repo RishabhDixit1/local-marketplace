@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import CreatePostModal from "../../components/CreatePostModal";
+
 import {
   Plus,
   MapPin,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { useState } from "react";
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
@@ -67,8 +70,17 @@ export default function WelcomePage() {
       icon: ShieldCheck,
     },
   ];
+  const [openPostModal, setOpenPostModal] =
+  useState(false);
+
+
+  // function setOpenPostModal(arg0: boolean): void {
+    //throw new Error("Function not implemented.");
+  // }
 
   return (
+    <>
+
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-black text-white">
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
@@ -90,12 +102,11 @@ export default function WelcomePage() {
           {/* HERO ACTIONS */}
           <div className="flex flex-wrap gap-3 mt-6">
             <button
-              onClick={() => router.push(routes.posts)}
-              className="px-5 py-2.5 rounded-xl bg-white text-indigo-600 font-semibold hover:opacity-90 flex items-center gap-2"
-            >
-              <Plus size={16} />
-              Create Post
-            </button>
+  onClick={() => setOpenPostModal(true)}
+  className="px-5 py-3 bg-indigo-600 rounded-xl"
+>
+  Create Post
+</button>
 
             <button
               onClick={() => router.push(routes.people)}
@@ -249,27 +260,46 @@ export default function WelcomePage() {
         </div>
 
         {/* ---------------- PROFILE STRENGTH ---------------- */}
-        <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-          <div className="flex justify-between mb-2">
-            <span>Profile Strength</span>
-            <span className="text-indigo-400 font-semibold">
-              60%
-            </span>
-          </div>
+{/* ---------------- PROFILE STRENGTH ---------------- */}
+<div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
+  <div className="flex justify-between mb-2">
+    <span>Profile Strength</span>
+    <span className="text-indigo-400 font-semibold">
+      60%
+    </span>
+  </div>
 
-          <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full w-[60%] bg-gradient-to-r from-indigo-500 to-pink-500" />
-          </div>
+  <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+    <div className="h-full w-[60%] bg-gradient-to-r from-indigo-500 to-pink-500" />
+  </div>
 
-          <button
-            onClick={() => router.push(routes.profile)}
-            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm"
-          >
-            Improve Profile
-          </button>
-        </div>
+  {/* Improve Profile */}
+  <button
+    onClick={() => router.push("/dashboard/profile")}
+    className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm"
+  >
+    Improve Profile
+  </button>
 
-      </div>
-    </div>
-  );
+  {/* Create Post CTA */}
+  <button
+    onClick={() => setOpenPostModal(true)}
+    className="mt-3 w-full px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-sm"
+  >
+    Create Post
+  </button>
+</div>
+
+</div>
+</div>
+
+{/* ---------------- CREATE POST MODAL ---------------- */}
+<CreatePostModal
+  open={openPostModal}
+  onClose={() => setOpenPostModal(false)}
+/>
+
+</>
+);
 }
+
