@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import ProviderPopup from "@/app/components/ProviderPopup";
 import dynamic from "next/dynamic";
+import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 
 const MarketplaceMap = dynamic(
 () => import("@/app/components/MarketplaceMap").then((mod) => mod.default),
@@ -40,6 +41,7 @@ urgent?: boolean;
 
 export default function MarketplacePage() {
 const [feed, setFeed] = useState<Listing[]>([]);
+const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 const [search, setSearch] = useState("");
 const [category, setCategory] = useState("all");
 const [sortBy, setSortBy] = useState<"distance" | "price">("distance");
@@ -63,6 +65,7 @@ const { data: products } = await supabase
 const { data: posts } = await supabase
   .from("posts")
   .select("*");
+
 
 /* ---------- FORMAT ---------- */
 
@@ -360,9 +363,12 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
 
             <ProviderPopup userId={item.provider_id}>
   <img
-    src={item.avatar}
-    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition"
-  />
+  src={item.avatar}
+  onClick={() =>
+    setSelectedProvider(item.provider_id)
+  }
+  className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition"
+/>
 </ProviderPopup>
 
             <div className="flex-1">
@@ -478,6 +484,11 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   <button className="fixed bottom-6 right-6 bg-gradient-to-r from-indigo-600 to-pink-600 w-14 h-14 rounded-full text-2xl shadow-2xl hover:scale-110 transition">
     +
   </button>
+  <ProviderTrustPanel
+  userId={selectedProvider || ""}
+  open={!!selectedProvider}
+  onClose={() => setSelectedProvider(null)}
+/>
 </div>
 
 
