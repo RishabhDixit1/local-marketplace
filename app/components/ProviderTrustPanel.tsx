@@ -48,7 +48,7 @@ export default function ProviderTrustPanel({
 
   const [portfolio, setPortfolio] = useState<string[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [avgRating, setAvgRating] = useState(0);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
   const [openReview, setOpenReview] = useState(false);
   const [metrics, setMetrics] = useState<any>(null);
 
@@ -66,13 +66,17 @@ export default function ProviderTrustPanel({
     if (data) {
       setReviews(data);
 
-      const avg =
-        data.reduce(
-          (sum, r) => sum + r.rating,
-          0
-        ) / data.length;
+      if (data.length > 0) {
+        const avg =
+          data.reduce(
+            (sum, r) => sum + r.rating,
+            0
+          ) / data.length;
 
-      setAvgRating(avg.toFixed(1));
+        setAvgRating(Number(avg.toFixed(1)));
+      } else {
+        setAvgRating(null);
+      }
     }
   };
 
@@ -160,7 +164,7 @@ useEffect(() => {
   </h3>
 
   <div className="text-yellow-400 font-bold mb-3">
-    ⭐ {avgRating || "No ratings yet"}
+    ⭐ {avgRating !== null ? avgRating : "No ratings yet"}
   </div>
 
   <div className="space-y-2 max-h-40 overflow-y-auto">
