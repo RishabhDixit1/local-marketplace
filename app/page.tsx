@@ -13,11 +13,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (typeof window !== "undefined"
-        ? window.location.origin
-        : "");
+    const baseUrl = window.location.origin;
 
     await supabase.auth.signInWithOtp({
       email,
