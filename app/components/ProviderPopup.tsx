@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  calculateProfileCompletion,
+  calculateVerificationStatus,
+  createBusinessSlug,
+  verificationLabel,
+} from "@/lib/business";
 
 type Props = {
   userId: string;
@@ -9,12 +15,16 @@ type Props = {
 };
 
 type Profile = {
+  id: string;
   name: string;
   location: string;
   bio: string;
   role: string;
   services: string[];
   availability: string;
+  email?: string;
+  phone?: string;
+  website?: string;
   avatar_url?: string;
 };
 
@@ -79,6 +89,26 @@ export default function ProviderPopup({
             {profile.role || "Provider"}
           </div>
 
+          <div className="text-xs mb-2 text-emerald-300">
+            {verificationLabel(
+              calculateVerificationStatus({
+                role: profile.role,
+                profileCompletion: calculateProfileCompletion({
+                  name: profile.name,
+                  location: profile.location,
+                  bio: profile.bio,
+                  services: profile.services,
+                  email: profile.email,
+                  phone: profile.phone,
+                  website: profile.website,
+                }),
+                listingsCount: profile.services?.length || 0,
+                averageRating: 4.5,
+                reviewCount: 1,
+              })
+            )}
+          </div>
+
           {/* Bio */}
           <p className="text-sm text-slate-300 mb-3">
             {profile.bio ||
@@ -103,6 +133,13 @@ export default function ProviderPopup({
           <div className="mt-3 text-xs text-green-400">
             ● {profile.availability || "Available"}
           </div>
+
+          <button
+            onClick={() => window.open(`/business/${createBusinessSlug(profile.name, profile.id)}`, "_blank")}
+            className="mt-3 w-full rounded-lg bg-slate-800 py-1.5 text-xs hover:bg-slate-700"
+          >
+            View Business Page
+          </button>
         </div>
       )}
     </div>

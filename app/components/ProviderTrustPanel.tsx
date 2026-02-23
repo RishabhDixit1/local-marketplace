@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { BadgeCheck, Clock3, ExternalLink, MapPin, MessageCircle, Star, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import ReviewModal from "./ReviewModal";
 import {
-  Star,
-  MapPin,
-  ShieldCheck,
-  MessageCircle,
-  Briefcase,
-  Clock,
-  X,
-  Image,
-} from "lucide-react";
+  calculateProfileCompletion,
+  calculateVerificationStatus,
+  createBusinessSlug,
+  estimateResponseMinutes,
+  verificationLabel,
+} from "@/lib/business";
 
 type Props = {
   userId: string;
@@ -20,330 +19,228 @@ type Props = {
   onClose: () => void;
 };
 
-type Profile = {
+type ProfileRow = {
   id: string;
-  name: string;
-  location: string;
-  bio: string;
-  role: string;
-  services: string[];
-  availability: string;
-  avatar_url?: string;
+  name: string | null;
+  location: string | null;
+  bio: string | null;
+  role: string | null;
+  services: string[] | null;
+  availability: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  avatar_url: string | null;
 };
 
-export default function ProviderTrustPanel({
-  userId,
-  open,
-  onClose,
-}: Props) {
-  const [profile, setProfile] =
-    useState<Profile | null>(null);
+type ReviewRow = {
+  rating: number | null;
+  comment: string | null;
+};
 
-  const [stats, setStats] = useState({
-    rating: 4.6,
-    reviews: 18,
-    completed: 42,
-    response: "7 mins",
-  });
+type OrderRow = {
+  status: string | null;
+};
 
-  const [portfolio, setPortfolio] = useState<string[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [avgRating, setAvgRating] = useState<number | null>(null);
+export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [openReview, setOpenReview] = useState(false);
-  const [metrics, setMetrics] = useState<any>(null);
-
-  /* ---------- LOAD DATA ---------- */
+  const [servicesCount, setServicesCount] = useState(0);
+  const [productsCount, setProductsCount] = useState(0);
+  const [completedJobs, setCompletedJobs] = useState(0);
 
   useEffect(() => {
-  if (!userId) return;
+    if (!open || !userId) return;
 
-  const fetchReviews = async () => {
-    const { data } = await supabase
-      .from("reviews")
-      .select("*")
-      .eq("provider_id", userId);
+    let isMounted = true;
 
-    if (data) {
-      setReviews(data);
+    void (async () => {
+      const [{ data: profileRow }, { data: reviewRows }, { data: serviceRows }, { data: productRows }, { data: orderRows }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id,name,location,bio,role,services,availability,email,phone,website,avatar_url")
+            .eq("id", userId)
+            .maybeSingle<ProfileRow>(),
+          supabase.from("reviews").select("rating,comment").eq("provider_id", userId),
+          supabase.from("service_listings").select("id").eq("provider_id", userId),
+          supabase.from("product_catalog").select("id").eq("provider_id", userId),
+          supabase.from("orders").select("status").eq("provider_id", userId),
+        ]);
 
-      if (data.length > 0) {
-        const avg =
-          data.reduce(
-            (sum, r) => sum + r.rating,
-            0
-          ) / data.length;
+      if (!isMounted) return;
+      setProfile(profileRow || null);
+      setReviews((reviewRows as ReviewRow[] | null) || []);
+      setServicesCount((serviceRows || []).length);
+      setProductsCount((productRows || []).length);
 
-        setAvgRating(Number(avg.toFixed(1)));
-      } else {
-        setAvgRating(null);
-      }
-    }
-  };
+      const doneCount = ((orderRows as OrderRow[] | null) || []).filter((row) =>
+        ["completed", "closed"].includes((row.status || "").toLowerCase())
+      ).length;
+      setCompletedJobs(doneCount);
+    })();
 
-  fetchReviews();
-}, [userId]);
-useEffect(() => {
-  if (!userId) return;
+    return () => {
+      isMounted = false;
+    };
+  }, [open, userId]);
 
-  const fetchMetrics = async () => {
-    const { data } = await supabase
-      .rpc("get_provider_metrics", { pid: userId });
+  const avgRating = useMemo(() => {
+    if (!reviews.length) return 0;
+    const ratings = reviews
+      .map((review) => Number(review.rating))
+      .filter((rating) => Number.isFinite(rating) && rating > 0);
+    if (!ratings.length) return 0;
+    return Number((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1));
+  }, [reviews]);
 
-    if (data?.length) setMetrics(data[0]);
-  };
+  const responseMinutes = useMemo(() => {
+    if (!profile) return 0;
+    return estimateResponseMinutes({
+      availability: profile.availability,
+      providerId: profile.id,
+    });
+  }, [profile]);
 
-  fetchMetrics();
-}, [userId]);
+  const profileCompletion = useMemo(() => {
+    if (!profile) return 0;
+    return calculateProfileCompletion({
+      name: profile.name,
+      location: profile.location,
+      bio: profile.bio,
+      services: profile.services,
+      email: profile.email,
+      phone: profile.phone,
+      website: profile.website,
+    });
+  }, [profile]);
+
+  const verificationStatus = useMemo(() => {
+    if (!profile) return "unclaimed";
+    return calculateVerificationStatus({
+      role: profile.role,
+      profileCompletion,
+      listingsCount: servicesCount + productsCount,
+      averageRating: avgRating,
+      reviewCount: reviews.length,
+    });
+  }, [avgRating, profile, profileCompletion, productsCount, reviews.length, servicesCount]);
+
+  const businessSlug = profile ? createBusinessSlug(profile.name, profile.id) : "";
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* OVERLAY */}
-      <div
-        className="flex-1 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* PANEL */}
-      <div className="w-[420px] bg-slate-950 border-l border-slate-800 p-6 overflow-y-auto animate-in slide-in-from-right">
-
-        {/* CLOSE */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white"
-        >
+      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-slate-800 bg-slate-950 p-6 animate-in slide-in-from-right">
+        <button onClick={onClose} className="absolute right-4 top-4 text-slate-400 hover:text-white">
           <X />
         </button>
 
-        {/* PROFILE HEADER */}
-        <div className="text-center mb-6">
-
-          <img
-            src={
-              profile?.avatar_url ||
-              "https://i.pravatar.cc/150"
-            }
-            className="w-24 h-24 rounded-full mx-auto border-4 border-indigo-500 mb-3"
-          />
-
-          <h2 className="text-xl font-semibold">
-            {profile?.name || "Provider"}
-          </h2>
-
-          <p className="text-sm text-slate-400 flex justify-center gap-1">
-            <MapPin size={14} />
-            {profile?.location || "Unknown"}
-          </p>
-
-          <div className="flex justify-center gap-1 mt-2 text-green-400 text-sm">
-            <ShieldCheck size={14} />
-            Verified Provider
-          </div>
-        </div>
-
-        {/* TRUST STATS */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <StatCard icon={<Star />} label="Rating" value={stats.rating} />
-          <StatCard icon={<Briefcase />} label="Jobs Done" value={stats.completed} />
-          <StatCard icon={<MessageCircle />} label="Reviews" value={stats.reviews} />
-          <StatCard icon={<Clock />} label="Response" value={stats.response} />
-        </div>
-
-        {/* BIO */}
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2">About</h3>
-          <p className="text-sm text-slate-400">
-            {profile?.bio || "No bio added yet."}
-          </p>
-        </div>
-        {/* REVIEWS */}
-<div className="mt-6">
-  <h3 className="font-semibold mb-2">
-    Reviews & Ratings
-  </h3>
-
-  <div className="text-yellow-400 font-bold mb-3">
-    ⭐ {avgRating !== null ? avgRating : "No ratings yet"}
-  </div>
-
-  <div className="space-y-2 max-h-40 overflow-y-auto">
-    {reviews.map((r, i) => (
-      <div
-        key={i}
-        className="bg-slate-800 p-2 rounded-lg"
-      >
-        <div className="text-yellow-400 text-sm">
-          {"⭐".repeat(r.rating)}
-        </div>
-
-        <p className="text-xs text-slate-300">
-          {r.comment}
-        </p>
-      </div>
-    ))}
-  </div>
-</div>
-<button
-  onClick={() => setOpenReview(true)}
-  className="w-full mt-4 bg-indigo-600 py-2 rounded-xl text-sm"
->
-  Write Review
-</button>
-<ReviewModal
-  providerId={userId}
-  open={openReview}
-  onClose={() => setOpenReview(false)}
-/>
-{/* PERFORMANCE METRICS */}
-
-<div className="mt-6 border-t border-slate-800 pt-4">
-
-  <h3 className="font-semibold mb-3">
-    Performance Metrics
-  </h3>
-
-  {!metrics ? (
-    <p className="text-sm text-slate-400">
-      No performance data yet.
-    </p>
-  ) : (
-    <div className="grid grid-cols-2 gap-3 text-sm">
-
-      <div className="bg-slate-800 p-3 rounded-xl">
-        <p className="text-slate-400">Jobs Completed</p>
-        <p className="font-bold text-lg">
-          {metrics.completed_orders}
-        </p>
-      </div>
-
-      <div className="bg-slate-800 p-3 rounded-xl">
-        <p className="text-slate-400">Total Orders</p>
-        <p className="font-bold text-lg">
-          {metrics.total_orders}
-        </p>
-      </div>
-
-      <div className="bg-slate-800 p-3 rounded-xl">
-        <p className="text-slate-400">Success Rate</p>
-        <p className="font-bold text-lg text-green-400">
-          {metrics.success_rate || 0}%
-        </p>
-      </div>
-
-      <div className="bg-slate-800 p-3 rounded-xl">
-        <p className="text-slate-400">Cancelled</p>
-        <p className="font-bold text-lg text-red-400">
-          {metrics.cancelled_orders}
-        </p>
-      </div>
-
-    </div>
-  )}
-</div>
-{/* TRUST SCORE */}
-
-<div className="mt-4">
-
-  <div className="text-sm mb-1">
-    Trust Score
-  </div>
-
-  <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-    <div
-      className="h-full bg-gradient-to-r from-green-400 to-emerald-500"
-      style={{
-        width: `${metrics?.success_rate || 0}%`,
-      }}
-    />
-  </div>
-
-</div>
-
-        {/* SERVICES */}
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2">
-            Services Offered
-          </h3>
-
-          <div className="flex flex-wrap gap-2">
-            {profile?.services?.length ? (
-              profile.services.map((s, i) => (
-                <span
-                  key={i}
-                  className="bg-slate-800 px-3 py-1 rounded-full text-xs"
-                >
-                  {s}
-                </span>
-              ))
-            ) : (
-              <span className="text-xs text-slate-500">
-                No services listed
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* PORTFOLIO */}
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2 flex items-center gap-2">
-            <Image size={16} />
-            Portfolio
-          </h3>
-
-          <div className="grid grid-cols-3 gap-2">
-            {portfolio.map((img, i) => (
+        {!profile ? (
+          <p className="text-sm text-slate-400">Loading provider profile...</p>
+        ) : (
+          <>
+            <div className="mb-6 text-center">
               <img
-                key={i}
-                src={img}
-                className="rounded-lg h-20 object-cover"
+                src={profile?.avatar_url || "https://i.pravatar.cc/150"}
+                alt={profile?.name || "Provider"}
+                className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
-            ))}
-          </div>
-        </div>
+              <h2 className="text-xl font-semibold">{profile?.name || "Provider"}</h2>
+              <p className="mt-1 flex items-center justify-center gap-1 text-sm text-slate-400">
+                <MapPin size={14} />
+                {profile?.location || "Unknown"}
+              </p>
+              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">
+                <BadgeCheck size={13} />
+                {verificationLabel(verificationStatus)}
+              </div>
+            </div>
 
-        {/* AVAILABILITY */}
-        <div className="mb-6 text-sm">
-          <span className="text-slate-400">
-            Availability:
-          </span>{" "}
-          <span className="text-green-400">
-            {profile?.availability || "Available"}
-          </span>
-        </div>
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              <StatCard label="Rating" value={avgRating || "New"} icon={<Star size={14} />} />
+              <StatCard label="Reviews" value={reviews.length} icon={<MessageCircle size={14} />} />
+              <StatCard label="Jobs Done" value={completedJobs} icon={<BadgeCheck size={14} />} />
+              <StatCard label="Response" value={`${responseMinutes} mins`} icon={<Clock3 size={14} />} />
+            </div>
 
-        {/* ACTIONS */}
-        <div className="space-y-3">
-          <button className="w-full bg-indigo-600 hover:bg-indigo-700 py-2 rounded-xl">
-            Book Now
-          </button>
+            <div className="mb-6">
+              <h3 className="mb-2 font-semibold">About</h3>
+              <p className="text-sm text-slate-400">{profile?.bio || "No bio added yet."}</p>
+            </div>
 
-          <button className="w-full bg-slate-800 hover:bg-slate-700 py-2 rounded-xl flex items-center justify-center gap-2">
-            <MessageCircle size={16} />
-            Chat Provider
-          </button>
-        </div>
+            <div className="mb-6">
+              <h3 className="mb-2 font-semibold">Services</h3>
+              <div className="flex flex-wrap gap-2">
+                {profile?.services?.length ? (
+                  profile.services.map((service) => (
+                    <span key={service} className="rounded-full bg-slate-800 px-3 py-1 text-xs">
+                      {service}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-500">No services listed</span>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="mb-2 font-semibold">Recent Reviews</h3>
+              <div className="max-h-40 space-y-2 overflow-y-auto">
+                {reviews.length === 0 && <p className="text-sm text-slate-500">No reviews yet.</p>}
+                {reviews.map((review, index) => (
+                  <div key={`review-${index}`} className="rounded-lg bg-slate-800 p-2">
+                    <div className="text-sm text-yellow-400">{"★".repeat(Math.max(1, Number(review.rating || 0)))}</div>
+                    <p className="text-xs text-slate-300">{review.comment || "Customer left a rating."}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="mb-2 text-sm">Trust Score</h3>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400" style={{ width: `${profileCompletion}%` }} />
+              </div>
+              <p className="mt-1 text-xs text-slate-400">{profileCompletion}% profile completion</p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => setOpenReview(true)}
+                className="w-full rounded-xl bg-indigo-600 py-2 text-sm font-semibold hover:bg-indigo-500"
+              >
+                Write Review
+              </button>
+              {!!businessSlug && (
+                <button
+                  onClick={() => window.open(`/business/${businessSlug}`, "_blank")}
+                  className="w-full rounded-xl bg-slate-800 py-2 text-sm font-semibold hover:bg-slate-700 inline-flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={14} />
+                  Open Public Business Page
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
+
+      <ReviewModal providerId={userId} open={openReview} onClose={() => setOpenReview(false)} />
     </div>
   );
 }
 
-/* ---------- STAT CARD ---------- */
-
-function StatCard({
-  icon,
-  label,
-  value,
-}: any) {
+function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
-      <div className="flex justify-center text-indigo-400 mb-1">
-        {icon}
-      </div>
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-center">
+      <div className="mb-1 flex justify-center text-indigo-400">{icon}</div>
       <div className="font-semibold">{value}</div>
-      <div className="text-xs text-slate-400">
-        {label}
-      </div>``
+      <div className="text-xs text-slate-400">{label}</div>
     </div>
   );
 }
