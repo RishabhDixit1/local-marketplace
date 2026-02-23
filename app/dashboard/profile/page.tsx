@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { 
@@ -15,8 +15,22 @@ import {
   Phone,
   Globe,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Store,
+  ShoppingBag,
+  ArrowRight,
+  Copy,
+  ExternalLink,
+  BadgeCheck,
 } from "lucide-react";
+import {
+  calculateProfileCompletion,
+  calculateVerificationStatus,
+  createBusinessSlug,
+  isClaimedBusiness,
+  normalizeRole,
+  verificationLabel,
+} from "@/lib/business";
 
 interface ProfileData {
   name: string;
@@ -30,12 +44,60 @@ interface ProfileData {
   website?: string;
 }
 
+type ServiceInsightRow = {
+  id: string;
+  title: string | null;
+  category: string | null;
+  price: number | null;
+  availability: string | null;
+};
+
+type ProductInsightRow = {
+  id: string;
+  title: string | null;
+  category: string | null;
+  price: number | null;
+  stock: number | null;
+};
+
+type ReviewRow = {
+  rating: number | null;
+};
+
+type OrderStatusRow = {
+  status: string | null;
+};
+
+type FeaturedListing = {
+  id: string;
+  type: "service" | "product";
+  title: string;
+  category: string;
+  price: number;
+  status: string;
+};
+
+type ProviderInsight = {
+  servicesCount: number;
+  productsCount: number;
+  averageRating: number;
+  reviewCount: number;
+  activeOrders: number;
+};
+
+type SeekerInsight = {
+  postsCount: number;
+  activeOrders: number;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     name: "",
@@ -51,6 +113,133 @@ export default function ProfilePage() {
 
   const [serviceInput, setServiceInput] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [providerInsight, setProviderInsight] = useState<ProviderInsight>({
+    servicesCount: 0,
+    productsCount: 0,
+    averageRating: 0,
+    reviewCount: 0,
+    activeOrders: 0,
+  });
+  const [seekerInsight, setSeekerInsight] = useState<SeekerInsight>({
+    postsCount: 0,
+    activeOrders: 0,
+  });
+  const [featuredListings, setFeaturedListings] = useState<FeaturedListing[]>([]);
+  const [copiedBusinessLink, setCopiedBusinessLink] = useState(false);
+
+  const isProvider = profileData.role === "provider" || profileData.role === "business";
+  const businessClaimed = isClaimedBusiness(profileData.role);
+  const profileCompletion = calculateProfileCompletion({
+    name: profileData.name,
+    location: profileData.location,
+    bio: profileData.bio,
+    services: profileData.services,
+    email: profileData.email,
+    phone: profileData.phone,
+    website: profileData.website,
+  });
+  const verificationStatus = calculateVerificationStatus({
+    role: profileData.role,
+    profileCompletion,
+    listingsCount: providerInsight.servicesCount + providerInsight.productsCount,
+    averageRating: providerInsight.averageRating,
+    reviewCount: providerInsight.reviewCount,
+  });
+  const businessSlug = currentUserId ? createBusinessSlug(profileData.name, currentUserId) : "";
+  const businessProfileUrl = businessSlug ? `/business/${businessSlug}` : "";
+
+  const loadRoleInsights = useCallback(async (userId: string, role: string) => {
+    setLoadingInsights(true);
+
+    if (normalizeRole(role) !== "seeker") {
+      const [{ data: services, count: servicesCount }, { data: products, count: productsCount }, { data: reviews }, { data: orders }] =
+        await Promise.all([
+          supabase
+            .from("service_listings")
+            .select("id,title,category,price,availability", { count: "exact" })
+            .eq("provider_id", userId)
+            .limit(4),
+          supabase
+            .from("product_catalog")
+            .select("id,title,category,price,stock", { count: "exact" })
+            .eq("provider_id", userId)
+            .limit(4),
+          supabase.from("reviews").select("rating").eq("provider_id", userId),
+          supabase.from("orders").select("status").eq("provider_id", userId),
+        ]);
+
+      const reviewRows = (reviews as ReviewRow[] | null) || [];
+      const ratingValues = reviewRows
+        .map((row) => Number(row.rating))
+        .filter((rating) => Number.isFinite(rating) && rating > 0);
+
+      const averageRating = ratingValues.length
+        ? Number((ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length).toFixed(1))
+        : 0;
+
+      const orderRows = (orders as OrderStatusRow[] | null) || [];
+      const activeOrders = orderRows.filter(
+        (order) => !["completed", "cancelled", "closed", "rejected"].includes((order.status || "").toLowerCase())
+      ).length;
+
+      const serviceCards: FeaturedListing[] = ((services as ServiceInsightRow[] | null) || []).map((service) => ({
+        id: service.id,
+        type: "service",
+        title: service.title || "Untitled service",
+        category: service.category || "Service",
+        price: Number(service.price || 0),
+        status: (service.availability || "available").toLowerCase(),
+      }));
+
+      const productCards: FeaturedListing[] = ((products as ProductInsightRow[] | null) || []).map((product) => ({
+        id: product.id,
+        type: "product",
+        title: product.title || "Untitled product",
+        category: product.category || "Product",
+        price: Number(product.price || 0),
+        status: (product.stock || 0) > 0 ? "in stock" : "out of stock",
+      }));
+
+      setProviderInsight({
+        servicesCount: servicesCount || 0,
+        productsCount: productsCount || 0,
+        averageRating,
+        reviewCount: reviewRows.length,
+        activeOrders,
+      });
+      setSeekerInsight({
+        postsCount: 0,
+        activeOrders: 0,
+      });
+      setFeaturedListings([...serviceCards, ...productCards].slice(0, 6));
+      setLoadingInsights(false);
+      return;
+    }
+
+    const [{ count: postsCount }, { data: orders }] = await Promise.all([
+      supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("orders").select("status").eq("consumer_id", userId),
+    ]);
+
+    const orderRows = (orders as OrderStatusRow[] | null) || [];
+    const activeOrders = orderRows.filter(
+      (order) => !["completed", "cancelled", "closed", "rejected"].includes((order.status || "").toLowerCase())
+    ).length;
+
+    setSeekerInsight({
+      postsCount: postsCount || 0,
+      activeOrders,
+    });
+    setProviderInsight({
+      servicesCount: 0,
+      productsCount: 0,
+      averageRating: 0,
+      reviewCount: 0,
+      activeOrders: 0,
+    });
+    setFeaturedListings([]);
+    setLoadingInsights(false);
+  }, []);
 
   // Load profile
   useEffect(() => {
@@ -62,6 +251,7 @@ export default function ProfilePage() {
       }
 
       const userId = sessionData.session.user.id;
+      setCurrentUserId(userId);
 
       const { data } = await supabase
         .from("profiles")
@@ -69,12 +259,14 @@ export default function ProfilePage() {
         .eq("id", userId)
         .single();
 
+      let nextRole: "provider" | "business" | "seeker" = "provider";
       if (data) {
+        nextRole = normalizeRole(data.role);
         setProfileData({
           name: data.name || "",
           location: data.location || "",
           bio: data.bio || "",
-          role: data.role || "provider",
+          role: nextRole,
           services: data.services || [],
           availability: data.availability || "available",
           email: data.email || "",
@@ -88,6 +280,11 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [router]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    loadRoleInsights(currentUserId, profileData.role);
+  }, [currentUserId, loadRoleInsights, profileData.role]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -119,7 +316,10 @@ export default function ProfilePage() {
     }
 
     if (profileData.services.length === 0) {
-      newErrors.services = "Add at least one service or skill";
+      newErrors.services =
+        isProvider
+          ? "Add at least one service or product category"
+          : "Add at least one interest so providers can match you faster";
     }
 
     setErrors(newErrors);
@@ -151,6 +351,41 @@ export default function ProfilePage() {
       setErrors({ submit: "Failed to save profile. Please try again." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const claimBusiness = async () => {
+    if (!currentUserId) return;
+
+    setProfileData((prev) => ({ ...prev, role: "business" }));
+    setSaving(true);
+
+    try {
+      await supabase.from("profiles").upsert({
+        id: currentUserId,
+        ...profileData,
+        role: "business",
+      });
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error claiming business:", error);
+      setErrors({ submit: "Could not claim business right now. Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyBusinessLink = async () => {
+    if (!businessProfileUrl) return;
+    const absoluteUrl = `${window.location.origin}${businessProfileUrl}`;
+    try {
+      await navigator.clipboard.writeText(absoluteUrl);
+      setCopiedBusinessLink(true);
+      setTimeout(() => setCopiedBusinessLink(false), 2200);
+    } catch {
+      setErrors({ submit: "Unable to copy link. Please copy the URL manually." });
     }
   };
 
@@ -194,19 +429,6 @@ export default function ProfilePage() {
     { value: "offline", label: "Offline", emoji: "🔴", color: "text-red-600" },
   ];
 
-  const profileCompletion = Math.min(
-    100,
-    Math.round(
-      ((profileData.name ? 15 : 0) +
-        (profileData.location ? 15 : 0) +
-        (profileData.bio.length >= 20 ? 20 : 0) +
-        (profileData.services.length > 0 ? 20 : 0) +
-        (profileData.email ? 10 : 0) +
-        (profileData.phone ? 10 : 0) +
-        (profileData.website ? 10 : 0))
-    )
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -244,10 +466,12 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <h1 className="text-3xl lg:text-4xl font-bold mb-2">
-                      Your Profile
+                      {isProvider ? (businessClaimed ? "Business Profile" : "Provider Profile") : "Seeker Profile"}
                     </h1>
                     <p className="text-white/90 text-sm lg:text-base">
-                      Build trust and connect with your local community
+                      {isProvider
+                        ? "Showcase your business, build trust, and win nearby customers."
+                        : "Share what you need and get matched with nearby providers faster."}
                     </p>
                   </div>
                 </div>
@@ -342,14 +566,14 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => setProfileData({ ...profileData, role: "provider" })}
                 className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
-                  profileData.role === "provider"
+                  isProvider
                     ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
                     : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                 }`}
               >
                 <div className="flex items-center justify-center gap-3">
                   <Award className="w-5 h-5" />
-                  <span>Service Provider</span>
+                  <span>{businessClaimed ? "Business Owner" : "Service Provider"}</span>
                 </div>
               </button>
 
@@ -368,6 +592,181 @@ export default function ProfilePage() {
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* Role Specific Experience */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+            {isProvider ? (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Store className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                      Business Showcase
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      Treat this like your local LinkedIn page: prove trust, highlight offerings, and convert nearby demand.
+                    </p>
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                      <BadgeCheck className="w-3.5 h-3.5" />
+                      {verificationLabel(verificationStatus)}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/provider/listings")}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                    >
+                      Manage Listings
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/provider/orders")}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                    >
+                      Lead Pipeline
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={claimBusiness}
+                    disabled={businessClaimed || saving}
+                    className={`rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+                      businessClaimed
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-70"
+                    }`}
+                  >
+                    {businessClaimed ? "Business Claimed" : "Claim Your Business"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyBusinessLink}
+                    disabled={!businessProfileUrl}
+                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <Copy className="w-4 h-4" />
+                    {copiedBusinessLink ? "Copied" : "Copy Public Link"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => businessProfileUrl && window.open(businessProfileUrl, "_blank")}
+                    disabled={!businessProfileUrl}
+                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View Public Profile
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Services</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.servicesCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Products</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.productsCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Rating</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                      {providerInsight.averageRating ? providerInsight.averageRating.toFixed(1) : "New"}
+                    </p>
+                    <p className="text-xs text-slate-500">{providerInsight.reviewCount} reviews</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.activeOrders}</p>
+                  </div>
+                </div>
+
+                {loadingInsights ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Loading business insights...</p>
+                ) : featuredListings.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 text-sm text-slate-500 dark:text-slate-400">
+                    No offerings published yet. Add services/products to make your business discoverable in nearby search.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Featured Offerings</p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {featuredListings.map((listing) => (
+                        <div
+                          key={`${listing.type}-${listing.id}`}
+                          className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="font-semibold text-slate-900 dark:text-white truncate">{listing.title}</p>
+                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                              {listing.type}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{listing.category}</p>
+                          <div className="mt-2 flex items-center justify-between text-sm">
+                            <span className="font-semibold text-slate-900 dark:text-white">₹ {listing.price.toLocaleString()}</span>
+                            <span className="text-slate-500 dark:text-slate-400 capitalize">{listing.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShoppingBag className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    Seeker Profile Strategy
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    Share your needs clearly so local businesses can discover and respond quickly.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Need Posts</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{seekerInsight.postsCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{seekerInsight.activeOrders}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/people")}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                  >
+                    Discover Providers
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/create_post")}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors"
+                  >
+                    Post a Need
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 text-sm text-slate-600 dark:text-slate-300">
+                  Tip: Add interests below (e.g., &quot;Pastry Catering&quot;, &quot;Custom Cakes&quot;, &quot;Event Decor&quot;) so nearby SMBs can match you faster.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* About/Bio */}
@@ -408,13 +807,17 @@ export default function ProfilePage() {
                 <Award className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Services & Skills
+                {isProvider ? "Services & Offerings" : "Needs & Interests"}
               </h2>
             </div>
 
             <div className="flex gap-2 mb-4">
               <input
-                placeholder="e.g., Plumbing, Web Design, Delivery"
+                placeholder={
+                  isProvider
+                    ? "e.g., Plumbing, Cake Design, Home Cleaning"
+                    : "e.g., Pastry Catering, Birthday Cakes, Weekend Delivery"
+                }
                 className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                 value={serviceInput}
                 onChange={(e) => setServiceInput(e.target.value)}
@@ -437,9 +840,9 @@ export default function ProfilePage() {
             )}
 
             <div className="flex flex-wrap gap-2">
-              {profileData.services.map((service, idx) => (
+              {profileData.services.map((service) => (
                 <span
-                  key={idx}
+                  key={service}
                   className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full px-4 py-2 text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   {service}
@@ -454,7 +857,7 @@ export default function ProfilePage() {
             </div>
 
             <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              {profileData.services.length}/15 services added
+              {profileData.services.length}/15 {isProvider ? "offerings" : "interests"} added
             </p>
           </div>
 
@@ -518,36 +921,38 @@ export default function ProfilePage() {
           </div>
 
           {/* Availability */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-white" />
+          {isProvider && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  Availability Status
+                </h2>
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Availability Status
-              </h2>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {availabilityOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setProfileData({ ...profileData, availability: option.value })}
-                  className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
-                    profileData.availability === option.value
-                      ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                      : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-3">
-                    <span className="text-2xl">{option.emoji}</span>
-                    <span>{option.label}</span>
-                  </div>
-                </button>
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {availabilityOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setProfileData({ ...profileData, availability: option.value })}
+                    className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
+                      profileData.availability === option.value
+                        ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-2xl">{option.emoji}</span>
+                      <span>{option.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Error Message */}
           {errors.submit && (

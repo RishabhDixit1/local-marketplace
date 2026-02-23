@@ -27,43 +27,50 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center px-6">
-      {/* Floating Glow Orbs */}
-      <div className="absolute w-72 h-72 bg-pink-400/30 rounded-full blur-3xl top-10 left-10 animate-pulse" />
-      <div className="absolute w-72 h-72 bg-indigo-400/30 rounded-full blur-3xl bottom-10 right-10 animate-pulse" />
+    <div className="page-shell min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-700 via-fuchsia-600 to-rose-500 flex items-center justify-center px-6 py-10">
+      {/* Animated Background Lights */}
+      <div className="aurora absolute -top-24 -left-20 w-96 h-96 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="aurora absolute -bottom-28 -right-16 w-96 h-96 rounded-full bg-pink-300/30 blur-3xl" />
+      <div className="aurora-delayed absolute top-1/3 left-1/2 -translate-x-1/2 w-[28rem] h-[28rem] rounded-full bg-violet-200/20 blur-3xl" />
 
       <div className="relative max-w-5xl w-full grid md:grid-cols-2 gap-8 items-center">
         {/* LEFT */}
-        <div className="text-white space-y-6">
-          <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
+        <div className="text-white space-y-6 fade-up">
+          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
             Find Local Services.
             <br />
             <span className="text-yellow-300">In Real Time.</span>
           </h1>
 
-          <p className="text-lg text-white/90">
-            A social marketplace for your neighborhood.  
+          <p className="text-lg text-white/90 max-w-xl">
+            A social marketplace for your neighborhood.
             Post what you need — connect instantly with nearby providers.
           </p>
 
-          <div className="flex gap-4">
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg text-sm">
+          <div className="inline-flex items-center rounded-full border border-white/35 bg-white/10 backdrop-blur-md px-4 py-2 text-sm font-medium text-white/95 glow-tag">
+            Let&apos;s build the future together
+          </div>
+
+          <div className="flex flex-wrap gap-4 chips">
+            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
               ⚡ Real-Time Matching
             </div>
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg text-sm">
+            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
               🧑‍🤝‍🧑 Community Driven
             </div>
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg text-sm">
+            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
               📍 Location Based
             </div>
           </div>
         </div>
 
         {/* RIGHT */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 animate-fade-in">
+        <div className="login-card bg-white/92 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 fade-up-delayed border border-white/40">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold">Join Your Local Network</h2>
-            <p className="text-gray-500 text-sm">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
+              Join Your Local Network
+            </h2>
+            <p className="text-slate-500 text-sm">
               Login as a seeker or provider — same account, endless opportunities
             </p>
           </div>
@@ -77,7 +84,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 transition bg-white/95 text-slate-900 placeholder:text-slate-400 caret-slate-900"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -86,18 +93,18 @@ export default function LoginPage() {
               <button
                 onClick={login}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:scale-[1.02] transition-transform shadow-lg"
+                className="cta-btn gradient-animate w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-3 rounded-lg font-semibold hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
               >
                 {loading ? "Sending Secure Link..." : "Send Login Link"}
               </button>
 
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-slate-500 text-center">
                 We use passwordless login for maximum security
               </p>
             </>
           ) : (
-            <div className="text-center space-y-4">
-              <div className="text-green-600 text-3xl">✅</div>
+            <div className="text-center space-y-4 fade-up">
+              <div className="text-green-600 text-3xl check-pop">✅</div>
               <h3 className="text-lg font-semibold">Check Your Email</h3>
               <p className="text-gray-500 text-sm">
                 We sent a secure login link to:
@@ -115,18 +122,152 @@ export default function LoginPage() {
       </div>
 
       <style jsx>{`
-        .animate-fade-in {
-          animation: fadeIn 0.8s ease-out;
+        .page-shell::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+          background-size: 36px 36px;
+          mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1));
+          animation: drift 22s linear infinite;
         }
 
-        @keyframes fadeIn {
+        .fade-up {
+          animation: fadeUp 0.7s ease-out both;
+        }
+
+        .fade-up-delayed {
+          animation: fadeUp 0.9s ease-out 0.14s both;
+        }
+
+        .aurora {
+          animation: float 9s ease-in-out infinite;
+        }
+
+        .aurora-delayed {
+          animation: float 11s ease-in-out 0.8s infinite;
+        }
+
+        .glow-tag {
+          box-shadow: 0 0 28px rgba(255, 255, 255, 0.16);
+          animation: pulseGlow 2.8s ease-in-out infinite;
+        }
+
+        .chips > div {
+          animation: riseIn 0.55s ease-out both;
+        }
+
+        .chips > div:nth-child(2) {
+          animation-delay: 0.12s;
+        }
+
+        .chips > div:nth-child(3) {
+          animation-delay: 0.24s;
+        }
+
+        .login-card {
+          animation: cardFloat 5.5s ease-in-out infinite;
+        }
+
+        .cta-btn {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .cta-btn::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -42%;
+          width: 35%;
+          height: 100%;
+          background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+          transform: skewX(-20deg);
+          animation: shimmer 2.6s ease-in-out infinite;
+        }
+
+        @keyframes fadeUp {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(22px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
+          }
+        }
+
+        @keyframes riseIn {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0);
+          }
+          50% {
+            transform: translate3d(0, -18px, 0);
+          }
+        }
+
+        @keyframes pulseGlow {
+          0%,
+          100% {
+            box-shadow: 0 0 26px rgba(255, 255, 255, 0.14);
+          }
+          50% {
+            box-shadow: 0 0 34px rgba(255, 255, 255, 0.26);
+          }
+        }
+
+        @keyframes cardFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-7px);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            left: -42%;
+          }
+          100% {
+            left: 112%;
+          }
+        }
+
+        @keyframes drift {
+          from {
+            transform: translate3d(0, 0, 0);
+          }
+          to {
+            transform: translate3d(-36px, -18px, 0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .aurora,
+          .aurora-delayed,
+          .chips > div,
+          .fade-up,
+          .fade-up-delayed,
+          .glow-tag,
+          .login-card,
+          .cta-btn::after,
+          .page-shell::before {
+            animation: none !important;
           }
         }
       `}</style>

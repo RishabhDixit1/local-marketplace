@@ -12,29 +12,53 @@ type Order = {
   created_at: string;
 };
 
+const normalizeLeadStatus = (status: string) => {
+  const lower = (status || "").toLowerCase();
+  if (["new_lead", "lead", "pending"].includes(lower)) return "new_lead";
+  if (lower === "quoted") return "quoted";
+  if (["accepted", "in_progress"].includes(lower)) return "accepted";
+  if (["completed", "closed"].includes(lower)) return "completed";
+  if (["rejected", "cancelled"].includes(lower)) return "rejected";
+  return "new_lead";
+};
+
+const statusLabel = (status: string) => {
+  const stage = normalizeLeadStatus(status);
+  if (stage === "new_lead") return "New lead received";
+  if (stage === "quoted") return "Provider sent quote";
+  if (stage === "accepted") return "Quote accepted";
+  if (stage === "completed") return "Completed";
+  return "Rejected";
+};
+
 export default function ConsumerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchOrders = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("consumer_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (data) setOrders(data);
-    setLoading(false);
-  };
-
   useEffect(() => {
-    fetchOrders();
+    let isMounted = true;
+
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!isMounted) return;
+      if (!data.user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: orderRows } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("consumer_id", data.user.id)
+        .order("created_at", { ascending: false });
+
+      if (!isMounted) return;
+      if (orderRows) setOrders(orderRows);
+      setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading)
@@ -60,8 +84,10 @@ export default function ConsumerOrdersPage() {
             <div className="text-sm text-slate-400">
               ₹ {order.price}
             </div>
-            <div className="text-xs text-slate-500">
-              Status: {order.status}
+            <div className="mt-2 text-xs">
+              <span className="rounded-full bg-slate-800 px-2 py-1 text-slate-300">
+                {statusLabel(order.status)}
+              </span>
             </div>
           </div>
         ))}

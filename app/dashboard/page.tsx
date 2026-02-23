@@ -9,6 +9,13 @@ import dynamic from "next/dynamic";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import { useRouter } from "next/navigation";
 import CreatePostModal from "@/app/components/CreatePostModal";
+import {
+  calculateLocalRankScore,
+  calculateProfileCompletion,
+  calculateVerificationStatus,
+  createBusinessSlug,
+  estimateResponseMinutes,
+} from "@/lib/business";
 
 const MarketplaceMap = dynamic(
 () => import("@/app/components/MarketplaceMap").then((mod) => mod.default),
@@ -44,6 +51,11 @@ urgent?: boolean;
 media?: FeedMedia[];
 createdAt?: string;
 creatorName?: string;
+ businessSlug?: string;
+ rankScore: number;
+ profileCompletion: number;
+ responseMinutes: number;
+ verificationStatus: "verified" | "pending" | "unclaimed";
 };
 
 type FeedMedia = {
@@ -87,6 +99,19 @@ type ProfileRow = {
   id: string;
   name?: string;
   avatar_url?: string;
+  role?: string | null;
+  bio?: string | null;
+  location?: string | null;
+  availability?: string | null;
+  services?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+};
+
+type ReviewRow = {
+  provider_id: string;
+  rating: number | null;
 };
 
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
@@ -143,6 +168,14 @@ const formatTimeAgo = (timestamp?: string) => {
   return `${days}d ago`;
 };
 
+const pseudoDistance = (seed: string) => {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) % 1000;
+  }
+  return Number((0.4 + (hash / 1000) * 7.6).toFixed(1));
+};
+
 /* ================= PAGE ================= */
 
 export default function MarketplacePage() {
@@ -151,7 +184,7 @@ const [feed, setFeed] = useState<Listing[]>([]);
 const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 const [search, setSearch] = useState("");
 const [category, setCategory] = useState("all");
-const [sortBy, setSortBy] = useState<"distance" | "price">("distance");
+const [sortBy, setSortBy] = useState<"best" | "distance" | "price">("best");
 const [showTrendingOnly, setShowTrendingOnly] = useState(false);
 const [highlightedId, setHighlightedId] = useState<string | null>(null);
 const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
@@ -217,22 +250,22 @@ useEffect(() => {
 /* ================= FETCH ================= */
 
 const fetchFeed = async () => {
-const { data: services } = await supabase
-.from("service_listings")
-.select("*");
+const [{ data: services }, { data: products }, { data: posts }, { data: reviews }] = await Promise.all([
+  supabase.from("service_listings").select("*"),
+  supabase.from("product_catalog").select("*"),
+  supabase.from("posts").select("*"),
+  supabase.from("reviews").select("provider_id,rating"),
+]);
 
-const { data: products } = await supabase
-  .from("product_catalog")
-  .select("*");
-
-const { data: posts } = await supabase
-  .from("posts")
-  .select("*");
+const serviceRows = (services as ServiceRow[] | null) || [];
+const productRows = (products as ProductRow[] | null) || [];
+const postRows = (posts as PostRow[] | null) || [];
+const reviewRows = (reviews as ReviewRow[] | null) || [];
 
 const profileIds = [
-  ...((services as ServiceRow[] | null)?.map((row) => row.provider_id) || []),
-  ...((products as ProductRow[] | null)?.map((row) => row.provider_id) || []),
-  ...((posts as PostRow[] | null)?.map((row) => row.user_id || row.provider_id || row.created_by || "").filter(Boolean) || []),
+  ...serviceRows.map((row) => row.provider_id),
+  ...productRows.map((row) => row.provider_id),
+  ...postRows.map((row) => row.user_id || row.provider_id || row.created_by || "").filter(Boolean),
 ];
 
 const uniqueProfileIds = Array.from(new Set(profileIds));
@@ -241,18 +274,84 @@ let profileMap = new Map<string, ProfileRow>();
 if (uniqueProfileIds.length > 0) {
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, name, avatar_url")
+    .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
     .in("id", uniqueProfileIds);
 
   profileMap = new Map((profiles as ProfileRow[] | null)?.map((p) => [p.id, p]) || []);
 }
 
+const serviceCountMap = new Map<string, number>();
+const productCountMap = new Map<string, number>();
+const ratingMap = new Map<string, { sum: number; count: number }>();
+
+serviceRows.forEach((row) => {
+  serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
+});
+
+productRows.forEach((row) => {
+  productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
+});
+
+reviewRows.forEach((row) => {
+  if (!row.provider_id) return;
+  const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
+  ratingMap.set(row.provider_id, {
+    sum: previous.sum + Number(row.rating || 0),
+    count: previous.count + 1,
+  });
+});
+
+const getProviderStats = (providerId: string) => {
+  const profile = providerId ? profileMap.get(providerId) : undefined;
+  const serviceCount = serviceCountMap.get(providerId) || 0;
+  const productCount = productCountMap.get(providerId) || 0;
+  const ratings = ratingMap.get(providerId);
+  const reviewCount = ratings?.count || 0;
+  const averageRating = reviewCount ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.4;
+  const profileCompletion = calculateProfileCompletion({
+    name: profile?.name,
+    location: profile?.location,
+    bio: profile?.bio,
+    services: profile?.services,
+    email: profile?.email,
+    phone: profile?.phone,
+    website: profile?.website,
+  });
+  const responseMinutes = estimateResponseMinutes({
+    availability: profile?.availability,
+    providerId: providerId || profile?.id || "provider",
+  });
+  const distance = pseudoDistance(providerId || profile?.id || "local");
+  const verificationStatus = calculateVerificationStatus({
+    role: profile?.role,
+    profileCompletion,
+    listingsCount: serviceCount + productCount,
+    averageRating,
+    reviewCount,
+  });
+  const rankScore = calculateLocalRankScore({
+    distanceKm: distance,
+    responseMinutes,
+    rating: averageRating,
+    profileCompletion,
+  });
+
+  return {
+    profile,
+    distance,
+    responseMinutes,
+    profileCompletion,
+    verificationStatus,
+    rankScore,
+  };
+};
+
 
 /* ---------- FORMAT ---------- */
 
 const formattedServices: Listing[] =
-  (services as ServiceRow[] | null)?.map((s) => {
-    const profile = profileMap.get(s.provider_id);
+  serviceRows.map((s) => {
+    const stats = getProviderStats(s.provider_id);
     return {
       id: s.id,
       title: s.title,
@@ -261,18 +360,23 @@ const formattedServices: Listing[] =
       category: s.category,
       provider_id: s.provider_id,
       type: "service",
-      avatar: profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
-      distance: Math.floor(Math.random() * 5) + 1,
+      avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
+      distance: stats.distance,
       lat: 28.61 + Math.random() * 0.05,
       lng: 77.2 + Math.random() * 0.05,
       createdAt: s.created_at,
-      creatorName: profile?.name || "Local Provider",
+      creatorName: stats.profile?.name || "Local Provider",
+      businessSlug: createBusinessSlug(stats.profile?.name, s.provider_id),
+      rankScore: stats.rankScore,
+      responseMinutes: stats.responseMinutes,
+      profileCompletion: stats.profileCompletion,
+      verificationStatus: stats.verificationStatus,
     };
-  }) || [];
+  });
 
 const formattedProducts: Listing[] =
-  (products as ProductRow[] | null)?.map((p) => {
-    const profile = profileMap.get(p.provider_id);
+  productRows.map((p) => {
+    const stats = getProviderStats(p.provider_id);
     return {
       id: p.id,
       title: p.title,
@@ -281,17 +385,22 @@ const formattedProducts: Listing[] =
       category: p.category,
       provider_id: p.provider_id,
       type: "product",
-      avatar: profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
-      distance: Math.floor(Math.random() * 5) + 1,
+      avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
+      distance: stats.distance,
       lat: 28.61 + Math.random() * 0.05,
       lng: 77.2 + Math.random() * 0.05,
       createdAt: p.created_at,
-      creatorName: profile?.name || "Local Seller",
+      creatorName: stats.profile?.name || "Local Seller",
+      businessSlug: createBusinessSlug(stats.profile?.name, p.provider_id),
+      rankScore: stats.rankScore,
+      responseMinutes: stats.responseMinutes,
+      profileCompletion: stats.profileCompletion,
+      verificationStatus: stats.verificationStatus,
     };
-  }) || [];
+  });
 
 const formattedPosts: Listing[] =
-  (posts as PostRow[] | null)?.map((post) => {
+  postRows.map((post) => {
     const rawText =
       post.text ||
       post.content ||
@@ -304,7 +413,7 @@ const formattedPosts: Listing[] =
       post.provider_id ||
       post.created_by ||
       "";
-    const profile = ownerId ? profileMap.get(ownerId) : undefined;
+    const stats = ownerId ? getProviderStats(ownerId) : null;
 
     return {
       id: post.id,
@@ -314,16 +423,21 @@ const formattedPosts: Listing[] =
       category: parsed.category,
       provider_id: ownerId,
       type: "demand",
-      avatar: profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
-      distance: Math.floor(Math.random() * 5) + 1,
+      avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
+      distance: stats?.distance || pseudoDistance(post.id),
       urgent: true,
       lat: 28.61 + Math.random() * 0.05,
       lng: 77.2 + Math.random() * 0.05,
       media: parsed.media,
       createdAt: post.created_at,
-      creatorName: profile?.name || "Community Member",
+      creatorName: stats?.profile?.name || "Community Member",
+      businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
+      rankScore: stats?.rankScore || 50,
+      responseMinutes: stats?.responseMinutes || 30,
+      profileCompletion: stats?.profileCompletion || 40,
+      verificationStatus: stats?.verificationStatus || "unclaimed",
     };
-  }) || [];
+  });
 
 const combined = [
   ...formattedPosts,
@@ -357,6 +471,9 @@ const matchesSearch = item.title
   return matchesSearch && matchesCategory && matchesTrending;
 })
 .sort((a, b) => {
+  if (sortBy === "best") {
+    return b.rankScore - a.rankScore || a.distance - b.distance;
+  }
   if (sortBy === "distance") {
     return a.distance - b.distance;
   }
@@ -380,7 +497,7 @@ await supabase.from("orders").insert({
   consumer_id: user.id,
   provider_id: item.provider_id,
   price: item.price,
-  status: "pending",
+  status: "new_lead",
 });
 
 alert("Booking request sent 🚀");
@@ -527,13 +644,16 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
         value={sortBy}
         onChange={(e) =>
           setSortBy(
-            e.target.value === "price"
+            e.target.value === "best"
+              ? "best"
+              : e.target.value === "price"
               ? "price"
               : "distance"
           )
         }
         className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl text-sm w-full md:w-auto"
       >
+        <option value="best">Sort: Best Match</option>
         <option value="distance">Sort: Distance</option>
         <option value="price">Sort: Price</option>
       </select>
@@ -602,6 +722,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           {feed
             .filter((i) => i.type === "demand")
+            .sort((a, b) => b.rankScore - a.rankScore)
             .slice(0, 2)
             .map((item) => (
               <div
@@ -658,6 +779,22 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                   {item.type}
                 </span>
 
+                <span
+                  className={`text-xs px-2 py-1 rounded ${
+                    item.verificationStatus === "verified"
+                      ? "bg-emerald-900/30 text-emerald-300"
+                      : item.verificationStatus === "pending"
+                      ? "bg-amber-900/40 text-amber-300"
+                      : "bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  {item.verificationStatus === "verified"
+                    ? "Verified"
+                    : item.verificationStatus === "pending"
+                    ? "Pending"
+                    : "Unclaimed"}
+                </span>
+
                 {item.urgent && (
                   <span className="text-xs bg-red-500 px-2 py-1 rounded">
                     URGENT
@@ -672,6 +809,18 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
               <h3 className="font-semibold text-lg">
                 {item.title}
               </h3>
+
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>by {item.creatorName || "Local Provider"}</span>
+                {!!item.businessSlug && (
+                  <button
+                    onClick={() => router.push(`/business/${item.businessSlug}`)}
+                    className="text-indigo-300 hover:text-indigo-200"
+                  >
+                    View business profile
+                  </button>
+                )}
+              </div>
 
               <p className="text-sm text-slate-400 mt-1">
                 {item.description}
@@ -728,6 +877,13 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                 <MapPin size={14} />
                 {item.distance} km
               </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-400">
+                <span>~{item.responseMinutes} min response</span>
+                <span>•</span>
+                <span>{item.profileCompletion}% profile</span>
+                <span>•</span>
+                <span className="text-indigo-300">Match {item.rankScore}</span>
+              </div>
 
               {item.price > 0 && (
                 <div className="text-indigo-400 font-bold mt-2">
@@ -757,6 +913,15 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                 >
                   {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
                 </button>
+
+                {!!item.businessSlug && (
+                  <button
+                    onClick={() => router.push(`/business/${item.businessSlug}`)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-sm"
+                  >
+                    Business Page
+                  </button>
+                )}
               </div>
             </div>
           </div>
