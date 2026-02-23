@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
+import NotificationCenter from "@/app/components/NotificationCenter";
 import {
   Home,
   Users,
@@ -13,7 +14,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   Sparkles
 } from "lucide-react";
 
@@ -33,20 +33,11 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
   };
-
-  const notifications = [
-    { id: 1, text: "Sarah accepted your plumbing request", time: "5m ago", unread: true },
-    { id: 2, text: "New review from Michael Chen", time: "1h ago", unread: true },
-    { id: 3, text: "Your profile is 80% complete", time: "2h ago", unread: false },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -101,50 +92,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-2">
               
               {/* Notifications */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                  {unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                      {unreadCount}
-                    </div>
-                  )}
-                </button>
-
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                      <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className={`p-4 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer ${
-                            notif.unread ? "bg-blue-50 dark:bg-blue-900/10" : ""
-                          }`}
-                        >
-                          <p className="text-sm text-slate-900 dark:text-white font-medium">
-                            {notif.text}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {notif.time}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900">
-                      <button className="w-full text-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
-                        View All Notifications
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <NotificationCenter />
 
               {/* Profile Avatar */}
               <button
