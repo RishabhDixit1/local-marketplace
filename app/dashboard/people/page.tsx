@@ -133,15 +133,15 @@ export default function PeoplePage() {
     });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Hero Section */}
-      <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-fuchsia-600 p-6 text-white shadow">
-        <h1 className="text-2xl font-bold">People Near You</h1>
+      <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-fuchsia-600 p-4 sm:p-6 text-white shadow">
+        <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
         <p className="mt-1 text-white/80">
           Connect with buyers, sellers, and service providers in your area
         </p>
 
-        <div className="mt-4 flex gap-6 text-sm">
+        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div>
             <p className="font-semibold text-lg">198</p>
             <p className="text-white/70">People Nearby</p>
@@ -158,22 +158,22 @@ export default function PeoplePage() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
         <input
           type="text"
           placeholder="Search people by name, skill, service, or area..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
+          className="flex-1 min-w-0 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
         />
 
-        <select className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white focus:outline-none">
+        <select className="rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-white focus:outline-none w-full sm:w-auto">
           <option>1 km</option>
           <option>5 km</option>
           <option>10 km</option>
         </select>
 
-        <select className="rounded-lg bg-neutral-900 px-3 py-2 text-sm text-white focus:outline-none">
+        <select className="rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-white focus:outline-none w-full sm:w-auto">
           <option>Nearest</option>
           <option>Top Rated</option>
           <option>Recently Active</option>
@@ -181,12 +181,12 @@ export default function PeoplePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`rounded-full px-4 py-1.5 text-sm transition
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm transition
               ${
                 activeTab === tab
                   ? "bg-purple-600 text-white"
@@ -202,7 +202,7 @@ export default function PeoplePage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {filteredPeople.map((person) => (
           <div key={person.id} className="rounded-xl bg-neutral-900 p-4 shadow">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
               <img
                 src={person.avatar}
                 alt={person.name}
@@ -210,7 +210,7 @@ export default function PeoplePage() {
               />
 
               <div className="flex-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <h3 className="font-semibold text-white">
                     {person.name}
                     {person.verified && (
@@ -235,7 +235,7 @@ export default function PeoplePage() {
                   {person.description}
                 </p>
 
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="text-sm text-neutral-400">
                     ⭐ {person.rating}{" "}
                     <span className="text-neutral-500">({person.reviews})</span>

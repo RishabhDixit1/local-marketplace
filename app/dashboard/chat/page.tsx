@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft, Search, Send, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type Conversation = {
   id: string;
@@ -23,6 +24,7 @@ type Message = {
 };
 
 export default function ChatPage() {
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
@@ -33,6 +35,13 @@ export default function ChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [requestedChatId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(
+      window.location.search
+    );
+    return params.get("open");
+  });
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const selectedConversation = useMemo(
@@ -97,9 +106,7 @@ export default function ChatPage() {
 
     if (!participants?.length) {
       setConversations([]);
-      setChatError(
-        `No conversations found for logged-in user id: ${userId}. Seed rows in conversation_participants must include this id.`
-      );
+      setChatError(null);
       setLoadingConversations(false);
       return;
     }
@@ -185,10 +192,13 @@ export default function ChatPage() {
       if (previousChat && formatted.some((conversation) => conversation.id === previousChat)) {
         return previousChat;
       }
+      if (requestedChatId && formatted.some((conversation) => conversation.id === requestedChatId)) {
+        return requestedChatId;
+      }
       return formatted[0]?.id || null;
     });
     setLoadingConversations(false);
-  }, [userId]);
+  }, [requestedChatId, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -362,9 +372,26 @@ export default function ChatPage() {
             )}
 
             {!loadingConversations && filteredConversations.length === 0 && (
-              <p className="p-4 text-sm text-slate-400">
-                {chatError || "No chats found."}
-              </p>
+              <div className="p-4 text-sm text-slate-400 space-y-3">
+                <p>No chats yet.</p>
+                <p className="text-xs text-slate-500">
+                  Start from Posts or People to open your first conversation.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => router.push("/dashboard")}
+                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-500"
+                  >
+                    Go to Posts
+                  </button>
+                  <button
+                    onClick={() => router.push("/dashboard/people")}
+                    className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                  >
+                    Find People
+                  </button>
+                </div>
+              </div>
             )}
 
             {filteredConversations.map((chat) => (

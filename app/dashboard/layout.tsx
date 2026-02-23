@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   Bell,
-  Settings,
   Sparkles
 } from "lucide-react";
 
@@ -147,14 +146,6 @@ export default function DashboardLayout({
                 )}
               </div>
 
-              {/* Settings */}
-              <button
-                onClick={() => router.push("/dashboard/settings")}
-                className="hidden md:flex p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Settings className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-              </button>
-
               {/* Profile Avatar */}
               <button
                 onClick={() => router.push("/dashboard/profile")}
@@ -220,17 +211,6 @@ export default function DashboardLayout({
                 })}
 
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                  <button
-                    onClick={() => {
-                      router.push("/dashboard/settings");
-                      setMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
-                  >
-                    <Settings className="w-5 h-5" />
-                    Settings
-                  </button>
-
                   <button
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition-all duration-200"
                     onClick={() => {
