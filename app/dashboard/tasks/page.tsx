@@ -167,19 +167,19 @@ export default function TasksPage() {
   ];
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-5 sm:space-y-6 lg:space-y-8">
       
       {/* Header */}
-      <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-3xl p-8 lg:p-10 text-white shadow-2xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-2xl lg:rounded-3xl p-4 sm:p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,white,transparent_50%)] opacity-20"></div>
         
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-start sm:items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold">My Tasks</h1>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">My Tasks</h1>
               <p className="text-white/90">
                 {/* Track jobs you've posted and accepted */}
               </p>
@@ -187,7 +187,7 @@ export default function TasksPage() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {stats.map((stat) => (
               <div
                 key={stat.label}
@@ -208,12 +208,12 @@ export default function TasksPage() {
 
       {/* Tabs */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setSelectedTab(tab.value as "all" | "posted" | "accepted")}
-              className={`flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              className={`shrink-0 md:flex-1 min-w-[170px] px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                 selectedTab === tab.value
                   ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
                   : "bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -226,7 +226,7 @@ export default function TasksPage() {
       </div>
 
       {/* Status Filters */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -234,7 +234,7 @@ export default function TasksPage() {
           </h2>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-nowrap md:flex-wrap gap-2 sm:gap-3 overflow-x-auto">
           {statusFilters.map((filter) => (
             <button
               key={filter.value}
@@ -254,7 +254,7 @@ export default function TasksPage() {
 
       {/* Tasks List */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             {filteredTasks.length} {filteredTasks.length === 1 ? "Task" : "Tasks"}
           </h2>
@@ -266,13 +266,13 @@ export default function TasksPage() {
           return (
             <div
               key={task.id}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl border border-slate-200 dark:border-slate-700 p-6 transition-all duration-300 hover:scale-[1.01]"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01]"
             >
               {/* Header */}
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                       {task.title}
                     </h3>
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)}`}>
@@ -310,7 +310,7 @@ export default function TasksPage() {
               </div>
 
               {/* Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
                 {task.budget && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-slate-500" />
@@ -349,8 +349,8 @@ export default function TasksPage() {
               </div>
 
               {/* People Involved */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Image
                       src={task.postedBy.image}
@@ -386,12 +386,12 @@ export default function TasksPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2">
-                  <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2 text-sm">
                     <MessageCircle className="w-4 h-4" />
                     Chat
                   </button>
-                  <button className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-all duration-200">
+                  <button className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-all duration-200 text-sm">
                     View Details
                   </button>
                 </div>
