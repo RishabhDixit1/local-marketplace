@@ -571,11 +571,11 @@ const categories = ["all", "demand", "service", "product"];
 
 /* ================= UI ================= */
 
-return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black text-white">
+return ( <div className="min-h-screen bg-transparent text-white">
 
 
   {/* HERO */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
     <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8">
       <h1 className="text-2xl sm:text-3xl font-bold">
         Discover Local Services & Products
@@ -587,7 +587,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   </div>
 
   {/* SEARCH + SORT */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-6">
 
     <div className="flex flex-col md:flex-row gap-3 mb-6">
 
@@ -668,7 +668,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   </div>
 
   {/* MAIN GRID */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
 
     {/* FEED */}
     <div className="lg:col-span-2 space-y-5">

@@ -472,7 +472,7 @@ export default function WelcomePage() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
-        <div className="max-w-6xl mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
+        <div className="w-full max-w-[2200px] mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
