@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
+const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
+const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,14 +30,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="page-shell min-h-screen relative overflow-hidden bg-gradient-to-br from-indigo-700 via-fuchsia-600 to-rose-500 flex items-center justify-center px-6 py-10">
-      {/* Animated Background Lights */}
+    <div className="page-shell min-h-screen relative overflow-hidden bg-slate-950 flex items-center justify-center px-6 py-10">
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        disablePictureInPicture
+        className="video-layer absolute inset-0 h-full w-full object-cover scale-110 blur-[8px] opacity-40"
+        aria-hidden="true"
+      >
+        <source src={primaryVideoSrc} type="video/mp4" />
+        <source src={fallbackVideoSrc} type="video/mp4" />
+      </video>
+
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-violet-700/65 to-fuchsia-600/70" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.18),transparent_40%)]" />
+
       <div className="aurora absolute -top-24 -left-20 w-96 h-96 rounded-full bg-cyan-300/20 blur-3xl" />
       <div className="aurora absolute -bottom-28 -right-16 w-96 h-96 rounded-full bg-pink-300/30 blur-3xl" />
       <div className="aurora-delayed absolute top-1/3 left-1/2 -translate-x-1/2 w-[28rem] h-[28rem] rounded-full bg-violet-200/20 blur-3xl" />
 
-      <div className="relative max-w-5xl w-full grid md:grid-cols-2 gap-8 items-center">
-        {/* LEFT */}
+      <div className="relative max-w-6xl w-full grid md:grid-cols-2 gap-8 items-center">
         <div className="text-white space-y-6 fade-up">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
             Find Local Services.
@@ -42,45 +59,42 @@ export default function LoginPage() {
             <span className="text-yellow-300">In Real Time.</span>
           </h1>
 
-          <p className="text-lg text-white/90 max-w-xl">
+          <p className="text-lg text-white/95 max-w-xl">
             A social marketplace for your neighborhood.
-            Post what you need — connect instantly with nearby providers.
+            Post what you need and connect instantly with nearby providers.
           </p>
 
           <div className="inline-flex items-center rounded-full border border-white/35 bg-white/10 backdrop-blur-md px-4 py-2 text-sm font-medium text-white/95 glow-tag">
-            Let&apos;s build the future together
+            One login for seekers and providers
           </div>
 
-          <div className="flex flex-wrap gap-4 chips">
+          <div className="chips flex flex-wrap gap-3">
             <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              ⚡ Real-Time Matching
+              Live matching
             </div>
             <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              🧑‍🤝‍🧑 Community Driven
+              Community driven
             </div>
             <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              📍 Location Based
+              Location first
             </div>
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="login-card bg-white/92 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 fade-up-delayed border border-white/40">
+        <div className="login-card bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 fade-up-delayed border border-white/60">
           <div className="text-center space-y-2">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
               Join Your Local Network
             </h2>
             <p className="text-slate-500 text-sm">
-              Login as a seeker or provider — same account, endless opportunities
+              Login as a seeker or provider. Same account, endless opportunities.
             </p>
           </div>
 
           {!sent ? (
             <>
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">
-                  Email Address
-                </label>
+                <label className="text-sm font-medium text-gray-700">Email Address</label>
                 <input
                   type="email"
                   placeholder="you@example.com"
@@ -93,19 +107,21 @@ export default function LoginPage() {
               <button
                 onClick={login}
                 disabled={loading}
-                className="cta-btn gradient-animate w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-3 rounded-lg font-semibold hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
+                className="cta-btn w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-3 rounded-lg font-semibold hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
               >
                 {loading ? "Sending Secure Link..." : "Send Login Link"}
               </button>
 
               <p className="text-xs text-slate-500 text-center">
-                We use passwordless login for maximum security
+                Passwordless login. Secure by default.
               </p>
             </>
           ) : (
             <div className="text-center space-y-4 fade-up">
-              <div className="text-green-600 text-3xl check-pop">✅</div>
-              <h3 className="text-lg font-semibold">Check Your Email</h3>
+              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 font-bold grid place-items-center">
+                OK
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800">Check Your Email</h3>
               <p className="text-gray-500 text-sm">
                 We sent a secure login link to:
                 <br />
@@ -116,37 +132,40 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="absolute bottom-4 text-white/70 text-xs">
-        Built for local communities • Powered by Supabase & Next.js
+      <div className="absolute bottom-4 text-white/75 text-xs">
+        Built for local communities. Powered by Supabase and Next.js.
       </div>
 
       <style jsx>{`
+        .video-layer {
+          filter: saturate(1.15) contrast(1.12);
+        }
+
         .page-shell::before {
           content: "";
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+          background-image: radial-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px);
           background-size: 36px 36px;
-          mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.1));
-          animation: drift 22s linear infinite;
+          mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.08));
+          animation: drift 20s linear infinite;
         }
 
         .fade-up {
-          animation: fadeUp 0.7s ease-out both;
+          animation: fadeUp 0.75s ease-out both;
         }
 
         .fade-up-delayed {
-          animation: fadeUp 0.9s ease-out 0.14s both;
+          animation: fadeUp 0.95s ease-out 0.14s both;
         }
 
         .aurora {
-          animation: float 9s ease-in-out infinite;
+          animation: float 10s ease-in-out infinite;
         }
 
         .aurora-delayed {
-          animation: float 11s ease-in-out 0.8s infinite;
+          animation: float 12s ease-in-out 0.8s infinite;
         }
 
         .glow-tag {

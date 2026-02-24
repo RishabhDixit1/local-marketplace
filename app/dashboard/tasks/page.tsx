@@ -141,11 +141,11 @@ export default function TasksPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300";
-      case "in-progress": return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300";
-      case "completed": return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300";
-      case "cancelled": return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300";
-      default: return "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300";
+      case "active": return "bg-blue-100 text-blue-700";
+      case "in-progress": return "bg-yellow-100 text-yellow-700";
+      case "completed": return "bg-green-100 text-green-700";
+      case "cancelled": return "bg-red-100 text-red-700";
+      default: return "bg-slate-100 text-slate-700";
     }
   };
 
@@ -167,7 +167,7 @@ export default function TasksPage() {
   ];
 
   return (
-    <div className="space-y-5 sm:space-y-6 lg:space-y-8">
+    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6 lg:space-y-8">
       
       {/* Header */}
       <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-2xl lg:rounded-3xl p-4 sm:p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden">
@@ -207,7 +207,7 @@ export default function TasksPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-2">
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-2">
         <div className="flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -216,7 +216,7 @@ export default function TasksPage() {
               className={`shrink-0 md:flex-1 min-w-[170px] px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                 selectedTab === tab.value
                   ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
-                  : "bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  : "bg-slate-50 text-slate-700 hover:bg-slate-100"
               }`}
             >
               {tab.label} ({tab.count})
@@ -226,10 +226,10 @@ export default function TasksPage() {
       </div>
 
       {/* Status Filters */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+          <Filter className="w-5 h-5 text-slate-600" />
+          <h2 className="text-lg font-bold text-slate-900">
             Filter by Status
           </h2>
         </div>
@@ -242,7 +242,7 @@ export default function TasksPage() {
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
                 selectedStatus === filter.value
                   ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
-                  : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
               <filter.icon className="w-4 h-4" />
@@ -255,7 +255,7 @@ export default function TasksPage() {
       {/* Tasks List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-slate-900">
             {filteredTasks.length} {filteredTasks.length === 1 ? "Task" : "Tasks"}
           </h2>
         </div>
@@ -266,13 +266,13 @@ export default function TasksPage() {
           return (
             <div
               key={task.id}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01]"
+              className="bg-white rounded-2xl shadow-lg hover:shadow-xl border border-slate-200 p-4 sm:p-6 transition-all duration-300 hover:scale-[1.01]"
             >
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                       {task.title}
                     </h3>
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)}`}>
@@ -281,18 +281,18 @@ export default function TasksPage() {
                     </span>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       task.type === "posted" 
-                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" 
-                        : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                        ? "bg-blue-100 text-blue-700" 
+                        : "bg-purple-100 text-purple-700"
                     }`}>
                       {task.type === "posted" ? "Posted by You" : "Accepted by You"}
                     </span>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400">
+                  <p className="text-slate-600">
                     {task.description}
                   </p>
                 </div>
 
-                <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                   <MoreVertical className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
@@ -302,7 +302,7 @@ export default function TasksPage() {
                 {task.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-medium"
+                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"
                   >
                     {tag}
                   </span>
@@ -310,13 +310,13 @@ export default function TasksPage() {
               </div>
 
               {/* Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-slate-50 rounded-xl">
                 {task.budget && (
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-slate-500" />
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Budget</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{task.budget}</div>
+                      <div className="text-xs text-slate-500">Budget</div>
+                      <div className="font-semibold text-slate-900">{task.budget}</div>
                     </div>
                   </div>
                 )}
@@ -325,8 +325,8 @@ export default function TasksPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-500" />
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Timeline</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{task.timeline}</div>
+                      <div className="text-xs text-slate-500">Timeline</div>
+                      <div className="font-semibold text-slate-900">{task.timeline}</div>
                     </div>
                   </div>
                 )}
@@ -334,22 +334,22 @@ export default function TasksPage() {
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-slate-500" />
                   <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Location</div>
-                    <div className="font-semibold text-slate-900 dark:text-white">{task.location}</div>
+                    <div className="text-xs text-slate-500">Location</div>
+                    <div className="font-semibold text-slate-900">{task.location}</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-slate-500" />
                   <div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Posted</div>
-                    <div className="font-semibold text-slate-900 dark:text-white">{task.createdAt}</div>
+                    <div className="text-xs text-slate-500">Posted</div>
+                    <div className="font-semibold text-slate-900">{task.createdAt}</div>
                   </div>
                 </div>
               </div>
 
               {/* People Involved */}
-              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pt-4 border-t border-slate-200">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Image
@@ -357,28 +357,28 @@ export default function TasksPage() {
                       alt={task.postedBy.name}
                       width={40}
                       height={40}
-                      className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
+                      className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200"
                     />
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Posted by</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{task.postedBy.name}</div>
+                      <div className="text-xs text-slate-500">Posted by</div>
+                      <div className="font-semibold text-slate-900">{task.postedBy.name}</div>
                     </div>
                   </div>
 
                   {task.assignedTo && (
                     <>
-                      <div className="text-slate-300 dark:text-slate-600">→</div>
+                      <div className="text-slate-400">→</div>
                       <div className="flex items-center gap-2">
                         <Image
                           src={task.assignedTo.image}
                           alt={task.assignedTo.name}
                           width={40}
                           height={40}
-                          className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
+                          className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200"
                         />
                         <div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">Assigned to</div>
-                          <div className="font-semibold text-slate-900 dark:text-white">{task.assignedTo.name}</div>
+                          <div className="text-xs text-slate-500">Assigned to</div>
+                          <div className="font-semibold text-slate-900">{task.assignedTo.name}</div>
                         </div>
                       </div>
                     </>
@@ -391,7 +391,7 @@ export default function TasksPage() {
                     <MessageCircle className="w-4 h-4" />
                     Chat
                   </button>
-                  <button className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-semibold transition-all duration-200 text-sm">
+                  <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all duration-200 text-sm">
                     View Details
                   </button>
                 </div>
@@ -403,12 +403,12 @@ export default function TasksPage() {
 
       {/* Empty State */}
       {filteredTasks.length === 0 && (
-        <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+        <div className="text-center py-16 bg-white rounded-2xl shadow-xl border border-slate-200">
           <Package className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+          <h3 className="text-xl font-bold text-slate-900 mb-2">
             No tasks found
           </h3>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
+          <p className="text-slate-600 mb-6">
             Try adjusting your filters or create a new task
           </p>
           <button className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl">

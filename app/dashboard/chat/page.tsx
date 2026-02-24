@@ -341,12 +341,12 @@ export default function ChatPage() {
     });
 
   return (
-    <div className="h-[calc(100vh-7.5rem)] rounded-3xl border border-blue-500/20 bg-[radial-gradient(circle_at_10%_10%,rgba(56,189,248,0.18),transparent_32%),radial-gradient(circle_at_80%_20%,rgba(99,102,241,0.22),transparent_30%),linear-gradient(160deg,#020617,#02040f_45%,#010101)] text-white shadow-[0_24px_80px_rgba(15,23,42,0.65)] overflow-hidden">
+    <div className="h-[calc(100vh-7.5rem)] rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 text-slate-900 shadow-sm overflow-hidden">
       <div className="flex h-full">
-        <div className={`w-full md:w-96 border-r border-blue-500/20 flex flex-col bg-slate-950/55 backdrop-blur-xl ${selectedChat ? "hidden md:flex" : "flex"}`}>
-          <div className="p-5 border-b border-blue-500/20">
+        <div className={`w-full md:w-96 border-r border-slate-200 flex flex-col bg-slate-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>
+          <div className="p-5 border-b border-slate-200">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold tracking-wide">
+              <h2 className="font-semibold tracking-wide text-slate-800">
                 Messages
               </h2>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
@@ -355,24 +355,24 @@ export default function ChatPage() {
               </span>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-700/70 bg-slate-900/80 p-2">
-              <Search size={16} className="text-slate-400" />
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-300 bg-white p-2">
+              <Search size={16} className="text-slate-500" />
               <input
                 placeholder="Search chats..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             {loadingConversations && (
-              <p className="p-4 text-sm text-slate-400">Loading chats...</p>
+              <p className="p-4 text-sm text-slate-500">Loading chats...</p>
             )}
 
             {!loadingConversations && filteredConversations.length === 0 && (
-              <div className="p-4 text-sm text-slate-400 space-y-3">
+              <div className="p-4 text-sm text-slate-600 space-y-3">
                 <p>No chats yet.</p>
                 <p className="text-xs text-slate-500">
                   Start from Posts or People to open your first conversation.
@@ -386,7 +386,7 @@ export default function ChatPage() {
                   </button>
                   <button
                     onClick={() => router.push("/dashboard/people")}
-                    className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                    className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-300"
                   >
                     Find People
                   </button>
@@ -399,10 +399,10 @@ export default function ChatPage() {
                 type="button"
                 key={chat.id}
                 onClick={() => setSelectedChat(chat.id)}
-                className={`w-full border-b border-slate-800/60 px-4 py-3 text-left transition ${
+                className={`w-full border-b border-slate-200 px-4 py-3 text-left transition ${
                   selectedChat === chat.id
-                    ? "bg-blue-500/15"
-                    : "hover:bg-slate-900/70"
+                    ? "bg-indigo-100/70"
+                    : "hover:bg-slate-100"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -415,12 +415,12 @@ export default function ChatPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-100">{chat.name}</p>
+                      <p className="truncate text-sm font-semibold text-slate-800">{chat.name}</p>
                       <p className="shrink-0 text-[11px] text-slate-400">
                         {chat.lastMessageAt ? formatTime(chat.lastMessageAt) : ""}
                       </p>
                     </div>
-                    <p className="mt-1 truncate text-xs text-slate-400">{chat.lastMessage}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">{chat.lastMessage}</p>
                   </div>
                 </div>
               </button>
@@ -435,11 +435,11 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b border-blue-500/20 bg-slate-950/50 px-5 py-4 backdrop-blur">
+              <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-5 py-4">
                 <button
                   type="button"
                   onClick={() => setSelectedChat(null)}
-                  className="rounded-lg p-2 text-slate-300 transition hover:bg-slate-800 md:hidden"
+                  className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 md:hidden"
                 >
                   <ArrowLeft size={18} />
                 </button>
@@ -454,15 +454,15 @@ export default function ChatPage() {
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{selectedConversation.name}</p>
-                      <p className="text-xs text-emerald-300">Connected in realtime</p>
+                      <p className="text-xs text-emerald-600">Connected in realtime</p>
                     </div>
                   </>
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-5">
+              <div className="flex-1 overflow-y-auto px-5 py-5 bg-slate-50/60">
                 {loadingMessages ? (
-                  <p className="text-sm text-slate-400">Loading conversation...</p>
+                  <p className="text-sm text-slate-500">Loading conversation...</p>
                 ) : (
                   <div className="space-y-3">
                     {messages.map((msg) => {
@@ -473,7 +473,7 @@ export default function ChatPage() {
                           className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-md ${
                             mine
                               ? "ml-auto rounded-br-md bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
-                              : "rounded-bl-md border border-slate-700 bg-slate-900/80 text-slate-100"
+                              : "rounded-bl-md border border-slate-300 bg-white text-slate-800"
                           }`}
                         >
                           <p className="break-words">{msg.content}</p>
@@ -488,8 +488,8 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <div className="border-t border-blue-500/20 bg-slate-950/50 p-4 backdrop-blur">
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/80 p-2">
+              <div className="border-t border-slate-200 bg-white p-4">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 p-2">
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -500,7 +500,7 @@ export default function ChatPage() {
                       }
                     }}
                     placeholder="Type a message..."
-                    className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-slate-500"
+                    className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-slate-400"
                   />
                   <button
                     onClick={sendMessage}
@@ -510,7 +510,7 @@ export default function ChatPage() {
                     <Send size={16} />
                   </button>
                 </div>
-                {chatError && <p className="mt-2 text-xs text-rose-300">{chatError}</p>}
+                {chatError && <p className="mt-2 text-xs text-rose-600">{chatError}</p>}
               </div>
             </>
           )}

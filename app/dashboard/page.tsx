@@ -28,9 +28,6 @@ MapPin,
 MessageCircle,
 Filter,
 TrendingUp,
-Bookmark,
-Share2,
-Flag,
 } from "lucide-react";
 
 /* ================= TYPES ================= */
@@ -155,19 +152,6 @@ const parsePostText = (rawText: string) => {
   return { title, description, budget, category, media };
 };
 
-const formatTimeAgo = (timestamp?: string) => {
-  if (!timestamp) return "Just now";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
 const pseudoDistance = (seed: string) => {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -189,7 +173,6 @@ const [showTrendingOnly, setShowTrendingOnly] = useState(false);
 const [highlightedId, setHighlightedId] = useState<string | null>(null);
 const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
 const [openPostModal, setOpenPostModal] = useState(false);
-const [savedIds, setSavedIds] = useState<string[]>([]);
 const [focusTarget, setFocusTarget] = useState<{
   id: string;
   type: string;
@@ -584,39 +567,17 @@ setMessageLoadingId(null);
 router.push(`/dashboard/chat?open=${targetConversationId}`);
 };
 
-const toggleSaved = (listingId: string) => {
-  setSavedIds((current) =>
-    current.includes(listingId)
-      ? current.filter((id) => id !== listingId)
-      : [...current, listingId]
-  );
-};
-
-const shareListing = async (listing: Listing) => {
-  const url = `${window.location.origin}/dashboard?focus=${listing.id}&type=${listing.type}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    alert("Listing link copied.");
-  } catch {
-    alert("Unable to copy link.");
-  }
-};
-
-const reportListing = (listing: Listing) => {
-  alert(`Thanks. We'll review "${listing.title}" shortly.`);
-};
-
 const categories = ["all", "demand", "service", "product"];
 
 /* ================= UI ================= */
 
-return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black text-white">
+return ( <div className="min-h-screen bg-transparent text-slate-900">
 
 
   {/* HERO */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
     <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white">
         Discover Local Services & Products
       </h1>
       <p className="text-white/90 mt-2 text-sm sm:text-base">
@@ -626,11 +587,11 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   </div>
 
   {/* SEARCH + SORT */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-6">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-6">
 
     <div className="flex flex-col md:flex-row gap-3 mb-6">
 
-      <div className="flex items-center gap-2 bg-slate-900 p-3 rounded-xl flex-1 border border-slate-800">
+      <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200">
         <Search size={16} />
         <input
           placeholder="Search services, products, needs..."
@@ -651,7 +612,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
               : "distance"
           )
         }
-        className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl text-sm w-full md:w-auto"
+        className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto"
       >
         <option value="best">Sort: Best Match</option>
         <option value="distance">Sort: Distance</option>
@@ -662,7 +623,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
         onClick={() =>
           setShowTrendingOnly(!showTrendingOnly)
         }
-        className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto"
+        className="bg-white border border-slate-200 px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto"
       >
         <Filter size={16} />
         Trending
@@ -675,10 +636,10 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
         <button
           key={cat}
           onClick={() => setCategory(cat)}
-          className={`px-4 py-2 rounded-full text-sm ${
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
             category === cat
-              ? "bg-indigo-600"
-              : "bg-slate-800"
+              ? "bg-indigo-600 text-white"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
           {cat.toUpperCase()}
@@ -698,7 +659,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
         <button
           key={chip}
           onClick={() => setCategory(chip)}
-          className="px-4 py-2 bg-slate-800 rounded-xl text-sm whitespace-nowrap hover:bg-indigo-600 transition"
+          className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
         >
           {chip}
         </button>
@@ -707,14 +668,14 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   </div>
 
   {/* MAIN GRID */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
 
     {/* FEED */}
     <div className="lg:col-span-2 space-y-5">
 
       {/* TRENDING */}
       <div>
-        <h2 className="flex items-center gap-2 text-indigo-400 mb-3">
+        <h2 className="flex items-center gap-2 text-indigo-600 mb-3">
           <TrendingUp size={16} />
           Trending Near You
         </h2>
@@ -727,15 +688,15 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
             .map((item) => (
               <div
                 key={"trend-" + item.id}
-                className="bg-slate-900 p-4 rounded-xl border border-slate-800"
+                className="bg-white p-4 rounded-xl border border-slate-200"
               >
-                <div className="text-sm text-slate-400">
+                <div className="text-sm text-slate-500">
                   {item.distance} km away
                 </div>
                 <div className="font-semibold">
                   {item.title}
                 </div>
-                <div className="text-indigo-400 font-bold">
+                <div className="text-indigo-600 font-bold">
                   ₹ {item.price}
                 </div>
               </div>
@@ -751,10 +712,10 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
           ref={(el) => {
             cardRefs.current[item.id] = el;
           }}
-          className={`p-4 sm:p-6 bg-slate-900 border rounded-2xl transition-all duration-500 ${
+          className={`p-4 sm:p-6 bg-white border rounded-2xl transition-all duration-500 ${
             highlightedId === item.id
               ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
-              : "border-slate-800"
+              : "border-slate-200"
           }`}
         >
           <div className="flex flex-col sm:flex-row gap-4">
@@ -775,17 +736,17 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
             <div className="flex-1 min-w-0">
 
               <div className="flex flex-wrap gap-2 mb-1">
-                <span className="text-xs bg-slate-800 px-2 py-1 rounded">
+                <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
                   {item.type}
                 </span>
 
                 <span
                   className={`text-xs px-2 py-1 rounded ${
                     item.verificationStatus === "verified"
-                      ? "bg-emerald-900/30 text-emerald-300"
+                      ? "bg-emerald-100 text-emerald-700"
                       : item.verificationStatus === "pending"
-                      ? "bg-amber-900/40 text-amber-300"
-                      : "bg-slate-800 text-slate-300"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-slate-100 text-slate-600"
                   }`}
                 >
                   {item.verificationStatus === "verified"
@@ -796,12 +757,12 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                 </span>
 
                 {item.urgent && (
-                  <span className="text-xs bg-red-500 px-2 py-1 rounded">
+                  <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
                     URGENT
                   </span>
                 )}
 
-                <span className="text-xs text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded">
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
                   Recently Posted
                 </span>
               </div>
@@ -810,19 +771,19 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                 {item.title}
               </h3>
 
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span>by {item.creatorName || "Local Provider"}</span>
                 {!!item.businessSlug && (
                   <button
                     onClick={() => router.push(`/business/${item.businessSlug}`)}
-                    className="text-indigo-300 hover:text-indigo-200"
+                    className="text-indigo-600 hover:text-indigo-500"
                   >
                     View business profile
                   </button>
                 )}
               </div>
 
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 {item.description}
               </p>
 
@@ -831,11 +792,12 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                   {item.media.slice(0, 3).map((mediaItem, index) => {
                     if (mediaItem.mimeType.startsWith("image/")) {
                       return (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={`${item.id}-media-${index}`}
                           src={mediaItem.url}
                           alt="Post attachment"
-                          className="w-full max-h-64 rounded-xl border border-slate-700 object-cover"
+                          className="w-full max-h-64 rounded-xl border border-slate-200 object-cover"
                         />
                       );
                     }
@@ -847,7 +809,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                           src={mediaItem.url}
                           controls
                           preload="metadata"
-                          className="w-full max-h-72 rounded-xl border border-slate-700"
+                          className="w-full max-h-72 rounded-xl border border-slate-200"
                         />
                       );
                     }
@@ -856,7 +818,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                       return (
                         <div
                           key={`${item.id}-media-${index}`}
-                          className="rounded-xl border border-slate-700 bg-slate-950/60 p-3"
+                          className="rounded-xl border border-slate-200 bg-slate-50 p-3"
                         >
                           <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
                         </div>
@@ -866,27 +828,27 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                     return null;
                   })}
                   {item.media.length > 3 && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       +{item.media.length - 3} more attachment(s)
                     </p>
                   )}
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-sm mt-3 text-slate-400">
+              <div className="flex items-center gap-2 text-sm mt-3 text-slate-500">
                 <MapPin size={14} />
                 {item.distance} km
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-400">
+              <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-500">
                 <span>~{item.responseMinutes} min response</span>
                 <span>•</span>
                 <span>{item.profileCompletion}% profile</span>
                 <span>•</span>
-                <span className="text-indigo-300">Match {item.rankScore}</span>
+                <span className="text-indigo-600">Match {item.rankScore}</span>
               </div>
 
               {item.price > 0 && (
-                <div className="text-indigo-400 font-bold mt-2">
+                <div className="text-indigo-600 font-bold mt-2">
                   ₹ {item.price}
                 </div>
               )}
@@ -897,7 +859,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                     bookNow(item)
                   }
                   disabled={!item.provider_id}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-sm"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
                 >
                   {item.type === "demand"
                     ? "Accept Job"
@@ -909,7 +871,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                     messageProvider(item.provider_id)
                   }
                   disabled={!item.provider_id}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-sm"
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
                 >
                   {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
                 </button>
@@ -917,7 +879,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                 {!!item.businessSlug && (
                   <button
                     onClick={() => router.push(`/business/${item.businessSlug}`)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-sm"
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
                   >
                     Business Page
                   </button>
@@ -929,27 +891,27 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
       ))}
 
       {!filtered.length && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8">
           <h3 className="text-xl font-semibold">No live listings yet</h3>
-          <p className="text-slate-400 mt-2">
+          <p className="text-slate-500 mt-2">
             Start the local economy by posting a need or adding your first service/product listing.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={() => setOpenPostModal(true)}
-              className="px-4 py-2 rounded-xl bg-indigo-600"
+              className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
             >
               Post a Need
             </button>
             <button
               onClick={() => router.push("/dashboard/provider/add-service")}
-              className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700"
+              className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
             >
               Add Service
             </button>
             <button
               onClick={() => router.push("/dashboard/provider/add-product")}
-              className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700"
+              className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
             >
               Add Product
             </button>
@@ -962,13 +924,13 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
     <div className="space-y-6">
 
       {/* MAP */}
-      <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-800">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200">
         <h2 className="flex items-center gap-2 mb-3">
           <MapPin size={18} />
           Nearby Map
         </h2>
 
-        <div className="h-60 bg-slate-800 rounded-xl overflow-hidden">
+        <div className="h-60 bg-slate-100 rounded-xl overflow-hidden">
           <MarketplaceMap
             items={feed.map((item) => ({
               id: item.id,
@@ -981,7 +943,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
       </div>
 
       {/* CREATE POST */}
-      <div className="bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-800">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200">
         <h3 className="font-semibold mb-4">
           Create Post
         </h3>
@@ -1001,7 +963,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
           </label>
         </div>
 
-        <button className="w-full mt-4 bg-indigo-600 py-2 rounded-xl">
+        <button className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-500 transition-colors">
           Continue →
         </button>
       </div>
@@ -1009,7 +971,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
   </div>
 
   {/* FLOATING CTA */}
-  <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition">
+  <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition">
     +
   </button>
   <ProviderTrustPanel

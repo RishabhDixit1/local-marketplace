@@ -431,18 +431,18 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400 font-medium">Loading Profile...</p>
+          <p className="text-slate-600 font-medium">Loading Profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
+      <div className="max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
         
         {/* Success Message */}
         {showSuccess && (
@@ -497,66 +497,66 @@ export default function ProfilePage() {
         {/* Main Form */}
         <div className="space-y-6">
           {/* Basic Information */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Basic Information
               </h2>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Full Name *
                 </label>
                 <input
                   name="name"
                   placeholder="John Doe"
-                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
                     errors.name
                       ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      : "border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                   }`}
                   value={profileData.name}
                   onChange={handleInputChange}
                 />
                 {errors.name && (
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.name}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Location *
                 </label>
                 <input
                   name="location"
                   placeholder="New York, NY"
-                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
                     errors.location
                       ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      : "border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                   }`}
                   value={profileData.location}
                   onChange={handleInputChange}
                 />
                 {errors.location && (
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.location}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Role Selection */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                 <Briefcase className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Your Role
               </h2>
             </div>
@@ -568,7 +568,7 @@ export default function ProfilePage() {
                 className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
                   isProvider
                     ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <div className="flex items-center justify-center gap-3">
@@ -583,7 +583,7 @@ export default function ProfilePage() {
                 className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
                   profileData.role === "seeker"
                     ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30 scale-105"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <div className="flex items-center justify-center gap-3">
@@ -595,19 +595,19 @@ export default function ProfilePage() {
           </div>
 
           {/* Role Specific Experience */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             {isProvider ? (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Store className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                      <Store className="w-6 h-6 text-indigo-600" />
                       Business Showcase
                     </h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    <p className="text-sm text-slate-600 mt-1">
                       Treat this like your local LinkedIn page: prove trust, highlight offerings, and convert nearby demand.
                     </p>
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700">
                       <BadgeCheck className="w-3.5 h-3.5" />
                       {verificationLabel(verificationStatus)}
                     </div>
@@ -617,7 +617,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => router.push("/dashboard/provider/listings")}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
                     >
                       Manage Listings
                       <ArrowRight className="w-4 h-4" />
@@ -625,7 +625,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => router.push("/dashboard/provider/orders")}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
                     >
                       Lead Pipeline
                       <ArrowRight className="w-4 h-4" />
@@ -640,7 +640,7 @@ export default function ProfilePage() {
                     disabled={businessClaimed || saving}
                     className={`rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
                       businessClaimed
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                        ? "bg-emerald-100 text-emerald-700"
                         : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-70"
                     }`}
                   >
@@ -650,7 +650,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={copyBusinessLink}
                     disabled={!businessProfileUrl}
-                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 inline-flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     <Copy className="w-4 h-4" />
                     {copiedBusinessLink ? "Copied" : "Copy Public Link"}
@@ -659,7 +659,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => businessProfileUrl && window.open(businessProfileUrl, "_blank")}
                     disabled={!businessProfileUrl}
-                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 inline-flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     <ExternalLink className="w-4 h-4" />
                     View Public Profile
@@ -667,52 +667,52 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Services</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.servicesCount}</p>
+                    <p className="text-2xl font-bold text-slate-900">{providerInsight.servicesCount}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Products</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.productsCount}</p>
+                    <p className="text-2xl font-bold text-slate-900">{providerInsight.productsCount}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Rating</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-2xl font-bold text-slate-900">
                       {providerInsight.averageRating ? providerInsight.averageRating.toFixed(1) : "New"}
                     </p>
                     <p className="text-xs text-slate-500">{providerInsight.reviewCount} reviews</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{providerInsight.activeOrders}</p>
+                    <p className="text-2xl font-bold text-slate-900">{providerInsight.activeOrders}</p>
                   </div>
                 </div>
 
                 {loadingInsights ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Loading business insights...</p>
+                  <p className="text-sm text-slate-500">Loading business insights...</p>
                 ) : featuredListings.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 text-sm text-slate-500 dark:text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
                     No offerings published yet. Add services/products to make your business discoverable in nearby search.
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Featured Offerings</p>
+                    <p className="text-sm font-semibold text-slate-700">Featured Offerings</p>
                     <div className="grid md:grid-cols-2 gap-3">
                       {featuredListings.map((listing) => (
                         <div
                           key={`${listing.type}-${listing.id}`}
-                          className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900"
+                          className="rounded-xl border border-slate-200 p-4 bg-slate-50"
                         >
                           <div className="flex items-center justify-between gap-2 mb-2">
-                            <p className="font-semibold text-slate-900 dark:text-white truncate">{listing.title}</p>
-                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                            <p className="font-semibold text-slate-900 truncate">{listing.title}</p>
+                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
                               {listing.type}
                             </span>
                           </div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">{listing.category}</p>
+                          <p className="text-sm text-slate-500">{listing.category}</p>
                           <div className="mt-2 flex items-center justify-between text-sm">
-                            <span className="font-semibold text-slate-900 dark:text-white">₹ {listing.price.toLocaleString()}</span>
-                            <span className="text-slate-500 dark:text-slate-400 capitalize">{listing.status}</span>
+                            <span className="font-semibold text-slate-900">₹ {listing.price.toLocaleString()}</span>
+                            <span className="text-slate-500 capitalize">{listing.status}</span>
                           </div>
                         </div>
                       ))}
@@ -723,23 +723,23 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <ShoppingBag className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <ShoppingBag className="w-6 h-6 text-purple-600" />
                     Seeker Profile Strategy
                   </h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-slate-600 mt-1">
                     Share your needs clearly so local businesses can discover and respond quickly.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Need Posts</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{seekerInsight.postsCount}</p>
+                    <p className="text-2xl font-bold text-slate-900">{seekerInsight.postsCount}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{seekerInsight.activeOrders}</p>
+                    <p className="text-2xl font-bold text-slate-900">{seekerInsight.activeOrders}</p>
                   </div>
                 </div>
 
@@ -747,7 +747,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => router.push("/dashboard/people")}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-600 font-semibold transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
                   >
                     Discover Providers
                     <ArrowRight className="w-4 h-4" />
@@ -762,7 +762,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 text-sm text-slate-600 dark:text-slate-300">
+                <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
                   Tip: Add interests below (e.g., &quot;Pastry Catering&quot;, &quot;Custom Cakes&quot;, &quot;Event Decor&quot;) so nearby SMBs can match you faster.
                 </div>
               </div>
@@ -770,12 +770,12 @@ export default function ProfilePage() {
           </div>
 
           {/* About/Bio */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 About You
               </h2>
             </div>
@@ -783,30 +783,30 @@ export default function ProfilePage() {
             <textarea
               name="bio"
               placeholder="Tell people about yourself, your experience, skills, and why they should trust you. Share what makes you unique and how you can help..."
-              className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 resize-none ${
+              className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 resize-none ${
                 errors.bio
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                  : "border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20"
+                  : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
               }`}
               rows={5}
               value={profileData.bio}
               onChange={handleInputChange}
             />
             {errors.bio && (
-              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.bio}</p>
+              <p className="mt-2 text-sm text-red-600">{errors.bio}</p>
             )}
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-xs text-slate-500">
               {profileData.bio.length} characters (minimum 20 characters)
             </p>
           </div>
 
           {/* Services/Skills */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                 <Award className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 {isProvider ? "Services & Offerings" : "Needs & Interests"}
               </h2>
             </div>
@@ -818,7 +818,7 @@ export default function ProfilePage() {
                     ? "e.g., Plumbing, Cake Design, Home Cleaning"
                     : "e.g., Pastry Catering, Birthday Cakes, Weekend Delivery"
                 }
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                 value={serviceInput}
                 onChange={(e) => setServiceInput(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -833,7 +833,7 @@ export default function ProfilePage() {
             </div>
 
             {errors.services && (
-              <p className="mb-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+              <p className="mb-3 text-sm text-red-600 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {errors.services}
               </p>
@@ -856,25 +856,25 @@ export default function ProfilePage() {
               ))}
             </div>
 
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-3 text-xs text-slate-500">
               {profileData.services.length}/15 {isProvider ? "offerings" : "interests"} added
             </p>
           </div>
 
           {/* Contact Information (Optional) */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
                 <Mail className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 Contact Information <span className="text-sm font-normal text-slate-500">(Optional)</span>
               </h2>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                   <Mail className="w-4 h-4" />
                   Email
                 </label>
@@ -882,14 +882,14 @@ export default function ProfilePage() {
                   name="email"
                   type="email"
                   placeholder="john@example.com"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                   value={profileData.email}
                   onChange={handleInputChange}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                   <Phone className="w-4 h-4" />
                   Phone
                 </label>
@@ -897,14 +897,14 @@ export default function ProfilePage() {
                   name="phone"
                   type="tel"
                   placeholder="+1 (555) 000-0000"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                   value={profileData.phone}
                   onChange={handleInputChange}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                   <Globe className="w-4 h-4" />
                   Website
                 </label>
@@ -912,7 +912,7 @@ export default function ProfilePage() {
                   name="website"
                   type="url"
                   placeholder="www.yourwebsite.com"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                   value={profileData.website}
                   onChange={handleInputChange}
                 />
@@ -922,12 +922,12 @@ export default function ProfilePage() {
 
           {/* Availability */}
           {isProvider && (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
+            <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
                   <Clock className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <h2 className="text-2xl font-bold text-slate-900">
                   Availability Status
                 </h2>
               </div>
@@ -941,7 +941,7 @@ export default function ProfilePage() {
                     className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
                       profileData.availability === option.value
                         ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                        : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
                     <div className="flex items-center justify-center gap-3">
@@ -956,8 +956,8 @@ export default function ProfilePage() {
 
           {/* Error Message */}
           {errors.submit && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-              <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-sm text-red-600 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5" />
                 {errors.submit}
               </p>

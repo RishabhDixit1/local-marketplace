@@ -6,15 +6,16 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
+  Compass,
   Home,
-  Users,
-  Package,
-  MessageCircle,
-  User,
   LogOut,
   Menu,
+  MessageCircle,
+  Package,
+  Sparkles,
+  User,
+  Users,
   X,
-  Sparkles
 } from "lucide-react";
 
 const navigationTabs = [
@@ -40,191 +41,189 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* LOGO */}
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
+      <div className="flex min-h-screen">
+        <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-r lg:border-slate-200/90 lg:bg-white/85 lg:backdrop-blur-xl">
+          <div className="px-6 py-6 border-b border-slate-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
                 <Home className="w-6 h-6 text-white" />
               </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Local Marketplace
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Connect & Collaborate
-                </p>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900">Local Marketplace</h1>
+                <p className="text-xs text-slate-500">Connect & Collaborate</p>
               </div>
             </div>
+          </div>
 
-            {/* DESKTOP NAV */}
-            <div className="hidden lg:flex items-center gap-2">
-              {navigationTabs.map((tab) => {
-                const isActive = pathname === tab.path;
-                const Icon = tab.icon;
-                
-                return (
-                  <Link
-                    key={tab.path}
-                    href={tab.path}
-                    className={`relative group flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                      isActive
-                        ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.name}</span>
-                    {isActive && (
-                      <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-1 bg-white rounded-t-full"></div>
-                    )}
-                  </Link>
-                );
-              })}
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {navigationTabs.map((tab) => {
+              const isActive = pathname === tab.path;
+              const Icon = tab.icon;
+              return (
+                <Link
+                  key={tab.path}
+                  href={tab.path}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    isActive
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {tab.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="px-4 py-4 border-t border-slate-200 space-y-3">
+            <button
+              onClick={() => router.push("/dashboard/profile")}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-slate-900">My Profile</p>
+                <p className="text-xs text-slate-500">Manage account</p>
+              </div>
+            </button>
+            <button
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
+            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  className="lg:hidden p-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+                  onClick={() => setMenuOpen(true)}
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="lg:hidden flex items-center gap-2 min-w-0">
+                  <Compass className="w-5 h-5 text-indigo-600 shrink-0" />
+                  <span className="text-sm font-semibold text-slate-800 truncate">Local Marketplace</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <NotificationCenter />
+                <button
+                  onClick={() => router.push("/dashboard/profile")}
+                  className="relative group"
+                  title="View Profile"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg transition-transform duration-200 group-hover:scale-105">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+                </button>
+                <button
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="text-sm">Logout</span>
+                </button>
+              </div>
             </div>
+          </header>
 
-            {/* RIGHT ACTIONS */}
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</main>
+        </div>
+      </div>
+
+      <div
+        className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-200 ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <button
+          aria-label="Close navigation menu"
+          onClick={() => setMenuOpen(false)}
+          className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+        />
+        <aside
+          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs bg-white border-r border-slate-200 p-4 flex flex-col transition-transform duration-200 ${
+            menuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
             <div className="flex items-center gap-2">
-              
-              {/* Notifications */}
-              <NotificationCenter />
-
-              {/* Profile Avatar */}
-              <button
-                onClick={() => router.push("/dashboard/profile")}
-                className="relative group"
-                title="View Profile"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110">
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
-              </button>
-
-              {/* Logout (Desktop) */}
-              <button
-                className="hidden md:flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm">Logout</span>
-              </button>
-
-              {/* Mobile Menu Button */}
-              <button
-                className="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                onClick={() => setMenuOpen(!menuOpen)}
-              >
-                {menuOpen ? (
-                  <X className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-                ) : (
-                  <Menu className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* MOBILE MENU */}
-      {menuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
-          <div className="absolute top-16 left-0 right-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-2xl">
-            <div className="max-h-[calc(100vh-4rem)] overflow-y-auto">
-              <div className="p-4 space-y-2">
-                {navigationTabs.map((tab) => {
-                  const isActive = pathname === tab.path;
-                  const Icon = tab.icon;
-                  
-                  return (
-                    <Link
-                      key={tab.path}
-                      href={tab.path}
-                      onClick={() => setMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                        isActive
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
-                          : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {tab.name}
-                    </Link>
-                  );
-                })}
-
-                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                  <button
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition-all duration-200"
-                    onClick={() => {
-                      handleLogout();
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Logout
-                  </button>
-                </div>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center">
+                <Home className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">Local Marketplace</p>
+                <p className="text-xs text-slate-500">Navigation</p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* PAGE CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        {children}
-      </main>
-
-      {/* FOOTER */}
-      <footer className="mt-12 border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center">
-                  <Home className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                  Local Marketplace
-                </h3>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Connect with trusted service providers and grow your local network.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Quick Links</h4>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">How It Works</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Safety Guidelines</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Support</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Legal</h4>
-              <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Cookie Policy</a></li>
-                <li><a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Contact Us</a></li>
-              </ul>
-            </div>
+            <button
+              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-sm text-slate-600 dark:text-slate-400">
-            <p>© 2024 Local Marketplace. All rights reserved.</p>
+          <nav className="mt-4 space-y-2">
+            {navigationTabs.map((tab) => {
+              const isActive = pathname === tab.path;
+              const Icon = tab.icon;
+              return (
+                <Link
+                  key={tab.path}
+                  href={tab.path}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    isActive
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {tab.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                router.push("/dashboard/profile");
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800"
+            >
+              <User className="w-4 h-4" />
+              My Profile
+            </button>
+            <button
+              onClick={() => {
+                handleLogout();
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
           </div>
-        </div>
-      </footer>
+        </aside>
+      </div>
     </div>
   );
 }

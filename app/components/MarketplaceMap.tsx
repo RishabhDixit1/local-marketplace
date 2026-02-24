@@ -15,7 +15,11 @@ type Props = {
 };
 
 // Fix default marker icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+type LeafletIconDefaultPrototype = typeof L.Icon.Default.prototype & {
+  _getIconUrl?: string;
+};
+
+delete (L.Icon.Default.prototype as LeafletIconDefaultPrototype)._getIconUrl;
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:

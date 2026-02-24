@@ -27,6 +27,24 @@ user_id: string;
 created_at: string;
 };
 
+type ServiceListingRow = {
+id: string;
+title: string | null;
+price: number | null;
+provider_id: string;
+category: string | null;
+description: string | null;
+};
+
+type ProductListingRow = {
+id: string;
+title: string | null;
+price: number | null;
+provider_id: string;
+category: string | null;
+description: string | null;
+};
+
 // ---------------- PAGE ----------------
 
 export default function PostsPage() {
@@ -44,34 +62,38 @@ const { data: services } = await supabase
   .from("service_listings")
   .select("*");
 
+const serviceRows = (services as ServiceListingRow[] | null) || [];
+
 const formattedServices: Listing[] =
-  services?.map((s: any) => ({
+  serviceRows.map((s) => ({
     id: s.id,
-    title: s.title,
-    price: s.price,
+    title: s.title || "Local service",
+    price: s.price || 0,
     provider_id: s.provider_id,
-    category: s.category,
-    description: s.description,
+    category: s.category || "Service",
+    description: s.description || "Service listing",
     type: "service",
     distance: Math.floor(Math.random() * 10) + 1,
-  })) || [];
+  }));
 
 // 🔹 PRODUCTS
 const { data: products } = await supabase
   .from("product_catalog")
   .select("*");
 
+const productRows = (products as ProductListingRow[] | null) || [];
+
 const formattedProducts: Listing[] =
-  products?.map((p: any) => ({
+  productRows.map((p) => ({
     id: p.id,
-    title: p.title,
-    price: p.price,
+    title: p.title || "Local product",
+    price: p.price || 0,
     provider_id: p.provider_id,
-    category: p.category,
-    description: p.description,
+    category: p.category || "Product",
+    description: p.description || "Product listing",
     type: "product",
     distance: Math.floor(Math.random() * 10) + 1,
-  })) || [];
+  }));
 
 // 🔹 DEMAND POSTS
 const { data: demandPosts } = await supabase

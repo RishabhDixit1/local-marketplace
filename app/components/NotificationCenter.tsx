@@ -129,32 +129,32 @@ const kindStyles: Record<
   booking: {
     icon: Truck,
     iconClassName: "text-blue-600",
-    badgeClassName: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200",
+    badgeClassName: "bg-blue-100 text-blue-700",
   },
   message: {
     icon: MessageCircle,
     iconClassName: "text-violet-600",
-    badgeClassName: "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-200",
+    badgeClassName: "bg-violet-100 text-violet-700",
   },
   review: {
     icon: Star,
     iconClassName: "text-amber-600",
-    badgeClassName: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
+    badgeClassName: "bg-amber-100 text-amber-700",
   },
   security: {
     icon: ShieldCheck,
     iconClassName: "text-emerald-600",
-    badgeClassName: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
+    badgeClassName: "bg-emerald-100 text-emerald-700",
   },
   payment: {
     icon: WalletCards,
     iconClassName: "text-cyan-600",
-    badgeClassName: "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200",
+    badgeClassName: "bg-cyan-100 text-cyan-700",
   },
   profile: {
     icon: UserRoundCheck,
     iconClassName: "text-indigo-600",
-    badgeClassName: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200",
+    badgeClassName: "bg-indigo-100 text-indigo-700",
   },
 };
 
@@ -282,12 +282,12 @@ export default function NotificationCenter() {
       <button
         ref={triggerRef}
         onClick={() => setIsOpen((open) => !open)}
-        className="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors"
         aria-label="Open notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+        <Bell className="w-5 h-5 text-slate-600" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full flex items-center justify-center text-white text-[11px] font-bold leading-none">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -306,26 +306,26 @@ export default function NotificationCenter() {
 
           <div
             ref={panelRef}
-            className="fixed inset-x-4 top-[4.5rem] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:right-0 sm:left-auto sm:top-full sm:mt-2 sm:w-[24rem] dark:border-slate-700 dark:bg-slate-800"
+            className="fixed inset-x-4 top-[4.5rem] bottom-4 z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:right-0 sm:left-auto sm:top-full sm:bottom-auto sm:mt-2 sm:w-[24rem] sm:max-h-[36rem]"
             role="dialog"
             aria-label="Notifications panel"
           >
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="p-4 border-b border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  <h3 className="font-bold text-slate-900">Notifications</h3>
+                  <p className="text-xs text-slate-500 mt-1">
                     {unreadCount} unread · New demo alerts every {LIVE_POLL_MS / 1000}s
                   </p>
                 </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   Live
                 </div>
               </div>
             </div>
 
-            <ul className="max-h-[min(65vh,28rem)] overflow-y-auto">
+            <ul className="flex-1 min-h-0 overflow-y-auto">
               {notifications.map((item) => {
                 const style = kindStyles[item.kind];
                 const Icon = style.icon;
@@ -333,29 +333,29 @@ export default function NotificationCenter() {
                 return (
                   <li
                     key={item.id}
-                    className="border-b border-slate-100 dark:border-slate-700 last:border-b-0"
+                    className="border-b border-slate-100 last:border-b-0"
                   >
                     <button
                       type="button"
                       onClick={() => markAsRead(item.id)}
-                      className={`w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors ${
-                        item.unread ? "bg-sky-50/60 dark:bg-sky-900/10" : ""
+                      className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
+                        item.unread ? "bg-sky-50/70" : ""
                       }`}
                     >
                       <div className="flex gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
                           <Icon className={`h-4 w-4 ${style.iconClassName}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white leading-5">
+                            <p className="text-sm font-semibold text-slate-900 leading-5">
                               {item.title}
                             </p>
-                            <span className="shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
+                            <span className="shrink-0 text-[11px] text-slate-500">
                               {item.timeLabel}
                             </span>
                           </div>
-                          <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-5">
+                          <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-5">
                             {item.message}
                           </p>
                           <div className="mt-2 flex items-center gap-2">
@@ -365,7 +365,7 @@ export default function NotificationCenter() {
                               {item.cta}
                             </span>
                             {item.unread && (
-                              <span className="text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+                              <span className="text-[11px] font-semibold text-sky-700">
                                 New
                               </span>
                             )}
@@ -378,12 +378,12 @@ export default function NotificationCenter() {
               })}
             </ul>
 
-            <div className="grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={markAllAsRead}
                 disabled={unreadCount === 0}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCheck className="h-4 w-4" />
                 Mark all read
@@ -391,7 +391,7 @@ export default function NotificationCenter() {
               <button
                 type="button"
                 onClick={resetDemoFeed}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
                 Reset demo
               </button>

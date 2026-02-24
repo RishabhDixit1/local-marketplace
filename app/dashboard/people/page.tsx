@@ -419,7 +419,7 @@ export default function PeoplePage() {
     .slice(0, 3);
 
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
       <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-fuchsia-600 p-4 sm:p-6 text-white shadow">
         <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
         <p className="mt-1 text-white/85">Search, compare, and contact nearby providers quickly.</p>
@@ -441,10 +441,10 @@ export default function PeoplePage() {
       </div>
 
       {!!featuredProviders.length && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white/90 backdrop-blur-sm p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm sm:text-base font-semibold text-white">Featured Providers</h2>
-            <span className="text-xs text-slate-400 inline-flex items-center gap-1">
+            <h2 className="text-sm sm:text-base font-semibold text-slate-900">Featured Providers</h2>
+            <span className="text-xs text-slate-500 inline-flex items-center gap-1">
               <Sparkles size={12} /> Top matches
             </span>
           </div>
@@ -453,9 +453,15 @@ export default function PeoplePage() {
               <button
                 key={`featured-${person.id}`}
                 onClick={() => setSelectedProvider(person.id)}
-                className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left"
+                className="relative overflow-hidden rounded-xl border border-slate-200 bg-white text-left"
               >
-                <img src={person.coverImage} alt={person.name} className="h-28 w-full object-cover opacity-80" />
+                <Image
+                  src={person.coverImage}
+                  alt={person.name}
+                  width={900}
+                  height={420}
+                  className="h-28 w-full object-cover opacity-80"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 w-full p-3">
                   <p className="text-sm font-semibold text-white truncate">{person.name}</p>
@@ -469,27 +475,27 @@ export default function PeoplePage() {
       )}
 
       {usingDemo && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           Showing demo people because no provider listings were found in DB yet.
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm text-white focus-within:ring-2 focus-within:ring-purple-600">
-          <Search size={16} className="text-neutral-400" />
+        <div className="flex flex-1 items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus-within:ring-2 focus-within:ring-purple-600">
+          <Search size={16} className="text-slate-500" />
           <input
             type="text"
             placeholder="Search by name, skill, bio, location..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-transparent outline-none placeholder:text-neutral-500"
+            className="w-full bg-transparent outline-none placeholder:text-slate-500"
           />
         </div>
 
         <select
           value={String(radiusKm)}
           onChange={(e) => setRadiusKm(Number(e.target.value))}
-          className="rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-white focus:outline-none w-full sm:w-auto"
+          className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
         >
           {RADIUS_OPTIONS.map((radius) => (
             <option key={radius} value={radius}>
@@ -501,7 +507,7 @@ export default function PeoplePage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as (typeof SORT_OPTIONS)[number])}
-          className="rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-white focus:outline-none w-full sm:w-auto"
+          className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option}>{option}</option>
@@ -517,7 +523,7 @@ export default function PeoplePage() {
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm transition ${
               activeTab === tab
                 ? "bg-purple-600 text-white"
-                : "bg-neutral-800 text-neutral-300 hover:bg-purple-600 hover:text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-purple-600 hover:text-white"
             }`}
           >
             {tab}
@@ -526,12 +532,18 @@ export default function PeoplePage() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl bg-neutral-900 p-6 text-neutral-400">Loading nearby providers...</div>
+        <div className="rounded-xl bg-white p-6 text-slate-500">Loading nearby providers...</div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredProviders.map((person) => (
-            <div key={person.id} className="rounded-xl bg-neutral-900 p-4 shadow border border-slate-800">
-              <img src={person.coverImage} alt={`${person.name} cover`} className="mb-3 h-28 w-full rounded-lg object-cover" />
+            <div key={person.id} className="rounded-xl bg-white p-4 shadow border border-slate-200">
+              <Image
+                src={person.coverImage}
+                alt={`${person.name} cover`}
+                width={900}
+                height={420}
+                className="mb-3 h-28 w-full rounded-lg object-cover"
+              />
               <div className="flex items-start gap-3 sm:gap-4">
                 <button onClick={() => setSelectedProvider(person.id)} className="shrink-0">
                   <Image
@@ -539,21 +551,21 @@ export default function PeoplePage() {
                     alt={person.name}
                     width={56}
                     height={56}
-                    className="h-14 w-14 rounded-full object-cover border border-slate-700"
+                    className="h-14 w-14 rounded-full object-cover border border-slate-200"
                   />
                 </button>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-white truncate">
+                    <h3 className="font-semibold text-slate-900 truncate">
                       {person.name}
                       <span
                         className={`ml-2 inline-flex items-center gap-1 text-xs ${
                           person.verificationStatus === "verified"
-                            ? "text-emerald-400"
+                            ? "text-emerald-600"
                             : person.verificationStatus === "pending"
-                            ? "text-amber-300"
-                            : "text-slate-400"
+                            ? "text-amber-600"
+                            : "text-slate-500"
                         }`}
                       >
                         <BadgeCheck size={12} />
@@ -563,15 +575,15 @@ export default function PeoplePage() {
                           ? "Pending"
                           : "Unclaimed"}
                       </span>
-                      {person.online && <span className="ml-2 text-emerald-400 text-xs">● Online</span>}
+                      {person.online && <span className="ml-2 text-emerald-600 text-xs">● Online</span>}
                     </h3>
-                    <span className="text-xs text-neutral-400 shrink-0">{person.distanceKm} km away</span>
+                    <span className="text-xs text-slate-500 shrink-0">{person.distanceKm} km away</span>
                   </div>
 
-                  <p className="text-sm text-neutral-400">{person.role}</p>
-                  <p className="mt-1 text-sm text-neutral-500 line-clamp-2">{person.bio}</p>
+                  <p className="text-sm text-slate-500">{person.role}</p>
+                  <p className="mt-1 text-sm text-slate-500 line-clamp-2">{person.bio}</p>
 
-                  <div className="mt-2 flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
+                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 flex-wrap">
                     <span className="inline-flex items-center gap-1">
                       <MapPin size={12} />
                       {person.location}
@@ -581,20 +593,20 @@ export default function PeoplePage() {
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-slate-800 px-2 py-1 text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
                       {person.completedJobs} jobs done
                     </span>
-                    <span className="rounded-full bg-slate-800 px-2 py-1 text-slate-300 inline-flex items-center gap-1">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 inline-flex items-center gap-1">
                       <Clock3 size={12} />
                       {person.responseMinutes} min response
                     </span>
-                    <span className="rounded-full bg-emerald-900/40 px-2 py-1 text-emerald-300">
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">
                       from ₹{person.startingPrice}
                     </span>
-                    <span className="rounded-full bg-indigo-900/40 px-2 py-1 text-indigo-300">
+                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">
                       {person.profileCompletion}% profile
                     </span>
-                    <span className="rounded-full bg-fuchsia-900/40 px-2 py-1 text-fuchsia-300">
+                    <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-fuchsia-700">
                       Match {person.rankScore}
                     </span>
                   </div>
@@ -604,7 +616,7 @@ export default function PeoplePage() {
                       {person.tags.slice(0, 3).map((tag) => (
                         <span
                           key={`${person.id}-${tag}`}
-                          className="rounded-full bg-slate-800 px-2 py-1 text-[11px] text-slate-300"
+                          className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
                         >
                           {tag}
                         </span>
@@ -613,19 +625,19 @@ export default function PeoplePage() {
                   )}
 
                   <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="text-sm text-neutral-300">
+                    <div className="text-sm text-slate-700">
                       <span className="inline-flex items-center gap-1">
                         <Star size={14} className="text-amber-400 fill-amber-400" />
                         {person.rating}
                       </span>{" "}
-                      <span className="text-neutral-500">({person.reviews} reviews)</span>
+                      <span className="text-slate-500">({person.reviews} reviews)</span>
                     </div>
 
                     <div className="flex gap-2">
                       <button
                         onClick={() => startChat(person.id)}
                         disabled={loadingChatId === person.id}
-                        className="rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 inline-flex items-center gap-1"
+                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 inline-flex items-center gap-1 transition-colors"
                       >
                         <MessageCircle size={14} />
                         {loadingChatId === person.id ? "..." : "Chat"}
@@ -639,7 +651,7 @@ export default function PeoplePage() {
                       {!usingDemo && (
                         <button
                           onClick={() => router.push(`/business/${person.businessSlug}`)}
-                          className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
+                          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 transition-colors"
                         >
                           Business Page
                         </button>
@@ -652,9 +664,9 @@ export default function PeoplePage() {
           ))}
 
           {!filteredProviders.length && (
-            <div className="col-span-full rounded-xl bg-neutral-900 p-8 text-center">
-              <Users className="mx-auto mb-3 text-neutral-400" />
-              <p className="text-neutral-400">No providers found for current filters.</p>
+            <div className="col-span-full rounded-xl bg-white p-8 text-center">
+              <Users className="mx-auto mb-3 text-slate-500" />
+              <p className="text-slate-500">No providers found for current filters.</p>
             </div>
           )}
         </div>
