@@ -41,17 +41,17 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#020817] via-[#010b22] to-black text-slate-100">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-r lg:border-slate-800/80 lg:bg-[#030f2f]/80 lg:backdrop-blur-xl">
-          <div className="px-6 py-6 border-b border-slate-800/80">
+        <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-r lg:border-slate-200/90 lg:bg-white/85 lg:backdrop-blur-xl">
+          <div className="px-6 py-6 border-b border-slate-200">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
                 <Home className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Local Marketplace</h1>
-                <p className="text-xs text-slate-400">Connect & Collaborate</p>
+                <h1 className="text-lg font-bold text-slate-900">Local Marketplace</h1>
+                <p className="text-xs text-slate-500">Connect & Collaborate</p>
               </div>
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function DashboardLayout({
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                     isActive
                       ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800/80"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -77,17 +77,17 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          <div className="px-4 py-4 border-t border-slate-800/80 space-y-3">
+          <div className="px-4 py-4 border-t border-slate-200 space-y-3">
             <button
               onClick={() => router.push("/dashboard/profile")}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="text-left">
-                <p className="text-sm font-semibold text-white">My Profile</p>
-                <p className="text-xs text-slate-400">Manage account</p>
+                <p className="text-sm font-semibold text-slate-900">My Profile</p>
+                <p className="text-xs text-slate-500">Manage account</p>
               </div>
             </button>
             <button
@@ -101,19 +101,19 @@ export default function DashboardLayout({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#031236]/90 backdrop-blur-xl">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
             <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  className="lg:hidden p-2 rounded-xl border border-slate-700 text-slate-200 hover:bg-slate-800/80 transition-colors"
+                  className="lg:hidden p-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
                   onClick={() => setMenuOpen(true)}
                   aria-label="Open navigation menu"
                 >
                   <Menu className="w-5 h-5" />
                 </button>
                 <div className="lg:hidden flex items-center gap-2 min-w-0">
-                  <Compass className="w-5 h-5 text-indigo-300 shrink-0" />
-                  <span className="text-sm font-semibold text-white truncate">Local Marketplace</span>
+                  <Compass className="w-5 h-5 text-indigo-600 shrink-0" />
+                  <span className="text-sm font-semibold text-slate-800 truncate">Local Marketplace</span>
                 </div>
               </div>
 
@@ -127,7 +127,7 @@ export default function DashboardLayout({
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg transition-transform duration-200 group-hover:scale-105">
                     <User className="w-5 h-5" />
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#031236] rounded-full"></div>
+                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
                 </button>
                 <button
                   className="hidden sm:flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
@@ -152,25 +152,25 @@ export default function DashboardLayout({
         <button
           aria-label="Close navigation menu"
           onClick={() => setMenuOpen(false)}
-          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/45 backdrop-blur-sm"
         />
         <aside
-          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs bg-[#041336] border-r border-slate-700/80 p-4 flex flex-col transition-transform duration-200 ${
+          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs bg-white border-r border-slate-200 p-4 flex flex-col transition-transform duration-200 ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="flex items-center justify-between border-b border-slate-700/70 pb-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center">
                 <Home className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Local Marketplace</p>
-                <p className="text-xs text-slate-400">Navigation</p>
+                <p className="text-sm font-bold text-slate-900">Local Marketplace</p>
+                <p className="text-xs text-slate-500">Navigation</p>
               </div>
             </div>
             <button
-              className="p-2 rounded-lg text-slate-300 hover:bg-slate-800/80"
+              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
               onClick={() => setMenuOpen(false)}
               aria-label="Close menu"
             >
@@ -190,7 +190,7 @@ export default function DashboardLayout({
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                     isActive
                       ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
-                      : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -200,13 +200,13 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          <div className="mt-auto pt-4 border-t border-slate-700/70 space-y-2">
+          <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
             <button
               onClick={() => {
                 setMenuOpen(false);
                 router.push("/dashboard/profile");
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800"
             >
               <User className="w-4 h-4" />
               My Profile

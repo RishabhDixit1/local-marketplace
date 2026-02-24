@@ -7,16 +7,18 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
+  Activity,
+  ArrowRight,
   CheckCircle2,
   Circle,
   ClipboardList,
+  Clock3,
   MapPin,
   MessageCircle,
-  Package,
   Plus,
   ShieldCheck,
   Star,
-  Store,
+  TrendingUp,
   Users,
   Wrench,
   Zap,
@@ -163,6 +165,43 @@ export default function WelcomePage() {
         label: "Post a Need",
         action: () => setOpenPostModal(true),
       };
+
+  const completedOnboarding = onboardingSteps.filter((step) => step.done).length;
+
+  const storyItems = useMemo(
+    () =>
+      nearbyCards.slice(0, 8).map((card) => ({
+        ...card,
+        badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
+      })),
+    [nearbyCards]
+  );
+
+  const marketSignals = useMemo(
+    () => [
+      {
+        label: "Open Needs",
+        value: nearbyCards.filter((card) => card.type === "demand").length,
+        icon: Activity,
+      },
+      {
+        label: "Active Tasks",
+        value: stats.activeTasks,
+        icon: ClipboardList,
+      },
+      {
+        label: "Unread",
+        value: stats.unreadMessages,
+        icon: MessageCircle,
+      },
+      {
+        label: "Avg Trust",
+        value: stats.trustScore.toFixed(1),
+        icon: Star,
+      },
+    ],
+    [nearbyCards, stats.activeTasks, stats.unreadMessages, stats.trustScore]
+  );
 
   useEffect(() => {
     const loadWelcome = async () => {
@@ -432,249 +471,340 @@ export default function WelcomePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-black text-white">
-        <div className="max-w-6xl mx-auto py-2 sm:py-4 space-y-6 sm:space-y-8">
+      <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
+        <div className="max-w-6xl mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl sm:rounded-3xl p-5 sm:p-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 shadow-xl"
+            className="rounded-3xl p-5 sm:p-7 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 shadow-lg"
           >
-            <h1 className="text-2xl sm:text-3xl font-bold">Welcome back, {loading ? "..." : userName} 👋</h1>
-            <p className="text-white/90 mt-2 max-w-xl">
-              Connect with nearby providers, sell services, post needs, and build your local reputation in real time.
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Welcome back, {loading ? "..." : userName} 👋</h1>
+            <p className="text-white/90 mt-2 max-w-2xl text-sm sm:text-base">
+              Your local marketplace pulse in one place: stories, live posts, trusted providers, and quick actions.
             </p>
 
-            <div className="flex flex-wrap gap-3 mt-6">
+            <div className="flex flex-wrap gap-3 mt-5">
               <button
                 onClick={primaryHeroAction.action}
-                className="px-5 py-3 bg-indigo-600 rounded-xl"
+                className="px-5 py-2.5 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors"
               >
                 {primaryHeroAction.label}
               </button>
               <button
                 onClick={() => router.push(routes.people)}
-                className="px-5 py-2.5 rounded-xl border border-white/40 hover:bg-white/10 flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl border border-white/50 text-white hover:bg-white/10 flex items-center gap-2 transition-colors"
               >
                 <Users size={16} />
                 Explore Nearby
               </button>
             </div>
-          </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { title: "Post a Need", icon: Plus, action: () => setOpenPostModal(true) },
-              { title: "Offer a Service", icon: Wrench, action: () => router.push(routes.addService) },
-              { title: "Find People", icon: Users, action: () => router.push(routes.people) },
-              { title: "My Tasks", icon: ClipboardList, action: () => router.push(routes.tasks) },
-            ].map((item, i) => (
-              <motion.button
-                key={i}
-                whileHover={{ scale: 1.03 }}
-                onClick={item.action}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500 text-left"
-              >
-                <item.icon className="mb-3 text-indigo-400" />
-                <div className="font-semibold">{item.title}</div>
-              </motion.button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {statCards.map((s, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="p-5 rounded-2xl bg-slate-900 border border-slate-800"
-              >
-                <s.icon className="text-indigo-400 mb-2" />
-                <div className="text-2xl font-bold">{s.value}</div>
-                <div className="text-sm text-slate-400">{s.label}</div>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="rounded-3xl p-6 bg-gradient-to-r from-blue-600/15 to-purple-600/15 border border-blue-500/20">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-              <h2 className="text-xl font-semibold">{isProvider ? "Provider Launchpad" : "Customer Launchpad"}</h2>
-              <span className="text-sm text-slate-300">
-                {onboardingSteps.filter((step) => step.done).length}/{onboardingSteps.length} completed
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {onboardingSteps.map((step) => (
-                <div key={step.id} className="rounded-xl bg-slate-900/80 border border-slate-700 p-4">
-                  <div className="flex items-start gap-2">
-                    {step.done ? (
-                      <CheckCircle2 className="text-emerald-400 mt-0.5" size={18} />
-                    ) : (
-                      <Circle className="text-slate-500 mt-0.5" size={18} />
-                    )}
-                    <div>
-                      <p className="font-medium text-sm">{step.title}</p>
-                      <p className="text-xs text-slate-400 mt-1">{step.hint}</p>
-                    </div>
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {marketSignals.map((signal) => (
+                <div key={signal.label} className="rounded-xl bg-white/15 backdrop-blur px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-white/85 text-xs">
+                    <signal.icon size={13} />
+                    {signal.label}
                   </div>
-
-                  {!step.done && (
-                    <button
-                      onClick={() => router.push(step.path)}
-                      className="mt-3 text-xs bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg"
-                    >
-                      {step.cta}
-                    </button>
-                  )}
+                  <p className="mt-1 text-lg font-semibold text-white">{signal.value}</p>
                 </div>
               ))}
             </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.95fr] gap-4">
+            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold">Neighborhood Stories</h2>
+                  <p className="text-xs text-slate-500">Tap a story card to jump directly into the related post or listing.</p>
+                </div>
+                <button
+                  onClick={() => router.push(routes.posts)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  View feed
+                </button>
+              </div>
+
+              <div className="mt-4 overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-3">
+                  {storyItems.map((story) => (
+                    <button
+                      key={`story-${story.id}`}
+                      onClick={() =>
+                        router.push(
+                          `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`
+                        )
+                      }
+                      className="w-24 shrink-0 text-left"
+                    >
+                      <div
+                        className={`rounded-2xl p-[2px] ${
+                          story.type === "demand"
+                            ? "bg-gradient-to-br from-rose-400 to-orange-400"
+                            : story.type === "service"
+                            ? "bg-gradient-to-br from-indigo-400 to-sky-400"
+                            : "bg-gradient-to-br from-emerald-400 to-teal-400"
+                        }`}
+                      >
+                        <div className="relative h-28 w-full overflow-hidden rounded-[14px] bg-slate-200">
+                          <Image src={story.image} alt={story.title} fill className="object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
+                          <span className="absolute left-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
+                            {story.badge}
+                          </span>
+                          <p className="absolute bottom-2 left-2 right-2 text-[10px] leading-tight font-medium text-white line-clamp-2">
+                            {story.title}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-slate-600 line-clamp-1">{story.distanceKm} km away</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+              <h2 className="text-base sm:text-lg font-semibold">Quick Actions</h2>
+              <p className="text-xs text-slate-500 mt-1">Shortcuts built for fast local execution.</p>
+
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                {[
+                  { title: "Post Need", icon: Plus, action: () => setOpenPostModal(true) },
+                  { title: "Offer Service", icon: Wrench, action: () => router.push(routes.addService) },
+                  { title: "Find People", icon: Users, action: () => router.push(routes.people) },
+                  { title: "My Tasks", icon: ClipboardList, action: () => router.push(routes.tasks) },
+                ].map((item, index) => (
+                  <button
+                    key={`quick-${index}`}
+                    onClick={item.action}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50/60 transition-colors"
+                  >
+                    <item.icon className="text-indigo-500 mb-2" size={16} />
+                    <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {statCards.map((stat) => (
+                  <div key={stat.label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-slate-500">{stat.label}</p>
+                      <stat.icon size={13} className="text-indigo-500" />
+                    </div>
+                    <p className="text-base font-semibold text-slate-900 mt-1">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
-          {isProvider && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-3xl p-6 bg-gradient-to-r from-emerald-600/20 to-indigo-600/20 border border-emerald-500/20"
-            >
-              <h2 className="text-xl font-semibold mb-4">Provider Hub 🛠️</h2>
-              <p className="text-slate-300 mb-6">
-                Manage your services, products, pricing, and incoming requests from nearby customers.
-              </p>
-
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-                <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
-                  <p className="text-xs text-slate-400">Services</p>
-                  <p className="text-lg font-semibold">{providerSnapshot.services}</p>
+          <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4">
+            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold">Live Local Feed</h2>
+                  <p className="text-xs text-slate-500">Compact stream of nearby needs, services, and products.</p>
                 </div>
-                <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
-                  <p className="text-xs text-slate-400">Products</p>
-                  <p className="text-lg font-semibold">{providerSnapshot.products}</p>
-                </div>
-                <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
-                  <p className="text-xs text-slate-400">Open Orders</p>
-                  <p className="text-lg font-semibold">{providerSnapshot.openOrders}</p>
-                </div>
-                <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
-                  <p className="text-xs text-slate-400">Profile</p>
-                  <p className="text-sm font-semibold text-emerald-300">
-                    {providerSnapshot.profileReady ? "Ready" : "Needs Update"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <button
-                  onClick={() => router.push(routes.addService)}
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500"
+                  onClick={() => router.push(routes.posts)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
                 >
-                  <Wrench className="mb-2 text-emerald-400" />
-                  Add Service
-                </button>
-                <button
-                  onClick={() => router.push(routes.addProduct)}
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500"
-                >
-                  <Package className="mb-2 text-indigo-400" />
-                  Add Product
-                </button>
-                <button
-                  onClick={() => router.push(routes.listings)}
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500"
-                >
-                  <Store className="mb-2 text-purple-400" />
-                  My Listings
-                </button>
-                <button
-                  onClick={() => router.push(routes.orders)}
-                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-pink-500"
-                >
-                  <ClipboardList className="mb-2 text-pink-400" />
-                  Orders / Jobs
+                  Explore all
                 </button>
               </div>
-            </motion.div>
-          )}
 
-          <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-              <h2 className="text-xl font-semibold">What&apos;s Happening Nearby</h2>
-              <button onClick={() => router.push(routes.posts)} className="text-sm text-indigo-300 hover:text-indigo-200">
-                Explore all
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {nearbyCards.map((card) => (
-                <div key={card.id} className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
-                  <div className="relative h-36">
-                    <Image src={card.image} alt={card.title} fill className="object-cover" />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] uppercase tracking-wide text-indigo-300">{card.type}</span>
-                      <span className="text-xs text-slate-400">{card.distanceKm} km away</span>
+              <div className="mt-3 divide-y divide-slate-200">
+                {nearbyCards.map((card) => (
+                  <div key={`feed-${card.id}`} className="py-3 flex items-center gap-3">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200">
+                      <Image src={card.image} alt={card.title} fill className="object-cover" />
                     </div>
-                    <h3 className="font-semibold leading-tight">{card.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1">{card.subtitle}</p>
-                    <p className="text-sm text-emerald-300 mt-2">{card.priceLabel}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            card.type === "demand"
+                              ? "bg-rose-100 text-rose-700"
+                              : card.type === "service"
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {card.type}
+                        </span>
+                        <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
+                    </div>
                     <button
                       onClick={() =>
                         router.push(
                           `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`
                         )
                       }
-                      className="mt-3 w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 py-2 text-sm"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
                     >
                       {card.actionLabel}
+                      <ArrowRight size={12} />
                     </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="space-y-4">
+              <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base sm:text-lg font-semibold">{isProvider ? "Provider Launchpad" : "Customer Launchpad"}</h2>
+                  <span className="text-xs text-slate-500">
+                    {completedOnboarding}/{onboardingSteps.length} completed
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2.5">
+                  {onboardingSteps.map((step) => (
+                    <div key={step.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-start gap-2">
+                        {step.done ? (
+                          <CheckCircle2 className="text-emerald-500 mt-0.5" size={17} />
+                        ) : (
+                          <Circle className="text-slate-400 mt-0.5" size={17} />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-800">{step.title}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{step.hint}</p>
+                        </div>
+                      </div>
+                      {!step.done && (
+                        <button
+                          onClick={() => router.push(step.path)}
+                          className="mt-2.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-white"
+                        >
+                          {step.cta}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {isProvider && (
+                <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900">Provider Hub</h3>
+                    <span className="text-xs text-slate-500 inline-flex items-center gap-1">
+                      <TrendingUp size={12} />
+                      Live snapshot
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                      <p className="text-xs text-slate-500">Services</p>
+                      <p className="text-sm font-semibold">{providerSnapshot.services}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                      <p className="text-xs text-slate-500">Products</p>
+                      <p className="text-sm font-semibold">{providerSnapshot.products}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                      <p className="text-xs text-slate-500">Open Orders</p>
+                      <p className="text-sm font-semibold">{providerSnapshot.openOrders}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                      <p className="text-xs text-slate-500">Status</p>
+                      <p className="text-sm font-semibold text-emerald-600">
+                        {providerSnapshot.profileReady ? "Ready" : "Needs Update"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => router.push(routes.addService)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
+                    >
+                      Add Service
+                    </button>
+                    <button
+                      onClick={() => router.push(routes.addProduct)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
+                    >
+                      Add Product
+                    </button>
+                    <button
+                      onClick={() => router.push(routes.listings)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
+                    >
+                      My Listings
+                    </button>
+                    <button
+                      onClick={() => router.push(routes.orders)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
+                    >
+                      Orders
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Profile Strength</span>
+                  <span className="text-sm font-semibold text-indigo-600">{profileStrength}%</span>
+                </div>
+                <div className="mt-2 h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" style={{ width: `${profileStrength}%` }} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => router.push(routes.profile)}
+                    className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    Improve Profile
+                  </button>
+                  <button
+                    onClick={() => setOpenPostModal(true)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                  >
+                    Create Post
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Core Platform Features</h2>
+                <p className="text-xs text-slate-500">Startup-grade essentials, optimized for local commerce velocity.</p>
+              </div>
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-500">
+                <Clock3 size={12} />
+                Real-time updates
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {features.map((feature, index) => (
+                <div
+                  key={`feature-${index}`}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 flex items-start gap-3"
+                >
+                  <div className="mt-0.5 rounded-lg bg-indigo-100 p-2">
+                    <feature.icon className="text-indigo-600" size={16} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-slate-900">{feature.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">{feature.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="font-semibold">Core Platform Features</h2>
-              <span className="text-xs text-slate-400">All essentials in one place</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-fr">
-              {features.map((f, i) => (
-                <div key={i} className="p-4 rounded-xl bg-slate-950 border border-slate-800 h-full">
-                  <f.icon className="text-indigo-400 mb-2" />
-                  <div className="font-semibold">{f.title}</div>
-                  <div className="text-sm text-slate-400">{f.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-            <div className="flex justify-between mb-2">
-              <span>Profile Strength</span>
-              <span className="text-indigo-400 font-semibold">{profileStrength}%</span>
-            </div>
-
-            <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-indigo-500 to-pink-500" style={{ width: `${profileStrength}%` }} />
-            </div>
-
-            <button
-              onClick={() => router.push(routes.profile)}
-              className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm"
-            >
-              Improve Profile
-            </button>
-
-            <button
-              onClick={() => setOpenPostModal(true)}
-              className="mt-3 w-full px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-sm"
-            >
-              Create Post
-            </button>
-          </div>
+          </section>
         </div>
       </div>
 
