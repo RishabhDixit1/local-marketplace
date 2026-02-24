@@ -10,20 +10,45 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const login = async () => {
-    if (!email) return;
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Enter your email address to continue.");
+      return;
+    }
 
     setLoading(true);
+    setErrorMessage("");
 
     const baseUrl = window.location.origin;
+    const redirectTo = `${baseUrl}/dashboard`;
 
-    await supabase.auth.signInWithOtp({
-      email,
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmedEmail,
       options: {
-        emailRedirectTo: `${baseUrl}/dashboard`,
+        emailRedirectTo: redirectTo,
       },
     });
+
+    if (error) {
+      const message = error.message || "Unable to send login link right now.";
+
+      if (/redirect|site url|not allowed|url/i.test(message)) {
+        setErrorMessage(
+          `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
+        );
+      } else if (/rate|too many/i.test(message)) {
+        setErrorMessage("Too many requests. Wait a minute and try again.");
+      } else {
+        setErrorMessage(message);
+      }
+
+      setSent(false);
+      setLoading(false);
+      return;
+    }
 
     setSent(true);
     setLoading(false);
@@ -104,6 +129,12 @@ export default function LoginPage() {
                 />
               </div>
 
+              {!!errorMessage && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {errorMessage}
+                </div>
+              )}
+
               <button
                 onClick={login}
                 disabled={loading}
@@ -127,6 +158,24 @@ export default function LoginPage() {
                 <br />
                 <span className="font-medium">{email}</span>
               </p>
+
+              <p className="text-xs text-slate-500">
+                Delivery can take 30-90 seconds. Check spam/promotions if needed.
+              </p>
+
+              {!!errorMessage && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              <button
+                onClick={login}
+                disabled={loading}
+                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? "Sending..." : "Send Again"}
+              </button>
             </div>
           )}
         </div>
