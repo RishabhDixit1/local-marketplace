@@ -221,9 +221,10 @@ export default function NotificationCenter() {
 
     const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
     const mobileWidthQuery = window.matchMedia("(max-width: 640px)");
+    const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
 
     const updateMode = () => {
-      setUseMobileSheet(coarsePointerQuery.matches || mobileWidthQuery.matches);
+      setUseMobileSheet(touchCapable || coarsePointerQuery.matches || mobileWidthQuery.matches);
     };
 
     updateMode();
@@ -248,6 +249,17 @@ export default function NotificationCenter() {
       window.removeEventListener("resize", updateMode);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || !useMobileSheet) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, useMobileSheet]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -312,7 +324,7 @@ export default function NotificationCenter() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-[1400]">
       <button
         ref={triggerRef}
         onClick={() => setIsOpen((open) => !open)}
@@ -334,7 +346,7 @@ export default function NotificationCenter() {
           {useMobileSheet && (
             <button
               type="button"
-              className="fixed inset-0 z-40 bg-slate-900/15"
+              className="fixed inset-0 z-[1390] bg-slate-900/25"
               onClick={() => setIsOpen(false)}
               aria-label="Close notifications"
             />
@@ -342,9 +354,9 @@ export default function NotificationCenter() {
 
           <div
             ref={panelRef}
-            className={`z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ${
+            className={`z-[1400] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ${
               useMobileSheet
-                ? "fixed inset-x-4 top-[4.5rem] bottom-4"
+                ? "fixed inset-x-3 top-[4.25rem] bottom-3 sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
                 : "absolute right-0 top-full mt-2 w-[24rem] max-h-[36rem]"
             }`}
             role="dialog"
