@@ -188,6 +188,7 @@ const buildSeedNotifications = () => {
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
+  const [useMobileSheet, setUseMobileSheet] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(() =>
     buildSeedNotifications()
   );
@@ -213,6 +214,39 @@ export default function NotificationCenter() {
     }, CLOCK_REFRESH_MS);
 
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+    const mobileWidthQuery = window.matchMedia("(max-width: 640px)");
+
+    const updateMode = () => {
+      setUseMobileSheet(coarsePointerQuery.matches || mobileWidthQuery.matches);
+    };
+
+    updateMode();
+
+    const add = (query: MediaQueryList, handler: () => void) => {
+      if (typeof query.addEventListener === "function") {
+        query.addEventListener("change", handler);
+        return () => query.removeEventListener("change", handler);
+      }
+
+      query.addListener(handler);
+      return () => query.removeListener(handler);
+    };
+
+    const removeCoarse = add(coarsePointerQuery, updateMode);
+    const removeWidth = add(mobileWidthQuery, updateMode);
+    window.addEventListener("resize", updateMode);
+
+    return () => {
+      removeCoarse();
+      removeWidth();
+      window.removeEventListener("resize", updateMode);
+    };
   }, []);
 
   useEffect(() => {
@@ -297,16 +331,22 @@ export default function NotificationCenter() {
 
       {isOpen && (
         <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 sm:hidden"
-            onClick={() => setIsOpen(false)}
-            aria-label="Close notifications"
-          />
+          {useMobileSheet && (
+            <button
+              type="button"
+              className="fixed inset-0 z-40 bg-slate-900/15"
+              onClick={() => setIsOpen(false)}
+              aria-label="Close notifications"
+            />
+          )}
 
           <div
             ref={panelRef}
-            className="fixed inset-x-4 top-[4.5rem] bottom-4 z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:right-0 sm:left-auto sm:top-full sm:bottom-auto sm:mt-2 sm:w-[24rem] sm:max-h-[36rem]"
+            className={`z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ${
+              useMobileSheet
+                ? "fixed inset-x-4 top-[4.5rem] bottom-4"
+                : "absolute right-0 top-full mt-2 w-[24rem] max-h-[36rem]"
+            }`}
             role="dialog"
             aria-label="Notifications panel"
           >
