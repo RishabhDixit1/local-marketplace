@@ -455,7 +455,13 @@ export default function PeoplePage() {
                 onClick={() => setSelectedProvider(person.id)}
                 className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left"
               >
-                <img src={person.coverImage} alt={person.name} className="h-28 w-full object-cover opacity-80" />
+                <Image
+                  src={person.coverImage}
+                  alt={person.name}
+                  width={900}
+                  height={420}
+                  className="h-28 w-full object-cover opacity-80"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 w-full p-3">
                   <p className="text-sm font-semibold text-white truncate">{person.name}</p>
@@ -531,7 +537,13 @@ export default function PeoplePage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredProviders.map((person) => (
             <div key={person.id} className="rounded-xl bg-neutral-900 p-4 shadow border border-slate-800">
-              <img src={person.coverImage} alt={`${person.name} cover`} className="mb-3 h-28 w-full rounded-lg object-cover" />
+              <Image
+                src={person.coverImage}
+                alt={`${person.name} cover`}
+                width={900}
+                height={420}
+                className="mb-3 h-28 w-full rounded-lg object-cover"
+              />
               <div className="flex items-start gap-3 sm:gap-4">
                 <button onClick={() => setSelectedProvider(person.id)} className="shrink-0">
                   <Image

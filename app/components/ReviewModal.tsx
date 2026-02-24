@@ -3,11 +3,17 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type ReviewModalProps = {
+  providerId: string;
+  open: boolean;
+  onClose: () => void;
+};
+
 export default function ReviewModal({
   providerId,
   open,
   onClose,
-}: any) {
+}: ReviewModalProps) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] =
     useState("");

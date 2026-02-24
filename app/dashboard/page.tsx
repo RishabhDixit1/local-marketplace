@@ -28,9 +28,6 @@ MapPin,
 MessageCircle,
 Filter,
 TrendingUp,
-Bookmark,
-Share2,
-Flag,
 } from "lucide-react";
 
 /* ================= TYPES ================= */
@@ -155,19 +152,6 @@ const parsePostText = (rawText: string) => {
   return { title, description, budget, category, media };
 };
 
-const formatTimeAgo = (timestamp?: string) => {
-  if (!timestamp) return "Just now";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
 const pseudoDistance = (seed: string) => {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -189,7 +173,6 @@ const [showTrendingOnly, setShowTrendingOnly] = useState(false);
 const [highlightedId, setHighlightedId] = useState<string | null>(null);
 const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
 const [openPostModal, setOpenPostModal] = useState(false);
-const [savedIds, setSavedIds] = useState<string[]>([]);
 const [focusTarget, setFocusTarget] = useState<{
   id: string;
   type: string;
@@ -584,28 +567,6 @@ setMessageLoadingId(null);
 router.push(`/dashboard/chat?open=${targetConversationId}`);
 };
 
-const toggleSaved = (listingId: string) => {
-  setSavedIds((current) =>
-    current.includes(listingId)
-      ? current.filter((id) => id !== listingId)
-      : [...current, listingId]
-  );
-};
-
-const shareListing = async (listing: Listing) => {
-  const url = `${window.location.origin}/dashboard?focus=${listing.id}&type=${listing.type}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    alert("Listing link copied.");
-  } catch {
-    alert("Unable to copy link.");
-  }
-};
-
-const reportListing = (listing: Listing) => {
-  alert(`Thanks. We'll review "${listing.title}" shortly.`);
-};
-
 const categories = ["all", "demand", "service", "product"];
 
 /* ================= UI ================= */
@@ -831,6 +792,7 @@ return ( <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black t
                   {item.media.slice(0, 3).map((mediaItem, index) => {
                     if (mediaItem.mimeType.startsWith("image/")) {
                       return (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={`${item.id}-media-${index}`}
                           src={mediaItem.url}

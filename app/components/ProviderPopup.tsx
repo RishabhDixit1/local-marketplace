@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -66,11 +67,14 @@ export default function ProviderPopup({
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-3">
-            <img
+            <Image
               src={
                 profile.avatar_url ||
                 "https://i.pravatar.cc/150"
               }
+              alt={profile.name || "Provider avatar"}
+              width={48}
+              height={48}
               className="w-12 h-12 rounded-full"
             />
 

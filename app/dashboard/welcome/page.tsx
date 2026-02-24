@@ -433,7 +433,7 @@ export default function WelcomePage() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-black text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <div className="max-w-6xl mx-auto py-2 sm:py-4 space-y-6 sm:space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -497,7 +497,7 @@ export default function WelcomePage() {
           </div>
 
           <div className="rounded-3xl p-6 bg-gradient-to-r from-blue-600/15 to-purple-600/15 border border-blue-500/20">
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <h2 className="text-xl font-semibold">{isProvider ? "Provider Launchpad" : "Customer Launchpad"}</h2>
               <span className="text-sm text-slate-300">
                 {onboardingSteps.filter((step) => step.done).length}/{onboardingSteps.length} completed
@@ -543,7 +543,7 @@ export default function WelcomePage() {
                 Manage your services, products, pricing, and incoming requests from nearby customers.
               </p>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
                 <div className="rounded-xl bg-slate-900 border border-slate-700 p-3">
                   <p className="text-xs text-slate-400">Services</p>
                   <p className="text-lg font-semibold">{providerSnapshot.services}</p>
@@ -564,7 +564,7 @@ export default function WelcomePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
                 <button
                   onClick={() => router.push(routes.addService)}
                   className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500"
@@ -598,14 +598,14 @@ export default function WelcomePage() {
           )}
 
           <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
               <h2 className="text-xl font-semibold">What&apos;s Happening Nearby</h2>
               <button onClick={() => router.push(routes.posts)} className="text-sm text-indigo-300 hover:text-indigo-200">
                 Explore all
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {nearbyCards.map((card) => (
                 <div key={card.id} className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
                   <div className="relative h-36">
@@ -636,10 +636,13 @@ export default function WelcomePage() {
           </div>
 
           <div className="rounded-3xl p-6 bg-slate-900 border border-slate-800">
-            <h2 className="font-semibold mb-4">Core Platform Features</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="font-semibold">Core Platform Features</h2>
+              <span className="text-xs text-slate-400">All essentials in one place</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-fr">
               {features.map((f, i) => (
-                <div key={i} className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                <div key={i} className="p-4 rounded-xl bg-slate-950 border border-slate-800 h-full">
                   <f.icon className="text-indigo-400 mb-2" />
                   <div className="font-semibold">{f.title}</div>
                   <div className="text-sm text-slate-400">{f.desc}</div>

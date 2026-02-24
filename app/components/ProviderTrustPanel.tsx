@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { BadgeCheck, Clock3, ExternalLink, MapPin, MessageCircle, Star, X } from "lucide-react";
@@ -145,9 +146,11 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
         ) : (
           <>
             <div className="mb-6 text-center">
-              <img
+              <Image
                 src={profile?.avatar_url || "https://i.pravatar.cc/150"}
                 alt={profile?.name || "Provider"}
+                width={96}
+                height={96}
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
               <h2 className="text-xl font-semibold">{profile?.name || "Provider"}</h2>
