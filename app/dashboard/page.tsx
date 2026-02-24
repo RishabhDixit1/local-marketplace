@@ -930,7 +930,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
           Nearby Map
         </h2>
 
-        <div className="h-60 bg-slate-100 rounded-xl overflow-hidden">
+        <div className="h-[15rem] sm:h-60 rounded-xl">
           <MarketplaceMap
             items={feed.map((item) => ({
               id: item.id,

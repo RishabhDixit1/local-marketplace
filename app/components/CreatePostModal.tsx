@@ -260,9 +260,6 @@ export default function CreatePostModal({
 
     const payload: Record<string, string> = {
       user_id: user.id,
-      created_by: user.id,
-      provider_id: user.id,
-      author_id: user.id,
       type,
       post_type: type,
       status: "open",
@@ -283,7 +280,71 @@ export default function CreatePostModal({
       return match?.[1] || null;
     };
 
+    const getForeignKeyColumn = (message: string, details?: string | null) => {
+      const detailMatch = details?.match(/Key \(([^)]+)\)=\([^)]+\) is not present in table/i);
+      if (detailMatch?.[1]) {
+        return detailMatch[1];
+      }
+      const constraintMatch = message.match(/constraint\s+\"[^\"]+_([a-z0-9_]+)_fkey\"/i);
+      return constraintMatch?.[1] || null;
+    };
+
+    const getForeignKeyTargetTable = (details?: string | null) => {
+      const match = details?.match(/is not present in table \"([^\"]+)\"/i);
+      return match?.[1] || null;
+    };
+
+    const ensureAuthorReference = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile?.id) {
+        return profile.id as string;
+      }
+
+      const fallbackName =
+        (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()) ||
+        (typeof user.user_metadata?.name === "string" && user.user_metadata.name.trim()) ||
+        user.email?.split("@")[0] ||
+        "Local User";
+
+      const profilePayloads: Record<string, unknown>[] = [
+        {
+          id: user.id,
+          name: fallbackName,
+          location: "Not set",
+          bio: "Joined local marketplace",
+          role: "seeker",
+          services: [],
+          availability: "available",
+          email: user.email || null,
+        },
+        {
+          id: user.id,
+          name: fallbackName,
+          email: user.email || null,
+        },
+        { id: user.id },
+      ];
+
+      for (const profilePayload of profilePayloads) {
+        const { error } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "id" });
+
+        if (!error) {
+          return user.id;
+        }
+      }
+
+      return null;
+    };
+
     let publishError: { message: string } | null = null;
+    const blockedColumns = new Set<string>();
 
     for (let i = 0; i < 20; i += 1) {
       const result = await supabase.from("posts").insert(payload);
@@ -300,7 +361,7 @@ export default function CreatePostModal({
       }
 
       const required = getRequiredNullColumn(result.error.message);
-      if (required) {
+      if (required && !blockedColumns.has(required)) {
         if (["text", "content", "description", "body", "message"].includes(required)) {
           payload[required] = composedText;
           continue;
@@ -319,6 +380,33 @@ export default function CreatePostModal({
         }
         if (["status", "state"].includes(required)) {
           payload[required] = "open";
+          continue;
+        }
+      }
+
+      const foreignKeyColumn = getForeignKeyColumn(
+        result.error.message,
+        "details" in result.error ? result.error.details : null
+      );
+      if (foreignKeyColumn && payload[foreignKeyColumn] !== undefined) {
+        const foreignKeyTargetTable = getForeignKeyTargetTable(
+          "details" in result.error ? result.error.details : null
+        );
+
+        if (
+          foreignKeyColumn === "author_id" &&
+          (foreignKeyTargetTable === "profiles" || !foreignKeyTargetTable)
+        ) {
+          const ensuredAuthorId = await ensureAuthorReference();
+          if (ensuredAuthorId) {
+            payload[foreignKeyColumn] = ensuredAuthorId;
+            continue;
+          }
+        }
+
+        if (["author_id", "provider_id", "created_by"].includes(foreignKeyColumn)) {
+          delete payload[foreignKeyColumn];
+          blockedColumns.add(foreignKeyColumn);
           continue;
         }
       }

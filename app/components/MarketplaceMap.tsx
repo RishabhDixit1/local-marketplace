@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 
 type MapItem = {
@@ -13,6 +14,26 @@ type MapItem = {
 type Props = {
   items: MapItem[];
 };
+
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const refresh = () => map.invalidateSize();
+    const raf = window.requestAnimationFrame(refresh);
+
+    window.addEventListener("resize", refresh);
+    window.addEventListener("orientationchange", refresh);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", refresh);
+      window.removeEventListener("orientationchange", refresh);
+    };
+  }, [map]);
+
+  return null;
+}
 
 // Fix default marker icon issue
 type LeafletIconDefaultPrototype = typeof L.Icon.Default.prototype & {
@@ -32,13 +53,15 @@ L.Icon.Default.mergeOptions({
 
 export default function MarketplaceMap({ items }: Props) {
   return (
-    <div className="h-72 w-full rounded-xl overflow-hidden">
+    <div className="relative isolate z-0 h-full min-h-[14rem] w-full overflow-hidden rounded-xl">
       <MapContainer
+        className="h-full w-full"
         center={[28.6139, 77.209]}
         zoom={12}
         scrollWheelZoom={false}
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: "100%", width: "100%", zIndex: 0 }}
       >
+        <MapResizeHandler />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="© OpenStreetMap contributors"

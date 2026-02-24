@@ -145,7 +145,7 @@ export default function DashboardLayout({
       </div>
 
       <div
-        className={`lg:hidden fixed inset-0 z-50 transition-opacity duration-200 ${
+        className={`lg:hidden fixed inset-0 z-[1300] transition-opacity duration-200 ${
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
