@@ -12,6 +12,22 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 20000): Promise<T> => {
+    let timeoutId: number | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(new Error("Request timed out. Please try again."));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    }
+  };
+
   const login = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
@@ -25,33 +41,47 @@ export default function LoginPage() {
     const baseUrl = window.location.origin;
     const redirectTo = `${baseUrl}/dashboard`;
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOtp({
+          email: trimmedEmail,
+          options: {
+            emailRedirectTo: redirectTo,
+          },
+        })
+      );
 
-    if (error) {
-      const message = error.message || "Unable to send login link right now.";
+      if (error) {
+        const message = error.message || "Unable to send login link right now.";
 
-      if (/redirect|site url|not allowed|url/i.test(message)) {
-        setErrorMessage(
-          `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
-        );
-      } else if (/rate|too many/i.test(message)) {
-        setErrorMessage("Too many requests. Wait a minute and try again.");
-      } else {
-        setErrorMessage(message);
+        if (/redirect|site url|not allowed|url/i.test(message)) {
+          setErrorMessage(
+            `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
+          );
+        } else if (/rate|too many/i.test(message)) {
+          setErrorMessage("Too many requests. Wait a minute and try again.");
+        } else {
+          setErrorMessage(message);
+        }
+
+        setSent(false);
+        return;
       }
 
+      setSent(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to send login link right now.";
+      if (/timed out/i.test(message)) {
+        setErrorMessage("Request timed out. Check your internet and try again.");
+      } else {
+        setErrorMessage(
+          "Network/auth request failed. Verify Supabase URL/anon key and allowed redirect URLs, then retry."
+        );
+      }
       setSent(false);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setSent(true);
-    setLoading(false);
   };
 
   return (
