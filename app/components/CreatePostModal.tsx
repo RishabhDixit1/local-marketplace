@@ -130,15 +130,15 @@ export default function CreatePostModal({
 
   const pickAttachmentIcon = (mimeType: string) => {
     if (mimeType.startsWith("image/")) {
-      return <FileImage size={14} className="text-emerald-300" />;
+      return <FileImage size={14} className="text-emerald-600" />;
     }
     if (mimeType.startsWith("video/")) {
-      return <FileVideo2 size={14} className="text-violet-300" />;
+      return <FileVideo2 size={14} className="text-violet-600" />;
     }
     if (mimeType.startsWith("audio/")) {
-      return <FileAudio2 size={14} className="text-amber-300" />;
+      return <FileAudio2 size={14} className="text-amber-600" />;
     }
-    return <Paperclip size={14} className="text-slate-300" />;
+    return <Paperclip size={14} className="text-slate-500" />;
   };
 
   const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -341,24 +341,24 @@ export default function CreatePostModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[3000] bg-black/65 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-[3000] bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       <motion.div
         initial={{ scale: 0.94, opacity: 0, y: 8 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-indigo-500/30 bg-[linear-gradient(180deg,#151d46_0%,#111736_100%)] text-white shadow-[0_18px_70px_rgba(79,70,229,0.35)]"
+        className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[0_22px_80px_rgba(15,23,42,0.28)]"
       >
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200">
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">Create Post</h2>
           <button
             onClick={closeModal}
-            className="h-9 w-9 rounded-full border border-white/20 grid place-content-center hover:bg-white/10"
+            className="h-9 w-9 rounded-full border border-slate-300 text-slate-600 grid place-content-center hover:bg-slate-100 transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="p-4 sm:p-6 space-y-4">
-          <div className="rounded-xl border border-white/15 bg-slate-900/40 p-1 grid grid-cols-3 gap-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-1 grid grid-cols-3 gap-1">
             {(["need", "service", "product"] as PostType[]).map((option) => (
               <button
                 key={option}
@@ -366,8 +366,8 @@ export default function CreatePostModal({
                 onClick={() => setType(option)}
                 className={`rounded-lg px-3 py-2.5 text-sm font-semibold capitalize transition ${
                   type === option
-                    ? "bg-gradient-to-r from-indigo-500 to-violet-600"
-                    : "text-slate-300 hover:bg-white/5"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                    : "text-slate-600 hover:bg-white"
                 }`}
               >
                 {option}
@@ -381,8 +381,8 @@ export default function CreatePostModal({
               onClick={() => setMode("urgent")}
               className={`rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 ${
                 mode === "urgent"
-                  ? "bg-amber-500/25 text-amber-200 border border-amber-400/40"
-                  : "bg-slate-900/40 border border-white/10 text-slate-300"
+                  ? "bg-amber-100 text-amber-700 border border-amber-300"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               <Zap size={16} /> Urgent
@@ -392,22 +392,22 @@ export default function CreatePostModal({
               onClick={() => setMode("schedule")}
               className={`rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 ${
                 mode === "schedule"
-                  ? "bg-indigo-500/25 text-indigo-200 border border-indigo-400/40"
-                  : "bg-slate-900/40 border border-white/10 text-slate-300"
+                  ? "bg-indigo-100 text-indigo-700 border border-indigo-300"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               <CalendarDays size={16} /> Schedule for Later
             </button>
           </div>
 
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600">
             {mode === "urgent"
               ? "Urgent posts are highlighted and pushed faster to nearby providers."
               : "Scheduled posts will go live at the selected date and time."}
           </p>
 
           <div>
-            <label className="text-sm text-slate-200">Title</label>
+            <label className="text-sm text-slate-700">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -418,24 +418,24 @@ export default function CreatePostModal({
                     ? "I offer AC repair"
                     : "Selling cordless drill"
               }
-              className="mt-1.5 w-full rounded-xl border border-white/15 bg-slate-900/50 p-3 outline-none focus:border-indigo-400"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
           <div>
-            <label className="text-sm text-slate-200">Details</label>
+            <label className="text-sm text-slate-700">Details</label>
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               placeholder="Describe what you need or offer..."
               rows={4}
-              className="mt-1.5 w-full rounded-xl border border-white/15 bg-slate-900/50 p-3 outline-none focus:border-indigo-400"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
           <div>
-            <label className="text-sm text-slate-200">Attachments (image/video/audio)</label>
-            <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300/40 bg-slate-900/40 px-4 py-3 text-sm text-slate-200 hover:border-indigo-300/70">
+            <label className="text-sm text-slate-700">Attachments (image/video/audio)</label>
+            <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
               <Paperclip size={16} />
               Add files
               <input
@@ -451,17 +451,17 @@ export default function CreatePostModal({
                 {attachments.map((file, index) => (
                   <div
                     key={`${file.name}-${file.size}-${index}`}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/40 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       {pickAttachmentIcon(file.type)}
-                      <span className="truncate text-slate-100">{file.name}</span>
+                      <span className="truncate text-slate-700">{file.name}</span>
                       <span className="text-xs text-slate-400">{formatBytes(file.size)}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeAttachment(index)}
-                      className="rounded-md px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/15"
+                      className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
                     >
                       Remove
                     </button>
@@ -473,16 +473,16 @@ export default function CreatePostModal({
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-slate-200">Needed Within</label>
+              <label className="text-sm text-slate-700">Needed Within</label>
               <div className="mt-1.5 relative">
                 <Clock3 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <select
                   value={neededWithin}
                   onChange={(e) => setNeededWithin(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/50 py-3 pl-9 pr-3 outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                   {urgencyWindows.map((window) => (
-                    <option key={window} value={window} className="bg-slate-900">
+                    <option key={window} value={window}>
                       {window}
                     </option>
                   ))}
@@ -491,14 +491,14 @@ export default function CreatePostModal({
             </div>
 
             <div>
-              <label className="text-sm text-slate-200">Budget</label>
+              <label className="text-sm text-slate-700">Budget</label>
               <div className="mt-1.5 relative">
                 <Wallet size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                   placeholder="Enter budget"
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/50 py-3 pl-9 pr-3 outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
@@ -507,21 +507,21 @@ export default function CreatePostModal({
           {mode === "schedule" && (
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-slate-200">Date</label>
+                <label className="text-sm text-slate-700">Date</label>
                 <input
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-slate-900/50 p-3 outline-none focus:border-indigo-400"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
               <div>
-                <label className="text-sm text-slate-200">Time</label>
+                <label className="text-sm text-slate-700">Time</label>
                 <input
                   type="time"
                   value={scheduleTime}
                   onChange={(e) => setScheduleTime(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-slate-900/50 p-3 outline-none focus:border-indigo-400"
+                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
@@ -529,16 +529,16 @@ export default function CreatePostModal({
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-slate-200">Category</label>
+              <label className="text-sm text-slate-700">Category</label>
               <div className="mt-1.5 relative">
                 <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/50 py-3 pl-9 pr-3 outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                   {defaultCategories.map((item) => (
-                    <option key={item} value={item} className="bg-slate-900">
+                    <option key={item} value={item}>
                       {item}
                     </option>
                   ))}
@@ -546,19 +546,19 @@ export default function CreatePostModal({
               </div>
             </div>
             <div>
-              <label className="text-sm text-slate-200">Location</label>
+              <label className="text-sm text-slate-700">Location</label>
               <div className="mt-1.5 relative">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   value={locationLabel}
                   onChange={(e) => setLocationLabel(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-slate-900/50 py-3 pl-9 pr-3 outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={flexibleTiming}
@@ -567,7 +567,7 @@ export default function CreatePostModal({
             Flexible timing
           </label>
 
-          <div className="rounded-xl border border-white/10 bg-slate-900/40 px-4 py-3 text-sm text-slate-200">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
             {summary}
           </div>
 

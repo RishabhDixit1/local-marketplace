@@ -30,11 +30,11 @@ const normalizeLeadStatus = (status: string): LeadStage => {
 };
 
 const statusPillClass = (status: LeadStage) => {
-  if (status === "new_lead") return "bg-amber-500/20 text-amber-300";
-  if (status === "quoted") return "bg-blue-500/20 text-blue-300";
-  if (status === "accepted") return "bg-indigo-500/20 text-indigo-300";
-  if (status === "completed") return "bg-emerald-500/20 text-emerald-300";
-  return "bg-red-500/20 text-red-300";
+  if (status === "new_lead") return "bg-amber-100 text-amber-700";
+  if (status === "quoted") return "bg-blue-100 text-blue-700";
+  if (status === "accepted") return "bg-indigo-100 text-indigo-700";
+  if (status === "completed") return "bg-emerald-100 text-emerald-700";
+  return "bg-rose-100 text-rose-700";
 };
 
 const statusLabel = (status: LeadStage) => {
@@ -115,18 +115,19 @@ export default function ProviderOrdersPage() {
 
   if (!providerId && !loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black p-6 text-white">
-        <p className="text-slate-300">Please log in as a provider to manage leads.</p>
+      <div className="w-full max-w-[2200px] mx-auto">
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-700">
+          Please log in as a provider to manage leads.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-black p-6 text-white">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600/25 to-pink-600/20 p-5 sm:p-6">
+    <div className="w-full max-w-[2200px] mx-auto space-y-6">
+        <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 p-5 sm:p-6 text-white shadow-lg">
           <h1 className="text-2xl font-bold">Lead Pipeline</h1>
-          <p className="mt-1 text-sm text-slate-200">
+          <p className="mt-1 text-sm text-white/90">
             Track each customer journey: new lead, quoted, accepted, and completed.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -138,13 +139,13 @@ export default function ProviderOrdersPage() {
         </div>
 
         {loading && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-slate-300">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
             Loading lead pipeline...
           </div>
         )}
 
         {!loading && orders.length === 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-slate-300">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
             No leads yet. Publish services/products so nearby customers can find you.
           </div>
         )}
@@ -160,12 +161,12 @@ export default function ProviderOrdersPage() {
                 key={order.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm text-slate-400">{order.listing_type.toUpperCase()} LEAD</p>
-                    <p className="text-lg font-semibold">₹ {order.price}</p>
+                    <p className="text-sm text-slate-500">{order.listing_type.toUpperCase()} LEAD</p>
+                    <p className="text-lg font-semibold text-slate-900">₹ {order.price}</p>
                     <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleString()}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusPillClass(stage)}`}>
@@ -181,8 +182,8 @@ export default function ProviderOrdersPage() {
                         key={`${order.id}-${step}`}
                         className={`rounded-xl border px-3 py-2 text-xs ${
                           complete
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                            : "border-slate-700 bg-slate-950 text-slate-500"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-slate-50 text-slate-500"
                         }`}
                       >
                         {statusLabel(step)}
@@ -197,7 +198,7 @@ export default function ProviderOrdersPage() {
                       <button
                         onClick={() => updateStatus(order.id, "quoted")}
                         disabled={isBusy}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-70"
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-70 transition-colors"
                       >
                         <Send size={14} />
                         Send Quote
@@ -205,7 +206,7 @@ export default function ProviderOrdersPage() {
                       <button
                         onClick={() => updateStatus(order.id, "rejected")}
                         disabled={isBusy}
-                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium hover:bg-red-500 disabled:opacity-70"
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-500 disabled:opacity-70 transition-colors"
                       >
                         <XCircle size={14} />
                         Reject
@@ -217,7 +218,7 @@ export default function ProviderOrdersPage() {
                     <button
                       onClick={() => updateStatus(order.id, "accepted")}
                       disabled={isBusy}
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-70 transition-colors"
                     >
                       <Clock3 size={14} />
                       Mark Accepted
@@ -228,7 +229,7 @@ export default function ProviderOrdersPage() {
                     <button
                       onClick={() => updateStatus(order.id, "completed")}
                       disabled={isBusy}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-70"
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-70 transition-colors"
                     >
                       <CheckCircle2 size={14} />
                       Mark Completed
@@ -236,7 +237,7 @@ export default function ProviderOrdersPage() {
                   )}
 
                   {isBusy && (
-                    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-3 py-2 text-sm text-slate-300">
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-600">
                       <Loader2 size={14} className="animate-spin" />
                       Updating...
                     </span>
@@ -246,16 +247,15 @@ export default function ProviderOrdersPage() {
             );
           })}
         </div>
-      </div>
     </div>
   );
 }
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-950/80 p-3">
-      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    <div className="rounded-xl border border-white/30 bg-white/15 p-3">
+      <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
     </div>
   );
 }
