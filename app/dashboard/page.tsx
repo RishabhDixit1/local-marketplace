@@ -46,10 +46,18 @@ Sparkles,
 Users,
 Activity,
 Clock3,
+SlidersHorizontal,
+ShieldCheck,
+Zap,
+ImageIcon,
+RotateCcw,
+RefreshCw,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 48;
 const MAX_PROFILE_LOOKUP = 120;
+const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
+const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /* ================= TYPES ================= */
 
@@ -324,6 +332,50 @@ const parsePostText = (rawText: string) => {
   return { title, description, budget, category, location, media };
 };
 
+const parseDateMs = (value?: string) => {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const isFreshListing = (value?: string) => {
+  const createdAtMs = parseDateMs(value);
+  if (!createdAtMs) return false;
+  return Date.now() - createdAtMs <= FRESH_WINDOW_MS;
+};
+
+const formatRelativeAge = (value?: string) => {
+  const createdAtMs = parseDateMs(value);
+  if (!createdAtMs) return "Recently posted";
+
+  const diffMs = Math.max(0, Date.now() - createdAtMs);
+  const minutes = Math.floor(diffMs / (60 * 1000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const formatSyncTime = (iso?: string) => {
+  if (!iso) return "--";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const getListingSignals = (item: Listing) => {
+  const signals: string[] = [];
+  if (item.urgent) signals.push("Urgent demand");
+  if (item.distance <= 3) signals.push(`${item.distance} km nearby`);
+  if (item.responseMinutes <= 15) signals.push(`Responds in ~${item.responseMinutes}m`);
+  if (item.verificationStatus === "verified") signals.push("Verified business");
+  if ((item.media?.length || 0) > 0) signals.push("Media attached");
+  if (item.rankScore >= 85) signals.push(`High match ${item.rankScore}`);
+  return signals.slice(0, 3);
+};
+
 /* ================= PAGE ================= */
 
 export default function MarketplacePage() {
@@ -331,6 +383,8 @@ export default function MarketplacePage() {
   const demoFeed = useMemo(() => buildDemoFeed(), []);
   const [feed, setFeed] = useState<Listing[]>(demoFeed);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [feedError, setFeedError] = useState("");
   const [usingDemoFeed, setUsingDemoFeed] = useState(true);
   const [mapReady, setMapReady] = useState(false);
@@ -338,8 +392,14 @@ export default function MarketplacePage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [sortBy, setSortBy] = useState<"best" | "distance" | "price">("best");
+  const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("best");
   const [showTrendingOnly, setShowTrendingOnly] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(0);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [mediaOnly, setMediaOnly] = useState(false);
+  const [freshOnly, setFreshOnly] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [openPostModal, setOpenPostModal] = useState(false);
@@ -348,10 +408,76 @@ export default function MarketplacePage() {
     type: string;
   } | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const reloadTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(MARKETPLACE_FILTERS_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as {
+        category?: string;
+        sortBy?: "best" | "distance" | "price" | "latest";
+        showTrendingOnly?: boolean;
+        maxDistanceKm?: number;
+        verifiedOnly?: boolean;
+        urgentOnly?: boolean;
+        mediaOnly?: boolean;
+        freshOnly?: boolean;
+        showAdvancedFilters?: boolean;
+      };
+
+      if (typeof parsed.category === "string") setCategory(parsed.category);
+      if (parsed.sortBy && ["best", "distance", "price", "latest"].includes(parsed.sortBy)) {
+        setSortBy(parsed.sortBy);
+      }
+      if (typeof parsed.showTrendingOnly === "boolean") setShowTrendingOnly(parsed.showTrendingOnly);
+      if (Number.isFinite(parsed.maxDistanceKm)) setMaxDistanceKm(Number(parsed.maxDistanceKm));
+      if (typeof parsed.verifiedOnly === "boolean") setVerifiedOnly(parsed.verifiedOnly);
+      if (typeof parsed.urgentOnly === "boolean") setUrgentOnly(parsed.urgentOnly);
+      if (typeof parsed.mediaOnly === "boolean") setMediaOnly(parsed.mediaOnly);
+      if (typeof parsed.freshOnly === "boolean") setFreshOnly(parsed.freshOnly);
+      if (typeof parsed.showAdvancedFilters === "boolean") setShowAdvancedFilters(parsed.showAdvancedFilters);
+    } catch {
+      window.localStorage.removeItem(MARKETPLACE_FILTERS_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload = {
+      category,
+      sortBy,
+      showTrendingOnly,
+      maxDistanceKm,
+      verifiedOnly,
+      urgentOnly,
+      mediaOnly,
+      freshOnly,
+      showAdvancedFilters,
+    };
+    window.localStorage.setItem(MARKETPLACE_FILTERS_STORAGE_KEY, JSON.stringify(payload));
+  }, [
+    category,
+    freshOnly,
+    maxDistanceKm,
+    mediaOnly,
+    showAdvancedFilters,
+    showTrendingOnly,
+    sortBy,
+    urgentOnly,
+    verifiedOnly,
+  ]);
 
   /* ================= FETCH ================= */
-  const fetchFeed = useCallback(async () => {
-    setIsFeedLoading(true);
+  const fetchFeed = useCallback(async (soft = false) => {
+    if (soft) {
+      setSyncing(true);
+    } else {
+      setIsFeedLoading(true);
+    }
     setFeedError("");
 
     try {
@@ -753,18 +879,65 @@ export default function MarketplacePage() {
         setFeed(liveFeed);
         setUsingDemoFeed(false);
       }
+      setLastSyncedAt(new Date().toISOString());
     } catch (error) {
       console.error("Failed to load marketplace feed:", error);
-      setFeed(demoFeed);
-      setUsingDemoFeed(true);
-      setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
+      if (soft) {
+        setFeedError(error instanceof Error ? `${error.message}. Keeping current feed.` : "Keeping current feed.");
+      } else {
+        setFeed(demoFeed);
+        setUsingDemoFeed(true);
+        setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
+      }
     } finally {
-      setIsFeedLoading(false);
+      if (soft) {
+        setSyncing(false);
+      } else {
+        setIsFeedLoading(false);
+      }
     }
   }, [demoFeed]);
 
   useEffect(() => {
     void fetchFeed();
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      reloadTimerRef.current = window.setTimeout(() => {
+        void fetchFeed(true);
+      }, 300);
+    };
+
+    const channel = supabase
+      .channel("dashboard-feed-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
+      .subscribe();
+
+    return () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void fetchFeed(true);
+    }, 60000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [fetchFeed]);
 
   useEffect(() => {
@@ -817,33 +990,91 @@ export default function MarketplacePage() {
 
 /* ================= FILTER + SORT ================= */
 
-const filtered = feed
-.filter((item) => {
-const matchesSearch = item.title
-.toLowerCase()
-.includes(search.toLowerCase());
+const filtered = useMemo(() => {
+  const query = search.toLowerCase().trim();
+  return [...feed]
+    .filter((item) => {
+      const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName || ""}`.toLowerCase();
+      const matchesSearch = !query || haystack.includes(query);
 
+      const normalizedCategory = category.toLowerCase();
+      const matchesCategory =
+        category === "all" ||
+        item.category.toLowerCase().includes(normalizedCategory) ||
+        item.type === normalizedCategory;
 
-  const matchesCategory =
-    category === "all" ||
-    item.category.toLowerCase() === category.toLowerCase() ||
-    item.type === category.toLowerCase();
+      const matchesTrending = showTrendingOnly ? item.type === "demand" : true;
+      const matchesDistance = maxDistanceKm > 0 ? item.distance <= maxDistanceKm : true;
+      const matchesVerified = verifiedOnly ? item.verificationStatus === "verified" : true;
+      const matchesUrgent = urgentOnly ? !!item.urgent : true;
+      const matchesMedia = mediaOnly ? (item.media?.length || 0) > 0 : true;
+      const matchesFresh = freshOnly ? isFreshListing(item.createdAt) : true;
 
-  const matchesTrending = showTrendingOnly
-    ? item.type === "demand"
-    : true;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesTrending &&
+        matchesDistance &&
+        matchesVerified &&
+        matchesUrgent &&
+        matchesMedia &&
+        matchesFresh
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "best") {
+        return b.rankScore - a.rankScore || a.distance - b.distance;
+      }
+      if (sortBy === "distance") {
+        return a.distance - b.distance;
+      }
+      if (sortBy === "latest") {
+        return parseDateMs(b.createdAt) - parseDateMs(a.createdAt) || b.rankScore - a.rankScore;
+      }
+      return a.price - b.price;
+    });
+}, [category, feed, freshOnly, maxDistanceKm, mediaOnly, search, showTrendingOnly, sortBy, urgentOnly, verifiedOnly]);
 
-  return matchesSearch && matchesCategory && matchesTrending;
-})
-.sort((a, b) => {
-  if (sortBy === "best") {
-    return b.rankScore - a.rankScore || a.distance - b.distance;
-  }
-  if (sortBy === "distance") {
-    return a.distance - b.distance;
-  }
-  return a.price - b.price;
-});
+const activeFilterCount =
+  Number(showTrendingOnly) +
+  Number(maxDistanceKm > 0) +
+  Number(verifiedOnly) +
+  Number(urgentOnly) +
+  Number(mediaOnly) +
+  Number(freshOnly);
+
+const filteredStats = useMemo(() => {
+  const verified = filtered.filter((item) => item.verificationStatus === "verified").length;
+  const urgent = filtered.filter((item) => item.urgent).length;
+  const withMedia = filtered.filter((item) => (item.media?.length || 0) > 0).length;
+  const avgMatch = filtered.length
+    ? Math.round(filtered.reduce((sum, item) => sum + item.rankScore, 0) / filtered.length)
+    : 0;
+  return {
+    total: filtered.length,
+    verified,
+    urgent,
+    withMedia,
+    avgMatch,
+  };
+}, [filtered]);
+
+const trendingDemands = useMemo(
+  () =>
+    filtered
+      .filter((item) => item.type === "demand")
+      .sort((a, b) => b.rankScore - a.rankScore)
+      .slice(0, 2),
+  [filtered]
+);
+
+const clearAdvancedFilters = () => {
+  setMaxDistanceKm(0);
+  setVerifiedOnly(false);
+  setUrgentOnly(false);
+  setMediaOnly(false);
+  setFreshOnly(false);
+};
 
 
 /* ================= BOOK ================= */
@@ -1010,39 +1241,56 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-[540px]">
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/profile")}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Complete Profile
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpenPostModal(true)}
-              className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
-            >
-              Post New Need
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/provider/add-service")}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Add Service
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFeed(demoFeed);
-                setUsingDemoFeed(true);
-                setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
-              }}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Load Demo Seed
-            </button>
+          <div className="w-full lg:w-[540px] space-y-2">
+            <div className="flex items-center justify-between rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs text-white/90">
+              <span className="inline-flex items-center gap-1.5">
+                {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => void fetchFeed(true)}
+                disabled={syncing}
+                className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                Refresh
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/profile")}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Complete Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenPostModal(true)}
+                className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+              >
+                Post New Need
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/provider/add-service")}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Add Service
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeed(demoFeed);
+                  setUsingDemoFeed(true);
+                  setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
+                }}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Load Demo Seed
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1071,87 +1319,202 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
   {/* SEARCH + SORT */}
   <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-5">
     <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm">
-    <div className="flex flex-col md:flex-row gap-3 mb-4">
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
+          <Search size={16} className="text-slate-500" />
+          <input
+            placeholder="Search services, products, needs..."
+            className="bg-transparent outline-none flex-1 text-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-      <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
-        <Search size={16} className="text-slate-500" />
-        <input
-          placeholder="Search services, products, needs..."
-          className="bg-transparent outline-none flex-1 text-sm"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+        <select
+          value={sortBy}
+          onChange={(e) =>
+            setSortBy(
+              e.target.value === "best"
+                ? "best"
+                : e.target.value === "price"
+                ? "price"
+                : e.target.value === "latest"
+                ? "latest"
+                : "distance"
+            )
+          }
+          className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto shadow-sm"
+        >
+          <option value="best">Sort: Best Match</option>
+          <option value="distance">Sort: Distance</option>
+          <option value="price">Sort: Price</option>
+          <option value="latest">Sort: Latest</option>
+        </select>
 
-      <select
-        value={sortBy}
-        onChange={(e) =>
-          setSortBy(
-            e.target.value === "best"
-              ? "best"
-              : e.target.value === "price"
-              ? "price"
-              : "distance"
-          )
-        }
-        className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto shadow-sm"
-      >
-        <option value="best">Sort: Best Match</option>
-        <option value="distance">Sort: Distance</option>
-        <option value="price">Sort: Price</option>
-      </select>
-
-      <button
-        onClick={() =>
-          setShowTrendingOnly(!showTrendingOnly)
-        }
-        className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm transition-colors ${
-          showTrendingOnly
-            ? "bg-indigo-600 border-indigo-600 text-white"
-            : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
-        }`}
-      >
-        <Filter size={16} />
-        {showTrendingOnly ? "Trending On" : "Trending"}
-      </button>
-    </div>
-
-    {/* CATEGORY FILTER */}
-    <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-      {categories.map((cat) => (
         <button
-          key={cat}
-          onClick={() => setCategory(cat)}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-            category === cat
-              ? "bg-indigo-600 text-white"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          onClick={() => setShowTrendingOnly(!showTrendingOnly)}
+          className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm transition-colors ${
+            showTrendingOnly
+              ? "bg-indigo-600 border-indigo-600 text-white"
+              : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
           }`}
         >
-          {cat.toUpperCase()}
+          <Filter size={16} />
+          {showTrendingOnly ? "Trending On" : "Trending"}
         </button>
-      ))}
-    </div>
 
-    {/* QUICK CHIPS */}
-    <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 mb-6">
-      {[
-        "Cleaning",
-        "Repair",
-        "Delivery",
-        "Food",
-        "Electrician",
-      ].map((chip) => (
         <button
-          key={chip}
-          onClick={() => setCategory(chip)}
-          className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
+          type="button"
+          onClick={() => setShowAdvancedFilters((current) => !current)}
+          className="border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm bg-white border-slate-200 text-slate-700 hover:border-indigo-300 transition-colors"
         >
-          {chip}
+          <SlidersHorizontal size={16} />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
-      ))}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+          <Activity size={12} />
+          {filteredStats.total} results
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+          <ShieldCheck size={12} />
+          {filteredStats.verified} verified
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+          <Zap size={12} />
+          {filteredStats.urgent} urgent
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+          <ImageIcon size={12} />
+          {filteredStats.withMedia} with media
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700">
+          Match {filteredStats.avgMatch}
+        </span>
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={clearAdvancedFilters}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <RotateCcw size={12} />
+            Reset advanced
+          </button>
+        )}
+      </div>
+
+      {/* CATEGORY FILTER */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+              category === cat
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            {cat.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* QUICK CHIPS */}
+      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
+        {[
+          "Cleaning",
+          "Repair",
+          "Delivery",
+          "Food",
+          "Electrician",
+        ].map((chip) => (
+          <button
+            key={chip}
+            onClick={() => {
+              setCategory("all");
+              setSearch(chip);
+            }}
+            className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      {showAdvancedFilters && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-xs text-slate-600">
+              Max distance
+              <select
+                value={String(maxDistanceKm)}
+                onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                <option value="0">Any distance</option>
+                <option value="3">Within 3 km</option>
+                <option value="8">Within 8 km</option>
+                <option value="15">Within 15 km</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => setVerifiedOnly((value) => !value)}
+              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                verifiedOnly
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Verified only
+            </button>
+            <button
+              type="button"
+              onClick={() => setUrgentOnly((value) => !value)}
+              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                urgentOnly
+                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Urgent only
+            </button>
+            <button
+              type="button"
+              onClick={() => setMediaOnly((value) => !value)}
+              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                mediaOnly
+                  ? "border-violet-300 bg-violet-50 text-violet-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Media only
+            </button>
+          </div>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setFreshOnly((value) => !value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                freshOnly
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Last 24 hours only
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
   </div>
 
   {/* MAIN GRID */}
@@ -1190,10 +1553,11 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => void fetchFeed()}
-                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                    onClick={() => void fetchFeed(true)}
+                    disabled={syncing}
+                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    Refresh Live Data
+                    {syncing ? "Refreshing..." : "Refresh Live Data"}
                   </button>
                   <button
                     type="button"
@@ -1240,11 +1604,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {feed
-                .filter((i) => i.type === "demand")
-                .sort((a, b) => b.rankScore - a.rankScore)
-                .slice(0, 2)
-                .map((item) => (
+              {trendingDemands.map((item) => (
                   <div
                     key={"trend-" + item.id}
                     className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -1262,15 +1622,27 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                     <div className="mt-2 font-semibold text-slate-900 line-clamp-1">{item.title}</div>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-indigo-600 font-bold">₹ {item.price}</span>
-                      <span className="text-xs font-medium text-indigo-700">Match {item.rankScore}</span>
+                      <span className="text-xs font-medium text-indigo-700">{formatRelativeAge(item.createdAt)}</span>
                     </div>
                   </div>
                 ))}
+              {trendingDemands.length === 0 && (
+                <div className="sm:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  No active demand trends for these filters yet.
+                </div>
+              )}
             </div>
           </div>
 
           {/* LIST */}
-          {filtered.map((item) => (
+          {filtered.map((item) => {
+            const listingSignals = getListingSignals(item);
+            const freshLabel = formatRelativeAge(item.createdAt);
+            const freshClassName = isFreshListing(item.createdAt)
+              ? "text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded"
+              : "text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded";
+
+            return (
             <div
               key={item.id}
               ref={(el) => {
@@ -1322,8 +1694,8 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                       </span>
                     )}
 
-                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
-                      Recently Posted
+                    <span className={freshClassName}>
+                      {freshLabel}
                     </span>
                   </div>
 
@@ -1407,6 +1779,19 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                     <span className="text-indigo-600">Match {item.rankScore}</span>
                   </div>
 
+                  {listingSignals.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {listingSignals.map((signal) => (
+                        <span
+                          key={`${item.id}-${signal}`}
+                          className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+                        >
+                          {signal}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {item.price > 0 && (
                     <div className="text-indigo-600 font-bold mt-2">
                       ₹ {item.price}
@@ -1442,15 +1827,29 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {!filtered.length && (
             <div className="rounded-2xl border border-slate-200 bg-white p-8">
-              <h3 className="text-xl font-semibold">No live listings yet</h3>
+              <h3 className="text-xl font-semibold text-slate-900">No listings match current filters</h3>
               <p className="text-slate-500 mt-2">
-                Start the local economy by posting a need or adding your first service/product listing.
+                Try widening your filters or create a new post/listing to activate this market segment.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setCategory("all");
+                    setSortBy("best");
+                    setShowTrendingOnly(false);
+                    clearAdvancedFilters();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
+                >
+                  Reset filters
+                </button>
                 <button
                   onClick={() => setOpenPostModal(true)}
                   className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
@@ -1491,7 +1890,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
         <div className="h-[15rem] sm:h-60 rounded-xl">
           {mapReady ? (
             <MarketplaceMap
-              items={feed.map((item) => ({
+              items={filtered.map((item) => ({
                 id: item.id,
                 title: item.title,
                 lat: item.lat,
@@ -1588,7 +1987,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     <CreatePostModal
       open={openPostModal}
       onClose={() => setOpenPostModal(false)}
-      onPublished={() => void fetchFeed()}
+      onPublished={() => void fetchFeed(true)}
     />
   )}
 </div>
