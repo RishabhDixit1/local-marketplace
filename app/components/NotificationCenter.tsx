@@ -414,7 +414,9 @@ export default function NotificationCenter() {
             <h3 className="font-bold text-slate-900">Notifications</h3>
             <p className="text-xs text-slate-500 mt-1">
               {unreadCount} unread ·{" "}
-              {demoMode ? "Demo feed (switches to live after SQL setup)" : "Live from orders, messages, and reviews"}
+              {demoMode
+                ? "Demo feed (switches to live after SQL setup)"
+                : "Live from orders, messages, reviews, and help matches"}
             </p>
           </div>
           <div
@@ -489,7 +491,7 @@ export default function NotificationCenter() {
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <p className="font-medium text-slate-800">No notifications yet</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  New alerts appear automatically when chats, orders, and reviews update.
+                  New alerts appear automatically when chats, orders, reviews, and help matches update.
                 </p>
               </div>
             </li>

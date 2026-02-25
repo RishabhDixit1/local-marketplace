@@ -20,11 +20,17 @@ import {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onPublished?: () => void | Promise<void>;
+  onPublished?: (result?: PublishPostResult) => void | Promise<void>;
 };
 
 type PostType = "need" | "service" | "product";
 type PostMode = "urgent" | "schedule";
+
+export type PublishPostResult = {
+  postType: PostType;
+  helpRequestId?: string;
+  matchedCount?: number;
+};
 
 type UploadedMedia = {
   name: string;
@@ -51,6 +57,8 @@ const urgencyWindows = [
   "Flexible",
 ];
 
+const radiusOptions = [3, 5, 8, 12, 20];
+
 const MAX_ATTACHMENTS = 6;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 const MEDIA_BUCKET = "post-media";
@@ -67,6 +75,7 @@ export default function CreatePostModal({
   const [budget, setBudget] = useState("");
   const [category, setCategory] = useState(defaultCategories[0]);
   const [locationLabel, setLocationLabel] = useState("2.2 km | Auto-detected");
+  const [radiusKm, setRadiusKm] = useState<number>(8);
   const [neededWithin, setNeededWithin] = useState(urgencyWindows[0]);
   const [scheduleTime, setScheduleTime] = useState("10:30");
   const [scheduleDate, setScheduleDate] = useState("");
@@ -82,6 +91,7 @@ export default function CreatePostModal({
     setBudget("");
     setCategory(defaultCategories[0]);
     setLocationLabel("2.2 km | Auto-detected");
+    setRadiusKm(8);
     setNeededWithin(urgencyWindows[0]);
     setScheduleDate("");
     setScheduleTime("10:30");
@@ -103,8 +113,8 @@ export default function CreatePostModal({
         : scheduleDate
           ? `${scheduleDate} ${scheduleTime}`
           : "time not set";
-    return `${modeText} • ${whenText} • ${locationLabel}`;
-  }, [locationLabel, mode, neededWithin, scheduleDate, scheduleTime]);
+    return `${modeText} • ${whenText} • ${locationLabel} • ${radiusKm} km reach`;
+  }, [locationLabel, mode, neededWithin, radiusKm, scheduleDate, scheduleTime]);
 
   const publishLabel = useMemo(() => {
     if (type === "service") {
@@ -198,6 +208,64 @@ export default function CreatePostModal({
       uploaded.push({ name: file.name, url: data.publicUrl, type: file.type });
     }
     return uploaded;
+  };
+
+  const mapUrgencyWindow = (value: string): "urgent" | "today" | "24h" | "week" | "flexible" => {
+    if (value === "Within 1 hour") return "urgent";
+    if (value === "Today") return "today";
+    if (value === "Within 24 hours") return "24h";
+    if (value === "This week") return "week";
+    return "flexible";
+  };
+
+  const resolveRequestCoordinates = async (
+    userId: string
+  ): Promise<{ latitude: number; longitude: number } | null> => {
+    const browserCoordinates = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+        resolve(null);
+        return;
+      }
+
+      const timeout = window.setTimeout(() => resolve(null), 2800);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          window.clearTimeout(timeout);
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        () => {
+          window.clearTimeout(timeout);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 2500, maximumAge: 60000 }
+      );
+    });
+
+    if (browserCoordinates) return browserCoordinates;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("latitude,longitude")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const latitude =
+      profile && typeof profile === "object" && Number.isFinite(Number((profile as Record<string, unknown>).latitude))
+        ? Number((profile as Record<string, unknown>).latitude)
+        : Number.NaN;
+    const longitude =
+      profile && typeof profile === "object" && Number.isFinite(Number((profile as Record<string, unknown>).longitude))
+        ? Number((profile as Record<string, unknown>).longitude)
+        : Number.NaN;
+
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return { latitude, longitude };
+    }
+
+    return null;
   };
 
   const publishPost = async () => {
@@ -414,15 +482,99 @@ export default function CreatePostModal({
       break;
     }
 
-    setPublishing(false);
-
     if (publishError) {
+      setPublishing(false);
       alert(`Failed to publish post: ${publishError.message}`);
       return;
     }
 
-    await onPublished?.();
-    alert("Post published successfully");
+    let helpRequestId: string | undefined;
+    let matchedCount: number | undefined;
+
+    if (type === "need") {
+      const numericBudget = Number((budget || "").replace(/[^\d.]/g, ""));
+      const requestCoordinates = await resolveRequestCoordinates(user.id);
+      const scheduledDateTime =
+        mode === "schedule" && scheduleDate
+          ? new Date(`${scheduleDate}T${scheduleTime || "00:00"}`)
+          : null;
+
+      const { data: insertedHelpRequest, error: helpRequestError } = await supabase
+        .from("help_requests")
+        .insert({
+          requester_id: user.id,
+          title: trimmedTitle,
+          details: trimmedDetails,
+          category,
+          urgency: mode === "urgent" ? mapUrgencyWindow(neededWithin) : "flexible",
+          needed_by:
+            scheduledDateTime && Number.isFinite(scheduledDateTime.getTime())
+              ? scheduledDateTime.toISOString()
+              : null,
+          budget_min: Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null,
+          budget_max: Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null,
+          location_label: locationLabel,
+          latitude: requestCoordinates?.latitude || null,
+          longitude: requestCoordinates?.longitude || null,
+          radius_km: radiusKm,
+          metadata: {
+            source: "create_post_modal",
+            mode,
+            needed_within: neededWithin,
+            flexible_timing: flexibleTiming,
+            attachment_count: uploadedMedia.length,
+          },
+        })
+        .select("id,matched_count")
+        .single();
+
+      if (helpRequestError) {
+        const missingTable =
+          /relation .*help_requests.* does not exist|could not find the 'help_requests' table/i.test(
+            helpRequestError.message
+          );
+        if (missingTable) {
+          alert(
+            'Post published, but structured matching is disabled. Run "supabase/secure_realtime_rls.sql" to enable help requests.'
+          );
+        } else {
+          console.warn("Could not create help request:", helpRequestError.message);
+        }
+      } else if (insertedHelpRequest?.id) {
+        helpRequestId = insertedHelpRequest.id as string;
+        matchedCount = Number(insertedHelpRequest.matched_count || 0);
+
+        const { data: matchResult, error: matchError } = await supabase.rpc("match_help_request", {
+          target_help_request_id: helpRequestId,
+        });
+
+        if (!matchError) {
+          if (typeof matchResult === "number") {
+            matchedCount = Number(matchResult);
+          } else if (Array.isArray(matchResult) && typeof matchResult[0] === "number") {
+            matchedCount = Number(matchResult[0]);
+          }
+        }
+      }
+    }
+
+    setPublishing(false);
+
+    await onPublished?.({
+      postType: type,
+      helpRequestId,
+      matchedCount,
+    });
+
+    if (type === "need" && helpRequestId) {
+      alert(
+        matchedCount && matchedCount > 0
+          ? `Help request published. ${matchedCount} provider matches are ready.`
+          : "Help request published. Matching is in progress."
+      );
+    } else {
+      alert("Post published successfully");
+    }
     closeModal();
   };
 
@@ -615,7 +767,7 @@ export default function CreatePostModal({
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-3 gap-3">
             <div>
               <label className="text-sm text-slate-700">Category</label>
               <div className="mt-1.5 relative">
@@ -642,6 +794,23 @@ export default function CreatePostModal({
                   onChange={(e) => setLocationLabel(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-slate-700">Reach Radius</label>
+              <div className="mt-1.5 relative">
+                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  value={String(radiusKm)}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                >
+                  {radiusOptions.map((radius) => (
+                    <option key={radius} value={radius}>
+                      {radius} km
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

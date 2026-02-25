@@ -6,6 +6,7 @@
 --   2) service_listings
 --   3) product_catalog
 --   4) posts
+--   5) help_requests (+ starter matches when table exists)
 --
 -- Important:
 --   - This script reuses existing auth.users IDs to satisfy common FK setups.
@@ -451,5 +452,201 @@ set
   text = excluded.text,
   content = excluded.content,
   description = excluded.description;
+
+-- ---------------------------------------------------------------------------
+-- 5) HELP REQUESTS + STARTER MATCHES
+-- ---------------------------------------------------------------------------
+with base_users as (
+  select id, row_number() over (order by created_at asc) as rn
+  from auth.users
+  order by created_at asc
+  limit 6
+),
+slots as (
+  select
+    max(case when rn = 1 then id end) as u1,
+    max(case when rn = 2 then id end) as u2,
+    max(case when rn = 3 then id end) as u3,
+    max(case when rn = 4 then id end) as u4,
+    max(case when rn = 5 then id end) as u5,
+    max(case when rn = 6 then id end) as u6
+  from base_users
+),
+help_request_seed as (
+  select *
+  from (
+    values
+      ('00000000-0000-4000-8000-000000000401'::uuid, 6,
+       'Need urgent electrician for short-circuit issue',
+       'Main switch trips repeatedly. Need inspection and fix quickly.',
+       'Electrician', 'urgent', 1500::numeric, 3000::numeric,
+       'Koramangala, Bengaluru', 12.935200::double precision, 77.624500::double precision, 8::integer, 'matched'),
+
+      ('00000000-0000-4000-8000-000000000402'::uuid, 6,
+       'Looking for deep cleaning team this weekend',
+       '2BHK deep cleaning before family event, preferred Saturday morning.',
+       'Cleaning', 'week', 1800::numeric, 2800::numeric,
+       'Indiranagar, Bengaluru', 12.978400::double precision, 77.640800::double precision, 10::integer, 'matched')
+  ) as t(id, requester_slot, title, details, category, urgency, budget_min, budget_max, location_label, latitude, longitude, radius_km, status)
+),
+resolved_help_requests as (
+  select
+    h.id,
+    case h.requester_slot
+      when 1 then s.u1
+      when 2 then coalesce(s.u2, s.u1)
+      when 3 then coalesce(s.u3, s.u2, s.u1)
+      when 4 then coalesce(s.u4, s.u3, s.u2, s.u1)
+      when 5 then coalesce(s.u5, s.u4, s.u3, s.u2, s.u1)
+      else coalesce(s.u6, s.u5, s.u4, s.u3, s.u2, s.u1)
+    end as requester_id,
+    h.title,
+    h.details,
+    h.category,
+    h.urgency,
+    h.budget_min,
+    h.budget_max,
+    h.location_label,
+    h.latitude,
+    h.longitude,
+    h.radius_km,
+    h.status
+  from help_request_seed h
+  cross join slots s
+)
+insert into public.help_requests as hr (
+  id,
+  requester_id,
+  title,
+  details,
+  category,
+  urgency,
+  budget_min,
+  budget_max,
+  location_label,
+  latitude,
+  longitude,
+  radius_km,
+  status,
+  metadata,
+  matched_count
+)
+select
+  rh.id,
+  rh.requester_id,
+  rh.title,
+  rh.details,
+  rh.category,
+  rh.urgency,
+  rh.budget_min,
+  rh.budget_max,
+  rh.location_label,
+  rh.latitude,
+  rh.longitude,
+  rh.radius_km,
+  rh.status,
+  jsonb_build_object('seed', true),
+  2
+from resolved_help_requests rh
+where rh.requester_id is not null
+on conflict (id) do update
+set
+  requester_id = excluded.requester_id,
+  title = excluded.title,
+  details = excluded.details,
+  category = excluded.category,
+  urgency = excluded.urgency,
+  budget_min = excluded.budget_min,
+  budget_max = excluded.budget_max,
+  location_label = excluded.location_label,
+  latitude = excluded.latitude,
+  longitude = excluded.longitude,
+  radius_km = excluded.radius_km,
+  status = excluded.status,
+  metadata = excluded.metadata;
+
+with base_users as (
+  select id, row_number() over (order by created_at asc) as rn
+  from auth.users
+  order by created_at asc
+  limit 6
+),
+slots as (
+  select
+    max(case when rn = 1 then id end) as u1,
+    max(case when rn = 2 then id end) as u2,
+    max(case when rn = 3 then id end) as u3,
+    max(case when rn = 4 then id end) as u4,
+    max(case when rn = 5 then id end) as u5
+  from base_users
+),
+match_seed as (
+  select *
+  from (
+    values
+      ('00000000-0000-4000-8000-000000000401'::uuid, 1, 94::double precision, 1.8::double precision, 'Great category + nearby fit'),
+      ('00000000-0000-4000-8000-000000000401'::uuid, 4, 88::double precision, 3.4::double precision, 'Fast response and strong completion'),
+      ('00000000-0000-4000-8000-000000000402'::uuid, 3, 93::double precision, 1.2::double precision, 'Strong category fit'),
+      ('00000000-0000-4000-8000-000000000402'::uuid, 5, 81::double precision, 4.6::double precision, 'Nearby provider')
+  ) as t(help_request_id, provider_slot, score, distance_km, reason)
+),
+resolved_matches as (
+  select
+    m.help_request_id,
+    case m.provider_slot
+      when 1 then s.u1
+      when 2 then coalesce(s.u2, s.u1)
+      when 3 then coalesce(s.u3, s.u2, s.u1)
+      when 4 then coalesce(s.u4, s.u3, s.u2, s.u1)
+      else coalesce(s.u5, s.u4, s.u3, s.u2, s.u1)
+    end as provider_id,
+    m.score,
+    m.distance_km,
+    m.reason
+  from match_seed m
+  cross join slots s
+)
+insert into public.help_request_matches as hrm (
+  help_request_id,
+  provider_id,
+  score,
+  distance_km,
+  reason,
+  status,
+  metadata
+)
+select
+  rm.help_request_id,
+  rm.provider_id,
+  rm.score,
+  rm.distance_km,
+  rm.reason,
+  'suggested',
+  jsonb_build_object('seed', true)
+from resolved_matches rm
+where rm.provider_id is not null
+on conflict (help_request_id, provider_id) do update
+set
+  score = excluded.score,
+  distance_km = excluded.distance_km,
+  reason = excluded.reason,
+  status = excluded.status,
+  metadata = excluded.metadata;
+
+update public.help_requests hr
+set
+  matched_count = (
+    select count(*)
+    from public.help_request_matches hrm
+    where hrm.help_request_id = hr.id
+  ),
+  status = case
+    when exists (select 1 from public.help_request_matches hrm where hrm.help_request_id = hr.id) then 'matched'
+    else hr.status
+  end
+where hr.id in (
+  '00000000-0000-4000-8000-000000000401'::uuid,
+  '00000000-0000-4000-8000-000000000402'::uuid
+);
 
 commit;
