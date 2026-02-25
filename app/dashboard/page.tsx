@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ProviderPopup from "@/app/components/ProviderPopup";
+import type { PublishPostResult } from "@/app/components/CreatePostModal";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -144,6 +145,32 @@ type ReviewRow = {
 };
 
 type FlexibleRow = Record<string, unknown>;
+
+type HelpRequestRow = {
+  id: string;
+  title: string;
+  matched_count: number | null;
+  status: string | null;
+};
+
+type HelpRequestMatchRow = {
+  provider_id: string;
+  score: number | null;
+  distance_km: number | null;
+  reason: string | null;
+  status: string | null;
+};
+
+type HelpMatchCard = {
+  providerId: string;
+  name: string;
+  avatar: string;
+  role: string;
+  score: number;
+  distanceKm: number | null;
+  reason: string;
+  status: string;
+};
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -403,12 +430,35 @@ export default function MarketplacePage() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [openPostModal, setOpenPostModal] = useState(false);
+  const [activeHelpRequestId, setActiveHelpRequestId] = useState<string | null>(null);
+  const [activeHelpRequestTitle, setActiveHelpRequestTitle] = useState("");
+  const [helpMatches, setHelpMatches] = useState<HelpMatchCard[]>([]);
+  const [helpMatchesLoading, setHelpMatchesLoading] = useState(false);
+  const [helpMatchesSyncing, setHelpMatchesSyncing] = useState(false);
+  const [helpMatchesError, setHelpMatchesError] = useState("");
+  const [helpRequestMatchedCount, setHelpRequestMatchedCount] = useState<number>(0);
   const [focusTarget, setFocusTarget] = useState<{
     id: string;
     type: string;
   } | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reloadTimerRef = useRef<number | null>(null);
+  const helpMatchesReloadTimerRef = useRef<number | null>(null);
+
+  const setHelpRequestQueryParam = useCallback((helpRequestId: string | null) => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (helpRequestId) {
+      params.set("help_request", helpRequestId);
+    } else {
+      params.delete("help_request");
+    }
+
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+    window.history.replaceState({}, "", nextUrl);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -470,6 +520,102 @@ export default function MarketplacePage() {
     urgentOnly,
     verifiedOnly,
   ]);
+
+  const loadHelpRequestMatches = useCallback(
+    async (helpRequestId: string, soft = false) => {
+      if (!helpRequestId) return;
+
+      if (soft) {
+        setHelpMatchesSyncing(true);
+      } else {
+        setHelpMatchesLoading(true);
+      }
+
+      const { data: helpRequest, error: helpRequestError } = await supabase
+        .from("help_requests")
+        .select("id,title,matched_count,status")
+        .eq("id", helpRequestId)
+        .maybeSingle();
+
+      if (helpRequestError || !helpRequest) {
+        if (!soft) {
+          setHelpMatches([]);
+        }
+        setHelpMatchesError(
+          helpRequestError
+            ? helpRequestError.message
+            : "Could not find this help request."
+        );
+        setHelpMatchesLoading(false);
+        setHelpMatchesSyncing(false);
+        return;
+      }
+
+      setActiveHelpRequestTitle(
+        ((helpRequest as HelpRequestRow).title || "Help request").trim()
+      );
+      setHelpRequestMatchedCount(Number((helpRequest as HelpRequestRow).matched_count || 0));
+
+      const { data: matches, error: matchesError } = await supabase
+        .from("help_request_matches")
+        .select("provider_id,score,distance_km,reason,status")
+        .eq("help_request_id", helpRequestId)
+        .order("score", { ascending: false })
+        .limit(8);
+
+      if (matchesError) {
+        if (!soft) {
+          setHelpMatches([]);
+        }
+        setHelpMatchesError(matchesError.message);
+        setHelpMatchesLoading(false);
+        setHelpMatchesSyncing(false);
+        return;
+      }
+
+      const matchRows = ((matches as HelpRequestMatchRow[] | null) || []).filter((row) => !!row.provider_id);
+      const providerIds = Array.from(new Set(matchRows.map((row) => row.provider_id)));
+      let profileMap = new Map<string, { name: string; avatar_url: string; role: string }>();
+
+      if (providerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id,name,avatar_url,role")
+          .in("id", providerIds);
+
+        profileMap = new Map(
+          (((profiles as FlexibleRow[] | null) || []).map((row) => [
+            String(row.id || ""),
+            {
+              name: String(row.name || "Provider"),
+              avatar_url: String(row.avatar_url || `https://i.pravatar.cc/150?u=${row.id || "provider"}`),
+              role: String(row.role || "Service Provider"),
+            },
+          ]))
+        );
+      }
+
+      const mappedMatches: HelpMatchCard[] = matchRows.map((row) => {
+        const profile = profileMap.get(row.provider_id);
+        return {
+          providerId: row.provider_id,
+          name: profile?.name || "Provider",
+          avatar: profile?.avatar_url || `https://i.pravatar.cc/150?u=${row.provider_id}`,
+          role: profile?.role || "Service Provider",
+          score: Number(row.score || 0),
+          distanceKm: Number.isFinite(Number(row.distance_km)) ? Number(row.distance_km) : null,
+          reason: row.reason || "Good match for your request",
+          status: row.status || "suggested",
+        };
+      });
+
+      setHelpMatches(mappedMatches);
+      setHelpMatchesError("");
+      setHelpMatchesLoading(false);
+      setHelpMatchesSyncing(false);
+    },
+    []
+  );
 
   /* ================= FETCH ================= */
   const fetchFeed = useCallback(async (soft = false) => {
@@ -956,12 +1102,19 @@ export default function MarketplacePage() {
 
     const id = params.get("focus");
     const type = params.get("type");
+    const helpRequestParam = params.get("help_request");
+
+    if (helpRequestParam) {
+      setActiveHelpRequestId(helpRequestParam);
+      void loadHelpRequestMatches(helpRequestParam);
+    }
+
     if (!id) return;
     setFocusTarget({
       id,
       type: type || "",
     });
-  }, []);
+  }, [loadHelpRequestMatches]);
 
   useEffect(() => {
     if (!focusTarget?.id || feed.length === 0) return;
@@ -987,6 +1140,50 @@ export default function MarketplacePage() {
 
     return () => clearTimeout(timer);
   }, [feed.length, focusTarget]);
+
+  useEffect(() => {
+    if (!activeHelpRequestId) return;
+
+    const scheduleReload = () => {
+      if (helpMatchesReloadTimerRef.current) {
+        window.clearTimeout(helpMatchesReloadTimerRef.current);
+      }
+      helpMatchesReloadTimerRef.current = window.setTimeout(() => {
+        void loadHelpRequestMatches(activeHelpRequestId, true);
+      }, 300);
+    };
+
+    const channel = supabase
+      .channel(`help-request-live-${activeHelpRequestId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "help_request_matches",
+          filter: `help_request_id=eq.${activeHelpRequestId}`,
+        },
+        scheduleReload
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "help_requests",
+          filter: `id=eq.${activeHelpRequestId}`,
+        },
+        scheduleReload
+      )
+      .subscribe();
+
+    return () => {
+      if (helpMatchesReloadTimerRef.current) {
+        window.clearTimeout(helpMatchesReloadTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [activeHelpRequestId, loadHelpRequestMatches]);
 
 /* ================= FILTER + SORT ================= */
 
@@ -1571,6 +1768,114 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </div>
           )}
 
+          {!!activeHelpRequestId && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Help request matching
+                  </p>
+                  <p className="mt-1 text-xs text-emerald-700">
+                    {activeHelpRequestTitle
+                      ? `"${activeHelpRequestTitle}" • ${helpRequestMatchedCount} matches`
+                      : `${helpRequestMatchedCount} matches found`}
+                  </p>
+                  {helpMatchesSyncing && (
+                    <p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1">
+                      <RefreshCw size={11} className="animate-spin" />
+                      Syncing new matches...
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void loadHelpRequestMatches(activeHelpRequestId, true)}
+                    disabled={helpMatchesLoading || helpMatchesSyncing}
+                    className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Refresh matches
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveHelpRequestId(null);
+                      setHelpRequestQueryParam(null);
+                    }}
+                    className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+
+              {!!helpMatchesError && (
+                <p className="mt-2 text-xs text-rose-700">{helpMatchesError}</p>
+              )}
+
+              {helpMatchesLoading ? (
+                <div className="mt-3 text-xs text-emerald-700 inline-flex items-center gap-2">
+                  <RefreshCw size={12} className="animate-spin" />
+                  Loading provider matches...
+                </div>
+              ) : helpMatches.length > 0 ? (
+                <div className="mt-3 grid gap-2">
+                  {helpMatches.slice(0, 4).map((match) => (
+                    <div
+                      key={`${activeHelpRequestId}-${match.providerId}`}
+                      className="rounded-xl border border-emerald-200 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Image
+                            src={match.avatar}
+                            alt={match.name}
+                            width={30}
+                            height={30}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{match.name}</p>
+                            <p className="truncate text-[11px] text-slate-500">{match.role}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold text-emerald-700">Score {Math.round(match.score)}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {match.distanceKm !== null ? `${match.distanceKm.toFixed(1)} km` : "Nearby"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          {match.reason}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void messageProvider(match.providerId)}
+                          className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                        >
+                          Chat
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProvider(match.providerId)}
+                          className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                        >
+                          Trust profile
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-emerald-800">
+                  Matching is in progress. Providers will appear here as scores are computed.
+                </p>
+              )}
+            </div>
+          )}
+
           {feed.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h3 className="text-lg font-semibold text-slate-900">No listings available yet</h3>
@@ -1987,7 +2292,16 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     <CreatePostModal
       open={openPostModal}
       onClose={() => setOpenPostModal(false)}
-      onPublished={() => void fetchFeed(true)}
+      onPublished={(result?: PublishPostResult) => {
+        void fetchFeed(true);
+
+        if (result?.helpRequestId) {
+          setActiveHelpRequestId(result.helpRequestId);
+          setHelpRequestMatchedCount(Number(result.matchedCount || 0));
+          setHelpRequestQueryParam(result.helpRequestId);
+          void loadHelpRequestMatches(result.helpRequestId);
+        }
+      }}
     />
   )}
 </div>

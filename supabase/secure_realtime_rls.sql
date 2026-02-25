@@ -7,6 +7,8 @@
 --   - conversation_participants
 --   - reviews
 --   - notifications
+--   - help_requests
+--   - help_request_matches
 --
 -- Also adds unread persistence support:
 --   - conversation_participants.last_read_at
@@ -15,6 +17,11 @@
 -- Also adds geo primitives:
 --   - profiles.latitude
 --   - profiles.longitude
+--
+-- Also adds structured help matching:
+--   - help request schema
+--   - provider matching + ranking
+--   - realtime provider/requester notifications
 
 begin;
 
@@ -101,6 +108,119 @@ create index if not exists idx_notifications_user_unread
 create index if not exists idx_notifications_entity
   on public.notifications (entity_type, entity_id);
 
+create table if not exists public.help_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null,
+  title text not null,
+  details text not null,
+  category text not null default 'General',
+  urgency text not null default 'urgent' check (urgency in ('urgent', 'today', '24h', 'week', 'flexible')),
+  needed_by timestamptz,
+  budget_min numeric(10,2),
+  budget_max numeric(10,2),
+  location_label text,
+  latitude double precision,
+  longitude double precision,
+  radius_km integer not null default 8 check (radius_km between 1 and 100),
+  status text not null default 'open' check (status in ('open', 'matched', 'in_progress', 'fulfilled', 'cancelled')),
+  source_post_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  matched_count integer not null default 0,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table if exists public.help_requests
+  drop constraint if exists help_requests_requester_id_fkey;
+
+alter table if exists public.help_requests
+  add constraint help_requests_requester_id_fkey
+  foreign key (requester_id) references auth.users(id) on delete cascade;
+
+create index if not exists idx_help_requests_requester_created
+  on public.help_requests (requester_id, created_at desc);
+
+create index if not exists idx_help_requests_status_created
+  on public.help_requests (status, created_at desc);
+
+create index if not exists idx_help_requests_category_status
+  on public.help_requests (lower(category), status);
+
+create index if not exists idx_help_requests_lat_lng
+  on public.help_requests (latitude, longitude);
+
+create table if not exists public.help_request_matches (
+  id uuid primary key default gen_random_uuid(),
+  help_request_id uuid not null,
+  provider_id uuid not null,
+  score double precision not null default 0,
+  distance_km double precision,
+  reason text,
+  status text not null default 'suggested' check (status in ('suggested', 'accepted', 'declined', 'expired')),
+  conversation_id uuid,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  responded_at timestamptz
+);
+
+alter table if exists public.help_request_matches
+  drop constraint if exists help_request_matches_help_request_id_fkey;
+
+alter table if exists public.help_request_matches
+  add constraint help_request_matches_help_request_id_fkey
+  foreign key (help_request_id) references public.help_requests(id) on delete cascade;
+
+alter table if exists public.help_request_matches
+  drop constraint if exists help_request_matches_provider_id_fkey;
+
+alter table if exists public.help_request_matches
+  add constraint help_request_matches_provider_id_fkey
+  foreign key (provider_id) references auth.users(id) on delete cascade;
+
+alter table if exists public.help_request_matches
+  drop constraint if exists help_request_matches_conversation_id_fkey;
+
+alter table if exists public.help_request_matches
+  add constraint help_request_matches_conversation_id_fkey
+  foreign key (conversation_id) references public.conversations(id) on delete set null;
+
+alter table if exists public.help_request_matches
+  drop constraint if exists uq_help_request_matches_request_provider;
+
+alter table if exists public.help_request_matches
+  add constraint uq_help_request_matches_request_provider
+  unique (help_request_id, provider_id);
+
+create index if not exists idx_help_request_matches_request_score
+  on public.help_request_matches (help_request_id, score desc);
+
+create index if not exists idx_help_request_matches_provider_status
+  on public.help_request_matches (provider_id, status, created_at desc);
+
+create or replace function public.calculate_distance_km(
+  lat1 double precision,
+  lon1 double precision,
+  lat2 double precision,
+  lon2 double precision
+)
+returns double precision
+language sql
+immutable
+as $$
+  select case
+    when lat1 is null or lon1 is null or lat2 is null or lon2 is null then null
+    else (
+      6371 * 2 * asin(
+        sqrt(
+          power(sin(radians(lat2 - lat1) / 2), 2) +
+          cos(radians(lat1)) * cos(radians(lat2)) *
+          power(sin(radians(lon2 - lon1) / 2), 2)
+        )
+      )
+    )
+  end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Helper functions for policy checks
 -- ---------------------------------------------------------------------------
@@ -175,6 +295,309 @@ $$;
 revoke all on function public.get_provider_order_stats(uuid[]) from public;
 grant execute on function public.get_provider_order_stats(uuid[]) to anon;
 grant execute on function public.get_provider_order_stats(uuid[]) to authenticated;
+
+create or replace function public.is_help_request_provider(
+  target_help_request_id uuid,
+  target_user_id uuid default auth.uid()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.help_request_matches hrm
+    where hrm.help_request_id = target_help_request_id
+      and hrm.provider_id = target_user_id
+  );
+$$;
+
+grant execute on function public.is_help_request_provider(uuid, uuid) to authenticated;
+
+create or replace function public.match_help_request(
+  target_help_request_id uuid
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  request_row record;
+  requester_name text;
+  inserted_count integer := 0;
+begin
+  select
+    hr.*,
+    p.latitude as requester_latitude,
+    p.longitude as requester_longitude,
+    coalesce(nullif(p.name, ''), 'Someone nearby') as requester_name_value
+  into request_row
+  from public.help_requests hr
+  left join public.profiles p on p.id = hr.requester_id
+  where hr.id = target_help_request_id;
+
+  if not found then
+    return 0;
+  end if;
+
+  if lower(coalesce(request_row.status, 'open')) in ('cancelled', 'fulfilled') then
+    return coalesce(request_row.matched_count, 0);
+  end if;
+
+  requester_name := coalesce(request_row.requester_name_value, 'Someone nearby');
+
+  delete from public.help_request_matches
+  where help_request_id = request_row.id;
+
+  with request_base as (
+    select
+      request_row.id as request_id,
+      request_row.requester_id as requester_id,
+      lower(coalesce(request_row.category, '')) as request_category,
+      greatest(1, least(coalesce(request_row.radius_km, 8), 100)) as request_radius_km,
+      coalesce(request_row.latitude, request_row.requester_latitude) as request_latitude,
+      coalesce(request_row.longitude, request_row.requester_longitude) as request_longitude
+  ),
+  listing_catalog as (
+    select provider_id, lower(coalesce(category, '')) as category
+    from public.service_listings
+    where provider_id is not null
+    union all
+    select provider_id, lower(coalesce(category, '')) as category
+    from public.product_catalog
+    where provider_id is not null
+  ),
+  listing_agg as (
+    select
+      provider_id,
+      array_remove(array_agg(distinct nullif(category, '')), null) as categories,
+      count(*)::int as listing_count
+    from listing_catalog
+    group by provider_id
+  ),
+  rating_agg as (
+    select
+      provider_id,
+      avg(rating)::double precision as avg_rating,
+      count(*)::int as review_count
+    from public.reviews
+    where provider_id is not null
+    group by provider_id
+  ),
+  completed_order_agg as (
+    select
+      provider_id,
+      count(*) filter (
+        where lower(coalesce(status, '')) in ('completed', 'closed')
+      )::int as completed_jobs
+    from public.orders
+    where provider_id is not null
+    group by provider_id
+  ),
+  candidates as (
+    select
+      p.id as provider_id,
+      coalesce(public.calculate_distance_km(
+        rb.request_latitude,
+        rb.request_longitude,
+        p.latitude,
+        p.longitude
+      ), 9999) as distance_km,
+      case
+        when rb.request_category = '' then false
+        when coalesce(array_length(la.categories, 1), 0) = 0 then false
+        else exists (
+          select 1
+          from unnest(la.categories) as provider_category
+          where provider_category like '%' || rb.request_category || '%'
+            or rb.request_category like '%' || provider_category || '%'
+        )
+      end as category_match,
+      coalesce(ra.avg_rating, 4.2) as avg_rating,
+      coalesce(ra.review_count, 0) as review_count,
+      coalesce(oa.completed_jobs, 0) as completed_jobs,
+      lower(coalesce(p.availability, 'available')) as availability,
+      coalesce(la.listing_count, 0) as listing_count
+    from request_base rb
+    join public.profiles p on p.id <> rb.requester_id
+    left join listing_agg la on la.provider_id = p.id
+    left join rating_agg ra on ra.provider_id = p.id
+    left join completed_order_agg oa on oa.provider_id = p.id
+    where p.id is not null
+      and coalesce(la.listing_count, 0) > 0
+      and lower(coalesce(p.availability, 'available')) <> 'offline'
+      and (
+        rb.request_latitude is null
+        or rb.request_longitude is null
+        or p.latitude is null
+        or p.longitude is null
+        or public.calculate_distance_km(
+          rb.request_latitude,
+          rb.request_longitude,
+          p.latitude,
+          p.longitude
+        ) <= rb.request_radius_km
+      )
+  ),
+  ranked as (
+    select
+      provider_id,
+      distance_km,
+      greatest(
+        0,
+        100
+        - (least(distance_km, 60) * 1.4)
+        + (case when category_match then 20 else 0 end)
+        + (avg_rating * 7)
+        + (least(completed_jobs, 120) * 0.12)
+        + (case
+            when availability = 'available' then 10
+            when availability = 'busy' then 2
+            else 0
+          end)
+      ) as score,
+      case
+        when category_match and distance_km <= 5 then 'Great category + nearby fit'
+        when category_match then 'Strong category fit'
+        when distance_km <= 3 then 'Very close distance'
+        when avg_rating >= 4.6 then 'Highly rated provider'
+        else 'Good available provider'
+      end as reason
+    from candidates
+    order by score desc, distance_km asc
+    limit 5
+  )
+  insert into public.help_request_matches (
+    help_request_id,
+    provider_id,
+    score,
+    distance_km,
+    reason,
+    status,
+    metadata
+  )
+  select
+    request_row.id,
+    ranked.provider_id,
+    ranked.score,
+    ranked.distance_km,
+    ranked.reason,
+    'suggested',
+    jsonb_build_object(
+      'category', request_row.category,
+      'urgency', request_row.urgency
+    )
+  from ranked;
+
+  get diagnostics inserted_count = row_count;
+
+  update public.help_requests
+  set
+    matched_count = inserted_count,
+    status = case
+      when lower(coalesce(status, 'open')) = 'open' and inserted_count > 0 then 'matched'
+      when lower(coalesce(status, 'open')) = 'matched' and inserted_count = 0 then 'open'
+      else status
+    end,
+    updated_at = timezone('utc', now())
+  where id = request_row.id;
+
+  -- Prevent duplicate provider alerts when match_help_request is retriggered.
+  delete from public.notifications n
+  where n.entity_type = 'help_request'
+    and n.entity_id = request_row.id
+    and n.kind = 'system'
+    and n.user_id in (
+      select provider_id
+      from public.help_request_matches
+      where help_request_id = request_row.id
+    );
+
+  insert into public.notifications (
+    user_id,
+    kind,
+    title,
+    message,
+    entity_type,
+    entity_id,
+    metadata
+  )
+  select
+    hrm.provider_id,
+    'system',
+    'New help request nearby',
+    format('%s needs help in %s.', requester_name, coalesce(nullif(request_row.category, ''), 'your area')),
+    'help_request',
+    request_row.id,
+    jsonb_build_object(
+      'help_request_id', request_row.id,
+      'score', hrm.score,
+      'distance_km', hrm.distance_km,
+      'urgency', request_row.urgency
+    )
+  from public.help_request_matches hrm
+  where hrm.help_request_id = request_row.id;
+
+  if not exists (
+    select 1
+    from public.notifications n
+    where n.user_id = request_row.requester_id
+      and n.entity_type = 'help_request'
+      and n.entity_id = request_row.id
+      and n.title = 'Provider matches ready'
+  ) then
+    perform public.enqueue_notification(
+      request_row.requester_id,
+      'system',
+      'Provider matches ready',
+      format('%s provider matches are ready for "%s".', inserted_count, left(coalesce(request_row.title, 'your request'), 80)),
+      'help_request',
+      request_row.id,
+      jsonb_build_object(
+        'help_request_id', request_row.id,
+        'matched_count', inserted_count
+      )
+    );
+  end if;
+
+  return inserted_count;
+end;
+$$;
+
+revoke all on function public.match_help_request(uuid) from public;
+grant execute on function public.match_help_request(uuid) to authenticated;
+
+create or replace function public.handle_help_request_matching()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    perform public.match_help_request(new.id);
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' then
+    if
+      coalesce(new.category, '') is distinct from coalesce(old.category, '')
+      or new.radius_km is distinct from old.radius_km
+      or new.latitude is distinct from old.latitude
+      or new.longitude is distinct from old.longitude
+      or coalesce(new.urgency, '') is distinct from coalesce(old.urgency, '')
+    then
+      perform public.match_help_request(new.id);
+    end if;
+    return new;
+  end if;
+
+  return new;
+end;
+$$;
 
 create or replace function public.enqueue_notification(
   target_user_id uuid,
@@ -434,7 +857,9 @@ begin
         'conversations',
         'conversation_participants',
         'reviews',
-        'notifications'
+        'notifications',
+        'help_requests',
+        'help_request_matches'
       )
   loop
     execute format(
@@ -452,6 +877,8 @@ alter table if exists public.conversations enable row level security;
 alter table if exists public.conversation_participants enable row level security;
 alter table if exists public.reviews enable row level security;
 alter table if exists public.notifications enable row level security;
+alter table if exists public.help_requests enable row level security;
+alter table if exists public.help_request_matches enable row level security;
 
 -- ---------------------------------------------------------------------------
 -- orders policies
@@ -636,6 +1063,61 @@ for delete
 to authenticated
 using (user_id = auth.uid());
 
+-- ---------------------------------------------------------------------------
+-- help_requests policies
+-- ---------------------------------------------------------------------------
+create policy help_requests_select_visible
+on public.help_requests
+for select
+to authenticated
+using (
+  requester_id = auth.uid()
+  or public.is_help_request_provider(id, auth.uid())
+);
+
+create policy help_requests_insert_own
+on public.help_requests
+for insert
+to authenticated
+with check (requester_id = auth.uid());
+
+create policy help_requests_update_own
+on public.help_requests
+for update
+to authenticated
+using (requester_id = auth.uid())
+with check (requester_id = auth.uid());
+
+create policy help_requests_delete_own
+on public.help_requests
+for delete
+to authenticated
+using (requester_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- help_request_matches policies
+-- ---------------------------------------------------------------------------
+create policy help_request_matches_select_visible
+on public.help_request_matches
+for select
+to authenticated
+using (
+  provider_id = auth.uid()
+  or exists (
+    select 1
+    from public.help_requests hr
+    where hr.id = help_request_id
+      and hr.requester_id = auth.uid()
+  )
+);
+
+create policy help_request_matches_update_provider
+on public.help_request_matches
+for update
+to authenticated
+using (provider_id = auth.uid())
+with check (provider_id = auth.uid());
+
 drop trigger if exists trg_notify_order_events on public.orders;
 create trigger trg_notify_order_events
 after insert or update of status on public.orders
@@ -653,5 +1135,17 @@ create trigger trg_notify_review_events
 after insert on public.reviews
 for each row
 execute function public.notify_review_events();
+
+drop trigger if exists trg_help_request_match_insert on public.help_requests;
+create trigger trg_help_request_match_insert
+after insert on public.help_requests
+for each row
+execute function public.handle_help_request_matching();
+
+drop trigger if exists trg_help_request_match_update on public.help_requests;
+create trigger trg_help_request_match_update
+after update of category, radius_km, latitude, longitude, urgency on public.help_requests
+for each row
+execute function public.handle_help_request_matching();
 
 commit;

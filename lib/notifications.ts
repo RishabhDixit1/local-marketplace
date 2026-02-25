@@ -92,6 +92,14 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
     };
   }
 
+  if (entityType === "help_request") {
+    const helpRequestId = notification.entity_id || (notification.metadata?.help_request_id as string | undefined);
+    return {
+      ctaLabel: "View matches",
+      href: helpRequestId ? `/dashboard?help_request=${helpRequestId}` : "/dashboard",
+    };
+  }
+
   return {
     ctaLabel: "View",
     href: "/dashboard/welcome",
