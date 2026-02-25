@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ProviderPopup from "@/app/components/ProviderPopup";
 import dynamic from "next/dynamic";
@@ -37,69 +37,70 @@ Filter,
 TrendingUp,
 } from "lucide-react";
 
-const FEED_LIMIT_PER_TYPE = 60;
-const MAX_PROFILE_LOOKUP = 220;
+const FEED_LIMIT_PER_TYPE = 48;
+const MAX_PROFILE_LOOKUP = 120;
 
 /* ================= TYPES ================= */
 
 type Listing = {
-id: string;
-title: string;
-description: string;
-price: number;
-category: string;
-provider_id: string;
-type: "service" | "product" | "demand";
-avatar: string;
-distance: number;
-lat: number;
-lng: number;
-urgent?: boolean;
-media?: FeedMedia[];
-createdAt?: string;
-creatorName?: string;
- businessSlug?: string;
- rankScore: number;
- profileCompletion: number;
- responseMinutes: number;
- verificationStatus: "verified" | "pending" | "unclaimed";
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  provider_id: string;
+  type: "service" | "product" | "demand";
+  avatar: string;
+  distance: number;
+  lat: number;
+  lng: number;
+  urgent?: boolean;
+  media?: FeedMedia[];
+  createdAt?: string;
+  creatorName?: string;
+  businessSlug?: string;
+  rankScore: number;
+  profileCompletion: number;
+  responseMinutes: number;
+  verificationStatus: "verified" | "pending" | "unclaimed";
+  isDemo?: boolean;
 };
 
 type FeedMedia = {
-mimeType: string;
-url: string;
+  mimeType: string;
+  url: string;
 };
 
 type ServiceRow = {
-id: string;
-title: string;
-description: string;
-price: number;
-category: string;
-provider_id: string;
-created_at?: string;
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  provider_id: string;
+  created_at?: string;
 };
 
 type ProductRow = {
-id: string;
-title: string;
-description: string;
-price: number;
-category: string;
-provider_id: string;
-created_at?: string;
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  provider_id: string;
+  created_at?: string;
 };
 
 type PostRow = {
-id: string;
-text?: string;
-content?: string;
-description?: string;
-title?: string;
-user_id?: string;
-provider_id?: string;
-created_by?: string;
-created_at?: string;
+  id: string;
+  text?: string;
+  content?: string;
+  description?: string;
+  title?: string;
+  user_id?: string;
+  provider_id?: string;
+  created_by?: string;
+  created_at?: string;
 };
 
 type ProfileRow = {
@@ -119,6 +120,151 @@ type ProfileRow = {
 type ReviewRow = {
   provider_id: string;
   rating: number | null;
+};
+
+type FlexibleRow = Record<string, unknown>;
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
+
+const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+  return fallback;
+};
+
+const numberFromRow = (row: FlexibleRow, keys: string[], fallback = 0) => {
+  for (const key of keys) {
+    const value = row[key];
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
+const buildDemoFeed = (): Listing[] => {
+  const baseLat = 28.6139;
+  const baseLng = 77.209;
+
+  const rows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
+    {
+      title: "Need Plumber ASAP",
+      description: "Bathroom pipe leaking. Need help within 2 hours.",
+      price: 2500,
+      category: "Need",
+      provider_id: "demo-provider-amit",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=amit",
+      distance: 2.0,
+      urgent: true,
+      creatorName: "Amit P",
+      businessSlug: createBusinessSlug("Amit P", "demo-provider-amit"),
+      profileCompletion: 78,
+      responseMinutes: 8,
+      verificationStatus: "pending",
+      isDemo: true,
+    },
+    {
+      title: "Electrician for Home",
+      description: "Expert electrician for switchboard, fan, and wiring repair.",
+      price: 500,
+      category: "Electrician",
+      provider_id: "demo-provider-mary",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=mary",
+      distance: 3.8,
+      creatorName: "Mary Electricals",
+      businessSlug: createBusinessSlug("Mary Electricals", "demo-provider-mary"),
+      profileCompletion: 91,
+      responseMinutes: 14,
+      verificationStatus: "verified",
+      isDemo: true,
+    },
+    {
+      title: "House Cleaning Pro",
+      description: "Deep cleaning for 1BHK/2BHK with eco-safe supplies.",
+      price: 1200,
+      category: "Cleaning",
+      provider_id: "demo-provider-sejal",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=sejal",
+      distance: 4.5,
+      creatorName: "Sejal HomeCare",
+      businessSlug: createBusinessSlug("Sejal HomeCare", "demo-provider-sejal"),
+      profileCompletion: 86,
+      responseMinutes: 18,
+      verificationStatus: "verified",
+      isDemo: true,
+    },
+    {
+      title: "Fresh Baked Cakes",
+      description: "Custom cakes with same-day delivery in your locality.",
+      price: 600,
+      category: "Food",
+      provider_id: "demo-provider-cakes",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=cakeshop",
+      distance: 5.5,
+      creatorName: "Delicious Cakes",
+      businessSlug: createBusinessSlug("Delicious Cakes", "demo-provider-cakes"),
+      profileCompletion: 82,
+      responseMinutes: 24,
+      verificationStatus: "pending",
+      isDemo: true,
+    },
+    {
+      title: "Urgent AC Repair Needed",
+      description: "Split AC not cooling. Need technician by tonight.",
+      price: 1800,
+      category: "Need",
+      provider_id: "demo-provider-rakesh",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=rakesh",
+      distance: 1.7,
+      urgent: true,
+      creatorName: "Rakesh B",
+      businessSlug: createBusinessSlug("Rakesh B", "demo-provider-rakesh"),
+      profileCompletion: 69,
+      responseMinutes: 6,
+      verificationStatus: "unclaimed",
+      isDemo: true,
+    },
+    {
+      title: "Same-day Grocery Delivery",
+      description: "Daily essentials delivered in 45-90 minutes.",
+      price: 199,
+      category: "Delivery",
+      provider_id: "demo-provider-quickdrop",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=quickdrop",
+      distance: 2.9,
+      creatorName: "QuickDrop",
+      businessSlug: createBusinessSlug("QuickDrop", "demo-provider-quickdrop"),
+      profileCompletion: 74,
+      responseMinutes: 12,
+      verificationStatus: "pending",
+      isDemo: true,
+    },
+  ];
+
+  return rows.map((row, index) => ({
+    ...row,
+    id: `demo-${index + 1}`,
+    lat: baseLat + index * 0.01,
+    lng: baseLng + index * 0.012,
+    rankScore: calculateLocalRankScore({
+      distanceKm: row.distance,
+      responseMinutes: row.responseMinutes,
+      rating: row.verificationStatus === "verified" ? 4.8 : 4.4,
+      profileCompletion: row.profileCompletion,
+    }),
+  }));
 };
 
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
@@ -174,9 +320,12 @@ const pseudoDistance = (seed: string) => {
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const [feed, setFeed] = useState<Listing[]>([]);
+  const demoFeed = useMemo(() => buildDemoFeed(), []);
+  const [feed, setFeed] = useState<Listing[]>(demoFeed);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
+  const [usingDemoFeed, setUsingDemoFeed] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -197,41 +346,114 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      const [
-        { data: services, error: servicesError },
-        { data: products, error: productsError },
-        { data: posts, error: postsError },
-      ] = await Promise.all([
-        supabase
-          .from("service_listings")
-          .select("id,title,description,price,category,provider_id,created_at")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE),
-        supabase
-          .from("product_catalog")
-          .select("id,title,description,price,category,provider_id,created_at")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE),
-        supabase
-          .from("posts")
-          .select("id,text,content,description,title,user_id,provider_id,created_by,created_at")
-          .eq("status", "open")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE),
-      ]);
+      let serviceRowsRaw: FlexibleRow[] = [];
+      let productRowsRaw: FlexibleRow[] = [];
+      let postRowsRaw: FlexibleRow[] = [];
 
-      if (servicesError || productsError || postsError) {
-        throw new Error(
-          servicesError?.message ||
-            productsError?.message ||
-            postsError?.message ||
-            "Unable to load marketplace feed right now."
-        );
+      const servicePrimary = await supabase
+        .from("service_listings")
+        .select("id,title,description,price,category,provider_id,created_at")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (servicePrimary.error) {
+        if (isMissingColumnError(servicePrimary.error.message)) {
+          const serviceFallback = await supabase
+            .from("service_listings")
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (serviceFallback.error) {
+            throw new Error(serviceFallback.error.message);
+          }
+          serviceRowsRaw = (serviceFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(servicePrimary.error.message);
+        }
+      } else {
+        serviceRowsRaw = (servicePrimary.data as FlexibleRow[] | null) || [];
       }
 
-      const serviceRows = (services as ServiceRow[] | null) || [];
-      const productRows = (products as ProductRow[] | null) || [];
-      const postRows = (posts as PostRow[] | null) || [];
+      const productPrimary = await supabase
+        .from("product_catalog")
+        .select("id,title,description,price,category,provider_id,created_at")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (productPrimary.error) {
+        if (isMissingColumnError(productPrimary.error.message)) {
+          const productFallback = await supabase
+            .from("product_catalog")
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (productFallback.error) {
+            throw new Error(productFallback.error.message);
+          }
+          productRowsRaw = (productFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(productPrimary.error.message);
+        }
+      } else {
+        productRowsRaw = (productPrimary.data as FlexibleRow[] | null) || [];
+      }
+
+      const postsPrimary = await supabase
+        .from("posts")
+        .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
+        .eq("status", "open")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (postsPrimary.error) {
+        if (isMissingColumnError(postsPrimary.error.message)) {
+          const postsFallback = await supabase
+            .from("posts")
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (postsFallback.error) {
+            throw new Error(postsFallback.error.message);
+          }
+          postRowsRaw = (postsFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(postsPrimary.error.message);
+        }
+      } else {
+        postRowsRaw = (postsPrimary.data as FlexibleRow[] | null) || [];
+      }
+
+      const serviceRows: ServiceRow[] = serviceRowsRaw
+        .map((row, index) => ({
+          id: stringFromRow(row, ["id"], `service-${index}`),
+          title: stringFromRow(row, ["title", "name", "service_title"], "Local service"),
+          description: stringFromRow(row, ["description", "details", "text"], "Service listing"),
+          price: numberFromRow(row, ["price", "amount", "rate"], 0),
+          category: stringFromRow(row, ["category", "service_category", "type"], "Service"),
+          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
+          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
+        }))
+        .filter((row) => !!row.provider_id);
+
+      const productRows: ProductRow[] = productRowsRaw
+        .map((row, index) => ({
+          id: stringFromRow(row, ["id"], `product-${index}`),
+          title: stringFromRow(row, ["title", "name", "product_name"], "Local product"),
+          description: stringFromRow(row, ["description", "details", "text"], "Product listing"),
+          price: numberFromRow(row, ["price", "amount", "mrp"], 0),
+          category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
+          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
+          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
+        }))
+        .filter((row) => !!row.provider_id);
+
+      const postRows: PostRow[] = postRowsRaw
+        .filter((row) => {
+          const status = stringFromRow(row, ["status", "state"], "");
+          return !status || status.toLowerCase() === "open";
+        })
+        .map((row, index) => ({
+          id: stringFromRow(row, ["id"], `post-${index}`),
+          text: stringFromRow(row, ["text", "content", "description", "title"], ""),
+          content: stringFromRow(row, ["content", "text"], ""),
+          description: stringFromRow(row, ["description", "text"], ""),
+          title: stringFromRow(row, ["title", "name"], ""),
+          user_id: stringFromRow(row, ["user_id", "author_id", "created_by"], ""),
+          provider_id: stringFromRow(row, ["provider_id", "user_id"], ""),
+          created_by: stringFromRow(row, ["created_by", "author_id", "user_id"], ""),
+          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
+        }));
 
       const profileIds = [
         ...serviceRows.map((row) => row.provider_id),
@@ -246,27 +468,63 @@ export default function MarketplacePage() {
       let reviewRows: ReviewRow[] = [];
 
       if (uniqueProfileIds.length > 0) {
-        const [
-          { data: profiles, error: profilesError },
-          { data: reviews, error: reviewsError },
-        ] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
-            .in("id", uniqueProfileIds),
-          supabase.from("reviews").select("provider_id,rating").in("provider_id", uniqueProfileIds),
-        ]);
+        let profileRowsRaw: FlexibleRow[] = [];
+        const profilesPrimary = await supabase
+          .from("profiles")
+          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
+          .in("id", uniqueProfileIds);
 
-        if (profilesError) {
-          throw new Error(profilesError.message);
+        if (profilesPrimary.error) {
+          if (isMissingColumnError(profilesPrimary.error.message)) {
+            const profilesFallback = await supabase
+              .from("profiles")
+              .select("*")
+              .in("id", uniqueProfileIds);
+            if (profilesFallback.error) {
+              throw new Error(profilesFallback.error.message);
+            }
+            profileRowsRaw = (profilesFallback.data as FlexibleRow[] | null) || [];
+          } else {
+            throw new Error(profilesPrimary.error.message);
+          }
+        } else {
+          profileRowsRaw = (profilesPrimary.data as FlexibleRow[] | null) || [];
         }
 
-        if (reviewsError) {
-          console.warn("Could not load review ratings for feed scoring:", reviewsError.message);
-        }
+        const normalizedProfiles: ProfileRow[] = profileRowsRaw
+          .map((row) => {
+            const profileId = stringFromRow(row, ["id", "user_id"], "");
+            const servicesValue = row.services;
+            const normalizedServices = Array.isArray(servicesValue)
+              ? servicesValue.filter((item): item is string => typeof item === "string")
+              : null;
+            return {
+              id: profileId,
+              name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
+              avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
+              role: stringFromRow(row, ["role", "account_type"], ""),
+              bio: stringFromRow(row, ["bio", "about"], ""),
+              location: stringFromRow(row, ["location", "city"], ""),
+              availability: stringFromRow(row, ["availability", "status"], ""),
+              services: normalizedServices,
+              email: stringFromRow(row, ["email"], ""),
+              phone: stringFromRow(row, ["phone", "phone_number"], ""),
+              website: stringFromRow(row, ["website", "site_url"], ""),
+            };
+          })
+          .filter((row) => !!row.id);
 
-        profileMap = new Map((profiles as ProfileRow[] | null)?.map((p) => [p.id, p]) || []);
-        reviewRows = (reviews as ReviewRow[] | null) || [];
+        profileMap = new Map(normalizedProfiles.map((row) => [row.id, row]));
+
+        const reviewsResult = await supabase
+          .from("reviews")
+          .select("provider_id,rating")
+          .in("provider_id", uniqueProfileIds);
+        if (reviewsResult.error) {
+          console.warn("Could not load review ratings for feed scoring:", reviewsResult.error.message);
+        } else {
+          reviewRows = (reviewsResult.data as ReviewRow[] | null) || [];
+        }
       }
 
       const serviceCountMap = new Map<string, number>();
@@ -342,10 +600,10 @@ export default function MarketplacePage() {
         const stats = getProviderStats(s.provider_id);
         return {
           id: s.id,
-          title: s.title,
-          description: s.description,
-          price: s.price,
-          category: s.category,
+          title: s.title || "Local service",
+          description: s.description || "Service listing",
+          price: s.price || 0,
+          category: s.category || "Service",
           provider_id: s.provider_id,
           type: "service",
           avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
@@ -366,10 +624,10 @@ export default function MarketplacePage() {
         const stats = getProviderStats(p.provider_id);
         return {
           id: p.id,
-          title: p.title,
-          description: p.description,
-          price: p.price,
-          category: p.category,
+          title: p.title || "Local product",
+          description: p.description || "Product listing",
+          price: p.price || 0,
+          category: p.category || "Product",
           provider_id: p.provider_id,
           type: "product",
           avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
@@ -416,20 +674,35 @@ export default function MarketplacePage() {
         };
       });
 
-      setFeed([...formattedPosts, ...formattedServices, ...formattedProducts]);
+      const liveFeed = [...formattedPosts, ...formattedServices, ...formattedProducts];
+      if (liveFeed.length === 0) {
+        setFeed(demoFeed);
+        setUsingDemoFeed(true);
+        setFeedError("No live listings yet. Showing demo marketplace cards.");
+      } else {
+        setFeed(liveFeed);
+        setUsingDemoFeed(false);
+      }
     } catch (error) {
       console.error("Failed to load marketplace feed:", error);
-      setFeedError(
-        error instanceof Error ? error.message : "Unable to load the dashboard feed. Please retry."
-      );
+      setFeed(demoFeed);
+      setUsingDemoFeed(true);
+      setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
     } finally {
       setIsFeedLoading(false);
     }
-  }, []);
+  }, [demoFeed]);
 
   useEffect(() => {
     void fetchFeed();
   }, [fetchFeed]);
+
+  useEffect(() => {
+    const mapTimer = window.setTimeout(() => {
+      setMapReady(true);
+    }, 900);
+    return () => window.clearTimeout(mapTimer);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -478,8 +751,8 @@ const matchesSearch = item.title
 
   const matchesCategory =
     category === "all" ||
-    item.category === category ||
-    item.type === category;
+    item.category.toLowerCase() === category.toLowerCase() ||
+    item.type === category.toLowerCase();
 
   const matchesTrending = showTrendingOnly
     ? item.type === "demand"
@@ -501,6 +774,15 @@ const matchesSearch = item.title
 /* ================= BOOK ================= */
 
 const bookNow = async (item: Listing) => {
+if (item.isDemo) {
+  if (item.type === "demand") {
+    router.push("/dashboard/provider/add-service");
+    return;
+  }
+  router.push("/dashboard/people");
+  return;
+}
+
 const {
 data: { user },
 } = await supabase.auth.getUser();
@@ -523,6 +805,11 @@ alert("Booking request sent 🚀");
 };
 
 const messageProvider = async (providerId: string) => {
+if (providerId.startsWith("demo-provider-")) {
+  router.push("/dashboard/people");
+  return;
+}
+
 setMessageLoadingId(providerId);
 
 const {
@@ -617,6 +904,54 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
       <p className="text-white/90 mt-2 text-sm sm:text-base">
         Book trusted providers near you in real-time.
       </p>
+      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
+        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+          520+ Active Providers
+        </span>
+        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+          4.8 Average Rating
+        </span>
+        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+          Fast Local Matching
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <button
+        type="button"
+        onClick={() => router.push("/dashboard/profile")}
+        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+      >
+        Complete Profile
+      </button>
+      <button
+        type="button"
+        onClick={() => router.push("/dashboard/create_post")}
+        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+      >
+        Post New Need
+      </button>
+      <button
+        type="button"
+        onClick={() => router.push("/dashboard/provider/add-service")}
+        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+      >
+        Add Service
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setFeed(demoFeed);
+          setUsingDemoFeed(true);
+          setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
+        }}
+        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+      >
+        Load Demo Seed
+      </button>
     </div>
   </div>
 
@@ -707,7 +1042,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     {/* FEED */}
     <div className="lg:col-span-2 space-y-5">
 
-      {isFeedLoading ? (
+      {isFeedLoading && feed.length === 0 ? (
         <div className="space-y-4">
           {[0, 1, 2].map((index) => (
             <div
@@ -721,22 +1056,64 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </div>
           ))}
         </div>
-      ) : feedError ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6">
-          <h3 className="text-lg font-semibold text-rose-800">Could not load dashboard feed</h3>
-          <p className="mt-2 text-sm text-rose-700">
-            {feedError}
-          </p>
-          <button
-            type="button"
-            onClick={() => void fetchFeed()}
-            className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
       ) : (
         <>
+          {(usingDemoFeed || !!feedError || isFeedLoading) && (
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-indigo-900">
+                    {usingDemoFeed ? "Demo seed feed is active" : "Syncing live feed"}
+                  </p>
+                  <p className="text-xs text-indigo-700 mt-1">
+                    {feedError || "Live listings are loading in the background. You can still browse and interact."}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void fetchFeed()}
+                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                  >
+                    Refresh Live Data
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/provider/add-service")}
+                    className="rounded-xl border border-indigo-300 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:border-indigo-500 transition-colors"
+                  >
+                    Add Service
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {feed.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <h3 className="text-lg font-semibold text-slate-900">No listings available yet</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Create your first post or listing to populate the dashboard.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/create_post")}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                >
+                  Post a Need
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/provider/add-product")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+                >
+                  Add Product
+                </button>
+              </div>
+            </div>
+          ) : (
+          <>
           {/* TRENDING */}
           <div>
             <h2 className="flex items-center gap-2 text-indigo-600 mb-3">
@@ -971,6 +1348,8 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               </div>
             </div>
           )}
+          </>
+          )}
         </>
       )}
     </div>
@@ -986,14 +1365,20 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
         </h2>
 
         <div className="h-[15rem] sm:h-60 rounded-xl">
-          <MarketplaceMap
-            items={feed.map((item) => ({
-              id: item.id,
-              title: item.title,
-              lat: item.lat,
-              lng: item.lng,
-            }))}
-          />
+          {mapReady ? (
+            <MarketplaceMap
+              items={feed.map((item) => ({
+                id: item.id,
+                title: item.title,
+                lat: item.lat,
+                lng: item.lng,
+              }))}
+            />
+          ) : (
+            <div className="h-full rounded-xl border border-slate-200 bg-slate-100 animate-pulse grid place-items-center text-xs text-slate-500">
+              Loading map...
+            </div>
+          )}
         </div>
       </div>
 
