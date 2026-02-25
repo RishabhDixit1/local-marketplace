@@ -1,14 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
 import ProviderPopup from "@/app/components/ProviderPopup";
 import dynamic from "next/dynamic";
-import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import { useRouter } from "next/navigation";
-import CreatePostModal from "@/app/components/CreatePostModal";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -22,6 +19,16 @@ const MarketplaceMap = dynamic(
 { ssr: false }
 );
 
+const ProviderTrustPanel = dynamic(
+  () => import("@/app/components/ProviderTrustPanel").then((mod) => mod.default),
+  { ssr: false }
+);
+
+const CreatePostModal = dynamic(
+  () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
+  { ssr: false }
+);
+
 import {
 Search,
 MapPin,
@@ -29,6 +36,9 @@ MessageCircle,
 Filter,
 TrendingUp,
 } from "lucide-react";
+
+const FEED_LIMIT_PER_TYPE = 60;
+const MAX_PROFILE_LOOKUP = 220;
 
 /* ================= TYPES ================= */
 
@@ -163,275 +173,299 @@ const pseudoDistance = (seed: string) => {
 /* ================= PAGE ================= */
 
 export default function MarketplacePage() {
-const router = useRouter();
-const [feed, setFeed] = useState<Listing[]>([]);
-const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-const [search, setSearch] = useState("");
-const [category, setCategory] = useState("all");
-const [sortBy, setSortBy] = useState<"best" | "distance" | "price">("best");
-const [showTrendingOnly, setShowTrendingOnly] = useState(false);
-const [highlightedId, setHighlightedId] = useState<string | null>(null);
-const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
-const [openPostModal, setOpenPostModal] = useState(false);
-const [focusTarget, setFocusTarget] = useState<{
-  id: string;
-  type: string;
-} | null>(null);
-const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const router = useRouter();
+  const [feed, setFeed] = useState<Listing[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sortBy, setSortBy] = useState<"best" | "distance" | "price">("best");
+  const [showTrendingOnly, setShowTrendingOnly] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
+  const [openPostModal, setOpenPostModal] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<{
+    id: string;
+    type: string;
+  } | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-useEffect(() => {
-// eslint-disable-next-line react-hooks/immutability
-fetchFeed();
-}, []);
+  /* ================= FETCH ================= */
+  const fetchFeed = useCallback(async () => {
+    setIsFeedLoading(true);
+    setFeedError("");
 
-useEffect(() => {
-  const params = new URLSearchParams(
-    window.location.search
-  );
-  const id = params.get("focus");
-  const type = params.get("type");
-  if (!id) return;
-  setFocusTarget({
-    id,
-    type: type || "",
-  });
-}, []);
+    try {
+      const [
+        { data: services, error: servicesError },
+        { data: products, error: productsError },
+        { data: posts, error: postsError },
+      ] = await Promise.all([
+        supabase
+          .from("service_listings")
+          .select("id,title,description,price,category,provider_id,created_at")
+          .order("created_at", { ascending: false })
+          .limit(FEED_LIMIT_PER_TYPE),
+        supabase
+          .from("product_catalog")
+          .select("id,title,description,price,category,provider_id,created_at")
+          .order("created_at", { ascending: false })
+          .limit(FEED_LIMIT_PER_TYPE),
+        supabase
+          .from("posts")
+          .select("id,text,content,description,title,user_id,provider_id,created_by,created_at")
+          .eq("status", "open")
+          .order("created_at", { ascending: false })
+          .limit(FEED_LIMIT_PER_TYPE),
+      ]);
 
-useEffect(() => {
-  if (!focusTarget?.id || feed.length === 0) return;
+      if (servicesError || productsError || postsError) {
+        throw new Error(
+          servicesError?.message ||
+            productsError?.message ||
+            postsError?.message ||
+            "Unable to load marketplace feed right now."
+        );
+      }
 
-  if (
-    focusTarget.type &&
-    ["demand", "service", "product"].includes(
-      focusTarget.type
-    )
-  ) {
-    setCategory(focusTarget.type);
-  } else {
-    setCategory("all");
-  }
-  setShowTrendingOnly(false);
-  setSearch("");
+      const serviceRows = (services as ServiceRow[] | null) || [];
+      const productRows = (products as ProductRow[] | null) || [];
+      const postRows = (posts as PostRow[] | null) || [];
 
-  const timer = setTimeout(() => {
-    const target = cardRefs.current[focusTarget.id];
-    if (!target) return;
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
+      const profileIds = [
+        ...serviceRows.map((row) => row.provider_id),
+        ...productRows.map((row) => row.provider_id),
+        ...postRows
+          .map((row) => row.user_id || row.provider_id || row.created_by || "")
+          .filter(Boolean),
+      ];
+
+      const uniqueProfileIds = Array.from(new Set(profileIds)).slice(0, MAX_PROFILE_LOOKUP);
+      let profileMap = new Map<string, ProfileRow>();
+      let reviewRows: ReviewRow[] = [];
+
+      if (uniqueProfileIds.length > 0) {
+        const [
+          { data: profiles, error: profilesError },
+          { data: reviews, error: reviewsError },
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
+            .in("id", uniqueProfileIds),
+          supabase.from("reviews").select("provider_id,rating").in("provider_id", uniqueProfileIds),
+        ]);
+
+        if (profilesError) {
+          throw new Error(profilesError.message);
+        }
+
+        if (reviewsError) {
+          console.warn("Could not load review ratings for feed scoring:", reviewsError.message);
+        }
+
+        profileMap = new Map((profiles as ProfileRow[] | null)?.map((p) => [p.id, p]) || []);
+        reviewRows = (reviews as ReviewRow[] | null) || [];
+      }
+
+      const serviceCountMap = new Map<string, number>();
+      const productCountMap = new Map<string, number>();
+      const ratingMap = new Map<string, { sum: number; count: number }>();
+
+      serviceRows.forEach((row) => {
+        serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
+      });
+
+      productRows.forEach((row) => {
+        productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
+      });
+
+      reviewRows.forEach((row) => {
+        if (!row.provider_id) return;
+        const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
+        ratingMap.set(row.provider_id, {
+          sum: previous.sum + Number(row.rating || 0),
+          count: previous.count + 1,
+        });
+      });
+
+      const getProviderStats = (providerId: string) => {
+        const profile = providerId ? profileMap.get(providerId) : undefined;
+        const serviceCount = serviceCountMap.get(providerId) || 0;
+        const productCount = productCountMap.get(providerId) || 0;
+        const ratings = ratingMap.get(providerId);
+        const reviewCount = ratings?.count || 0;
+        const averageRating = reviewCount
+          ? Number((((ratings?.sum || 0) / reviewCount) || 0).toFixed(1))
+          : 4.4;
+        const profileCompletion = calculateProfileCompletion({
+          name: profile?.name,
+          location: profile?.location,
+          bio: profile?.bio,
+          services: profile?.services,
+          email: profile?.email,
+          phone: profile?.phone,
+          website: profile?.website,
+        });
+        const responseMinutes = estimateResponseMinutes({
+          availability: profile?.availability,
+          providerId: providerId || profile?.id || "provider",
+        });
+        const distance = pseudoDistance(providerId || profile?.id || "local");
+        const verificationStatus = calculateVerificationStatus({
+          role: profile?.role,
+          profileCompletion,
+          listingsCount: serviceCount + productCount,
+          averageRating,
+          reviewCount,
+        });
+        const rankScore = calculateLocalRankScore({
+          distanceKm: distance,
+          responseMinutes,
+          rating: averageRating,
+          profileCompletion,
+        });
+
+        return {
+          profile,
+          distance,
+          responseMinutes,
+          profileCompletion,
+          verificationStatus,
+          rankScore,
+        };
+      };
+
+      /* ---------- FORMAT ---------- */
+      const formattedServices: Listing[] = serviceRows.map((s) => {
+        const stats = getProviderStats(s.provider_id);
+        return {
+          id: s.id,
+          title: s.title,
+          description: s.description,
+          price: s.price,
+          category: s.category,
+          provider_id: s.provider_id,
+          type: "service",
+          avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
+          distance: stats.distance,
+          lat: 28.61 + Math.random() * 0.05,
+          lng: 77.2 + Math.random() * 0.05,
+          createdAt: s.created_at,
+          creatorName: stats.profile?.name || "Local Provider",
+          businessSlug: createBusinessSlug(stats.profile?.name, s.provider_id),
+          rankScore: stats.rankScore,
+          responseMinutes: stats.responseMinutes,
+          profileCompletion: stats.profileCompletion,
+          verificationStatus: stats.verificationStatus,
+        };
+      });
+
+      const formattedProducts: Listing[] = productRows.map((p) => {
+        const stats = getProviderStats(p.provider_id);
+        return {
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          price: p.price,
+          category: p.category,
+          provider_id: p.provider_id,
+          type: "product",
+          avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
+          distance: stats.distance,
+          lat: 28.61 + Math.random() * 0.05,
+          lng: 77.2 + Math.random() * 0.05,
+          createdAt: p.created_at,
+          creatorName: stats.profile?.name || "Local Seller",
+          businessSlug: createBusinessSlug(stats.profile?.name, p.provider_id),
+          rankScore: stats.rankScore,
+          responseMinutes: stats.responseMinutes,
+          profileCompletion: stats.profileCompletion,
+          verificationStatus: stats.verificationStatus,
+        };
+      });
+
+      const formattedPosts: Listing[] = postRows.map((post) => {
+        const rawText = post.text || post.content || post.description || post.title || "Local post";
+        const parsed = parsePostText(rawText);
+        const ownerId = post.user_id || post.provider_id || post.created_by || "";
+        const stats = ownerId ? getProviderStats(ownerId) : null;
+
+        return {
+          id: post.id,
+          title: parsed.title,
+          description: parsed.description,
+          price: parsed.budget,
+          category: parsed.category,
+          provider_id: ownerId,
+          type: "demand",
+          avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
+          distance: stats?.distance || pseudoDistance(post.id),
+          urgent: true,
+          lat: 28.61 + Math.random() * 0.05,
+          lng: 77.2 + Math.random() * 0.05,
+          media: parsed.media,
+          createdAt: post.created_at,
+          creatorName: stats?.profile?.name || "Community Member",
+          businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
+          rankScore: stats?.rankScore || 50,
+          responseMinutes: stats?.responseMinutes || 30,
+          profileCompletion: stats?.profileCompletion || 40,
+          verificationStatus: stats?.verificationStatus || "unclaimed",
+        };
+      });
+
+      setFeed([...formattedPosts, ...formattedServices, ...formattedProducts]);
+    } catch (error) {
+      console.error("Failed to load marketplace feed:", error);
+      setFeedError(
+        error instanceof Error ? error.message : "Unable to load the dashboard feed. Please retry."
+      );
+    } finally {
+      setIsFeedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchFeed();
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("focus");
+    const type = params.get("type");
+    if (!id) return;
+    setFocusTarget({
+      id,
+      type: type || "",
     });
-    setHighlightedId(focusTarget.id);
-    setTimeout(
-      () => setHighlightedId(null),
-      2600
-    );
-  }, 120);
+  }, []);
 
-  return () => clearTimeout(timer);
-}, [feed.length, focusTarget]);
+  useEffect(() => {
+    if (!focusTarget?.id || feed.length === 0) return;
 
-/* ================= FETCH ================= */
+    if (focusTarget.type && ["demand", "service", "product"].includes(focusTarget.type)) {
+      setCategory(focusTarget.type);
+    } else {
+      setCategory("all");
+    }
+    setShowTrendingOnly(false);
+    setSearch("");
 
-const fetchFeed = async () => {
-const [{ data: services }, { data: products }, { data: posts }, { data: reviews }] = await Promise.all([
-  supabase.from("service_listings").select("*"),
-  supabase.from("product_catalog").select("*"),
-  supabase.from("posts").select("*"),
-  supabase.from("reviews").select("provider_id,rating"),
-]);
+    const timer = setTimeout(() => {
+      const target = cardRefs.current[focusTarget.id];
+      if (!target) return;
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      setHighlightedId(focusTarget.id);
+      setTimeout(() => setHighlightedId(null), 2600);
+    }, 120);
 
-const serviceRows = (services as ServiceRow[] | null) || [];
-const productRows = (products as ProductRow[] | null) || [];
-const postRows = (posts as PostRow[] | null) || [];
-const reviewRows = (reviews as ReviewRow[] | null) || [];
-
-const profileIds = [
-  ...serviceRows.map((row) => row.provider_id),
-  ...productRows.map((row) => row.provider_id),
-  ...postRows.map((row) => row.user_id || row.provider_id || row.created_by || "").filter(Boolean),
-];
-
-const uniqueProfileIds = Array.from(new Set(profileIds));
-let profileMap = new Map<string, ProfileRow>();
-
-if (uniqueProfileIds.length > 0) {
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
-    .in("id", uniqueProfileIds);
-
-  profileMap = new Map((profiles as ProfileRow[] | null)?.map((p) => [p.id, p]) || []);
-}
-
-const serviceCountMap = new Map<string, number>();
-const productCountMap = new Map<string, number>();
-const ratingMap = new Map<string, { sum: number; count: number }>();
-
-serviceRows.forEach((row) => {
-  serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
-});
-
-productRows.forEach((row) => {
-  productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
-});
-
-reviewRows.forEach((row) => {
-  if (!row.provider_id) return;
-  const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
-  ratingMap.set(row.provider_id, {
-    sum: previous.sum + Number(row.rating || 0),
-    count: previous.count + 1,
-  });
-});
-
-const getProviderStats = (providerId: string) => {
-  const profile = providerId ? profileMap.get(providerId) : undefined;
-  const serviceCount = serviceCountMap.get(providerId) || 0;
-  const productCount = productCountMap.get(providerId) || 0;
-  const ratings = ratingMap.get(providerId);
-  const reviewCount = ratings?.count || 0;
-  const averageRating = reviewCount ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.4;
-  const profileCompletion = calculateProfileCompletion({
-    name: profile?.name,
-    location: profile?.location,
-    bio: profile?.bio,
-    services: profile?.services,
-    email: profile?.email,
-    phone: profile?.phone,
-    website: profile?.website,
-  });
-  const responseMinutes = estimateResponseMinutes({
-    availability: profile?.availability,
-    providerId: providerId || profile?.id || "provider",
-  });
-  const distance = pseudoDistance(providerId || profile?.id || "local");
-  const verificationStatus = calculateVerificationStatus({
-    role: profile?.role,
-    profileCompletion,
-    listingsCount: serviceCount + productCount,
-    averageRating,
-    reviewCount,
-  });
-  const rankScore = calculateLocalRankScore({
-    distanceKm: distance,
-    responseMinutes,
-    rating: averageRating,
-    profileCompletion,
-  });
-
-  return {
-    profile,
-    distance,
-    responseMinutes,
-    profileCompletion,
-    verificationStatus,
-    rankScore,
-  };
-};
-
-
-/* ---------- FORMAT ---------- */
-
-const formattedServices: Listing[] =
-  serviceRows.map((s) => {
-    const stats = getProviderStats(s.provider_id);
-    return {
-      id: s.id,
-      title: s.title,
-      description: s.description,
-      price: s.price,
-      category: s.category,
-      provider_id: s.provider_id,
-      type: "service",
-      avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
-      distance: stats.distance,
-      lat: 28.61 + Math.random() * 0.05,
-      lng: 77.2 + Math.random() * 0.05,
-      createdAt: s.created_at,
-      creatorName: stats.profile?.name || "Local Provider",
-      businessSlug: createBusinessSlug(stats.profile?.name, s.provider_id),
-      rankScore: stats.rankScore,
-      responseMinutes: stats.responseMinutes,
-      profileCompletion: stats.profileCompletion,
-      verificationStatus: stats.verificationStatus,
-    };
-  });
-
-const formattedProducts: Listing[] =
-  productRows.map((p) => {
-    const stats = getProviderStats(p.provider_id);
-    return {
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      price: p.price,
-      category: p.category,
-      provider_id: p.provider_id,
-      type: "product",
-      avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
-      distance: stats.distance,
-      lat: 28.61 + Math.random() * 0.05,
-      lng: 77.2 + Math.random() * 0.05,
-      createdAt: p.created_at,
-      creatorName: stats.profile?.name || "Local Seller",
-      businessSlug: createBusinessSlug(stats.profile?.name, p.provider_id),
-      rankScore: stats.rankScore,
-      responseMinutes: stats.responseMinutes,
-      profileCompletion: stats.profileCompletion,
-      verificationStatus: stats.verificationStatus,
-    };
-  });
-
-const formattedPosts: Listing[] =
-  postRows.map((post) => {
-    const rawText =
-      post.text ||
-      post.content ||
-      post.description ||
-      post.title ||
-      "Local post";
-    const parsed = parsePostText(rawText);
-    const ownerId =
-      post.user_id ||
-      post.provider_id ||
-      post.created_by ||
-      "";
-    const stats = ownerId ? getProviderStats(ownerId) : null;
-
-    return {
-      id: post.id,
-      title: parsed.title,
-      description: parsed.description,
-      price: parsed.budget,
-      category: parsed.category,
-      provider_id: ownerId,
-      type: "demand",
-      avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
-      distance: stats?.distance || pseudoDistance(post.id),
-      urgent: true,
-      lat: 28.61 + Math.random() * 0.05,
-      lng: 77.2 + Math.random() * 0.05,
-      media: parsed.media,
-      createdAt: post.created_at,
-      creatorName: stats?.profile?.name || "Community Member",
-      businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
-      rankScore: stats?.rankScore || 50,
-      responseMinutes: stats?.responseMinutes || 30,
-      profileCompletion: stats?.profileCompletion || 40,
-      verificationStatus: stats?.verificationStatus || "unclaimed",
-    };
-  });
-
-const combined = [
-  ...formattedPosts,
-  ...formattedServices,
-  ...formattedProducts,
-];
-
-setFeed(combined);
-
-
-};
+    return () => clearTimeout(timer);
+  }, [feed.length, focusTarget]);
 
 /* ================= FILTER + SORT ================= */
 
@@ -673,250 +707,271 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     {/* FEED */}
     <div className="lg:col-span-2 space-y-5">
 
-      {/* TRENDING */}
-      <div>
-        <h2 className="flex items-center gap-2 text-indigo-600 mb-3">
-          <TrendingUp size={16} />
-          Trending Near You
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          {feed
-            .filter((i) => i.type === "demand")
-            .sort((a, b) => b.rankScore - a.rankScore)
-            .slice(0, 2)
-            .map((item) => (
-              <div
-                key={"trend-" + item.id}
-                className="bg-white p-4 rounded-xl border border-slate-200"
-              >
-                <div className="text-sm text-slate-500">
-                  {item.distance} km away
-                </div>
-                <div className="font-semibold">
-                  {item.title}
-                </div>
-                <div className="text-indigo-600 font-bold">
-                  ₹ {item.price}
-                </div>
-              </div>
-            ))}
+      {isFeedLoading ? (
+        <div className="space-y-4">
+          {[0, 1, 2].map((index) => (
+            <div
+              key={`feed-skeleton-${index}`}
+              className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
+            >
+              <div className="h-4 w-24 rounded bg-slate-200" />
+              <div className="mt-4 h-5 w-2/3 rounded bg-slate-200" />
+              <div className="mt-3 h-4 w-full rounded bg-slate-200" />
+              <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
+            </div>
+          ))}
         </div>
-      </div>
+      ) : feedError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6">
+          <h3 className="text-lg font-semibold text-rose-800">Could not load dashboard feed</h3>
+          <p className="mt-2 text-sm text-rose-700">
+            {feedError}
+          </p>
+          <button
+            type="button"
+            onClick={() => void fetchFeed()}
+            className="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* TRENDING */}
+          <div>
+            <h2 className="flex items-center gap-2 text-indigo-600 mb-3">
+              <TrendingUp size={16} />
+              Trending Near You
+            </h2>
 
-      {/* LIST */}
-      {filtered.map((item) => (
-        <motion.div
-          key={item.id}
-          whileHover={{ scale: 1.02 }}
-          ref={(el) => {
-            cardRefs.current[item.id] = el;
-          }}
-          className={`p-4 sm:p-6 bg-white border rounded-2xl transition-all duration-500 ${
-            highlightedId === item.id
-              ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
-              : "border-slate-200"
-          }`}
-        >
-          <div className="flex flex-col sm:flex-row gap-4">
-
-            <ProviderPopup userId={item.provider_id}>
-  <Image
-    src={item.avatar}
-    alt={`${item.title} avatar`}
-    width={48}
-    height={48}
-    onClick={() =>
-      setSelectedProvider(item.provider_id)
-    }
-    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition object-cover"
-  />
-</ProviderPopup>
-
-            <div className="flex-1 min-w-0">
-
-              <div className="flex flex-wrap gap-2 mb-1">
-                <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                  {item.type}
-                </span>
-
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    item.verificationStatus === "verified"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : item.verificationStatus === "pending"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {item.verificationStatus === "verified"
-                    ? "Verified"
-                    : item.verificationStatus === "pending"
-                    ? "Pending"
-                    : "Unclaimed"}
-                </span>
-
-                {item.urgent && (
-                  <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
-                    URGENT
-                  </span>
-                )}
-
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
-                  Recently Posted
-                </span>
-              </div>
-
-              <h3 className="font-semibold text-lg">
-                {item.title}
-              </h3>
-
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>by {item.creatorName || "Local Provider"}</span>
-                {!!item.businessSlug && (
-                  <button
-                    onClick={() => router.push(`/business/${item.businessSlug}`)}
-                    className="text-indigo-600 hover:text-indigo-500"
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {feed
+                .filter((i) => i.type === "demand")
+                .sort((a, b) => b.rankScore - a.rankScore)
+                .slice(0, 2)
+                .map((item) => (
+                  <div
+                    key={"trend-" + item.id}
+                    className="bg-white p-4 rounded-xl border border-slate-200"
                   >
-                    View business profile
-                  </button>
-                )}
-              </div>
-
-              <p className="text-sm text-slate-500 mt-1">
-                {item.description}
-              </p>
-
-              {!!item.media?.length && (
-                <div className="mt-3 grid gap-2">
-                  {item.media.slice(0, 3).map((mediaItem, index) => {
-                    if (mediaItem.mimeType.startsWith("image/")) {
-                      return (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={`${item.id}-media-${index}`}
-                          src={mediaItem.url}
-                          alt="Post attachment"
-                          className="w-full max-h-64 rounded-xl border border-slate-200 object-cover"
-                        />
-                      );
-                    }
-
-                    if (mediaItem.mimeType.startsWith("video/")) {
-                      return (
-                        <video
-                          key={`${item.id}-media-${index}`}
-                          src={mediaItem.url}
-                          controls
-                          preload="metadata"
-                          className="w-full max-h-72 rounded-xl border border-slate-200"
-                        />
-                      );
-                    }
-
-                    if (mediaItem.mimeType.startsWith("audio/")) {
-                      return (
-                        <div
-                          key={`${item.id}-media-${index}`}
-                          className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                        >
-                          <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
-                        </div>
-                      );
-                    }
-
-                    return null;
-                  })}
-                  {item.media.length > 3 && (
-                    <p className="text-xs text-slate-500">
-                      +{item.media.length - 3} more attachment(s)
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 text-sm mt-3 text-slate-500">
-                <MapPin size={14} />
-                {item.distance} km
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-500">
-                <span>~{item.responseMinutes} min response</span>
-                <span>•</span>
-                <span>{item.profileCompletion}% profile</span>
-                <span>•</span>
-                <span className="text-indigo-600">Match {item.rankScore}</span>
-              </div>
-
-              {item.price > 0 && (
-                <div className="text-indigo-600 font-bold mt-2">
-                  ₹ {item.price}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
-                <button
-                  onClick={() =>
-                    bookNow(item)
-                  }
-                  disabled={!item.provider_id}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
-                >
-                  {item.type === "demand"
-                    ? "Accept Job"
-                    : "Book Now"}
-                </button>
-
-                <button
-                  onClick={() =>
-                    messageProvider(item.provider_id)
-                  }
-                  disabled={!item.provider_id}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
-                >
-                  {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
-                </button>
-
-                {!!item.businessSlug && (
-                  <button
-                    onClick={() => router.push(`/business/${item.businessSlug}`)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
-                  >
-                    Business Page
-                  </button>
-                )}
-              </div>
+                    <div className="text-sm text-slate-500">
+                      {item.distance} km away
+                    </div>
+                    <div className="font-semibold">
+                      {item.title}
+                    </div>
+                    <div className="text-indigo-600 font-bold">
+                      ₹ {item.price}
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
-        </motion.div>
-      ))}
 
-      {!filtered.length && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8">
-          <h3 className="text-xl font-semibold">No live listings yet</h3>
-          <p className="text-slate-500 mt-2">
-            Start the local economy by posting a need or adding your first service/product listing.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              onClick={() => setOpenPostModal(true)}
-              className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+          {/* LIST */}
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              ref={(el) => {
+                cardRefs.current[item.id] = el;
+              }}
+              className={`p-4 sm:p-6 bg-white border rounded-2xl transition-all duration-500 hover:scale-[1.01] ${
+                highlightedId === item.id
+                  ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
+                  : "border-slate-200"
+              }`}
             >
-              Post a Need
-            </button>
-            <button
-              onClick={() => router.push("/dashboard/provider/add-service")}
-              className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
-            >
-              Add Service
-            </button>
-            <button
-              onClick={() => router.push("/dashboard/provider/add-product")}
-              className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
-            >
-              Add Product
-            </button>
-          </div>
-        </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <ProviderPopup userId={item.provider_id}>
+                  <Image
+                    src={item.avatar}
+                    alt={`${item.title} avatar`}
+                    width={48}
+                    height={48}
+                    onClick={() => setSelectedProvider(item.provider_id)}
+                    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition object-cover"
+                  />
+                </ProviderPopup>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap gap-2 mb-1">
+                    <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
+                      {item.type}
+                    </span>
+
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${
+                        item.verificationStatus === "verified"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : item.verificationStatus === "pending"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {item.verificationStatus === "verified"
+                        ? "Verified"
+                        : item.verificationStatus === "pending"
+                        ? "Pending"
+                        : "Unclaimed"}
+                    </span>
+
+                    {item.urgent && (
+                      <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
+                        URGENT
+                      </span>
+                    )}
+
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
+                      Recently Posted
+                    </span>
+                  </div>
+
+                  <h3 className="font-semibold text-lg">
+                    {item.title}
+                  </h3>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span>by {item.creatorName || "Local Provider"}</span>
+                    {!!item.businessSlug && (
+                      <button
+                        onClick={() => router.push(`/business/${item.businessSlug}`)}
+                        className="text-indigo-600 hover:text-indigo-500"
+                      >
+                        View business profile
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    {item.description}
+                  </p>
+
+                  {!!item.media?.length && (
+                    <div className="mt-3 grid gap-2">
+                      {item.media.slice(0, 3).map((mediaItem, index) => {
+                        if (mediaItem.mimeType.startsWith("image/")) {
+                          return (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={`${item.id}-media-${index}`}
+                              src={mediaItem.url}
+                              alt="Post attachment"
+                              className="w-full max-h-64 rounded-xl border border-slate-200 object-cover"
+                            />
+                          );
+                        }
+
+                        if (mediaItem.mimeType.startsWith("video/")) {
+                          return (
+                            <video
+                              key={`${item.id}-media-${index}`}
+                              src={mediaItem.url}
+                              controls
+                              preload="metadata"
+                              className="w-full max-h-72 rounded-xl border border-slate-200"
+                            />
+                          );
+                        }
+
+                        if (mediaItem.mimeType.startsWith("audio/")) {
+                          return (
+                            <div
+                              key={`${item.id}-media-${index}`}
+                              className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            >
+                              <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })}
+                      {item.media.length > 3 && (
+                        <p className="text-xs text-slate-500">
+                          +{item.media.length - 3} more attachment(s)
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 text-sm mt-3 text-slate-500">
+                    <MapPin size={14} />
+                    {item.distance} km
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-500">
+                    <span>~{item.responseMinutes} min response</span>
+                    <span>•</span>
+                    <span>{item.profileCompletion}% profile</span>
+                    <span>•</span>
+                    <span className="text-indigo-600">Match {item.rankScore}</span>
+                  </div>
+
+                  {item.price > 0 && (
+                    <div className="text-indigo-600 font-bold mt-2">
+                      ₹ {item.price}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
+                    <button
+                      onClick={() => bookNow(item)}
+                      disabled={!item.provider_id}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
+                    >
+                      {item.type === "demand" ? "Accept Job" : "Book Now"}
+                    </button>
+
+                    <button
+                      onClick={() => messageProvider(item.provider_id)}
+                      disabled={!item.provider_id}
+                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
+                    >
+                      {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
+                    </button>
+
+                    {!!item.businessSlug && (
+                      <button
+                        onClick={() => router.push(`/business/${item.businessSlug}`)}
+                        className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
+                      >
+                        Business Page
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {!filtered.length && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8">
+              <h3 className="text-xl font-semibold">No live listings yet</h3>
+              <p className="text-slate-500 mt-2">
+                Start the local economy by posting a need or adding your first service/product listing.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setOpenPostModal(true)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+                >
+                  Post a Need
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard/provider/add-service")}
+                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                >
+                  Add Service
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard/provider/add-product")}
+                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                >
+                  Add Product
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
 
@@ -963,7 +1018,11 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
           </label>
         </div>
 
-        <button className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-500 transition-colors">
+        <button
+          type="button"
+          onClick={() => setOpenPostModal(true)}
+          className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-500 transition-colors"
+        >
           Continue →
         </button>
       </div>
@@ -971,19 +1030,27 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
   </div>
 
   {/* FLOATING CTA */}
-  <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition">
+  <button
+    type="button"
+    onClick={() => setOpenPostModal(true)}
+    className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
+  >
     +
   </button>
-  <ProviderTrustPanel
-  userId={selectedProvider || ""}
-  open={!!selectedProvider}
-  onClose={() => setSelectedProvider(null)}
-/>
-  <CreatePostModal
-  open={openPostModal}
-  onClose={() => setOpenPostModal(false)}
-  onPublished={fetchFeed}
-/>
+  {selectedProvider && (
+    <ProviderTrustPanel
+      userId={selectedProvider}
+      open
+      onClose={() => setSelectedProvider(null)}
+    />
+  )}
+  {openPostModal && (
+    <CreatePostModal
+      open={openPostModal}
+      onClose={() => setOpenPostModal(false)}
+      onPublished={() => void fetchFeed()}
+    />
+  )}
 </div>
 
 
