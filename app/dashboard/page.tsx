@@ -51,6 +51,7 @@ ShieldCheck,
 Zap,
 ImageIcon,
 RotateCcw,
+RefreshCw,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 48;
@@ -357,6 +358,13 @@ const formatRelativeAge = (value?: string) => {
   return `${days}d ago`;
 };
 
+const formatSyncTime = (iso?: string) => {
+  if (!iso) return "--";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "--";
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
 const getListingSignals = (item: Listing) => {
   const signals: string[] = [];
   if (item.urgent) signals.push("Urgent demand");
@@ -375,6 +383,8 @@ export default function MarketplacePage() {
   const demoFeed = useMemo(() => buildDemoFeed(), []);
   const [feed, setFeed] = useState<Listing[]>(demoFeed);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [feedError, setFeedError] = useState("");
   const [usingDemoFeed, setUsingDemoFeed] = useState(true);
   const [mapReady, setMapReady] = useState(false);
@@ -398,6 +408,7 @@ export default function MarketplacePage() {
     type: string;
   } | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const reloadTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -461,8 +472,12 @@ export default function MarketplacePage() {
   ]);
 
   /* ================= FETCH ================= */
-  const fetchFeed = useCallback(async () => {
-    setIsFeedLoading(true);
+  const fetchFeed = useCallback(async (soft = false) => {
+    if (soft) {
+      setSyncing(true);
+    } else {
+      setIsFeedLoading(true);
+    }
     setFeedError("");
 
     try {
@@ -864,18 +879,65 @@ export default function MarketplacePage() {
         setFeed(liveFeed);
         setUsingDemoFeed(false);
       }
+      setLastSyncedAt(new Date().toISOString());
     } catch (error) {
       console.error("Failed to load marketplace feed:", error);
-      setFeed(demoFeed);
-      setUsingDemoFeed(true);
-      setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
+      if (soft) {
+        setFeedError(error instanceof Error ? `${error.message}. Keeping current feed.` : "Keeping current feed.");
+      } else {
+        setFeed(demoFeed);
+        setUsingDemoFeed(true);
+        setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
+      }
     } finally {
-      setIsFeedLoading(false);
+      if (soft) {
+        setSyncing(false);
+      } else {
+        setIsFeedLoading(false);
+      }
     }
   }, [demoFeed]);
 
   useEffect(() => {
     void fetchFeed();
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      reloadTimerRef.current = window.setTimeout(() => {
+        void fetchFeed(true);
+      }, 300);
+    };
+
+    const channel = supabase
+      .channel("dashboard-feed-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
+      .subscribe();
+
+    return () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void fetchFeed(true);
+    }, 60000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [fetchFeed]);
 
   useEffect(() => {
@@ -1179,39 +1241,56 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </p>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-[540px]">
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/profile")}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Complete Profile
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpenPostModal(true)}
-              className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
-            >
-              Post New Need
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/provider/add-service")}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Add Service
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFeed(demoFeed);
-                setUsingDemoFeed(true);
-                setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
-              }}
-              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-            >
-              Load Demo Seed
-            </button>
+          <div className="w-full lg:w-[540px] space-y-2">
+            <div className="flex items-center justify-between rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs text-white/90">
+              <span className="inline-flex items-center gap-1.5">
+                {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => void fetchFeed(true)}
+                disabled={syncing}
+                className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                Refresh
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/profile")}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Complete Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenPostModal(true)}
+                className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+              >
+                Post New Need
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/provider/add-service")}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Add Service
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeed(demoFeed);
+                  setUsingDemoFeed(true);
+                  setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
+                }}
+                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+              >
+                Load Demo Seed
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1474,10 +1553,11 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => void fetchFeed()}
-                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                    onClick={() => void fetchFeed(true)}
+                    disabled={syncing}
+                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    Refresh Live Data
+                    {syncing ? "Refreshing..." : "Refresh Live Data"}
                   </button>
                   <button
                     type="button"
@@ -1907,7 +1987,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     <CreatePostModal
       open={openPostModal}
       onClose={() => setOpenPostModal(false)}
-      onPublished={() => void fetchFeed()}
+      onPublished={() => void fetchFeed(true)}
     />
   )}
 </div>
