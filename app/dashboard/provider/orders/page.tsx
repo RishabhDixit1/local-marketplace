@@ -7,7 +7,6 @@ import { CheckCircle2, Clock3, Loader2, Send, XCircle } from "lucide-react";
 
 type Order = {
   id: string;
-  listing_type: string;
   price: number;
   status: string;
   consumer_id: string;
@@ -165,7 +164,7 @@ export default function ProviderOrdersPage() {
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm text-slate-500">{order.listing_type.toUpperCase()} LEAD</p>
+                    <p className="text-sm text-slate-500">LOCAL LEAD</p>
                     <p className="text-lg font-semibold text-slate-900">₹ {order.price}</p>
                     <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleString()}</p>
                   </div>

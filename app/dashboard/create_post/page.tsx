@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { ArrowLeft, Plus, X, MapPin, DollarSign, Clock, Tag, FileText, Sparkles, Check } from "lucide-react";
 
 type PostType = "need" | "provide";
@@ -133,42 +134,37 @@ const handleSubmit = async (e: React.FormEvent) => {
   setIsSubmitting(true);
 
   try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    // ✅ Create ONE consistent post object (matches dashboard shape)
-    const newPost = {
-      id: Date.now().toString(),
-      userImage:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
-      userName: "Current User",
+    if (authError || !user) {
+      setErrors({ submit: "Please log in again before publishing." });
+      return;
+    }
 
-      // ✅ IMPORTANT: dashboard expects "queries"
-      queries: formData.tags,
+    const composedDescription = [
+      formData.description.trim(),
+      formData.tags.length ? `Tags: ${formData.tags.join(", ")}` : "",
+      formData.location.trim() ? `Location: ${formData.location.trim()}` : "",
+      formData.budget?.trim() ? `Budget: ${formData.budget.trim()}` : "",
+      formData.timeline?.trim() ? `Timeline: ${formData.timeline.trim()}` : "",
+      imageName ? `Attachment: ${imageName}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
-      // (optional) keep tags too (useful later)
-      tags: formData.tags,
+    const { error } = await supabase.from("posts").insert({
+      title: formData.title.trim(),
+      content: composedDescription,
+      author_id: user.id,
+    });
 
-      title: formData.title,
-      description: formData.description,
-      location: formData.location,
-      timeAgo: "just now",
+    if (error) {
+      throw error;
+    }
 
-      // optional extras (future use)
-      budget: formData.budget || "",
-      timeline: formData.timeline || "",
-      postType: formData.type, // need | provide
-      image: imageData || null,
-      createdAt: new Date().toISOString(),
-    };
-
-    // ✅ Store in localStorage
-    const existingPosts = localStorage.getItem("userPosts");
-    const userPosts = existingPosts ? JSON.parse(existingPosts) : [];
-    userPosts.unshift(newPost);
-    localStorage.setItem("userPosts", JSON.stringify(userPosts));
-
-    // ✅ Navigate back to dashboard
     router.push("/dashboard");
   } catch (error) {
     console.error("Error creating post:", error);

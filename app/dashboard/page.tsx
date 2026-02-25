@@ -24,11 +24,6 @@ const ProviderTrustPanel = dynamic(
   { ssr: false }
 );
 
-const CreatePostModal = dynamic(
-  () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
-  { ssr: false }
-);
-
 import {
 Search,
 MapPin,
@@ -112,9 +107,6 @@ type ProfileRow = {
   location?: string | null;
   availability?: string | null;
   services?: string[] | null;
-  email?: string | null;
-  phone?: string | null;
-  website?: string | null;
 };
 
 type ReviewRow = {
@@ -123,9 +115,6 @@ type ReviewRow = {
 };
 
 type FlexibleRow = Record<string, unknown>;
-
-const isMissingColumnError = (message: string) =>
-  /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
@@ -333,7 +322,6 @@ export default function MarketplacePage() {
   const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
-  const [openPostModal, setOpenPostModal] = useState(false);
   const [focusTarget, setFocusTarget] = useState<{
     id: string;
     type: string;
@@ -346,73 +334,35 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      let serviceRowsRaw: FlexibleRow[] = [];
-      let productRowsRaw: FlexibleRow[] = [];
-      let postRowsRaw: FlexibleRow[] = [];
-
-      const servicePrimary = await supabase
-        .from("service_listings")
-        .select("id,title,description,price,category,provider_id,created_at")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (servicePrimary.error) {
-        if (isMissingColumnError(servicePrimary.error.message)) {
-          const serviceFallback = await supabase
+      const [{ data: servicesData, error: servicesError }, { data: productsData, error: productsError }, { data: postsData, error: postsError }] =
+        await Promise.all([
+          supabase
             .from("service_listings")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (serviceFallback.error) {
-            throw new Error(serviceFallback.error.message);
-          }
-          serviceRowsRaw = (serviceFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(servicePrimary.error.message);
-        }
-      } else {
-        serviceRowsRaw = (servicePrimary.data as FlexibleRow[] | null) || [];
-      }
-
-      const productPrimary = await supabase
-        .from("product_catalog")
-        .select("id,title,description,price,category,provider_id,created_at")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (productPrimary.error) {
-        if (isMissingColumnError(productPrimary.error.message)) {
-          const productFallback = await supabase
+            .select("id,title,description,price,category,provider_id,created_at")
+            .limit(FEED_LIMIT_PER_TYPE),
+          supabase
             .from("product_catalog")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (productFallback.error) {
-            throw new Error(productFallback.error.message);
-          }
-          productRowsRaw = (productFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(productPrimary.error.message);
-        }
-      } else {
-        productRowsRaw = (productPrimary.data as FlexibleRow[] | null) || [];
+            .select("id,name,description,price,provider_id,delivery_method,created_at")
+            .limit(FEED_LIMIT_PER_TYPE),
+          supabase
+            .from("posts")
+            .select("id,title,content,author_id,created_at")
+            .limit(FEED_LIMIT_PER_TYPE),
+        ]);
+
+      if (servicesError) {
+        throw new Error(servicesError.message);
+      }
+      if (productsError) {
+        throw new Error(productsError.message);
+      }
+      if (postsError) {
+        throw new Error(postsError.message);
       }
 
-      const postsPrimary = await supabase
-        .from("posts")
-        .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
-        .eq("status", "open")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (postsPrimary.error) {
-        if (isMissingColumnError(postsPrimary.error.message)) {
-          const postsFallback = await supabase
-            .from("posts")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (postsFallback.error) {
-            throw new Error(postsFallback.error.message);
-          }
-          postRowsRaw = (postsFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(postsPrimary.error.message);
-        }
-      } else {
-        postRowsRaw = (postsPrimary.data as FlexibleRow[] | null) || [];
-      }
+      const serviceRowsRaw = (servicesData as FlexibleRow[] | null) || [];
+      const productRowsRaw = (productsData as FlexibleRow[] | null) || [];
+      const postRowsRaw = (postsData as FlexibleRow[] | null) || [];
 
       const serviceRows: ServiceRow[] = serviceRowsRaw
         .map((row, index) => ({
@@ -432,26 +382,22 @@ export default function MarketplacePage() {
           title: stringFromRow(row, ["title", "name", "product_name"], "Local product"),
           description: stringFromRow(row, ["description", "details", "text"], "Product listing"),
           price: numberFromRow(row, ["price", "amount", "mrp"], 0),
-          category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
+          category: stringFromRow(row, ["delivery_method", "category", "product_category", "type"], "Product"),
           provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }))
         .filter((row) => !!row.provider_id);
 
       const postRows: PostRow[] = postRowsRaw
-        .filter((row) => {
-          const status = stringFromRow(row, ["status", "state"], "");
-          return !status || status.toLowerCase() === "open";
-        })
         .map((row, index) => ({
           id: stringFromRow(row, ["id"], `post-${index}`),
-          text: stringFromRow(row, ["text", "content", "description", "title"], ""),
-          content: stringFromRow(row, ["content", "text"], ""),
-          description: stringFromRow(row, ["description", "text"], ""),
-          title: stringFromRow(row, ["title", "name"], ""),
-          user_id: stringFromRow(row, ["user_id", "author_id", "created_by"], ""),
+          text: stringFromRow(row, ["content", "title"], ""),
+          content: stringFromRow(row, ["content", "title"], ""),
+          description: stringFromRow(row, ["content", "title"], ""),
+          title: stringFromRow(row, ["title", "content"], ""),
+          user_id: stringFromRow(row, ["author_id", "user_id", "created_by"], ""),
           provider_id: stringFromRow(row, ["provider_id", "user_id"], ""),
-          created_by: stringFromRow(row, ["created_by", "author_id", "user_id"], ""),
+          created_by: stringFromRow(row, ["author_id", "created_by", "user_id"], ""),
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }));
 
@@ -468,29 +414,16 @@ export default function MarketplacePage() {
       let reviewRows: ReviewRow[] = [];
 
       if (uniqueProfileIds.length > 0) {
-        let profileRowsRaw: FlexibleRow[] = [];
-        const profilesPrimary = await supabase
+        const { data: profileRowsData, error: profileRowsError } = await supabase
           .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
+          .select("id,name,avatar_url,role,bio,location,availability,services")
           .in("id", uniqueProfileIds);
 
-        if (profilesPrimary.error) {
-          if (isMissingColumnError(profilesPrimary.error.message)) {
-            const profilesFallback = await supabase
-              .from("profiles")
-              .select("*")
-              .in("id", uniqueProfileIds);
-            if (profilesFallback.error) {
-              throw new Error(profilesFallback.error.message);
-            }
-            profileRowsRaw = (profilesFallback.data as FlexibleRow[] | null) || [];
-          } else {
-            throw new Error(profilesPrimary.error.message);
-          }
-        } else {
-          profileRowsRaw = (profilesPrimary.data as FlexibleRow[] | null) || [];
+        if (profileRowsError) {
+          throw new Error(profileRowsError.message);
         }
 
+        const profileRowsRaw = (profileRowsData as FlexibleRow[] | null) || [];
         const normalizedProfiles: ProfileRow[] = profileRowsRaw
           .map((row) => {
             const profileId = stringFromRow(row, ["id", "user_id"], "");
@@ -507,9 +440,6 @@ export default function MarketplacePage() {
               location: stringFromRow(row, ["location", "city"], ""),
               availability: stringFromRow(row, ["availability", "status"], ""),
               services: normalizedServices,
-              email: stringFromRow(row, ["email"], ""),
-              phone: stringFromRow(row, ["phone", "phone_number"], ""),
-              website: stringFromRow(row, ["website", "site_url"], ""),
             };
           })
           .filter((row) => !!row.id);
@@ -562,9 +492,6 @@ export default function MarketplacePage() {
           location: profile?.location,
           bio: profile?.bio,
           services: profile?.services,
-          email: profile?.email,
-          phone: profile?.phone,
-          website: profile?.website,
         });
         const responseMinutes = estimateResponseMinutes({
           availability: profile?.availability,
@@ -792,7 +719,6 @@ if (!user) return alert("Login required");
 
 await supabase.from("orders").insert({
   listing_id: item.id,
-  listing_type: item.type,
   consumer_id: user.id,
   provider_id: item.provider_id,
   price: item.price,
@@ -852,9 +778,7 @@ if (myConversationIds.length > 0) {
 if (!targetConversationId) {
   const { data: conversation, error } = await supabase
     .from("conversations")
-    .insert({
-      created_by: user.id,
-    })
+    .insert({})
     .select("id")
     .single();
 
@@ -1328,7 +1252,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
-                  onClick={() => setOpenPostModal(true)}
+                  onClick={() => router.push("/dashboard/create_post")}
                   className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
                 >
                   Post a Need
@@ -1405,7 +1329,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
 
         <button
           type="button"
-          onClick={() => setOpenPostModal(true)}
+          onClick={() => router.push("/dashboard/create_post")}
           className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-500 transition-colors"
         >
           Continue →
@@ -1417,7 +1341,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
   {/* FLOATING CTA */}
   <button
     type="button"
-    onClick={() => setOpenPostModal(true)}
+    onClick={() => router.push("/dashboard/create_post")}
     className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
   >
     +
@@ -1427,13 +1351,6 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
       userId={selectedProvider}
       open
       onClose={() => setSelectedProvider(null)}
-    />
-  )}
-  {openPostModal && (
-    <CreatePostModal
-      open={openPostModal}
-      onClose={() => setOpenPostModal(false)}
-      onPublished={() => void fetchFeed()}
     />
   )}
 </div>

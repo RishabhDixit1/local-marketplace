@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 
 type Order = {
   id: string;
-  listing_type: string;
   status: string;
   price: number;
   created_at: string;
@@ -79,7 +78,7 @@ export default function ConsumerOrdersPage() {
             className="p-5 bg-slate-900 rounded-xl border border-slate-800"
           >
             <div className="font-semibold">
-              {order.listing_type.toUpperCase()}
+              LOCAL LEAD
             </div>
             <div className="text-sm text-slate-400">
               ₹ {order.price}

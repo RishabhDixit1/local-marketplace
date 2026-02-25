@@ -28,9 +28,6 @@ type ProfileRow = {
   role: string | null;
   services: string[] | null;
   availability: string | null;
-  email: string | null;
-  phone: string | null;
-  website: string | null;
   avatar_url: string | null;
 };
 
@@ -61,7 +58,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
         await Promise.all([
           supabase
             .from("profiles")
-            .select("id,name,location,bio,role,services,availability,email,phone,website,avatar_url")
+            .select("id,name,location,bio,role,services,availability,avatar_url")
             .eq("id", userId)
             .maybeSingle<ProfileRow>(),
           supabase.from("reviews").select("rating,comment").eq("provider_id", userId),
@@ -111,9 +108,6 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
       location: profile.location,
       bio: profile.bio,
       services: profile.services,
-      email: profile.email,
-      phone: profile.phone,
-      website: profile.website,
     });
   }, [profile]);
 

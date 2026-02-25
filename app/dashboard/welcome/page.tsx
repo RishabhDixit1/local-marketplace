@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
   ArrowRight,
@@ -45,9 +44,6 @@ type UserProfile = {
   bio: string | null;
   services: string[] | null;
   availability: string | null;
-  email: string | null;
-  phone: string | null;
-  website: string | null;
 };
 
 type NearbyCard = {
@@ -74,7 +70,8 @@ type OnboardingStep = {
 
 type RawPost = {
   id: string;
-  text: string | null;
+  title: string | null;
+  content: string | null;
 };
 
 type RawService = {
@@ -86,13 +83,14 @@ type RawService = {
 
 type RawProduct = {
   id: string;
-  title: string | null;
-  category: string | null;
+  name: string | null;
+  delivery_method: string | null;
   price: number | null;
 };
 
 const routes = {
   posts: "/dashboard",
+  createPost: "/dashboard/create_post",
   people: "/dashboard/people",
   profile: "/dashboard/profile",
   tasks: "/dashboard/tasks",
@@ -108,7 +106,6 @@ const providerRoles = new Set(["provider", "seller", "service_provider", "busine
 export default function WelcomePage() {
   const router = useRouter();
 
-  const [openPostModal, setOpenPostModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
@@ -163,7 +160,7 @@ export default function WelcomePage() {
       }
     : {
         label: "Post a Need",
-        action: () => setOpenPostModal(true),
+        action: () => router.push(routes.createPost),
       };
 
   const completedOnboarding = onboardingSteps.filter((step) => step.done).length;
@@ -217,7 +214,7 @@ export default function WelcomePage() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("name, role, location, bio, services, availability, email, phone, website")
+        .select("name, role, location, bio, services, availability")
         .eq("id", currentUser.id)
         .maybeSingle<UserProfile>();
 
@@ -231,17 +228,15 @@ export default function WelcomePage() {
         (profileData?.name ? 15 : 0) +
         (profileData?.location ? 15 : 0) +
         ((profileData?.bio || "").trim().length >= 20 ? 20 : 0) +
-        ((profileData?.services?.length || 0) > 0 ? 20 : 0) +
-        (profileData?.email ? 10 : 0) +
-        (profileData?.phone ? 10 : 0) +
-        (profileData?.website ? 10 : 0);
+        ((profileData?.services?.length || 0) > 0 ? 30 : 0) +
+        (profileData?.availability ? 20 : 0);
 
       const profileCompletion = Math.min(100, profilePoints);
       setProfileStrength(profileCompletion);
 
       const [{ count: nearbyPostsCount }, { data: myOrders }, { data: myConversations }, { data: reviewsData }] =
         await Promise.all([
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "open"),
+          supabase.from("posts").select("*", { count: "exact", head: true }),
           supabase
             .from("orders")
             .select("status")
@@ -281,9 +276,9 @@ export default function WelcomePage() {
       });
 
       const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-        supabase.from("posts").select("id, text").eq("status", "open").limit(3),
+        supabase.from("posts").select("id, title, content").limit(3),
         supabase.from("service_listings").select("id, title, category, price").limit(3),
-        supabase.from("product_catalog").select("id, title, category, price").limit(3),
+        supabase.from("product_catalog").select("id, name, delivery_method, price").limit(3),
       ]);
 
       const demandImages = [
@@ -304,7 +299,7 @@ export default function WelcomePage() {
           id: `post-${post.id}`,
           focusId: post.id,
           type: "demand",
-          title: post.text || "New local need",
+          title: post.title || post.content || "New local need",
           subtitle: "Demand posted by nearby customer",
           priceLabel: "Budget shared in chat",
           distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
@@ -332,8 +327,8 @@ export default function WelcomePage() {
           id: `product-${product.id}`,
           focusId: product.id,
           type: "product",
-          title: product.title || "Local product",
-          subtitle: product.category || "Nearby seller",
+          title: product.name || "Local product",
+          subtitle: product.delivery_method || "Nearby seller",
           priceLabel: product.price ? `₹${product.price}` : "Price on request",
           distanceKm: Number((1.4 + index * 0.8).toFixed(1)),
           image: productImages[index % productImages.length],
@@ -387,7 +382,7 @@ export default function WelcomePage() {
       );
 
       const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
+        supabase.from("posts").select("*", { count: "exact", head: true }).eq("author_id", currentUser.id),
         supabase.from("service_listings").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
         supabase.from("product_catalog").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
       ]);
@@ -572,7 +567,7 @@ export default function WelcomePage() {
 
               <div className="mt-4 grid grid-cols-2 gap-2.5">
                 {[
-                  { title: "Post Need", icon: Plus, action: () => setOpenPostModal(true) },
+                  { title: "Post Need", icon: Plus, action: () => router.push(routes.createPost) },
                   { title: "Offer Service", icon: Wrench, action: () => router.push(routes.addService) },
                   { title: "Find People", icon: Users, action: () => router.push(routes.people) },
                   { title: "My Tasks", icon: ClipboardList, action: () => router.push(routes.tasks) },
@@ -767,7 +762,7 @@ export default function WelcomePage() {
                     Improve Profile
                   </button>
                   <button
-                    onClick={() => setOpenPostModal(true)}
+                    onClick={() => router.push(routes.createPost)}
                     className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
                   >
                     Create Post
@@ -808,7 +803,6 @@ export default function WelcomePage() {
         </div>
       </div>
 
-      <CreatePostModal open={openPostModal} onClose={() => setOpenPostModal(false)} />
     </>
   );
 }

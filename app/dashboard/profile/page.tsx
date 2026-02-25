@@ -54,8 +54,8 @@ type ServiceInsightRow = {
 
 type ProductInsightRow = {
   id: string;
-  title: string | null;
-  category: string | null;
+  name: string | null;
+  delivery_method: string | null;
   price: number | null;
   stock: number | null;
 };
@@ -88,6 +88,19 @@ type ProviderInsight = {
 type SeekerInsight = {
   postsCount: number;
   activeOrders: number;
+};
+
+const normalizeServices = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
 };
 
 export default function ProfilePage() {
@@ -161,7 +174,7 @@ export default function ProfilePage() {
             .limit(4),
           supabase
             .from("product_catalog")
-            .select("id,title,category,price,stock", { count: "exact" })
+            .select("id,name,delivery_method,price,stock", { count: "exact" })
             .eq("provider_id", userId)
             .limit(4),
           supabase.from("reviews").select("rating").eq("provider_id", userId),
@@ -194,8 +207,8 @@ export default function ProfilePage() {
       const productCards: FeaturedListing[] = ((products as ProductInsightRow[] | null) || []).map((product) => ({
         id: product.id,
         type: "product",
-        title: product.title || "Untitled product",
-        category: product.category || "Product",
+        title: product.name || "Untitled product",
+        category: product.delivery_method || "Product",
         price: Number(product.price || 0),
         status: (product.stock || 0) > 0 ? "in stock" : "out of stock",
       }));
@@ -217,7 +230,7 @@ export default function ProfilePage() {
     }
 
     const [{ count: postsCount }, { data: orders }] = await Promise.all([
-      supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", userId),
       supabase.from("orders").select("status").eq("consumer_id", userId),
     ]);
 
@@ -255,9 +268,9 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id,name,location,bio,role,services,availability")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       let nextRole: "provider" | "business" | "seeker" = "provider";
       if (data) {
@@ -267,11 +280,11 @@ export default function ProfilePage() {
           location: data.location || "",
           bio: data.bio || "",
           role: nextRole,
-          services: data.services || [],
+          services: normalizeServices(data.services),
           availability: data.availability || "available",
-          email: data.email || "",
-          phone: data.phone || "",
-          website: data.website || "",
+          email: "",
+          phone: "",
+          website: "",
         });
       }
 
@@ -339,9 +352,17 @@ export default function ProfilePage() {
     if (!userId) return;
 
     try {
+      const persistedProfileData = {
+        name: profileData.name,
+        location: profileData.location,
+        bio: profileData.bio,
+        role: profileData.role,
+        services: profileData.services,
+        availability: profileData.availability,
+      };
       await supabase.from("profiles").upsert({
         id: userId,
-        ...profileData,
+        ...persistedProfileData,
       });
 
       setShowSuccess(true);
@@ -361,9 +382,17 @@ export default function ProfilePage() {
     setSaving(true);
 
     try {
+      const persistedProfileData = {
+        name: profileData.name,
+        location: profileData.location,
+        bio: profileData.bio,
+        role: profileData.role,
+        services: profileData.services,
+        availability: profileData.availability,
+      };
       await supabase.from("profiles").upsert({
         id: currentUserId,
-        ...profileData,
+        ...persistedProfileData,
         role: "business",
       });
 

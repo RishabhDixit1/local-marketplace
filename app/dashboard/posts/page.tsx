@@ -19,12 +19,11 @@ distance: number;
 };
 
 type DemandPost = {
-id: string;
-text: string;
-type: string;
-status: string;
-user_id: string;
-created_at: string;
+  id: string;
+  title: string | null;
+  content: string | null;
+  author_id: string | null;
+  created_at: string;
 };
 
 type ServiceListingRow = {
@@ -38,10 +37,10 @@ description: string | null;
 
 type ProductListingRow = {
 id: string;
-title: string | null;
+name: string | null;
 price: number | null;
 provider_id: string;
-category: string | null;
+delivery_method: string | null;
 description: string | null;
 };
 
@@ -86,10 +85,10 @@ const productRows = (products as ProductListingRow[] | null) || [];
 const formattedProducts: Listing[] =
   productRows.map((p) => ({
     id: p.id,
-    title: p.title || "Local product",
+    title: p.name || "Local product",
     price: p.price || 0,
     provider_id: p.provider_id,
-    category: p.category || "Product",
+    category: p.delivery_method || "Product",
     description: p.description || "Product listing",
     type: "product",
     distance: Math.floor(Math.random() * 10) + 1,
@@ -98,18 +97,17 @@ const formattedProducts: Listing[] =
 // 🔹 DEMAND POSTS
 const { data: demandPosts } = await supabase
   .from("posts")
-  .select("*")
-  .eq("status", "open")
+  .select("id,title,content,author_id,created_at")
   .order("created_at", { ascending: false });
 
 const formattedDemandPosts: Listing[] =
   demandPosts?.map((post: DemandPost) => ({
     id: post.id,
-    title: post.text,
+    title: post.title || post.content || "Local need",
     price: 0,
-    provider_id: post.user_id,
+    provider_id: post.author_id || "",
     category: "Need",
-    description: post.text,
+    description: post.content || post.title || "Need posted by community member.",
     type: "demand",
     distance: Math.floor(Math.random() * 10) + 1,
   })) || [];
@@ -134,6 +132,11 @@ fetchListings();
 
 const bookNow = async (item: Listing) => {
 try {
+if (!item.provider_id) {
+  alert("Provider details are unavailable for this post right now.");
+  return;
+}
+
 // 🔐 Get logged in user
 const {
 data: { user },
@@ -148,16 +151,14 @@ data: { user },
   // 1️⃣ Create conversation
   const { data: conversation, error } = await supabase
     .from("conversations")
-    .insert({
-      created_by: user.id,
-    })
-    .select()
+    .insert({})
+    .select("id")
     .single();
 
   if (error) throw error;
 
   // 2️⃣ Add participants
-  await supabase.from("conversation_participants").insert([
+  const { error: participantError } = await supabase.from("conversation_participants").insert([
     {
       conversation_id: conversation.id,
       user_id: user.id,
@@ -167,9 +168,10 @@ data: { user },
       user_id: item.provider_id,
     },
   ]);
+  if (participantError) throw participantError;
 
   // 3️⃣ Redirect to chat page
-  window.location.href = `/dashboard/chat/${conversation.id}`;
+  window.location.href = `/dashboard/chat?open=${conversation.id}`;
 } catch (err) {
   console.error("Booking error:", err);
   alert("Failed to start chat");
