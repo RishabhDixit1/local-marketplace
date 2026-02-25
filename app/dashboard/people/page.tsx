@@ -9,14 +9,20 @@ import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import {
   BadgeCheck,
   Clock3,
+  Filter,
+  Gauge,
   Loader2,
   MapPin,
   MessageCircle,
   RefreshCw,
+  RotateCcw,
   Search,
+  ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Star,
   Users,
+  Zap,
 } from "lucide-react";
 import {
   calculateLocalRankScore,
@@ -102,8 +108,11 @@ type ProviderCard = {
 };
 
 const TABS = ["All", "Nearby", "Active Now", "Verified"] as const;
-const RADIUS_OPTIONS = [1, 5, 10, 15];
+const DEFAULT_RADIUS_KM = 5;
+const RADIUS_OPTIONS = [1, 5, 10, 15, 25];
 const SORT_OPTIONS = ["Best Match", "Nearest", "Top Rated", "Most Listings", "Fast Response"] as const;
+const FAST_RESPONSE_THRESHOLD_MINUTES = 15;
+const PEOPLE_PREFERENCES_STORAGE_KEY = "local-marketplace-people-preferences-v1";
 
 const demoPeople: ProviderCard[] = [
   {
@@ -203,6 +212,19 @@ const formatSyncTime = (iso: string) => {
   return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
+const describeMatchReason = (person: ProviderCard, online: boolean) => {
+  const reasons: string[] = [];
+  if (online) reasons.push("Online now");
+  if (person.distanceKm <= 2) reasons.push(`${person.distanceKm} km away`);
+  if (person.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES) {
+    reasons.push(`${person.responseMinutes} min response`);
+  }
+  if (person.rating >= 4.7 && person.reviews >= 3) reasons.push(`${person.rating}★ trusted`);
+  if (person.verified) reasons.push("Verified business");
+  if (person.completedJobs >= 40) reasons.push(`${person.completedJobs}+ jobs done`);
+  return reasons.slice(0, 3);
+};
+
 export default function PeoplePage() {
   const router = useRouter();
   const reloadTimerRef = useRef<number | null>(null);
@@ -214,8 +236,15 @@ export default function PeoplePage() {
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("All");
-  const [radiusKm, setRadiusKm] = useState<number>(5);
+  const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]>("Best Match");
+  const [minRating, setMinRating] = useState<number>(0);
+  const [maxResponseMinutes, setMaxResponseMinutes] = useState<number>(0);
+  const [minProfileCompletion, setMinProfileCompletion] = useState<number>(0);
+  const [requireReviews, setRequireReviews] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [instantOnly, setInstantOnly] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [usingDemo, setUsingDemo] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -223,6 +252,86 @@ export default function PeoplePage() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(PEOPLE_PREFERENCES_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        search?: string;
+        activeTab?: (typeof TABS)[number];
+        radiusKm?: number;
+        sortBy?: (typeof SORT_OPTIONS)[number];
+        minRating?: number;
+        maxResponseMinutes?: number;
+        minProfileCompletion?: number;
+        requireReviews?: boolean;
+        verifiedOnly?: boolean;
+        instantOnly?: boolean;
+        showAdvancedFilters?: boolean;
+      };
+
+      if (typeof parsed.search === "string") setSearch(parsed.search);
+      if (TABS.includes((parsed.activeTab as (typeof TABS)[number]) || "All")) {
+        setActiveTab((parsed.activeTab as (typeof TABS)[number]) || "All");
+      }
+      if (Number.isFinite(parsed.radiusKm) && RADIUS_OPTIONS.includes(Number(parsed.radiusKm))) {
+        setRadiusKm(Number(parsed.radiusKm));
+      }
+      if (SORT_OPTIONS.includes((parsed.sortBy as (typeof SORT_OPTIONS)[number]) || "Best Match")) {
+        setSortBy((parsed.sortBy as (typeof SORT_OPTIONS)[number]) || "Best Match");
+      }
+      if (Number.isFinite(parsed.minRating)) setMinRating(Math.max(0, Number(parsed.minRating)));
+      if (Number.isFinite(parsed.maxResponseMinutes)) {
+        setMaxResponseMinutes(Math.max(0, Number(parsed.maxResponseMinutes)));
+      }
+      if (Number.isFinite(parsed.minProfileCompletion)) {
+        setMinProfileCompletion(Math.max(0, Math.min(100, Number(parsed.minProfileCompletion))));
+      }
+      if (typeof parsed.requireReviews === "boolean") setRequireReviews(parsed.requireReviews);
+      if (typeof parsed.verifiedOnly === "boolean") setVerifiedOnly(parsed.verifiedOnly);
+      if (typeof parsed.instantOnly === "boolean") setInstantOnly(parsed.instantOnly);
+      if (typeof parsed.showAdvancedFilters === "boolean") setShowAdvancedFilters(parsed.showAdvancedFilters);
+    } catch {
+      window.localStorage.removeItem(PEOPLE_PREFERENCES_STORAGE_KEY);
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const payload = {
+      search,
+      activeTab,
+      radiusKm,
+      sortBy,
+      minRating,
+      maxResponseMinutes,
+      minProfileCompletion,
+      requireReviews,
+      verifiedOnly,
+      instantOnly,
+      showAdvancedFilters,
+    };
+
+    window.localStorage.setItem(PEOPLE_PREFERENCES_STORAGE_KEY, JSON.stringify(payload));
+  }, [
+    activeTab,
+    instantOnly,
+    maxResponseMinutes,
+    minProfileCompletion,
+    minRating,
+    radiusKm,
+    requireReviews,
+    search,
+    showAdvancedFilters,
+    sortBy,
+    verifiedOnly,
+  ]);
 
   const loadProviders = useCallback(async (soft = false) => {
     if (!soft) setLoading(true);
@@ -514,6 +623,11 @@ export default function PeoplePage() {
     };
   }, [loadProviders]);
 
+  const isProviderOnline = useCallback(
+    (provider: ProviderCard) => onlineUserIds.has(provider.id) || provider.online,
+    [onlineUserIds]
+  );
+
   const filteredProviders = useMemo(() => {
     const query = search.toLowerCase().trim();
 
@@ -525,10 +639,16 @@ export default function PeoplePage() {
           .includes(query);
       })
       .filter((person) => person.distanceKm <= radiusKm)
+      .filter((person) => person.rating >= minRating)
+      .filter((person) => (maxResponseMinutes > 0 ? person.responseMinutes <= maxResponseMinutes : true))
+      .filter((person) => person.profileCompletion >= minProfileCompletion)
+      .filter((person) => (requireReviews ? person.reviews > 0 : true))
+      .filter((person) => (verifiedOnly ? person.verified : true))
+      .filter((person) => (instantOnly ? isProviderOnline(person) && person.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES : true))
       .filter((person) => {
         if (activeTab === "All") return true;
         if (activeTab === "Nearby") return person.distanceKm <= 1;
-        if (activeTab === "Active Now") return onlineUserIds.has(person.id) || person.online;
+        if (activeTab === "Active Now") return isProviderOnline(person);
         if (activeTab === "Verified") return person.verified;
         return true;
       });
@@ -546,7 +666,20 @@ export default function PeoplePage() {
     }
 
     return filtered;
-  }, [activeTab, onlineUserIds, providers, radiusKm, search, sortBy]);
+  }, [
+    activeTab,
+    instantOnly,
+    isProviderOnline,
+    maxResponseMinutes,
+    minProfileCompletion,
+    minRating,
+    providers,
+    radiusKm,
+    requireReviews,
+    search,
+    sortBy,
+    verifiedOnly,
+  ]);
 
   const startChat = async (providerId: string) => {
     if (!currentUserId) {
@@ -620,11 +753,31 @@ export default function PeoplePage() {
   };
 
   const peopleNearby = providers.filter((provider) => provider.distanceKm <= 5).length;
-  const activeNow = providers.filter((provider) => onlineUserIds.has(provider.id) || provider.online).length;
+  const activeNow = providers.filter((provider) => isProviderOnline(provider)).length;
+  const verifiedCount = providers.filter((provider) => provider.verified).length;
+  const fastResponders = providers.filter(
+    (provider) => provider.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES
+  ).length;
   const avgRating = providers.length
     ? (providers.reduce((sum, provider) => sum + provider.rating, 0) / providers.length).toFixed(1)
     : "0.0";
+  const activeFilterCount =
+    Number(minRating > 0) +
+    Number(maxResponseMinutes > 0) +
+    Number(minProfileCompletion > 0) +
+    Number(requireReviews) +
+    Number(verifiedOnly) +
+    Number(instantOnly);
+  const clearAdvancedFilters = () => {
+    setMinRating(0);
+    setMaxResponseMinutes(0);
+    setMinProfileCompletion(0);
+    setRequireReviews(false);
+    setVerifiedOnly(false);
+    setInstantOnly(false);
+  };
   const featuredProviders = [...filteredProviders].sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
+  const liveProviders = filteredProviders.filter((provider) => isProviderOnline(provider)).slice(0, 8);
 
   return (
     <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
@@ -634,18 +787,29 @@ export default function PeoplePage() {
             <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
             <p className="mt-1 text-white/85">Search, compare, and contact nearby providers quickly.</p>
           </div>
-          <div className="inline-flex items-center gap-2 text-xs rounded-full border border-white/30 bg-white/15 px-3 py-1.5">
-            {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            {syncing ? "Syncing live changes..." : `Last sync ${lastSyncedAt ? formatSyncTime(lastSyncedAt) : "--"}`}
-            {!syncing && viewerCoordinates && (
-              <span className="hidden sm:inline text-[10px] text-white/80">
-                center {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
-              </span>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 text-xs rounded-full border border-white/30 bg-white/15 px-3 py-1.5">
+              {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {syncing ? "Syncing live changes..." : `Last sync ${lastSyncedAt ? formatSyncTime(lastSyncedAt) : "--"}`}
+              {!syncing && viewerCoordinates && (
+                <span className="hidden sm:inline text-[10px] text-white/80">
+                  center {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadProviders(true)}
+              disabled={syncing}
+              className="inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/15 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
+              Refresh
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-5">
           <div>
             <p className="font-semibold text-lg">{peopleNearby}</p>
             <p className="text-white/70">People Nearby</p>
@@ -657,6 +821,14 @@ export default function PeoplePage() {
           <div>
             <p className="font-semibold text-lg">{avgRating} ★</p>
             <p className="text-white/70">Avg Rating</p>
+          </div>
+          <div>
+            <p className="font-semibold text-lg">{verifiedCount}</p>
+            <p className="text-white/70">Verified</p>
+          </div>
+          <div>
+            <p className="font-semibold text-lg">{fastResponders}</p>
+            <p className="text-white/70">Fast Response</p>
           </div>
         </div>
       </div>
@@ -705,39 +877,168 @@ export default function PeoplePage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus-within:ring-2 focus-within:ring-purple-600">
-          <Search size={16} className="text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search by name, skill, bio, location..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="w-full bg-transparent outline-none placeholder:text-slate-500"
-          />
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+          <div className="flex flex-1 items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus-within:ring-2 focus-within:ring-purple-600">
+            <Search size={16} className="text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search by name, skill, bio, location..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full bg-transparent outline-none placeholder:text-slate-500"
+            />
+          </div>
+
+          <select
+            value={String(radiusKm)}
+            onChange={(event) => setRadiusKm(Number(event.target.value))}
+            className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
+          >
+            {RADIUS_OPTIONS.map((radius) => (
+              <option key={radius} value={radius}>
+                {radius} km
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
+            className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters((current) => !current)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
+          >
+            <SlidersHorizontal size={15} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-600 px-1 text-[11px] font-semibold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
 
-        <select
-          value={String(radiusKm)}
-          onChange={(event) => setRadiusKm(Number(event.target.value))}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
-        >
-          {RADIUS_OPTIONS.map((radius) => (
-            <option key={radius} value={radius}>
-              {radius} km
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-1">
+            <Filter size={12} />
+            {filteredProviders.length} results
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-1">
+            <Gauge size={12} />
+            sorted by {sortBy}
+          </span>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAdvancedFilters}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 transition hover:bg-slate-100"
+            >
+              <RotateCcw size={12} />
+              reset advanced
+            </button>
+          )}
+        </div>
 
-        <select
-          value={sortBy}
-          onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
-          className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
-        >
-          {SORT_OPTIONS.map((option) => (
-            <option key={option}>{option}</option>
-          ))}
-        </select>
+        {showAdvancedFilters && (
+          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 backdrop-blur-sm">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="text-xs text-slate-600">
+                Minimum rating
+                <select
+                  value={String(minRating)}
+                  onChange={(event) => setMinRating(Number(event.target.value))}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="0">Any rating</option>
+                  <option value="4">4.0+</option>
+                  <option value="4.5">4.5+</option>
+                  <option value="4.8">4.8+</option>
+                </select>
+              </label>
+
+              <label className="text-xs text-slate-600">
+                Max response time
+                <select
+                  value={String(maxResponseMinutes)}
+                  onChange={(event) => setMaxResponseMinutes(Number(event.target.value))}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="0">Any response time</option>
+                  <option value="15">15 min or less</option>
+                  <option value="30">30 min or less</option>
+                  <option value="60">60 min or less</option>
+                </select>
+              </label>
+
+              <label className="text-xs text-slate-600">
+                Minimum profile completion
+                <div className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={10}
+                    value={minProfileCompletion}
+                    onChange={(event) => setMinProfileCompletion(Number(event.target.value))}
+                    className="w-full accent-purple-600"
+                  />
+                  <div className="mt-1 text-[11px] text-slate-500">At least {minProfileCompletion}% complete</div>
+                </div>
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setRequireReviews((value) => !value)}
+                className={`rounded-full border px-3 py-1.5 transition ${
+                  requireReviews
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {requireReviews ? "Reviews required" : "Allow unrated"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVerifiedOnly((value) => !value)}
+                className={`rounded-full border px-3 py-1.5 transition ${
+                  verifiedOnly
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <ShieldCheck size={12} />
+                  Verified only
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInstantOnly((value) => !value)}
+                className={`rounded-full border px-3 py-1.5 transition ${
+                  instantOnly
+                    ? "border-violet-200 bg-violet-50 text-violet-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <Zap size={12} />
+                  Online + fast response
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -756,6 +1057,38 @@ export default function PeoplePage() {
         ))}
       </div>
 
+      {!!liveProviders.length && (
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-900 inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live right now
+            </p>
+            <span className="text-xs text-slate-600">{liveProviders.length} providers active in current filters</span>
+          </div>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            {liveProviders.map((provider) => (
+              <button
+                key={`live-${provider.id}`}
+                type="button"
+                onClick={() => setSelectedProvider(provider.id)}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-left text-xs text-slate-700 transition hover:bg-emerald-50"
+              >
+                <Image
+                  src={provider.avatar}
+                  alt={provider.name}
+                  width={24}
+                  height={24}
+                  className="h-6 w-6 rounded-full object-cover"
+                />
+                <span className="font-medium">{provider.name}</span>
+                <span className="text-[11px] text-slate-500">{provider.responseMinutes}m</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="rounded-xl bg-white p-6 text-slate-500 inline-flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -764,7 +1097,8 @@ export default function PeoplePage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredProviders.map((person) => {
-            const isOnline = onlineUserIds.has(person.id) || person.online;
+            const isOnline = isProviderOnline(person);
+            const matchReasons = describeMatchReason(person, isOnline);
             return (
               <div key={person.id} className="rounded-xl bg-white p-4 shadow border border-slate-200">
               <Image
@@ -834,6 +1168,19 @@ export default function PeoplePage() {
                     <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-fuchsia-700">Match {person.rankScore}</span>
                   </div>
 
+                  {matchReasons.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {matchReasons.map((reason) => (
+                        <span
+                          key={`${person.id}-${reason}`}
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700"
+                        >
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {person.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {person.tags.slice(0, 3).map((tag) => (
@@ -890,7 +1237,30 @@ export default function PeoplePage() {
           {!filteredProviders.length && (
             <div className="col-span-full rounded-xl bg-white p-8 text-center">
               <Users className="mx-auto mb-3 text-slate-500" />
-              <p className="text-slate-500">No providers found for current filters.</p>
+              <p className="text-slate-700 font-medium">No providers found for current filters.</p>
+              <p className="mt-1 text-sm text-slate-500">Try widening radius, clearing advanced filters, or syncing again.</p>
+              <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setActiveTab("All");
+                    setRadiusKm(DEFAULT_RADIUS_KM);
+                    setSortBy("Best Match");
+                    clearAdvancedFilters();
+                  }}
+                  className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-purple-500"
+                >
+                  Reset all filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void loadProviders(true)}
+                  className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                >
+                  Sync providers
+                </button>
+              </div>
             </div>
           )}
         </div>
