@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -116,11 +116,36 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 
+const heroScenes = [
+  {
+    label: "Urgent Need",
+    title: "Electrical fault in 2.1 km radius",
+    meta: "4 providers matched in 38s",
+    eta: "ETA 12m",
+    tone: "rose",
+  },
+  {
+    label: "Service Match",
+    title: "Deep cleaning request now covered",
+    meta: "Top match score 93",
+    eta: "ETA 45m",
+    tone: "sky",
+  },
+  {
+    label: "Fast Commerce",
+    title: "Nearby product order accepted",
+    meta: "Chat reply in 27s",
+    eta: "ETA 22m",
+    tone: "emerald",
+  },
+] as const;
+
 export default function WelcomePage() {
   const router = useRouter();
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeHeroScene, setActiveHeroScene] = useState(0);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
   const [profileStrength, setProfileStrength] = useState(40);
@@ -213,6 +238,14 @@ export default function WelcomePage() {
     ],
     [nearbyCards, stats.activeTasks, stats.unreadMessages, stats.trustScore]
   );
+
+  useEffect(() => {
+    const heroSceneTimer = window.setInterval(() => {
+      setActiveHeroScene((prev) => (prev + 1) % heroScenes.length);
+    }, 2800);
+
+    return () => window.clearInterval(heroSceneTimer);
+  }, []);
 
   useEffect(() => {
     const loadWelcome = async () => {
@@ -497,39 +530,147 @@ export default function WelcomePage() {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-3xl p-5 sm:p-7 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 shadow-lg"
+            className="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-gradient-to-br from-sky-600 via-indigo-600 to-fuchsia-600 shadow-xl"
           >
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Welcome back, {loading ? "..." : userName} 👋</h1>
-            <p className="text-white/90 mt-2 max-w-2xl text-sm sm:text-base">
-              Your local marketplace pulse in one place: stories, live posts, trusted providers, and quick actions.
-            </p>
-
-            <div className="flex flex-wrap gap-3 mt-5">
-              <button
-                onClick={primaryHeroAction.action}
-                className="px-5 py-2.5 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors"
-              >
-                {primaryHeroAction.label}
-              </button>
-              <button
-                onClick={() => router.push(routes.people)}
-                className="px-5 py-2.5 rounded-xl border border-white/50 text-white hover:bg-white/10 flex items-center gap-2 transition-colors"
-              >
-                <Users size={16} />
-                Explore Nearby
-              </button>
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.3),transparent_45%),radial-gradient(circle_at_85%_90%,rgba(255,255,255,0.18),transparent_42%)]" />
+              <div className="absolute inset-0 opacity-25 [background-size:32px_32px] [background-image:linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)]" />
+              <motion.div
+                className="absolute -left-16 top-8 h-40 w-40 rounded-full bg-cyan-300/35 blur-3xl"
+                animate={{ x: [0, 28, 0], y: [0, -18, 0], opacity: [0.35, 0.7, 0.35] }}
+                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute right-0 top-0 h-36 w-36 rounded-full bg-fuchsia-300/30 blur-3xl"
+                animate={{ x: [0, -20, 0], y: [0, 16, 0], opacity: [0.3, 0.55, 0.3] }}
+                transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
+              />
             </div>
 
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {marketSignals.map((signal) => (
-                <div key={signal.label} className="rounded-xl bg-white/15 backdrop-blur px-3 py-2">
-                  <div className="flex items-center gap-1.5 text-white/85 text-xs">
-                    <signal.icon size={13} />
-                    {signal.label}
-                  </div>
-                  <p className="mt-1 text-lg font-semibold text-white">{signal.value}</p>
+            <div className="relative grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                  Welcome back, {loading ? "..." : userName} 👋
+                </h1>
+                <p className="text-white/90 mt-2 max-w-2xl text-sm sm:text-base">
+                  Your local marketplace pulse in one place: stories, live posts, trusted providers, and quick actions.
+                </p>
+
+                <div className="flex flex-wrap gap-3 mt-5">
+                  <button
+                    onClick={primaryHeroAction.action}
+                    className="px-5 py-2.5 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors"
+                  >
+                    {primaryHeroAction.label}
+                  </button>
+                  <button
+                    onClick={() => router.push(routes.people)}
+                    className="px-5 py-2.5 rounded-xl border border-white/50 text-white hover:bg-white/10 flex items-center gap-2 transition-colors"
+                  >
+                    <Users size={16} />
+                    Explore Nearby
+                  </button>
                 </div>
-              ))}
+
+                <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {marketSignals.map((signal) => (
+                    <div key={signal.label} className="rounded-xl bg-white/15 backdrop-blur px-3 py-2">
+                      <div className="flex items-center gap-1.5 text-white/85 text-xs">
+                        <signal.icon size={13} />
+                        {signal.label}
+                      </div>
+                      <p className="mt-1 text-lg font-semibold text-white">{signal.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/35 bg-slate-950/30 p-3 backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100/85">
+                    Live Marketplace Canvas
+                  </p>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-200 animate-pulse" />
+                    Realtime
+                  </span>
+                </div>
+
+                <div className="relative mt-3 overflow-hidden rounded-xl border border-white/20 bg-slate-950/60 p-3">
+                  <motion.div
+                    className="pointer-events-none absolute left-0 right-0 h-16 bg-gradient-to-b from-cyan-300/25 via-cyan-200/5 to-transparent"
+                    animate={{ y: [-44, 130] }}
+                    transition={{ duration: 3.4, repeat: Infinity, ease: "linear" }}
+                  />
+
+                  <div className="relative z-10">
+                    <div className="grid h-14 grid-cols-12 items-end gap-1">
+                      {Array.from({ length: 12 }).map((_, index) => (
+                        <motion.div
+                          key={`hero-signal-${index}`}
+                          className="rounded-sm bg-gradient-to-t from-cyan-300/35 via-indigo-200/70 to-white/95"
+                          animate={{
+                            height: [
+                              `${22 + (index % 4) * 5}%`,
+                              `${58 + (index % 5) * 7}%`,
+                              `${26 + (index % 3) * 6}%`,
+                            ],
+                          }}
+                          transition={{
+                            duration: 1.3 + (index % 3) * 0.2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: index * 0.06,
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={heroScenes[activeHeroScene].title}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.28 }}
+                        className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              heroScenes[activeHeroScene].tone === "rose"
+                                ? "bg-rose-100 text-rose-700"
+                                : heroScenes[activeHeroScene].tone === "sky"
+                                ? "bg-sky-100 text-sky-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {heroScenes[activeHeroScene].label}
+                          </span>
+                          <span className="text-[10px] text-white/75">{heroScenes[activeHeroScene].eta}</span>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-white">{heroScenes[activeHeroScene].title}</p>
+                        <p className="text-[11px] text-white/80">{heroScenes[activeHeroScene].meta}</p>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/85">
+                  <div className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5">
+                    <p className="text-white/70">Live Requests</p>
+                    <p className="font-semibold">{stats.nearbyPosts}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5">
+                    <p className="text-white/70">Active Threads</p>
+                    <p className="font-semibold">{stats.unreadMessages + 12}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/20 bg-white/10 px-2 py-1.5">
+                    <p className="text-white/70">Trust Index</p>
+                    <p className="font-semibold">{stats.trustScore.toFixed(1)}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
 
