@@ -1,11 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
-import { BadgeCheck, Clock3, MapPin, MessageCircle, Search, Sparkles, Star, Users } from "lucide-react";
+import {
+  BadgeCheck,
+  Clock3,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Star,
+  Users,
+} from "lucide-react";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -13,6 +25,14 @@ import {
   createBusinessSlug,
   estimateResponseMinutes,
 } from "@/lib/business";
+import {
+  defaultMarketCoordinates,
+  distanceBetweenCoordinatesKm,
+  getBrowserCoordinates,
+  resolveCoordinates,
+  type Coordinates,
+} from "@/lib/geo";
+import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 
 type ProfileRow = {
   id: string;
@@ -26,21 +46,31 @@ type ProfileRow = {
   email?: string | null;
   phone?: string | null;
   website?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type ServiceRow = {
   provider_id: string;
   category?: string | null;
+  price?: number | null;
 };
 
 type ProductRow = {
   provider_id: string;
   category?: string | null;
+  price?: number | null;
 };
 
 type ReviewRow = {
   provider_id: string;
   rating: number;
+};
+
+type ProviderOrderStatsRow = {
+  provider_id: string;
+  completed_jobs: number | string;
+  open_leads: number | string;
 };
 
 type ProviderCard = {
@@ -60,16 +90,19 @@ type ProviderCard = {
   serviceCount: number;
   productCount: number;
   completedJobs: number;
+  openLeads: number;
   responseMinutes: number;
   startingPrice: number;
   tags: string[];
   profileCompletion: number;
   rankScore: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
+  latitude: number;
+  longitude: number;
 };
 
 const TABS = ["All", "Nearby", "Active Now", "Verified"] as const;
-const RADIUS_OPTIONS = [1, 5, 10];
+const RADIUS_OPTIONS = [1, 5, 10, 15];
 const SORT_OPTIONS = ["Best Match", "Nearest", "Top Rated", "Most Listings", "Fast Response"] as const;
 
 const demoPeople: ProviderCard[] = [
@@ -90,12 +123,15 @@ const demoPeople: ProviderCard[] = [
     serviceCount: 4,
     productCount: 0,
     completedJobs: 48,
+    openLeads: 3,
     responseMinutes: 6,
     startingPrice: 299,
     tags: ["Electrician", "Repair", "Urgent"],
     profileCompletion: 88,
     rankScore: 91,
     verificationStatus: "verified",
+    latitude: 12.9726,
+    longitude: 77.6003,
   },
   {
     id: "demo-2",
@@ -114,12 +150,15 @@ const demoPeople: ProviderCard[] = [
     serviceCount: 3,
     productCount: 0,
     completedJobs: 36,
+    openLeads: 2,
     responseMinutes: 11,
     startingPrice: 399,
     tags: ["Cleaning", "Home", "Office"],
     profileCompletion: 82,
     rankScore: 84,
     verificationStatus: "verified",
+    latitude: 12.9681,
+    longitude: 77.6124,
   },
   {
     id: "demo-3",
@@ -138,22 +177,17 @@ const demoPeople: ProviderCard[] = [
     serviceCount: 5,
     productCount: 1,
     completedJobs: 72,
+    openLeads: 4,
     responseMinutes: 5,
     startingPrice: 349,
     tags: ["Plumbing", "Fittings", "Emergency"],
     profileCompletion: 92,
     rankScore: 95,
     verificationStatus: "verified",
+    latitude: 12.9789,
+    longitude: 77.5886,
   },
 ];
-
-const pseudoDistance = (seed: string) => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) % 1000;
-  }
-  return Number((0.3 + (hash / 1000) * 7.7).toFixed(1));
-};
 
 const hashNumber = (seed: string, min: number, max: number) => {
   let hash = 0;
@@ -163,11 +197,20 @@ const hashNumber = (seed: string, min: number, max: number) => {
   return min + (hash % (max - min + 1));
 };
 
+const formatSyncTime = (iso: string) => {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
 export default function PeoplePage() {
   const router = useRouter();
+  const reloadTimerRef = useRef<number | null>(null);
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("All");
@@ -175,141 +218,301 @@ export default function PeoplePage() {
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]>("Best Match");
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [usingDemo, setUsingDemo] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+
+  const loadProviders = useCallback(async (soft = false) => {
+    if (!soft) setLoading(true);
+    if (soft) setSyncing(true);
+    setErrorMessage("");
+
+    const browserCoordinatesPromise = getBrowserCoordinates(4500);
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      setProviders(demoPeople);
+      setUsingDemo(true);
+      setLoading(false);
+      setSyncing(false);
+      setErrorMessage(`Auth error: ${authError.message}`);
+      return;
+    }
+
+    setCurrentUserId(user?.id || null);
+
+    const [{ data: profiles, error: profilesError }, { data: services }, { data: products }, { data: reviews }] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude"),
+        supabase.from("service_listings").select("provider_id,category,price"),
+        supabase.from("product_catalog").select("provider_id,category,price"),
+        supabase.from("reviews").select("provider_id,rating"),
+      ]);
+
+    if (profilesError || !profiles) {
+      setProviders(demoPeople);
+      setUsingDemo(true);
+      setLoading(false);
+      setSyncing(false);
+      setErrorMessage(`Could not load providers: ${profilesError?.message || "unknown error"}`);
+      return;
+    }
+
+    const serviceRows = (services as ServiceRow[] | null) || [];
+    const productRows = (products as ProductRow[] | null) || [];
+    const reviewRows = (reviews as ReviewRow[] | null) || [];
+    const profileRows = (profiles as ProfileRow[] | null) || [];
+    const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
+    const profileCoordinates = currentUserProfile
+      ? resolveCoordinates({
+          row: currentUserProfile as unknown as Record<string, unknown>,
+          location: currentUserProfile.location,
+          seed: currentUserProfile.id,
+        })
+      : null;
+    const browserCoordinates = await browserCoordinatesPromise;
+    const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
+    setViewerCoordinates(effectiveViewerCoordinates);
+
+    const serviceCountMap = new Map<string, number>();
+    const productCountMap = new Map<string, number>();
+    const tagMap = new Map<string, Set<string>>();
+    const ratingMap = new Map<string, { sum: number; count: number }>();
+    const providerPriceMap = new Map<string, number[]>();
+
+    serviceRows.forEach((row) => {
+      serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
+      if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
+      if (row.category) tagMap.get(row.provider_id)?.add(row.category);
+      if (Number.isFinite(Number(row.price))) {
+        const existing = providerPriceMap.get(row.provider_id) || [];
+        providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
+      }
+    });
+
+    productRows.forEach((row) => {
+      productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
+      if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
+      if (row.category) tagMap.get(row.provider_id)?.add(row.category);
+      if (Number.isFinite(Number(row.price))) {
+        const existing = providerPriceMap.get(row.provider_id) || [];
+        providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
+      }
+    });
+
+    reviewRows.forEach((row) => {
+      const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
+      ratingMap.set(row.provider_id, {
+        sum: previous.sum + (row.rating || 0),
+        count: previous.count + 1,
+      });
+    });
+
+    const providerIds = profileRows
+      .filter((profile) => profile.id !== user?.id)
+      .filter((profile) => {
+        const servicesCount = serviceCountMap.get(profile.id) || 0;
+        const productsCount = productCountMap.get(profile.id) || 0;
+        return servicesCount + productsCount > 0;
+      })
+      .map((profile) => profile.id);
+
+    const { data: providerOrderStatsRows, error: providerOrderStatsError } = providerIds.length
+      ? await supabase.rpc("get_provider_order_stats", { provider_ids: providerIds })
+      : { data: [] as ProviderOrderStatsRow[], error: null };
+
+    if (providerOrderStatsError) {
+      console.warn("Unable to load provider order stats:", providerOrderStatsError.message);
+    }
+
+    const completedJobsMap = new Map<string, number>();
+    const openLeadsMap = new Map<string, number>();
+
+    ((providerOrderStatsRows as ProviderOrderStatsRow[] | null) || []).forEach((row) => {
+      completedJobsMap.set(row.provider_id, Number(row.completed_jobs || 0));
+      openLeadsMap.set(row.provider_id, Number(row.open_leads || 0));
+    });
+
+    const cards: ProviderCard[] = profileRows
+      .filter((profile) => profile.id !== user?.id)
+      .filter((profile) => {
+        const servicesCount = serviceCountMap.get(profile.id) || 0;
+        const productsCount = productCountMap.get(profile.id) || 0;
+        return servicesCount + productsCount > 0;
+      })
+      .map((profile) => {
+        const servicesCount = serviceCountMap.get(profile.id) || 0;
+        const productsCount = productCountMap.get(profile.id) || 0;
+        const ratings = ratingMap.get(profile.id);
+        const reviewCount = ratings?.count || 0;
+        const avgRating = reviewCount > 0 ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.5;
+        const providerCoordinates = resolveCoordinates({
+          row: profile as unknown as Record<string, unknown>,
+          location: profile.location,
+          seed: profile.id,
+        });
+        const distanceKm = distanceBetweenCoordinatesKm(effectiveViewerCoordinates, providerCoordinates);
+        const responseMinutes = estimateResponseMinutes({
+          availability: profile.availability,
+          providerId: profile.id,
+        });
+        const profileCompletion = calculateProfileCompletion({
+          name: profile.name,
+          location: profile.location,
+          bio: profile.bio,
+          services: profile.services,
+          email: profile.email,
+          phone: profile.phone,
+          website: profile.website,
+        });
+        const verificationStatus = calculateVerificationStatus({
+          role: profile.role,
+          profileCompletion,
+          listingsCount: servicesCount + productsCount,
+          averageRating: avgRating,
+          reviewCount,
+        });
+        const rankScore = calculateLocalRankScore({
+          distanceKm,
+          responseMinutes,
+          rating: avgRating,
+          profileCompletion,
+        });
+
+        const prices = providerPriceMap.get(profile.id) || [];
+        const startingPrice = prices.length
+          ? Math.max(1, Math.min(...prices.map((value) => Math.floor(value))))
+          : hashNumber(profile.id, 199, 1499);
+
+        return {
+          id: profile.id,
+          name: profile.name || "Local Provider",
+          businessSlug: createBusinessSlug(profile.name, profile.id),
+          avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
+          coverImage: `https://picsum.photos/seed/provider-${profile.id}/900/420`,
+          role: profile.role || "Service Provider",
+          bio: profile.bio || "Trusted neighborhood provider.",
+          location: profile.location || "Nearby",
+          distanceKm,
+          rating: avgRating,
+          reviews: reviewCount,
+          verified: verificationStatus === "verified",
+          online: (profile.availability || "").toLowerCase() !== "offline",
+          serviceCount: servicesCount,
+          productCount: productsCount,
+          completedJobs: completedJobsMap.get(profile.id) ?? hashNumber(`done-${profile.id}`, 8, 140),
+          openLeads: openLeadsMap.get(profile.id) ?? hashNumber(`open-${profile.id}`, 1, 6),
+          responseMinutes,
+          startingPrice,
+          tags: Array.from(tagMap.get(profile.id) || []),
+          profileCompletion,
+          rankScore,
+          verificationStatus,
+          latitude: providerCoordinates.latitude,
+          longitude: providerCoordinates.longitude,
+        };
+      });
+
+    if (cards.length === 0) {
+      setProviders(demoPeople);
+      setUsingDemo(true);
+    } else {
+      setProviders(cards);
+      setUsingDemo(false);
+    }
+
+    setLastSyncedAt(new Date().toISOString());
+    setLoading(false);
+    setSyncing(false);
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProviders();
+  }, [loadProviders]);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
+  useEffect(() => {
+    if (!currentUserId) return;
 
-      const [{ data: profiles, error: profilesError }, { data: services }, { data: products }, { data: reviews }] =
-        await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website"),
-          supabase.from("service_listings").select("provider_id,category"),
-          supabase.from("product_catalog").select("provider_id,category"),
-          supabase.from("reviews").select("provider_id,rating"),
-        ]);
+    const presenceChannel = supabase.channel(GLOBAL_PRESENCE_CHANNEL, {
+      config: {
+        presence: {
+          key: currentUserId,
+        },
+      },
+    });
+    presenceChannelRef.current = presenceChannel;
 
-      if (profilesError || !profiles) {
-        setProviders(demoPeople);
-        setUsingDemo(true);
-        setLoading(false);
-        return;
-      }
-
-      const serviceRows = (services as ServiceRow[] | null) || [];
-      const productRows = (products as ProductRow[] | null) || [];
-      const reviewRows = (reviews as ReviewRow[] | null) || [];
-
-      const serviceCountMap = new Map<string, number>();
-      const productCountMap = new Map<string, number>();
-      const tagMap = new Map<string, Set<string>>();
-      const ratingMap = new Map<string, { sum: number; count: number }>();
-
-      serviceRows.forEach((row) => {
-        serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
-        if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
-        if (row.category) tagMap.get(row.provider_id)?.add(row.category);
-      });
-
-      productRows.forEach((row) => {
-        productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
-        if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
-        if (row.category) tagMap.get(row.provider_id)?.add(row.category);
-      });
-
-      reviewRows.forEach((row) => {
-        const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
-        ratingMap.set(row.provider_id, {
-          sum: previous.sum + (row.rating || 0),
-          count: previous.count + 1,
-        });
-      });
-
-      const cards: ProviderCard[] = (profiles as ProfileRow[])
-        .filter((profile) => profile.id !== user?.id)
-        .filter((profile) => {
-          const servicesCount = serviceCountMap.get(profile.id) || 0;
-          const productsCount = productCountMap.get(profile.id) || 0;
-          return servicesCount + productsCount > 0;
-        })
-        .map((profile) => {
-          const servicesCount = serviceCountMap.get(profile.id) || 0;
-          const productsCount = productCountMap.get(profile.id) || 0;
-          const ratings = ratingMap.get(profile.id);
-          const reviewCount = ratings?.count || 0;
-          const avgRating = reviewCount > 0 ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.5;
-          const distanceKm = pseudoDistance(profile.id);
-          const responseMinutes = estimateResponseMinutes({
-            availability: profile.availability,
-            providerId: profile.id,
-          });
-          const profileCompletion = calculateProfileCompletion({
-            name: profile.name,
-            location: profile.location,
-            bio: profile.bio,
-            services: profile.services,
-            email: profile.email,
-            phone: profile.phone,
-            website: profile.website,
-          });
-          const verificationStatus = calculateVerificationStatus({
-            role: profile.role,
-            profileCompletion,
-            listingsCount: servicesCount + productsCount,
-            averageRating: avgRating,
-            reviewCount,
-          });
-          const rankScore = calculateLocalRankScore({
-            distanceKm,
-            responseMinutes,
-            rating: avgRating,
-            profileCompletion,
-          });
-
-          return {
-            id: profile.id,
-            name: profile.name || "Local Provider",
-            businessSlug: createBusinessSlug(profile.name, profile.id),
-            avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
-            coverImage: `https://picsum.photos/seed/provider-${profile.id}/900/420`,
-            role: profile.role || "Service Provider",
-            bio: profile.bio || "Trusted neighborhood provider.",
-            location: profile.location || "Nearby",
-            distanceKm,
-            rating: avgRating,
-            reviews: reviewCount,
-            verified: verificationStatus === "verified",
-            online: (profile.availability || "").toLowerCase() !== "offline",
-            serviceCount: servicesCount,
-            productCount: productsCount,
-            completedJobs: hashNumber(profile.id, 8, 140),
-            responseMinutes,
-            startingPrice: hashNumber(profile.id, 199, 1499),
-            tags: Array.from(tagMap.get(profile.id) || []),
-            profileCompletion,
-            rankScore,
-            verificationStatus,
-          };
-        });
-
-      if (cards.length === 0) {
-        setProviders(demoPeople);
-        setUsingDemo(true);
-      } else {
-        setProviders(cards);
-        setUsingDemo(false);
-      }
-      setLoading(false);
+    const syncOnlineUsers = () => {
+      setOnlineUserIds(extractPresenceUserIds(presenceChannel.presenceState()));
     };
 
-    load();
-  }, []);
+    presenceChannel
+      .on("presence", { event: "sync" }, syncOnlineUsers)
+      .on("presence", { event: "join" }, syncOnlineUsers)
+      .on("presence", { event: "leave" }, syncOnlineUsers)
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+        await presenceChannel.track({
+          user_id: currentUserId,
+          page: "people",
+          last_seen_at: new Date().toISOString(),
+        });
+      });
+
+    const heartbeatTimer = window.setInterval(() => {
+      void presenceChannel.track({
+        user_id: currentUserId,
+        page: "people",
+        last_seen_at: new Date().toISOString(),
+      });
+    }, 30000);
+
+    return () => {
+      window.clearInterval(heartbeatTimer);
+      if (presenceChannelRef.current) {
+        void presenceChannelRef.current.untrack();
+        supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
+      }
+      setOnlineUserIds(new Set());
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    const scheduleReload = () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      reloadTimerRef.current = window.setTimeout(() => {
+        void loadProviders(true);
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel("people-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
+      .subscribe();
+
+    return () => {
+      if (reloadTimerRef.current) {
+        window.clearTimeout(reloadTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [loadProviders]);
 
   const filteredProviders = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -317,17 +520,15 @@ export default function PeoplePage() {
     const filtered = providers
       .filter((person) => {
         if (!query) return true;
-        return (
-          `${person.name} ${person.role} ${person.bio} ${person.location} ${person.tags.join(" ")}`
-            .toLowerCase()
-            .includes(query)
-        );
+        return `${person.name} ${person.role} ${person.bio} ${person.location} ${person.tags.join(" ")}`
+          .toLowerCase()
+          .includes(query);
       })
       .filter((person) => person.distanceKm <= radiusKm)
       .filter((person) => {
         if (activeTab === "All") return true;
         if (activeTab === "Nearby") return person.distanceKm <= 1;
-        if (activeTab === "Active Now") return person.online;
+        if (activeTab === "Active Now") return onlineUserIds.has(person.id) || person.online;
         if (activeTab === "Verified") return person.verified;
         return true;
       });
@@ -345,13 +546,19 @@ export default function PeoplePage() {
     }
 
     return filtered;
-  }, [activeTab, providers, radiusKm, search, sortBy]);
+  }, [activeTab, onlineUserIds, providers, radiusKm, search, sortBy]);
 
   const startChat = async (providerId: string) => {
     if (!currentUserId) {
       alert("Login required");
       return;
     }
+
+    if (providerId.startsWith("demo-")) {
+      router.push("/dashboard");
+      return;
+    }
+
     if (providerId === currentUserId) {
       alert("This is your own profile.");
       return;
@@ -393,10 +600,13 @@ export default function PeoplePage() {
       }
 
       targetConversationId = conversation.id;
-      const { error: participantError } = await supabase.from("conversation_participants").insert([
+      const { error: participantError } = await supabase.from("conversation_participants").upsert([
         { conversation_id: targetConversationId, user_id: currentUserId },
         { conversation_id: targetConversationId, user_id: providerId },
-      ]);
+      ], {
+        onConflict: "conversation_id,user_id",
+        ignoreDuplicates: true,
+      });
 
       if (participantError) {
         setLoadingChatId(null);
@@ -410,19 +620,30 @@ export default function PeoplePage() {
   };
 
   const peopleNearby = providers.filter((provider) => provider.distanceKm <= 5).length;
-  const activeNow = providers.filter((provider) => provider.online).length;
+  const activeNow = providers.filter((provider) => onlineUserIds.has(provider.id) || provider.online).length;
   const avgRating = providers.length
     ? (providers.reduce((sum, provider) => sum + provider.rating, 0) / providers.length).toFixed(1)
     : "0.0";
-  const featuredProviders = [...filteredProviders]
-    .sort((a, b) => b.rankScore - a.rankScore)
-    .slice(0, 3);
+  const featuredProviders = [...filteredProviders].sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
 
   return (
     <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
       <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-fuchsia-600 p-4 sm:p-6 text-white shadow">
-        <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
-        <p className="mt-1 text-white/85">Search, compare, and contact nearby providers quickly.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
+            <p className="mt-1 text-white/85">Search, compare, and contact nearby providers quickly.</p>
+          </div>
+          <div className="inline-flex items-center gap-2 text-xs rounded-full border border-white/30 bg-white/15 px-3 py-1.5">
+            {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {syncing ? "Syncing live changes..." : `Last sync ${lastSyncedAt ? formatSyncTime(lastSyncedAt) : "--"}`}
+            {!syncing && viewerCoordinates && (
+              <span className="hidden sm:inline text-[10px] text-white/80">
+                center {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
+              </span>
+            )}
+          </div>
+        </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div>
@@ -434,11 +655,15 @@ export default function PeoplePage() {
             <p className="text-white/70">Active Now</p>
           </div>
           <div>
-            <p className="font-semibold text-lg">{avgRating} ⭐</p>
+            <p className="font-semibold text-lg">{avgRating} ★</p>
             <p className="text-white/70">Avg Rating</p>
           </div>
         </div>
       </div>
+
+      {!!errorMessage && !usingDemo && (
+        <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
+      )}
 
       {!!featuredProviders.length && (
         <div className="rounded-2xl border border-slate-200 bg-white/90 backdrop-blur-sm p-4 sm:p-5">
@@ -487,14 +712,14 @@ export default function PeoplePage() {
             type="text"
             placeholder="Search by name, skill, bio, location..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             className="w-full bg-transparent outline-none placeholder:text-slate-500"
           />
         </div>
 
         <select
           value={String(radiusKm)}
-          onChange={(e) => setRadiusKm(Number(e.target.value))}
+          onChange={(event) => setRadiusKm(Number(event.target.value))}
           className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
         >
           {RADIUS_OPTIONS.map((radius) => (
@@ -506,7 +731,7 @@ export default function PeoplePage() {
 
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as (typeof SORT_OPTIONS)[number])}
+          onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
           className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
         >
           {SORT_OPTIONS.map((option) => (
@@ -532,11 +757,16 @@ export default function PeoplePage() {
       </div>
 
       {loading ? (
-        <div className="rounded-xl bg-white p-6 text-slate-500">Loading nearby providers...</div>
+        <div className="rounded-xl bg-white p-6 text-slate-500 inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading nearby providers...
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filteredProviders.map((person) => (
-            <div key={person.id} className="rounded-xl bg-white p-4 shadow border border-slate-200">
+          {filteredProviders.map((person) => {
+            const isOnline = onlineUserIds.has(person.id) || person.online;
+            return (
+              <div key={person.id} className="rounded-xl bg-white p-4 shadow border border-slate-200">
               <Image
                 src={person.coverImage}
                 alt={`${person.name} cover`}
@@ -575,7 +805,7 @@ export default function PeoplePage() {
                           ? "Pending"
                           : "Unclaimed"}
                       </span>
-                      {person.online && <span className="ml-2 text-emerald-600 text-xs">● Online</span>}
+                      {isOnline && <span className="ml-2 text-emerald-600 text-xs">● Online</span>}
                     </h3>
                     <span className="text-xs text-slate-500 shrink-0">{person.distanceKm} km away</span>
                   </div>
@@ -590,25 +820,18 @@ export default function PeoplePage() {
                     </span>
                     <span>{person.serviceCount} services</span>
                     <span>{person.productCount} products</span>
+                    <span>{person.openLeads} open leads</span>
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                      {person.completedJobs} jobs done
-                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{person.completedJobs} jobs done</span>
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 inline-flex items-center gap-1">
                       <Clock3 size={12} />
                       {person.responseMinutes} min response
                     </span>
-                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">
-                      from ₹{person.startingPrice}
-                    </span>
-                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">
-                      {person.profileCompletion}% profile
-                    </span>
-                    <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-fuchsia-700">
-                      Match {person.rankScore}
-                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">from INR {person.startingPrice}</span>
+                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">{person.profileCompletion}% profile</span>
+                    <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-fuchsia-700">Match {person.rankScore}</span>
                   </div>
 
                   {person.tags.length > 0 && (
@@ -633,14 +856,14 @@ export default function PeoplePage() {
                       <span className="text-slate-500">({person.reviews} reviews)</span>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
-                        onClick={() => startChat(person.id)}
+                        onClick={() => void startChat(person.id)}
                         disabled={loadingChatId === person.id}
-                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 inline-flex items-center gap-1 transition-colors"
+                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 inline-flex items-center gap-1 transition-colors disabled:opacity-70"
                       >
                         <MessageCircle size={14} />
-                        {loadingChatId === person.id ? "..." : "Chat"}
+                        {loadingChatId === person.id ? "Opening..." : "Chat"}
                       </button>
                       <button
                         onClick={() => setSelectedProvider(person.id)}
@@ -660,8 +883,9 @@ export default function PeoplePage() {
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
 
           {!filteredProviders.length && (
             <div className="col-span-full rounded-xl bg-white p-8 text-center">

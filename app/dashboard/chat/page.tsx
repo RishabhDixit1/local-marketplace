@@ -2,9 +2,16 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { ArrowLeft, Search, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle, Search, Send, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  extractPresenceUserIds,
+  getConversationRealtimeChannel,
+  GLOBAL_PRESENCE_CHANNEL,
+  type TypingEventPayload,
+} from "@/lib/realtime";
 
 type Conversation = {
   id: string;
@@ -13,6 +20,8 @@ type Conversation = {
   lastMessage: string;
   lastMessageAt: string | null;
   otherUserId: string | null;
+  unreadCount: number;
+  lastSenderId: string | null;
 };
 
 type Message = {
@@ -23,8 +32,49 @@ type Message = {
   created_at: string;
 };
 
+type ParticipantRow = {
+  conversation_id: string;
+  user_id: string;
+  last_read_at?: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  name: string | null;
+  avatar_url: string | null;
+};
+
+const fallbackAvatar = "https://i.pravatar.cc/150";
+
+const formatTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+const formatTimeAgo = (iso: string | null) => {
+  if (!iso) return "";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const diffMs = Date.now() - parsed.getTime();
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+};
+
 export default function ChatPage() {
   const router = useRouter();
+  const [requestedChatId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("open");
+  });
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
@@ -35,21 +85,227 @@ export default function ChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
-  const [requestedChatId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(
-      window.location.search
-    );
-    return params.get("open");
-  });
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [typingUserId, setTypingUserId] = useState<string | null>(null);
+
+  const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+  const typingChannelRef = useRef<RealtimeChannel | null>(null);
+  const localTypingRef = useRef(false);
+  const stopTypingTimerRef = useRef<number | null>(null);
+  const remoteTypingTimerRef = useRef<number | null>(null);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedChat) || null,
     [conversations, selectedChat]
   );
 
-  /* ---------------- GET USER ---------------- */
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  const sendTypingEvent = useCallback(
+    (isTyping: boolean) => {
+      const conversationId = selectedChatRef.current;
+      if (!conversationId || !userId || !typingChannelRef.current) return;
+
+      void typingChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: {
+          conversation_id: conversationId,
+          user_id: userId,
+          is_typing: isTyping,
+          sent_at: new Date().toISOString(),
+        } satisfies TypingEventPayload,
+      });
+    },
+    [userId]
+  );
+
+  const loadConversations = useCallback(
+    async (soft = false) => {
+      if (!userId) return;
+      if (!soft) setLoadingConversations(true);
+
+      const { data: myParticipantRows, error: participantsError } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id,user_id,last_read_at")
+        .eq("user_id", userId);
+
+      if (participantsError) {
+        setChatError(`Failed to load conversation participants: ${participantsError.message}`);
+        setConversations([]);
+        setLoadingConversations(false);
+        return;
+      }
+
+      if (!myParticipantRows?.length) {
+        setConversations([]);
+        setLoadingConversations(false);
+        setChatError(null);
+        return;
+      }
+
+      const conversationIds = myParticipantRows.map((row) => row.conversation_id);
+
+      const [{ data: allParticipantRows, error: allParticipantsError }, { data: messageRows, error: messagesError }] =
+        await Promise.all([
+          supabase
+            .from("conversation_participants")
+            .select("conversation_id,user_id")
+            .in("conversation_id", conversationIds),
+          supabase
+            .from("messages")
+            .select("id,conversation_id,content,created_at,sender_id")
+            .in("conversation_id", conversationIds)
+            .order("created_at", { ascending: false })
+            .limit(2000),
+        ]);
+
+      if (allParticipantsError) {
+        setChatError(`Failed to load participants for conversations: ${allParticipantsError.message}`);
+        setConversations([]);
+        setLoadingConversations(false);
+        return;
+      }
+
+      if (messagesError) {
+        setChatError(`Failed to load messages: ${messagesError.message}`);
+        setConversations([]);
+        setLoadingConversations(false);
+        return;
+      }
+
+      const participantRows = (allParticipantRows as ParticipantRow[] | null) || [];
+      const myRows = (myParticipantRows as ParticipantRow[] | null) || [];
+      const lastReadAtByConversation = new Map<string, string | null>(
+        myRows.map((row) => [row.conversation_id, row.last_read_at || null])
+      );
+      const uniqueUserIds = Array.from(new Set(participantRows.map((row) => row.user_id)));
+
+      const { data: profileRows, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,name,avatar_url")
+        .in("id", uniqueUserIds);
+
+      if (profilesError) {
+        setChatError(`Failed to load user profiles: ${profilesError.message}`);
+        setConversations([]);
+        setLoadingConversations(false);
+        return;
+      }
+
+      const profilesById = new Map(((profileRows as ProfileRow[] | null) || []).map((profile) => [profile.id, profile]));
+
+      const normalizedMessages = (messageRows as Message[] | null) || [];
+      const messagesByConversation = new Map<string, Message[]>();
+      const lastMessageByConversation = new Map<string, Message>();
+
+      normalizedMessages.forEach((message) => {
+        if (!messagesByConversation.has(message.conversation_id)) {
+          messagesByConversation.set(message.conversation_id, []);
+        }
+        messagesByConversation.get(message.conversation_id)?.push(message);
+        if (!lastMessageByConversation.has(message.conversation_id)) {
+          lastMessageByConversation.set(message.conversation_id, message);
+        }
+      });
+
+      const nextConversations: Conversation[] = conversationIds.map((conversationId) => {
+        const users = participantRows.filter((row) => row.conversation_id === conversationId);
+        const otherUser = users.find((row) => row.user_id !== userId) || null;
+        const profile = otherUser ? profilesById.get(otherUser.user_id) : null;
+        const lastMessage = lastMessageByConversation.get(conversationId);
+        const lastReadAt = lastReadAtByConversation.get(conversationId) || null;
+        const conversationMessages = messagesByConversation.get(conversationId) || [];
+        const unreadCount = conversationMessages.reduce((count, message) => {
+          if (message.sender_id === userId) return count;
+          if (!lastReadAt) return count + 1;
+          return message.created_at > lastReadAt ? count + 1 : count;
+        }, 0);
+
+        return {
+          id: conversationId,
+          name: profile?.name || "User",
+          avatar: profile?.avatar_url || fallbackAvatar,
+          lastMessage: lastMessage?.content || "Start chat",
+          lastMessageAt: lastMessage?.created_at || null,
+          otherUserId: otherUser?.user_id || null,
+          unreadCount: selectedChatRef.current === conversationId ? 0 : unreadCount,
+          lastSenderId: lastMessage?.sender_id || null,
+        };
+      });
+
+      nextConversations.sort((a, b) => {
+        if (!a.lastMessageAt) return 1;
+        if (!b.lastMessageAt) return -1;
+        return b.lastMessageAt.localeCompare(a.lastMessageAt);
+      });
+
+      setConversations(nextConversations);
+      setSelectedChat((previousChat) => {
+        if (previousChat && nextConversations.some((conversation) => conversation.id === previousChat)) {
+          return previousChat;
+        }
+
+        if (requestedChatId && nextConversations.some((conversation) => conversation.id === requestedChatId)) {
+          return requestedChatId;
+        }
+
+        return nextConversations[0]?.id || null;
+      });
+
+      setLoadingConversations(false);
+      setChatError(null);
+    },
+    [requestedChatId, userId]
+  );
+
+  const loadMessages = useCallback(async (conversationId: string) => {
+    setLoadingMessages(true);
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("id,conversation_id,content,sender_id,created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setChatError(`Failed to load chat messages: ${error.message}`);
+      setMessages([]);
+      setLoadingMessages(false);
+      return;
+    }
+
+    setMessages((data as Message[] | null) || []);
+    setLoadingMessages(false);
+  }, []);
+
+  const markConversationAsRead = useCallback(
+    async (conversationId: string, readAt?: string) => {
+      if (!userId || !conversationId) return;
+      const timestamp = readAt || new Date().toISOString();
+
+      const { error } = await supabase
+        .from("conversation_participants")
+        .update({ last_read_at: timestamp })
+        .eq("conversation_id", conversationId)
+        .eq("user_id", userId);
+
+      if (error) {
+        console.warn("Failed to persist read state:", error.message);
+      }
+
+      setConversations((previous) =>
+        previous.map((conversation) =>
+          conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+        )
+      );
+    },
+    [userId]
+  );
 
   useEffect(() => {
     const getUser = async () => {
@@ -59,14 +315,15 @@ export default function ChatPage() {
         setLoadingConversations(false);
         return;
       }
-      if (data.user) {
-        setUserId(data.user.id);
-      } else {
+      if (!data.user) {
         setChatError("You are not logged in.");
         setLoadingConversations(false);
+        return;
       }
+      setUserId(data.user.id);
     };
-    getUser();
+
+    void getUser();
 
     const {
       data: { subscription },
@@ -79,199 +336,132 @@ export default function ChatPage() {
     };
   }, []);
 
-  /* ---------------- LOAD CONVERSATIONS ---------------- */
-
-  const loadConversations = useCallback(async () => {
-    if (!userId) return;
-    setLoadingConversations(true);
-    setChatError(null);
-
-    /* 1️⃣ Get conversations where user participates */
-    const {
-      data: participants,
-      error: participantsError,
-    } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, user_id")
-      .eq("user_id", userId);
-
-    if (participantsError) {
-      setChatError(
-        `Failed to load conversation participants: ${participantsError.message}`
-      );
-      setConversations([]);
-      setLoadingConversations(false);
-      return;
-    }
-
-    if (!participants?.length) {
-      setConversations([]);
-      setChatError(null);
-      setLoadingConversations(false);
-      return;
-    }
-
-    const convoIds = participants.map((p) => p.conversation_id);
-
-    /* 2️⃣ Get all participants in those convos */
-    const {
-      data: allParticipants,
-      error: allParticipantsError,
-    } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, user_id")
-      .in("conversation_id", convoIds);
-
-    if (allParticipantsError) {
-      setChatError(
-        `Failed to load participants for conversations: ${allParticipantsError.message}`
-      );
-      setConversations([]);
-      setLoadingConversations(false);
-      return;
-    }
-
-    /* 3️⃣ Get profiles */
-    const uniqueUserIds = [...new Set(allParticipants?.map((p) => p.user_id) || [])];
-
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, name, avatar_url")
-      .in("id", uniqueUserIds);
-
-    if (profilesError) {
-      setChatError(`Failed to load user profiles: ${profilesError.message}`);
-      setConversations([]);
-      setLoadingConversations(false);
-      return;
-    }
-
-    /* 4️⃣ Get last messages */
-    const {
-      data: lastMessages,
-      error: lastMessagesError,
-    } = await supabase
-      .from("messages")
-      .select("*")
-      .in("conversation_id", convoIds)
-      .order("created_at", { ascending: false });
-
-    if (lastMessagesError) {
-      setChatError(`Failed to load messages: ${lastMessagesError.message}`);
-      setConversations([]);
-      setLoadingConversations(false);
-      return;
-    }
-
-    /* 5️⃣ Format for UI */
-    const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
-    const formatted: Conversation[] = convoIds.map((conversationId) => {
-      const users = allParticipants?.filter((p) => p.conversation_id === conversationId) || [];
-      const otherUser = users.find((u) => u.user_id !== userId) || null;
-      const profile = otherUser ? profilesById.get(otherUser.user_id) : null;
-      const last = lastMessages?.find((m) => m.conversation_id === conversationId);
-
-      return {
-        id: conversationId,
-        name: profile?.name || "User",
-        avatar: profile?.avatar_url || "https://i.pravatar.cc/150",
-        lastMessage: last?.content || "Start chat",
-        lastMessageAt: last?.created_at || null,
-        otherUserId: otherUser?.user_id || null,
-      };
-    });
-
-    formatted.sort((a, b) => {
-      if (!a.lastMessageAt) return 1;
-      if (!b.lastMessageAt) return -1;
-      return b.lastMessageAt.localeCompare(a.lastMessageAt);
-    });
-
-    setConversations(formatted);
-    setSelectedChat((previousChat) => {
-      if (previousChat && formatted.some((conversation) => conversation.id === previousChat)) {
-        return previousChat;
-      }
-      if (requestedChatId && formatted.some((conversation) => conversation.id === requestedChatId)) {
-        return requestedChatId;
-      }
-      return formatted[0]?.id || null;
-    });
-    setLoadingConversations(false);
-  }, [requestedChatId, userId]);
-
   useEffect(() => {
     if (!userId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadConversations();
+    void loadConversations();
   }, [loadConversations, userId]);
 
-  /* ---------------- LOAD MESSAGES ---------------- */
+  useEffect(() => {
+    if (!userId) return;
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    setLoadingMessages(true);
-    setChatError(null);
+    const presenceChannel = supabase.channel(GLOBAL_PRESENCE_CHANNEL, {
+      config: {
+        presence: {
+          key: userId,
+        },
+      },
+    });
+    presenceChannelRef.current = presenceChannel;
 
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+    const syncOnlineUsers = () => {
+      setOnlineUserIds(extractPresenceUserIds(presenceChannel.presenceState()));
+    };
 
-    if (error) {
-      setChatError(`Failed to load chat messages: ${error.message}`);
-      setMessages([]);
-      setLoadingMessages(false);
-      return;
-    }
+    presenceChannel
+      .on("presence", { event: "sync" }, syncOnlineUsers)
+      .on("presence", { event: "join" }, syncOnlineUsers)
+      .on("presence", { event: "leave" }, syncOnlineUsers)
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+        await presenceChannel.track({
+          user_id: userId,
+          last_seen_at: new Date().toISOString(),
+          page: "chat",
+        });
+      });
 
-    setMessages(data || []);
-    setLoadingMessages(false);
-  }, []);
+    const heartbeatTimer = window.setInterval(() => {
+      void presenceChannel.track({
+        user_id: userId,
+        last_seen_at: new Date().toISOString(),
+        page: "chat",
+      });
+    }, 30000);
+
+    return () => {
+      window.clearInterval(heartbeatTimer);
+      if (presenceChannelRef.current) {
+        void presenceChannelRef.current.untrack();
+        supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
+      }
+      setOnlineUserIds(new Set());
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!selectedChat) return;
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadMessages(selectedChat);
-  }, [loadMessages, selectedChat]);
+    void loadMessages(selectedChat);
+    void markConversationAsRead(selectedChat);
+  }, [loadMessages, markConversationAsRead, selectedChat]);
 
-  /* ---------------- SEND MESSAGE ---------------- */
+  useEffect(() => {
+    if (!selectedChat || !userId) return;
 
-  const sendMessage = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || !selectedChat || sending) return;
-    setSending(true);
-
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      setChatError("You must be logged in to send messages.");
-      setSending(false);
-      return;
-    }
-
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: selectedChat,
-      sender_id: data.user.id,
-      content: trimmed,
+    const typingChannel = supabase.channel(getConversationRealtimeChannel(selectedChat), {
+      config: {
+        presence: {
+          key: userId,
+        },
+      },
     });
+    typingChannelRef.current = typingChannel;
 
-    if (error) {
-      setChatError(`Failed to send message: ${error.message}`);
-      setSending(false);
-      return;
-    }
+    typingChannel
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        const eventPayload = payload as TypingEventPayload;
+        if (eventPayload.conversation_id !== selectedChat) return;
+        if (eventPayload.user_id === userId) return;
 
-    setInput("");
-    loadConversations();
-    setSending(false);
-  };
+        if (!eventPayload.is_typing) {
+          setTypingUserId((current) => (current === eventPayload.user_id ? null : current));
+          return;
+        }
 
-  /* ---------------- REALTIME ---------------- */
+        setTypingUserId(eventPayload.user_id);
+        if (remoteTypingTimerRef.current) {
+          window.clearTimeout(remoteTypingTimerRef.current);
+        }
+        remoteTypingTimerRef.current = window.setTimeout(() => {
+          setTypingUserId(null);
+        }, 2200);
+      })
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+        await typingChannel.track({
+          user_id: userId,
+          conversation_id: selectedChat,
+          last_seen_at: new Date().toISOString(),
+        });
+      });
+
+    return () => {
+      if (remoteTypingTimerRef.current) {
+        window.clearTimeout(remoteTypingTimerRef.current);
+        remoteTypingTimerRef.current = null;
+      }
+      if (stopTypingTimerRef.current) {
+        window.clearTimeout(stopTypingTimerRef.current);
+        stopTypingTimerRef.current = null;
+      }
+      localTypingRef.current = false;
+      setTypingUserId(null);
+
+      if (typingChannelRef.current) {
+        void typingChannelRef.current.untrack();
+        supabase.removeChannel(typingChannelRef.current);
+        typingChannelRef.current = null;
+      }
+    };
+  }, [selectedChat, userId]);
 
   useEffect(() => {
     if (!userId) return;
 
-    const channel = supabase
+    const realtimeChannel = supabase
       .channel(`chat-live-${userId}`)
       .on(
         "postgres_changes",
@@ -282,63 +472,193 @@ export default function ChatPage() {
         },
         (payload) => {
           const newMessage = payload.new as Message;
+          const isCurrentConversation = selectedChatRef.current === newMessage.conversation_id;
 
           setConversations((previousConversations) => {
-            const exists = previousConversations.some(
+            const conversationExists = previousConversations.some(
               (conversation) => conversation.id === newMessage.conversation_id
             );
-            if (!exists) return previousConversations;
 
-            const updatedConversations = previousConversations.map((conversation) =>
-              conversation.id === newMessage.conversation_id
-                ? {
-                    ...conversation,
-                    lastMessage: newMessage.content,
-                    lastMessageAt: newMessage.created_at,
-                  }
-                : conversation
-            );
+            if (!conversationExists) {
+              void loadConversations(true);
+              return previousConversations;
+            }
 
-            updatedConversations.sort((a, b) => {
+            const updated = previousConversations.map((conversation) => {
+              if (conversation.id !== newMessage.conversation_id) return conversation;
+              const unreadIncrement =
+                newMessage.sender_id !== userId && !isCurrentConversation
+                  ? conversation.unreadCount + 1
+                  : 0;
+
+              return {
+                ...conversation,
+                lastMessage: newMessage.content,
+                lastMessageAt: newMessage.created_at,
+                lastSenderId: newMessage.sender_id,
+                unreadCount: unreadIncrement,
+              };
+            });
+
+            updated.sort((a, b) => {
               if (!a.lastMessageAt) return 1;
               if (!b.lastMessageAt) return -1;
               return b.lastMessageAt.localeCompare(a.lastMessageAt);
             });
 
-            return updatedConversations;
+            return updated;
           });
 
-          if (newMessage.conversation_id === selectedChat) {
+          if (isCurrentConversation) {
             setMessages((previousMessages) => {
               if (previousMessages.some((message) => message.id === newMessage.id)) {
                 return previousMessages;
               }
               return [...previousMessages, newMessage];
             });
+
+            if (newMessage.sender_id !== userId) {
+              void markConversationAsRead(newMessage.conversation_id, newMessage.created_at);
+            }
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "conversation_participants",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          void loadConversations(true);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(realtimeChannel);
     };
-  }, [selectedChat, userId]);
+  }, [loadConversations, markConversationAsRead, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ---------------- UI ---------------- */
-  const filteredConversations = conversations.filter((chat) =>
-    chat.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const sendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || !selectedChat || sending || !userId) return;
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
+    if (localTypingRef.current) {
+      sendTypingEvent(false);
+      localTypingRef.current = false;
+    }
+    if (stopTypingTimerRef.current) {
+      window.clearTimeout(stopTypingTimerRef.current);
+      stopTypingTimerRef.current = null;
+    }
+
+    setSending(true);
+    setChatError(null);
+
+    const optimisticId = `local-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      conversation_id: selectedChat,
+      content: trimmed,
+      sender_id: userId,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((previous) => [...previous, optimisticMessage]);
+    setInput("");
+
+    const { data: insertedMessage, error } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: selectedChat,
+        sender_id: userId,
+        content: trimmed,
+      })
+      .select("id,conversation_id,content,sender_id,created_at")
+      .single();
+
+    if (error) {
+      setMessages((previous) => previous.filter((message) => message.id !== optimisticId));
+      setInput(trimmed);
+      setChatError(`Failed to send message: ${error.message}`);
+      setSending(false);
+      return;
+    }
+
+    setMessages((previous) => {
+      const withoutOptimistic = previous.filter((message) => message.id !== optimisticId);
+      const normalized = insertedMessage as Message;
+      if (withoutOptimistic.some((message) => message.id === normalized.id)) {
+        return withoutOptimistic;
+      }
+      return [...withoutOptimistic, normalized];
     });
+
+    setConversations((previousConversations) => {
+      const updated = previousConversations.map((conversation) =>
+        conversation.id === selectedChat
+          ? {
+              ...conversation,
+              lastMessage: trimmed,
+              lastMessageAt: (insertedMessage as Message).created_at,
+              lastSenderId: userId,
+              unreadCount: 0,
+            }
+          : conversation
+      );
+
+      updated.sort((a, b) => {
+        if (!a.lastMessageAt) return 1;
+        if (!b.lastMessageAt) return -1;
+        return b.lastMessageAt.localeCompare(a.lastMessageAt);
+      });
+
+      return updated;
+    });
+
+    setSending(false);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    if (!selectedChatRef.current || !userId) return;
+
+    const hasContent = value.trim().length > 0;
+    if (hasContent && !localTypingRef.current) {
+      localTypingRef.current = true;
+      sendTypingEvent(true);
+    }
+
+    if (!hasContent && localTypingRef.current) {
+      localTypingRef.current = false;
+      sendTypingEvent(false);
+    }
+
+    if (stopTypingTimerRef.current) {
+      window.clearTimeout(stopTypingTimerRef.current);
+    }
+
+    stopTypingTimerRef.current = window.setTimeout(() => {
+      if (!localTypingRef.current) return;
+      localTypingRef.current = false;
+      sendTypingEvent(false);
+    }, 1400);
+  };
+
+  const filteredConversations = conversations.filter((conversation) =>
+    conversation.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const selectedUserOnline =
+    selectedConversation?.otherUserId ? onlineUserIds.has(selectedConversation.otherUserId) : false;
+  const selectedUserTyping =
+    Boolean(typingUserId) && Boolean(selectedConversation?.otherUserId) && typingUserId === selectedConversation?.otherUserId;
 
   return (
     <div className="h-[calc(100vh-7.5rem)] rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 text-slate-900 shadow-sm overflow-hidden">
@@ -346,10 +666,8 @@ export default function ChatPage() {
         <div className={`w-full md:w-96 border-r border-slate-200 flex flex-col bg-slate-50 ${selectedChat ? "hidden md:flex" : "flex"}`}>
           <div className="p-5 border-b border-slate-200">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold tracking-wide text-slate-800">
-                Messages
-              </h2>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+              <h2 className="font-semibold tracking-wide text-slate-800">Messages</h2>
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-700">
                 <Sparkles size={12} />
                 LIVE
               </span>
@@ -360,7 +678,7 @@ export default function ChatPage() {
               <input
                 placeholder="Search chats..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
               />
             </div>
@@ -368,28 +686,39 @@ export default function ChatPage() {
 
           <div className="flex-1 overflow-y-auto">
             {loadingConversations && (
-              <p className="p-4 text-sm text-slate-500">Loading chats...</p>
+              <div className="p-4 text-sm text-slate-500 inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading chats...
+              </div>
             )}
 
             {!loadingConversations && filteredConversations.length === 0 && (
               <div className="p-4 text-sm text-slate-600 space-y-3">
-                <p>No chats yet.</p>
-                <p className="text-xs text-slate-500">
-                  Start from Posts or People to open your first conversation.
-                </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="font-medium text-slate-800">No active conversations yet</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Start from Posts or People, then messages will sync here in realtime.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => router.push("/dashboard")}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-500"
+                    className="rounded-lg bg-indigo-600 px-3 py-2 text-xs text-white hover:bg-indigo-500"
                   >
                     Go to Posts
                   </button>
                   <button
                     onClick={() => router.push("/dashboard/people")}
-                    className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-300"
+                    className="rounded-lg bg-slate-200 px-3 py-2 text-xs text-slate-700 hover:bg-slate-300"
                   >
                     Find People
                   </button>
+                </div>
+
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-700 inline-flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5" />
+                  Demo-ready state: create one conversation to unlock full live chat view.
                 </div>
               </div>
             )}
@@ -400,9 +729,7 @@ export default function ChatPage() {
                 key={chat.id}
                 onClick={() => setSelectedChat(chat.id)}
                 className={`w-full border-b border-slate-200 px-4 py-3 text-left transition ${
-                  selectedChat === chat.id
-                    ? "bg-indigo-100/70"
-                    : "hover:bg-slate-100"
+                  selectedChat === chat.id ? "bg-indigo-100/70" : "hover:bg-slate-100"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -411,14 +738,24 @@ export default function ChatPage() {
                     alt={`${chat.name} avatar`}
                     width={42}
                     height={42}
-                    className="h-11 w-11 rounded-full border border-slate-700 object-cover"
+                    className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-800">{chat.name}</p>
-                      <p className="shrink-0 text-[11px] text-slate-400">
-                        {chat.lastMessageAt ? formatTime(chat.lastMessageAt) : ""}
+                      <p className="truncate text-sm font-semibold text-slate-800">
+                        {chat.name}
+                        {chat.otherUserId && onlineUserIds.has(chat.otherUserId) && (
+                          <span className="ml-2 text-[10px] font-semibold text-emerald-600">● online</span>
+                        )}
                       </p>
+                      <div className="flex items-center gap-2">
+                        <p className="shrink-0 text-[11px] text-slate-400">{formatTimeAgo(chat.lastMessageAt)}</p>
+                        {chat.unreadCount > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-semibold text-white">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="mt-1 truncate text-xs text-slate-500">{chat.lastMessage}</p>
                   </div>
@@ -430,8 +767,11 @@ export default function ChatPage() {
 
         <div className={`flex-1 flex-col ${selectedChat ? "flex" : "hidden md:flex"}`}>
           {!selectedChat ? (
-            <div className="flex h-full items-center justify-center px-6 text-slate-400">
-              Select a conversation to start chatting.
+            <div className="flex h-full items-center justify-center px-6 text-slate-400 text-center">
+              <div>
+                <p className="font-medium text-slate-600">Select a conversation to start chatting.</p>
+                <p className="text-xs text-slate-500 mt-2">Realtime updates, unread indicators, and message sync are active.</p>
+              </div>
             </div>
           ) : (
             <>
@@ -450,11 +790,17 @@ export default function ChatPage() {
                       alt={`${selectedConversation.name} avatar`}
                       width={38}
                       height={38}
-                      className="h-10 w-10 rounded-full border border-slate-700 object-cover"
+                      className="h-10 w-10 rounded-full border border-slate-200 object-cover"
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{selectedConversation.name}</p>
-                      <p className="text-xs text-emerald-600">Connected in realtime</p>
+                      <p className={`text-xs ${selectedUserTyping ? "text-indigo-600" : selectedUserOnline ? "text-emerald-600" : "text-slate-500"}`}>
+                        {selectedUserTyping
+                          ? "Typing..."
+                          : selectedUserOnline
+                          ? "Online now"
+                          : "Offline"}
+                      </p>
                     </div>
                   </>
                 )}
@@ -462,23 +808,30 @@ export default function ChatPage() {
 
               <div className="flex-1 overflow-y-auto px-5 py-5 bg-slate-50/60">
                 {loadingMessages ? (
-                  <p className="text-sm text-slate-500">Loading conversation...</p>
+                  <p className="text-sm text-slate-500 inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading conversation...
+                  </p>
+                ) : messages.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                    No messages yet. Send the first message to start this conversation.
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    {messages.map((msg) => {
-                      const mine = msg.sender_id === userId;
+                    {messages.map((message) => {
+                      const mine = message.sender_id === userId;
                       return (
                         <div
-                          key={msg.id}
+                          key={message.id}
                           className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-md ${
                             mine
                               ? "ml-auto rounded-br-md bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
                               : "rounded-bl-md border border-slate-300 bg-white text-slate-800"
                           }`}
                         >
-                          <p className="break-words">{msg.content}</p>
+                          <p className="break-words">{message.content}</p>
                           <p className={`mt-1 text-[10px] ${mine ? "text-blue-100" : "text-slate-400"}`}>
-                            {formatTime(msg.created_at)}
+                            {formatTime(message.created_at)}
                           </p>
                         </div>
                       );
@@ -492,25 +845,31 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 p-2">
                   <input
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
+                    onChange={(event) => handleInputChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void sendMessage();
                       }
                     }}
                     placeholder="Type a message..."
                     className="flex-1 bg-transparent px-2 py-2 text-sm outline-none placeholder:text-slate-400"
                   />
                   <button
-                    onClick={sendMessage}
+                    onClick={() => void sendMessage()}
                     disabled={sending || !input.trim()}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <Send size={16} />
+                    {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                   </button>
                 </div>
                 {chatError && <p className="mt-2 text-xs text-rose-600">{chatError}</p>}
+                {!chatError && (
+                  <p className="mt-2 text-[11px] text-slate-500 inline-flex items-center gap-1">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    Messages, presence, and typing sync in realtime.
+                  </p>
+                )}
               </div>
             </>
           )}
