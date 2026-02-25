@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
+const AUTH_REQUEST_TIMEOUT_MS = 12000;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 20000): Promise<T> => {
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> => {
     let timeoutId: number | undefined;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -72,7 +73,9 @@ export default function LoginPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send login link right now.";
       if (/timed out/i.test(message)) {
-        setErrorMessage("Request timed out. Check your internet and try again.");
+        setErrorMessage(
+          "Request took too long. The link may still arrive shortly, or you can retry now."
+        );
       } else {
         setErrorMessage(
           "Network/auth request failed. Verify Supabase URL/anon key and allowed redirect URLs, then retry."
