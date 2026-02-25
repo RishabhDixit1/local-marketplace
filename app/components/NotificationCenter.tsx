@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import {
   getNotificationKind,
+  getDemoNotifications,
   resolveNotificationAction,
   type NotificationKind,
   type NotificationRow,
@@ -94,6 +95,7 @@ export default function NotificationCenter() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [userId, setUserId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [demoMode, setDemoMode] = useState(false);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -104,6 +106,7 @@ export default function NotificationCenter() {
         setNotifications([]);
         setLoading(false);
         setErrorMessage("");
+        setDemoMode(false);
         return;
       }
 
@@ -118,18 +121,26 @@ export default function NotificationCenter() {
         .limit(60);
 
       if (error) {
+        if (isMissingNotificationsTable(error.message)) {
+          setNotifications(getDemoNotifications(userId));
+          setErrorMessage(
+            "Live notifications are in demo mode. Run supabase/secure_realtime_rls.sql to enable realtime DB events."
+          );
+          setDemoMode(true);
+          setLoading(false);
+          return;
+        }
+
         setNotifications([]);
         setLoading(false);
-        if (isMissingNotificationsTable(error.message)) {
-          setErrorMessage("Run secure_realtime_rls.sql to enable live notifications.");
-        } else {
-          setErrorMessage(error.message);
-        }
+        setErrorMessage("Unable to load notifications. Please refresh and try again.");
+        setDemoMode(false);
         return;
       }
 
       setNotifications(normalizeNotificationRows((data as NotificationRowRaw[] | null) || []));
       setErrorMessage("");
+      setDemoMode(false);
       setLoading(false);
     },
     [userId]
@@ -152,6 +163,7 @@ export default function NotificationCenter() {
         setNotifications([]);
         setLoading(false);
         setErrorMessage("");
+        setDemoMode(false);
       }
       setUserId(user?.id || "");
     };
@@ -165,6 +177,7 @@ export default function NotificationCenter() {
         setNotifications([]);
         setLoading(false);
         setErrorMessage("");
+        setDemoMode(false);
       }
       setUserId(session?.user?.id || "");
     });
@@ -175,14 +188,14 @@ export default function NotificationCenter() {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || demoMode) return;
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotifications();
-  }, [loadNotifications, userId]);
+  }, [demoMode, loadNotifications, userId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || demoMode) return;
 
     const channel = supabase
       .channel(`notifications-live-${userId}`)
@@ -203,7 +216,7 @@ export default function NotificationCenter() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications, userId]);
+  }, [demoMode, loadNotifications, userId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -300,6 +313,8 @@ export default function NotificationCenter() {
         )
       );
 
+      if (demoMode) return;
+
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: timestamp })
@@ -311,7 +326,7 @@ export default function NotificationCenter() {
         void loadNotifications(true);
       }
     },
-    [loadNotifications, userId]
+    [demoMode, loadNotifications, userId]
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -321,6 +336,8 @@ export default function NotificationCenter() {
     setNotifications((current) =>
       current.map((item) => (item.read_at ? item : { ...item, read_at: timestamp }))
     );
+
+    if (demoMode) return;
 
     const { error: rpcError } = await supabase.rpc("mark_all_notifications_read");
     if (!rpcError) return;
@@ -335,7 +352,7 @@ export default function NotificationCenter() {
     if (fallbackError) {
       void loadNotifications(true);
     }
-  }, [loadNotifications, unreadCount, userId]);
+  }, [demoMode, loadNotifications, unreadCount, userId]);
 
   const clearNotification = useCallback(
     async (id: string) => {
@@ -343,6 +360,8 @@ export default function NotificationCenter() {
 
       const timestamp = new Date().toISOString();
       setNotifications((current) => current.filter((item) => item.id !== id));
+
+      if (demoMode) return;
 
       const { error } = await supabase
         .from("notifications")
@@ -355,13 +374,15 @@ export default function NotificationCenter() {
         void loadNotifications(true);
       }
     },
-    [loadNotifications, userId]
+    [demoMode, loadNotifications, userId]
   );
 
   const clearAll = useCallback(async () => {
     if (!userId || notifications.length === 0) return;
 
     setNotifications([]);
+
+    if (demoMode) return;
 
     const { error: rpcError } = await supabase.rpc("clear_all_notifications");
     if (!rpcError) return;
@@ -376,7 +397,7 @@ export default function NotificationCenter() {
     if (fallbackError) {
       void loadNotifications(true);
     }
-  }, [loadNotifications, notifications.length, userId]);
+  }, [demoMode, loadNotifications, notifications.length, userId]);
 
   const openNotification = async (item: DecoratedNotification) => {
     const action = resolveNotificationAction(item);
@@ -392,12 +413,21 @@ export default function NotificationCenter() {
           <div>
             <h3 className="font-bold text-slate-900">Notifications</h3>
             <p className="text-xs text-slate-500 mt-1">
-              {unreadCount} unread · Live from orders, messages, and reviews
+              {unreadCount} unread ·{" "}
+              {demoMode ? "Demo feed (switches to live after SQL setup)" : "Live from orders, messages, and reviews"}
             </p>
           </div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live
+          <div
+            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold ${
+              demoMode
+                ? "border border-amber-200 bg-amber-50 text-amber-700"
+                : "border border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${demoMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`}
+            />
+            {demoMode ? "Demo" : "Live"}
           </div>
         </div>
       </div>
@@ -468,10 +498,22 @@ export default function NotificationCenter() {
       )}
 
       {!!errorMessage && (
-        <div className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-[11px] text-rose-700">{errorMessage}</div>
+        <div
+          className={`border-t px-4 py-2 text-[11px] ${
+            demoMode
+              ? "border-amber-200 bg-amber-50 text-amber-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
+          {errorMessage}
+        </div>
       )}
 
-      <div className="grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 sm:grid-cols-2">
+      <div
+        className={`grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 ${
+          demoMode ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        }`}
+      >
         <button
           type="button"
           onClick={() => void markAllAsRead()}
@@ -489,6 +531,16 @@ export default function NotificationCenter() {
         >
           Clear all
         </button>
+        {demoMode && (
+          <button
+            type="button"
+            onClick={() => void loadNotifications()}
+            disabled={loading}
+            className="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Retry live
+          </button>
+        )}
       </div>
     </>
   );
