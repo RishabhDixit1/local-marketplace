@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { ArrowLeft, Plus, X, MapPin, DollarSign, Clock, Tag, FileText, Sparkles, Check } from "lucide-react";
 
 type PostType = "need" | "provide";
@@ -134,37 +133,42 @@ const handleSubmit = async (e: React.FormEvent) => {
   setIsSubmitting(true);
 
   try {
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    if (authError || !user) {
-      setErrors({ submit: "Please log in again before publishing." });
-      return;
-    }
+    // ✅ Create ONE consistent post object (matches dashboard shape)
+    const newPost = {
+      id: Date.now().toString(),
+      userImage:
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop",
+      userName: "Current User",
 
-    const composedDescription = [
-      formData.description.trim(),
-      formData.tags.length ? `Tags: ${formData.tags.join(", ")}` : "",
-      formData.location.trim() ? `Location: ${formData.location.trim()}` : "",
-      formData.budget?.trim() ? `Budget: ${formData.budget.trim()}` : "",
-      formData.timeline?.trim() ? `Timeline: ${formData.timeline.trim()}` : "",
-      imageName ? `Attachment: ${imageName}` : "",
-    ]
-      .filter(Boolean)
-      .join(" | ");
+      // ✅ IMPORTANT: dashboard expects "queries"
+      queries: formData.tags,
 
-    const { error } = await supabase.from("posts").insert({
-      title: formData.title.trim(),
-      content: composedDescription,
-      author_id: user.id,
-    });
+      // (optional) keep tags too (useful later)
+      tags: formData.tags,
 
-    if (error) {
-      throw error;
-    }
+      title: formData.title,
+      description: formData.description,
+      location: formData.location,
+      timeAgo: "just now",
 
+      // optional extras (future use)
+      budget: formData.budget || "",
+      timeline: formData.timeline || "",
+      postType: formData.type, // need | provide
+      image: imageData || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    // ✅ Store in localStorage
+    const existingPosts = localStorage.getItem("userPosts");
+    const userPosts = existingPosts ? JSON.parse(existingPosts) : [];
+    userPosts.unshift(newPost);
+    localStorage.setItem("userPosts", JSON.stringify(userPosts));
+
+    // ✅ Navigate back to dashboard
     router.push("/dashboard");
   } catch (error) {
     console.error("Error creating post:", error);
@@ -175,23 +179,23 @@ const handleSubmit = async (e: React.FormEvent) => {
 };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
         {/* Header */}
         <div className="mb-8 lg:mb-12">
           <button
             onClick={() => router.back()}
-            className="group inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors duration-200 mb-6"
+            className="group inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6"
           >
             <ArrowLeft className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1" />
             <span className="font-medium">Back to Dashboard</span>
           </button>
           
           <div className="space-y-3">
-            <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight">
               Create New Post
             </h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400">
+            <p className="text-lg text-slate-600">
               Share your service needs or offerings with the community
             </p>
           </div>
@@ -200,8 +204,8 @@ const handleSubmit = async (e: React.FormEvent) => {
         {/* Form Card */}
         <div className="space-y-8">
           {/* Post Type Selection */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
+            <label className="block text-sm font-semibold text-slate-700 mb-4">
               What would you like to do?
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -211,7 +215,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 className={`group relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
                   formData.type === "need"
                     ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <div className="relative z-10 flex items-center justify-center gap-3">
@@ -229,7 +233,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 className={`group relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
                   formData.type === "provide"
                     ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30 scale-105"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <div className="relative z-10 flex items-center justify-center gap-3">
@@ -244,11 +248,11 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
 
           {/* Main Form Card */}
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 p-6 lg:p-8 border border-slate-200 dark:border-slate-700 space-y-6">
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200 space-y-6">
             
         {/* Title */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
             <FileText className="w-4 h-4" />
             Title
           </label>
@@ -257,21 +261,21 @@ const handleSubmit = async (e: React.FormEvent) => {
             name="title"
             value={formData.title}
             onChange={handleInputChange}
-            className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+            className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
               errors.title
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
+                : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
             }`}
             placeholder="e.g., Looking for an experienced plumber for kitchen renovation"
           />
           {errors.title && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.title}</p>
+            <p className="mt-2 text-sm text-red-600">{errors.title}</p>
           )}
         </div>
 
         {/* Image */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
             <FileText className="w-4 h-4" />
             Image <span className="text-xs font-normal text-slate-500">(Optional)</span>
           </label>
@@ -297,7 +301,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               className="hidden"
             />
 
-            <div className="text-sm text-slate-600 dark:text-slate-300">
+            <div className="text-sm text-slate-600">
               {imageName ? imageName : "No file chosen"}
             </div>
 
@@ -326,7 +330,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {/* Description */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
                 <FileText className="w-4 h-4" />
                 Description
               </label>
@@ -335,24 +339,24 @@ const handleSubmit = async (e: React.FormEvent) => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={5}
-                className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 resize-none ${
+                className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 resize-none ${
                   errors.description
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                    : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
+                    : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                 }`}
                 placeholder="Provide detailed information about the service you need or offer. Include any specific requirements, experience level needed, or other relevant details..."
               />
               {errors.description && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.description}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.description}</p>
               )}
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-xs text-slate-500">
                 {formData.description.length} characters
               </p>
             </div>
 
             {/* Tags/Skills */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
                 <Tag className="w-4 h-4" />
                 Tags & Skills
               </label>
@@ -386,10 +390,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                   onChange={(e) => setCurrentTag(e.target.value)}
                   onKeyPress={handleKeyPress}
                   disabled={formData.tags.length >= 10}
-                  className={`flex-1 px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+                  className={`flex-1 px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
                     errors.tags
                       ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
+                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                   }`}
                   placeholder="e.g., Plumbing, Electrical, Carpentry"
                 />
@@ -405,16 +409,16 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
               
               {errors.tags && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.tags}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.tags}</p>
               )}
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-xs text-slate-500">
                 {formData.tags.length}/10 tags added
               </p>
             </div>
 
             {/* Location */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
                 <MapPin className="w-4 h-4" />
                 Location
               </label>
@@ -423,22 +427,22 @@ const handleSubmit = async (e: React.FormEvent) => {
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 rounded-xl border-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:ring-4 ${
+                className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
                   errors.location
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                    : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500/20"
+                    : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                 }`}
                 placeholder="e.g., Downtown Manhattan, New York"
               />
               {errors.location && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.location}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.location}</p>
               )}
             </div>
 
             {/* Budget and Timeline */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
                   <DollarSign className="w-4 h-4" />
                   Budget <span className="text-xs font-normal text-slate-500">(Optional)</span>
                 </label>
@@ -447,13 +451,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                   name="budget"
                   value={formData.budget}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                   placeholder="e.g., $500 - $1,000"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
                   <Clock className="w-4 h-4" />
                   Timeline <span className="text-xs font-normal text-slate-500">(Optional)</span>
                 </label>
@@ -462,7 +466,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   name="timeline"
                   value={formData.timeline}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
                   placeholder="e.g., Within 2 weeks"
                 />
               </div>
@@ -470,8 +474,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {/* Submit Error */}
             {errors.submit && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-600">{errors.submit}</p>
               </div>
             )}
 

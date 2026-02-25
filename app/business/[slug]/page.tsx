@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { ReactNode } from "react";
-import { BadgeCheck, Briefcase, Clock3, MapPin, Star } from "lucide-react";
+import { BadgeCheck, Briefcase, Clock3, Globe, MapPin, Phone, Star } from "lucide-react";
 import {
   calculateProfileCompletion,
   calculateVerificationStatus,
@@ -26,6 +26,9 @@ type ProfileRow = {
   bio: string | null;
   services: string[] | null;
   availability: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
   avatar_url: string | null;
 };
 
@@ -39,8 +42,8 @@ type ServiceRow = {
 
 type ProductRow = {
   id: string;
-  name: string | null;
-  delivery_method: string | null;
+  title: string | null;
+  category: string | null;
   price: number | null;
   stock: number | null;
 };
@@ -63,7 +66,7 @@ const loadBusiness = cache(async (slug: string) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id,name,role,location,bio,services,availability,avatar_url")
+    .select("id,name,role,location,bio,services,availability,email,phone,website,avatar_url")
     .eq("id", businessId)
     .maybeSingle<ProfileRow>();
 
@@ -77,7 +80,7 @@ const loadBusiness = cache(async (slug: string) => {
       .limit(8),
     supabase
       .from("product_catalog")
-      .select("id,name,delivery_method,price,stock")
+      .select("id,title,category,price,stock")
       .eq("provider_id", businessId)
       .limit(8),
     supabase.from("reviews").select("rating,comment").eq("provider_id", businessId).limit(10),
@@ -101,6 +104,9 @@ const loadBusiness = cache(async (slug: string) => {
     location: profile.location,
     bio: profile.bio,
     services: profile.services,
+    email: profile.email,
+    phone: profile.phone,
+    website: profile.website,
   });
 
   const responseMinutes = estimateResponseMinutes({
@@ -204,6 +210,8 @@ export default async function BusinessProfilePage({ params }: Params) {
     description: profile.bio || "Local business profile",
     address: profile.location || undefined,
     url: profileUrl,
+    telephone: profile.phone || undefined,
+    email: profile.email || undefined,
     aggregateRating:
       reviews.length > 0
         ? {
@@ -308,8 +316,8 @@ export default async function BusinessProfilePage({ params }: Params) {
                 {products.length === 0 && <p className="text-sm text-slate-400">No products published yet.</p>}
                 {products.map((product) => (
                   <div key={product.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                    <p className="font-semibold">{product.name || "Untitled Product"}</p>
-                    <p className="mt-1 text-xs text-slate-400">{product.delivery_method || "Product"}</p>
+                    <p className="font-semibold">{product.title || "Untitled Product"}</p>
+                    <p className="mt-1 text-xs text-slate-400">{product.category || "Product"}</p>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="font-semibold text-indigo-300">₹ {Number(product.price || 0).toLocaleString()}</span>
                       <span className="text-slate-400">{(product.stock || 0) > 0 ? "In stock" : "Out of stock"}</span>
@@ -324,7 +332,18 @@ export default async function BusinessProfilePage({ params }: Params) {
             <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <h2 className="text-lg font-semibold">Contact</h2>
               <div className="mt-3 space-y-3 text-sm text-slate-300">
-                <p className="text-slate-400">Use in-app chat from dashboard to contact this business.</p>
+                {profile.website ? (
+                  <a href={profile.website} className="inline-flex items-center gap-2 text-indigo-300 hover:text-indigo-200">
+                    <Globe size={14} /> {profile.website}
+                  </a>
+                ) : (
+                  <p className="text-slate-400">Website not added</p>
+                )}
+                <p className="inline-flex items-center gap-2">
+                  <Phone size={14} />
+                  {profile.phone || "Phone not added"}
+                </p>
+                <p>{profile.email || "Email not added"}</p>
               </div>
             </section>
 

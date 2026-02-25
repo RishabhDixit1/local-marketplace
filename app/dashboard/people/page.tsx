@@ -23,6 +23,9 @@ type ProfileRow = {
   location?: string | null;
   availability?: string | null;
   services?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
 };
 
 type ServiceRow = {
@@ -32,7 +35,7 @@ type ServiceRow = {
 
 type ProductRow = {
   provider_id: string;
-  delivery_method?: string | null;
+  category?: string | null;
 };
 
 type ReviewRow = {
@@ -186,9 +189,9 @@ export default function PeoplePage() {
         await Promise.all([
           supabase
             .from("profiles")
-            .select("id,name,avatar_url,role,bio,location,availability,services"),
+            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website"),
           supabase.from("service_listings").select("provider_id,category"),
-          supabase.from("product_catalog").select("provider_id,delivery_method"),
+          supabase.from("product_catalog").select("provider_id,category"),
           supabase.from("reviews").select("provider_id,rating"),
         ]);
 
@@ -217,7 +220,7 @@ export default function PeoplePage() {
       productRows.forEach((row) => {
         productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
         if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
-        if (row.delivery_method) tagMap.get(row.provider_id)?.add(row.delivery_method);
+        if (row.category) tagMap.get(row.provider_id)?.add(row.category);
       });
 
       reviewRows.forEach((row) => {
@@ -251,6 +254,9 @@ export default function PeoplePage() {
             location: profile.location,
             bio: profile.bio,
             services: profile.services,
+            email: profile.email,
+            phone: profile.phone,
+            website: profile.website,
           });
           const verificationStatus = calculateVerificationStatus({
             role: profile.role,
@@ -376,7 +382,7 @@ export default function PeoplePage() {
     if (!targetConversationId) {
       const { data: conversation, error } = await supabase
         .from("conversations")
-        .insert({})
+        .insert({ created_by: currentUserId })
         .select("id")
         .single();
 

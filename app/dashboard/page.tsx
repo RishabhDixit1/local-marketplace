@@ -24,12 +24,21 @@ const ProviderTrustPanel = dynamic(
   { ssr: false }
 );
 
+const CreatePostModal = dynamic(
+  () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
+  { ssr: false }
+);
+
 import {
 Search,
 MapPin,
 MessageCircle,
 Filter,
 TrendingUp,
+Sparkles,
+Users,
+Activity,
+Clock3,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 48;
@@ -107,6 +116,9 @@ type ProfileRow = {
   location?: string | null;
   availability?: string | null;
   services?: string[] | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
 };
 
 type ReviewRow = {
@@ -115,6 +127,9 @@ type ReviewRow = {
 };
 
 type FlexibleRow = Record<string, unknown>;
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
@@ -322,6 +337,7 @@ export default function MarketplacePage() {
   const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
+  const [openPostModal, setOpenPostModal] = useState(false);
   const [focusTarget, setFocusTarget] = useState<{
     id: string;
     type: string;
@@ -334,35 +350,73 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      const [{ data: servicesData, error: servicesError }, { data: productsData, error: productsError }, { data: postsData, error: postsError }] =
-        await Promise.all([
-          supabase
+      let serviceRowsRaw: FlexibleRow[] = [];
+      let productRowsRaw: FlexibleRow[] = [];
+      let postRowsRaw: FlexibleRow[] = [];
+
+      const servicePrimary = await supabase
+        .from("service_listings")
+        .select("id,title,description,price,category,provider_id,created_at")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (servicePrimary.error) {
+        if (isMissingColumnError(servicePrimary.error.message)) {
+          const serviceFallback = await supabase
             .from("service_listings")
-            .select("id,title,description,price,category,provider_id,created_at")
-            .limit(FEED_LIMIT_PER_TYPE),
-          supabase
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (serviceFallback.error) {
+            throw new Error(serviceFallback.error.message);
+          }
+          serviceRowsRaw = (serviceFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(servicePrimary.error.message);
+        }
+      } else {
+        serviceRowsRaw = (servicePrimary.data as FlexibleRow[] | null) || [];
+      }
+
+      const productPrimary = await supabase
+        .from("product_catalog")
+        .select("id,title,description,price,category,provider_id,created_at")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (productPrimary.error) {
+        if (isMissingColumnError(productPrimary.error.message)) {
+          const productFallback = await supabase
             .from("product_catalog")
-            .select("id,name,description,price,provider_id,delivery_method,created_at")
-            .limit(FEED_LIMIT_PER_TYPE),
-          supabase
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (productFallback.error) {
+            throw new Error(productFallback.error.message);
+          }
+          productRowsRaw = (productFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(productPrimary.error.message);
+        }
+      } else {
+        productRowsRaw = (productPrimary.data as FlexibleRow[] | null) || [];
+      }
+
+      const postsPrimary = await supabase
+        .from("posts")
+        .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
+        .eq("status", "open")
+        .limit(FEED_LIMIT_PER_TYPE);
+      if (postsPrimary.error) {
+        if (isMissingColumnError(postsPrimary.error.message)) {
+          const postsFallback = await supabase
             .from("posts")
-            .select("id,title,content,author_id,created_at")
-            .limit(FEED_LIMIT_PER_TYPE),
-        ]);
-
-      if (servicesError) {
-        throw new Error(servicesError.message);
+            .select("*")
+            .limit(FEED_LIMIT_PER_TYPE);
+          if (postsFallback.error) {
+            throw new Error(postsFallback.error.message);
+          }
+          postRowsRaw = (postsFallback.data as FlexibleRow[] | null) || [];
+        } else {
+          throw new Error(postsPrimary.error.message);
+        }
+      } else {
+        postRowsRaw = (postsPrimary.data as FlexibleRow[] | null) || [];
       }
-      if (productsError) {
-        throw new Error(productsError.message);
-      }
-      if (postsError) {
-        throw new Error(postsError.message);
-      }
-
-      const serviceRowsRaw = (servicesData as FlexibleRow[] | null) || [];
-      const productRowsRaw = (productsData as FlexibleRow[] | null) || [];
-      const postRowsRaw = (postsData as FlexibleRow[] | null) || [];
 
       const serviceRows: ServiceRow[] = serviceRowsRaw
         .map((row, index) => ({
@@ -382,22 +436,26 @@ export default function MarketplacePage() {
           title: stringFromRow(row, ["title", "name", "product_name"], "Local product"),
           description: stringFromRow(row, ["description", "details", "text"], "Product listing"),
           price: numberFromRow(row, ["price", "amount", "mrp"], 0),
-          category: stringFromRow(row, ["delivery_method", "category", "product_category", "type"], "Product"),
+          category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
           provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }))
         .filter((row) => !!row.provider_id);
 
       const postRows: PostRow[] = postRowsRaw
+        .filter((row) => {
+          const status = stringFromRow(row, ["status", "state"], "");
+          return !status || status.toLowerCase() === "open";
+        })
         .map((row, index) => ({
           id: stringFromRow(row, ["id"], `post-${index}`),
-          text: stringFromRow(row, ["content", "title"], ""),
-          content: stringFromRow(row, ["content", "title"], ""),
-          description: stringFromRow(row, ["content", "title"], ""),
-          title: stringFromRow(row, ["title", "content"], ""),
-          user_id: stringFromRow(row, ["author_id", "user_id", "created_by"], ""),
+          text: stringFromRow(row, ["text", "content", "description", "title"], ""),
+          content: stringFromRow(row, ["content", "text"], ""),
+          description: stringFromRow(row, ["description", "text"], ""),
+          title: stringFromRow(row, ["title", "name"], ""),
+          user_id: stringFromRow(row, ["user_id", "author_id", "created_by"], ""),
           provider_id: stringFromRow(row, ["provider_id", "user_id"], ""),
-          created_by: stringFromRow(row, ["author_id", "created_by", "user_id"], ""),
+          created_by: stringFromRow(row, ["created_by", "author_id", "user_id"], ""),
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }));
 
@@ -414,16 +472,29 @@ export default function MarketplacePage() {
       let reviewRows: ReviewRow[] = [];
 
       if (uniqueProfileIds.length > 0) {
-        const { data: profileRowsData, error: profileRowsError } = await supabase
+        let profileRowsRaw: FlexibleRow[] = [];
+        const profilesPrimary = await supabase
           .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services")
+          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
           .in("id", uniqueProfileIds);
 
-        if (profileRowsError) {
-          throw new Error(profileRowsError.message);
+        if (profilesPrimary.error) {
+          if (isMissingColumnError(profilesPrimary.error.message)) {
+            const profilesFallback = await supabase
+              .from("profiles")
+              .select("*")
+              .in("id", uniqueProfileIds);
+            if (profilesFallback.error) {
+              throw new Error(profilesFallback.error.message);
+            }
+            profileRowsRaw = (profilesFallback.data as FlexibleRow[] | null) || [];
+          } else {
+            throw new Error(profilesPrimary.error.message);
+          }
+        } else {
+          profileRowsRaw = (profilesPrimary.data as FlexibleRow[] | null) || [];
         }
 
-        const profileRowsRaw = (profileRowsData as FlexibleRow[] | null) || [];
         const normalizedProfiles: ProfileRow[] = profileRowsRaw
           .map((row) => {
             const profileId = stringFromRow(row, ["id", "user_id"], "");
@@ -440,6 +511,9 @@ export default function MarketplacePage() {
               location: stringFromRow(row, ["location", "city"], ""),
               availability: stringFromRow(row, ["availability", "status"], ""),
               services: normalizedServices,
+              email: stringFromRow(row, ["email"], ""),
+              phone: stringFromRow(row, ["phone", "phone_number"], ""),
+              website: stringFromRow(row, ["website", "site_url"], ""),
             };
           })
           .filter((row) => !!row.id);
@@ -492,6 +566,9 @@ export default function MarketplacePage() {
           location: profile?.location,
           bio: profile?.bio,
           services: profile?.services,
+          email: profile?.email,
+          phone: profile?.phone,
+          website: profile?.website,
         });
         const responseMinutes = estimateResponseMinutes({
           availability: profile?.availability,
@@ -719,6 +796,7 @@ if (!user) return alert("Login required");
 
 await supabase.from("orders").insert({
   listing_id: item.id,
+  listing_type: item.type,
   consumer_id: user.id,
   provider_id: item.provider_id,
   price: item.price,
@@ -778,7 +856,9 @@ if (myConversationIds.length > 0) {
 if (!targetConversationId) {
   const { data: conversation, error } = await supabase
     .from("conversations")
-    .insert({})
+    .insert({
+      created_by: user.id,
+    })
     .select("id")
     .single();
 
@@ -814,6 +894,22 @@ router.push(`/dashboard/chat?open=${targetConversationId}`);
 
 const categories = ["all", "demand", "service", "product"];
 
+const dashboardStats = useMemo(() => {
+  const providers = new Set(feed.map((item) => item.provider_id).filter(Boolean)).size;
+  const urgentCount = feed.filter((item) => item.type === "demand" && item.urgent).length;
+  const avgMatch = feed.length
+    ? Math.round(feed.reduce((sum, item) => sum + item.rankScore, 0) / feed.length)
+    : 0;
+  const fastResponses = feed.filter((item) => item.responseMinutes <= 15).length;
+
+  return {
+    providers,
+    urgentCount,
+    avgMatch,
+    fastResponses,
+  };
+}, [feed]);
+
 /* ================= UI ================= */
 
 return ( <div className="min-h-screen bg-transparent text-slate-900">
@@ -821,74 +917,93 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
 
   {/* HERO */}
   <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
-    <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white">
-        Discover Local Services & Products
-      </h1>
-      <p className="text-white/90 mt-2 text-sm sm:text-base">
-        Book trusted providers near you in real-time.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-          520+ Active Providers
-        </span>
-        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-          4.8 Average Rating
-        </span>
-        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-          Fast Local Matching
-        </span>
+    <div className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_24px_80px_rgba(79,70,229,0.35)]">
+      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+      <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
+
+      <div className="relative p-5 sm:p-7 lg:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+              <Sparkles size={13} />
+              Startup-grade Local Marketplace
+            </div>
+            <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+              Discover Local Services & Products
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
+              Convert nearby demand into confirmed jobs faster with ranking, trust signals, and realtime matching.
+            </p>
+          </div>
+
+          <div className="grid w-full grid-cols-2 gap-2 sm:gap-3 lg:w-[540px]">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/profile")}
+              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+            >
+              Complete Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/create_post")}
+              className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+            >
+              Post New Need
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/provider/add-service")}
+              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+            >
+              Add Service
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFeed(demoFeed);
+                setUsingDemoFeed(true);
+                setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
+              }}
+              className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+            >
+              Load Demo Seed
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-white/80">Providers</p>
+            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.providers || 520}</p>
+          </div>
+          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-white/80">Urgent Needs</p>
+            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.urgentCount}</p>
+          </div>
+          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-white/80">Avg Match</p>
+            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.avgMatch}</p>
+          </div>
+          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-white/80">Fast Replies</p>
+            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.fastResponses}</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-4">
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard/profile")}
-        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
-      >
-        Complete Profile
-      </button>
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard/create_post")}
-        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
-      >
-        Post New Need
-      </button>
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard/provider/add-service")}
-        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
-      >
-        Add Service
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setFeed(demoFeed);
-          setUsingDemoFeed(true);
-          setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
-        }}
-        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
-      >
-        Load Demo Seed
-      </button>
-    </div>
-  </div>
-
   {/* SEARCH + SORT */}
-  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-6">
+  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-5">
+    <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm">
+    <div className="flex flex-col md:flex-row gap-3 mb-4">
 
-    <div className="flex flex-col md:flex-row gap-3 mb-6">
-
-      <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200">
-        <Search size={16} />
+      <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
+        <Search size={16} className="text-slate-500" />
         <input
           placeholder="Search services, products, needs..."
-          className="bg-transparent outline-none flex-1"
+          className="bg-transparent outline-none flex-1 text-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -905,7 +1020,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               : "distance"
           )
         }
-        className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto"
+        className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto shadow-sm"
       >
         <option value="best">Sort: Best Match</option>
         <option value="distance">Sort: Distance</option>
@@ -916,10 +1031,14 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
         onClick={() =>
           setShowTrendingOnly(!showTrendingOnly)
         }
-        className="bg-white border border-slate-200 px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto"
+        className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm transition-colors ${
+          showTrendingOnly
+            ? "bg-indigo-600 border-indigo-600 text-white"
+            : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
+        }`}
       >
         <Filter size={16} />
-        Trending
+        {showTrendingOnly ? "Trending On" : "Trending"}
       </button>
     </div>
 
@@ -958,6 +1077,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
         </button>
       ))}
     </div>
+  </div>
   </div>
 
   {/* MAIN GRID */}
@@ -1040,7 +1160,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
           <>
           {/* TRENDING */}
           <div>
-            <h2 className="flex items-center gap-2 text-indigo-600 mb-3">
+            <h2 className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
               <TrendingUp size={16} />
               Trending Near You
             </h2>
@@ -1053,16 +1173,22 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                 .map((item) => (
                   <div
                     key={"trend-" + item.id}
-                    className="bg-white p-4 rounded-xl border border-slate-200"
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
-                    <div className="text-sm text-slate-500">
-                      {item.distance} km away
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin size={12} />
+                        {item.distance} km away
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 size={12} />
+                        {item.responseMinutes}m
+                      </span>
                     </div>
-                    <div className="font-semibold">
-                      {item.title}
-                    </div>
-                    <div className="text-indigo-600 font-bold">
-                      ₹ {item.price}
+                    <div className="mt-2 font-semibold text-slate-900 line-clamp-1">{item.title}</div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-indigo-600 font-bold">₹ {item.price}</span>
+                      <span className="text-xs font-medium text-indigo-700">Match {item.rankScore}</span>
                     </div>
                   </div>
                 ))}
@@ -1076,10 +1202,10 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               ref={(el) => {
                 cardRefs.current[item.id] = el;
               }}
-              className={`p-4 sm:p-6 bg-white border rounded-2xl transition-all duration-500 hover:scale-[1.01] ${
+              className={`group p-4 sm:p-6 bg-white border rounded-3xl transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:shadow-xl ${
                 highlightedId === item.id
                   ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
-                  : "border-slate-200"
+                  : "border-slate-200/90"
               }`}
             >
               <div className="flex flex-col sm:flex-row gap-4">
@@ -1090,7 +1216,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                     width={48}
                     height={48}
                     onClick={() => setSelectedProvider(item.provider_id)}
-                    className="w-12 h-12 rounded-full cursor-pointer hover:scale-110 transition object-cover"
+                    className="w-12 h-12 rounded-full border border-slate-200 cursor-pointer hover:scale-110 transition object-cover"
                   />
                 </ProviderPopup>
 
@@ -1217,7 +1343,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                     <button
                       onClick={() => bookNow(item)}
                       disabled={!item.provider_id}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors"
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
                     >
                       {item.type === "demand" ? "Accept Job" : "Book Now"}
                     </button>
@@ -1225,7 +1351,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                     <button
                       onClick={() => messageProvider(item.provider_id)}
                       disabled={!item.provider_id}
-                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
+                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors disabled:opacity-60"
                     >
                       {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
                     </button>
@@ -1252,7 +1378,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
-                  onClick={() => router.push("/dashboard/create_post")}
+                  onClick={() => setOpenPostModal(true)}
                   className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
                 >
                   Post a Need
@@ -1279,12 +1405,12 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
     </div>
 
     {/* SIDEBAR */}
-    <div className="space-y-6">
+    <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
 
       {/* MAP */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200">
-        <h2 className="flex items-center gap-2 mb-3">
-          <MapPin size={18} />
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h2 className="flex items-center gap-2 mb-3 text-slate-900 font-semibold">
+          <MapPin size={17} />
           Nearby Map
         </h2>
 
@@ -1304,33 +1430,53 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </div>
           )}
         </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
+            <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
+              <Users size={12} />
+              Providers
+            </p>
+            <p className="text-sm font-semibold text-slate-900">{dashboardStats.providers}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
+            <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
+              <Activity size={12} />
+              Urgent
+            </p>
+            <p className="text-sm font-semibold text-slate-900">{dashboardStats.urgentCount}</p>
+          </div>
+        </div>
       </div>
 
       {/* CREATE POST */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200">
-        <h3 className="font-semibold mb-4">
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-1">
           Create Post
         </h3>
+        <p className="text-xs text-slate-500">
+          Launch a demand or offering in under a minute.
+        </p>
 
-        <div className="space-y-2 text-sm">
-          <label className="flex gap-2">
-            <input type="radio" />
+        <div className="mt-4 space-y-2 text-sm">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
             Need something
-          </label>
-
-          <label className="flex gap-2">
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
             Offer a service
-          </label>
-
-          <label className="flex gap-2">
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
             Sell a product
-          </label>
+          </div>
         </div>
 
         <button
           type="button"
-          onClick={() => router.push("/dashboard/create_post")}
-          className="w-full mt-4 bg-indigo-600 text-white font-semibold py-2 rounded-xl hover:bg-indigo-500 transition-colors"
+          onClick={() => setOpenPostModal(true)}
+          className="w-full mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl hover:brightness-110 transition"
         >
           Continue →
         </button>
@@ -1341,7 +1487,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
   {/* FLOATING CTA */}
   <button
     type="button"
-    onClick={() => router.push("/dashboard/create_post")}
+    onClick={() => setOpenPostModal(true)}
     className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
   >
     +
@@ -1351,6 +1497,13 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
       userId={selectedProvider}
       open
       onClose={() => setSelectedProvider(null)}
+    />
+  )}
+  {openPostModal && (
+    <CreatePostModal
+      open={openPostModal}
+      onClose={() => setOpenPostModal(false)}
+      onPublished={() => void fetchFeed()}
     />
   )}
 </div>

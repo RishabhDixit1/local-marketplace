@@ -18,8 +18,9 @@ type ServiceListing = {
 
 type ProductListing = {
   id: string;
-  name: string;
+  title: string;
   description: string | null;
+  category: string | null;
   price: number;
   stock: number | null;
   delivery_method: string | null;
@@ -37,8 +38,9 @@ type EditingService = {
 
 type EditingProduct = {
   id: string;
-  name: string;
+  title: string;
   price: number;
+  category: string;
   description: string;
   stock: number;
   delivery_method: string;
@@ -72,9 +74,9 @@ export default function ListingsPage() {
         .order("title"),
       supabase
         .from("product_catalog")
-        .select("id,name,description,price,stock,delivery_method,provider_id")
+        .select("id,title,description,category,price,stock,delivery_method,provider_id")
         .eq("provider_id", userId)
-        .order("name"),
+        .order("title"),
     ]);
 
     setServices((serviceRows as ServiceListing[]) || []);
@@ -176,8 +178,9 @@ export default function ListingsPage() {
     await supabase
       .from("product_catalog")
       .update({
-        name: editingProduct.name,
+        title: editingProduct.title,
         price: Number(editingProduct.price),
+        category: editingProduct.category,
         description: editingProduct.description,
         stock: Number(editingProduct.stock),
         delivery_method: editingProduct.delivery_method,
@@ -189,8 +192,9 @@ export default function ListingsPage() {
         item.id === editingProduct.id
           ? {
               ...item,
-              name: editingProduct.name,
+              title: editingProduct.title,
               price: Number(editingProduct.price),
+              category: editingProduct.category,
               description: editingProduct.description,
               stock: Number(editingProduct.stock),
               delivery_method: editingProduct.delivery_method,
@@ -415,8 +419,8 @@ export default function ListingsPage() {
                   {editing ? (
                     <div className="space-y-3">
                       <input
-                        value={editingProduct.name}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                        value={editingProduct.title}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })}
                         className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -433,6 +437,11 @@ export default function ListingsPage() {
                           className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
                         />
                       </div>
+                      <input
+                        value={editingProduct.category}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
+                      />
                       <textarea
                         value={editingProduct.description}
                         onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
@@ -463,8 +472,8 @@ export default function ListingsPage() {
                     <>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <h3 className="font-semibold text-slate-900 text-lg">{product.name}</h3>
-                          <p className="text-xs text-slate-500 mt-1">{product.delivery_method || "Product"}</p>
+                          <h3 className="font-semibold text-slate-900 text-lg">{product.title}</h3>
+                          <p className="text-xs text-slate-500 mt-1">{product.category || "General"}</p>
                         </div>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${
@@ -482,8 +491,9 @@ export default function ListingsPage() {
                           onClick={() =>
                             setEditingProduct({
                               id: product.id,
-                              name: product.name,
+                              title: product.title,
                               price: product.price,
+                              category: product.category || "",
                               description: product.description || "",
                               stock: product.stock || 0,
                               delivery_method: product.delivery_method || "pickup",

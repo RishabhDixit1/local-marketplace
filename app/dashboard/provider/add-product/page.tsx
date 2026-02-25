@@ -44,22 +44,16 @@ export default function AddProductPage() {
       return;
     }
 
-    const productDescription = [
-      form.description.trim(),
-      form.category.trim() ? `Category: ${form.category.trim()}` : "",
-      form.image_url.trim() ? `Image: ${form.image_url.trim()}` : "",
-    ]
-      .filter(Boolean)
-      .join(" | ");
-
     const { error } = await supabase.from("product_catalog").insert([
       {
         provider_id: user.id,
-        name: form.title.trim(),
-        description: productDescription || null,
+        title: form.title,
+        description: form.description,
         price: Number(form.price),
-        stock: form.stock ? Number(form.stock) : 0,
+        stock: Number(form.stock),
+        category: form.category,
         delivery_method: form.delivery_method,
+        image_url: form.image_url,
       },
     ]);
 
