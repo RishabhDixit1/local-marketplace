@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Bell,
   CheckCheck,
@@ -323,6 +324,120 @@ export default function NotificationCenter() {
     setNotifications(buildSeedNotifications());
   };
 
+  const panelContent = (
+    <>
+      <div className="p-4 border-b border-slate-200">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-slate-900">Notifications</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {unreadCount} unread · New demo alerts every {LIVE_POLL_MS / 1000}s
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live
+          </div>
+        </div>
+      </div>
+
+      <ul className="flex-1 min-h-0 overflow-y-auto">
+        {notifications.map((item) => {
+          const style = kindStyles[item.kind];
+          const Icon = style.icon;
+
+          return (
+            <li
+              key={item.id}
+              className="border-b border-slate-100 last:border-b-0"
+            >
+              <button
+                type="button"
+                onClick={() => markAsRead(item.id)}
+                className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
+                  item.unread ? "bg-sky-50/70" : ""
+                }`}
+              >
+                <div className="flex gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                    <Icon className={`h-4 w-4 ${style.iconClassName}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900 leading-5">
+                        {item.title}
+                      </p>
+                      <span className="shrink-0 text-[11px] text-slate-500">
+                        {item.timeLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-5">
+                      {item.message}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${style.badgeClassName}`}
+                      >
+                        {item.cta}
+                      </span>
+                      {item.unread && (
+                        <span className="text-[11px] font-semibold text-sky-700">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={markAllAsRead}
+          disabled={unreadCount === 0}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <CheckCheck className="h-4 w-4" />
+          Mark all read
+        </button>
+        <button
+          type="button"
+          onClick={resetDemoFeed}
+          className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          Reset demo
+        </button>
+      </div>
+    </>
+  );
+
+  const canUseDOM = typeof document !== "undefined";
+  const mobilePanel = canUseDOM && isOpen && useMobileSheet
+    ? createPortal(
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[1390] bg-slate-900/25"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close notifications"
+          />
+          <div
+            ref={panelRef}
+            className="fixed inset-x-3 top-[4.25rem] bottom-3 z-[1400] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
+            role="dialog"
+            aria-label="Notifications panel"
+          >
+            {panelContent}
+          </div>
+        </>,
+        document.body
+      )
+    : null;
+
   return (
     <div className="relative z-[1400]">
       <button
@@ -341,116 +456,18 @@ export default function NotificationCenter() {
         )}
       </button>
 
-      {isOpen && (
-        <>
-          {useMobileSheet && (
-            <button
-              type="button"
-              className="fixed inset-0 z-[1390] bg-slate-900/25"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close notifications"
-            />
-          )}
-
-          <div
-            ref={panelRef}
-            className={`z-[1400] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ${
-              useMobileSheet
-                ? "fixed inset-x-3 top-[4.25rem] bottom-3 sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
-                : "absolute right-0 top-full mt-2 w-[24rem] max-h-[36rem]"
-            }`}
-            role="dialog"
-            aria-label="Notifications panel"
-          >
-            <div className="p-4 border-b border-slate-200">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-bold text-slate-900">Notifications</h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {unreadCount} unread · New demo alerts every {LIVE_POLL_MS / 1000}s
-                  </p>
-                </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
-                </div>
-              </div>
-            </div>
-
-            <ul className="flex-1 min-h-0 overflow-y-auto">
-              {notifications.map((item) => {
-                const style = kindStyles[item.kind];
-                const Icon = style.icon;
-
-                return (
-                  <li
-                    key={item.id}
-                    className="border-b border-slate-100 last:border-b-0"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => markAsRead(item.id)}
-                      className={`w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                        item.unread ? "bg-sky-50/70" : ""
-                      }`}
-                    >
-                      <div className="flex gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                          <Icon className={`h-4 w-4 ${style.iconClassName}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-semibold text-slate-900 leading-5">
-                              {item.title}
-                            </p>
-                            <span className="shrink-0 text-[11px] text-slate-500">
-                              {item.timeLabel}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-5">
-                            {item.message}
-                          </p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${style.badgeClassName}`}
-                            >
-                              {item.cta}
-                            </span>
-                            {item.unread && (
-                              <span className="text-[11px] font-semibold text-sky-700">
-                                New
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className="grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={markAllAsRead}
-                disabled={unreadCount === 0}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <CheckCheck className="h-4 w-4" />
-                Mark all read
-              </button>
-              <button
-                type="button"
-                onClick={resetDemoFeed}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-              >
-                Reset demo
-              </button>
-            </div>
-          </div>
-        </>
+      {isOpen && !useMobileSheet && (
+        <div
+          ref={panelRef}
+          className="absolute right-0 top-full z-[1400] mt-2 flex w-[24rem] max-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          role="dialog"
+          aria-label="Notifications panel"
+        >
+          {panelContent}
+        </div>
       )}
+
+      {mobilePanel}
     </div>
   );
 }
