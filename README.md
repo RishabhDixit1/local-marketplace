@@ -1,50 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Local Marketplace
 
-## Getting Started
+A realtime local marketplace platform connecting consumers and providers for services and products, with live chat, provider discovery, task/order workflow, and in-app notifications.
 
-First, run the development server:
+## Live Deployment
+
+- App: https://local-marketplace-eta.vercel.app
+- Repository: https://github.com/RishabhDixit1/local-marketplace
+
+## Product Scope
+
+- Consumer and provider dashboards
+- Realtime chat with presence + typing indicators
+- Provider discovery (people tab) with geo-based radius filtering
+- Unified order/task lifecycle across consumer, provider, and task views
+- Live notifications sourced from orders, messages, and reviews
+- Marketplace feed with posts, listings, products, map, and trust surfaces
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- Supabase (Auth, Postgres, Realtime, RLS)
+- Tailwind CSS 4
+- Playwright (smoke e2e)
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+Create `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### 3. Start the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
+
+## Supabase Setup
+
+Run SQL in this order (Supabase SQL Editor):
+
+1. `supabase/secure_realtime_rls.sql`
+2. `supabase/seed_dashboard_demo.sql`
+3. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
+
+This enables:
+
+- RLS hardening for core tables
+- notifications table + trigger-based event fanout
+- persistent unread tracking
+- profile geo columns (`latitude`, `longitude`)
+- helper RPCs used by dashboard surfaces
+
+Detailed notes: `supabase/README.md`
+
+## Scripts
+
+- `npm run dev` - run local dev server
+- `npm run build` - production build
+- `npm run start` - run production server
+- `npm run lint` - lint codebase
+- `npm run test:e2e` - run Playwright smoke tests
+- `npm run test:e2e:headed` - run Playwright smoke tests in headed mode
 
 ## E2E Smoke Tests
 
-Playwright smoke coverage is available for login request + authenticated marketplace workflows.
+Coverage includes:
 
-```bash
-npm run test:e2e
-```
+- login request flow
+- provider discovery
+- start chat and send message
+- create order
+- task/status transition
 
-Optional environment variables:
+Optional env vars for full flow:
 
-- `E2E_LOGIN_EMAIL`: enables login-request smoke (`Send Login Link` flow).
-- `E2E_MAGIC_LINK_URL`: enables authenticated smoke (people discovery, chat send, order create, task transition).
-- `PLAYWRIGHT_SKIP_WEBSERVER=1`: skip auto-starting Next.js server if already running.
+- `E2E_LOGIN_EMAIL` for login request smoke
+- `E2E_MAGIC_LINK_URL` for authenticated smoke
+- `PLAYWRIGHT_SKIP_WEBSERVER=1` to skip auto web server startup
 
-We can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/` - landing + auth
+- `/dashboard` - unified marketplace feed
+- `/dashboard/chat` - realtime chat
+- `/dashboard/people` - provider discovery + presence
+- `/dashboard/tasks` - task board + status actions
+- `/dashboard/orders` - consumer orders
+- `/dashboard/provider/orders` - provider orders
 
-## Learn More
+## Deployment Notes
 
-To learn more about Next.js, take a look at the following resources:
+The project is deployed on Vercel:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Production URL: https://local-marketplace-eta.vercel.app
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy our Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For preview/production rollouts, use standard Vercel workflows connected to this GitHub repo.
