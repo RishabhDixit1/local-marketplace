@@ -16,6 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## E2E Smoke Tests
+
+Playwright smoke coverage is available for login request + authenticated marketplace workflows.
+
+```bash
+npm run test:e2e
+```
+
+Optional environment variables:
+
+- `E2E_LOGIN_EMAIL`: enables login-request smoke (`Send Login Link` flow).
+- `E2E_MAGIC_LINK_URL`: enables authenticated smoke (people discovery, chat send, order create, task transition).
+- `PLAYWRIGHT_SKIP_WEBSERVER=1`: skip auto-starting Next.js server if already running.
+
 We can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

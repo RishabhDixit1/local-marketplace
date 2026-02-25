@@ -53,8 +53,10 @@ type ReviewRow = {
   comment: string | null;
 };
 
-type OrderRow = {
-  status: string | null;
+type ProviderOrderStatsRow = {
+  provider_id: string;
+  completed_jobs: number | string;
+  open_leads: number | string;
 };
 
 const loadBusiness = cache(async (slug: string) => {
@@ -72,7 +74,7 @@ const loadBusiness = cache(async (slug: string) => {
 
   if (!profile) return null;
 
-  const [{ data: services }, { data: products }, { data: reviews }, { data: orders }] = await Promise.all([
+  const [{ data: services }, { data: products }, { data: reviews }, { data: providerOrderStats }] = await Promise.all([
     supabase
       .from("service_listings")
       .select("id,title,category,price,availability")
@@ -84,13 +86,13 @@ const loadBusiness = cache(async (slug: string) => {
       .eq("provider_id", businessId)
       .limit(8),
     supabase.from("reviews").select("rating,comment").eq("provider_id", businessId).limit(10),
-    supabase.from("orders").select("status").eq("provider_id", businessId),
+    supabase.rpc("get_provider_order_stats", { provider_ids: [businessId] }),
   ]);
 
   const safeServices = (services as ServiceRow[] | null) || [];
   const safeProducts = (products as ProductRow[] | null) || [];
   const safeReviews = (reviews as ReviewRow[] | null) || [];
-  const safeOrders = (orders as OrderRow[] | null) || [];
+  const providerStatsRows = (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
 
   const ratingValues = safeReviews
     .map((review) => Number(review.rating))
@@ -122,9 +124,7 @@ const loadBusiness = cache(async (slug: string) => {
     reviewCount: safeReviews.length,
   });
 
-  const activeLeads = safeOrders.filter(
-    (order) => !["completed", "cancelled", "closed", "rejected"].includes((order.status || "").toLowerCase())
-  ).length;
+  const activeLeads = providerStatsRows.length > 0 ? Number(providerStatsRows[0].open_leads || 0) : 0;
 
   return {
     profile,

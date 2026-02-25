@@ -13,6 +13,10 @@ type MapItem = {
 
 type Props = {
   items: MapItem[];
+  center?: {
+    lat: number;
+    lng: number;
+  } | null;
 };
 
 function MapResizeHandler() {
@@ -51,12 +55,12 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-export default function MarketplaceMap({ items }: Props) {
+export default function MarketplaceMap({ items, center }: Props) {
   return (
     <div className="relative isolate z-0 h-full min-h-[14rem] w-full overflow-hidden rounded-xl">
       <MapContainer
         className="h-full w-full"
-        center={[28.6139, 77.209]}
+        center={[center?.lat || 12.9716, center?.lng || 77.5946]}
         zoom={12}
         scrollWheelZoom={false}
         style={{ height: "100%", width: "100%", zIndex: 0 }}

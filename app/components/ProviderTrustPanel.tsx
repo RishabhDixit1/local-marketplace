@@ -39,8 +39,10 @@ type ReviewRow = {
   comment: string | null;
 };
 
-type OrderRow = {
-  status: string | null;
+type ProviderOrderStatsRow = {
+  provider_id: string;
+  completed_jobs: number | string;
+  open_leads: number | string;
 };
 
 export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
@@ -57,7 +59,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     let isMounted = true;
 
     void (async () => {
-      const [{ data: profileRow }, { data: reviewRows }, { data: serviceRows }, { data: productRows }, { data: orderRows }] =
+      const [{ data: profileRow }, { data: reviewRows }, { data: serviceRows }, { data: productRows }, { data: providerOrderStats }] =
         await Promise.all([
           supabase
             .from("profiles")
@@ -67,7 +69,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           supabase.from("reviews").select("rating,comment").eq("provider_id", userId),
           supabase.from("service_listings").select("id").eq("provider_id", userId),
           supabase.from("product_catalog").select("id").eq("provider_id", userId),
-          supabase.from("orders").select("status").eq("provider_id", userId),
+          supabase.rpc("get_provider_order_stats", { provider_ids: [userId] }),
         ]);
 
       if (!isMounted) return;
@@ -76,9 +78,8 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
       setServicesCount((serviceRows || []).length);
       setProductsCount((productRows || []).length);
 
-      const doneCount = ((orderRows as OrderRow[] | null) || []).filter((row) =>
-        ["completed", "closed"].includes((row.status || "").toLowerCase())
-      ).length;
+      const statsRows = (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
+      const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : 0;
       setCompletedJobs(doneCount);
     })();
 

@@ -31,6 +31,7 @@ import {
   normalizeRole,
   verificationLabel,
 } from "@/lib/business";
+import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 
 interface ProfileData {
   name: string;
@@ -179,7 +180,7 @@ export default function ProfilePage() {
 
       const orderRows = (orders as OrderStatusRow[] | null) || [];
       const activeOrders = orderRows.filter(
-        (order) => !["completed", "cancelled", "closed", "rejected"].includes((order.status || "").toLowerCase())
+        (order) => !isFinalOrderStatus(order.status)
       ).length;
 
       const serviceCards: FeaturedListing[] = ((services as ServiceInsightRow[] | null) || []).map((service) => ({
@@ -223,7 +224,7 @@ export default function ProfilePage() {
 
     const orderRows = (orders as OrderStatusRow[] | null) || [];
     const activeOrders = orderRows.filter(
-      (order) => !["completed", "cancelled", "closed", "rejected"].includes((order.status || "").toLowerCase())
+      (order) => !isFinalOrderStatus(order.status)
     ).length;
 
     setSeekerInsight({
@@ -754,7 +755,7 @@ export default function ProfilePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push("/dashboard/create_post")}
+                    onClick={() => router.push("/dashboard?compose=1")}
                     className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors"
                   >
                     Post a Need

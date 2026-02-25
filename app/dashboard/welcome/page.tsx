@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
@@ -89,6 +90,16 @@ type RawProduct = {
   title: string | null;
   category: string | null;
   price: number | null;
+};
+
+type ConversationUnreadRow = {
+  conversation_id: string;
+  last_read_at: string | null;
+};
+
+type MessageUnreadRow = {
+  conversation_id: string;
+  created_at: string;
 };
 
 const routes = {
@@ -246,25 +257,35 @@ export default function WelcomePage() {
             .from("orders")
             .select("status")
             .or(`consumer_id.eq.${currentUser.id},provider_id.eq.${currentUser.id}`),
-          supabase.from("conversation_participants").select("conversation_id").eq("user_id", currentUser.id),
+          supabase
+            .from("conversation_participants")
+            .select("conversation_id,last_read_at")
+            .eq("user_id", currentUser.id),
           supabase.from("reviews").select("rating").eq("provider_id", currentUser.id),
         ]);
 
       const activeTasks =
-        myOrders?.filter(
-          (order) => !["completed", "cancelled", "closed"].includes((order.status || "").toLowerCase())
-        ).length || 0;
+        myOrders?.filter((order) => !isFinalOrderStatus(order.status)).length || 0;
 
-      const conversationIds = myConversations?.map((row) => row.conversation_id) || [];
+      const conversationRows = (myConversations as ConversationUnreadRow[] | null) || [];
+      const conversationIds = conversationRows.map((row) => row.conversation_id);
+      const lastReadAtByConversation = new Map(conversationRows.map((row) => [row.conversation_id, row.last_read_at]));
       let unreadMessages = 0;
 
       if (conversationIds.length > 0) {
-        const { count } = await supabase
+        const { data: unreadMessageRows } = await supabase
           .from("messages")
-          .select("*", { count: "exact", head: true })
+          .select("conversation_id,created_at")
           .in("conversation_id", conversationIds)
-          .neq("sender_id", currentUser.id);
-        unreadMessages = count || 0;
+          .neq("sender_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(2000);
+
+        unreadMessages = ((unreadMessageRows as MessageUnreadRow[] | null) || []).reduce((count, message) => {
+          const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
+          if (!lastReadAt) return count + 1;
+          return message.created_at > lastReadAt ? count + 1 : count;
+        }, 0);
       }
 
       let trustScore = 4.7;

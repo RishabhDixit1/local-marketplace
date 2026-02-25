@@ -13,6 +13,13 @@ import {
   createBusinessSlug,
   estimateResponseMinutes,
 } from "@/lib/business";
+import {
+  defaultMarketCoordinates,
+  distanceBetweenCoordinatesKm,
+  getBrowserCoordinates,
+  resolveCoordinates,
+  type Coordinates,
+} from "@/lib/geo";
 
 const MarketplaceMap = dynamic(
 () => import("@/app/components/MarketplaceMap").then((mod) => mod.default),
@@ -119,6 +126,8 @@ type ProfileRow = {
   email?: string | null;
   phone?: string | null;
   website?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type ReviewRow = {
@@ -279,6 +288,7 @@ const parsePostText = (rawText: string) => {
     description: rawText,
     budget: 0,
     category: "Need",
+    location: "",
     media: [] as FeedMedia[],
   };
 
@@ -292,11 +302,13 @@ const parsePostText = (rawText: string) => {
 
   const budgetPart = parts.find((item) => item.startsWith("Budget:"));
   const categoryPart = parts.find((item) => item.startsWith("Category:"));
+  const locationPart = parts.find((item) => item.startsWith("Location:"));
   const mediaPart = parts.find((item) => item.startsWith("Media:"));
 
   const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
   const budget = budgetMatch ? Number(budgetMatch[1]) : 0;
   const category = categoryPart?.replace("Category:", "").trim() || fallback.category;
+  const location = locationPart?.replace("Location:", "").trim() || fallback.location;
 
   const media: FeedMedia[] = [];
   if (mediaPart && !mediaPart.includes("None")) {
@@ -309,15 +321,7 @@ const parsePostText = (rawText: string) => {
     }
   }
 
-  return { title, description, budget, category, media };
-};
-
-const pseudoDistance = (seed: string) => {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) % 1000;
-  }
-  return Number((0.4 + (hash / 1000) * 7.6).toFixed(1));
+  return { title, description, budget, category, location, media };
 };
 
 /* ================= PAGE ================= */
@@ -330,6 +334,7 @@ export default function MarketplacePage() {
   const [feedError, setFeedError] = useState("");
   const [usingDemoFeed, setUsingDemoFeed] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -353,6 +358,47 @@ export default function MarketplacePage() {
       let serviceRowsRaw: FlexibleRow[] = [];
       let productRowsRaw: FlexibleRow[] = [];
       let postRowsRaw: FlexibleRow[] = [];
+      const browserCoordinatesPromise = getBrowserCoordinates(4500);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const currentUserId = user?.id || "";
+      let currentUserProfileRow: FlexibleRow | null = null;
+
+      if (currentUserId) {
+        const currentUserProfilePrimary = await supabase
+          .from("profiles")
+          .select("id,location,latitude,longitude")
+          .eq("id", currentUserId)
+          .maybeSingle();
+
+        if (currentUserProfilePrimary.error) {
+          if (isMissingColumnError(currentUserProfilePrimary.error.message)) {
+            const currentUserProfileFallback = await supabase
+              .from("profiles")
+              .select("id,location")
+              .eq("id", currentUserId)
+              .maybeSingle();
+            if (!currentUserProfileFallback.error) {
+              currentUserProfileRow = (currentUserProfileFallback.data as FlexibleRow | null) || null;
+            }
+          } else {
+            throw new Error(currentUserProfilePrimary.error.message);
+          }
+        } else {
+          currentUserProfileRow = (currentUserProfilePrimary.data as FlexibleRow | null) || null;
+        }
+      }
+
+      const browserCoordinates = await browserCoordinatesPromise;
+      const profileCoordinates = resolveCoordinates({
+        row: currentUserProfileRow,
+        location: stringFromRow(currentUserProfileRow || {}, ["location"], ""),
+        seed: currentUserId,
+      });
+      const resolvedViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
+      setViewerCoordinates(resolvedViewerCoordinates);
 
       const servicePrimary = await supabase
         .from("service_listings")
@@ -475,7 +521,7 @@ export default function MarketplacePage() {
         let profileRowsRaw: FlexibleRow[] = [];
         const profilesPrimary = await supabase
           .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website")
+          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
           .in("id", uniqueProfileIds);
 
         if (profilesPrimary.error) {
@@ -514,6 +560,14 @@ export default function MarketplacePage() {
               email: stringFromRow(row, ["email"], ""),
               phone: stringFromRow(row, ["phone", "phone_number"], ""),
               website: stringFromRow(row, ["website", "site_url"], ""),
+              latitude: (() => {
+                const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
+                return Number.isFinite(value) ? value : null;
+              })(),
+              longitude: (() => {
+                const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
+                return Number.isFinite(value) ? value : null;
+              })(),
             };
           })
           .filter((row) => !!row.id);
@@ -554,6 +608,11 @@ export default function MarketplacePage() {
 
       const getProviderStats = (providerId: string) => {
         const profile = providerId ? profileMap.get(providerId) : undefined;
+        const coordinates = resolveCoordinates({
+          row: (profile as unknown as Record<string, unknown> | undefined) || null,
+          location: profile?.location,
+          seed: providerId || profile?.id || "provider",
+        });
         const serviceCount = serviceCountMap.get(providerId) || 0;
         const productCount = productCountMap.get(providerId) || 0;
         const ratings = ratingMap.get(providerId);
@@ -574,7 +633,7 @@ export default function MarketplacePage() {
           availability: profile?.availability,
           providerId: providerId || profile?.id || "provider",
         });
-        const distance = pseudoDistance(providerId || profile?.id || "local");
+        const distance = distanceBetweenCoordinatesKm(resolvedViewerCoordinates, coordinates);
         const verificationStatus = calculateVerificationStatus({
           role: profile?.role,
           profileCompletion,
@@ -591,6 +650,7 @@ export default function MarketplacePage() {
 
         return {
           profile,
+          coordinates,
           distance,
           responseMinutes,
           profileCompletion,
@@ -612,8 +672,8 @@ export default function MarketplacePage() {
           type: "service",
           avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
           distance: stats.distance,
-          lat: 28.61 + Math.random() * 0.05,
-          lng: 77.2 + Math.random() * 0.05,
+          lat: stats.coordinates.latitude,
+          lng: stats.coordinates.longitude,
           createdAt: s.created_at,
           creatorName: stats.profile?.name || "Local Provider",
           businessSlug: createBusinessSlug(stats.profile?.name, s.provider_id),
@@ -636,8 +696,8 @@ export default function MarketplacePage() {
           type: "product",
           avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
           distance: stats.distance,
-          lat: 28.61 + Math.random() * 0.05,
-          lng: 77.2 + Math.random() * 0.05,
+          lat: stats.coordinates.latitude,
+          lng: stats.coordinates.longitude,
           createdAt: p.created_at,
           creatorName: stats.profile?.name || "Local Seller",
           businessSlug: createBusinessSlug(stats.profile?.name, p.provider_id),
@@ -653,6 +713,12 @@ export default function MarketplacePage() {
         const parsed = parsePostText(rawText);
         const ownerId = post.user_id || post.provider_id || post.created_by || "";
         const stats = ownerId ? getProviderStats(ownerId) : null;
+        const fallbackCoordinates = resolveCoordinates({
+          location: parsed.location,
+          seed: post.id,
+        });
+        const targetCoordinates = stats?.coordinates || fallbackCoordinates;
+        const distance = stats?.distance || distanceBetweenCoordinatesKm(resolvedViewerCoordinates, fallbackCoordinates);
 
         return {
           id: post.id,
@@ -663,10 +729,10 @@ export default function MarketplacePage() {
           provider_id: ownerId,
           type: "demand",
           avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
-          distance: stats?.distance || pseudoDistance(post.id),
+          distance,
           urgent: true,
-          lat: 28.61 + Math.random() * 0.05,
-          lng: 77.2 + Math.random() * 0.05,
+          lat: targetCoordinates.latitude,
+          lng: targetCoordinates.longitude,
           media: parsed.media,
           createdAt: post.created_at,
           creatorName: stats?.profile?.name || "Community Member",
@@ -710,6 +776,11 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const composeParam = params.get("compose");
+    if (composeParam === "1" || composeParam === "true") {
+      setOpenPostModal(true);
+    }
+
     const id = params.get("focus");
     const type = params.get("type");
     if (!id) return;
@@ -870,7 +941,7 @@ if (!targetConversationId) {
 
   targetConversationId = conversation.id;
 
-  const { error: participantError } = await supabase.from("conversation_participants").insert([
+  const { error: participantError } = await supabase.from("conversation_participants").upsert([
     {
       conversation_id: targetConversationId,
       user_id: user.id,
@@ -879,7 +950,10 @@ if (!targetConversationId) {
       conversation_id: targetConversationId,
       user_id: providerId,
     },
-  ]);
+  ], {
+    onConflict: "conversation_id,user_id",
+    ignoreDuplicates: true,
+  });
 
   if (participantError) {
     setMessageLoadingId(null);
@@ -946,7 +1020,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </button>
             <button
               type="button"
-              onClick={() => router.push("/dashboard/create_post")}
+              onClick={() => setOpenPostModal(true)}
               className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
             >
               Post New Need
@@ -1142,7 +1216,7 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => router.push("/dashboard/create_post")}
+                  onClick={() => setOpenPostModal(true)}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
                 >
                   Post a Need
@@ -1423,6 +1497,11 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
                 lat: item.lat,
                 lng: item.lng,
               }))}
+              center={
+                viewerCoordinates
+                  ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude }
+                  : null
+              }
             />
           ) : (
             <div className="h-full rounded-xl border border-slate-200 bg-slate-100 animate-pulse grid place-items-center text-xs text-slate-500">
@@ -1430,6 +1509,12 @@ return ( <div className="min-h-screen bg-transparent text-slate-900">
             </div>
           )}
         </div>
+
+        {viewerCoordinates && (
+          <p className="mt-2 text-[11px] text-slate-500">
+            Search center: {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
+          </p>
+        )}
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
