@@ -263,7 +263,6 @@ export default function PeoplePage() {
   const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -309,7 +308,6 @@ export default function PeoplePage() {
       window.localStorage.removeItem(PEOPLE_PREFERENCES_STORAGE_KEY);
     }
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -348,39 +346,36 @@ export default function PeoplePage() {
     if (soft) setSyncing(true);
     setErrorMessage("");
 
-    const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
+    try {
+      const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    if (authError) {
-      setProviders(demoPeople);
-      setUsingDemo(true);
-      setLoading(false);
-      setSyncing(false);
-      setErrorMessage(`Auth error: ${authError.message}`);
-      return;
-    }
+      if (authError) {
+        setProviders(demoPeople);
+        setUsingDemo(true);
+        setErrorMessage(`Auth error: ${authError.message}`);
+        return;
+      }
 
-    setCurrentUserId(user?.id || null);
+      setCurrentUserId(user?.id || null);
 
-    const [{ data: services, error: servicesError }, { data: products, error: productsError }] = await Promise.all([
-      supabase.from("service_listings").select("provider_id,category,price"),
-      supabase.from("product_catalog").select("provider_id,category,price"),
-    ]);
+      const [{ data: services, error: servicesError }, { data: products, error: productsError }] = await Promise.all([
+        supabase.from("service_listings").select("provider_id,category,price"),
+        supabase.from("product_catalog").select("provider_id,category,price"),
+      ]);
 
-    if (servicesError || productsError) {
-      setProviders(demoPeople);
-      setUsingDemo(true);
-      setLoading(false);
-      setSyncing(false);
-      setErrorMessage(
-        `Could not load provider listings: ${servicesError?.message || productsError?.message || "unknown error"}`
-      );
-      return;
-    }
+      if (servicesError || productsError) {
+        setProviders(demoPeople);
+        setUsingDemo(true);
+        setErrorMessage(
+          `Could not load provider listings: ${servicesError?.message || productsError?.message || "unknown error"}`
+        );
+        return;
+      }
 
     const serviceRows = (services as ServiceRow[] | null) || [];
     const productRows = (products as ProductRow[] | null) || [];
@@ -407,14 +402,12 @@ export default function PeoplePage() {
         : Promise.resolve({ data: [] as ReviewRow[], error: null }),
     ]);
 
-    if (profilesError) {
-      setProviders(demoPeople);
-      setUsingDemo(true);
-      setLoading(false);
-      setSyncing(false);
-      setErrorMessage(`Could not load providers: ${profilesError?.message || "unknown error"}`);
-      return;
-    }
+      if (profilesError) {
+        setProviders(demoPeople);
+        setUsingDemo(true);
+        setErrorMessage(`Could not load providers: ${profilesError?.message || "unknown error"}`);
+        return;
+      }
 
     if (reviewsError) {
       console.warn("Could not load provider reviews:", reviewsError.message);
@@ -573,21 +566,28 @@ export default function PeoplePage() {
         };
       });
 
-    if (cards.length === 0) {
+      if (cards.length === 0) {
+        setProviders(demoPeople);
+        setUsingDemo(true);
+      } else {
+        setProviders(cards);
+        setUsingDemo(false);
+      }
+
+      setLastSyncedAt(new Date().toISOString());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to fetch";
+      console.warn("Unable to load providers:", message);
       setProviders(demoPeople);
       setUsingDemo(true);
-    } else {
-      setProviders(cards);
-      setUsingDemo(false);
+      setErrorMessage(`Auth error: ${message}`);
+    } finally {
+      setLoading(false);
+      setSyncing(false);
     }
-
-    setLastSyncedAt(new Date().toISOString());
-    setLoading(false);
-    setSyncing(false);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadProviders();
   }, [loadProviders]);
 
