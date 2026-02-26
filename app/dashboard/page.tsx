@@ -46,18 +46,30 @@ TrendingUp,
 Sparkles,
 Users,
 Activity,
-Clock3,
 SlidersHorizontal,
 ShieldCheck,
 Zap,
 ImageIcon,
 RotateCcw,
 RefreshCw,
+ChevronUp,
+ChevronDown,
+Bookmark,
+BookmarkCheck,
+Rows3,
+LayoutGrid,
+Flame,
+Radar,
+BellRing,
+EyeOff,
+ExternalLink,
+CircleDot,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 48;
 const MAX_PROFILE_LOOKUP = 120;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
+const MARKETPLACE_LAYOUT_STORAGE_KEY = "local-marketplace-dashboard-feed-layout-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 
@@ -172,6 +184,9 @@ type HelpMatchCard = {
   reason: string;
   status: string;
 };
+
+type FeedLayout = "cards" | "thread";
+type RealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -404,6 +419,49 @@ const getListingSignals = (item: Listing) => {
   return signals.slice(0, 3);
 };
 
+const mapRealtimeHealth = (status: string): RealtimeHealth => {
+  if (status === "SUBSCRIBED") return "connected";
+  if (status === "TIMED_OUT") return "reconnecting";
+  if (status === "CHANNEL_ERROR") return "error";
+  if (status === "CLOSED") return "idle";
+  return "connecting";
+};
+
+const REALTIME_HEALTH_STYLES: Record<
+  RealtimeHealth,
+  {
+    label: string;
+    className: string;
+    dotClassName: string;
+  }
+> = {
+  connected: {
+    label: "Live",
+    className: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    dotClassName: "bg-emerald-500",
+  },
+  connecting: {
+    label: "Connecting",
+    className: "border-amber-300 bg-amber-50 text-amber-700",
+    dotClassName: "bg-amber-500",
+  },
+  reconnecting: {
+    label: "Reconnecting",
+    className: "border-orange-300 bg-orange-50 text-orange-700",
+    dotClassName: "bg-orange-500",
+  },
+  error: {
+    label: "Error",
+    className: "border-rose-300 bg-rose-50 text-rose-700",
+    dotClassName: "bg-rose-500",
+  },
+  idle: {
+    label: "Idle",
+    className: "border-slate-300 bg-slate-100 text-slate-600",
+    dotClassName: "bg-slate-400",
+  },
+};
+
 /* ================= PAGE ================= */
 
 export default function MarketplacePage() {
@@ -421,6 +479,7 @@ export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("best");
+  const [feedLayout, setFeedLayout] = useState<FeedLayout>("cards");
   const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(0);
@@ -428,8 +487,15 @@ export default function MarketplacePage() {
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [mediaOnly, setMediaOnly] = useState(false);
   const [freshOnly, setFreshOnly] = useState(false);
+  const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
+  const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
+  const [listingVotes, setListingVotes] = useState<Record<string, number>>({});
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
+  const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
+  const [liveEventCount, setLiveEventCount] = useState(0);
+  const [lastLiveEventAt, setLastLiveEventAt] = useState("");
+  const [lastLiveEventSource, setLastLiveEventSource] = useState("market");
   const [openPostModal, setOpenPostModal] = useState(false);
   const [activeHelpRequestId, setActiveHelpRequestId] = useState<string | null>(null);
   const [activeHelpRequestTitle, setActiveHelpRequestTitle] = useState("");
@@ -498,6 +564,14 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const storedLayout = window.localStorage.getItem(MARKETPLACE_LAYOUT_STORAGE_KEY);
+    if (storedLayout === "cards" || storedLayout === "thread") {
+      setFeedLayout(storedLayout);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const payload = {
       category,
       sortBy,
@@ -521,6 +595,11 @@ export default function MarketplacePage() {
     urgentOnly,
     verifiedOnly,
   ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(MARKETPLACE_LAYOUT_STORAGE_KEY, feedLayout);
+  }, [feedLayout]);
 
   const loadHelpRequestMatches = useCallback(
     async (helpRequestId: string, soft = false) => {
@@ -1055,7 +1134,12 @@ export default function MarketplacePage() {
   }, [fetchFeed]);
 
   useEffect(() => {
-    const scheduleReload = () => {
+    const scheduleReload = (payload?: { table?: string }) => {
+      setLiveEventCount((count) => count + 1);
+      setLastLiveEventAt(new Date().toISOString());
+      if (payload?.table) {
+        setLastLiveEventSource(payload.table.replaceAll("_", " "));
+      }
       if (reloadTimerRef.current) {
         window.clearTimeout(reloadTimerRef.current);
       }
@@ -1072,12 +1156,15 @@ export default function MarketplacePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
-      .subscribe();
+      .subscribe((status) => {
+        setFeedChannelHealth(mapRealtimeHealth(status));
+      });
 
     return () => {
       if (reloadTimerRef.current) {
         window.clearTimeout(reloadTimerRef.current);
       }
+      setFeedChannelHealth("idle");
       supabase.removeChannel(channel);
     };
   }, [fetchFeed]);
@@ -1238,6 +1325,11 @@ const filtered = useMemo(() => {
     });
 }, [category, feed, freshOnly, maxDistanceKm, mediaOnly, search, showTrendingOnly, sortBy, urgentOnly, verifiedOnly]);
 
+const visibleFeed = useMemo(
+  () => filtered.filter((item) => !hiddenListingIds.has(item.id)),
+  [filtered, hiddenListingIds]
+);
+
 const activeFilterCount =
   Number(showTrendingOnly) +
   Number(maxDistanceKm > 0) +
@@ -1247,28 +1339,45 @@ const activeFilterCount =
   Number(freshOnly);
 
 const filteredStats = useMemo(() => {
-  const verified = filtered.filter((item) => item.verificationStatus === "verified").length;
-  const urgent = filtered.filter((item) => item.urgent).length;
-  const withMedia = filtered.filter((item) => (item.media?.length || 0) > 0).length;
-  const avgMatch = filtered.length
-    ? Math.round(filtered.reduce((sum, item) => sum + item.rankScore, 0) / filtered.length)
+  const verified = visibleFeed.filter((item) => item.verificationStatus === "verified").length;
+  const urgent = visibleFeed.filter((item) => item.urgent).length;
+  const withMedia = visibleFeed.filter((item) => (item.media?.length || 0) > 0).length;
+  const avgMatch = visibleFeed.length
+    ? Math.round(visibleFeed.reduce((sum, item) => sum + item.rankScore, 0) / visibleFeed.length)
     : 0;
   return {
-    total: filtered.length,
+    total: visibleFeed.length,
     verified,
     urgent,
     withMedia,
     avgMatch,
   };
-}, [filtered]);
+}, [visibleFeed]);
 
 const trendingDemands = useMemo(
   () =>
-    filtered
+    visibleFeed
       .filter((item) => item.type === "demand")
       .sort((a, b) => b.rankScore - a.rankScore)
-      .slice(0, 2),
-  [filtered]
+      .slice(0, 3),
+  [visibleFeed]
+);
+
+const feedMix = useMemo(() => {
+  const demand = visibleFeed.filter((item) => item.type === "demand").length;
+  const service = visibleFeed.filter((item) => item.type === "service").length;
+  const product = visibleFeed.filter((item) => item.type === "product").length;
+  return { demand, service, product };
+}, [visibleFeed]);
+
+const hottestCategories = useMemo(
+  () =>
+    [...visibleFeed]
+      .sort((a, b) => b.rankScore - a.rankScore)
+      .slice(0, 4)
+      .map((item) => item.category)
+      .filter((value, index, array) => array.indexOf(value) === index),
+  [visibleFeed]
 );
 
 const clearAdvancedFilters = () => {
@@ -1277,6 +1386,37 @@ const clearAdvancedFilters = () => {
   setUrgentOnly(false);
   setMediaOnly(false);
   setFreshOnly(false);
+};
+
+const toggleSaveListing = (listingId: string) => {
+  setSavedListingIds((previous) => {
+    const next = new Set(previous);
+    if (next.has(listingId)) {
+      next.delete(listingId);
+    } else {
+      next.add(listingId);
+    }
+    return next;
+  });
+};
+
+const hideListing = (listingId: string) => {
+  setHiddenListingIds((previous) => {
+    const next = new Set(previous);
+    next.add(listingId);
+    return next;
+  });
+};
+
+const voteOnListing = (listingId: string, direction: "up" | "down", baselineScore: number) => {
+  setListingVotes((previous) => {
+    const current = previous[listingId] ?? Math.max(1, Math.round(baselineScore / 7));
+    const nextValue = direction === "up" ? current + 1 : Math.max(0, current - 1);
+    return {
+      ...previous,
+      [listingId]: nextValue,
+    };
+  });
 };
 
 
@@ -1418,900 +1558,1028 @@ const dashboardStats = useMemo(() => {
   };
 }, [feed]);
 
+const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
+const liveSourceLabel = lastLiveEventSource
+  ? `${lastLiveEventSource.charAt(0).toUpperCase()}${lastLiveEventSource.slice(1)}`
+  : "market";
+const layoutLabel = feedLayout === "thread" ? "Thread Feed" : "Card Feed";
+
 /* ================= UI ================= */
 
-return ( <div className="min-h-screen bg-transparent text-slate-900">
+return (
+  <div className="min-h-screen bg-transparent text-slate-900">
+    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+      <div className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600 shadow-[0_24px_80px_rgba(30,64,175,0.35)]">
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+        <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
 
-
-  {/* HERO */}
-  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
-    <div className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_24px_80px_rgba(79,70,229,0.35)]">
-      <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-      <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
-
-      <div className="relative p-5 sm:p-7 lg:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-              <Sparkles size={13} />
-              Startup-grade Local Marketplace
+        <div className="relative p-5 sm:p-7 lg:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+                <Sparkles size={13} />
+                Connected Community Feed
+              </div>
+              <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                Local Feed: Demand, Services, Products
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
+                Reddit-like stream for your neighborhood: realtime listings, trust context, and instant conversion.
+              </p>
             </div>
-            <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-              Discover Local Services & Products
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
-              Convert nearby demand into confirmed jobs faster with ranking, trust signals, and realtime matching.
-            </p>
-          </div>
 
-          <div className="w-full lg:w-[540px] space-y-2">
-            <div className="flex items-center justify-between rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs text-white/90">
-              <span className="inline-flex items-center gap-1.5">
-                {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
-              </span>
-              <button
-                type="button"
-                onClick={() => void fetchFeed(true)}
-                disabled={syncing}
-                className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
-                Refresh
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/profile")}
-                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-              >
-                Complete Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenPostModal(true)}
-                className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
-              >
-                Post New Need
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/provider/add-service")}
-                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-              >
-                Add Service
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFeed(demoFeed);
-                  setUsingDemoFeed(true);
-                  setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
-                }}
-                className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-              >
-                Load Demo Seed
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
-            <p className="text-[11px] uppercase tracking-wide text-white/80">Providers</p>
-            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.providers || 520}</p>
-          </div>
-          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
-            <p className="text-[11px] uppercase tracking-wide text-white/80">Urgent Needs</p>
-            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.urgentCount}</p>
-          </div>
-          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
-            <p className="text-[11px] uppercase tracking-wide text-white/80">Avg Match</p>
-            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.avgMatch}</p>
-          </div>
-          <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
-            <p className="text-[11px] uppercase tracking-wide text-white/80">Fast Replies</p>
-            <p className="mt-1 text-xl font-bold text-white">{dashboardStats.fastResponses}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* SEARCH + SORT */}
-  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-5">
-    <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm">
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
-        <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
-          <Search size={16} className="text-slate-500" />
-          <input
-            placeholder="Search services, products, needs..."
-            className="bg-transparent outline-none flex-1 text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <select
-          value={sortBy}
-          onChange={(e) =>
-            setSortBy(
-              e.target.value === "best"
-                ? "best"
-                : e.target.value === "price"
-                ? "price"
-                : e.target.value === "latest"
-                ? "latest"
-                : "distance"
-            )
-          }
-          className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm w-full md:w-auto shadow-sm"
-        >
-          <option value="best">Sort: Best Match</option>
-          <option value="distance">Sort: Distance</option>
-          <option value="price">Sort: Price</option>
-          <option value="latest">Sort: Latest</option>
-        </select>
-
-        <button
-          onClick={() => setShowTrendingOnly(!showTrendingOnly)}
-          className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm transition-colors ${
-            showTrendingOnly
-              ? "bg-indigo-600 border-indigo-600 text-white"
-              : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
-          }`}
-        >
-          <Filter size={16} />
-          {showTrendingOnly ? "Trending On" : "Trending"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowAdvancedFilters((current) => !current)}
-          className="border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm w-full md:w-auto shadow-sm bg-white border-slate-200 text-slate-700 hover:border-indigo-300 transition-colors"
-        >
-          <SlidersHorizontal size={16} />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-          <Activity size={12} />
-          {filteredStats.total} results
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-          <ShieldCheck size={12} />
-          {filteredStats.verified} verified
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-          <Zap size={12} />
-          {filteredStats.urgent} urgent
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-          <ImageIcon size={12} />
-          {filteredStats.withMedia} with media
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700">
-          Match {filteredStats.avgMatch}
-        </span>
-        {activeFilterCount > 0 && (
-          <button
-            type="button"
-            onClick={clearAdvancedFilters}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            <RotateCcw size={12} />
-            Reset advanced
-          </button>
-        )}
-      </div>
-
-      {/* CATEGORY FILTER */}
-      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-              category === cat
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            {cat.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
-      {/* QUICK CHIPS */}
-      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
-        {[
-          "Cleaning",
-          "Repair",
-          "Delivery",
-          "Food",
-          "Electrician",
-        ].map((chip) => (
-          <button
-            key={chip}
-            onClick={() => {
-              setCategory("all");
-              setSearch(chip);
-            }}
-            className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
-          >
-            {chip}
-          </button>
-        ))}
-      </div>
-
-      {showAdvancedFilters && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="text-xs text-slate-600">
-              Max distance
-              <select
-                value={String(maxDistanceKm)}
-                onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                <option value="0">Any distance</option>
-                <option value="3">Within 3 km</option>
-                <option value="8">Within 8 km</option>
-                <option value="15">Within 15 km</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={() => setVerifiedOnly((value) => !value)}
-              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                verifiedOnly
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              Verified only
-            </button>
-            <button
-              type="button"
-              onClick={() => setUrgentOnly((value) => !value)}
-              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                urgentOnly
-                  ? "border-rose-300 bg-rose-50 text-rose-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              Urgent only
-            </button>
-            <button
-              type="button"
-              onClick={() => setMediaOnly((value) => !value)}
-              className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                mediaOnly
-                  ? "border-violet-300 bg-violet-50 text-violet-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              Media only
-            </button>
-          </div>
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={() => setFreshOnly((value) => !value)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                freshOnly
-                  ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              Last 24 hours only
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {/* MAIN GRID */}
-  <div className="max-w-[2200px] mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
-
-    {/* FEED */}
-    <div className="lg:col-span-2 space-y-5">
-
-      {isFeedLoading && feed.length === 0 ? (
-        <div className="space-y-4">
-          {[0, 1, 2].map((index) => (
-            <div
-              key={`feed-skeleton-${index}`}
-              className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
-            >
-              <div className="h-4 w-24 rounded bg-slate-200" />
-              <div className="mt-4 h-5 w-2/3 rounded bg-slate-200" />
-              <div className="mt-3 h-4 w-full rounded bg-slate-200" />
-              <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          {(usingDemoFeed || !!feedError || isFeedLoading) && (
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-indigo-900">
-                    {usingDemoFeed ? "Demo seed feed is active" : "Syncing live feed"}
-                  </p>
-                  <p className="text-xs text-indigo-700 mt-1">
-                    {feedError || "Live listings are loading in the background. You can still browse and interact."}
-                  </p>
-                </div>
-                <div className="flex gap-2">
+            <div className="w-full lg:w-[560px] space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs text-white/90">
+                <span className="inline-flex items-center gap-1.5">
+                  {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Radar size={12} />}
+                  {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${realtimeStyle.className}`}>
+                    <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
+                    {realtimeStyle.label}
+                  </span>
                   <button
                     type="button"
                     onClick={() => void fetchFeed(true)}
                     disabled={syncing}
-                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                    className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {syncing ? "Refreshing..." : "Refresh Live Data"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/dashboard/provider/add-service")}
-                    className="rounded-xl border border-indigo-300 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:border-indigo-500 transition-colors"
-                  >
-                    Add Service
+                    <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                    Refresh
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {!!activeHelpRequestId && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-emerald-900">
-                    Help request matching
-                  </p>
-                  <p className="mt-1 text-xs text-emerald-700">
-                    {activeHelpRequestTitle
-                      ? `"${activeHelpRequestTitle}" • ${helpRequestMatchedCount} matches`
-                      : `${helpRequestMatchedCount} matches found`}
-                  </p>
-                  {helpMatchesSyncing && (
-                    <p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1">
-                      <RefreshCw size={11} className="animate-spin" />
-                      Syncing new matches...
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void loadHelpRequestMatches(activeHelpRequestId, true)}
-                    disabled={helpMatchesLoading || helpMatchesSyncing}
-                    className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Refresh matches
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveHelpRequestId(null);
-                      setHelpRequestQueryParam(null);
-                    }}
-                    className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-
-              {!!helpMatchesError && (
-                <p className="mt-2 text-xs text-rose-700">{helpMatchesError}</p>
-              )}
-
-              {helpMatchesLoading ? (
-                <div className="mt-3 text-xs text-emerald-700 inline-flex items-center gap-2">
-                  <RefreshCw size={12} className="animate-spin" />
-                  Loading provider matches...
-                </div>
-              ) : helpMatches.length > 0 ? (
-                <div className="mt-3 grid gap-2">
-                  {helpMatches.slice(0, 4).map((match) => (
-                    <div
-                      key={`${activeHelpRequestId}-${match.providerId}`}
-                      className="rounded-xl border border-emerald-200 bg-white px-3 py-2"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <Image
-                            src={match.avatar}
-                            alt={match.name}
-                            width={30}
-                            height={30}
-                            className="h-7 w-7 rounded-full object-cover"
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">{match.name}</p>
-                            <p className="truncate text-[11px] text-slate-500">{match.role}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold text-emerald-700">Score {Math.round(match.score)}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {match.distanceKm !== null ? `${match.distanceKm.toFixed(1)} km` : "Nearby"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                          {match.reason}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void messageProvider(match.providerId)}
-                          className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
-                        >
-                          Chat
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedProvider(match.providerId)}
-                          className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
-                        >
-                          Trust profile
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-emerald-800">
-                  Matching is in progress. Providers will appear here as scores are computed.
-                </p>
-              )}
-            </div>
-          )}
-
-          {feed.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-slate-900">No listings available yet</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Create your first post or listing to populate the dashboard.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/profile")}
+                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
+                >
+                  Complete Profile
+                </button>
                 <button
                   type="button"
                   onClick={() => setOpenPostModal(true)}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                  className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
                 >
-                  Post a Need
+                  Post New Need
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push("/dashboard/provider/add-product")}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
-                >
-                  Add Product
-                </button>
-              </div>
-            </div>
-          ) : (
-          <>
-          {/* TRENDING */}
-          <div>
-            <h2 className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
-              <TrendingUp size={16} />
-              Trending Near You
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {trendingDemands.map((item) => (
-                  <div
-                    key={"trend-" + item.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={12} />
-                        {item.distance} km away
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock3 size={12} />
-                        {item.responseMinutes}m
-                      </span>
-                    </div>
-                    <div className="mt-2 font-semibold text-slate-900 line-clamp-1">{item.title}</div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-indigo-600 font-bold">₹ {item.price}</span>
-                      <span className="text-xs font-medium text-indigo-700">{formatRelativeAge(item.createdAt)}</span>
-                    </div>
-                  </div>
-                ))}
-              {trendingDemands.length === 0 && (
-                <div className="sm:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                  No active demand trends for these filters yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* LIST */}
-          {filtered.map((item) => {
-            const listingSignals = getListingSignals(item);
-            const freshLabel = formatRelativeAge(item.createdAt);
-            const freshClassName = isFreshListing(item.createdAt)
-              ? "text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded"
-              : "text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded";
-
-            return (
-            <div
-              key={item.id}
-              ref={(el) => {
-                cardRefs.current[item.id] = el;
-              }}
-              className={`group p-4 sm:p-6 bg-white border rounded-3xl transition-all duration-300 shadow-sm hover:-translate-y-0.5 hover:shadow-xl ${
-                highlightedId === item.id
-                  ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
-                  : "border-slate-200/90"
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row gap-4">
-                <ProviderPopup userId={item.provider_id}>
-                  <Image
-                    src={item.avatar}
-                    alt={`${item.title} avatar`}
-                    width={48}
-                    height={48}
-                    onClick={() => setSelectedProvider(item.provider_id)}
-                    className="w-12 h-12 rounded-full border border-slate-200 cursor-pointer hover:scale-110 transition object-cover"
-                  />
-                </ProviderPopup>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap gap-2 mb-1">
-                    <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                      {item.type}
-                    </span>
-
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        item.verificationStatus === "verified"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : item.verificationStatus === "pending"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {item.verificationStatus === "verified"
-                        ? "Verified"
-                        : item.verificationStatus === "pending"
-                        ? "Pending"
-                        : "Unclaimed"}
-                    </span>
-
-                    {item.urgent && (
-                      <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
-                        URGENT
-                      </span>
-                    )}
-
-                    <span className={freshClassName}>
-                      {freshLabel}
-                    </span>
-                  </div>
-
-                  <h3 className="font-semibold text-lg">
-                    {item.title}
-                  </h3>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span>by {item.creatorName || "Local Provider"}</span>
-                    {!!item.businessSlug && (
-                      <button
-                        onClick={() => router.push(`/business/${item.businessSlug}`)}
-                        className="text-indigo-600 hover:text-indigo-500"
-                      >
-                        View business profile
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-slate-500 mt-1">
-                    {item.description}
-                  </p>
-
-                  {!!item.media?.length && (
-                    <div className="mt-3 grid gap-2">
-                      {item.media.slice(0, 3).map((mediaItem, index) => {
-                        if (mediaItem.mimeType.startsWith("image/")) {
-                          return (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={`${item.id}-media-${index}`}
-                              src={mediaItem.url}
-                              alt="Post attachment"
-                              className="w-full max-h-64 rounded-xl border border-slate-200 object-cover"
-                            />
-                          );
-                        }
-
-                        if (mediaItem.mimeType.startsWith("video/")) {
-                          return (
-                            <video
-                              key={`${item.id}-media-${index}`}
-                              src={mediaItem.url}
-                              controls
-                              preload="metadata"
-                              className="w-full max-h-72 rounded-xl border border-slate-200"
-                            />
-                          );
-                        }
-
-                        if (mediaItem.mimeType.startsWith("audio/")) {
-                          return (
-                            <div
-                              key={`${item.id}-media-${index}`}
-                              className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                            >
-                              <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
-                            </div>
-                          );
-                        }
-
-                        return null;
-                      })}
-                      {item.media.length > 3 && (
-                        <p className="text-xs text-slate-500">
-                          +{item.media.length - 3} more attachment(s)
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 text-sm mt-3 text-slate-500">
-                    <MapPin size={14} />
-                    {item.distance} km
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs mt-2 text-slate-500">
-                    <span>~{item.responseMinutes} min response</span>
-                    <span>•</span>
-                    <span>{item.profileCompletion}% profile</span>
-                    <span>•</span>
-                    <span className="text-indigo-600">Match {item.rankScore}</span>
-                  </div>
-
-                  {listingSignals.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {listingSignals.map((signal) => (
-                        <span
-                          key={`${item.id}-${signal}`}
-                          className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
-                        >
-                          {signal}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {item.price > 0 && (
-                    <div className="text-indigo-600 font-bold mt-2">
-                      ₹ {item.price}
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 sm:gap-3 mt-4">
-                    <button
-                      onClick={() => bookNow(item)}
-                      disabled={!item.provider_id}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
-                    >
-                      {item.type === "demand" ? "Accept Job" : "Book Now"}
-                    </button>
-
-                    <button
-                      onClick={() => messageProvider(item.provider_id)}
-                      disabled={!item.provider_id}
-                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors disabled:opacity-60"
-                    >
-                      {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
-                    </button>
-
-                    {!!item.businessSlug && (
-                      <button
-                        onClick={() => router.push(`/business/${item.businessSlug}`)}
-                        className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
-                      >
-                        Business Page
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            );
-          })}
-
-          {!filtered.length && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8">
-              <h3 className="text-xl font-semibold text-slate-900">No listings match current filters</h3>
-              <p className="text-slate-500 mt-2">
-                Try widening your filters or create a new post/listing to activate this market segment.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setCategory("all");
-                    setSortBy("best");
-                    setShowTrendingOnly(false);
-                    clearAdvancedFilters();
-                  }}
-                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
-                >
-                  Reset filters
-                </button>
-                <button
-                  onClick={() => setOpenPostModal(true)}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
-                >
-                  Post a Need
-                </button>
-                <button
                   onClick={() => router.push("/dashboard/provider/add-service")}
-                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
                 >
                   Add Service
                 </button>
                 <button
-                  onClick={() => router.push("/dashboard/provider/add-product")}
-                  className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                  type="button"
+                  onClick={() => {
+                    setFeed(demoFeed);
+                    setUsingDemoFeed(true);
+                    setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
+                  }}
+                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
                 >
-                  Add Product
+                  Load Demo Seed
                 </button>
               </div>
             </div>
-          )}
-          </>
-          )}
-        </>
-      )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/80">Providers</p>
+              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.providers || 520}</p>
+            </div>
+            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/80">Urgent Needs</p>
+              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.urgentCount}</p>
+            </div>
+            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/80">Avg Match</p>
+              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.avgMatch}</p>
+            </div>
+            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/80">Fast Replies</p>
+              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.fastResponses}</p>
+            </div>
+            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+              <p className="text-[11px] uppercase tracking-wide text-white/80">Live Events</p>
+              <p className="mt-1 text-xl font-bold text-white">{liveEventCount}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    {/* SIDEBAR */}
-    <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-
-      {/* MAP */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <h2 className="flex items-center gap-2 mb-3 text-slate-900 font-semibold">
-          <MapPin size={17} />
-          Nearby Map
-        </h2>
-
-        <div className="h-[15rem] sm:h-60 rounded-xl">
-          {mapReady ? (
-            <MarketplaceMap
-              items={filtered.map((item) => ({
-                id: item.id,
-                title: item.title,
-                lat: item.lat,
-                lng: item.lng,
-              }))}
-              center={
-                viewerCoordinates
-                  ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude }
-                  : null
-              }
+    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-5">
+      <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
+            <Search size={16} className="text-slate-500" />
+            <input
+              placeholder="Search services, products, needs..."
+              className="bg-transparent outline-none flex-1 text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          ) : (
-            <div className="h-full rounded-xl border border-slate-200 bg-slate-100 animate-pulse grid place-items-center text-xs text-slate-500">
-              Loading map...
+          </div>
+
+          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(
+                  e.target.value === "best"
+                    ? "best"
+                    : e.target.value === "price"
+                    ? "price"
+                    : e.target.value === "latest"
+                    ? "latest"
+                    : "distance"
+                )
+              }
+              className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm shadow-sm"
+            >
+              <option value="best">Sort: Best Match</option>
+              <option value="distance">Sort: Distance</option>
+              <option value="price">Sort: Price</option>
+              <option value="latest">Sort: Latest</option>
+            </select>
+
+            <button
+              onClick={() => setShowTrendingOnly(!showTrendingOnly)}
+              className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-sm transition-colors ${
+                showTrendingOnly
+                  ? "bg-indigo-600 border-indigo-600 text-white"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
+              }`}
+            >
+              <Filter size={16} />
+              {showTrendingOnly ? "Trending On" : "Trending"}
+            </button>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFeedLayout("cards")}
+                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
+                    feedLayout === "cards" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <LayoutGrid size={14} />
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeedLayout("thread")}
+                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
+                    feedLayout === "thread" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <Rows3 size={14} />
+                  Thread
+                </button>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters((current) => !current)}
+              className="border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-sm bg-white border-slate-200 text-slate-700 hover:border-indigo-300 transition-colors"
+            >
+              <SlidersHorizontal size={16} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-4 mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <Activity size={12} />
+            {filteredStats.total} results
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <ShieldCheck size={12} />
+            {filteredStats.verified} verified
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <Zap size={12} />
+            {filteredStats.urgent} urgent
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <ImageIcon size={12} />
+            {filteredStats.withMedia} with media
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700">
+            Match {filteredStats.avgMatch}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <Flame size={12} />
+            {layoutLabel}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
+            <BellRing size={12} />
+            {liveEventCount} updates
+          </span>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAdvancedFilters}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset advanced
+            </button>
           )}
         </div>
 
-        {viewerCoordinates && (
-          <p className="mt-2 text-[11px] text-slate-500">
-            Search center: {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
-          </p>
+        {lastLiveEventAt && (
+          <div className="mb-4 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
+            Live event from {liveSourceLabel} at {formatSyncTime(lastLiveEventAt)}.
+          </div>
         )}
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
-            <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
-              <Users size={12} />
-              Providers
-            </p>
-            <p className="text-sm font-semibold text-slate-900">{dashboardStats.providers}</p>
-          </div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
-            <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
-              <Activity size={12} />
-              Urgent
-            </p>
-            <p className="text-sm font-semibold text-slate-900">{dashboardStats.urgentCount}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* CREATE POST */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <h3 className="font-semibold text-slate-900 mb-1">
-          Create Post
-        </h3>
-        <p className="text-xs text-slate-500">
-          Launch a demand or offering in under a minute.
-        </p>
-
-        <div className="mt-4 space-y-2 text-sm">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-            Need something
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-            <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-            Offer a service
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            Sell a product
-          </div>
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                category === cat
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {cat.toUpperCase()}
+            </button>
+          ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setOpenPostModal(true)}
-          className="w-full mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl hover:brightness-110 transition"
-        >
-          Continue →
-        </button>
+        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
+          {["Cleaning", "Repair", "Delivery", "Food", "Electrician"].map((chip) => (
+            <button
+              key={chip}
+              onClick={() => {
+                setCategory("all");
+                setSearch(chip);
+              }}
+              className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
+            >
+              {chip}
+            </button>
+          ))}
+          {hottestCategories.map((chip) => (
+            <button
+              key={`hot-${chip}`}
+              onClick={() => {
+                setCategory("all");
+                setSearch(chip);
+              }}
+              className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 whitespace-nowrap hover:bg-amber-100 transition-colors"
+            >
+              <span className="inline-flex items-center gap-1">
+                <Flame size={12} />
+                {chip}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {showAdvancedFilters && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-xs text-slate-600">
+                Max distance
+                <select
+                  value={String(maxDistanceKm)}
+                  onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="0">Any distance</option>
+                  <option value="3">Within 3 km</option>
+                  <option value="8">Within 8 km</option>
+                  <option value="15">Within 15 km</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => setVerifiedOnly((value) => !value)}
+                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                  verifiedOnly
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                Verified only
+              </button>
+              <button
+                type="button"
+                onClick={() => setUrgentOnly((value) => !value)}
+                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                  urgentOnly
+                    ? "border-rose-300 bg-rose-50 text-rose-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                Urgent only
+              </button>
+              <button
+                type="button"
+                onClick={() => setMediaOnly((value) => !value)}
+                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
+                  mediaOnly
+                    ? "border-violet-300 bg-violet-50 text-violet-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                Media only
+              </button>
+            </div>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setFreshOnly((value) => !value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  freshOnly
+                    ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                Last 24 hours only
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+
+    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
+      <div className="lg:col-span-2 space-y-5">
+        {isFeedLoading && feed.length === 0 ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={`feed-skeleton-${index}`}
+                className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
+              >
+                <div className="h-4 w-24 rounded bg-slate-200" />
+                <div className="mt-4 h-5 w-2/3 rounded bg-slate-200" />
+                <div className="mt-3 h-4 w-full rounded bg-slate-200" />
+                <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {(usingDemoFeed || !!feedError || isFeedLoading) && (
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-900">
+                      {usingDemoFeed ? "Demo seed feed is active" : "Syncing live feed"}
+                    </p>
+                    <p className="text-xs text-indigo-700 mt-1">
+                      {feedError || "Live listings are loading in the background. You can still browse and interact."}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void fetchFeed(true)}
+                      disabled={syncing}
+                      className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {syncing ? "Refreshing..." : "Refresh Live Data"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/provider/add-service")}
+                      className="rounded-xl border border-indigo-300 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:border-indigo-500 transition-colors"
+                    >
+                      Add Service
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!!activeHelpRequestId && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900">
+                      Help request matching
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      {activeHelpRequestTitle
+                        ? `"${activeHelpRequestTitle}" • ${helpRequestMatchedCount} matches`
+                        : `${helpRequestMatchedCount} matches found`}
+                    </p>
+                    {helpMatchesSyncing && (
+                      <p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1">
+                        <RefreshCw size={11} className="animate-spin" />
+                        Syncing new matches...
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadHelpRequestMatches(activeHelpRequestId, true)}
+                      disabled={helpMatchesLoading || helpMatchesSyncing}
+                      className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Refresh matches
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveHelpRequestId(null);
+                        setHelpRequestQueryParam(null);
+                      }}
+                      className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+
+                {!!helpMatchesError && (
+                  <p className="mt-2 text-xs text-rose-700">{helpMatchesError}</p>
+                )}
+
+                {helpMatchesLoading ? (
+                  <div className="mt-3 text-xs text-emerald-700 inline-flex items-center gap-2">
+                    <RefreshCw size={12} className="animate-spin" />
+                    Loading provider matches...
+                  </div>
+                ) : helpMatches.length > 0 ? (
+                  <div className="mt-3 grid gap-2">
+                    {helpMatches.slice(0, 4).map((match) => (
+                      <div
+                        key={`${activeHelpRequestId}-${match.providerId}`}
+                        className="rounded-xl border border-emerald-200 bg-white px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Image
+                              src={match.avatar}
+                              alt={match.name}
+                              width={30}
+                              height={30}
+                              className="h-7 w-7 rounded-full object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900">{match.name}</p>
+                              <p className="truncate text-[11px] text-slate-500">{match.role}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-semibold text-emerald-700">Score {Math.round(match.score)}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {match.distanceKm !== null ? `${match.distanceKm.toFixed(1)} km` : "Nearby"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                            {match.reason}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => void messageProvider(match.providerId)}
+                            className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                          >
+                            Chat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProvider(match.providerId)}
+                            className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                          >
+                            Trust profile
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-emerald-800">
+                    Matching is in progress. Providers will appear here as scores are computed.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {feed.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                <h3 className="text-lg font-semibold text-slate-900">No listings available yet</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  Create your first post or listing to populate the dashboard.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpenPostModal(true)}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                  >
+                    Post a Need
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/provider/add-product")}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+                  >
+                    Add Product
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                      <TrendingUp size={16} />
+                      Hot Lane Near You
+                    </h2>
+                    {hiddenListingIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setHiddenListingIds(new Set())}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      >
+                        Restore hidden ({hiddenListingIds.size})
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {trendingDemands.map((item) => (
+                      <button
+                        key={`trend-${item.id}`}
+                        type="button"
+                        onClick={() => {
+                          const target = cardRefs.current[item.id];
+                          if (!target) return;
+                          target.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setHighlightedId(item.id);
+                          setTimeout(() => setHighlightedId(null), 1200);
+                        }}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50/40"
+                      >
+                        <div className="text-xs text-slate-500">
+                          {item.distance} km away • {item.responseMinutes}m response
+                        </div>
+                        <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                        <div className="mt-1 text-xs text-indigo-700">₹ {item.price} • {formatRelativeAge(item.createdAt)}</div>
+                      </button>
+                    ))}
+                    {trendingDemands.length === 0 && (
+                      <div className="sm:col-span-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                        No active demand trends for these filters yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {visibleFeed.map((item) => {
+                  const listingSignals = getListingSignals(item);
+                  const freshLabel = formatRelativeAge(item.createdAt);
+                  const freshClassName = isFreshListing(item.createdAt)
+                    ? "text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded"
+                    : "text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded";
+                  const threadMode = feedLayout === "thread";
+                  const voteScore = listingVotes[item.id] ?? Math.max(1, Math.round(item.rankScore / 7));
+                  const saved = savedListingIds.has(item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      ref={(el) => {
+                        cardRefs.current[item.id] = el;
+                      }}
+                      className={`group border bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${
+                        threadMode ? "overflow-hidden rounded-2xl" : "rounded-3xl p-4 sm:p-6"
+                      } ${
+                        highlightedId === item.id
+                          ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
+                          : "border-slate-200/90"
+                      }`}
+                    >
+                      <div className={`flex ${threadMode ? "flex-row gap-0" : "flex-col gap-4 sm:flex-row"}`}>
+                        <div
+                          className={`flex flex-col items-center gap-1 border-slate-200 bg-slate-50 ${
+                            threadMode
+                              ? "w-14 shrink-0 border-r py-4"
+                              : "w-full flex-row rounded-2xl border px-2 py-2 sm:w-16 sm:flex-col sm:rounded-xl sm:border-0 sm:bg-transparent sm:p-0"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => voteOnListing(item.id, "up", item.rankScore)}
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700"
+                            title="Boost post"
+                          >
+                            <ChevronUp size={16} />
+                          </button>
+                          <p className="text-xs font-semibold text-slate-700">{voteScore}</p>
+                          <button
+                            type="button"
+                            onClick={() => voteOnListing(item.id, "down", item.rankScore)}
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-100 hover:text-rose-700"
+                            title="Lower priority"
+                          >
+                            <ChevronDown size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleSaveListing(item.id)}
+                            className="mt-1 rounded-lg p-1.5 text-slate-500 hover:bg-indigo-100 hover:text-indigo-700"
+                            title="Save listing"
+                          >
+                            {saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => hideListing(item.id)}
+                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                            title="Hide listing"
+                          >
+                            <EyeOff size={16} />
+                          </button>
+                        </div>
+
+                        <div className={`min-w-0 flex-1 ${threadMode ? "p-4 sm:p-5" : ""}`}>
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
+                              {item.type}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${
+                                item.verificationStatus === "verified"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : item.verificationStatus === "pending"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {item.verificationStatus === "verified"
+                                ? "Verified"
+                                : item.verificationStatus === "pending"
+                                ? "Pending"
+                                : "Unclaimed"}
+                            </span>
+                            {item.urgent && (
+                              <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
+                                URGENT
+                              </span>
+                            )}
+                            <span className={freshClassName}>{freshLabel}</span>
+                            {saved && (
+                              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
+                                Saved
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <ProviderPopup userId={item.provider_id}>
+                              <Image
+                                src={item.avatar}
+                                alt={`${item.title} avatar`}
+                                width={46}
+                                height={46}
+                                onClick={() => setSelectedProvider(item.provider_id)}
+                                className="h-11 w-11 rounded-full border border-slate-200 cursor-pointer object-cover hover:scale-105 transition"
+                              />
+                            </ProviderPopup>
+                            <div className="min-w-0 flex-1">
+                              <h3 className={`font-semibold text-slate-900 ${threadMode ? "text-base" : "text-lg"}`}>
+                                {item.title}
+                              </h3>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                <span>by {item.creatorName || "Local Provider"}</span>
+                                {!!item.businessSlug && (
+                                  <button
+                                    onClick={() => router.push(`/business/${item.businessSlug}`)}
+                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-500"
+                                  >
+                                    Business profile
+                                    <ExternalLink size={11} />
+                                  </button>
+                                )}
+                              </div>
+                              <p className={`text-slate-500 mt-1 ${threadMode ? "line-clamp-2 text-sm" : "text-sm"}`}>
+                                {item.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          {!!item.media?.length && (
+                            <div className={`mt-3 grid gap-2 ${threadMode ? "sm:grid-cols-2" : ""}`}>
+                              {item.media.slice(0, threadMode ? 1 : 3).map((mediaItem, index) => {
+                                if (mediaItem.mimeType.startsWith("image/")) {
+                                  return (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      key={`${item.id}-media-${index}`}
+                                      src={mediaItem.url}
+                                      alt="Post attachment"
+                                      className={`w-full rounded-xl border border-slate-200 object-cover ${
+                                        threadMode ? "max-h-44" : "max-h-64"
+                                      }`}
+                                    />
+                                  );
+                                }
+                                if (mediaItem.mimeType.startsWith("video/")) {
+                                  return (
+                                    <video
+                                      key={`${item.id}-media-${index}`}
+                                      src={mediaItem.url}
+                                      controls
+                                      preload="metadata"
+                                      className={`w-full rounded-xl border border-slate-200 ${threadMode ? "max-h-52" : "max-h-72"}`}
+                                    />
+                                  );
+                                }
+                                if (mediaItem.mimeType.startsWith("audio/")) {
+                                  return (
+                                    <div
+                                      key={`${item.id}-media-${index}`}
+                                      className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                    >
+                                      <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })}
+                              {!threadMode && item.media.length > 3 && (
+                                <p className="text-xs text-slate-500">
+                                  +{item.media.length - 3} more attachment(s)
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={13} />
+                              {item.distance} km
+                            </span>
+                            <span>~{item.responseMinutes} min response</span>
+                            <span>{item.profileCompletion}% profile</span>
+                            <span className="text-indigo-600">Match {item.rankScore}</span>
+                          </div>
+
+                          {listingSignals.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {listingSignals.map((signal) => (
+                                <span
+                                  key={`${item.id}-${signal}`}
+                                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+                                >
+                                  {signal}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+                            <button
+                              onClick={() => bookNow(item)}
+                              disabled={!item.provider_id}
+                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
+                            >
+                              {item.type === "demand" ? "Accept Job" : "Book Now"}
+                            </button>
+                            <button
+                              onClick={() => messageProvider(item.provider_id)}
+                              disabled={!item.provider_id}
+                              className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors disabled:opacity-60"
+                            >
+                              {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
+                            </button>
+                            {!!item.businessSlug && (
+                              <button
+                                onClick={() => router.push(`/business/${item.businessSlug}`)}
+                                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
+                              >
+                                Business Page
+                              </button>
+                            )}
+                            {item.price > 0 && (
+                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                ₹ {item.price}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {!visibleFeed.length && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-8">
+                    <h3 className="text-xl font-semibold text-slate-900">No listings match current filters</h3>
+                    <p className="text-slate-500 mt-2">
+                      Try widening your filters or create a new post/listing to activate this market segment.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          setCategory("all");
+                          setSortBy("best");
+                          setShowTrendingOnly(false);
+                          clearAdvancedFilters();
+                          setHiddenListingIds(new Set());
+                        }}
+                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
+                      >
+                        Reset filters
+                      </button>
+                      <button
+                        onClick={() => setOpenPostModal(true)}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+                      >
+                        Post a Need
+                      </button>
+                      <button
+                        onClick={() => router.push("/dashboard/provider/add-service")}
+                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                      >
+                        Add Service
+                      </button>
+                      <button
+                        onClick={() => router.push("/dashboard/provider/add-product")}
+                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
+                      >
+                        Add Product
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="flex items-center gap-2 text-slate-900 font-semibold">
+            <CircleDot size={16} />
+            Feed Pulse
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Realtime community activity and composition in your current filter context.
+          </p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Needs</p>
+              <p className="text-sm font-semibold text-slate-900">{feedMix.demand}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Services</p>
+              <p className="text-sm font-semibold text-slate-900">{feedMix.service}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Products</p>
+              <p className="text-sm font-semibold text-slate-900">{feedMix.product}</p>
+            </div>
+          </div>
+          <div className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${realtimeStyle.className}`}>
+            <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
+            Stream {realtimeStyle.label.toLowerCase()}
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <h2 className="flex items-center gap-2 mb-3 text-slate-900 font-semibold">
+            <MapPin size={17} />
+            Nearby Map
+          </h2>
+
+          <div className="h-[15rem] sm:h-60 rounded-xl">
+            {mapReady ? (
+              <MarketplaceMap
+                items={visibleFeed.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  lat: item.lat,
+                  lng: item.lng,
+                }))}
+                center={
+                  viewerCoordinates
+                    ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude }
+                    : null
+                }
+              />
+            ) : (
+              <div className="h-full rounded-xl border border-slate-200 bg-slate-100 animate-pulse grid place-items-center text-xs text-slate-500">
+                Loading map...
+              </div>
+            )}
+          </div>
+
+          {viewerCoordinates && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              Search center: {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
+            </p>
+          )}
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
+              <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
+                <Users size={12} />
+                Providers
+              </p>
+              <p className="text-sm font-semibold text-slate-900">{dashboardStats.providers}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
+              <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
+                <Activity size={12} />
+                Urgent
+              </p>
+              <p className="text-sm font-semibold text-slate-900">{dashboardStats.urgentCount}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <h3 className="font-semibold text-slate-900 mb-1">
+            Create Post
+          </h3>
+          <p className="text-xs text-slate-500">
+            Launch a demand or offering in under a minute.
+          </p>
+
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+              Need something
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+              Offer a service
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              Sell a product
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setOpenPostModal(true)}
+            className="w-full mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl hover:brightness-110 transition"
+          >
+            Continue →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => setOpenPostModal(true)}
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
+    >
+      +
+    </button>
+    {selectedProvider && (
+      <ProviderTrustPanel
+        userId={selectedProvider}
+        open
+        onClose={() => setSelectedProvider(null)}
+      />
+    )}
+    {openPostModal && (
+      <CreatePostModal
+        open={openPostModal}
+        onClose={() => setOpenPostModal(false)}
+        onPublished={(result?: PublishPostResult) => {
+          void fetchFeed(true);
+
+          if (result?.helpRequestId) {
+            setActiveHelpRequestId(result.helpRequestId);
+            setHelpRequestMatchedCount(Number(result.matchedCount || 0));
+            setHelpRequestQueryParam(result.helpRequestId);
+            void loadHelpRequestMatches(result.helpRequestId);
+          }
+        }}
+      />
+    )}
   </div>
-
-  {/* FLOATING CTA */}
-  <button
-    type="button"
-    onClick={() => setOpenPostModal(true)}
-    className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
-  >
-    +
-  </button>
-  {selectedProvider && (
-    <ProviderTrustPanel
-      userId={selectedProvider}
-      open
-      onClose={() => setSelectedProvider(null)}
-    />
-  )}
-  {openPostModal && (
-    <CreatePostModal
-      open={openPostModal}
-      onClose={() => setOpenPostModal(false)}
-      onPublished={(result?: PublishPostResult) => {
-        void fetchFeed(true);
-
-        if (result?.helpRequestId) {
-          setActiveHelpRequestId(result.helpRequestId);
-          setHelpRequestMatchedCount(Number(result.matchedCount || 0));
-          setHelpRequestQueryParam(result.helpRequestId);
-          void loadHelpRequestMatches(result.helpRequestId);
-        }
-      }}
-    />
-  )}
-</div>
-
-
 );
 }
