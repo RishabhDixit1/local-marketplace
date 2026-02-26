@@ -140,6 +140,88 @@ const heroScenes = [
   },
 ] as const;
 
+type HeroTone = (typeof heroScenes)[number]["tone"];
+
+const heroToneBadgeClasses: Record<HeroTone, string> = {
+  rose: "bg-rose-100 text-rose-700",
+  sky: "bg-sky-100 text-sky-700",
+  emerald: "bg-emerald-100 text-emerald-700",
+};
+
+const heroToneDotClasses: Record<HeroTone, string> = {
+  rose: "bg-rose-300",
+  sky: "bg-sky-300",
+  emerald: "bg-emerald-300",
+};
+
+const heroToneGlowClasses: Record<HeroTone, string> = {
+  rose: "bg-rose-300/35",
+  sky: "bg-sky-300/35",
+  emerald: "bg-emerald-300/35",
+};
+
+const heroToneRingClasses: Record<HeroTone, string> = {
+  rose: "border-rose-200/85",
+  sky: "border-sky-200/85",
+  emerald: "border-emerald-200/85",
+};
+
+const heroToneTrackClasses: Record<HeroTone, string> = {
+  rose: "from-rose-300/90 to-orange-200/70",
+  sky: "from-sky-300/90 to-cyan-200/70",
+  emerald: "from-emerald-300/90 to-lime-200/70",
+};
+
+const heroToneStrokeColors: Record<HeroTone, string> = {
+  rose: "rgba(251, 113, 133, 0.9)",
+  sky: "rgba(56, 189, 248, 0.9)",
+  emerald: "rgba(52, 211, 153, 0.9)",
+};
+
+const heroFlowPaths = [
+  { id: "flow-need-hub", d: "M16 72 Q31 57 46 52", delay: 0 },
+  { id: "flow-hub-provider", d: "M46 52 Q62 36 79 30", delay: 0.25 },
+  { id: "flow-hub-fulfill", d: "M46 52 Q64 67 82 74", delay: 0.5 },
+  { id: "flow-provider-fulfill", d: "M79 30 Q84 50 82 74", delay: 0.75 },
+] as const;
+
+const heroNetworkNodes = [
+  { id: "need", label: "Need", x: "16%", y: "72%", tone: "rose" as HeroTone },
+  { id: "hub", label: "Marketplace", x: "46%", y: "52%", tone: "sky" as HeroTone },
+  { id: "provider", label: "Provider", x: "79%", y: "30%", tone: "emerald" as HeroTone },
+  { id: "fulfill", label: "Fulfillment", x: "82%", y: "74%", tone: "sky" as HeroTone },
+] as const;
+
+const heroDataStreams: Array<{
+  id: string;
+  left: string[];
+  top: string[];
+  duration: number;
+  delay: number;
+}> = [
+  {
+    id: "stream-1",
+    left: ["16%", "31%", "46%", "62%", "79%"],
+    top: ["72%", "58%", "52%", "40%", "30%"],
+    duration: 3.2,
+    delay: 0.2,
+  },
+  {
+    id: "stream-2",
+    left: ["82%", "64%", "46%", "31%", "16%"],
+    top: ["74%", "67%", "52%", "57%", "72%"],
+    duration: 3.6,
+    delay: 1,
+  },
+  {
+    id: "stream-3",
+    left: ["46%", "64%", "82%"],
+    top: ["52%", "66%", "74%"],
+    duration: 2.9,
+    delay: 0.7,
+  },
+];
+
 export default function WelcomePage() {
   const router = useRouter();
 
@@ -239,10 +321,12 @@ export default function WelcomePage() {
     [nearbyCards, stats.activeTasks, stats.unreadMessages, stats.trustScore]
   );
 
+  const currentHeroScene = heroScenes[activeHeroScene];
+
   useEffect(() => {
     const heroSceneTimer = window.setInterval(() => {
       setActiveHeroScene((prev) => (prev + 1) % heroScenes.length);
-    }, 2800);
+    }, 3200);
 
     return () => window.clearInterval(heroSceneTimer);
   }, []);
@@ -556,6 +640,23 @@ export default function WelcomePage() {
                   Your local marketplace pulse in one place: stories, live posts, trusted providers, and quick actions.
                 </p>
 
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`hero-inline-${currentHeroScene.title}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.28 }}
+                    className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 backdrop-blur"
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${heroToneDotClasses[currentHeroScene.tone]} animate-pulse`}
+                    />
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-white/70">Live routing</span>
+                    <span className="truncate text-xs font-medium text-white">{currentHeroScene.title}</span>
+                  </motion.div>
+                </AnimatePresence>
+
                 <div className="flex flex-wrap gap-3 mt-5">
                   <button
                     onClick={primaryHeroAction.action}
@@ -596,63 +697,135 @@ export default function WelcomePage() {
                   </span>
                 </div>
 
-                <div className="relative mt-3 overflow-hidden rounded-xl border border-white/20 bg-slate-950/60 p-3">
-                  <motion.div
-                    className="pointer-events-none absolute left-0 right-0 h-16 bg-gradient-to-b from-cyan-300/25 via-cyan-200/5 to-transparent"
-                    animate={{ y: [-44, 130] }}
-                    transition={{ duration: 3.4, repeat: Infinity, ease: "linear" }}
-                  />
+                <div className="mt-3 grid grid-cols-3 gap-1.5">
+                  {heroScenes.map((scene, index) => (
+                    <div key={`scene-progress-${scene.title}`} className="h-1.5 overflow-hidden rounded-full bg-white/20">
+                      <motion.div
+                        key={`scene-progress-fill-${scene.title}-${index === activeHeroScene}`}
+                        className={`h-full rounded-full bg-gradient-to-r ${heroToneTrackClasses[scene.tone]}`}
+                        initial={{ width: "0%" }}
+                        animate={{ width: index === activeHeroScene ? "100%" : "0%" }}
+                        transition={{
+                          duration: index === activeHeroScene ? 3.1 : 0.2,
+                          ease: "linear",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="relative z-10">
-                    <div className="grid h-14 grid-cols-12 items-end gap-1">
-                      {Array.from({ length: 12 }).map((_, index) => (
-                        <motion.div
-                          key={`hero-signal-${index}`}
-                          className="rounded-sm bg-gradient-to-t from-cyan-300/35 via-indigo-200/70 to-white/95"
-                          animate={{
-                            height: [
-                              `${22 + (index % 4) * 5}%`,
-                              `${58 + (index % 5) * 7}%`,
-                              `${26 + (index % 3) * 6}%`,
-                            ],
-                          }}
+                <div className="relative mt-2 overflow-hidden rounded-xl border border-white/20 bg-slate-950/65 p-3">
+                  <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute inset-0 opacity-25 [background-size:26px_26px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.28)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.28)_1px,transparent_1px)]" />
+                    <motion.div
+                      className={`absolute -left-14 top-2 h-32 w-32 rounded-full blur-3xl ${heroToneGlowClasses[currentHeroScene.tone]}`}
+                      animate={{ x: [0, 18, 0], y: [0, -10, 0], opacity: [0.35, 0.65, 0.35] }}
+                      transition={{ duration: 5.4, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.div
+                      className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/15 to-transparent"
+                      animate={{ opacity: [0.2, 0.45, 0.2] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  </div>
+
+                  <div className="relative h-40">
+                    <div className="absolute left-1.5 top-1.5 rounded-md border border-white/20 bg-slate-900/65 px-2 py-1 text-[10px] text-white/80">
+                      Radius 2.5 km
+                    </div>
+                    <div className="absolute right-1.5 top-1.5 rounded-md border border-white/20 bg-slate-900/65 px-2 py-1 text-[10px] text-white/80">
+                      Match pulse {currentHeroScene.eta}
+                    </div>
+
+                    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {heroFlowPaths.map((path) => (
+                        <motion.path
+                          key={path.id}
+                          d={path.d}
+                          fill="none"
+                          stroke="rgba(148, 163, 184, 0.62)"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeDasharray="3.2 5.2"
+                          animate={{ strokeDashoffset: [0, -36], opacity: [0.3, 0.75, 0.3] }}
                           transition={{
-                            duration: 1.3 + (index % 3) * 0.2,
+                            duration: 4.5,
                             repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: index * 0.06,
+                            ease: "linear",
+                            delay: path.delay,
                           }}
                         />
                       ))}
-                    </div>
+                    </svg>
 
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={heroScenes[activeHeroScene].title}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.28 }}
-                        className="mt-3 rounded-lg border border-white/20 bg-white/10 px-3 py-2"
+                    {heroDataStreams.map((stream) => (
+                      <motion.span
+                        key={stream.id}
+                        className={`absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${heroToneDotClasses[currentHeroScene.tone]}`}
+                        style={{
+                          left: stream.left[0],
+                          top: stream.top[0],
+                          boxShadow: `0 0 18px ${heroToneStrokeColors[currentHeroScene.tone]}`,
+                        }}
+                        animate={{
+                          left: stream.left,
+                          top: stream.top,
+                          opacity: [0, 1, 1, 1, 0],
+                          scale: [0.75, 1, 1, 0.95, 0.75],
+                        }}
+                        transition={{
+                          duration: stream.duration,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: stream.delay,
+                        }}
+                      />
+                    ))}
+
+                    {heroNetworkNodes.map((node, index) => (
+                      <div
+                        key={node.id}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
+                        style={{ left: node.x, top: node.y }}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              heroScenes[activeHeroScene].tone === "rose"
-                                ? "bg-rose-100 text-rose-700"
-                                : heroScenes[activeHeroScene].tone === "sky"
-                                ? "bg-sky-100 text-sky-700"
-                                : "bg-emerald-100 text-emerald-700"
-                            }`}
-                          >
-                            {heroScenes[activeHeroScene].label}
-                          </span>
-                          <span className="text-[10px] text-white/75">{heroScenes[activeHeroScene].eta}</span>
+                        <div className="relative mx-auto h-3.5 w-3.5">
+                          <span className={`absolute inset-0 rounded-full ${heroToneDotClasses[node.tone]}`} />
+                          <motion.span
+                            className={`absolute inset-0 rounded-full border ${heroToneRingClasses[node.tone]}`}
+                            animate={{ scale: [1, 2.5], opacity: [0.75, 0] }}
+                            transition={{
+                              duration: 2.4,
+                              repeat: Infinity,
+                              ease: "easeOut",
+                              delay: index * 0.3,
+                            }}
+                          />
                         </div>
-                        <p className="mt-1 text-sm font-semibold text-white">{heroScenes[activeHeroScene].title}</p>
-                        <p className="text-[11px] text-white/80">{heroScenes[activeHeroScene].meta}</p>
-                      </motion.div>
-                    </AnimatePresence>
+                        <p className="mt-1 text-[10px] font-semibold text-white/90">{node.label}</p>
+                      </div>
+                    ))}
+
+                    <div className="absolute bottom-0 left-0 right-0">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={`hero-scene-${currentHeroScene.title}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.28 }}
+                          className="rounded-lg border border-white/20 bg-slate-900/72 px-3 py-2 backdrop-blur"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${heroToneBadgeClasses[currentHeroScene.tone]}`}>
+                              {currentHeroScene.label}
+                            </span>
+                            <span className="text-[10px] text-white/75">{currentHeroScene.eta}</span>
+                          </div>
+                          <p className="mt-1 text-sm font-semibold text-white">{currentHeroScene.title}</p>
+                          <p className="text-[11px] text-white/80">{currentHeroScene.meta}</p>
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
 
