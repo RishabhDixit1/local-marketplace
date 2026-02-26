@@ -22,6 +22,7 @@ import {
   resolveCoordinates,
   type Coordinates,
 } from "@/lib/geo";
+import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 
 const MarketplaceMap = dynamic(
 () => import("@/app/components/MarketplaceMap").then((mod) => mod.default),
@@ -67,7 +68,7 @@ ExternalLink,
 CircleDot,
 } from "lucide-react";
 
-const FEED_LIMIT_PER_TYPE = 48;
+const FEED_LIMIT_PER_TYPE = 24;
 const MAX_PROFILE_LOOKUP = 120;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
 const MARKETPLACE_LAYOUT_STORAGE_KEY = "local-marketplace-dashboard-feed-layout-v1";
@@ -513,6 +514,7 @@ export default function MarketplacePage() {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reloadTimerRef = useRef<number | null>(null);
   const helpMatchesReloadTimerRef = useRef<number | null>(null);
+  const fetchInFlightRef = useRef(false);
 
   const setHelpRequestQueryParam = useCallback((helpRequestId: string | null) => {
     if (typeof window === "undefined") return;
@@ -701,6 +703,9 @@ export default function MarketplacePage() {
 
   /* ================= FETCH ================= */
   const fetchFeed = useCallback(async (soft = false) => {
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+
     if (soft) {
       setSyncing(true);
     } else {
@@ -709,41 +714,135 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      let serviceRowsRaw: FlexibleRow[] = [];
-      let productRowsRaw: FlexibleRow[] = [];
-      let postRowsRaw: FlexibleRow[] = [];
       const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const currentUserId = user?.id || "";
-      let currentUserProfileRow: FlexibleRow | null = null;
+      const selectRowsWithFallback = async (table: string, primarySelect: string): Promise<FlexibleRow[]> => {
+        const primaryResult = await supabase
+          .from(table)
+          .select(primarySelect)
+          .limit(FEED_LIMIT_PER_TYPE);
 
-      if (currentUserId) {
-        const currentUserProfilePrimary = await supabase
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase
+          .from(table)
+          .select("*")
+          .limit(FEED_LIMIT_PER_TYPE);
+
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const selectOpenPostsRows = async (): Promise<FlexibleRow[]> => {
+        const primaryResult = await supabase
+          .from("posts")
+          .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
+          .eq("status", "open")
+          .limit(FEED_LIMIT_PER_TYPE);
+
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase
+          .from("posts")
+          .select("*")
+          .limit(FEED_LIMIT_PER_TYPE);
+
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const selectCurrentUserProfile = async (currentUserId: string): Promise<FlexibleRow | null> => {
+        if (!currentUserId) return null;
+
+        const primaryResult = await supabase
           .from("profiles")
           .select("id,location,latitude,longitude")
           .eq("id", currentUserId)
           .maybeSingle();
 
-        if (currentUserProfilePrimary.error) {
-          if (isMissingColumnError(currentUserProfilePrimary.error.message)) {
-            const currentUserProfileFallback = await supabase
-              .from("profiles")
-              .select("id,location")
-              .eq("id", currentUserId)
-              .maybeSingle();
-            if (!currentUserProfileFallback.error) {
-              currentUserProfileRow = (currentUserProfileFallback.data as FlexibleRow | null) || null;
-            }
-          } else {
-            throw new Error(currentUserProfilePrimary.error.message);
-          }
-        } else {
-          currentUserProfileRow = (currentUserProfilePrimary.data as FlexibleRow | null) || null;
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow | null) || null;
         }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase
+          .from("profiles")
+          .select("id,location")
+          .eq("id", currentUserId)
+          .maybeSingle();
+
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow | null) || null;
+      };
+
+      const selectProfilesWithFallback = async (profileIds: string[]): Promise<FlexibleRow[]> => {
+        if (profileIds.length === 0) return [];
+
+        const primaryResult = await supabase
+          .from("profiles")
+          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
+          .in("id", profileIds);
+
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", profileIds);
+
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      let currentUserId = sessionData.session?.user?.id || "";
+
+      if (!currentUserId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        currentUserId = user?.id || "";
       }
+
+      const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw] = await Promise.all([
+        selectCurrentUserProfile(currentUserId),
+        selectRowsWithFallback("service_listings", "id,title,description,price,category,provider_id,created_at"),
+        selectRowsWithFallback("product_catalog", "id,title,description,price,category,provider_id,created_at"),
+        selectOpenPostsRows(),
+      ]);
 
       const profileCoordinates = resolveCoordinates({
         row: currentUserProfileRow,
@@ -752,70 +851,6 @@ export default function MarketplacePage() {
       });
       const fallbackViewerCoordinates = profileCoordinates || defaultMarketCoordinates();
       setViewerCoordinates(fallbackViewerCoordinates);
-
-      const servicePrimary = await supabase
-        .from("service_listings")
-        .select("id,title,description,price,category,provider_id,created_at")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (servicePrimary.error) {
-        if (isMissingColumnError(servicePrimary.error.message)) {
-          const serviceFallback = await supabase
-            .from("service_listings")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (serviceFallback.error) {
-            throw new Error(serviceFallback.error.message);
-          }
-          serviceRowsRaw = (serviceFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(servicePrimary.error.message);
-        }
-      } else {
-        serviceRowsRaw = (servicePrimary.data as FlexibleRow[] | null) || [];
-      }
-
-      const productPrimary = await supabase
-        .from("product_catalog")
-        .select("id,title,description,price,category,provider_id,created_at")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (productPrimary.error) {
-        if (isMissingColumnError(productPrimary.error.message)) {
-          const productFallback = await supabase
-            .from("product_catalog")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (productFallback.error) {
-            throw new Error(productFallback.error.message);
-          }
-          productRowsRaw = (productFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(productPrimary.error.message);
-        }
-      } else {
-        productRowsRaw = (productPrimary.data as FlexibleRow[] | null) || [];
-      }
-
-      const postsPrimary = await supabase
-        .from("posts")
-        .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
-        .eq("status", "open")
-        .limit(FEED_LIMIT_PER_TYPE);
-      if (postsPrimary.error) {
-        if (isMissingColumnError(postsPrimary.error.message)) {
-          const postsFallback = await supabase
-            .from("posts")
-            .select("*")
-            .limit(FEED_LIMIT_PER_TYPE);
-          if (postsFallback.error) {
-            throw new Error(postsFallback.error.message);
-          }
-          postRowsRaw = (postsFallback.data as FlexibleRow[] | null) || [];
-        } else {
-          throw new Error(postsPrimary.error.message);
-        }
-      } else {
-        postRowsRaw = (postsPrimary.data as FlexibleRow[] | null) || [];
-      }
 
       const browserCoordinates = await browserCoordinatesPromise;
       const resolvedViewerCoordinates = browserCoordinates || fallbackViewerCoordinates;
@@ -877,28 +912,13 @@ export default function MarketplacePage() {
       let reviewRows: ReviewRow[] = [];
 
       if (uniqueProfileIds.length > 0) {
-        let profileRowsRaw: FlexibleRow[] = [];
-        const profilesPrimary = await supabase
-          .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
-          .in("id", uniqueProfileIds);
-
-        if (profilesPrimary.error) {
-          if (isMissingColumnError(profilesPrimary.error.message)) {
-            const profilesFallback = await supabase
-              .from("profiles")
-              .select("*")
-              .in("id", uniqueProfileIds);
-            if (profilesFallback.error) {
-              throw new Error(profilesFallback.error.message);
-            }
-            profileRowsRaw = (profilesFallback.data as FlexibleRow[] | null) || [];
-          } else {
-            throw new Error(profilesPrimary.error.message);
-          }
-        } else {
-          profileRowsRaw = (profilesPrimary.data as FlexibleRow[] | null) || [];
-        }
+        const [profileRowsRaw, reviewsResult] = await Promise.all([
+          selectProfilesWithFallback(uniqueProfileIds),
+          supabase
+            .from("reviews")
+            .select("provider_id,rating")
+            .in("provider_id", uniqueProfileIds),
+        ]);
 
         const normalizedProfiles: ProfileRow[] = profileRowsRaw
           .map((row) => {
@@ -933,10 +953,6 @@ export default function MarketplacePage() {
 
         profileMap = new Map(normalizedProfiles.map((row) => [row.id, row]));
 
-        const reviewsResult = await supabase
-          .from("reviews")
-          .select("provider_id,rating")
-          .in("provider_id", uniqueProfileIds);
         if (reviewsResult.error) {
           console.warn("Could not load review ratings for feed scoring:", reviewsResult.error.message);
         } else {
@@ -1114,16 +1130,24 @@ export default function MarketplacePage() {
       }
       setLastSyncedAt(new Date().toISOString());
     } catch (error) {
-      const feedErrorMessage = error instanceof Error ? error.message : "Failed to fetch marketplace feed";
+      if (isAbortLikeError(error)) {
+        return;
+      }
+
+      const fallbackMessage = "Failed to fetch marketplace feed";
+      const feedErrorMessage = isFailedFetchError(error)
+        ? "Network connection issue while loading live marketplace data."
+        : toErrorMessage(error, fallbackMessage);
       console.warn("Failed to load marketplace feed:", feedErrorMessage);
       if (soft) {
-        setFeedError(error instanceof Error ? `${error.message}. Keeping current feed.` : "Keeping current feed.");
+        setFeedError(`${feedErrorMessage}. Keeping current feed.`);
       } else {
         setFeed(demoFeed);
         setUsingDemoFeed(true);
-        setFeedError(error instanceof Error ? `${error.message}. Showing demo feed.` : "Showing demo feed.");
+        setFeedError(`${feedErrorMessage}. Showing demo feed.`);
       }
     } finally {
+      fetchInFlightRef.current = false;
       if (soft) {
         setSyncing(false);
       } else {
@@ -2571,7 +2595,7 @@ return (
           <div className="h-[15rem] sm:h-60 rounded-xl">
             {mapReady ? (
               <MarketplaceMap
-                items={visibleFeed.map((item) => ({
+                items={visibleFeed.slice(0, 40).map((item) => ({
                   id: item.id,
                   title: item.title,
                   lat: item.lat,

@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isAbortLikeError, isFailedFetchError } from "@/lib/runtimeErrors";
 import {
   getNotificationKind,
   getDemoNotifications,
@@ -112,36 +113,52 @@ export default function NotificationCenter() {
 
       if (!soft) setLoading(true);
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("id,user_id,kind,title,message,entity_type,entity_id,metadata,read_at,cleared_at,created_at")
-        .eq("user_id", userId)
-        .is("cleared_at", null)
-        .order("created_at", { ascending: false })
-        .limit(60);
+      try {
+        const { data, error } = await supabase
+          .from("notifications")
+          .select("id,user_id,kind,title,message,entity_type,entity_id,metadata,read_at,cleared_at,created_at")
+          .eq("user_id", userId)
+          .is("cleared_at", null)
+          .order("created_at", { ascending: false })
+          .limit(60);
 
-      if (error) {
-        if (isMissingNotificationsTable(error.message)) {
-          setNotifications(getDemoNotifications(userId));
-          setErrorMessage(
-            "Live notifications are in demo mode. Run supabase/secure_realtime_rls.sql to enable realtime DB events."
-          );
-          setDemoMode(true);
+        if (error) {
+          if (isMissingNotificationsTable(error.message)) {
+            setNotifications(getDemoNotifications(userId));
+            setErrorMessage(
+              "Live notifications are in demo mode. Run supabase/secure_realtime_rls.sql to enable realtime DB events."
+            );
+            setDemoMode(true);
+            setLoading(false);
+            return;
+          }
+
+          setNotifications([]);
+          setLoading(false);
+          setErrorMessage("Unable to load notifications. Please refresh and try again.");
+          setDemoMode(false);
+          return;
+        }
+
+        setNotifications(normalizeNotificationRows((data as NotificationRowRaw[] | null) || []));
+        setErrorMessage("");
+        setDemoMode(false);
+        setLoading(false);
+      } catch (error) {
+        if (isAbortLikeError(error)) {
           setLoading(false);
           return;
         }
 
         setNotifications([]);
         setLoading(false);
-        setErrorMessage("Unable to load notifications. Please refresh and try again.");
         setDemoMode(false);
-        return;
+        setErrorMessage(
+          isFailedFetchError(error)
+            ? "Connection issue while loading notifications. Retry once your network is stable."
+            : "Unable to load notifications. Please refresh and try again."
+        );
       }
-
-      setNotifications(normalizeNotificationRows((data as NotificationRowRaw[] | null) || []));
-      setErrorMessage("");
-      setDemoMode(false);
-      setLoading(false);
     },
     [userId]
   );
@@ -157,9 +174,16 @@ export default function NotificationCenter() {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: sessionData } = await supabase.auth.getSession();
+        let user = sessionData.session?.user || null;
+
+        if (!user) {
+          const {
+            data: authData,
+          } = await supabase.auth.getUser();
+          user = authData.user;
+        }
+
         if (!user) {
           setNotifications([]);
           setLoading(false);
