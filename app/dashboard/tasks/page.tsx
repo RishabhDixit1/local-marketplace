@@ -13,16 +13,20 @@ import {
   type OrderActorRole,
 } from "@/lib/orderWorkflow";
 import {
+  Activity,
   AlertCircle,
+  ArrowUpRight,
+  BarChart3,
   Calendar,
+  CheckCheck,
   CheckCircle2,
   Clock,
   DollarSign,
-  Filter,
   Loader2,
   MapPin,
   MessageCircle,
   Package,
+  Search,
   Sparkles,
   TrendingUp,
   XCircle,
@@ -96,9 +100,20 @@ type Task = {
   tags: string[];
   listingType: string;
   counterpartyId: string | null;
+  amount: number | null;
+  createdAtRaw?: string | null;
 };
 
 const fallbackAvatar = "https://i.pravatar.cc/150";
+const stageOrder: TaskStatus[] = ["active", "in-progress", "completed", "cancelled"];
+const statusProgressMap: Record<TaskStatus, number> = {
+  active: 25,
+  "in-progress": 65,
+  completed: 100,
+  cancelled: 100,
+};
+const demoNow = Date.now();
+const demoIsoFromMsAgo = (msAgo: number) => new Date(demoNow - msAgo).toISOString();
 
 const demoTasks: Task[] = [
   {
@@ -126,6 +141,8 @@ const demoTasks: Task[] = [
     tags: ["Plumber", "Urgent", "Lead Pipeline"],
     listingType: "service",
     counterpartyId: "demo-consumer-1",
+    amount: 799,
+    createdAtRaw: demoIsoFromMsAgo(2 * 60 * 60 * 1000),
   },
   {
     id: "demo-task-2",
@@ -152,6 +169,8 @@ const demoTasks: Task[] = [
     tags: ["Cleaning", "Customer Request", "Open"],
     listingType: "service",
     counterpartyId: "demo-provider-2",
+    amount: 1499,
+    createdAtRaw: demoIsoFromMsAgo(5 * 60 * 60 * 1000),
   },
   {
     id: "demo-task-3",
@@ -178,6 +197,8 @@ const demoTasks: Task[] = [
     tags: ["Electrical", "Completed"],
     listingType: "product",
     counterpartyId: "demo-provider-3",
+    amount: 899,
+    createdAtRaw: demoIsoFromMsAgo(2 * 24 * 60 * 60 * 1000),
   },
 ];
 
@@ -200,6 +221,9 @@ const formatCurrency = (amount: number | null | undefined) => {
   if (!Number.isFinite(Number(amount))) return "Price on request";
   return `INR ${Number(amount).toLocaleString()}`;
 };
+
+const formatCompactCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(amount);
 
 const formatAgo = (iso: string | null | undefined) => {
   if (!iso) return "Recently";
@@ -230,6 +254,26 @@ const getStatusIcon = (status: TaskStatus) => {
   return AlertCircle;
 };
 
+const getStatusTextClass = (status: TaskStatus) => {
+  if (status === "active") return "text-sky-700";
+  if (status === "in-progress") return "text-violet-700";
+  if (status === "completed") return "text-emerald-700";
+  return "text-rose-700";
+};
+
+const getStatusAccentClass = (status: TaskStatus) => {
+  if (status === "active") return "from-sky-500 to-blue-600";
+  if (status === "in-progress") return "from-violet-500 to-indigo-600";
+  if (status === "completed") return "from-emerald-500 to-green-600";
+  return "from-rose-500 to-red-600";
+};
+
+const getListingTypeLabel = (listingType: string) => {
+  if (listingType === "service") return "Service";
+  if (listingType === "product") return "Product";
+  return "Demand";
+};
+
 const normalizeListingType = (type: string | null | undefined) => {
   const lower = (type || "").toLowerCase();
   if (["service", "services"].includes(lower)) return "service";
@@ -254,6 +298,7 @@ export default function TasksPage() {
   const [usingDemo, setUsingDemo] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadTasks = useCallback(
     async (soft = false) => {
@@ -423,6 +468,8 @@ export default function TasksPage() {
           ],
           listingType,
           counterpartyId,
+          amount: Number.isFinite(Number(order.price)) ? Number(order.price) : null,
+          createdAtRaw: order.created_at,
         } satisfies Task;
       });
 
@@ -467,13 +514,75 @@ export default function TasksPage() {
     };
   }, [currentUserId, loadTasks]);
 
+  const statusCounts = useMemo(
+    () => ({
+      active: tasks.filter((task) => task.status === "active").length,
+      inProgress: tasks.filter((task) => task.status === "in-progress").length,
+      completed: tasks.filter((task) => task.status === "completed").length,
+      cancelled: tasks.filter((task) => task.status === "cancelled").length,
+    }),
+    [tasks]
+  );
+
+  const totalPipelineValue = useMemo(
+    () =>
+      tasks.reduce((sum, task) => {
+        if (!Number.isFinite(Number(task.amount))) return sum;
+        return sum + Number(task.amount);
+      }, 0),
+    [tasks]
+  );
+
+  const completionRate = useMemo(() => {
+    if (!tasks.length) return 0;
+    return Math.round((statusCounts.completed / tasks.length) * 100);
+  }, [statusCounts.completed, tasks.length]);
+
+  const knownTicketCount = useMemo(
+    () => tasks.filter((task) => Number.isFinite(Number(task.amount))).length,
+    [tasks]
+  );
+
+  const averageTicket = useMemo(() => {
+    if (!knownTicketCount) return 0;
+    return Math.round(totalPipelineValue / knownTicketCount);
+  }, [knownTicketCount, totalPipelineValue]);
+
+  const actionRequiredCount = statusCounts.active + statusCounts.inProgress;
+
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      const matchesTab = selectedTab === "all" || task.type === selectedTab;
-      const matchesStatus = selectedStatus === "all" || task.status === selectedStatus;
-      return matchesTab && matchesStatus;
-    });
-  }, [selectedStatus, selectedTab, tasks]);
+    const query = searchQuery.trim().toLowerCase();
+
+    return tasks
+      .filter((task) => {
+        const matchesTab = selectedTab === "all" || task.type === selectedTab;
+        const matchesStatus = selectedStatus === "all" || task.status === selectedStatus;
+        if (!matchesTab || !matchesStatus) return false;
+
+        if (!query) return true;
+        const haystack = [
+          task.title,
+          task.description,
+          task.location,
+          task.postedBy.name,
+          task.assignedTo?.name || "",
+          task.tags.join(" "),
+          task.listingType,
+          task.orderId,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return haystack.includes(query);
+      })
+      .sort((a, b) => {
+        const stageDelta = stageOrder.indexOf(a.status) - stageOrder.indexOf(b.status);
+        if (stageDelta !== 0) return stageDelta;
+        const aTime = a.createdAtRaw ? new Date(a.createdAtRaw).getTime() : 0;
+        const bTime = b.createdAtRaw ? new Date(b.createdAtRaw).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [searchQuery, selectedStatus, selectedTab, tasks]);
 
   const tabs = useMemo(
     () => [
@@ -492,35 +601,70 @@ export default function TasksPage() {
     { value: "cancelled", label: "Cancelled", icon: AlertCircle },
   ];
 
-  const stats = useMemo(
+  const headlineStats = useMemo(
     () => [
       {
-        label: "Total Tasks",
-        value: tasks.length,
-        icon: Package,
-        color: "from-blue-500 to-indigo-600",
+        label: "Open Pipeline",
+        value: actionRequiredCount,
+        subtitle: "Need action",
+        icon: Activity,
+        color: "from-sky-500 to-blue-600",
       },
       {
-        label: "Active",
-        value: tasks.filter((task) => task.status === "active").length,
-        icon: Clock,
-        color: "from-yellow-500 to-orange-500",
+        label: "Completion Rate",
+        value: `${completionRate}%`,
+        subtitle: `${statusCounts.completed} completed`,
+        icon: CheckCheck,
+        color: "from-emerald-500 to-green-600",
       },
       {
-        label: "In Progress",
-        value: tasks.filter((task) => task.status === "in-progress").length,
-        icon: TrendingUp,
-        color: "from-purple-500 to-pink-600",
+        label: "Pipeline Value",
+        value: `INR ${formatCompactCurrency(totalPipelineValue || 0)}`,
+        subtitle: `${tasks.length} total tasks`,
+        icon: BarChart3,
+        color: "from-violet-500 to-indigo-600",
       },
       {
-        label: "Completed",
-        value: tasks.filter((task) => task.status === "completed").length,
-        icon: CheckCircle2,
-        color: "from-green-500 to-emerald-600",
+        label: "Avg Ticket",
+        value: knownTicketCount ? `INR ${formatCompactCurrency(averageTicket)}` : "--",
+        subtitle: knownTicketCount ? "Across priced tasks" : "No prices yet",
+        icon: DollarSign,
+        color: "from-amber-500 to-orange-500",
       },
     ],
-    [tasks]
+    [actionRequiredCount, averageTicket, completionRate, knownTicketCount, statusCounts.completed, tasks.length, totalPipelineValue]
   );
+
+  const pipelineLanes = [
+    {
+      key: "active",
+      label: "Active",
+      count: statusCounts.active,
+      status: "active" as TaskStatus,
+      description: "Awaiting response or confirmation",
+    },
+    {
+      key: "in-progress",
+      label: "In Progress",
+      count: statusCounts.inProgress,
+      status: "in-progress" as TaskStatus,
+      description: "Jobs currently running",
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      count: statusCounts.completed,
+      status: "completed" as TaskStatus,
+      description: "Successfully closed deliveries",
+    },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      count: statusCounts.cancelled,
+      status: "cancelled" as TaskStatus,
+      description: "Dropped or rejected workflows",
+    },
+  ];
 
   const startChat = async (task: Task) => {
     if (!currentUserId || !task.counterpartyId || task.counterpartyId.startsWith("demo-")) {
@@ -651,7 +795,7 @@ export default function TasksPage() {
         <button
           onClick={() => void startChat(task)}
           disabled={chatBusy}
-          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2 text-sm disabled:opacity-70"
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70"
         >
           <MessageCircle className="w-4 h-4" />
           {chatBusy ? "Opening..." : "Chat"}
@@ -662,12 +806,12 @@ export default function TasksPage() {
             key={`${task.orderId}-${nextStatus}`}
             disabled={busy}
             onClick={() => void updateOrderStatus(task, nextStatus)}
-            className={`px-4 py-2 rounded-xl font-semibold transition-colors text-sm disabled:opacity-70 ${
+            className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-70 ${
               ["rejected", "cancelled"].includes(nextStatus)
-                ? "bg-rose-100 hover:bg-rose-200 text-rose-700"
+                ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                 : ["completed", "closed"].includes(nextStatus)
-                ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
-                : "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
             }`}
           >
             {busy ? "Updating..." : getTransitionActionLabel({ actor, nextStatus })}
@@ -679,41 +823,57 @@ export default function TasksPage() {
 
   return (
     <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6 lg:space-y-8">
-      <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-2xl lg:rounded-3xl p-4 sm:p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,white,transparent_50%)] opacity-20"></div>
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.28),transparent_44%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.24),transparent_50%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:36px_36px]" />
 
-        <div className="relative z-10">
-          <div className="flex items-start sm:items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">My Tasks</h1>
-              <p className="text-white/90 text-sm mt-1 inline-flex items-center gap-2">
+        <div className="relative z-10 space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
+                <Activity className="h-3.5 w-3.5" />
+                {loading ? "Syncing task pipeline..." : "Realtime task operations"}
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[34px]">Task Operations</h1>
+                <p className="mt-1.5 max-w-2xl text-sm text-white/80 sm:text-base">
+                  Startup-grade control center for incoming leads, active jobs, and completed orders.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 text-xs text-white/80">
                 <Sparkles className="h-4 w-4" />
-                Realtime pipeline of your local orders
-              </p>
+                {actionRequiredCount} tasks currently require action
+              </div>
             </div>
+
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              Open Marketplace
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {stats.map((stat) => (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {headlineStats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 hover:bg-white/15 transition-all duration-300"
+                className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center`}>
-                    <stat.icon className="w-4 h-4 text-white" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white/75">{stat.label}</span>
+                  <div className={`grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br ${stat.color}`}>
+                    <stat.icon className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-semibold">{stat.label}</span>
                 </div>
-                <div className="text-3xl font-bold">{stat.value}</div>
+                <div className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{stat.value}</div>
+                <div className="mt-1 text-xs text-white/70">{stat.subtitle}</div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {usingDemo && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -725,171 +885,253 @@ export default function TasksPage() {
         <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-2">
-        <div className="flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {pipelineLanes.map((lane) => {
+          const LaneIcon = getStatusIcon(lane.status);
+          const lanePercent = tasks.length ? Math.round((lane.count / tasks.length) * 100) : 0;
+
+          return (
+            <div key={lane.key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{lane.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900">{lane.count}</p>
+                </div>
+                <div
+                  className={`grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br text-white ${getStatusAccentClass(lane.status)}`}
+                >
+                  <LaneIcon className="h-5 w-5" />
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">{lane.description}</p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(lane.status)}`}
+                  style={{ width: lane.count > 0 ? `${Math.max(8, lanePercent)}%` : "0%" }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+            <Search className="h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search by title, location, tags, person, or order id"
+              className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadTasks(true)}
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setSelectedTab(tab.value as "all" | "posted" | "accepted")}
-              className={`shrink-0 md:flex-1 min-w-[170px] px-4 sm:px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                 selectedTab === tab.value
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
-                  : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                  ? "bg-slate-900 text-white shadow-md"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               }`}
             >
               {tab.label} ({tab.count})
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-slate-600" />
-          <h2 className="text-lg font-bold text-slate-900">Filter by Status</h2>
-        </div>
-
-        <div className="flex flex-nowrap md:flex-wrap gap-2 sm:gap-3 overflow-x-auto">
+        <div className="mt-3 flex flex-wrap gap-2">
           {statusFilters.map((filter) => (
             <button
               key={filter.value}
               onClick={() => setSelectedStatus(filter.value)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 selectedStatus === filter.value
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg scale-105"
+                  ? "bg-indigo-600 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              <filter.icon className="w-4 h-4" />
+              <filter.icon className="h-3.5 w-3.5" />
               {filter.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-2xl font-bold text-slate-900">
-            {filteredTasks.length} {filteredTasks.length === 1 ? "Task" : "Tasks"}
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl font-bold text-slate-900">Operations Queue</h2>
+          <p className="text-sm text-slate-500">
+            {filteredTasks.length} visible of {tasks.length} total
+          </p>
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600 flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading task pipeline...
+          <div className="space-y-3">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+                <div className="mt-4 h-2 w-full animate-pulse rounded bg-slate-100" />
+              </div>
+            ))}
+            <div className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading task pipeline...
+            </div>
           </div>
         ) : (
           filteredTasks.map((task) => {
             const StatusIcon = getStatusIcon(task.status);
+            const progress = statusProgressMap[task.status];
+
             return (
               <div
                 key={task.id}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-xl border border-slate-200 p-4 sm:p-6 transition-all duration-300"
+                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
               >
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                      <h3 className="text-lg sm:text-xl font-bold text-slate-900">{task.title}</h3>
+                <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${getStatusAccentClass(task.status)}`} />
+
+                <div className="space-y-4 pl-2">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                          {getListingTypeLabel(task.listingType)}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                          Order #{task.orderId.slice(0, 8)}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 sm:text-xl">{task.title}</h3>
+                      <p className="text-sm text-slate-600">{task.description}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(task.status)}`}
                       >
                         <StatusIcon className="w-3.5 h-3.5" />
                         {formatTaskStatus(task.status)}
                       </span>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          task.type === "posted" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          task.type === "posted" ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
                         }`}
                       >
                         {task.type === "posted" ? "Posted by You" : "Accepted by You"}
                       </span>
                     </div>
-                    <p className="text-slate-600">{task.description}</p>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {task.tags.map((tag, index) => (
-                    <span key={`${task.id}-${index}`} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 p-3 sm:p-4 bg-slate-50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <div className="text-xs text-slate-500">Budget</div>
-                      <div className="font-semibold text-slate-900">{task.budget || "Price on request"}</div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className={`font-semibold ${getStatusTextClass(task.status)}`}>
+                        {task.timeline || "Open"}
+                      </span>
+                      <span className="font-semibold text-slate-500">{progress}% flow progress</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`}
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
                   </div>
 
-                  {task.timeline && (
+                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-slate-500" />
+                      <DollarSign className="h-4 w-4 text-slate-500" />
                       <div>
-                        <div className="text-xs text-slate-500">Timeline</div>
-                        <div className="font-semibold text-slate-900">{task.timeline}</div>
+                        <div className="text-xs text-slate-500">Budget</div>
+                        <div className="font-semibold text-slate-900">{task.budget || "Price on request"}</div>
                       </div>
                     </div>
-                  )}
 
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <div className="text-xs text-slate-500">Location</div>
-                      <div className="font-semibold text-slate-900">{task.location}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <div className="text-xs text-slate-500">Created</div>
-                      <div className="font-semibold text-slate-900">{task.createdAt}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pt-4 border-t border-slate-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-500" />
+                      <div>
+                        <div className="text-xs text-slate-500">Timeline</div>
+                        <div className="font-semibold text-slate-900">{task.timeline || "Open"}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-slate-500" />
+                      <div>
+                        <div className="text-xs text-slate-500">Location</div>
+                        <div className="font-semibold text-slate-900">{task.location}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-slate-500" />
+                      <div>
+                        <div className="text-xs text-slate-500">Created</div>
+                        <div className="font-semibold text-slate-900">{task.createdAt}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
                       <Image
                         src={task.postedBy.image || fallbackAvatar}
                         alt={task.postedBy.name}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200"
+                        width={36}
+                        height={36}
+                        className="h-9 w-9 rounded-xl border border-slate-200 object-cover"
                       />
                       <div>
                         <div className="text-xs text-slate-500">Posted by</div>
-                        <div className="font-semibold text-slate-900">{task.postedBy.name}</div>
+                        <div className="text-sm font-semibold text-slate-900">{task.postedBy.name}</div>
                       </div>
                     </div>
 
                     {task.assignedTo && (
-                      <>
-                        <div className="text-slate-400">→</div>
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={task.assignedTo.image || fallbackAvatar}
-                            alt={task.assignedTo.name}
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-xl object-cover border-2 border-slate-200"
-                          />
-                          <div>
-                            <div className="text-xs text-slate-500">Assigned to</div>
-                            <div className="font-semibold text-slate-900">{task.assignedTo.name}</div>
-                          </div>
+                      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <Image
+                          src={task.assignedTo.image || fallbackAvatar}
+                          alt={task.assignedTo.name}
+                          width={36}
+                          height={36}
+                          className="h-9 w-9 rounded-xl border border-slate-200 object-cover"
+                        />
+                        <div>
+                          <div className="text-xs text-slate-500">Assigned to</div>
+                          <div className="text-sm font-semibold text-slate-900">{task.assignedTo.name}</div>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  {renderActions(task)}
+                  <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      {task.tags.slice(0, 4).map((tag, index) => (
+                        <span
+                          key={`${task.id}-${index}`}
+                          className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    {renderActions(task)}
+                  </div>
                 </div>
               </div>
             );
@@ -901,7 +1143,9 @@ export default function TasksPage() {
         <div className="text-center py-16 bg-white rounded-2xl shadow-xl border border-slate-200">
           <Package className="w-16 h-16 mx-auto mb-4 text-slate-400" />
           <h3 className="text-xl font-bold text-slate-900 mb-2">No tasks found</h3>
-          <p className="text-slate-600 mb-6">Try changing filters or creating a new booking from marketplace feed.</p>
+          <p className="text-slate-600 mb-6">
+            Try a different status/tab filter or clear your search query to reveal hidden tasks.
+          </p>
           <button
             onClick={() => router.push("/dashboard")}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center gap-2"

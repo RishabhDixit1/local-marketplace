@@ -113,6 +113,7 @@ const RADIUS_OPTIONS = [1, 5, 10, 15, 25];
 const SORT_OPTIONS = ["Best Match", "Nearest", "Top Rated", "Most Listings", "Fast Response"] as const;
 const FAST_RESPONSE_THRESHOLD_MINUTES = 15;
 const PEOPLE_PREFERENCES_STORAGE_KEY = "local-marketplace-people-preferences-v1";
+const GEO_LOOKUP_TIMEOUT_MS = 1200;
 
 const demoPeople: ProviderCard[] = [
   {
@@ -338,7 +339,7 @@ export default function PeoplePage() {
     if (soft) setSyncing(true);
     setErrorMessage("");
 
-    const browserCoordinatesPromise = getBrowserCoordinates(4500);
+    const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
 
     const {
       data: { user },
@@ -356,17 +357,48 @@ export default function PeoplePage() {
 
     setCurrentUserId(user?.id || null);
 
-    const [{ data: profiles, error: profilesError }, { data: services }, { data: products }, { data: reviews }] =
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude"),
-        supabase.from("service_listings").select("provider_id,category,price"),
-        supabase.from("product_catalog").select("provider_id,category,price"),
-        supabase.from("reviews").select("provider_id,rating"),
-      ]);
+    const [{ data: services, error: servicesError }, { data: products, error: productsError }] = await Promise.all([
+      supabase.from("service_listings").select("provider_id,category,price"),
+      supabase.from("product_catalog").select("provider_id,category,price"),
+    ]);
 
-    if (profilesError || !profiles) {
+    if (servicesError || productsError) {
+      setProviders(demoPeople);
+      setUsingDemo(true);
+      setLoading(false);
+      setSyncing(false);
+      setErrorMessage(
+        `Could not load provider listings: ${servicesError?.message || productsError?.message || "unknown error"}`
+      );
+      return;
+    }
+
+    const serviceRows = (services as ServiceRow[] | null) || [];
+    const productRows = (products as ProductRow[] | null) || [];
+    const providerIdsFromListings = Array.from(
+      new Set(
+        [...serviceRows.map((row) => row.provider_id), ...productRows.map((row) => row.provider_id)].filter(
+          (id): id is string => Boolean(id)
+        )
+      )
+    );
+    const profileIdsToLoad = Array.from(
+      new Set([...(user?.id ? [user.id] : []), ...providerIdsFromListings])
+    );
+
+    const [{ data: profiles, error: profilesError }, { data: reviews, error: reviewsError }] = await Promise.all([
+      profileIdsToLoad.length
+        ? supabase
+            .from("profiles")
+            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
+            .in("id", profileIdsToLoad)
+        : Promise.resolve({ data: [] as ProfileRow[], error: null }),
+      providerIdsFromListings.length
+        ? supabase.from("reviews").select("provider_id,rating").in("provider_id", providerIdsFromListings)
+        : Promise.resolve({ data: [] as ReviewRow[], error: null }),
+    ]);
+
+    if (profilesError) {
       setProviders(demoPeople);
       setUsingDemo(true);
       setLoading(false);
@@ -375,9 +407,11 @@ export default function PeoplePage() {
       return;
     }
 
-    const serviceRows = (services as ServiceRow[] | null) || [];
-    const productRows = (products as ProductRow[] | null) || [];
-    const reviewRows = (reviews as ReviewRow[] | null) || [];
+    if (reviewsError) {
+      console.warn("Could not load provider reviews:", reviewsError.message);
+    }
+
+    const reviewRows = reviewsError ? [] : (reviews as ReviewRow[] | null) || [];
     const profileRows = (profiles as ProfileRow[] | null) || [];
     const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
     const profileCoordinates = currentUserProfile
