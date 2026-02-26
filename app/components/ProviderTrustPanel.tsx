@@ -45,6 +45,80 @@ type ProviderOrderStatsRow = {
   open_leads: number | string;
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const demoProfileMap: Record<
+  string,
+  Pick<ProfileRow, "name" | "location" | "bio" | "role" | "availability">
+> = {
+  "demo-1": {
+    name: "Test Electrician",
+    location: "Nearby",
+    bio: "Seeded demo profile for local electrician discovery.",
+    role: "provider",
+    availability: "available",
+  },
+  "demo-2": {
+    name: "Test Cleaning Team",
+    location: "West Side",
+    bio: "Seeded demo profile for cleaning and home support.",
+    role: "provider",
+    availability: "available",
+  },
+  "demo-3": {
+    name: "Test Plumbing Pro",
+    location: "East End",
+    bio: "Seeded demo profile for plumbing and emergency fixes.",
+    role: "provider",
+    availability: "available",
+  },
+  "demo-provider-amit": {
+    name: "Amit P",
+    location: "Nearby",
+    bio: "Seeded demo profile.",
+    role: "provider",
+    availability: "available",
+  },
+  "demo-provider-mary": {
+    name: "Mary Electricals",
+    location: "Nearby",
+    bio: "Seeded demo profile.",
+    role: "business",
+    availability: "available",
+  },
+  "demo-provider-sejal": {
+    name: "Sejal CleanCare",
+    location: "Nearby",
+    bio: "Seeded demo profile.",
+    role: "provider",
+    availability: "available",
+  },
+};
+
+const buildDemoProfile = (id: string): ProfileRow => {
+  const mapped = demoProfileMap[id] || {
+    name: "Demo Provider",
+    location: "Nearby",
+    bio: "Seeded demo profile.",
+    role: "provider",
+    availability: "available",
+  };
+
+  return {
+    id,
+    name: mapped.name,
+    location: mapped.location,
+    bio: mapped.bio,
+    role: mapped.role,
+    services: [],
+    availability: mapped.availability,
+    email: null,
+    phone: null,
+    website: null,
+    avatar_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(id)}`,
+  };
+};
+
 export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
@@ -52,18 +126,40 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [servicesCount, setServicesCount] = useState(0);
   const [productsCount, setProductsCount] = useState(0);
   const [completedJobs, setCompletedJobs] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const isUuidUserId = UUID_PATTERN.test(userId);
 
   useEffect(() => {
     if (!open || !userId) return;
 
     let isMounted = true;
+    setLoading(true);
+    setLoadError(null);
+    setProfile(null);
+    setReviews([]);
+    setServicesCount(0);
+    setProductsCount(0);
+    setCompletedJobs(0);
+
+    if (!isUuidUserId) {
+      setProfile(buildDemoProfile(userId));
+      setLoading(false);
+      return;
+    }
 
     void (async () => {
-      const [{ data: profileRow }, { data: reviewRows }, { data: serviceRows }, { data: productRows }, { data: providerOrderStats }] =
-        await Promise.all([
+      try {
+        const [
+          { data: profileRow, error: profileError },
+          { data: reviewRows, error: reviewError },
+          { data: serviceRows, error: servicesError },
+          { data: productRows, error: productsError },
+          { data: providerOrderStats, error: statsError },
+        ] = await Promise.all([
           supabase
             .from("profiles")
-            .select("id,name,location,bio,role,services,availability,email,phone,website,avatar_url")
+            .select("*")
             .eq("id", userId)
             .maybeSingle<ProfileRow>(),
           supabase.from("reviews").select("rating,comment").eq("provider_id", userId),
@@ -72,21 +168,48 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           supabase.rpc("get_provider_order_stats", { provider_ids: [userId] }),
         ]);
 
-      if (!isMounted) return;
-      setProfile(profileRow || null);
-      setReviews((reviewRows as ReviewRow[] | null) || []);
-      setServicesCount((serviceRows || []).length);
-      setProductsCount((productRows || []).length);
+        if (!isMounted) return;
 
-      const statsRows = (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
-      const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : 0;
-      setCompletedJobs(doneCount);
+        if (profileError || reviewError || servicesError || productsError) {
+          const firstError =
+            profileError?.message ||
+            reviewError?.message ||
+            servicesError?.message ||
+            productsError?.message ||
+            "Could not load provider details.";
+          setLoadError(firstError);
+          return;
+        }
+
+        if (statsError) {
+          console.warn("Provider order stats RPC unavailable, using fallback stats:", statsError.message);
+        }
+
+        setProfile(profileRow || null);
+        setReviews((reviewRows as ReviewRow[] | null) || []);
+        setServicesCount((serviceRows || []).length);
+        setProductsCount((productRows || []).length);
+
+        const statsRows = statsError ? [] : (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
+        const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : 0;
+        setCompletedJobs(doneCount);
+      } catch {
+        if (!isMounted) return;
+        setLoadError("Could not load provider details.");
+      } finally {
+        if (!isMounted) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
       isMounted = false;
     };
-  }, [open, userId]);
+  }, [isUuidUserId, open, userId]);
+
+  useEffect(() => {
+    if (!open) setOpenReview(false);
+  }, [open]);
 
   const avgRating = useMemo(() => {
     if (!reviews.length) return 0;
@@ -137,13 +260,28 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-slate-800 bg-slate-950 p-6 animate-in slide-in-from-right">
-        <button onClick={onClose} className="absolute right-4 top-4 text-slate-400 hover:text-white">
+      <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 text-slate-900 shadow-xl animate-in slide-in-from-right">
+        <button type="button" onClick={onClose} className="absolute right-4 top-4 text-slate-500 hover:text-slate-800">
           <X />
         </button>
 
-        {!profile ? (
-          <p className="text-sm text-slate-400">Loading provider profile...</p>
+        {loading ? (
+          <div className="mt-8 space-y-3">
+            <p className="text-sm text-slate-600">Loading provider profile...</p>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full w-1/2 animate-pulse bg-indigo-500/80" />
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className="mt-8 rounded-xl border border-rose-200 bg-rose-50 p-4">
+            <p className="text-sm font-semibold text-rose-700">Unable to load provider profile</p>
+            <p className="mt-1 text-xs text-rose-600">{loadError}</p>
+          </div>
+        ) : !profile ? (
+          <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-semibold text-slate-900">Provider profile unavailable</p>
+            <p className="mt-1 text-xs text-slate-600">This provider does not have a published trust profile yet.</p>
+          </div>
         ) : (
           <>
             <div className="mb-6 text-center">
@@ -155,11 +293,11 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
               <h2 className="text-xl font-semibold">{profile?.name || "Provider"}</h2>
-              <p className="mt-1 flex items-center justify-center gap-1 text-sm text-slate-400">
+              <p className="mt-1 flex items-center justify-center gap-1 text-sm text-slate-500">
                 <MapPin size={14} />
                 {profile?.location || "Unknown"}
               </p>
-              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">
+              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
                 <BadgeCheck size={13} />
                 {verificationLabel(verificationStatus)}
               </div>
@@ -174,7 +312,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
             <div className="mb-6">
               <h3 className="mb-2 font-semibold">About</h3>
-              <p className="text-sm text-slate-400">{profile?.bio || "No bio added yet."}</p>
+              <p className="text-sm text-slate-600">{profile?.bio || "No bio added yet."}</p>
             </div>
 
             <div className="mb-6">
@@ -182,7 +320,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               <div className="flex flex-wrap gap-2">
                 {profile?.services?.length ? (
                   profile.services.map((service) => (
-                    <span key={service} className="rounded-full bg-slate-800 px-3 py-1 text-xs">
+                    <span key={service} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
                       {service}
                     </span>
                   ))
@@ -197,9 +335,9 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               <div className="max-h-40 space-y-2 overflow-y-auto">
                 {reviews.length === 0 && <p className="text-sm text-slate-500">No reviews yet.</p>}
                 {reviews.map((review, index) => (
-                  <div key={`review-${index}`} className="rounded-lg bg-slate-800 p-2">
+                  <div key={`review-${index}`} className="rounded-lg bg-slate-100 p-2">
                     <div className="text-sm text-yellow-400">{"★".repeat(Math.max(1, Number(review.rating || 0)))}</div>
-                    <p className="text-xs text-slate-300">{review.comment || "Customer left a rating."}</p>
+                    <p className="text-xs text-slate-600">{review.comment || "Customer left a rating."}</p>
                   </div>
                 ))}
               </div>
@@ -207,23 +345,31 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
             <div className="mb-6">
               <h3 className="mb-2 text-sm">Trust Score</h3>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400" style={{ width: `${profileCompletion}%` }} />
               </div>
-              <p className="mt-1 text-xs text-slate-400">{profileCompletion}% profile completion</p>
+              <p className="mt-1 text-xs text-slate-600">{profileCompletion}% profile completion</p>
             </div>
 
             <div className="space-y-3">
               <button
+                type="button"
                 onClick={() => setOpenReview(true)}
-                className="w-full rounded-xl bg-indigo-600 py-2 text-sm font-semibold hover:bg-indigo-500"
+                disabled={!isUuidUserId}
+                className={`w-full rounded-xl py-2 text-sm font-semibold transition ${
+                  isUuidUserId
+                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                    : "cursor-not-allowed bg-slate-200 text-slate-500"
+                }`}
               >
                 Write Review
               </button>
-              {!!businessSlug && (
+              {!isUuidUserId && <p className="text-xs text-slate-500">Reviews are disabled for demo providers.</p>}
+              {!!businessSlug && isUuidUserId && (
                 <button
+                  type="button"
                   onClick={() => window.open(`/business/${businessSlug}`, "_blank")}
-                  className="w-full rounded-xl bg-slate-800 py-2 text-sm font-semibold hover:bg-slate-700 inline-flex items-center justify-center gap-2"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                 >
                   <ExternalLink size={14} />
                   Open Public Business Page
@@ -241,10 +387,10 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-center">
-      <div className="mb-1 flex justify-center text-indigo-400">{icon}</div>
-      <div className="font-semibold">{value}</div>
-      <div className="text-xs text-slate-400">{label}</div>
+    <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
+      <div className="mb-1 flex justify-center text-indigo-600">{icon}</div>
+      <div className="font-semibold text-slate-900">{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
     </div>
   );
 }
