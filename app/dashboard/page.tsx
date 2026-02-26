@@ -59,6 +59,7 @@ const FEED_LIMIT_PER_TYPE = 48;
 const MAX_PROFILE_LOOKUP = 120;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
+const GEO_LOOKUP_TIMEOUT_MS = 1200;
 
 /* ================= TYPES ================= */
 
@@ -630,7 +631,7 @@ export default function MarketplacePage() {
       let serviceRowsRaw: FlexibleRow[] = [];
       let productRowsRaw: FlexibleRow[] = [];
       let postRowsRaw: FlexibleRow[] = [];
-      const browserCoordinatesPromise = getBrowserCoordinates(4500);
+      const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
 
       const {
         data: { user },
@@ -663,14 +664,13 @@ export default function MarketplacePage() {
         }
       }
 
-      const browserCoordinates = await browserCoordinatesPromise;
       const profileCoordinates = resolveCoordinates({
         row: currentUserProfileRow,
         location: stringFromRow(currentUserProfileRow || {}, ["location"], ""),
         seed: currentUserId,
       });
-      const resolvedViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
-      setViewerCoordinates(resolvedViewerCoordinates);
+      const fallbackViewerCoordinates = profileCoordinates || defaultMarketCoordinates();
+      setViewerCoordinates(fallbackViewerCoordinates);
 
       const servicePrimary = await supabase
         .from("service_listings")
@@ -734,6 +734,12 @@ export default function MarketplacePage() {
         }
       } else {
         postRowsRaw = (postsPrimary.data as FlexibleRow[] | null) || [];
+      }
+
+      const browserCoordinates = await browserCoordinatesPromise;
+      const resolvedViewerCoordinates = browserCoordinates || fallbackViewerCoordinates;
+      if (browserCoordinates) {
+        setViewerCoordinates(resolvedViewerCoordinates);
       }
 
       const serviceRows: ServiceRow[] = serviceRowsRaw

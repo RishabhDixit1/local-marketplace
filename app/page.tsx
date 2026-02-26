@@ -5,7 +5,8 @@ import { supabase } from "../lib/supabase";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
-const AUTH_REQUEST_TIMEOUT_MS = 12000;
+const AUTH_SOFT_TIMEOUT_MS = 10000;
+const AUTH_HARD_TIMEOUT_MS = 45000;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,12 +14,12 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<T> => {
+  const withHardTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_HARD_TIMEOUT_MS): Promise<T> => {
     let timeoutId: number | undefined;
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = window.setTimeout(() => {
-        reject(new Error("Request timed out. Please try again."));
+        reject(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
       }, timeoutMs);
     });
 
@@ -35,21 +36,31 @@ export default function LoginPage() {
       setErrorMessage("Enter your email address to continue.");
       return;
     }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setErrorMessage("No internet connection. Reconnect and try again.");
+      return;
+    }
 
     setLoading(true);
     setErrorMessage("");
 
     const baseUrl = window.location.origin;
     const redirectTo = `${baseUrl}/dashboard`;
+    let slowRequestTimer: number | undefined;
 
     try {
-      const { error } = await withTimeout(
+      slowRequestTimer = window.setTimeout(() => {
+        setErrorMessage("Still sending your login link. This can take up to a minute on slower networks.");
+      }, AUTH_SOFT_TIMEOUT_MS);
+
+      const { error } = await withHardTimeout(
         supabase.auth.signInWithOtp({
           email: trimmedEmail,
           options: {
             emailRedirectTo: redirectTo,
           },
-        })
+        }),
+        AUTH_HARD_TIMEOUT_MS
       );
 
       if (error) {
@@ -69,12 +80,13 @@ export default function LoginPage() {
         return;
       }
 
+      setErrorMessage("");
       setSent(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send login link right now.";
       if (/timed out/i.test(message)) {
         setErrorMessage(
-          "Request took too long. The link may still arrive shortly, or you can retry now."
+          "Auth server is taking too long. The link may still arrive shortly, or you can retry now."
         );
       } else {
         setErrorMessage(
@@ -83,6 +95,9 @@ export default function LoginPage() {
       }
       setSent(false);
     } finally {
+      if (slowRequestTimer !== undefined) {
+        window.clearTimeout(slowRequestTimer);
+      }
       setLoading(false);
     }
   };

@@ -45,6 +45,10 @@ type ProfileRow = {
 };
 
 const fallbackAvatar = "https://i.pravatar.cc/150";
+const CONVERSATION_MESSAGE_SCAN_MIN = 200;
+const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
+const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
+const MESSAGE_HISTORY_LIMIT = 300;
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], {
@@ -149,6 +153,10 @@ export default function ChatPage() {
       }
 
       const conversationIds = myParticipantRows.map((row) => row.conversation_id);
+      const messageScanLimit = Math.min(
+        CONVERSATION_MESSAGE_SCAN_MAX,
+        Math.max(CONVERSATION_MESSAGE_SCAN_MIN, conversationIds.length * CONVERSATION_MESSAGE_SCAN_PER_CHAT)
+      );
 
       const [{ data: allParticipantRows, error: allParticipantsError }, { data: messageRows, error: messagesError }] =
         await Promise.all([
@@ -161,7 +169,7 @@ export default function ChatPage() {
             .select("id,conversation_id,content,created_at,sender_id")
             .in("conversation_id", conversationIds)
             .order("created_at", { ascending: false })
-            .limit(2000),
+            .limit(messageScanLimit),
         ]);
 
       if (allParticipantsError) {
@@ -270,7 +278,8 @@ export default function ChatPage() {
       .from("messages")
       .select("id,conversation_id,content,sender_id,created_at")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(MESSAGE_HISTORY_LIMIT);
 
     if (error) {
       setChatError(`Failed to load chat messages: ${error.message}`);
@@ -279,7 +288,8 @@ export default function ChatPage() {
       return;
     }
 
-    setMessages((data as Message[] | null) || []);
+    const normalized = ((data as Message[] | null) || []).slice().reverse();
+    setMessages(normalized);
     setLoadingMessages(false);
   }, []);
 
