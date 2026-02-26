@@ -70,6 +70,12 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
+const DEMO_CHAT_TARGET_COUNT = 2;
+const DEMO_CHAT_PREFERRED_NAMES = ["User", "Test User 2"];
+const DEMO_CHAT_WELCOME_MESSAGE = "Welcome - demo conversation is ready for this account.";
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const CHANNEL_HEALTH_STYLES: Record<
   ChannelHealth,
@@ -179,6 +185,7 @@ export default function ChatPage() {
   const [typingConnection, setTypingConnection] = useState<ChannelHealth>("offline");
   const [streamConnection, setStreamConnection] = useState<ChannelHealth>("connecting");
   const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState<string | null>(null);
+  const [supportsReadReceipts, setSupportsReadReceipts] = useState(true);
 
   const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -217,22 +224,167 @@ export default function ChatPage() {
     [userId]
   );
 
+  const ensureDemoConversationsForUser = useCallback(async () => {
+    if (!userId) return false;
+
+    const preferredProfilesResult = await supabase
+      .from("profiles")
+      .select("id,name")
+      .in("name", DEMO_CHAT_PREFERRED_NAMES)
+      .neq("id", userId)
+      .limit(6);
+
+    const chosenProfiles: ProfileRow[] = [];
+    const chosenProfileIds = new Set<string>();
+
+    const pushProfiles = (rows: ProfileRow[] | null) => {
+      (rows || []).forEach((row) => {
+        if (!row?.id || row.id === userId || chosenProfileIds.has(row.id)) return;
+        chosenProfileIds.add(row.id);
+        chosenProfiles.push(row);
+      });
+    };
+
+    if (!preferredProfilesResult.error) {
+      pushProfiles((preferredProfilesResult.data as ProfileRow[] | null) || []);
+    }
+
+    if (chosenProfiles.length < DEMO_CHAT_TARGET_COUNT) {
+      const fallbackProfilesResult = await supabase
+        .from("profiles")
+        .select("id,name")
+        .neq("id", userId)
+        .limit(8);
+
+      if (!fallbackProfilesResult.error) {
+        pushProfiles((fallbackProfilesResult.data as ProfileRow[] | null) || []);
+      }
+    }
+
+    const demoTargets = chosenProfiles.slice(0, DEMO_CHAT_TARGET_COUNT);
+    if (!demoTargets.length) return false;
+
+    const { data: myConversationRows, error: myConversationRowsError } = await supabase
+      .from("conversation_participants")
+      .select("conversation_id")
+      .eq("user_id", userId);
+
+    if (myConversationRowsError) {
+      return false;
+    }
+
+    const myConversationIds =
+      ((myConversationRows as Array<{ conversation_id: string }> | null) || []).map((row) => row.conversation_id);
+    const demoTargetIds = demoTargets.map((target) => target.id);
+    const existingTargetUserIds = new Set<string>();
+
+    if (myConversationIds.length > 0) {
+      const { data: existingRows } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id,user_id")
+        .in("conversation_id", myConversationIds)
+        .in("user_id", demoTargetIds);
+
+      ((existingRows as Array<{ conversation_id: string; user_id: string }> | null) || []).forEach((row) => {
+        if (row.user_id && row.user_id !== userId) {
+          existingTargetUserIds.add(row.user_id);
+        }
+      });
+    }
+
+    let createdAnyConversation = false;
+
+    for (const target of demoTargets) {
+      if (existingTargetUserIds.has(target.id)) continue;
+
+      const { data: createdConversation, error: createConversationError } = await supabase
+        .from("conversations")
+        .insert({
+          created_by: userId,
+        })
+        .select("id")
+        .single();
+
+      if (createConversationError || !createdConversation?.id) {
+        continue;
+      }
+
+      const { error: participantError } = await supabase.from("conversation_participants").upsert(
+        [
+          {
+            conversation_id: createdConversation.id,
+            user_id: userId,
+          },
+          {
+            conversation_id: createdConversation.id,
+            user_id: target.id,
+          },
+        ],
+        {
+          onConflict: "conversation_id,user_id",
+          ignoreDuplicates: true,
+        }
+      );
+
+      if (participantError) {
+        continue;
+      }
+
+      await supabase.from("messages").insert({
+        conversation_id: createdConversation.id,
+        sender_id: userId,
+        content: DEMO_CHAT_WELCOME_MESSAGE,
+      });
+
+      createdAnyConversation = true;
+    }
+
+    return createdAnyConversation;
+  }, [userId]);
+
   const loadConversations = useCallback(
     async (soft = false) => {
       if (!userId) return;
       if (!soft) setLoadingConversations(true);
 
-      const { data: myParticipantRows, error: participantsError } = await supabase
+      let hasReadReceiptColumn = true;
+      let myParticipantRows: ParticipantRow[] = [];
+
+      const participantsWithReadState = await supabase
         .from("conversation_participants")
         .select("conversation_id,user_id,last_read_at")
         .eq("user_id", userId);
 
-      if (participantsError) {
-        setChatError(`Failed to load conversation participants: ${participantsError.message}`);
-        setConversations([]);
-        setLoadingConversations(false);
-        return;
+      if (participantsWithReadState.error) {
+        if (isMissingColumnError(participantsWithReadState.error.message)) {
+          hasReadReceiptColumn = false;
+          const participantsFallback = await supabase
+            .from("conversation_participants")
+            .select("conversation_id,user_id")
+            .eq("user_id", userId);
+
+          if (participantsFallback.error) {
+            setChatError(`Failed to load conversation participants: ${participantsFallback.error.message}`);
+            setConversations([]);
+            setLoadingConversations(false);
+            return;
+          }
+
+          myParticipantRows = (((participantsFallback.data as ParticipantRow[] | null) || []).map((row) => ({
+            ...row,
+            last_read_at: null,
+          })));
+        } else {
+          setChatError(`Failed to load conversation participants: ${participantsWithReadState.error.message}`);
+          setConversations([]);
+          setLoadingConversations(false);
+          return;
+        }
+      } else {
+        myParticipantRows = (participantsWithReadState.data as ParticipantRow[] | null) || [];
       }
+
+      setSupportsReadReceipts(hasReadReceiptColumn);
 
       if (!myParticipantRows?.length) {
         setConversations([]);
@@ -317,11 +469,13 @@ export default function ChatPage() {
         const lastMessage = lastMessageByConversation.get(conversationId);
         const lastReadAt = lastReadAtByConversation.get(conversationId) || null;
         const conversationMessages = messagesByConversation.get(conversationId) || [];
-        const unreadCount = conversationMessages.reduce((count, message) => {
-          if (message.sender_id === userId) return count;
-          if (!lastReadAt) return count + 1;
-          return message.created_at > lastReadAt ? count + 1 : count;
-        }, 0);
+        const unreadCount = hasReadReceiptColumn
+          ? conversationMessages.reduce((count, message) => {
+              if (message.sender_id === userId) return count;
+              if (!lastReadAt) return count + 1;
+              return message.created_at > lastReadAt ? count + 1 : count;
+            }, 0)
+          : 0;
 
         return {
           id: conversationId,
@@ -385,6 +539,14 @@ export default function ChatPage() {
   const markConversationAsRead = useCallback(
     async (conversationId: string, readAt?: string) => {
       if (!userId || !conversationId) return;
+      if (!supportsReadReceipts) {
+        setConversations((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+          )
+        );
+        return;
+      }
       const timestamp = readAt || new Date().toISOString();
 
       const { error } = await supabase
@@ -394,7 +556,11 @@ export default function ChatPage() {
         .eq("user_id", userId);
 
       if (error) {
-        console.warn("Failed to persist read state:", error.message);
+        if (isMissingColumnError(error.message)) {
+          setSupportsReadReceipts(false);
+        } else {
+          console.warn("Failed to persist read state:", error.message);
+        }
       }
 
       setConversations((previous) =>
@@ -403,7 +569,7 @@ export default function ChatPage() {
         )
       );
     },
-    [userId]
+    [supportsReadReceipts, userId]
   );
 
   useEffect(() => {
@@ -437,9 +603,20 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!userId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadConversations();
-  }, [loadConversations, userId]);
+
+    let isCancelled = false;
+    const bootstrapAndLoad = async () => {
+      await ensureDemoConversationsForUser();
+      if (isCancelled) return;
+      await loadConversations();
+    };
+
+    void bootstrapAndLoad();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [ensureDemoConversationsForUser, loadConversations, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -594,7 +771,7 @@ export default function ChatPage() {
             const updated = previousConversations.map((conversation) => {
               if (conversation.id !== newMessage.conversation_id) return conversation;
               const unreadIncrement =
-                newMessage.sender_id !== userId && !isCurrentConversation
+                supportsReadReceipts && newMessage.sender_id !== userId && !isCurrentConversation
                   ? conversation.unreadCount + 1
                   : 0;
 
@@ -651,7 +828,7 @@ export default function ChatPage() {
       supabase.removeChannel(realtimeChannel);
       setStreamConnection("offline");
     };
-  }, [loadConversations, markConversationAsRead, userId]);
+  }, [loadConversations, markConversationAsRead, supportsReadReceipts, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

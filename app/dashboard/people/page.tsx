@@ -399,7 +399,7 @@ export default function PeoplePage() {
       profileIdsToLoad.length
         ? supabase
             .from("profiles")
-            .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
+            .select("*")
             .in("id", profileIdsToLoad)
         : Promise.resolve({ data: [] as ProfileRow[], error: null }),
       providerIdsFromListings.length
