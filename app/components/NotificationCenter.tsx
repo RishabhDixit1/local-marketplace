@@ -156,16 +156,25 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          setNotifications([]);
+          setLoading(false);
+          setErrorMessage("");
+          setDemoMode(false);
+        }
+        setUserId(user?.id || "");
+      } catch (error) {
+        console.warn("Unable to initialize notifications auth:", error);
         setNotifications([]);
         setLoading(false);
         setErrorMessage("");
         setDemoMode(false);
+        setUserId("");
       }
-      setUserId(user?.id || "");
     };
 
     void bootstrap();

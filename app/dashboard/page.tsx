@@ -1112,7 +1112,8 @@ export default function MarketplacePage() {
       }
       setLastSyncedAt(new Date().toISOString());
     } catch (error) {
-      console.error("Failed to load marketplace feed:", error);
+      const feedErrorMessage = error instanceof Error ? error.message : "Failed to fetch marketplace feed";
+      console.warn("Failed to load marketplace feed:", feedErrorMessage);
       if (soft) {
         setFeedError(error instanceof Error ? `${error.message}. Keeping current feed.` : "Keeping current feed.");
       } else {
