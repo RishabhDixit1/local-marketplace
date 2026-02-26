@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import ProviderPopup from "@/app/components/ProviderPopup";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -72,6 +73,7 @@ const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filter
 const MARKETPLACE_LAYOUT_STORAGE_KEY = "local-marketplace-dashboard-feed-layout-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
+const QUICK_SEARCH_CHIPS = ["Cleaning", "Repair", "Delivery", "Food", "Electrician"] as const;
 
 /* ================= TYPES ================= */
 
@@ -1371,6 +1373,15 @@ const feedMix = useMemo(() => {
   return { demand, service, product };
 }, [visibleFeed]);
 
+const feedMixPercentages = useMemo(() => {
+  const total = Math.max(1, feedMix.demand + feedMix.service + feedMix.product);
+  return {
+    demand: Math.round((feedMix.demand / total) * 100),
+    service: Math.round((feedMix.service / total) * 100),
+    product: Math.round((feedMix.product / total) * 100),
+  };
+}, [feedMix.demand, feedMix.product, feedMix.service]);
+
 const hottestCategories = useMemo(
   () =>
     [...visibleFeed]
@@ -1380,6 +1391,29 @@ const hottestCategories = useMemo(
       .filter((value, index, array) => array.indexOf(value) === index),
   [visibleFeed]
 );
+
+const startupReadinessScore = useMemo(() => {
+  const verifiedSignal =
+    filteredStats.total > 0 ? Math.round((filteredStats.verified / filteredStats.total) * 100) : 0;
+  const fastResponseCount = feed.filter((item) => item.responseMinutes <= 15).length;
+  const responseSignal =
+    feed.length > 0 ? Math.round((fastResponseCount / feed.length) * 100) : 0;
+  const streamSignal =
+    feedChannelHealth === "connected"
+      ? 100
+      : feedChannelHealth === "connecting" || feedChannelHealth === "reconnecting"
+      ? 72
+      : feedChannelHealth === "idle"
+      ? 56
+      : 35;
+
+  return Math.round(verifiedSignal * 0.45 + responseSignal * 0.35 + streamSignal * 0.2);
+}, [
+  feed,
+  feedChannelHealth,
+  filteredStats.total,
+  filteredStats.verified,
+]);
 
 const clearAdvancedFilters = () => {
   setMaxDistanceKm(0);
@@ -1570,27 +1604,28 @@ const layoutLabel = feedLayout === "thread" ? "Thread Feed" : "Card Feed";
 return (
   <div className="min-h-screen bg-transparent text-slate-900">
     <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
-      <div className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600 shadow-[0_24px_80px_rgba(30,64,175,0.35)]">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-        <div className="absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="market-hero-surface rounded-3xl border border-sky-200/25 bg-gradient-to-r from-slate-900 via-indigo-900 to-sky-800 shadow-[0_24px_80px_rgba(15,23,42,0.45)]">
+        <div className="market-orb-float absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />
+        <div className="market-orb-float-delayed absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
+        <div className="market-orb-float absolute -left-10 top-16 h-36 w-36 rounded-full bg-cyan-200/10 blur-3xl" />
 
         <div className="relative p-5 sm:p-7 lg:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
                 <Sparkles size={13} />
-                Connected Community Feed
+                Market Command Feed
               </div>
               <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                Local Feed: Demand, Services, Products
+                Ship faster with realtime local demand intelligence
               </h1>
               <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
-                Reddit-like stream for your neighborhood: realtime listings, trust context, and instant conversion.
+                Production-ready marketplace stream for nearby needs, verified providers, and conversion-focused actions.
               </p>
             </div>
 
             <div className="w-full lg:w-[560px] space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs text-white/90">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-white/90">
                 <span className="inline-flex items-center gap-1.5">
                   {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Radar size={12} />}
                   {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
@@ -1649,26 +1684,38 @@ return (
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Providers</p>
               <p className="mt-1 text-xl font-bold text-white">{dashboardStats.providers || 520}</p>
             </div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Urgent Needs</p>
               <p className="mt-1 text-xl font-bold text-white">{dashboardStats.urgentCount}</p>
             </div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Avg Match</p>
               <p className="mt-1 text-xl font-bold text-white">{dashboardStats.avgMatch}</p>
             </div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Fast Replies</p>
               <p className="mt-1 text-xl font-bold text-white">{dashboardStats.fastResponses}</p>
             </div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2.5">
+            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Live Events</p>
               <p className="mt-1 text-xl font-bold text-white">{liveEventCount}</p>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-100/90 px-2.5 py-1 font-semibold text-emerald-800">
+              Startup readiness {startupReadinessScore}%
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-white/90">
+              {filteredStats.total} active listings in view
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-white/90">
+              {activeFilterCount > 0 ? `${activeFilterCount} active filters` : "No active advanced filters"}
+            </span>
           </div>
         </div>
       </div>
@@ -1825,7 +1872,7 @@ return (
         </div>
 
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
-          {["Cleaning", "Repair", "Delivery", "Food", "Electrician"].map((chip) => (
+          {QUICK_SEARCH_CHIPS.map((chip) => (
             <button
               key={chip}
               onClick={() => {
@@ -2150,7 +2197,7 @@ return (
                   </div>
                 </div>
 
-                {visibleFeed.map((item) => {
+                {visibleFeed.map((item, index) => {
                   const listingSignals = getListingSignals(item);
                   const freshLabel = formatRelativeAge(item.createdAt);
                   const freshClassName = isFreshListing(item.createdAt)
@@ -2159,6 +2206,7 @@ return (
                   const threadMode = feedLayout === "thread";
                   const voteScore = listingVotes[item.id] ?? Math.max(1, Math.round(item.rankScore / 7));
                   const saved = savedListingIds.has(item.id);
+                  const enterDelay = Math.min(index * 45, 320);
 
                   return (
                     <div
@@ -2166,7 +2214,8 @@ return (
                       ref={(el) => {
                         cardRefs.current[item.id] = el;
                       }}
-                      className={`group border bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${
+                      style={{ "--enter-delay": `${enterDelay}ms` } as CSSProperties}
+                      className={`post-card-enter group border bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${
                         threadMode ? "overflow-hidden rounded-2xl" : "rounded-3xl p-4 sm:p-6"
                       } ${
                         highlightedId === item.id
@@ -2364,14 +2413,21 @@ return (
                             <button
                               onClick={() => messageProvider(item.provider_id)}
                               disabled={!item.provider_id}
-                              className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors disabled:opacity-60"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
                             >
-                              {messageLoadingId === item.provider_id ? "..." : <MessageCircle size={16} />}
+                              {messageLoadingId === item.provider_id ? (
+                                "Starting..."
+                              ) : (
+                                <>
+                                  <MessageCircle size={15} />
+                                  Chat
+                                </>
+                              )}
                             </button>
                             {!!item.businessSlug && (
                               <button
                                 onClick={() => router.push(`/business/${item.businessSlug}`)}
-                                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm hover:bg-slate-200 transition-colors"
+                                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                               >
                                 Business Page
                               </button>
@@ -2459,10 +2515,51 @@ return (
               <p className="text-sm font-semibold text-slate-900">{feedMix.product}</p>
             </div>
           </div>
+          <div className="mt-4 space-y-2">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Need velocity</span>
+                <span>{feedMixPercentages.demand}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-rose-500 transition-all duration-700"
+                  style={{ width: `${feedMixPercentages.demand}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Service supply</span>
+                <span>{feedMixPercentages.service}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+                  style={{ width: `${feedMixPercentages.service}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Product lane</span>
+                <span>{feedMixPercentages.product}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                  style={{ width: `${feedMixPercentages.product}%` }}
+                />
+              </div>
+            </div>
+          </div>
           <div className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${realtimeStyle.className}`}>
             <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
             Stream {realtimeStyle.label.toLowerCase()}
           </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Prioritize top scoring urgent needs to increase conversion while stream quality is high.
+          </p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
@@ -2554,7 +2651,7 @@ return (
     <button
       type="button"
       onClick={() => setOpenPostModal(true)}
-      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-pink-600 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
+      className="market-fab-float fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-sky-500 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
     >
       +
     </button>
