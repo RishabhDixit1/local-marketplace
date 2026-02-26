@@ -7,13 +7,18 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import {
+  Activity,
+  ArrowUpRight,
+  BarChart3,
   BadgeCheck,
   Clock3,
   Filter,
   Gauge,
+  Globe2,
   Loader2,
   MapPin,
   MessageCircle,
+  Radar,
   RefreshCw,
   RotateCcw,
   Search,
@@ -21,6 +26,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
+  Target,
   Users,
   Zap,
 } from "lucide-react";
@@ -212,6 +218,9 @@ const formatSyncTime = (iso: string) => {
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
+
+const formatCompactNumber = (value: number) =>
+  new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 
 const describeMatchReason = (person: ProviderCard, online: boolean) => {
   const reasons: string[] = [];
@@ -792,9 +801,18 @@ export default function PeoplePage() {
   const fastResponders = providers.filter(
     (provider) => provider.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES
   ).length;
+  const totalListings = providers.reduce((sum, provider) => sum + provider.serviceCount + provider.productCount, 0);
+  const totalOpenLeads = providers.reduce((sum, provider) => sum + provider.openLeads, 0);
+  const averageResponse = providers.length
+    ? Math.round(providers.reduce((sum, provider) => sum + provider.responseMinutes, 0) / providers.length)
+    : 0;
+  const activeCoverage = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
+  const verifiedLiveCount = providers.filter((provider) => provider.verified && isProviderOnline(provider)).length;
   const avgRating = providers.length
     ? (providers.reduce((sum, provider) => sum + provider.rating, 0) / providers.length).toFixed(1)
     : "0.0";
+  const networkPulseLabel =
+    activeCoverage >= 65 ? "High network activity" : activeCoverage >= 35 ? "Moderate network activity" : "Low network activity";
   const activeFilterCount =
     Number(minRating > 0) +
     Number(maxResponseMinutes > 0) +
@@ -802,6 +820,22 @@ export default function PeoplePage() {
     Number(requireReviews) +
     Number(verifiedOnly) +
     Number(instantOnly);
+
+  const topSpecialties = useMemo(() => {
+    const counts = new Map<string, number>();
+    providers.forEach((provider) => {
+      provider.tags.forEach((tag) => {
+        const normalized = tag.trim();
+        if (!normalized) return;
+        counts.set(normalized, (counts.get(normalized) || 0) + 1);
+      });
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([tag, count]) => ({ tag, count }));
+  }, [providers]);
+
   const clearAdvancedFilters = () => {
     setMinRating(0);
     setMaxResponseMinutes(0);
@@ -810,99 +844,111 @@ export default function PeoplePage() {
     setVerifiedOnly(false);
     setInstantOnly(false);
   };
+  const resetAllFilters = () => {
+    setSearch("");
+    setActiveTab("All");
+    setRadiusKm(DEFAULT_RADIUS_KM);
+    setSortBy("Best Match");
+    setShowAdvancedFilters(false);
+    clearAdvancedFilters();
+  };
   const featuredProviders = [...filteredProviders].sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
   const liveProviders = filteredProviders.filter((provider) => isProviderOnline(provider)).slice(0, 8);
 
   return (
-    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-fuchsia-600 p-4 sm:p-6 text-white shadow">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">People Near You</h1>
-            <p className="mt-1 text-white/85">Search, compare, and contact nearby providers quickly.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-2 text-xs rounded-full border border-white/30 bg-white/15 px-3 py-1.5">
-              {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              {syncing ? "Syncing live changes..." : `Last sync ${lastSyncedAt ? formatSyncTime(lastSyncedAt) : "--"}`}
-              {!syncing && viewerCoordinates && (
-                <span className="hidden sm:inline text-[10px] text-white/80">
-                  center {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadProviders(true)}
-              disabled={syncing}
-              className="inline-flex items-center gap-1 rounded-full border border-white/35 bg-white/15 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
-              Refresh
-            </button>
-          </div>
-        </div>
+    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6 lg:space-y-7">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-indigo-900 to-cyan-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.28),transparent_44%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:34px_34px]" />
 
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-5">
-          <div>
-            <p className="font-semibold text-lg">{peopleNearby}</p>
-            <p className="text-white/70">People Nearby</p>
+        <div className="relative z-10 space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
+                {syncing ? <Loader2 size={13} className="animate-spin" /> : <Activity size={13} />}
+                {syncing ? "Syncing live network..." : networkPulseLabel}
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[34px]">People Network</h1>
+                <p className="mt-1.5 max-w-2xl text-sm text-white/80 sm:text-base">
+                  Discover, verify, and connect with trusted providers in a realtime local graph.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-white/85">
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
+                  <Globe2 size={12} />
+                  {providers.length} providers indexed
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
+                  <Radar size={12} />
+                  {activeCoverage}% active coverage
+                </span>
+                {!!lastSyncedAt && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
+                    <RefreshCw size={12} />
+                    synced {formatSyncTime(lastSyncedAt)}
+                  </span>
+                )}
+                {viewerCoordinates && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
+                    <MapPin size={12} />
+                    center {viewerCoordinates.latitude.toFixed(2)}, {viewerCoordinates.longitude.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadProviders(true)}
+                disabled={syncing}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/tasks")}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Go To Tasks
+                <ArrowUpRight size={14} />
+              </button>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-lg">{activeNow}</p>
-            <p className="text-white/70">Active Now</p>
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <MetricCard icon={MapPin} label="Nearby" value={peopleNearby} helper="within 5 km" />
+            <MetricCard icon={Activity} label="Active Now" value={activeNow} helper={`${activeCoverage}% coverage`} />
+            <MetricCard icon={Star} label="Avg Rating" value={`${avgRating}★`} helper={`${verifiedCount} verified`} />
+            <MetricCard icon={Zap} label="Fast Response" value={fastResponders} helper={`~${averageResponse || "--"} min avg`} />
+            <MetricCard icon={BarChart3} label="Open Leads" value={formatCompactNumber(totalOpenLeads)} helper={`${totalListings} listings`} />
+            <MetricCard icon={ShieldCheck} label="Verified Live" value={verifiedLiveCount} helper="trusted + online" />
           </div>
-          <div>
-            <p className="font-semibold text-lg">{avgRating} ★</p>
-            <p className="text-white/70">Avg Rating</p>
-          </div>
-          <div>
-            <p className="font-semibold text-lg">{verifiedCount}</p>
-            <p className="text-white/70">Verified</p>
-          </div>
-          <div>
-            <p className="font-semibold text-lg">{fastResponders}</p>
-            <p className="text-white/70">Fast Response</p>
-          </div>
+
+          {!!topSpecialties.length && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Top specialties in network</p>
+              <div className="flex flex-wrap gap-2">
+                {topSpecialties.map((item) => (
+                  <span
+                    key={`specialty-${item.tag}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs"
+                  >
+                    {item.tag}
+                    <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">{item.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
       {!!errorMessage && !usingDemo && (
         <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
-      )}
-
-      {!!featuredProviders.length && (
-        <div className="rounded-2xl border border-slate-200 bg-white/90 backdrop-blur-sm p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm sm:text-base font-semibold text-slate-900">Featured Providers</h2>
-            <span className="text-xs text-slate-500 inline-flex items-center gap-1">
-              <Sparkles size={12} /> Top matches
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {featuredProviders.map((person) => (
-              <button
-                key={`featured-${person.id}`}
-                onClick={() => setSelectedProvider(person.id)}
-                className="relative overflow-hidden rounded-xl border border-slate-200 bg-white text-left"
-              >
-                <Image
-                  src={person.coverImage}
-                  alt={person.name}
-                  width={900}
-                  height={420}
-                  className="h-28 w-full object-cover opacity-80"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 w-full p-3">
-                  <p className="text-sm font-semibold text-white truncate">{person.name}</p>
-                  <p className="text-xs text-slate-200 truncate">{person.role}</p>
-                  <p className="text-[11px] text-emerald-300 mt-1">Match score {person.rankScore}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
       {usingDemo && (
@@ -911,9 +957,9 @@ export default function PeoplePage() {
         </div>
       )}
 
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-          <div className="flex flex-1 items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus-within:ring-2 focus-within:ring-purple-600">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
             <Search size={16} className="text-slate-500" />
             <input
               type="text"
@@ -924,51 +970,57 @@ export default function PeoplePage() {
             />
           </div>
 
-          <select
-            value={String(radiusKm)}
-            onChange={(event) => setRadiusKm(Number(event.target.value))}
-            className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
-          >
-            {RADIUS_OPTIONS.map((radius) => (
-              <option key={radius} value={radius}>
-                {radius} km
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <select
+              value={String(radiusKm)}
+              onChange={(event) => setRadiusKm(Number(event.target.value))}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
+            >
+              {RADIUS_OPTIONS.map((radius) => (
+                <option key={radius} value={radius}>
+                  {radius} km
+                </option>
+              ))}
+            </select>
 
-          <select
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
-            className="rounded-lg bg-white border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none w-full sm:w-auto"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
+            <select
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as (typeof SORT_OPTIONS)[number])}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option}>{option}</option>
+              ))}
+            </select>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvancedFilters((current) => !current)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
-          >
-            <SlidersHorizontal size={15} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-600 px-1 text-[11px] font-semibold text-white">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters((current) => !current)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-100"
+            >
+              <SlidersHorizontal size={15} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-1">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
             <Filter size={12} />
-            {filteredProviders.length} results
+            {filteredProviders.length} matches
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white border border-slate-200 px-2.5 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
             <Gauge size={12} />
             sorted by {sortBy}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+            <Target size={12} />
+            {activeTab}
           </span>
           {activeFilterCount > 0 && (
             <button
@@ -977,13 +1029,29 @@ export default function PeoplePage() {
               className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 transition hover:bg-slate-100"
             >
               <RotateCcw size={12} />
-              reset advanced
+              clear advanced
             </button>
           )}
         </div>
 
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                activeTab === tab
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
         {showAdvancedFilters && (
-          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 backdrop-blur-sm">
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-xs text-slate-600">
                 Minimum rating
@@ -1023,7 +1091,7 @@ export default function PeoplePage() {
                     step={10}
                     value={minProfileCompletion}
                     onChange={(event) => setMinProfileCompletion(Number(event.target.value))}
-                    className="w-full accent-purple-600"
+                    className="w-full accent-indigo-600"
                   />
                   <div className="mt-1 text-[11px] text-slate-500">At least {minProfileCompletion}% complete</div>
                 </div>
@@ -1073,32 +1141,59 @@ export default function PeoplePage() {
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm transition ${
-              activeTab === tab
-                ? "bg-purple-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-purple-600 hover:text-white"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {!!featuredProviders.length && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900 sm:text-base">Top matches right now</h2>
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+              <Sparkles size={12} />
+              Ranked by local score
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {featuredProviders.map((person) => {
+              const isOnline = isProviderOnline(person);
+              return (
+                <button
+                  key={`featured-${person.id}`}
+                  onClick={() => setSelectedProvider(person.id)}
+                  className="relative overflow-hidden rounded-xl border border-slate-200 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Image
+                    src={person.coverImage}
+                    alt={person.name}
+                    width={900}
+                    height={420}
+                    className="h-32 w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/25 to-transparent" />
+                  <div className="absolute bottom-0 w-full p-3 text-white">
+                    <p className="truncate text-sm font-semibold">{person.name}</p>
+                    <p className="truncate text-xs text-white/80">{person.role}</p>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-white/85">
+                      <span>Match {person.rankScore}</span>
+                      <span>•</span>
+                      <span>{person.distanceKm} km</span>
+                      {isOnline && <span className="text-emerald-300">• live</span>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {!!liveProviders.length && (
-        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3">
+        <section className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-slate-900 inline-flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live right now
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+              Live providers now
             </p>
-            <span className="text-xs text-slate-600">{liveProviders.length} providers active in current filters</span>
+            <span className="text-xs text-slate-600">{liveProviders.length} active in current filters</span>
           </div>
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {liveProviders.map((provider) => (
@@ -1120,94 +1215,126 @@ export default function PeoplePage() {
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {loading ? (
-        <div className="rounded-xl bg-white p-6 text-slate-500 inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading nearby providers...
+        <div className="space-y-3">
+          {[0, 1, 2].map((idx) => (
+            <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+              <div className="mt-3 h-5 w-1/3 animate-pulse rounded bg-slate-200" />
+              <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+            </div>
+          ))}
+          <div className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading nearby providers...
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {filteredProviders.map((person) => {
             const isOnline = isProviderOnline(person);
             const matchReasons = describeMatchReason(person, isOnline);
             return (
-              <div key={person.id} className="rounded-xl bg-white p-4 shadow border border-slate-200">
-              <Image
-                src={person.coverImage}
-                alt={`${person.name} cover`}
-                width={900}
-                height={420}
-                className="mb-3 h-28 w-full rounded-lg object-cover"
-              />
-              <div className="flex items-start gap-3 sm:gap-4">
-                <button onClick={() => setSelectedProvider(person.id)} className="shrink-0">
+              <article
+                key={person.id}
+                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative">
                   <Image
-                    src={person.avatar}
-                    alt={person.name}
-                    width={56}
-                    height={56}
-                    className="h-14 w-14 rounded-full object-cover border border-slate-200"
+                    src={person.coverImage}
+                    alt={`${person.name} cover`}
+                    width={900}
+                    height={420}
+                    className="h-32 w-full object-cover"
                   />
-                </button>
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
+                  <span className="absolute right-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white">
+                    {person.distanceKm} km away
+                  </span>
+                </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-slate-900 truncate">
-                      {person.name}
-                      <span
-                        className={`ml-2 inline-flex items-center gap-1 text-xs ${
-                          person.verificationStatus === "verified"
-                            ? "text-emerald-600"
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => setSelectedProvider(person.id)} className="shrink-0">
+                      <Image
+                        src={person.avatar}
+                        alt={person.name}
+                        width={56}
+                        height={56}
+                        className="h-14 w-14 rounded-xl border border-slate-200 object-cover"
+                      />
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-semibold text-slate-900">{person.name}</h3>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            person.verificationStatus === "verified"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : person.verificationStatus === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          <BadgeCheck size={11} />
+                          {person.verificationStatus === "verified"
+                            ? "Verified"
                             : person.verificationStatus === "pending"
-                            ? "text-amber-600"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        <BadgeCheck size={12} />
-                        {person.verificationStatus === "verified"
-                          ? "Verified"
-                          : person.verificationStatus === "pending"
-                          ? "Pending"
-                          : "Unclaimed"}
-                      </span>
-                      {isOnline && <span className="ml-2 text-emerald-600 text-xs">● Online</span>}
-                    </h3>
-                    <span className="text-xs text-slate-500 shrink-0">{person.distanceKm} km away</span>
+                            ? "Pending"
+                            : "Unclaimed"}
+                        </span>
+                        {isOnline && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Live</span>}
+                      </div>
+                      <p className="text-sm text-slate-500">{person.role}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">{person.bio}</p>
+                    </div>
                   </div>
 
-                  <p className="text-sm text-slate-500">{person.role}</p>
-                  <p className="mt-1 text-sm text-slate-500 line-clamp-2">{person.bio}</p>
-
-                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                  <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-4">
                     <span className="inline-flex items-center gap-1">
                       <MapPin size={12} />
                       {person.location}
                     </span>
-                    <span>{person.serviceCount} services</span>
-                    <span>{person.productCount} products</span>
+                    <span>{person.serviceCount + person.productCount} listings</span>
                     <span>{person.openLeads} open leads</span>
+                    <span>{person.completedJobs} jobs done</span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{person.completedJobs} jobs done</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600 inline-flex items-center gap-1">
-                      <Clock3 size={12} />
-                      {person.responseMinutes} min response
-                    </span>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 size={12} />
+                        response {person.responseMinutes} min
+                      </span>
+                      <span>profile {person.profileCompletion}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"
+                        style={{ width: `${Math.max(8, Math.min(100, person.profileCompletion))}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">from INR {person.startingPrice}</span>
-                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">{person.profileCompletion}% profile</span>
-                    <span className="rounded-full bg-fuchsia-100 px-2 py-1 text-fuchsia-700">Match {person.rankScore}</span>
+                    <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Match {person.rankScore}</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700 inline-flex items-center gap-1">
+                      <Star size={11} className="fill-amber-500 text-amber-500" />
+                      {person.rating} ({person.reviews})
+                    </span>
                   </div>
 
-                  {matchReasons.length > 0 && (
+                  {!!matchReasons.length && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {matchReasons.map((reason) => (
                         <span
                           key={`${person.id}-${reason}`}
-                          className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700"
+                          className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-medium text-cyan-700"
                         >
                           {reason}
                         </span>
@@ -1217,7 +1344,7 @@ export default function PeoplePage() {
 
                   {person.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {person.tags.slice(0, 3).map((tag) => (
+                      {person.tags.slice(0, 4).map((tag) => (
                         <span
                           key={`${person.id}-${tag}`}
                           className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
@@ -1228,76 +1355,60 @@ export default function PeoplePage() {
                     </div>
                   )}
 
-                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="text-sm text-slate-700">
-                      <span className="inline-flex items-center gap-1">
-                        <Star size={14} className="text-amber-400 fill-amber-400" />
-                        {person.rating}
-                      </span>{" "}
-                      <span className="text-slate-500">({person.reviews} reviews)</span>
-                    </div>
-
-                    <div className="flex gap-2 flex-wrap">
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => void startChat(person.id)}
+                      disabled={loadingChatId === person.id}
+                      className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+                    >
+                      <MessageCircle size={14} />
+                      {loadingChatId === person.id ? "Opening..." : "Chat"}
+                    </button>
+                    <button
+                      onClick={() => setSelectedProvider(person.id)}
+                      className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                    >
+                      View Profile
+                    </button>
+                    {!usingDemo && (
                       <button
-                        onClick={() => void startChat(person.id)}
-                        disabled={loadingChatId === person.id}
-                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 inline-flex items-center gap-1 transition-colors disabled:opacity-70"
+                        onClick={() => router.push(`/business/${person.businessSlug}`)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
-                        <MessageCircle size={14} />
-                        {loadingChatId === person.id ? "Opening..." : "Chat"}
+                        Business Page
+                        <ArrowUpRight size={13} />
                       </button>
-                      <button
-                        onClick={() => setSelectedProvider(person.id)}
-                        className="rounded-lg bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-500"
-                      >
-                        View Profile
-                      </button>
-                      {!usingDemo && (
-                        <button
-                          onClick={() => router.push(`/business/${person.businessSlug}`)}
-                          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200 transition-colors"
-                        >
-                          Business Page
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              </div>
+              </article>
             );
           })}
 
           {!filteredProviders.length && (
-            <div className="col-span-full rounded-xl bg-white p-8 text-center">
-              <Users className="mx-auto mb-3 text-slate-500" />
-              <p className="text-slate-700 font-medium">No providers found for current filters.</p>
-              <p className="mt-1 text-sm text-slate-500">Try widening radius, clearing advanced filters, or syncing again.</p>
+            <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+              <Users className="mx-auto mb-3 text-slate-400" />
+              <p className="text-base font-semibold text-slate-800">No providers found for current filters.</p>
+              <p className="mt-1 text-sm text-slate-500">Try widening radius, changing tab, or resetting filters.</p>
               <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setActiveTab("All");
-                    setRadiusKm(DEFAULT_RADIUS_KM);
-                    setSortBy("Best Match");
-                    clearAdvancedFilters();
-                  }}
-                  className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-purple-500"
+                  onClick={resetAllFilters}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
                 >
                   Reset all filters
                 </button>
                 <button
                   type="button"
                   onClick={() => void loadProviders(true)}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                 >
                   Sync providers
                 </button>
               </div>
             </div>
           )}
-        </div>
+        </section>
       )}
 
       <ProviderTrustPanel
@@ -1305,6 +1416,29 @@ export default function PeoplePage() {
         open={!!selectedProvider}
         onClose={() => setSelectedProvider(null)}
       />
+    </div>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: string | number;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-white/75">{label}</p>
+        <Icon size={14} className="text-white/80" />
+      </div>
+      <p className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">{value}</p>
+      <p className="mt-0.5 text-[11px] text-white/65">{helper}</p>
     </div>
   );
 }
