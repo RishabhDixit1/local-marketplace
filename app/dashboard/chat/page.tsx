@@ -70,6 +70,9 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
+const DEMO_CHAT_TARGET_COUNT = 2;
+const DEMO_CHAT_PREFERRED_NAMES = ["User", "Test User 2"];
+const DEMO_CHAT_WELCOME_MESSAGE = "Welcome - demo conversation is ready for this account.";
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -220,6 +223,124 @@ export default function ChatPage() {
     },
     [userId]
   );
+
+  const ensureDemoConversationsForUser = useCallback(async () => {
+    if (!userId) return false;
+
+    const preferredProfilesResult = await supabase
+      .from("profiles")
+      .select("id,name")
+      .in("name", DEMO_CHAT_PREFERRED_NAMES)
+      .neq("id", userId)
+      .limit(6);
+
+    const chosenProfiles: ProfileRow[] = [];
+    const chosenProfileIds = new Set<string>();
+
+    const pushProfiles = (rows: ProfileRow[] | null) => {
+      (rows || []).forEach((row) => {
+        if (!row?.id || row.id === userId || chosenProfileIds.has(row.id)) return;
+        chosenProfileIds.add(row.id);
+        chosenProfiles.push(row);
+      });
+    };
+
+    if (!preferredProfilesResult.error) {
+      pushProfiles((preferredProfilesResult.data as ProfileRow[] | null) || []);
+    }
+
+    if (chosenProfiles.length < DEMO_CHAT_TARGET_COUNT) {
+      const fallbackProfilesResult = await supabase
+        .from("profiles")
+        .select("id,name")
+        .neq("id", userId)
+        .limit(8);
+
+      if (!fallbackProfilesResult.error) {
+        pushProfiles((fallbackProfilesResult.data as ProfileRow[] | null) || []);
+      }
+    }
+
+    const demoTargets = chosenProfiles.slice(0, DEMO_CHAT_TARGET_COUNT);
+    if (!demoTargets.length) return false;
+
+    const { data: myConversationRows, error: myConversationRowsError } = await supabase
+      .from("conversation_participants")
+      .select("conversation_id")
+      .eq("user_id", userId);
+
+    if (myConversationRowsError) {
+      return false;
+    }
+
+    const myConversationIds =
+      ((myConversationRows as Array<{ conversation_id: string }> | null) || []).map((row) => row.conversation_id);
+    const demoTargetIds = demoTargets.map((target) => target.id);
+    const existingTargetUserIds = new Set<string>();
+
+    if (myConversationIds.length > 0) {
+      const { data: existingRows } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id,user_id")
+        .in("conversation_id", myConversationIds)
+        .in("user_id", demoTargetIds);
+
+      ((existingRows as Array<{ conversation_id: string; user_id: string }> | null) || []).forEach((row) => {
+        if (row.user_id && row.user_id !== userId) {
+          existingTargetUserIds.add(row.user_id);
+        }
+      });
+    }
+
+    let createdAnyConversation = false;
+
+    for (const target of demoTargets) {
+      if (existingTargetUserIds.has(target.id)) continue;
+
+      const { data: createdConversation, error: createConversationError } = await supabase
+        .from("conversations")
+        .insert({
+          created_by: userId,
+        })
+        .select("id")
+        .single();
+
+      if (createConversationError || !createdConversation?.id) {
+        continue;
+      }
+
+      const { error: participantError } = await supabase.from("conversation_participants").upsert(
+        [
+          {
+            conversation_id: createdConversation.id,
+            user_id: userId,
+          },
+          {
+            conversation_id: createdConversation.id,
+            user_id: target.id,
+          },
+        ],
+        {
+          onConflict: "conversation_id,user_id",
+          ignoreDuplicates: true,
+        }
+      );
+
+      if (participantError) {
+        continue;
+      }
+
+      await supabase.from("messages").insert({
+        conversation_id: createdConversation.id,
+        sender_id: userId,
+        content: DEMO_CHAT_WELCOME_MESSAGE,
+      });
+
+      createdAnyConversation = true;
+    }
+
+    return createdAnyConversation;
+  }, [userId]);
 
   const loadConversations = useCallback(
     async (soft = false) => {
@@ -482,9 +603,20 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!userId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadConversations();
-  }, [loadConversations, userId]);
+
+    let isCancelled = false;
+    const bootstrapAndLoad = async () => {
+      await ensureDemoConversationsForUser();
+      if (isCancelled) return;
+      await loadConversations();
+    };
+
+    void bootstrapAndLoad();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [ensureDemoConversationsForUser, loadConversations, userId]);
 
   useEffect(() => {
     if (!userId) return;
