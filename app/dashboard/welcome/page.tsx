@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
+import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
@@ -332,97 +333,107 @@ export default function WelcomePage() {
   }, []);
 
   useEffect(() => {
+    let isActive = true;
+
     const loadWelcome = async () => {
       setLoading(true);
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user) {
-        setLoading(false);
-        return;
-      }
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        let currentUser = sessionData.session?.user || null;
 
-      const currentUser = authData.user;
+        if (!currentUser) {
+          const { data: authData, error: authError } = await supabase.auth.getUser();
+          if (authError) {
+            throw authError;
+          }
+          currentUser = authData.user;
+        }
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("name, role, location, bio, services, availability, email, phone, website")
-        .eq("id", currentUser.id)
-        .maybeSingle<UserProfile>();
+        if (!currentUser) {
+          return;
+        }
 
-      const role = (profileData?.role || "").toLowerCase();
-      const isProviderRole = providerRoles.has(role);
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("name, role, location, bio, services, availability, email, phone, website")
+          .eq("id", currentUser.id)
+          .maybeSingle<UserProfile>();
 
-      setUserName(profileData?.name || currentUser.email?.split("@")[0] || "Neighbor");
-      setIsProvider(isProviderRole);
+        const role = (profileData?.role || "").toLowerCase();
+        const isProviderRole = providerRoles.has(role);
 
-      const profilePoints =
-        (profileData?.name ? 15 : 0) +
-        (profileData?.location ? 15 : 0) +
-        ((profileData?.bio || "").trim().length >= 20 ? 20 : 0) +
-        ((profileData?.services?.length || 0) > 0 ? 20 : 0) +
-        (profileData?.email ? 10 : 0) +
-        (profileData?.phone ? 10 : 0) +
-        (profileData?.website ? 10 : 0);
+        setUserName(profileData?.name || currentUser.email?.split("@")[0] || "Neighbor");
+        setIsProvider(isProviderRole);
 
-      const profileCompletion = Math.min(100, profilePoints);
-      setProfileStrength(profileCompletion);
+        const profilePoints =
+          (profileData?.name ? 15 : 0) +
+          (profileData?.location ? 15 : 0) +
+          ((profileData?.bio || "").trim().length >= 20 ? 20 : 0) +
+          ((profileData?.services?.length || 0) > 0 ? 20 : 0) +
+          (profileData?.email ? 10 : 0) +
+          (profileData?.phone ? 10 : 0) +
+          (profileData?.website ? 10 : 0);
 
-      const [{ count: nearbyPostsCount }, { data: myOrders }, { data: myConversations }, { data: reviewsData }] =
-        await Promise.all([
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "open"),
-          supabase
-            .from("orders")
-            .select("status")
-            .or(`consumer_id.eq.${currentUser.id},provider_id.eq.${currentUser.id}`),
-          supabase
-            .from("conversation_participants")
-            .select("conversation_id,last_read_at")
-            .eq("user_id", currentUser.id),
-          supabase.from("reviews").select("rating").eq("provider_id", currentUser.id),
+        const profileCompletion = Math.min(100, profilePoints);
+        setProfileStrength(profileCompletion);
+
+        const [{ count: nearbyPostsCount }, { data: myOrders }, { data: myConversations }, { data: reviewsData }] =
+          await Promise.all([
+            supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "open"),
+            supabase
+              .from("orders")
+              .select("status")
+              .or(`consumer_id.eq.${currentUser.id},provider_id.eq.${currentUser.id}`),
+            supabase
+              .from("conversation_participants")
+              .select("conversation_id,last_read_at")
+              .eq("user_id", currentUser.id),
+            supabase.from("reviews").select("rating").eq("provider_id", currentUser.id),
+          ]);
+
+        const activeTasks =
+          myOrders?.filter((order) => !isFinalOrderStatus(order.status)).length || 0;
+
+        const conversationRows = (myConversations as ConversationUnreadRow[] | null) || [];
+        const conversationIds = conversationRows.map((row) => row.conversation_id);
+        const lastReadAtByConversation = new Map(conversationRows.map((row) => [row.conversation_id, row.last_read_at]));
+        let unreadMessages = 0;
+
+        if (conversationIds.length > 0) {
+          const { data: unreadMessageRows } = await supabase
+            .from("messages")
+            .select("conversation_id,created_at")
+            .in("conversation_id", conversationIds)
+            .neq("sender_id", currentUser.id)
+            .order("created_at", { ascending: false })
+            .limit(2000);
+
+          unreadMessages = ((unreadMessageRows as MessageUnreadRow[] | null) || []).reduce((count, message) => {
+            const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
+            if (!lastReadAt) return count + 1;
+            return message.created_at > lastReadAt ? count + 1 : count;
+          }, 0);
+        }
+
+        let trustScore = 4.7;
+        if (reviewsData && reviewsData.length > 0) {
+          const avg = reviewsData.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviewsData.length;
+          trustScore = Number(avg.toFixed(1));
+        }
+
+        setStats({
+          nearbyPosts: nearbyPostsCount || 0,
+          activeTasks,
+          unreadMessages,
+          trustScore,
+        });
+
+        const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
+          supabase.from("posts").select("id, text").eq("status", "open").limit(3),
+          supabase.from("service_listings").select("id, title, category, price").limit(3),
+          supabase.from("product_catalog").select("id, title, category, price").limit(3),
         ]);
-
-      const activeTasks =
-        myOrders?.filter((order) => !isFinalOrderStatus(order.status)).length || 0;
-
-      const conversationRows = (myConversations as ConversationUnreadRow[] | null) || [];
-      const conversationIds = conversationRows.map((row) => row.conversation_id);
-      const lastReadAtByConversation = new Map(conversationRows.map((row) => [row.conversation_id, row.last_read_at]));
-      let unreadMessages = 0;
-
-      if (conversationIds.length > 0) {
-        const { data: unreadMessageRows } = await supabase
-          .from("messages")
-          .select("conversation_id,created_at")
-          .in("conversation_id", conversationIds)
-          .neq("sender_id", currentUser.id)
-          .order("created_at", { ascending: false })
-          .limit(2000);
-
-        unreadMessages = ((unreadMessageRows as MessageUnreadRow[] | null) || []).reduce((count, message) => {
-          const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
-          if (!lastReadAt) return count + 1;
-          return message.created_at > lastReadAt ? count + 1 : count;
-        }, 0);
-      }
-
-      let trustScore = 4.7;
-      if (reviewsData && reviewsData.length > 0) {
-        const avg = reviewsData.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviewsData.length;
-        trustScore = Number(avg.toFixed(1));
-      }
-
-      setStats({
-        nearbyPosts: nearbyPostsCount || 0,
-        activeTasks,
-        unreadMessages,
-        trustScore,
-      });
-
-      const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-        supabase.from("posts").select("id, text").eq("status", "open").limit(3),
-        supabase.from("service_listings").select("id, title, category, price").limit(3),
-        supabase.from("product_catalog").select("id, title, category, price").limit(3),
-      ]);
 
       const demandImages = [
         "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1200&q=80",
@@ -524,87 +535,103 @@ export default function WelcomePage() {
             ]
       );
 
-      const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
-        supabase.from("service_listings").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
-        supabase.from("product_catalog").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
-      ]);
-
-      if (isProviderRole) {
-        const { count: openOrdersCount } = await supabase
-          .from("orders")
-          .select("*", { count: "exact", head: true })
-          .eq("provider_id", currentUser.id)
-          .in("status", ["pending", "active", "in-progress"]);
-
-        setProviderSnapshot({
-          services: myServicesCount || 0,
-          products: myProductsCount || 0,
-          openOrders: openOrdersCount || 0,
-          profileReady: profileCompletion >= 70,
-        });
-      }
-
-      if (isProviderRole) {
-        setOnboardingSteps([
-          {
-            id: "provider-1",
-            title: "Complete provider profile",
-            hint: "Add bio, services and contact details",
-            done: profileCompletion >= 70,
-            path: routes.profile,
-            cta: "Update Profile",
-          },
-          {
-            id: "provider-2",
-            title: "Add your first offering",
-            hint: "Publish at least one service or product",
-            done: (myServicesCount || 0) + (myProductsCount || 0) > 0,
-            path: routes.addService,
-            cta: "Add Offering",
-          },
-          {
-            id: "provider-3",
-            title: "Start local conversations",
-            hint: "Respond to nearby demand posts",
-            done: conversationIds.length > 0,
-            path: routes.chat,
-            cta: "Open Chat",
-          },
+        const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
+          supabase.from("service_listings").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
+          supabase.from("product_catalog").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
         ]);
-      } else {
-        setOnboardingSteps([
-          {
-            id: "customer-1",
-            title: "Complete profile",
-            hint: "Help local providers trust your requests",
-            done: profileCompletion >= 60,
-            path: routes.profile,
-            cta: "Update Profile",
-          },
-          {
-            id: "customer-2",
-            title: "Post your first need",
-            hint: "Tell nearby sellers/providers what you need",
-            done: (myPostsCount || 0) > 0,
-            path: routes.posts,
-            cta: "Post Need",
-          },
-          {
-            id: "customer-3",
-            title: "Connect with a provider",
-            hint: "Start a chat to compare options",
-            done: conversationIds.length > 0,
-            path: routes.people,
-            cta: "Find Providers",
-          },
-        ]);
-      }
 
-      setLoading(false);
+        if (isProviderRole) {
+          const { count: openOrdersCount } = await supabase
+            .from("orders")
+            .select("*", { count: "exact", head: true })
+            .eq("provider_id", currentUser.id)
+            .in("status", ["pending", "active", "in-progress"]);
+
+          setProviderSnapshot({
+            services: myServicesCount || 0,
+            products: myProductsCount || 0,
+            openOrders: openOrdersCount || 0,
+            profileReady: profileCompletion >= 70,
+          });
+        }
+
+        if (isProviderRole) {
+          setOnboardingSteps([
+            {
+              id: "provider-1",
+              title: "Complete provider profile",
+              hint: "Add bio, services and contact details",
+              done: profileCompletion >= 70,
+              path: routes.profile,
+              cta: "Update Profile",
+            },
+            {
+              id: "provider-2",
+              title: "Add your first offering",
+              hint: "Publish at least one service or product",
+              done: (myServicesCount || 0) + (myProductsCount || 0) > 0,
+              path: routes.addService,
+              cta: "Add Offering",
+            },
+            {
+              id: "provider-3",
+              title: "Start local conversations",
+              hint: "Respond to nearby demand posts",
+              done: conversationIds.length > 0,
+              path: routes.chat,
+              cta: "Open Chat",
+            },
+          ]);
+        } else {
+          setOnboardingSteps([
+            {
+              id: "customer-1",
+              title: "Complete profile",
+              hint: "Help local providers trust your requests",
+              done: profileCompletion >= 60,
+              path: routes.profile,
+              cta: "Update Profile",
+            },
+            {
+              id: "customer-2",
+              title: "Post your first need",
+              hint: "Tell nearby sellers/providers what you need",
+              done: (myPostsCount || 0) > 0,
+              path: routes.posts,
+              cta: "Post Need",
+            },
+            {
+              id: "customer-3",
+              title: "Connect with a provider",
+              hint: "Start a chat to compare options",
+              done: conversationIds.length > 0,
+              path: routes.people,
+              cta: "Find Providers",
+            },
+          ]);
+        }
+      } catch (error) {
+        if (isAbortLikeError(error)) {
+          return;
+        }
+
+        const message = isFailedFetchError(error)
+          ? "Network issue while loading your welcome dashboard."
+          : toErrorMessage(error, "Failed to load welcome dashboard.");
+        console.warn("Welcome load failed:", message);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
     };
 
-    loadWelcome();
+    void loadWelcome();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   return (
