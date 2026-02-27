@@ -62,6 +62,37 @@ const radiusOptions = [3, 5, 8, 12, 20];
 const MAX_ATTACHMENTS = 6;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 const MEDIA_BUCKET = "post-media";
+const POST_DEDUP_STORAGE_KEY = "local-marketplace-last-post-signature-v1";
+const POST_DEDUP_WINDOW_MS = 90 * 1000;
+
+const buildPostSignature = (params: {
+  userId: string;
+  type: PostType;
+  mode: PostMode;
+  title: string;
+  details: string;
+  category: string;
+  budget: string;
+  locationLabel: string;
+  radiusKm: number;
+  neededWithin: string;
+  scheduleDate: string;
+  scheduleTime: string;
+}) =>
+  [
+    params.userId,
+    params.type,
+    params.mode,
+    params.title.trim().toLowerCase(),
+    params.details.trim().toLowerCase(),
+    params.category.trim().toLowerCase(),
+    params.budget.trim().toLowerCase(),
+    params.locationLabel.trim().toLowerCase(),
+    params.radiusKm,
+    params.neededWithin.trim().toLowerCase(),
+    params.scheduleDate.trim().toLowerCase(),
+    params.scheduleTime.trim().toLowerCase(),
+  ].join("|");
 
 export default function CreatePostModal({
   open,
@@ -289,6 +320,40 @@ export default function CreatePostModal({
     if (!user) {
       alert("Login required");
       return;
+    }
+
+    const postSignature = buildPostSignature({
+      userId: user.id,
+      type,
+      mode,
+      title: trimmedTitle,
+      details: trimmedDetails,
+      category,
+      budget,
+      locationLabel,
+      radiusKm,
+      neededWithin,
+      scheduleDate,
+      scheduleTime,
+    });
+
+    if (typeof window !== "undefined") {
+      try {
+        const previous = window.localStorage.getItem(POST_DEDUP_STORAGE_KEY);
+        if (previous) {
+          const parsed = JSON.parse(previous) as { signature?: string; createdAt?: number };
+          if (
+            parsed.signature === postSignature &&
+            Number.isFinite(parsed.createdAt) &&
+            Date.now() - Number(parsed.createdAt) < POST_DEDUP_WINDOW_MS
+          ) {
+            alert("This looks like a duplicate post from just now. Wait a bit before posting the same request again.");
+            return;
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(POST_DEDUP_STORAGE_KEY);
+      }
     }
 
     setPublishing(true);
@@ -575,6 +640,17 @@ export default function CreatePostModal({
     } else {
       alert("Post published successfully");
     }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        POST_DEDUP_STORAGE_KEY,
+        JSON.stringify({
+          signature: postSignature,
+          createdAt: Date.now(),
+        })
+      );
+    }
+
     closeModal();
   };
 

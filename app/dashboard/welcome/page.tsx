@@ -117,7 +117,17 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 
-const heroScenes = [
+type HeroTone = "rose" | "sky" | "emerald";
+
+type HeroScene = {
+  label: string;
+  title: string;
+  meta: string;
+  eta: string;
+  tone: HeroTone;
+};
+
+const defaultHeroScenes: HeroScene[] = [
   {
     label: "Urgent Need",
     title: "Electrical fault in 2.1 km radius",
@@ -139,9 +149,7 @@ const heroScenes = [
     eta: "ETA 22m",
     tone: "emerald",
   },
-] as const;
-
-type HeroTone = (typeof heroScenes)[number]["tone"];
+];
 
 const heroToneBadgeClasses: Record<HeroTone, string> = {
   rose: "bg-rose-100 text-rose-700",
@@ -229,6 +237,7 @@ export default function WelcomePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeHeroScene, setActiveHeroScene] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
   const [profileStrength, setProfileStrength] = useState(40);
@@ -296,11 +305,72 @@ export default function WelcomePage() {
     [nearbyCards]
   );
 
+  const demandCards = useMemo(
+    () => nearbyCards.filter((card) => card.type === "demand"),
+    [nearbyCards]
+  );
+
+  const heroScenes = useMemo<HeroScene[]>(() => {
+    const topDemand = demandCards[0];
+    const topService = nearbyCards.find((card) => card.type === "service");
+    const topProduct = nearbyCards.find((card) => card.type === "product");
+
+    return [
+      {
+        label: "Active Needs",
+        title: topDemand?.title || defaultHeroScenes[0].title,
+        meta: `${demandCards.length} demand posts are live nearby`,
+        eta: stats.unreadMessages > 0 ? `${stats.unreadMessages} unread` : "ETA 12m",
+        tone: "rose",
+      },
+      {
+        label: "Service Supply",
+        title: topService?.title || defaultHeroScenes[1].title,
+        meta: `${stats.activeTasks} active tasks currently in progress`,
+        eta: stats.activeTasks > 0 ? "Live now" : "ETA 45m",
+        tone: "sky",
+      },
+      {
+        label: "Trust Pulse",
+        title: topProduct?.title || defaultHeroScenes[2].title,
+        meta: `Local trust score ${stats.trustScore.toFixed(1)}`,
+        eta: "ETA 22m",
+        tone: "emerald",
+      },
+    ];
+  }, [demandCards, nearbyCards, stats.activeTasks, stats.trustScore, stats.unreadMessages]);
+
+  const quickActionItems = useMemo(
+    () => [
+      {
+        title: "Respond",
+        icon: Zap,
+        action: () => router.push(`${routes.posts}?category=demand`),
+      },
+      {
+        title: "Connect",
+        icon: MessageCircle,
+        action: () => router.push(routes.chat),
+      },
+      {
+        title: "Offer Help",
+        icon: Wrench,
+        action: () => router.push(`${routes.posts}?category=demand`),
+      },
+      {
+        title: "Post Need",
+        icon: Plus,
+        action: () => setOpenPostModal(true),
+      },
+    ],
+    [router]
+  );
+
   const marketSignals = useMemo(
     () => [
       {
         label: "Open Needs",
-        value: nearbyCards.filter((card) => card.type === "demand").length,
+        value: demandCards.length,
         icon: Activity,
       },
       {
@@ -319,7 +389,7 @@ export default function WelcomePage() {
         icon: Star,
       },
     ],
-    [nearbyCards, stats.activeTasks, stats.unreadMessages, stats.trustScore]
+    [demandCards.length, stats.activeTasks, stats.unreadMessages, stats.trustScore]
   );
 
   const currentHeroScene = heroScenes[activeHeroScene];
@@ -330,13 +400,14 @@ export default function WelcomePage() {
     }, 3200);
 
     return () => window.clearInterval(heroSceneTimer);
-  }, []);
+  }, [heroScenes.length]);
 
   useEffect(() => {
     let isActive = true;
 
     const loadWelcome = async () => {
       setLoading(true);
+      setLoadError("");
 
       try {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -620,6 +691,9 @@ export default function WelcomePage() {
           ? "Network issue while loading your welcome dashboard."
           : toErrorMessage(error, "Failed to load welcome dashboard.");
         console.warn("Welcome load failed:", message);
+        if (isActive) {
+          setLoadError(message);
+        }
       } finally {
         if (isActive) {
           setLoading(false);
@@ -874,6 +948,12 @@ export default function WelcomePage() {
             </div>
           </motion.div>
 
+          {!!loadError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {loadError}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.95fr] gap-4">
             <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -911,7 +991,7 @@ export default function WelcomePage() {
                         }`}
                       >
                         <div className="relative h-28 w-full overflow-hidden rounded-[14px] bg-slate-200">
-                          <Image src={story.image} alt={story.title} fill className="object-cover" />
+                          <Image src={story.image} alt={story.title} fill sizes="96px" className="object-cover" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
                           <span className="absolute left-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
                             {story.badge}
@@ -933,12 +1013,7 @@ export default function WelcomePage() {
               <p className="text-xs text-slate-500 mt-1">Shortcuts built for fast local execution.</p>
 
               <div className="mt-4 grid grid-cols-2 gap-2.5">
-                {[
-                  { title: "Post Need", icon: Plus, action: () => setOpenPostModal(true) },
-                  { title: "Offer Service", icon: Wrench, action: () => router.push(routes.addService) },
-                  { title: "Find People", icon: Users, action: () => router.push(routes.people) },
-                  { title: "My Tasks", icon: ClipboardList, action: () => router.push(routes.tasks) },
-                ].map((item, index) => (
+                {quickActionItems.map((item, index) => (
                   <button
                     key={`quick-${index}`}
                     onClick={item.action}
@@ -949,6 +1024,10 @@ export default function WelcomePage() {
                   </button>
                 ))}
               </div>
+
+              <p className="mt-3 text-xs text-slate-500">
+                Real demand visibility: {demandCards.length} active needs in this area.
+              </p>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {statCards.map((stat) => (
@@ -983,7 +1062,7 @@ export default function WelcomePage() {
                 {nearbyCards.map((card) => (
                   <div key={`feed-${card.id}`} className="py-3 flex items-center gap-3">
                     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200">
-                      <Image src={card.image} alt={card.title} fill className="object-cover" />
+                      <Image src={card.image} alt={card.title} fill sizes="56px" className="object-cover" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -1170,7 +1249,18 @@ export default function WelcomePage() {
         </div>
       </div>
 
-      <CreatePostModal open={openPostModal} onClose={() => setOpenPostModal(false)} />
+      <CreatePostModal
+        open={openPostModal}
+        onClose={() => setOpenPostModal(false)}
+        onPublished={(result) => {
+          setOpenPostModal(false);
+          if (result?.helpRequestId) {
+            router.push(`/dashboard?help_request=${encodeURIComponent(result.helpRequestId)}`);
+            return;
+          }
+          router.push("/dashboard");
+        }}
+      />
     </>
   );
 }
