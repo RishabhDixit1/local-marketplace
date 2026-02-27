@@ -384,6 +384,59 @@ const parseDateMs = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeForFingerprint = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const listingFingerprint = (item: Listing) => {
+  const normalizedTitle = normalizeForFingerprint(item.title).slice(0, 56);
+  const normalizedDescription = normalizeForFingerprint(item.description).slice(0, 96);
+  const normalizedCategory = normalizeForFingerprint(item.category);
+  const normalizedOwner = (item.provider_id || "community").trim().toLowerCase();
+  const roundedPrice = item.price > 0 ? Math.round(item.price) : 0;
+
+  return [
+    item.type,
+    normalizedOwner,
+    normalizedCategory,
+    normalizedTitle,
+    normalizedDescription,
+    roundedPrice,
+  ].join("|");
+};
+
+const pickPreferredListing = (current: Listing, incoming: Listing) => {
+  const incomingDate = parseDateMs(incoming.createdAt);
+  const currentDate = parseDateMs(current.createdAt);
+  if (incomingDate !== currentDate) {
+    return incomingDate > currentDate ? incoming : current;
+  }
+  if (incoming.rankScore !== current.rankScore) {
+    return incoming.rankScore > current.rankScore ? incoming : current;
+  }
+  return incoming.responseMinutes < current.responseMinutes ? incoming : current;
+};
+
+const dedupeListings = (items: Listing[]) => {
+  const byId = new Map<string, Listing>();
+  for (const item of items) {
+    const existing = byId.get(item.id);
+    byId.set(item.id, existing ? pickPreferredListing(existing, item) : item);
+  }
+
+  const byFingerprint = new Map<string, Listing>();
+  for (const item of byId.values()) {
+    const fingerprint = listingFingerprint(item);
+    const existing = byFingerprint.get(fingerprint);
+    byFingerprint.set(fingerprint, existing ? pickPreferredListing(existing, item) : item);
+  }
+
+  return Array.from(byFingerprint.values());
+};
+
 const isFreshListing = (value?: string) => {
   const createdAtMs = parseDateMs(value);
   if (!createdAtMs) return false;
@@ -475,6 +528,7 @@ export default function MarketplacePage() {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [feedError, setFeedError] = useState("");
+  const [dedupedCount, setDedupedCount] = useState(0);
   const [usingDemoFeed, setUsingDemoFeed] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
@@ -1119,9 +1173,12 @@ export default function MarketplacePage() {
         };
       });
 
-      const liveFeed = [...formattedPosts, ...formattedServices, ...formattedProducts];
+      const rawLiveFeed = [...formattedPosts, ...formattedServices, ...formattedProducts];
+      const liveFeed = dedupeListings(rawLiveFeed);
+      setDedupedCount(Math.max(0, rawLiveFeed.length - liveFeed.length));
       if (liveFeed.length === 0) {
         setFeed(demoFeed);
+        setDedupedCount(0);
         setUsingDemoFeed(true);
         setFeedError("No live listings yet. Showing demo marketplace cards.");
       } else {
@@ -1143,6 +1200,7 @@ export default function MarketplacePage() {
         setFeedError(`${feedErrorMessage}. Keeping current feed.`);
       } else {
         setFeed(demoFeed);
+        setDedupedCount(0);
         setUsingDemoFeed(true);
         setFeedError(`${feedErrorMessage}. Showing demo feed.`);
       }
@@ -1218,6 +1276,11 @@ export default function MarketplacePage() {
     const composeParam = params.get("compose");
     if (composeParam === "1" || composeParam === "true") {
       setOpenPostModal(true);
+    }
+
+    const categoryParam = params.get("category");
+    if (categoryParam && ["all", "demand", "service", "product"].includes(categoryParam)) {
+      setCategory(categoryParam);
     }
 
     const id = params.get("focus");
@@ -1416,6 +1479,32 @@ const hottestCategories = useMemo(
   [visibleFeed]
 );
 
+const activeNeedSpotlight = useMemo(() => {
+  const needs = visibleFeed.filter((item) => item.type === "demand");
+  if (needs.length === 0) return null;
+
+  return [...needs].sort((a, b) => {
+    if (Boolean(b.urgent) !== Boolean(a.urgent)) return Number(Boolean(b.urgent)) - Number(Boolean(a.urgent));
+    return b.rankScore - a.rankScore || parseDateMs(b.createdAt) - parseDateMs(a.createdAt);
+  })[0];
+}, [visibleFeed]);
+
+const categoryFilters = useMemo(
+  () => {
+    const demandCount = feed.filter((item) => item.type === "demand").length;
+    const serviceCount = feed.filter((item) => item.type === "service").length;
+    const productCount = feed.filter((item) => item.type === "product").length;
+
+    return [
+      { value: "all", label: "ALL", count: feed.length },
+      { value: "demand", label: "NEED", count: demandCount },
+      { value: "service", label: "SERVICE", count: serviceCount },
+      { value: "product", label: "PRODUCT", count: productCount },
+    ];
+  },
+  [feed]
+);
+
 const startupReadinessScore = useMemo(() => {
   const verifiedSignal =
     filteredStats.total > 0 ? Math.round((filteredStats.verified / filteredStats.total) * 100) : 0;
@@ -1599,8 +1688,6 @@ setMessageLoadingId(null);
 router.push(`/dashboard/chat?open=${targetConversationId}`);
 };
 
-const categories = ["all", "demand", "service", "product"];
-
 const dashboardStats = useMemo(() => {
   const providers = new Set(feed.map((item) => item.provider_id).filter(Boolean)).size;
   const urgentCount = feed.filter((item) => item.type === "demand" && item.urgent).length;
@@ -1641,10 +1728,14 @@ return (
                 Market Command Feed
               </div>
               <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                Ship faster with realtime local demand intelligence
+                {feedMix.demand > 0
+                  ? `${feedMix.demand} active needs are live in your local market`
+                  : "Ship faster with realtime local demand intelligence"}
               </h1>
               <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
-                Production-ready marketplace stream for nearby needs, verified providers, and conversion-focused actions.
+                {activeNeedSpotlight
+                  ? `Spotlight: "${activeNeedSpotlight.title}" is ready for response within ${activeNeedSpotlight.distance} km.`
+                  : "Production-ready marketplace stream for nearby needs, verified providers, and conversion-focused actions."}
               </p>
             </div>
 
@@ -1669,6 +1760,29 @@ return (
                     Refresh
                   </button>
                 </div>
+              </div>
+              <div className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-white/90">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Active Need Spotlight</p>
+                {activeNeedSpotlight ? (
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="line-clamp-1 font-semibold">{activeNeedSpotlight.title}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = cardRefs.current[activeNeedSpotlight.id];
+                        if (!target) return;
+                        target.scrollIntoView({ behavior: "smooth", block: "center" });
+                        setHighlightedId(activeNeedSpotlight.id);
+                        setTimeout(() => setHighlightedId(null), 1200);
+                      }}
+                      className="shrink-0 rounded-full border border-white/40 bg-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:bg-white/30 transition-colors"
+                    >
+                      Respond
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-1 text-white/80">No active needs in current filters. Remove filters to expand demand view.</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <button
@@ -1696,6 +1810,7 @@ return (
                   type="button"
                   onClick={() => {
                     setFeed(demoFeed);
+                    setDedupedCount(0);
                     setUsingDemoFeed(true);
                     setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
                   }}
@@ -1861,6 +1976,11 @@ return (
             <BellRing size={12} />
             {liveEventCount} updates
           </span>
+          {dedupedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
+              {dedupedCount} duplicates removed
+            </span>
+          )}
           {activeFilterCount > 0 && (
             <button
               type="button"
@@ -1880,17 +2000,17 @@ return (
         )}
 
         <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
-          {categories.map((cat) => (
+          {categoryFilters.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setCategory(cat)}
+              key={cat.value}
+              onClick={() => setCategory(cat.value)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                category === cat
+                category === cat.value
                   ? "bg-indigo-600 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              {cat.toUpperCase()}
+              {cat.label} ({cat.count})
             </button>
           ))}
         </div>
@@ -2427,27 +2547,63 @@ return (
                           )}
 
                           <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
-                            <button
-                              onClick={() => bookNow(item)}
-                              disabled={!item.provider_id}
-                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
-                            >
-                              {item.type === "demand" ? "Accept Job" : "Book Now"}
-                            </button>
-                            <button
-                              onClick={() => messageProvider(item.provider_id)}
-                              disabled={!item.provider_id}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
-                            >
-                              {messageLoadingId === item.provider_id ? (
-                                "Starting..."
-                              ) : (
-                                <>
-                                  <MessageCircle size={15} />
-                                  Chat
-                                </>
-                              )}
-                            </button>
+                            {item.type === "demand" ? (
+                              <>
+                                <button
+                                  onClick={() => messageProvider(item.provider_id)}
+                                  disabled={!item.provider_id}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
+                                >
+                                  {messageLoadingId === item.provider_id ? (
+                                    "Starting..."
+                                  ) : (
+                                    <>
+                                      <MessageCircle size={15} />
+                                      Respond
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedProvider(item.provider_id)}
+                                  disabled={!item.provider_id}
+                                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
+                                >
+                                  Connect
+                                </button>
+                                <button
+                                  onClick={() => bookNow(item)}
+                                  disabled={!item.provider_id}
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
+                                >
+                                  Offer Help
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => bookNow(item)}
+                                  disabled={!item.provider_id}
+                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
+                                >
+                                  Book Now
+                                </button>
+                                <button
+                                  onClick={() => messageProvider(item.provider_id)}
+                                  disabled={!item.provider_id}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
+                                >
+                                  {messageLoadingId === item.provider_id ? (
+                                    "Starting..."
+                                  ) : (
+                                    <>
+                                      <MessageCircle size={15} />
+                                      Chat
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
                             {!!item.businessSlug && (
                               <button
                                 onClick={() => router.push(`/business/${item.businessSlug}`)}
