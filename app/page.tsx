@@ -5,8 +5,7 @@ import { supabase } from "../lib/supabase";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
-const AUTH_SOFT_TIMEOUT_MS = 10000;
-const AUTH_HARD_TIMEOUT_MS = 45000;
+const AUTH_HARD_TIMEOUT_MS = 30000;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,15 +43,11 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage("");
 
-    const baseUrl = window.location.origin;
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/+$/, "");
+    const baseUrl = configuredSiteUrl || window.location.origin;
     const redirectTo = `${baseUrl}/dashboard`;
-    let slowRequestTimer: number | undefined;
 
     try {
-      slowRequestTimer = window.setTimeout(() => {
-        setErrorMessage("Still sending your login link. This can take up to a minute on slower networks.");
-      }, AUTH_SOFT_TIMEOUT_MS);
-
       const { error } = await withHardTimeout(
         supabase.auth.signInWithOtp({
           email: trimmedEmail,
@@ -95,9 +90,6 @@ export default function LoginPage() {
       }
       setSent(false);
     } finally {
-      if (slowRequestTimer !== undefined) {
-        window.clearTimeout(slowRequestTimer);
-      }
       setLoading(false);
     }
   };
