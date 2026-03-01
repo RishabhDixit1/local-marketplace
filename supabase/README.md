@@ -11,9 +11,27 @@ Run `secure_realtime_rls.sql` before seeding to:
 - add indexes + helper functions for participant-based access checks
 - add `get_provider_order_stats(provider_ids uuid[])` RPC used by People/Business surfaces
 
+## Realtime publication setup (run second)
+
+Run `enable_realtime_publication.sql` to register all live marketplace tables in `supabase_realtime` publication.
+Without this step, UI subscriptions can connect but receive no row-change events.
+
+## Verification (run after setup)
+
+Run `verify_realtime_setup.sql` to validate:
+- publication table registration
+- RLS enabled on core tables
+- required triggers are present
+- quick row-count sanity checks
+
+## SQL Editor usage note
+
+In Supabase SQL Editor, paste the SQL **contents** and run them.
+Do not type only the filename (for example `supabase/seed_realtime_tabs_demo.sql`) as SQL input.
+
 ## Dashboard demo seed
 
-Run `seed_dashboard_demo.sql` in the Supabase SQL Editor to seed realistic visual data for the unified dashboard.
+Run `seed_dashboard_demo.sql` in the Supabase SQL Editor after steps above to seed realistic visual data for the unified dashboard.
 
 ### What it seeds
 - `profiles`
