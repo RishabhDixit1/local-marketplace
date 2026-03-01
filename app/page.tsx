@@ -6,6 +6,51 @@ import { supabase } from "../lib/supabase";
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
 const AUTH_HARD_TIMEOUT_MS = 30000;
+const AUTH_REACHABILITY_TIMEOUT_MS = 5000;
+
+const cleanUrl = (value: string | undefined): string => value?.trim().replace(/\/+$/, "") ?? "";
+
+const getSupabaseConfig = (): { url: string; host: string; anonKey: string } | null => {
+  const url = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+
+  if (!url || !anonKey) return null;
+
+  try {
+    return {
+      url,
+      host: new URL(url).host,
+      anonKey,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const buildSupabaseReachabilityMessage = (host: string): string =>
+  `Cannot reach Supabase auth (${host}). Check DNS/VPN/firewall and verify *.supabase.co is reachable.`;
+
+const probeSupabaseAuthReachability = async (url: string, anonKey: string): Promise<boolean> => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REACHABILITY_TIMEOUT_MS);
+
+  try {
+    await fetch(`${url}/auth/v1/health`, {
+      method: "GET",
+      headers: {
+        apikey: anonKey,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    return true;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -43,9 +88,19 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage("");
 
-    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/+$/, "");
+    const configuredSiteUrl = cleanUrl(process.env.NEXT_PUBLIC_SITE_URL);
     const baseUrl = configuredSiteUrl || window.location.origin;
     const redirectTo = `${baseUrl}/dashboard`;
+    const supabaseConfig = getSupabaseConfig();
+
+    if (!supabaseConfig) {
+      setErrorMessage(
+        "Supabase config is invalid. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local."
+      );
+      setLoading(false);
+      setSent(false);
+      return;
+    }
 
     try {
       const { error } = await withHardTimeout(
@@ -80,9 +135,20 @@ export default function LoginPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send login link right now.";
       if (/timed out/i.test(message)) {
-        setErrorMessage(
-          "Auth server is taking too long. The link may still arrive shortly, or you can retry now."
+        const isSupabaseReachable = await probeSupabaseAuthReachability(
+          supabaseConfig.url,
+          supabaseConfig.anonKey
         );
+
+        if (!isSupabaseReachable) {
+          setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
+        } else {
+          setErrorMessage(
+            "Auth server is taking too long. The link may still arrive shortly, or you can retry now."
+          );
+        }
+      } else if (/fetch|network|failed to fetch|load failed/i.test(message)) {
+        setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
       } else {
         setErrorMessage(
           "Network/auth request failed. Verify Supabase URL/anon key and allowed redirect URLs, then retry."
