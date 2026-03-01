@@ -87,7 +87,7 @@ export default function LoginPage() {
 
     const configuredSiteUrl = cleanUrl(process.env.NEXT_PUBLIC_SITE_URL);
     const baseUrl = configuredSiteUrl || window.location.origin;
-    const redirectTo = `${baseUrl}/dashboard`;
+    const redirectTo = `${baseUrl}/auth/callback`;
     const supabaseConfig = getSupabaseConfig();
 
     if (!supabaseConfig) {
