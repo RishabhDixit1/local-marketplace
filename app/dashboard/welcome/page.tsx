@@ -60,6 +60,9 @@ type NearbyCard = {
   subtitle: string;
   priceLabel: string;
   distanceKm: number;
+  etaLabel: string;
+  signalLabel: string;
+  momentumLabel: string;
   image: string;
   actionLabel: string;
   actionPath: string;
@@ -298,9 +301,10 @@ export default function WelcomePage() {
 
   const storyItems = useMemo(
     () =>
-      nearbyCards.slice(0, 8).map((card) => ({
+      nearbyCards.slice(0, 10).map((card) => ({
         ...card,
         badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
+        pulse: card.type === "demand" ? "Urgent" : card.type === "service" ? "Trusted" : "Fast deal",
       })),
     [nearbyCards]
   );
@@ -501,9 +505,9 @@ export default function WelcomePage() {
         });
 
         const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-          supabase.from("posts").select("id, text").eq("status", "open").limit(3),
-          supabase.from("service_listings").select("id, title, category, price").limit(3),
-          supabase.from("product_catalog").select("id, title, category, price").limit(3),
+          supabase.from("posts").select("id, text").eq("status", "open").limit(5),
+          supabase.from("service_listings").select("id, title, category, price").limit(5),
+          supabase.from("product_catalog").select("id, title, category, price").limit(5),
         ]);
 
       const demandImages = [
@@ -518,6 +522,9 @@ export default function WelcomePage() {
         "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=80",
         "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",
       ];
+      const demandSignals = ["High urgency", "Budget confirmed", "Frequent requester"];
+      const serviceSignals = ["Verified provider", "4.9 avg rating", "Fast response"];
+      const productSignals = ["Trusted seller", "Pickup in 30m", "Local warranty"];
 
       const mappedPosts: NearbyCard[] =
         (recentPosts as RawPost[] | null)?.map((post, index) => ({
@@ -528,6 +535,9 @@ export default function WelcomePage() {
           subtitle: "Demand posted by nearby customer",
           priceLabel: "Budget shared in chat",
           distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
+          etaLabel: index === 0 ? "Starts in 15m" : `Starts in ${20 + index * 5}m`,
+          signalLabel: demandSignals[index % demandSignals.length],
+          momentumLabel: `${6 + index * 2} responders watching`,
           image: demandImages[index % demandImages.length],
           actionLabel: "Respond",
           actionPath: routes.posts,
@@ -542,6 +552,9 @@ export default function WelcomePage() {
           subtitle: service.category || "Provider offering",
           priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
           distanceKm: Number((1.2 + index * 0.8).toFixed(1)),
+          etaLabel: index === 0 ? "Available now" : `Available in ${15 + index * 10}m`,
+          signalLabel: serviceSignals[index % serviceSignals.length],
+          momentumLabel: `${3 + index} bookings in progress`,
           image: serviceImages[index % serviceImages.length],
           actionLabel: "Book",
           actionPath: routes.posts,
@@ -556,54 +569,157 @@ export default function WelcomePage() {
           subtitle: product.category || "Nearby seller",
           priceLabel: product.price ? `₹${product.price}` : "Price on request",
           distanceKm: Number((1.4 + index * 0.8).toFixed(1)),
+          etaLabel: index === 0 ? "Same-day pickup" : `Pickup in ${30 + index * 15}m`,
+          signalLabel: productSignals[index % productSignals.length],
+          momentumLabel: `${4 + index} chats opened today`,
           image: productImages[index % productImages.length],
           actionLabel: "View",
           actionPath: routes.posts,
         })) || [];
 
-      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 6);
+      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 9);
+      const fallbackCards: NearbyCard[] = [
+        {
+          id: "demo-demand-electrician",
+          focusId: "demo-demand-electrician",
+          type: "demand",
+          title: "Need urgent electrician nearby",
+          subtitle: "Power issue in 2BHK apartment",
+          priceLabel: "Budget ₹1200",
+          distanceKm: 1.1,
+          etaLabel: "Starts in 20m",
+          signalLabel: "High urgency",
+          momentumLabel: "11 responders watching",
+          image: demandImages[0],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-cleaning",
+          focusId: "demo-service-cleaning",
+          type: "service",
+          title: "Home deep cleaning by verified provider",
+          subtitle: "Cleaning service",
+          priceLabel: "From ₹399",
+          distanceKm: 1.9,
+          etaLabel: "Available now",
+          signalLabel: "Verified provider",
+          momentumLabel: "4 bookings in progress",
+          image: serviceImages[0],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-tools",
+          focusId: "demo-product-tools",
+          type: "product",
+          title: "Local seller: power tools kit",
+          subtitle: "Tools and hardware",
+          priceLabel: "₹1499",
+          distanceKm: 2.6,
+          etaLabel: "Same-day pickup",
+          signalLabel: "Trusted seller",
+          momentumLabel: "7 chats opened today",
+          image: productImages[0],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-demand-plumber",
+          focusId: "demo-demand-plumber",
+          type: "demand",
+          title: "Plumber needed for kitchen leakage",
+          subtitle: "Immediate fix requested",
+          priceLabel: "Budget ₹850",
+          distanceKm: 2.1,
+          etaLabel: "Starts in 35m",
+          signalLabel: "Budget confirmed",
+          momentumLabel: "8 responders watching",
+          image: demandImages[1],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-ac",
+          focusId: "demo-service-ac",
+          type: "service",
+          title: "AC servicing with same-day slot",
+          subtitle: "Appliance maintenance",
+          priceLabel: "From ₹699",
+          distanceKm: 3.0,
+          etaLabel: "Available in 40m",
+          signalLabel: "4.9 avg rating",
+          momentumLabel: "6 bookings in progress",
+          image: serviceImages[1],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-bike",
+          focusId: "demo-product-bikewash",
+          type: "product",
+          title: "Bike wash kit + polish combo",
+          subtitle: "Automotive essentials",
+          priceLabel: "₹799",
+          distanceKm: 1.7,
+          etaLabel: "Pickup in 45m",
+          signalLabel: "Local warranty",
+          momentumLabel: "5 chats opened today",
+          image: productImages[1],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-demand-tutor",
+          focusId: "demo-demand-tutor",
+          type: "demand",
+          title: "Math tutor for class 10 board prep",
+          subtitle: "Weekend evening batches",
+          priceLabel: "Budget ₹500/session",
+          distanceKm: 2.4,
+          etaLabel: "Starts in 60m",
+          signalLabel: "Frequent requester",
+          momentumLabel: "9 responders watching",
+          image: demandImages[0],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-photo",
+          focusId: "demo-service-photographer",
+          type: "service",
+          title: "Event photographer for small gatherings",
+          subtitle: "Creative services",
+          priceLabel: "From ₹2499",
+          distanceKm: 3.3,
+          etaLabel: "Available in 2h",
+          signalLabel: "Fast response",
+          momentumLabel: "3 bookings in progress",
+          image: serviceImages[0],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-organic",
+          focusId: "demo-product-organic",
+          type: "product",
+          title: "Organic groceries starter basket",
+          subtitle: "Fresh farm produce",
+          priceLabel: "₹1299",
+          distanceKm: 1.3,
+          etaLabel: "Pickup in 30m",
+          signalLabel: "Trusted seller",
+          momentumLabel: "10 chats opened today",
+          image: productImages[0],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+      ];
 
       setNearbyCards(
         allCards.length
           ? allCards
-          : [
-              {
-                id: "demo-demand",
-                focusId: "demo1",
-                type: "demand",
-                title: "Need urgent electrician nearby",
-                subtitle: "Power issue at home",
-                priceLabel: "Budget shared in chat",
-                distanceKm: 1.1,
-                image: demandImages[0],
-                actionLabel: "Respond",
-                actionPath: routes.posts,
-              },
-              {
-                id: "demo-service",
-                focusId: "demo2",
-                type: "service",
-                title: "Home cleaning by verified provider",
-                subtitle: "Cleaning service",
-                priceLabel: "From ₹399",
-                distanceKm: 1.9,
-                image: serviceImages[0],
-                actionLabel: "Book",
-                actionPath: routes.posts,
-              },
-              {
-                id: "demo-product",
-                focusId: "demo3",
-                type: "product",
-                title: "Local seller: power tools",
-                subtitle: "Tools and hardware",
-                priceLabel: "₹1499",
-                distanceKm: 2.6,
-                image: productImages[0],
-                actionLabel: "View",
-                actionPath: routes.posts,
-              },
-            ]
+          : fallbackCards
       );
 
         const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
@@ -979,7 +1095,7 @@ export default function WelcomePage() {
                           `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`
                         )
                       }
-                      className="w-24 shrink-0 text-left"
+                      className="w-28 shrink-0 text-left"
                     >
                       <div
                         className={`rounded-2xl p-[2px] ${
@@ -996,12 +1112,21 @@ export default function WelcomePage() {
                           <span className="absolute left-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
                             {story.badge}
                           </span>
-                          <p className="absolute bottom-2 left-2 right-2 text-[10px] leading-tight font-medium text-white line-clamp-2">
+                          <span className="absolute right-2 top-2 rounded-full bg-black/45 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                            {story.pulse}
+                          </span>
+                          <p className="absolute bottom-4 left-2 right-2 text-[10px] leading-tight font-semibold text-white line-clamp-2">
                             {story.title}
+                          </p>
+                          <p className="absolute bottom-1.5 left-2 right-2 text-[9px] text-white/85 line-clamp-1">
+                            {story.signalLabel}
                           </p>
                         </div>
                       </div>
-                      <p className="mt-1.5 text-[11px] text-slate-600 line-clamp-1">{story.distanceKm} km away</p>
+                      <p className="mt-1.5 text-[11px] text-slate-600 line-clamp-1">
+                        {story.distanceKm} km away • {story.etaLabel}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-1">{story.momentumLabel}</p>
                     </button>
                   ))}
                 </div>
@@ -1081,6 +1206,18 @@ export default function WelcomePage() {
                       </div>
                       <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
                       <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                          {card.priceLabel}
+                        </span>
+                        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                          {card.signalLabel}
+                        </span>
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                          {card.etaLabel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{card.momentumLabel}</p>
                     </div>
                     <button
                       onClick={() =>
