@@ -120,6 +120,19 @@ export default function LoginPage() {
           setErrorMessage(
             `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
           );
+        } else if (/fetch|network|failed to fetch|load failed/i.test(message)) {
+          const isSupabaseReachable = await probeSupabaseAuthReachability(
+            supabaseConfig.url,
+            supabaseConfig.anonKey
+          );
+
+          if (!isSupabaseReachable) {
+            setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
+          } else {
+            setErrorMessage(
+              "Network request failed in the browser. Disable VPN/ad-block/privacy extensions and retry."
+            );
+          }
         } else if (/rate|too many/i.test(message)) {
           setErrorMessage("Too many requests. Wait a minute and try again.");
         } else {
