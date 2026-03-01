@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
@@ -12,6 +12,8 @@ import {
   Activity,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   ClipboardList,
   Clock3,
@@ -60,9 +62,24 @@ type NearbyCard = {
   subtitle: string;
   priceLabel: string;
   distanceKm: number;
+  etaLabel: string;
+  signalLabel: string;
+  momentumLabel: string;
   image: string;
   actionLabel: string;
   actionPath: string;
+};
+
+type EnrichedNearbyCard = NearbyCard & {
+  badge: string;
+  pulse: string;
+  ownerLabel: string;
+  postedAgo: string;
+  responseLabel: string;
+  proofLabel: string;
+  mediaLabel: string;
+  mediaCount: number;
+  mediaGallery: [string, string, string];
 };
 
 type OnboardingStep = {
@@ -233,6 +250,12 @@ const heroDataStreams: Array<{
 
 export default function WelcomePage() {
   const router = useRouter();
+  const storiesScrollRef = useRef<HTMLDivElement | null>(null);
+  const storiesDragRef = useRef({
+    isDragging: false,
+    startX: 0,
+    startScrollLeft: 0,
+  });
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -296,14 +319,144 @@ export default function WelcomePage() {
 
   const completedOnboarding = onboardingSteps.filter((step) => step.done).length;
 
-  const storyItems = useMemo(
-    () =>
-      nearbyCards.slice(0, 8).map((card) => ({
+  const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
+    const demandAltMedia = [
+      "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1200&q=80",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80",
+      "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=1200&q=80",
+      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&q=80",
+      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
+    ];
+    const serviceAltMedia = [
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
+      "https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=1200&q=80",
+      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1200&q=80",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
+      "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80",
+    ];
+    const productAltMedia = [
+      "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=1200&q=80",
+      "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?w=1200&q=80",
+      "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=1200&q=80",
+      "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=1200&q=80",
+      "https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80",
+    ];
+    const demandOwners = ["Ananya R.", "Kunal S.", "Priya N.", "Rohit J.", "Megha D."];
+    const serviceOwners = ["UrbanFix Crew", "SparkClean Pro", "HandyNest", "QuickCare Team", "FixRight Local"];
+    const productOwners = ["ToolKart Local", "FreshStreet Market", "CityMart Seller", "HomePro Supply", "DailyBasket Hub"];
+
+    return nearbyCards.map((card, index) => {
+      const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
+      const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
+      const mediaGallery: [string, string, string] = [
+        card.image,
+        mediaPool[(index + 1) % mediaPool.length],
+        mediaPool[(index + 3) % mediaPool.length],
+      ];
+
+      return {
         ...card,
         badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
-      })),
-    [nearbyCards]
+        pulse: card.type === "demand" ? "Urgent" : card.type === "service" ? "Trusted" : "Fast deal",
+        ownerLabel: ownerPool[index % ownerPool.length],
+        postedAgo: `${2 + index * 3}m ago`,
+        responseLabel:
+          card.type === "demand"
+            ? "Replies in ~4 min"
+            : card.type === "service"
+            ? "Provider replies in ~6 min"
+            : "Seller replies in ~5 min",
+        proofLabel:
+          card.type === "demand"
+            ? `${5 + index} local matches`
+            : card.type === "service"
+            ? `${14 + index} verified jobs`
+            : `${9 + index} repeat buyers`,
+        mediaLabel: card.type === "demand" ? "Issue photos" : card.type === "service" ? "Before/after media" : "Product gallery",
+        mediaCount: 3 + (index % 5),
+        mediaGallery,
+      };
+    });
+  }, [nearbyCards]);
+
+  const storyBaseItems = useMemo(() => {
+    if (!enrichedCards.length) return [];
+
+    const targetCount = 10;
+    return Array.from({ length: targetCount }, (_, index) => enrichedCards[index % enrichedCards.length]);
+  }, [enrichedCards]);
+
+  const storyItems = useMemo(
+    () => (storyBaseItems.length ? [...storyBaseItems, ...storyBaseItems] : []),
+    [storyBaseItems]
   );
+
+  const scrollStories = (direction: "left" | "right") => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    const delta = Math.round(container.clientWidth * 0.55);
+    container.scrollBy({
+      left: direction === "left" ? -delta : delta,
+      behavior: "smooth",
+    });
+  };
+
+  const handleStoriesWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!storiesScrollRef.current) return;
+
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      event.preventDefault();
+      storiesScrollRef.current.scrollBy({
+        left: event.deltaY,
+      });
+    }
+  };
+
+  const handleStoriesPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    storiesDragRef.current.isDragging = true;
+    storiesDragRef.current.startX = event.clientX;
+    storiesDragRef.current.startScrollLeft = container.scrollLeft;
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handleStoriesPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container || !storiesDragRef.current.isDragging) return;
+
+    const dragDelta = event.clientX - storiesDragRef.current.startX;
+    container.scrollLeft = storiesDragRef.current.startScrollLeft - dragDelta;
+  };
+
+  const handleStoriesPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    storiesDragRef.current.isDragging = false;
+    if (container.hasPointerCapture(event.pointerId)) {
+      container.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    const container = storiesScrollRef.current;
+    if (!container || storyItems.length === 0) return;
+
+    const timer = window.setInterval(() => {
+      const loopWidth = container.scrollWidth / 2;
+      if (loopWidth <= 0) return;
+
+      container.scrollLeft += 3;
+      if (container.scrollLeft >= loopWidth) {
+        container.scrollLeft -= loopWidth;
+      }
+    }, 20);
+
+    return () => window.clearInterval(timer);
+  }, [storyItems.length]);
 
   const demandCards = useMemo(
     () => nearbyCards.filter((card) => card.type === "demand"),
@@ -501,9 +654,9 @@ export default function WelcomePage() {
         });
 
         const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-          supabase.from("posts").select("id, text").eq("status", "open").limit(3),
-          supabase.from("service_listings").select("id, title, category, price").limit(3),
-          supabase.from("product_catalog").select("id, title, category, price").limit(3),
+          supabase.from("posts").select("id, text").eq("status", "open").limit(5),
+          supabase.from("service_listings").select("id, title, category, price").limit(5),
+          supabase.from("product_catalog").select("id, title, category, price").limit(5),
         ]);
 
       const demandImages = [
@@ -518,6 +671,9 @@ export default function WelcomePage() {
         "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=80",
         "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",
       ];
+      const demandSignals = ["High urgency", "Budget confirmed", "Frequent requester"];
+      const serviceSignals = ["Verified provider", "4.9 avg rating", "Fast response"];
+      const productSignals = ["Trusted seller", "Pickup in 30m", "Local warranty"];
 
       const mappedPosts: NearbyCard[] =
         (recentPosts as RawPost[] | null)?.map((post, index) => ({
@@ -528,6 +684,9 @@ export default function WelcomePage() {
           subtitle: "Demand posted by nearby customer",
           priceLabel: "Budget shared in chat",
           distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
+          etaLabel: index === 0 ? "Starts in 15m" : `Starts in ${20 + index * 5}m`,
+          signalLabel: demandSignals[index % demandSignals.length],
+          momentumLabel: `${6 + index * 2} responders watching`,
           image: demandImages[index % demandImages.length],
           actionLabel: "Respond",
           actionPath: routes.posts,
@@ -542,6 +701,9 @@ export default function WelcomePage() {
           subtitle: service.category || "Provider offering",
           priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
           distanceKm: Number((1.2 + index * 0.8).toFixed(1)),
+          etaLabel: index === 0 ? "Available now" : `Available in ${15 + index * 10}m`,
+          signalLabel: serviceSignals[index % serviceSignals.length],
+          momentumLabel: `${3 + index} bookings in progress`,
           image: serviceImages[index % serviceImages.length],
           actionLabel: "Book",
           actionPath: routes.posts,
@@ -556,54 +718,157 @@ export default function WelcomePage() {
           subtitle: product.category || "Nearby seller",
           priceLabel: product.price ? `₹${product.price}` : "Price on request",
           distanceKm: Number((1.4 + index * 0.8).toFixed(1)),
+          etaLabel: index === 0 ? "Same-day pickup" : `Pickup in ${30 + index * 15}m`,
+          signalLabel: productSignals[index % productSignals.length],
+          momentumLabel: `${4 + index} chats opened today`,
           image: productImages[index % productImages.length],
           actionLabel: "View",
           actionPath: routes.posts,
         })) || [];
 
-      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 6);
+      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 9);
+      const fallbackCards: NearbyCard[] = [
+        {
+          id: "demo-demand-electrician",
+          focusId: "demo-demand-electrician",
+          type: "demand",
+          title: "Need urgent electrician nearby",
+          subtitle: "Power issue in 2BHK apartment",
+          priceLabel: "Budget ₹1200",
+          distanceKm: 1.1,
+          etaLabel: "Starts in 20m",
+          signalLabel: "High urgency",
+          momentumLabel: "11 responders watching",
+          image: demandImages[0],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-cleaning",
+          focusId: "demo-service-cleaning",
+          type: "service",
+          title: "Home deep cleaning by verified provider",
+          subtitle: "Cleaning service",
+          priceLabel: "From ₹399",
+          distanceKm: 1.9,
+          etaLabel: "Available now",
+          signalLabel: "Verified provider",
+          momentumLabel: "4 bookings in progress",
+          image: serviceImages[0],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-tools",
+          focusId: "demo-product-tools",
+          type: "product",
+          title: "Local seller: power tools kit",
+          subtitle: "Tools and hardware",
+          priceLabel: "₹1499",
+          distanceKm: 2.6,
+          etaLabel: "Same-day pickup",
+          signalLabel: "Trusted seller",
+          momentumLabel: "7 chats opened today",
+          image: productImages[0],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-demand-plumber",
+          focusId: "demo-demand-plumber",
+          type: "demand",
+          title: "Plumber needed for kitchen leakage",
+          subtitle: "Immediate fix requested",
+          priceLabel: "Budget ₹850",
+          distanceKm: 2.1,
+          etaLabel: "Starts in 35m",
+          signalLabel: "Budget confirmed",
+          momentumLabel: "8 responders watching",
+          image: demandImages[1],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-ac",
+          focusId: "demo-service-ac",
+          type: "service",
+          title: "AC servicing with same-day slot",
+          subtitle: "Appliance maintenance",
+          priceLabel: "From ₹699",
+          distanceKm: 3.0,
+          etaLabel: "Available in 40m",
+          signalLabel: "4.9 avg rating",
+          momentumLabel: "6 bookings in progress",
+          image: serviceImages[1],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-bike",
+          focusId: "demo-product-bikewash",
+          type: "product",
+          title: "Bike wash kit + polish combo",
+          subtitle: "Automotive essentials",
+          priceLabel: "₹799",
+          distanceKm: 1.7,
+          etaLabel: "Pickup in 45m",
+          signalLabel: "Local warranty",
+          momentumLabel: "5 chats opened today",
+          image: productImages[1],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-demand-tutor",
+          focusId: "demo-demand-tutor",
+          type: "demand",
+          title: "Math tutor for class 10 board prep",
+          subtitle: "Weekend evening batches",
+          priceLabel: "Budget ₹500/session",
+          distanceKm: 2.4,
+          etaLabel: "Starts in 60m",
+          signalLabel: "Frequent requester",
+          momentumLabel: "9 responders watching",
+          image: demandImages[0],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-photo",
+          focusId: "demo-service-photographer",
+          type: "service",
+          title: "Event photographer for small gatherings",
+          subtitle: "Creative services",
+          priceLabel: "From ₹2499",
+          distanceKm: 3.3,
+          etaLabel: "Available in 2h",
+          signalLabel: "Fast response",
+          momentumLabel: "3 bookings in progress",
+          image: serviceImages[0],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-organic",
+          focusId: "demo-product-organic",
+          type: "product",
+          title: "Organic groceries starter basket",
+          subtitle: "Fresh farm produce",
+          priceLabel: "₹1299",
+          distanceKm: 1.3,
+          etaLabel: "Pickup in 30m",
+          signalLabel: "Trusted seller",
+          momentumLabel: "10 chats opened today",
+          image: productImages[0],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+      ];
 
       setNearbyCards(
         allCards.length
           ? allCards
-          : [
-              {
-                id: "demo-demand",
-                focusId: "demo1",
-                type: "demand",
-                title: "Need urgent electrician nearby",
-                subtitle: "Power issue at home",
-                priceLabel: "Budget shared in chat",
-                distanceKm: 1.1,
-                image: demandImages[0],
-                actionLabel: "Respond",
-                actionPath: routes.posts,
-              },
-              {
-                id: "demo-service",
-                focusId: "demo2",
-                type: "service",
-                title: "Home cleaning by verified provider",
-                subtitle: "Cleaning service",
-                priceLabel: "From ₹399",
-                distanceKm: 1.9,
-                image: serviceImages[0],
-                actionLabel: "Book",
-                actionPath: routes.posts,
-              },
-              {
-                id: "demo-product",
-                focusId: "demo3",
-                type: "product",
-                title: "Local seller: power tools",
-                subtitle: "Tools and hardware",
-                priceLabel: "₹1499",
-                distanceKm: 2.6,
-                image: productImages[0],
-                actionLabel: "View",
-                actionPath: routes.posts,
-              },
-            ]
+          : fallbackCards
       );
 
         const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
@@ -954,61 +1219,172 @@ export default function WelcomePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.95fr] gap-4">
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)] gap-4">
+            <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold">Neighborhood Stories</h2>
-                  <p className="text-xs text-slate-500">Tap a story card to jump directly into the related post or listing.</p>
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Stories
                 </div>
-                <button
-                  onClick={() => router.push(routes.posts)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  View feed
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(routes.posts)}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                  >
+                    Open feed
+                  </button>
+                  <button
+                    onClick={() => scrollStories("left")}
+                    aria-label="Scroll stories left"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    onClick={() => scrollStories("right")}
+                    aria-label="Scroll stories right"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-max gap-3">
-                  {storyItems.map((story) => (
+              <div className="mt-4">
+                <div
+                  ref={storiesScrollRef}
+                  onWheel={handleStoriesWheel}
+                  onPointerDown={handleStoriesPointerDown}
+                  onPointerMove={handleStoriesPointerMove}
+                  onPointerUp={handleStoriesPointerUp}
+                  onPointerCancel={handleStoriesPointerUp}
+                  className="w-full max-w-full cursor-grab active:cursor-grabbing select-none overflow-x-auto overflow-y-hidden pb-1 overscroll-x-contain touch-pan-x [scrollbar-width:thin]"
+                >
+                  <div className="flex w-max gap-3 sm:gap-3.5">
+                    {storyItems.map((story, storyIndex) => {
+                      const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
+
+                      return (
+                        <article key={`story-${story.id}-${storyIndex}`} className="w-[108px] sm:w-[116px] shrink-0">
+                          <button
+                            onClick={() => router.push(focusPath)}
+                            className="group w-full text-center"
+                          >
+                            <div className="relative mx-auto w-fit">
+                              <div
+                                className={`rounded-full p-[2px] shadow-sm ${
+                                  story.type === "demand"
+                                    ? "bg-gradient-to-br from-rose-400 to-orange-400"
+                                    : story.type === "service"
+                                    ? "bg-gradient-to-br from-indigo-400 to-sky-400"
+                                    : "bg-gradient-to-br from-emerald-400 to-teal-400"
+                                }`}
+                              >
+                                <div className="relative h-16 w-16 sm:h-[68px] sm:w-[68px] overflow-hidden rounded-full border border-white/40">
+                                  <Image src={story.image} alt={story.title} fill sizes="64px" className="object-cover" />
+                                </div>
+                              </div>
+                              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 animate-pulse" />
+                              <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                {story.badge}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 text-[11px] font-semibold text-slate-800 line-clamp-1">{story.priceLabel}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">{story.distanceKm} km</p>
+                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">{story.etaLabel}</p>
+                            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                              <ArrowRight size={10} />
+                            </span>
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900">Live Local Feed</h3>
+                      <p className="text-xs text-slate-500">Realtime list, scroll vertically for more.</p>
+                    </div>
                     <button
-                      key={`story-${story.id}`}
-                      onClick={() =>
-                        router.push(
-                          `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`
-                        )
-                      }
-                      className="w-24 shrink-0 text-left"
+                      onClick={() => router.push(routes.posts)}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
                     >
-                      <div
-                        className={`rounded-2xl p-[2px] ${
-                          story.type === "demand"
-                            ? "bg-gradient-to-br from-rose-400 to-orange-400"
-                            : story.type === "service"
-                            ? "bg-gradient-to-br from-indigo-400 to-sky-400"
-                            : "bg-gradient-to-br from-emerald-400 to-teal-400"
-                        }`}
-                      >
-                        <div className="relative h-28 w-full overflow-hidden rounded-[14px] bg-slate-200">
-                          <Image src={story.image} alt={story.title} fill sizes="96px" className="object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                          <span className="absolute left-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
-                            {story.badge}
-                          </span>
-                          <p className="absolute bottom-2 left-2 right-2 text-[10px] leading-tight font-medium text-white line-clamp-2">
-                            {story.title}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-slate-600 line-clamp-1">{story.distanceKm} km away</p>
+                      Explore all
                     </button>
-                  ))}
+                  </div>
+
+                  <div className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
+                    {enrichedCards.map((card) => {
+                      const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+
+                      return (
+                        <article key={`feed-inline-${card.id}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5">
+                          <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-2 shrink-0">
+                              <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="56px" className="object-cover" />
+                              </div>
+                              <div className="relative h-14 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                <Image src={card.mediaGallery[1]} alt={`${card.title} preview`} fill sizes="40px" className="object-cover" />
+                                <span className="absolute inset-0 bg-black/30 text-[10px] text-white font-semibold flex items-center justify-center">
+                                  +{card.mediaCount}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                    card.type === "demand"
+                                      ? "bg-rose-100 text-rose-700"
+                                      : card.type === "service"
+                                      ? "bg-indigo-100 text-indigo-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {card.type}
+                                </span>
+                                <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                                <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                              </div>
+
+                              <p className="mt-1 text-[15px] font-semibold text-slate-900 line-clamp-1">{card.title}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                              </div>
+
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <button
+                                  onClick={() => router.push(focusPath)}
+                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                                >
+                                  {card.actionLabel}
+                                  <ArrowRight size={11} />
+                                </button>
+                                <button
+                                  onClick={() => router.push(routes.chat)}
+                                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                                >
+                                  Message
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+            <section className="min-w-0 xl:sticky xl:top-24 h-fit rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <h2 className="text-base sm:text-lg font-semibold">Quick Actions</h2>
               <p className="text-xs text-slate-500 mt-1">Shortcuts built for fast local execution.</p>
 
@@ -1043,61 +1419,7 @@ export default function WelcomePage() {
             </section>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4">
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold">Live Local Feed</h2>
-                  <p className="text-xs text-slate-500">Compact stream of nearby needs, services, and products.</p>
-                </div>
-                <button
-                  onClick={() => router.push(routes.posts)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Explore all
-                </button>
-              </div>
-
-              <div className="mt-3 divide-y divide-slate-200">
-                {nearbyCards.map((card) => (
-                  <div key={`feed-${card.id}`} className="py-3 flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200">
-                      <Image src={card.image} alt={card.title} fill sizes="56px" className="object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            card.type === "demand"
-                              ? "bg-rose-100 text-rose-700"
-                              : card.type === "service"
-                              ? "bg-indigo-100 text-indigo-700"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {card.type}
-                        </span>
-                        <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
-                      <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        router.push(
-                          `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`
-                        )
-                      }
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                    >
-                      {card.actionLabel}
-                      <ArrowRight size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-
+          <div className="grid grid-cols-1">
             <div className="space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
