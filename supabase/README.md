@@ -16,6 +16,14 @@ Run `secure_realtime_rls.sql` before seeding to:
 Run `enable_realtime_publication.sql` to register all live marketplace tables in `supabase_realtime` publication.
 Without this step, UI subscriptions can connect but receive no row-change events.
 
+## Verification (run after setup)
+
+Run `verify_realtime_setup.sql` to validate:
+- publication table registration
+- RLS enabled on core tables
+- required triggers are present
+- quick row-count sanity checks
+
 ## SQL Editor usage note
 
 In Supabase SQL Editor, paste the SQL **contents** and run them.

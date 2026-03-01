@@ -55,18 +55,39 @@ Open `http://localhost:3000`.
 Run SQL in this order (Supabase SQL Editor):
 
 1. `supabase/secure_realtime_rls.sql`
-2. `supabase/seed_dashboard_demo.sql`
-3. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
+2. `supabase/enable_realtime_publication.sql`
+3. `supabase/seed_dashboard_demo.sql`
+4. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
+
+Important:
+- In Supabase SQL Editor, paste the SQL file contents and run them.
+- Do not run filenames like `supabase/secure_realtime_rls.sql` as SQL text.
 
 This enables:
 
 - RLS hardening for core tables
 - notifications table + trigger-based event fanout
 - persistent unread tracking
+- realtime table change streams via `supabase_realtime` publication
 - profile geo columns (`latitude`, `longitude`)
 - helper RPCs used by dashboard surfaces
 
 Detailed notes: `supabase/README.md`
+
+### Realtime verification
+
+After setup, run `supabase/verify_realtime_setup.sql` and confirm publication entries + policies/triggers are present.
+
+## Auth URL Configuration (Supabase)
+
+In Supabase Dashboard -> Authentication -> URL Configuration:
+
+- Site URL:
+  - local: `http://localhost:3000`
+  - production: your Vercel domain
+- Redirect URLs:
+  - `http://localhost:3000/auth/callback`
+  - `https://<your-production-domain>/auth/callback`
 
 ## Scripts
 
