@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
@@ -31,7 +31,7 @@ export default function ProviderOrdersPage() {
   const [providerId, setProviderId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
-  const loadOrders = async (userId: string) => {
+  const loadOrders = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from("orders")
       .select("*")
@@ -40,7 +40,7 @@ export default function ProviderOrdersPage() {
 
     setOrders((data as Order[] | null) || []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -63,7 +63,31 @@ export default function ProviderOrdersPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadOrders]);
+
+  useEffect(() => {
+    if (!providerId) return;
+
+    const channel = supabase
+      .channel(`provider-orders-live-${providerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `provider_id=eq.${providerId}`,
+        },
+        () => {
+          void loadOrders(providerId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [providerId, loadOrders]);
 
   const pipelineStats = useMemo(() => {
     const totals = {

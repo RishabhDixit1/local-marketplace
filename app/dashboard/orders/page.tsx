@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import {
@@ -28,6 +28,17 @@ export default function ConsumerOrdersPage() {
   const [consumerId, setConsumerId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
+  const loadOrders = useCallback(async (userId: string) => {
+    const { data: orderRows, error } = await supabase
+      .from("orders")
+      .select("id,listing_type,status,price,created_at")
+      .eq("consumer_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) return;
+    setOrders((orderRows as Order[] | null) || []);
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -39,22 +50,40 @@ export default function ConsumerOrdersPage() {
       }
 
       setConsumerId(data.user.id);
-
-      const { data: orderRows } = await supabase
-        .from("orders")
-        .select("id,listing_type,status,price,created_at")
-        .eq("consumer_id", data.user.id)
-        .order("created_at", { ascending: false });
+      await loadOrders(data.user.id);
 
       if (!isMounted) return;
-      setOrders((orderRows as Order[] | null) || []);
       setLoading(false);
     });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadOrders]);
+
+  useEffect(() => {
+    if (!consumerId) return;
+
+    const channel = supabase
+      .channel(`consumer-orders-live-${consumerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `consumer_id=eq.${consumerId}`,
+        },
+        () => {
+          void loadOrders(consumerId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [consumerId, loadOrders]);
 
   const orderSummary = useMemo(() => {
     return {
