@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
@@ -12,6 +12,8 @@ import {
   Activity,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   ClipboardList,
   Clock3,
@@ -248,6 +250,12 @@ const heroDataStreams: Array<{
 
 export default function WelcomePage() {
   const router = useRouter();
+  const storiesScrollRef = useRef<HTMLDivElement | null>(null);
+  const storiesDragRef = useRef({
+    isDragging: false,
+    startX: 0,
+    startScrollLeft: 0,
+  });
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -371,7 +379,84 @@ export default function WelcomePage() {
     });
   }, [nearbyCards]);
 
-  const storyItems = useMemo(() => enrichedCards.slice(0, 10), [enrichedCards]);
+  const storyBaseItems = useMemo(() => {
+    if (!enrichedCards.length) return [];
+
+    const targetCount = 10;
+    return Array.from({ length: targetCount }, (_, index) => enrichedCards[index % enrichedCards.length]);
+  }, [enrichedCards]);
+
+  const storyItems = useMemo(
+    () => (storyBaseItems.length ? [...storyBaseItems, ...storyBaseItems] : []),
+    [storyBaseItems]
+  );
+
+  const scrollStories = (direction: "left" | "right") => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    const delta = Math.round(container.clientWidth * 0.55);
+    container.scrollBy({
+      left: direction === "left" ? -delta : delta,
+      behavior: "smooth",
+    });
+  };
+
+  const handleStoriesWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!storiesScrollRef.current) return;
+
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      event.preventDefault();
+      storiesScrollRef.current.scrollBy({
+        left: event.deltaY,
+      });
+    }
+  };
+
+  const handleStoriesPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    storiesDragRef.current.isDragging = true;
+    storiesDragRef.current.startX = event.clientX;
+    storiesDragRef.current.startScrollLeft = container.scrollLeft;
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handleStoriesPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container || !storiesDragRef.current.isDragging) return;
+
+    const dragDelta = event.clientX - storiesDragRef.current.startX;
+    container.scrollLeft = storiesDragRef.current.startScrollLeft - dragDelta;
+  };
+
+  const handleStoriesPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = storiesScrollRef.current;
+    if (!container) return;
+
+    storiesDragRef.current.isDragging = false;
+    if (container.hasPointerCapture(event.pointerId)) {
+      container.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    const container = storiesScrollRef.current;
+    if (!container || storyItems.length === 0) return;
+
+    const timer = window.setInterval(() => {
+      const loopWidth = container.scrollWidth / 2;
+      if (loopWidth <= 0) return;
+
+      container.scrollLeft += 3;
+      if (container.scrollLeft >= loopWidth) {
+        container.scrollLeft -= loopWidth;
+      }
+    }, 20);
+
+    return () => window.clearInterval(timer);
+  }, [storyItems.length]);
 
   const demandCards = useMemo(
     () => nearbyCards.filter((card) => card.type === "demand"),
@@ -1134,101 +1219,172 @@ export default function WelcomePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.95fr] gap-4">
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)] gap-4">
+            <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold">Neighborhood Stories</h2>
-                  <p className="text-xs text-slate-500">Tap a story card to jump directly into the related post or listing.</p>
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Stories
                 </div>
-                <button
-                  onClick={() => router.push(routes.posts)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  View feed
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push(routes.posts)}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                  >
+                    Open feed
+                  </button>
+                  <button
+                    onClick={() => scrollStories("left")}
+                    aria-label="Scroll stories left"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    onClick={() => scrollStories("right")}
+                    aria-label="Scroll stories right"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-max gap-3.5">
-                  {storyItems.map((story) => {
-                    const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
+              <div className="mt-4">
+                <div
+                  ref={storiesScrollRef}
+                  onWheel={handleStoriesWheel}
+                  onPointerDown={handleStoriesPointerDown}
+                  onPointerMove={handleStoriesPointerMove}
+                  onPointerUp={handleStoriesPointerUp}
+                  onPointerCancel={handleStoriesPointerUp}
+                  className="w-full max-w-full cursor-grab active:cursor-grabbing select-none overflow-x-auto overflow-y-hidden pb-1 overscroll-x-contain touch-pan-x [scrollbar-width:thin]"
+                >
+                  <div className="flex w-max gap-3 sm:gap-3.5">
+                    {storyItems.map((story, storyIndex) => {
+                      const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
 
-                    return (
-                      <article
-                        key={`story-${story.id}`}
-                        className="w-56 shrink-0 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
-                      >
-                        <button onClick={() => router.push(focusPath)} className="block w-full text-left">
-                          <div className="relative h-32 w-full overflow-hidden">
-                            <Image src={story.image} alt={story.title} fill sizes="224px" className="object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                            <div className="absolute left-2 top-2 flex items-center gap-1.5">
-                              <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
-                                {story.badge}
-                              </span>
-                              <span className="rounded-full bg-black/45 px-1.5 py-0.5 text-[9px] font-medium text-white">
-                                {story.pulse}
-                              </span>
-                            </div>
-                            <span className="absolute right-2 bottom-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
-                              +{story.mediaCount} media
-                            </span>
-                            <p className="absolute left-2 bottom-2 text-[10px] text-white/85">{story.postedAgo}</p>
-                          </div>
-
-                          <div className="p-3">
-                            <p className="text-sm font-semibold text-slate-900 line-clamp-2">{story.title}</p>
-                            <p className="mt-1 text-xs text-slate-500 line-clamp-1">{story.subtitle}</p>
-                            <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin size={11} className="text-indigo-500" />
-                                {story.distanceKm} km
-                              </span>
-                              <span className="inline-flex items-center gap-1">
-                                <Clock3 size={11} className="text-emerald-500" />
-                                {story.etaLabel}
-                              </span>
-                            </div>
-
-                            <div className="mt-2 grid grid-cols-3 gap-1.5">
-                              {story.mediaGallery.map((mediaSrc, mediaIndex) => (
-                                <div
-                                  key={`${story.id}-media-${mediaIndex}`}
-                                  className="relative h-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
-                                >
-                                  <Image src={mediaSrc} alt={`${story.title} media ${mediaIndex + 1}`} fill sizes="64px" className="object-cover" />
-                                </div>
-                              ))}
-                            </div>
-
-                            <p className="mt-2 text-[11px] text-slate-600 line-clamp-1">{story.mediaLabel}</p>
-                            <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{story.ownerLabel} • {story.proofLabel}</p>
-                          </div>
-                        </button>
-
-                        <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                      return (
+                        <article key={`story-${story.id}-${storyIndex}`} className="w-[108px] sm:w-[116px] shrink-0">
                           <button
                             onClick={() => router.push(focusPath)}
-                            className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                            className="group w-full text-center"
                           >
-                            {story.actionLabel}
+                            <div className="relative mx-auto w-fit">
+                              <div
+                                className={`rounded-full p-[2px] shadow-sm ${
+                                  story.type === "demand"
+                                    ? "bg-gradient-to-br from-rose-400 to-orange-400"
+                                    : story.type === "service"
+                                    ? "bg-gradient-to-br from-indigo-400 to-sky-400"
+                                    : "bg-gradient-to-br from-emerald-400 to-teal-400"
+                                }`}
+                              >
+                                <div className="relative h-16 w-16 sm:h-[68px] sm:w-[68px] overflow-hidden rounded-full border border-white/40">
+                                  <Image src={story.image} alt={story.title} fill sizes="64px" className="object-cover" />
+                                </div>
+                              </div>
+                              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 animate-pulse" />
+                              <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                {story.badge}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 text-[11px] font-semibold text-slate-800 line-clamp-1">{story.priceLabel}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">{story.distanceKm} km</p>
+                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">{story.etaLabel}</p>
+                            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                              <ArrowRight size={10} />
+                            </span>
                           </button>
-                          <button
-                            onClick={() => router.push(routes.chat)}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                          >
-                            Quick Chat
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900">Live Local Feed</h3>
+                      <p className="text-xs text-slate-500">Realtime list, scroll vertically for more.</p>
+                    </div>
+                    <button
+                      onClick={() => router.push(routes.posts)}
+                      className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Explore all
+                    </button>
+                  </div>
+
+                  <div className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
+                    {enrichedCards.map((card) => {
+                      const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+
+                      return (
+                        <article key={`feed-inline-${card.id}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5">
+                          <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-2 shrink-0">
+                              <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="56px" className="object-cover" />
+                              </div>
+                              <div className="relative h-14 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                <Image src={card.mediaGallery[1]} alt={`${card.title} preview`} fill sizes="40px" className="object-cover" />
+                                <span className="absolute inset-0 bg-black/30 text-[10px] text-white font-semibold flex items-center justify-center">
+                                  +{card.mediaCount}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                    card.type === "demand"
+                                      ? "bg-rose-100 text-rose-700"
+                                      : card.type === "service"
+                                      ? "bg-indigo-100 text-indigo-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {card.type}
+                                </span>
+                                <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                                <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                              </div>
+
+                              <p className="mt-1 text-[15px] font-semibold text-slate-900 line-clamp-1">{card.title}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                              </div>
+
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <button
+                                  onClick={() => router.push(focusPath)}
+                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                                >
+                                  {card.actionLabel}
+                                  <ArrowRight size={11} />
+                                </button>
+                                <button
+                                  onClick={() => router.push(routes.chat)}
+                                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                                >
+                                  Message
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
+            <section className="min-w-0 xl:sticky xl:top-24 h-fit rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <h2 className="text-base sm:text-lg font-semibold">Quick Actions</h2>
               <p className="text-xs text-slate-500 mt-1">Shortcuts built for fast local execution.</p>
 
@@ -1263,119 +1419,7 @@ export default function WelcomePage() {
             </section>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4">
-            <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold">Live Local Feed</h2>
-                  <p className="text-xs text-slate-500">Compact stream of nearby needs, services, and products.</p>
-                </div>
-                <button
-                  onClick={() => router.push(routes.posts)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Explore all
-                </button>
-              </div>
-
-              <div className="mt-3 divide-y divide-slate-200">
-                {enrichedCards.map((card) => {
-                  const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
-
-                  return (
-                    <div key={`feed-${card.id}`} className="py-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                        <div className="flex items-start gap-2 shrink-0">
-                          <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                            <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="64px" className="object-cover" />
-                          </div>
-                          <div className="grid gap-1">
-                            {card.mediaGallery.slice(1).map((mediaSrc, mediaIndex) => (
-                              <div
-                                key={`${card.id}-grid-media-${mediaIndex}`}
-                                className="relative h-[30px] w-11 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
-                              >
-                                <Image src={mediaSrc} alt={`${card.title} preview ${mediaIndex + 2}`} fill sizes="44px" className="object-cover" />
-                                {mediaIndex === 1 && (
-                                  <span className="absolute inset-0 bg-black/35 text-white text-[10px] font-semibold flex items-center justify-center">
-                                    +{card.mediaCount}
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                card.type === "demand"
-                                  ? "bg-rose-100 text-rose-700"
-                                  : card.type === "service"
-                                  ? "bg-indigo-100 text-indigo-700"
-                                  : "bg-emerald-100 text-emerald-700"
-                              }`}
-                            >
-                              {card.type}
-                            </span>
-                            <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                            <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
-                            <span className="text-[11px] text-slate-600 font-medium">{card.ownerLabel}</span>
-                          </div>
-
-                          <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
-                          <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
-
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
-                              {card.priceLabel}
-                            </span>
-                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
-                              {card.signalLabel}
-                            </span>
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                              {card.etaLabel}
-                            </span>
-                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                              {card.proofLabel}
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">
-                            {card.momentumLabel} • {card.responseLabel}
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1">{card.mediaLabel}</p>
-
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => router.push(focusPath)}
-                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
-                            >
-                              {card.actionLabel}
-                              <ArrowRight size={12} />
-                            </button>
-                            <button
-                              onClick={() => router.push(routes.chat)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                            >
-                              Message
-                            </button>
-                            <button
-                              onClick={() => router.push(`${focusPath}&panel=media`)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:text-emerald-600 transition-colors"
-                            >
-                              View Media
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
+          <div className="grid grid-cols-1">
             <div className="space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
