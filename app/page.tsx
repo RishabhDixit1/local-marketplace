@@ -28,18 +28,15 @@ const getSupabaseConfig = (): { url: string; host: string; anonKey: string } | n
 };
 
 const buildSupabaseReachabilityMessage = (host: string): string =>
-  `Cannot reach Supabase auth (${host}). Check DNS/VPN/firewall and verify *.supabase.co is reachable.`;
+  `Browser could not complete Supabase auth request (${host}). Check VPN/firewall and disable ad-block/privacy extensions, then retry.`;
 
-const probeSupabaseAuthReachability = async (url: string, anonKey: string): Promise<boolean> => {
+const probeSupabaseAuthReachability = async (url: string): Promise<boolean> => {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REACHABILITY_TIMEOUT_MS);
 
   try {
     await fetch(`${url}/auth/v1/health`, {
       method: "GET",
-      headers: {
-        apikey: anonKey,
-      },
       signal: controller.signal,
       cache: "no-store",
     });
@@ -90,7 +87,7 @@ export default function LoginPage() {
 
     const configuredSiteUrl = cleanUrl(process.env.NEXT_PUBLIC_SITE_URL);
     const baseUrl = configuredSiteUrl || window.location.origin;
-    const redirectTo = `${baseUrl}/dashboard`;
+    const redirectTo = `${baseUrl}/auth/callback`;
     const supabaseConfig = getSupabaseConfig();
 
     if (!supabaseConfig) {
@@ -121,10 +118,7 @@ export default function LoginPage() {
             `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
           );
         } else if (/fetch|network|failed to fetch|load failed/i.test(message)) {
-          const isSupabaseReachable = await probeSupabaseAuthReachability(
-            supabaseConfig.url,
-            supabaseConfig.anonKey
-          );
+          const isSupabaseReachable = await probeSupabaseAuthReachability(supabaseConfig.url);
 
           if (!isSupabaseReachable) {
             setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
@@ -148,10 +142,7 @@ export default function LoginPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send login link right now.";
       if (/timed out/i.test(message)) {
-        const isSupabaseReachable = await probeSupabaseAuthReachability(
-          supabaseConfig.url,
-          supabaseConfig.anonKey
-        );
+        const isSupabaseReachable = await probeSupabaseAuthReachability(supabaseConfig.url);
 
         if (!isSupabaseReachable) {
           setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
