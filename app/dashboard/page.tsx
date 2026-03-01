@@ -74,6 +74,8 @@ const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filter
 const MARKETPLACE_LAYOUT_STORAGE_KEY = "local-marketplace-dashboard-feed-layout-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
+const FEED_POLL_INTERVAL_MS = 120000;
+const MIN_SOFT_REFRESH_GAP_MS = 5000;
 const QUICK_SEARCH_CHIPS = ["Cleaning", "Repair", "Delivery", "Food", "Electrician"] as const;
 
 /* ================= TYPES ================= */
@@ -569,6 +571,7 @@ export default function MarketplacePage() {
   const reloadTimerRef = useRef<number | null>(null);
   const helpMatchesReloadTimerRef = useRef<number | null>(null);
   const fetchInFlightRef = useRef(false);
+  const lastSoftFetchStartedAtRef = useRef(0);
 
   const setHelpRequestQueryParam = useCallback((helpRequestId: string | null) => {
     if (typeof window === "undefined") return;
@@ -758,6 +761,11 @@ export default function MarketplacePage() {
   /* ================= FETCH ================= */
   const fetchFeed = useCallback(async (soft = false) => {
     if (fetchInFlightRef.current) return;
+    if (soft) {
+      const now = Date.now();
+      if (now - lastSoftFetchStartedAtRef.current < MIN_SOFT_REFRESH_GAP_MS) return;
+      lastSoftFetchStartedAtRef.current = now;
+    }
     fetchInFlightRef.current = true;
 
     if (soft) {
@@ -768,7 +776,7 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
+      const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS).catch(() => null);
 
       const selectRowsWithFallback = async (table: string, primarySelect: string): Promise<FlexibleRow[]> => {
         const primaryResult = await supabase
@@ -882,14 +890,7 @@ export default function MarketplacePage() {
       };
 
       const { data: sessionData } = await supabase.auth.getSession();
-      let currentUserId = sessionData.session?.user?.id || "";
-
-      if (!currentUserId) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        currentUserId = user?.id || "";
-      }
+      const currentUserId = sessionData.session?.user?.id || "";
 
       const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw] = await Promise.all([
         selectCurrentUserProfile(currentUserId),
@@ -906,11 +907,12 @@ export default function MarketplacePage() {
       const fallbackViewerCoordinates = profileCoordinates || defaultMarketCoordinates();
       setViewerCoordinates(fallbackViewerCoordinates);
 
-      const browserCoordinates = await browserCoordinatesPromise;
-      const resolvedViewerCoordinates = browserCoordinates || fallbackViewerCoordinates;
-      if (browserCoordinates) {
-        setViewerCoordinates(resolvedViewerCoordinates);
-      }
+      void browserCoordinatesPromise.then((browserCoordinates) => {
+        if (browserCoordinates) {
+          setViewerCoordinates(browserCoordinates);
+        }
+      });
+      const resolvedViewerCoordinates = fallbackViewerCoordinates;
 
       const serviceRows: ServiceRow[] = serviceRowsRaw
         .map((row, index) => ({
@@ -1230,7 +1232,7 @@ export default function MarketplacePage() {
       }
       reloadTimerRef.current = window.setTimeout(() => {
         void fetchFeed(true);
-      }, 300);
+      }, 700);
     };
 
     const channel = supabase
@@ -1240,7 +1242,6 @@ export default function MarketplacePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
       .subscribe((status) => {
         setFeedChannelHealth(mapRealtimeHealth(status));
       });
@@ -1256,8 +1257,9 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void fetchFeed(true);
-    }, 60000);
+    }, FEED_POLL_INTERVAL_MS);
 
     return () => {
       window.clearInterval(interval);
