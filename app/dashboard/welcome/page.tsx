@@ -68,6 +68,18 @@ type NearbyCard = {
   actionPath: string;
 };
 
+type EnrichedNearbyCard = NearbyCard & {
+  badge: string;
+  pulse: string;
+  ownerLabel: string;
+  postedAgo: string;
+  responseLabel: string;
+  proofLabel: string;
+  mediaLabel: string;
+  mediaCount: number;
+  mediaGallery: [string, string, string];
+};
+
 type OnboardingStep = {
   id: string;
   title: string;
@@ -299,15 +311,67 @@ export default function WelcomePage() {
 
   const completedOnboarding = onboardingSteps.filter((step) => step.done).length;
 
-  const storyItems = useMemo(
-    () =>
-      nearbyCards.slice(0, 10).map((card) => ({
+  const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
+    const demandAltMedia = [
+      "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1200&q=80",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80",
+      "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=1200&q=80",
+      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&q=80",
+      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
+    ];
+    const serviceAltMedia = [
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
+      "https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=1200&q=80",
+      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1200&q=80",
+      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
+      "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80",
+    ];
+    const productAltMedia = [
+      "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=1200&q=80",
+      "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?w=1200&q=80",
+      "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=1200&q=80",
+      "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=1200&q=80",
+      "https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80",
+    ];
+    const demandOwners = ["Ananya R.", "Kunal S.", "Priya N.", "Rohit J.", "Megha D."];
+    const serviceOwners = ["UrbanFix Crew", "SparkClean Pro", "HandyNest", "QuickCare Team", "FixRight Local"];
+    const productOwners = ["ToolKart Local", "FreshStreet Market", "CityMart Seller", "HomePro Supply", "DailyBasket Hub"];
+
+    return nearbyCards.map((card, index) => {
+      const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
+      const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
+      const mediaGallery: [string, string, string] = [
+        card.image,
+        mediaPool[(index + 1) % mediaPool.length],
+        mediaPool[(index + 3) % mediaPool.length],
+      ];
+
+      return {
         ...card,
         badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
         pulse: card.type === "demand" ? "Urgent" : card.type === "service" ? "Trusted" : "Fast deal",
-      })),
-    [nearbyCards]
-  );
+        ownerLabel: ownerPool[index % ownerPool.length],
+        postedAgo: `${2 + index * 3}m ago`,
+        responseLabel:
+          card.type === "demand"
+            ? "Replies in ~4 min"
+            : card.type === "service"
+            ? "Provider replies in ~6 min"
+            : "Seller replies in ~5 min",
+        proofLabel:
+          card.type === "demand"
+            ? `${5 + index} local matches`
+            : card.type === "service"
+            ? `${14 + index} verified jobs`
+            : `${9 + index} repeat buyers`,
+        mediaLabel: card.type === "demand" ? "Issue photos" : card.type === "service" ? "Before/after media" : "Product gallery",
+        mediaCount: 3 + (index % 5),
+        mediaGallery,
+      };
+    });
+  }, [nearbyCards]);
+
+  const storyItems = useMemo(() => enrichedCards.slice(0, 10), [enrichedCards]);
 
   const demandCards = useMemo(
     () => nearbyCards.filter((card) => card.type === "demand"),
@@ -1086,49 +1150,80 @@ export default function WelcomePage() {
               </div>
 
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-max gap-3">
-                  {storyItems.map((story) => (
-                    <button
-                      key={`story-${story.id}`}
-                      onClick={() =>
-                        router.push(
-                          `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`
-                        )
-                      }
-                      className="w-28 shrink-0 text-left"
-                    >
-                      <div
-                        className={`rounded-2xl p-[2px] ${
-                          story.type === "demand"
-                            ? "bg-gradient-to-br from-rose-400 to-orange-400"
-                            : story.type === "service"
-                            ? "bg-gradient-to-br from-indigo-400 to-sky-400"
-                            : "bg-gradient-to-br from-emerald-400 to-teal-400"
-                        }`}
+                <div className="flex min-w-max gap-3.5">
+                  {storyItems.map((story) => {
+                    const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
+
+                    return (
+                      <article
+                        key={`story-${story.id}`}
+                        className="w-56 shrink-0 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
                       >
-                        <div className="relative h-28 w-full overflow-hidden rounded-[14px] bg-slate-200">
-                          <Image src={story.image} alt={story.title} fill sizes="96px" className="object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                          <span className="absolute left-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
-                            {story.badge}
-                          </span>
-                          <span className="absolute right-2 top-2 rounded-full bg-black/45 px-1.5 py-0.5 text-[9px] font-medium text-white">
-                            {story.pulse}
-                          </span>
-                          <p className="absolute bottom-4 left-2 right-2 text-[10px] leading-tight font-semibold text-white line-clamp-2">
-                            {story.title}
-                          </p>
-                          <p className="absolute bottom-1.5 left-2 right-2 text-[9px] text-white/85 line-clamp-1">
-                            {story.signalLabel}
-                          </p>
+                        <button onClick={() => router.push(focusPath)} className="block w-full text-left">
+                          <div className="relative h-32 w-full overflow-hidden">
+                            <Image src={story.image} alt={story.title} fill sizes="224px" className="object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                            <div className="absolute left-2 top-2 flex items-center gap-1.5">
+                              <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-900">
+                                {story.badge}
+                              </span>
+                              <span className="rounded-full bg-black/45 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                                {story.pulse}
+                              </span>
+                            </div>
+                            <span className="absolute right-2 bottom-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white">
+                              +{story.mediaCount} media
+                            </span>
+                            <p className="absolute left-2 bottom-2 text-[10px] text-white/85">{story.postedAgo}</p>
+                          </div>
+
+                          <div className="p-3">
+                            <p className="text-sm font-semibold text-slate-900 line-clamp-2">{story.title}</p>
+                            <p className="mt-1 text-xs text-slate-500 line-clamp-1">{story.subtitle}</p>
+                            <div className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500">
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin size={11} className="text-indigo-500" />
+                                {story.distanceKm} km
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <Clock3 size={11} className="text-emerald-500" />
+                                {story.etaLabel}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-3 gap-1.5">
+                              {story.mediaGallery.map((mediaSrc, mediaIndex) => (
+                                <div
+                                  key={`${story.id}-media-${mediaIndex}`}
+                                  className="relative h-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
+                                >
+                                  <Image src={mediaSrc} alt={`${story.title} media ${mediaIndex + 1}`} fill sizes="64px" className="object-cover" />
+                                </div>
+                              ))}
+                            </div>
+
+                            <p className="mt-2 text-[11px] text-slate-600 line-clamp-1">{story.mediaLabel}</p>
+                            <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{story.ownerLabel} • {story.proofLabel}</p>
+                          </div>
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                          <button
+                            onClick={() => router.push(focusPath)}
+                            className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                          >
+                            {story.actionLabel}
+                          </button>
+                          <button
+                            onClick={() => router.push(routes.chat)}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                          >
+                            Quick Chat
+                          </button>
                         </div>
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-slate-600 line-clamp-1">
-                        {story.distanceKm} km away • {story.etaLabel}
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-slate-500 line-clamp-1">{story.momentumLabel}</p>
-                    </button>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -1184,54 +1279,100 @@ export default function WelcomePage() {
               </div>
 
               <div className="mt-3 divide-y divide-slate-200">
-                {nearbyCards.map((card) => (
-                  <div key={`feed-${card.id}`} className="py-3 flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200">
-                      <Image src={card.image} alt={card.title} fill sizes="56px" className="object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            card.type === "demand"
-                              ? "bg-rose-100 text-rose-700"
-                              : card.type === "service"
-                              ? "bg-indigo-100 text-indigo-700"
-                              : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {card.type}
-                        </span>
-                        <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                {enrichedCards.map((card) => {
+                  const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+
+                  return (
+                    <div key={`feed-${card.id}`} className="py-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                        <div className="flex items-start gap-2 shrink-0">
+                          <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                            <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="64px" className="object-cover" />
+                          </div>
+                          <div className="grid gap-1">
+                            {card.mediaGallery.slice(1).map((mediaSrc, mediaIndex) => (
+                              <div
+                                key={`${card.id}-grid-media-${mediaIndex}`}
+                                className="relative h-[30px] w-11 overflow-hidden rounded-md border border-slate-200 bg-slate-100"
+                              >
+                                <Image src={mediaSrc} alt={`${card.title} preview ${mediaIndex + 2}`} fill sizes="44px" className="object-cover" />
+                                {mediaIndex === 1 && (
+                                  <span className="absolute inset-0 bg-black/35 text-white text-[10px] font-semibold flex items-center justify-center">
+                                    +{card.mediaCount}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                card.type === "demand"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : card.type === "service"
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
+                              {card.type}
+                            </span>
+                            <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                            <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                            <span className="text-[11px] text-slate-600 font-medium">{card.ownerLabel}</span>
+                          </div>
+
+                          <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
+                          <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
+
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                              {card.priceLabel}
+                            </span>
+                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                              {card.signalLabel}
+                            </span>
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              {card.etaLabel}
+                            </span>
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                              {card.proofLabel}
+                            </span>
+                          </div>
+
+                          <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">
+                            {card.momentumLabel} • {card.responseLabel}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1">{card.mediaLabel}</p>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => router.push(focusPath)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                            >
+                              {card.actionLabel}
+                              <ArrowRight size={12} />
+                            </button>
+                            <button
+                              onClick={() => router.push(routes.chat)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                            >
+                              Message
+                            </button>
+                            <button
+                              onClick={() => router.push(`${focusPath}&panel=media`)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+                            >
+                              View Media
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm font-semibold text-slate-900 mt-1 line-clamp-1">{card.title}</p>
-                      <p className="text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
-                          {card.priceLabel}
-                        </span>
-                        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
-                          {card.signalLabel}
-                        </span>
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                          {card.etaLabel}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">{card.momentumLabel}</p>
                     </div>
-                    <button
-                      onClick={() =>
-                        router.push(
-                          `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`
-                        )
-                      }
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                    >
-                      {card.actionLabel}
-                      <ArrowRight size={12} />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
