@@ -47,6 +47,7 @@ type NearbyCard = {
   id: string;
   focusId: string;
   type: "demand" | "service" | "product";
+  ownerId?: string;
   title: string;
   subtitle: string;
   priceLabel: string;
@@ -88,6 +89,7 @@ type RawService = {
   title: string | null;
   category: string | null;
   price: number | null;
+  provider_id: string | null;
 };
 
 type RawProduct = {
@@ -95,6 +97,7 @@ type RawProduct = {
   title: string | null;
   category: string | null;
   price: number | null;
+  provider_id: string | null;
 };
 
 type ConversationUnreadRow = {
@@ -252,6 +255,7 @@ export default function WelcomePage() {
   const [loadError, setLoadError] = useState("");
   const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
+  const [messageCardId, setMessageCardId] = useState<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
@@ -565,8 +569,152 @@ export default function WelcomePage() {
     });
   };
 
+  const appendCardContextQuery = (
+    path: string,
+    card: EnrichedNearbyCard,
+    extras?: Record<string, string | null | undefined>
+  ) => {
+    const [pathname, rawQuery = ""] = path.split("?");
+    const params = new URLSearchParams(rawQuery);
+
+    params.set("source", "welcome_feed");
+    params.set("context_card", card.id);
+    params.set("context_focus", card.focusId);
+    params.set("context_type", card.type);
+    params.set("context_title", card.title);
+    params.set("context_audience", card.audienceName);
+
+    if (extras) {
+      Object.entries(extras).forEach(([key, value]) => {
+        if (!value) return;
+        params.set(key, value);
+      });
+    }
+
+    const nextQuery = params.toString();
+    return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+  };
+
+  const buildFeedFocusPath = (card: EnrichedNearbyCard) =>
+    appendCardContextQuery(card.actionPath, card, {
+      focus: card.focusId,
+      type: card.type,
+    });
+
+  const buildNetworkActionPath = (card: EnrichedNearbyCard) => {
+    if (card.networkActionPath.startsWith(routes.people)) {
+      return appendCardContextQuery(card.networkActionPath, card, {
+        intent: "connections",
+        tab: "Nearby",
+        q: card.audienceName,
+        provider: card.ownerId || undefined,
+      });
+    }
+
+    return appendCardContextQuery(card.networkActionPath, card, {
+      view: "groups",
+      group: card.audienceName,
+      focus: card.focusId,
+      type: card.type,
+      category: card.type,
+      q: card.audienceName,
+    });
+  };
+
+  const buildMessagePath = (card: EnrichedNearbyCard, conversationId?: string) =>
+    appendCardContextQuery(routes.chat, card, {
+      open: conversationId,
+      focus: card.focusId,
+      type: card.type,
+    });
+
+  const handleMessageCard = async (card: EnrichedNearbyCard) => {
+    const fallbackChatPath = buildMessagePath(card);
+    const recipientId = card.ownerId || null;
+    const isUuidRecipient = !!recipientId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recipientId);
+
+    if (!viewerId || !recipientId || !isUuidRecipient || recipientId === viewerId || recipientId.startsWith("demo-")) {
+      router.push(fallbackChatPath);
+      return;
+    }
+
+    setMessageCardId(card.id);
+    let targetPath = fallbackChatPath;
+
+    try {
+      const { data: myRows, error: myRowsError } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", viewerId);
+
+      if (myRowsError) {
+        console.warn("Failed to load existing conversations for contextual message:", myRowsError.message);
+      }
+
+      const myConversationIds = ((myRows as Array<{ conversation_id: string }> | null) || []).map(
+        (row) => row.conversation_id
+      );
+      let targetConversationId: string | null = null;
+
+      if (myConversationIds.length > 0) {
+        const { data: existingConversation, error: existingConversationError } = await supabase
+          .from("conversation_participants")
+          .select("conversation_id")
+          .in("conversation_id", myConversationIds)
+          .eq("user_id", recipientId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingConversationError) {
+          console.warn("Failed to find matching conversation for contextual message:", existingConversationError.message);
+        } else {
+          targetConversationId = existingConversation?.conversation_id || null;
+        }
+      }
+
+      if (!targetConversationId) {
+        const { data: conversation, error: conversationError } = await supabase
+          .from("conversations")
+          .insert({ created_by: viewerId })
+          .select("id")
+          .single();
+
+        if (conversationError || !conversation) {
+          console.warn(
+            "Failed to create conversation for contextual message:",
+            conversationError?.message || "unknown error"
+          );
+        } else {
+          targetConversationId = conversation.id;
+          const { error: participantsError } = await supabase.from("conversation_participants").upsert(
+            [
+              { conversation_id: targetConversationId, user_id: viewerId },
+              { conversation_id: targetConversationId, user_id: recipientId },
+            ],
+            {
+              onConflict: "conversation_id,user_id",
+              ignoreDuplicates: true,
+            }
+          );
+
+          if (participantsError) {
+            console.warn("Failed to attach conversation participants for contextual message:", participantsError.message);
+          }
+        }
+      }
+
+      if (targetConversationId) {
+        targetPath = buildMessagePath(card, targetConversationId);
+      }
+    } finally {
+      setMessageCardId((current) => (current === card.id ? null : current));
+    }
+
+    router.push(targetPath);
+  };
+
   const handleShareCard = async (card: EnrichedNearbyCard) => {
-    const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+    const focusPath = buildFeedFocusPath(card);
     const shareUrl = `${window.location.origin}${focusPath}`;
     const shareText = `${card.title} • ${card.priceLabel} • ${card.etaLabel} • ${card.audienceName}`;
 
@@ -859,8 +1007,8 @@ export default function WelcomePage() {
 
         const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
           supabase.from("posts").select("id, text").eq("status", "open").limit(5),
-          supabase.from("service_listings").select("id, title, category, price").limit(5),
-          supabase.from("product_catalog").select("id, title, category, price").limit(5),
+          supabase.from("service_listings").select("id, title, category, price, provider_id").limit(5),
+          supabase.from("product_catalog").select("id, title, category, price, provider_id").limit(5),
         ]);
 
       const demandImages = [
@@ -901,6 +1049,7 @@ export default function WelcomePage() {
           id: `service-${service.id}`,
           focusId: service.id,
           type: "service",
+          ownerId: service.provider_id || undefined,
           title: service.title || "Local service",
           subtitle: service.category ? `${service.category} • shared in Services group` : "Provider offering in your circles",
           priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
@@ -918,6 +1067,7 @@ export default function WelcomePage() {
           id: `product-${product.id}`,
           focusId: product.id,
           type: "product",
+          ownerId: product.provider_id || undefined,
           title: product.title || "Local product",
           subtitle: product.category ? `${product.category} • posted in Buy/Sell group` : "Nearby seller from your network",
           priceLabel: product.price ? `₹${product.price}` : "Price on request",
@@ -951,6 +1101,7 @@ export default function WelcomePage() {
           id: "demo-service-cleaning",
           focusId: "demo-service-cleaning",
           type: "service",
+          ownerId: "demo-provider-cleaning",
           title: "Home deep cleaning by verified provider",
           subtitle: "Cleaning service • recommended by your connections",
           priceLabel: "From ₹399",
@@ -966,6 +1117,7 @@ export default function WelcomePage() {
           id: "demo-product-tools",
           focusId: "demo-product-tools",
           type: "product",
+          ownerId: "demo-provider-tools",
           title: "Local seller: power tools kit",
           subtitle: "Tools and hardware • listed in Neighborhood Buy/Sell",
           priceLabel: "₹1499",
@@ -996,6 +1148,7 @@ export default function WelcomePage() {
           id: "demo-service-ac",
           focusId: "demo-service-ac",
           type: "service",
+          ownerId: "demo-provider-ac",
           title: "AC servicing with same-day slot",
           subtitle: "Appliance maintenance • from trusted providers network",
           priceLabel: "From ₹699",
@@ -1011,6 +1164,7 @@ export default function WelcomePage() {
           id: "demo-product-bike",
           focusId: "demo-product-bikewash",
           type: "product",
+          ownerId: "demo-provider-bike",
           title: "Bike wash kit + polish combo",
           subtitle: "Automotive essentials • shared in weekend riders group",
           priceLabel: "₹799",
@@ -1041,6 +1195,7 @@ export default function WelcomePage() {
           id: "demo-service-photo",
           focusId: "demo-service-photographer",
           type: "service",
+          ownerId: "demo-provider-photo",
           title: "Event photographer for small gatherings",
           subtitle: "Creative services • suggested in creators circle",
           priceLabel: "From ₹2499",
@@ -1056,6 +1211,7 @@ export default function WelcomePage() {
           id: "demo-product-organic",
           focusId: "demo-product-organic",
           type: "product",
+          ownerId: "demo-provider-organic",
           title: "Organic groceries starter basket",
           subtitle: "Fresh farm produce • listed in weekly grocery group",
           priceLabel: "₹1299",
@@ -1086,6 +1242,7 @@ export default function WelcomePage() {
           id: "demo-service-laptop",
           focusId: "demo-service-laptop",
           type: "service",
+          ownerId: "demo-provider-laptop",
           title: "On-site laptop diagnostics and cleanup",
           subtitle: "Tech support • active in office professionals group",
           priceLabel: "From ₹799",
@@ -1101,6 +1258,7 @@ export default function WelcomePage() {
           id: "demo-product-desk",
           focusId: "demo-product-desk",
           type: "product",
+          ownerId: "demo-provider-desk",
           title: "Study desk with storage, almost new",
           subtitle: "Home furniture • posted in moving sale group",
           priceLabel: "₹3200",
@@ -1431,7 +1589,7 @@ export default function WelcomePage() {
                 >
                   <div className="flex w-max gap-3 sm:gap-3.5">
                     {storyItems.map((story, storyIndex) => {
-                      const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
+                      const focusPath = buildFeedFocusPath(story);
 
                       return (
                         <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] sm:w-[186px] shrink-0">
@@ -1483,8 +1641,10 @@ export default function WelcomePage() {
 
                   <div className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
                     {enrichedCards.map((card) => {
-                      const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+                      const focusPath = buildFeedFocusPath(card);
+                      const networkPath = buildNetworkActionPath(card);
                       const isSaved = savedCardIds.includes(card.id);
+                      const messageInFlight = messageCardId === card.id;
 
                       return (
                         <article key={`feed-inline-${card.id}`} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
@@ -1543,14 +1703,15 @@ export default function WelcomePage() {
                                   <ArrowRight size={11} />
                                 </button>
                                 <button
-                                  onClick={() => router.push(routes.chat)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                  onClick={() => void handleMessageCard(card)}
+                                  disabled={messageInFlight}
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
                                 >
                                   <MessageCircle size={12} />
-                                  Message
+                                  {messageInFlight ? "Opening..." : "Message"}
                                 </button>
                                 <button
-                                  onClick={() => router.push(card.networkActionPath)}
+                                  onClick={() => router.push(networkPath)}
                                   className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                                 >
                                   <UsersRound size={12} />

@@ -65,6 +65,14 @@ type GroupedMessages = {
   items: Message[];
 };
 
+type FeedMessageContext = {
+  cardId: string;
+  focusId: string;
+  itemType: "demand" | "service" | "product";
+  title: string;
+  audience: string;
+};
+
 const fallbackAvatar = "https://i.pravatar.cc/150";
 const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
@@ -167,11 +175,35 @@ export default function ChatPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get("open");
   });
+  const [feedContext] = useState<FeedMessageContext | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") !== "welcome_feed") return null;
+
+    const cardId = params.get("context_card");
+    const focusId = params.get("context_focus") || params.get("focus");
+    const itemType = params.get("context_type") || params.get("type");
+    const title = params.get("context_title");
+
+    if (!cardId || !focusId || !itemType || !title) return null;
+    if (!["demand", "service", "product"].includes(itemType)) return null;
+
+    return {
+      cardId,
+      focusId,
+      itemType: itemType as "demand" | "service" | "product",
+      title,
+      audience: params.get("context_audience") || "Your local network",
+    };
+  });
+  const [feedContextDismissed, setFeedContextDismissed] = useState(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState<string>(() =>
+    feedContext ? `Hi, I am interested in "${feedContext.title}". Is it still available?` : ""
+  );
   const [search, setSearch] = useState("");
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
   const [userId, setUserId] = useState<string>("");
@@ -200,6 +232,19 @@ export default function ChatPage() {
     () => conversations.find((conversation) => conversation.id === selectedChat) || null,
     [conversations, selectedChat]
   );
+
+  const activeFeedContext = feedContextDismissed ? null : feedContext;
+
+  const feedContextPath = useMemo(() => {
+    if (!activeFeedContext) return null;
+    const params = new URLSearchParams({
+      source: "welcome_feed",
+      context_card: activeFeedContext.cardId,
+      focus: activeFeedContext.focusId,
+      type: activeFeedContext.itemType,
+    });
+    return `/dashboard?${params.toString()}`;
+  }, [activeFeedContext]);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -1192,6 +1237,37 @@ export default function ChatPage() {
         </aside>
 
         <section className={`flex-1 flex-col ${selectedChat ? "flex" : "hidden md:flex"}`}>
+          {activeFeedContext && (
+            <div className="border-b border-indigo-200/70 bg-indigo-50/70 px-4 py-3 sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">From Live Feed</p>
+                  <p className="truncate text-sm font-semibold text-slate-900">{activeFeedContext.title}</p>
+                  <p className="truncate text-xs text-slate-600">{activeFeedContext.audience}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!feedContextPath) return;
+                      router.push(feedContextPath);
+                    }}
+                    className="rounded-lg border border-indigo-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    Open post
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedContextDismissed(true)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!selectedChat ? (
             <div className="relative flex h-full items-center justify-center overflow-y-auto p-6 md:p-10">
               <div className="w-full max-w-3xl rounded-3xl border border-slate-200/80 bg-white/85 p-6 shadow-sm backdrop-blur-xl md:p-8">
