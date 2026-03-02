@@ -386,10 +386,7 @@ export default function WelcomePage() {
     return Array.from({ length: targetCount }, (_, index) => enrichedCards[index % enrichedCards.length]);
   }, [enrichedCards]);
 
-  const storyItems = useMemo(
-    () => (storyBaseItems.length ? [...storyBaseItems, ...storyBaseItems] : []),
-    [storyBaseItems]
-  );
+  const storyItems = useMemo(() => storyBaseItems, [storyBaseItems]);
 
   const scrollStories = (direction: "left" | "right") => {
     const container = storiesScrollRef.current;
@@ -440,23 +437,6 @@ export default function WelcomePage() {
       container.releasePointerCapture(event.pointerId);
     }
   };
-
-  useEffect(() => {
-    const container = storiesScrollRef.current;
-    if (!container || storyItems.length === 0) return;
-
-    const timer = window.setInterval(() => {
-      const loopWidth = container.scrollWidth / 2;
-      if (loopWidth <= 0) return;
-
-      container.scrollLeft += 3;
-      if (container.scrollLeft >= loopWidth) {
-        container.scrollLeft -= loopWidth;
-      }
-    }, 20);
-
-    return () => window.clearInterval(timer);
-  }, [storyItems.length]);
 
   const demandCards = useMemo(
     () => nearbyCards.filter((card) => card.type === "demand"),
