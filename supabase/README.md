@@ -16,6 +16,14 @@ Run `secure_realtime_rls.sql` before seeding to:
 Run `enable_realtime_publication.sql` to register all live marketplace tables in `supabase_realtime` publication.
 Without this step, UI subscriptions can connect but receive no row-change events.
 
+## Feed interaction persistence (run after security setup)
+
+Run `add_feed_interactions.sql` to persist Welcome feed card actions per user:
+- `Save` state in `feed_card_saves`
+- `Share` events in `feed_card_shares`
+
+This script also enables RLS + per-user policies for these tables.
+
 ## Verification (run after setup)
 
 Run `verify_realtime_setup.sql` to validate:

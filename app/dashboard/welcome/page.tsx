@@ -107,6 +107,12 @@ type MessageUnreadRow = {
   created_at: string;
 };
 
+type FeedCardSaveRow = {
+  card_id: string;
+};
+
+type FeedShareChannel = "native" | "clipboard";
+
 const routes = {
   posts: "/dashboard",
   people: "/dashboard/people",
@@ -246,6 +252,7 @@ export default function WelcomePage() {
   const [loadError, setLoadError] = useState("");
   const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
   const [stats, setStats] = useState<WelcomeStats>({
@@ -453,10 +460,109 @@ export default function WelcomePage() {
     }, 2200);
   };
 
-  const toggleCardSave = (cardId: string) => {
-    setSavedCardIds((current) =>
-      current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId]
-    );
+  const persistCardSave = async (card: EnrichedNearbyCard, shouldSave: boolean): Promise<boolean> => {
+    if (!viewerId) {
+      return false;
+    }
+
+    if (shouldSave) {
+      const { error } = await supabase.from("feed_card_saves").upsert(
+        {
+          user_id: viewerId,
+          card_id: card.id,
+          focus_id: card.focusId,
+          card_type: card.type,
+          title: card.title,
+          subtitle: card.subtitle,
+          action_path: card.actionPath,
+          metadata: {
+            priceLabel: card.priceLabel,
+            etaLabel: card.etaLabel,
+            ownerLabel: card.ownerLabel,
+            audienceLabel: card.audienceLabel,
+            audienceName: card.audienceName,
+            tags: card.tags,
+          },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,card_id" }
+      );
+
+      if (error) {
+        console.warn("Failed to save feed card:", error.message);
+        return false;
+      }
+
+      return true;
+    }
+
+    const { error } = await supabase
+      .from("feed_card_saves")
+      .delete()
+      .eq("user_id", viewerId)
+      .eq("card_id", card.id);
+
+    if (error) {
+      console.warn("Failed to remove saved feed card:", error.message);
+      return false;
+    }
+
+    return true;
+  };
+
+  const persistShareEvent = async (card: EnrichedNearbyCard, channel: FeedShareChannel) => {
+    if (!viewerId) {
+      return;
+    }
+
+    const { error } = await supabase.from("feed_card_shares").insert({
+      user_id: viewerId,
+      card_id: card.id,
+      focus_id: card.focusId,
+      card_type: card.type,
+      title: card.title,
+      channel,
+      metadata: {
+        subtitle: card.subtitle,
+        actionPath: card.actionPath,
+        audienceLabel: card.audienceLabel,
+        audienceName: card.audienceName,
+        priceLabel: card.priceLabel,
+        etaLabel: card.etaLabel,
+      },
+    });
+
+    if (error) {
+      console.warn("Failed to store feed card share:", error.message);
+    }
+  };
+
+  const toggleCardSave = async (card: EnrichedNearbyCard) => {
+    const wasSaved = savedCardIds.includes(card.id);
+    const shouldSave = !wasSaved;
+
+    setSavedCardIds((current) => {
+      if (shouldSave) {
+        return current.includes(card.id) ? current : [...current, card.id];
+      }
+      return current.filter((id) => id !== card.id);
+    });
+
+    if (!viewerId) {
+      return;
+    }
+
+    const persisted = await persistCardSave(card, shouldSave);
+    if (persisted) {
+      return;
+    }
+
+    setSavedCardIds((current) => {
+      if (wasSaved) {
+        return current.includes(card.id) ? current : [...current, card.id];
+      }
+      return current.filter((id) => id !== card.id);
+    });
   };
 
   const handleShareCard = async (card: EnrichedNearbyCard) => {
@@ -472,6 +578,7 @@ export default function WelcomePage() {
           url: shareUrl,
         });
         markCardShared(card.id);
+        void persistShareEvent(card, "native");
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -487,6 +594,7 @@ export default function WelcomePage() {
     try {
       await navigator.clipboard.writeText(`${card.title}\n${shareText}\n${shareUrl}`);
       markCardShared(card.id);
+      void persistShareEvent(card, "clipboard");
     } catch {
       // Clipboard can fail on restricted browser contexts. Keep interaction non-blocking.
     }
@@ -663,8 +771,14 @@ export default function WelcomePage() {
         }
 
         if (!currentUser) {
+          if (isActive) {
+            setViewerId(null);
+            setSavedCardIds([]);
+          }
           return;
         }
+
+        setViewerId(currentUser.id);
 
         const { data: profileData } = await supabase
           .from("profiles")
@@ -678,7 +792,13 @@ export default function WelcomePage() {
         setUserName(profileData?.name || currentUser.email?.split("@")[0] || "Neighbor");
         setIsProvider(isProviderRole);
 
-        const [{ count: nearbyPostsCount }, { data: myOrders }, { data: myConversations }, { data: reviewsData }] =
+        const [
+          { count: nearbyPostsCount },
+          { data: myOrders },
+          { data: myConversations },
+          { data: reviewsData },
+          { data: savedCardRows, error: savedCardError },
+        ] =
           await Promise.all([
             supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "open"),
             supabase
@@ -690,7 +810,15 @@ export default function WelcomePage() {
               .select("conversation_id,last_read_at")
               .eq("user_id", currentUser.id),
             supabase.from("reviews").select("rating").eq("provider_id", currentUser.id),
+            supabase.from("feed_card_saves").select("card_id").eq("user_id", currentUser.id),
           ]);
+
+        if (savedCardError) {
+          console.warn("Failed to load saved feed cards:", savedCardError.message);
+        } else if (isActive) {
+          const nextSavedIds = ((savedCardRows as FeedCardSaveRow[] | null) || []).map((row) => row.card_id);
+          setSavedCardIds(nextSavedIds);
+        }
 
         const activeTasks =
           myOrders?.filter((order) => !isFinalOrderStatus(order.status)).length || 0;
@@ -1356,6 +1484,7 @@ export default function WelcomePage() {
                   <div className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
                     {enrichedCards.map((card) => {
                       const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+                      const isSaved = savedCardIds.includes(card.id);
 
                       return (
                         <article key={`feed-inline-${card.id}`} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
@@ -1435,15 +1564,15 @@ export default function WelcomePage() {
                                   {sharedCardId === card.id ? "Shared" : "Share"}
                                 </button>
                                 <button
-                                  onClick={() => toggleCardSave(card.id)}
+                                  onClick={() => void toggleCardSave(card)}
                                   className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                    savedCardIds.includes(card.id)
+                                    isSaved
                                       ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                                       : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
                                   }`}
                                 >
                                   <Bookmark size={12} />
-                                  {savedCardIds.includes(card.id) ? "Saved" : "Save"}
+                                  {isSaved ? "Saved" : "Save"}
                                 </button>
                               </div>
 
