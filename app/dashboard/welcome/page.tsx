@@ -11,13 +11,16 @@ import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
   ArrowRight,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   MessageCircle,
+  Share2,
   ShieldCheck,
   Star,
   Users,
+  UsersRound,
   Zap,
 } from "lucide-react";
 
@@ -66,6 +69,13 @@ type EnrichedNearbyCard = NearbyCard & {
   mediaLabel: string;
   mediaCount: number;
   mediaGallery: [string, string, string];
+  audienceLabel: string;
+  audienceName: string;
+  audienceMeta: string;
+  networkActionLabel: string;
+  networkActionPath: string;
+  engagementLabel: string;
+  tags: [string, string];
 };
 
 type RawPost = {
@@ -234,6 +244,8 @@ export default function WelcomePage() {
   const [loading, setLoading] = useState(true);
   const [activeHeroScene, setActiveHeroScene] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [sharedCardId, setSharedCardId] = useState<string | null>(null);
+  const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
   const [stats, setStats] = useState<WelcomeStats>({
@@ -269,10 +281,62 @@ export default function WelcomePage() {
     const demandOwners = ["Ananya R.", "Kunal S.", "Priya N.", "Rohit J.", "Megha D."];
     const serviceOwners = ["UrbanFix Crew", "SparkClean Pro", "HandyNest", "QuickCare Team", "FixRight Local"];
     const productOwners = ["ToolKart Local", "FreshStreet Market", "CityMart Seller", "HomePro Supply", "DailyBasket Hub"];
+    const audiences = [
+      {
+        label: "Connections",
+        name: "Tower A Circle",
+        meta: "18 nearby contacts in this thread",
+        actionLabel: "View circle",
+        actionPath: routes.people,
+      },
+      {
+        label: "Group",
+        name: "Sunrise Residency Group",
+        meta: "42 members active right now",
+        actionLabel: "Open group",
+        actionPath: `${routes.posts}?view=groups`,
+      },
+      {
+        label: "Connections",
+        name: "Trusted Providers List",
+        meta: "11 known providers are tracking this",
+        actionLabel: "View network",
+        actionPath: routes.people,
+      },
+      {
+        label: "Group",
+        name: "Neighborhood Buy/Sell",
+        meta: "37 local buyers online",
+        actionLabel: "Open group",
+        actionPath: `${routes.posts}?view=groups`,
+      },
+    ] as const;
+    const demandTagPool: [string, string][] = [
+      ["Urgent fix", "Apartment cluster"],
+      ["Budget confirmed", "Evening slot"],
+      ["Needs today", "Near your block"],
+    ];
+    const serviceTagPool: [string, string][] = [
+      ["Verified provider", "Fast response"],
+      ["Repeat bookings", "Background checked"],
+      ["High rating", "Local team"],
+    ];
+    const productTagPool: [string, string][] = [
+      ["Price negotiable", "Pickup nearby"],
+      ["Trusted seller", "Condition verified"],
+      ["Same-day pickup", "Repeat buyers"],
+    ];
 
     return nearbyCards.map((card, index) => {
       const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
       const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
+      const audience = audiences[index % audiences.length];
+      const tags =
+        card.type === "demand"
+          ? demandTagPool[index % demandTagPool.length]
+          : card.type === "service"
+          ? serviceTagPool[index % serviceTagPool.length]
+          : productTagPool[index % productTagPool.length];
       const mediaGallery: [string, string, string] = [
         card.image,
         mediaPool[(index + 1) % mediaPool.length],
@@ -300,6 +364,18 @@ export default function WelcomePage() {
         mediaLabel: card.type === "demand" ? "Issue photos" : card.type === "service" ? "Before/after media" : "Product gallery",
         mediaCount: 3 + (index % 5),
         mediaGallery,
+        audienceLabel: audience.label,
+        audienceName: audience.name,
+        audienceMeta: audience.meta,
+        networkActionLabel: audience.actionLabel,
+        networkActionPath: audience.actionPath,
+        engagementLabel:
+          card.type === "demand"
+            ? `${11 + index} comments • ${3 + (index % 3)} shares`
+            : card.type === "service"
+            ? `${7 + index} inquiries • ${2 + (index % 4)} saves`
+            : `${15 + index} views • ${2 + (index % 3)} shares`,
+        tags,
       };
     });
   }, [nearbyCards]);
@@ -367,6 +443,52 @@ export default function WelcomePage() {
     storiesDragRef.current.isDragging = false;
     if (container.hasPointerCapture(event.pointerId)) {
       container.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const markCardShared = (cardId: string) => {
+    setSharedCardId(cardId);
+    window.setTimeout(() => {
+      setSharedCardId((current) => (current === cardId ? null : current));
+    }, 2200);
+  };
+
+  const toggleCardSave = (cardId: string) => {
+    setSavedCardIds((current) =>
+      current.includes(cardId) ? current.filter((id) => id !== cardId) : [...current, cardId]
+    );
+  };
+
+  const handleShareCard = async (card: EnrichedNearbyCard) => {
+    const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
+    const shareUrl = `${window.location.origin}${focusPath}`;
+    const shareText = `${card.title} • ${card.priceLabel} • ${card.etaLabel} • ${card.audienceName}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${card.badge}: ${card.title}`,
+          text: shareText,
+          url: shareUrl,
+        });
+        markCardShared(card.id);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(`${card.title}\n${shareText}\n${shareUrl}`);
+      markCardShared(card.id);
+    } catch {
+      // Clipboard can fail on restricted browser contexts. Keep interaction non-blocking.
     }
   };
 
@@ -635,7 +757,7 @@ export default function WelcomePage() {
           focusId: post.id,
           type: "demand",
           title: post.text || "New local need",
-          subtitle: "Demand posted by nearby customer",
+          subtitle: index % 2 === 0 ? "Shared in your connections feed" : "Posted in Residency Help group",
           priceLabel: "Budget shared in chat",
           distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
           etaLabel: index === 0 ? "Starts in 15m" : `Starts in ${20 + index * 5}m`,
@@ -652,7 +774,7 @@ export default function WelcomePage() {
           focusId: service.id,
           type: "service",
           title: service.title || "Local service",
-          subtitle: service.category || "Provider offering",
+          subtitle: service.category ? `${service.category} • shared in Services group` : "Provider offering in your circles",
           priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
           distanceKm: Number((1.2 + index * 0.8).toFixed(1)),
           etaLabel: index === 0 ? "Available now" : `Available in ${15 + index * 10}m`,
@@ -669,7 +791,7 @@ export default function WelcomePage() {
           focusId: product.id,
           type: "product",
           title: product.title || "Local product",
-          subtitle: product.category || "Nearby seller",
+          subtitle: product.category ? `${product.category} • posted in Buy/Sell group` : "Nearby seller from your network",
           priceLabel: product.price ? `₹${product.price}` : "Price on request",
           distanceKm: Number((1.4 + index * 0.8).toFixed(1)),
           etaLabel: index === 0 ? "Same-day pickup" : `Pickup in ${30 + index * 15}m`,
@@ -680,14 +802,14 @@ export default function WelcomePage() {
           actionPath: routes.posts,
         })) || [];
 
-      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 9);
+      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 12);
       const fallbackCards: NearbyCard[] = [
         {
           id: "demo-demand-electrician",
           focusId: "demo-demand-electrician",
           type: "demand",
           title: "Need urgent electrician nearby",
-          subtitle: "Power issue in 2BHK apartment",
+          subtitle: "Power issue in 2BHK apartment • shared in Tower A group",
           priceLabel: "Budget ₹1200",
           distanceKm: 1.1,
           etaLabel: "Starts in 20m",
@@ -702,7 +824,7 @@ export default function WelcomePage() {
           focusId: "demo-service-cleaning",
           type: "service",
           title: "Home deep cleaning by verified provider",
-          subtitle: "Cleaning service",
+          subtitle: "Cleaning service • recommended by your connections",
           priceLabel: "From ₹399",
           distanceKm: 1.9,
           etaLabel: "Available now",
@@ -717,7 +839,7 @@ export default function WelcomePage() {
           focusId: "demo-product-tools",
           type: "product",
           title: "Local seller: power tools kit",
-          subtitle: "Tools and hardware",
+          subtitle: "Tools and hardware • listed in Neighborhood Buy/Sell",
           priceLabel: "₹1499",
           distanceKm: 2.6,
           etaLabel: "Same-day pickup",
@@ -732,7 +854,7 @@ export default function WelcomePage() {
           focusId: "demo-demand-plumber",
           type: "demand",
           title: "Plumber needed for kitchen leakage",
-          subtitle: "Immediate fix requested",
+          subtitle: "Immediate fix requested • shared in Building Support group",
           priceLabel: "Budget ₹850",
           distanceKm: 2.1,
           etaLabel: "Starts in 35m",
@@ -747,7 +869,7 @@ export default function WelcomePage() {
           focusId: "demo-service-ac",
           type: "service",
           title: "AC servicing with same-day slot",
-          subtitle: "Appliance maintenance",
+          subtitle: "Appliance maintenance • from trusted providers network",
           priceLabel: "From ₹699",
           distanceKm: 3.0,
           etaLabel: "Available in 40m",
@@ -762,7 +884,7 @@ export default function WelcomePage() {
           focusId: "demo-product-bikewash",
           type: "product",
           title: "Bike wash kit + polish combo",
-          subtitle: "Automotive essentials",
+          subtitle: "Automotive essentials • shared in weekend riders group",
           priceLabel: "₹799",
           distanceKm: 1.7,
           etaLabel: "Pickup in 45m",
@@ -777,7 +899,7 @@ export default function WelcomePage() {
           focusId: "demo-demand-tutor",
           type: "demand",
           title: "Math tutor for class 10 board prep",
-          subtitle: "Weekend evening batches",
+          subtitle: "Weekend evening batches • posted in parents network",
           priceLabel: "Budget ₹500/session",
           distanceKm: 2.4,
           etaLabel: "Starts in 60m",
@@ -792,7 +914,7 @@ export default function WelcomePage() {
           focusId: "demo-service-photographer",
           type: "service",
           title: "Event photographer for small gatherings",
-          subtitle: "Creative services",
+          subtitle: "Creative services • suggested in creators circle",
           priceLabel: "From ₹2499",
           distanceKm: 3.3,
           etaLabel: "Available in 2h",
@@ -807,13 +929,58 @@ export default function WelcomePage() {
           focusId: "demo-product-organic",
           type: "product",
           title: "Organic groceries starter basket",
-          subtitle: "Fresh farm produce",
+          subtitle: "Fresh farm produce • listed in weekly grocery group",
           priceLabel: "₹1299",
           distanceKm: 1.3,
           etaLabel: "Pickup in 30m",
           signalLabel: "Trusted seller",
           momentumLabel: "10 chats opened today",
           image: productImages[0],
+          actionLabel: "View",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-demand-paint",
+          focusId: "demo-demand-paint",
+          type: "demand",
+          title: "Need painter for bedroom wall touch-up",
+          subtitle: "Two-hour job • shared in Flat Owners group",
+          priceLabel: "Budget ₹1400",
+          distanceKm: 1.6,
+          etaLabel: "Starts in 50m",
+          signalLabel: "Budget confirmed",
+          momentumLabel: "6 responders watching",
+          image: demandImages[1],
+          actionLabel: "Respond",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-service-laptop",
+          focusId: "demo-service-laptop",
+          type: "service",
+          title: "On-site laptop diagnostics and cleanup",
+          subtitle: "Tech support • active in office professionals group",
+          priceLabel: "From ₹799",
+          distanceKm: 2.2,
+          etaLabel: "Available in 55m",
+          signalLabel: "Fast response",
+          momentumLabel: "5 bookings in progress",
+          image: serviceImages[1],
+          actionLabel: "Book",
+          actionPath: routes.posts,
+        },
+        {
+          id: "demo-product-desk",
+          focusId: "demo-product-desk",
+          type: "product",
+          title: "Study desk with storage, almost new",
+          subtitle: "Home furniture • posted in moving sale group",
+          priceLabel: "₹3200",
+          distanceKm: 2.8,
+          etaLabel: "Pickup in 90m",
+          signalLabel: "Trusted seller",
+          momentumLabel: "12 chats opened today",
+          image: productImages[1],
           actionLabel: "View",
           actionPath: routes.posts,
         },
@@ -1191,71 +1358,131 @@ export default function WelcomePage() {
                       const focusPath = `${card.actionPath}?focus=${encodeURIComponent(card.focusId)}&type=${encodeURIComponent(card.type)}`;
 
                       return (
-                        <article key={`feed-inline-${card.id}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5">
-                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                            <div className="flex items-start gap-3">
-                              <div className="flex items-start gap-2 shrink-0">
-                                <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                                  <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="56px" className="object-cover" />
-                                </div>
-                                <div className="relative h-14 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                  <Image src={card.mediaGallery[1]} alt={`${card.title} preview`} fill sizes="40px" className="object-cover" />
-                                  <span className="absolute inset-0 bg-black/30 text-[10px] text-white font-semibold flex items-center justify-center">
-                                    +{card.mediaCount}
-                                  </span>
+                        <article key={`feed-inline-${card.id}`} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
+                          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                    card.type === "demand"
+                                      ? "bg-rose-100 text-rose-700"
+                                      : card.type === "service"
+                                      ? "bg-indigo-100 text-indigo-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {card.type}
+                                </span>
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{card.audienceLabel}</span>
+                                <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                                <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                              </div>
+
+                              <p className="mt-2 text-[16px] font-semibold text-slate-900">{card.title}</p>
+                              <p className="mt-1 text-xs text-slate-600">{card.subtitle}</p>
+
+                              <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
+                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                                  {card.ownerLabel.slice(0, 2).toUpperCase()}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-[12px] font-semibold text-slate-800 line-clamp-1">{card.ownerLabel}</p>
+                                  <p className="text-[11px] text-slate-500 line-clamp-1">{card.audienceName}</p>
                                 </div>
                               </div>
 
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                      card.type === "demand"
-                                        ? "bg-rose-100 text-rose-700"
-                                        : card.type === "service"
-                                        ? "bg-indigo-100 text-indigo-700"
-                                        : "bg-emerald-100 text-emerald-700"
-                                    }`}
-                                  >
-                                    {card.type}
+                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{card.momentumLabel}</span>
+                              </div>
+
+                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                {card.tags.map((tag) => (
+                                  <span key={`${card.id}-${tag}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                    {tag}
                                   </span>
-                                  <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                                  <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
-                                </div>
+                                ))}
+                              </div>
 
-                                <p className="mt-1 text-[15px] font-semibold text-slate-900 line-clamp-1">{card.title}</p>
-                                <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-1">
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
-                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
-                                </div>
+                              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                <button
+                                  onClick={() => router.push(focusPath)}
+                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                                >
+                                  {card.actionLabel}
+                                  <ArrowRight size={11} />
+                                </button>
+                                <button
+                                  onClick={() => router.push(routes.chat)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                >
+                                  <MessageCircle size={12} />
+                                  Message
+                                </button>
+                                <button
+                                  onClick={() => router.push(card.networkActionPath)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                >
+                                  <UsersRound size={12} />
+                                  {card.networkActionLabel}
+                                </button>
+                                <button
+                                  onClick={() => void handleShareCard(card)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                >
+                                  <Share2 size={12} />
+                                  {sharedCardId === card.id ? "Shared" : "Share"}
+                                </button>
+                                <button
+                                  onClick={() => toggleCardSave(card.id)}
+                                  className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    savedCardIds.includes(card.id)
+                                      ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                                  }`}
+                                >
+                                  <Bookmark size={12} />
+                                  {savedCardIds.includes(card.id) ? "Saved" : "Save"}
+                                </button>
+                              </div>
 
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                  <button
-                                    onClick={() => router.push(focusPath)}
-                                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
-                                  >
-                                    {card.actionLabel}
-                                    <ArrowRight size={11} />
-                                  </button>
-                                  <button
-                                    onClick={() => router.push(routes.chat)}
-                                    className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                                  >
-                                    Message
-                                  </button>
-                                </div>
+                              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                                <span>{card.audienceMeta}</span>
+                                <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                <span>{card.engagementLabel}</span>
                               </div>
                             </div>
 
-                            <aside className="hidden lg:flex flex-col rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-indigo-50/50 p-2.5">
-                              <div className="relative h-20 w-full overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                <Image src={card.mediaGallery[2]} alt={`${card.title} activity`} fill sizes="220px" className="object-cover" />
-                                <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            <aside className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-indigo-50/60 p-2.5">
+                              <div className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
+                                <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
+                                <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
                                   {card.ownerLabel}
                                 </span>
+                                <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                  +{card.mediaCount} photos
+                                </span>
+                                <span className="absolute left-2 bottom-2 rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                  {card.pulse}
+                                </span>
                               </div>
-                              <div className="mt-2 space-y-1.5 text-[11px]">
+
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                {card.mediaGallery.slice(1).map((mediaItem, mediaIndex) => (
+                                  <div key={`${card.id}-media-${mediaIndex}`} className="relative h-20 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                    <Image
+                                      src={mediaItem}
+                                      alt={`${card.title} gallery ${mediaIndex + 2}`}
+                                      fill
+                                      sizes="150px"
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="mt-2 grid gap-2 text-[11px]">
                                 <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
                                   <p className="text-slate-500">{card.mediaLabel}</p>
                                   <p className="font-semibold text-slate-800 line-clamp-1">{card.proofLabel}</p>
