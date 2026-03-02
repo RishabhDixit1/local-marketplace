@@ -1490,8 +1490,21 @@ export default function WelcomePage() {
             className="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-linear-to-br from-sky-600 via-indigo-600 to-fuchsia-600 shadow-xl"
           >
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.3),transparent_45%),radial-gradient(circle_at_85%_90%,rgba(255,255,255,0.18),transparent_42%)]" />
-              <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-size-[32px_32px]" />
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.3), transparent 45%), radial-gradient(circle at 85% 90%, rgba(255,255,255,0.18), transparent 42%)",
+                }}
+              />
+              <div
+                className="absolute inset-0 opacity-25"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)",
+                  backgroundSize: "32px 32px",
+                }}
+              />
               <motion.div
                 className="absolute -left-16 top-8 h-40 w-40 rounded-full bg-cyan-300/35 blur-3xl"
                 animate={{ x: [0, 28, 0], y: [0, -18, 0], opacity: [0.35, 0.7, 0.35] }}
@@ -1586,7 +1599,14 @@ export default function WelcomePage() {
 
                 <div className="relative mt-2 overflow-hidden rounded-xl border border-white/20 bg-slate-950/65 p-3">
                   <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,rgba(148,163,184,0.28)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.28)_1px,transparent_1px)] bg-size-[26px_26px]" />
+                    <div
+                      className="absolute inset-0 opacity-25"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, rgba(148,163,184,0.28) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.28) 1px, transparent 1px)",
+                        backgroundSize: "26px 26px",
+                      }}
+                    />
                     <motion.div
                       className={`absolute -left-14 top-2 h-32 w-32 rounded-full blur-3xl ${heroToneGlowClasses[currentHeroScene.tone]}`}
                       animate={{ x: [0, 18, 0], y: [0, -10, 0], opacity: [0.35, 0.65, 0.35] }}

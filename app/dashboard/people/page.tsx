@@ -912,8 +912,21 @@ export default function PeoplePage() {
   return (
     <div className="w-full max-w-550 mx-auto space-y-5 sm:space-y-6 lg:space-y-7">
       <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-br from-slate-900 via-indigo-900 to-cyan-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.28),transparent_44%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-size-[34px_34px]" />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at top left, rgba(255,255,255,0.24), transparent 40%), radial-gradient(circle at bottom right, rgba(56,189,248,0.28), transparent 44%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)",
+            backgroundSize: "34px 34px",
+          }}
+        />
 
         <div className="relative z-10 space-y-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
