@@ -98,4 +98,35 @@ test.describe("welcome feed cards", () => {
     await page.waitForURL(/\/dashboard/);
     await expect(page).toHaveURL(/source=welcome_feed/);
   });
+
+  test("saved cards are available in saved feed with contextual open action", async ({ page }) => {
+    await gotoWelcomeFeed(page);
+
+    const firstCard = page.getByTestId("welcome-feed-card").first();
+    const cardId = await firstCard.getAttribute("data-card-id");
+    expect(cardId).toBeTruthy();
+
+    const saveButton = firstCard.getByTestId("feed-action-save");
+    const saveLabel = (await saveButton.innerText()).toLowerCase();
+
+    if (!saveLabel.includes("saved")) {
+      await saveButton.click();
+      await expect(firstCard.getByTestId("feed-action-save")).toContainText(/Saved|Saving.../);
+    }
+
+    await page.goto("/dashboard/saved");
+    await expect(page.getByTestId("saved-feed-list")).toBeVisible();
+
+    const savedCard = page.locator(`[data-testid=\"saved-feed-card\"][data-card-id=\"${cardId}\"]`).first();
+    await expect(savedCard).toBeVisible({ timeout: 15_000 });
+
+    await savedCard.getByTestId("saved-feed-open").click();
+    await page.waitForURL(/\/dashboard/);
+    await expect(page).toHaveURL(/source=saved_feed/);
+    await expect(page).toHaveURL(new RegExp(`context_card=${cardId}`));
+
+    await page.goto("/dashboard/saved");
+    await expect(savedCard).toBeVisible({ timeout: 15_000 });
+    await savedCard.getByTestId("saved-feed-remove").click();
+  });
 });

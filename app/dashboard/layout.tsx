@@ -6,6 +6,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
+  Bookmark,
   Compass,
   Home,
   LogOut,
@@ -21,6 +22,7 @@ import {
 const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Sparkles },
   { name: "Posts", path: "/dashboard", icon: Home },
+  { name: "Saved", path: "/dashboard/saved", icon: Bookmark },
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: Package },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
