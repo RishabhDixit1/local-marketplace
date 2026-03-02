@@ -1192,58 +1192,80 @@ export default function WelcomePage() {
 
                       return (
                         <article key={`feed-inline-${card.id}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-3.5">
-                          <div className="flex items-start gap-3">
-                            <div className="flex items-start gap-2 shrink-0">
-                              <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                                <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="56px" className="object-cover" />
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                            <div className="flex items-start gap-3">
+                              <div className="flex items-start gap-2 shrink-0">
+                                <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                  <Image src={card.mediaGallery[0]} alt={card.title} fill sizes="56px" className="object-cover" />
+                                </div>
+                                <div className="relative h-14 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                  <Image src={card.mediaGallery[1]} alt={`${card.title} preview`} fill sizes="40px" className="object-cover" />
+                                  <span className="absolute inset-0 bg-black/30 text-[10px] text-white font-semibold flex items-center justify-center">
+                                    +{card.mediaCount}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="relative h-14 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                <Image src={card.mediaGallery[1]} alt={`${card.title} preview`} fill sizes="40px" className="object-cover" />
-                                <span className="absolute inset-0 bg-black/30 text-[10px] text-white font-semibold flex items-center justify-center">
-                                  +{card.mediaCount}
-                                </span>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                      card.type === "demand"
+                                        ? "bg-rose-100 text-rose-700"
+                                        : card.type === "service"
+                                        ? "bg-indigo-100 text-indigo-700"
+                                        : "bg-emerald-100 text-emerald-700"
+                                    }`}
+                                  >
+                                    {card.type}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                                  <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                                </div>
+
+                                <p className="mt-1 text-[15px] font-semibold text-slate-900 line-clamp-1">{card.title}</p>
+                                <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">{card.subtitle}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                  <button
+                                    onClick={() => router.push(focusPath)}
+                                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+                                  >
+                                    {card.actionLabel}
+                                    <ArrowRight size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => router.push(routes.chat)}
+                                    className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                                  >
+                                    Message
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                    card.type === "demand"
-                                      ? "bg-rose-100 text-rose-700"
-                                      : card.type === "service"
-                                      ? "bg-indigo-100 text-indigo-700"
-                                      : "bg-emerald-100 text-emerald-700"
-                                  }`}
-                                >
-                                  {card.type}
+                            <aside className="hidden lg:flex flex-col rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-indigo-50/50 p-2.5">
+                              <div className="relative h-20 w-full overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                <Image src={card.mediaGallery[2]} alt={`${card.title} activity`} fill sizes="220px" className="object-cover" />
+                                <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                  {card.ownerLabel}
                                 </span>
-                                <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                                <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
                               </div>
-
-                              <p className="mt-1 text-[15px] font-semibold text-slate-900 line-clamp-1">{card.title}</p>
-                              <div className="mt-1 flex flex-wrap items-center gap-1">
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
-                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                              <div className="mt-2 space-y-1.5 text-[11px]">
+                                <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+                                  <p className="text-slate-500">{card.mediaLabel}</p>
+                                  <p className="font-semibold text-slate-800 line-clamp-1">{card.proofLabel}</p>
+                                </div>
+                                <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+                                  <p className="text-slate-500">{card.signalLabel}</p>
+                                  <p className="font-semibold text-slate-800 line-clamp-1">{card.responseLabel}</p>
+                                </div>
                               </div>
-
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                <button
-                                  onClick={() => router.push(focusPath)}
-                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
-                                >
-                                  {card.actionLabel}
-                                  <ArrowRight size={11} />
-                                </button>
-                                <button
-                                  onClick={() => router.push(routes.chat)}
-                                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-                                >
-                                  Message
-                                </button>
-                              </div>
-                            </div>
+                            </aside>
                           </div>
                         </article>
                       );
