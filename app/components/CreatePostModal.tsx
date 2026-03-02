@@ -1,20 +1,18 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import {
-  CalendarDays,
   Clock3,
+  Mic,
   FileAudio2,
   FileImage,
   FileVideo2,
-  MapPin,
   Paperclip,
-  Tag,
+  Square,
   Wallet,
   X,
-  Zap,
 } from "lucide-react";
 
 type Props = {
@@ -56,8 +54,7 @@ const urgencyWindows = [
   "This week",
   "Flexible",
 ];
-
-const radiusOptions = [3, 5, 8, 12, 20];
+const SCHEDULE_TIMING_VALUE = "__schedule__";
 
 const MAX_ATTACHMENTS = 6;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -99,6 +96,8 @@ export default function CreatePostModal({
   onClose,
   onPublished,
 }: Props) {
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceRecorderStreamRef = useRef<MediaStream | null>(null);
   const [type, setType] = useState<PostType>("need");
   const [mode, setMode] = useState<PostMode>("urgent");
   const [title, setTitle] = useState("");
@@ -112,9 +111,33 @@ export default function CreatePostModal({
   const [scheduleDate, setScheduleDate] = useState("");
   const [flexibleTiming, setFlexibleTiming] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [recordingVoice, setRecordingVoice] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
+  const resetVoiceRecorder = () => {
+    const recorder = voiceRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      try {
+        recorder.stop();
+      } catch {
+        // No-op: recorder may already be stopping.
+      }
+    }
+
+    const activeStream = voiceRecorderStreamRef.current;
+    if (activeStream) {
+      activeStream.getTracks().forEach((track) => track.stop());
+    }
+
+    voiceRecorderRef.current = null;
+    voiceRecorderStreamRef.current = null;
+    setRecordingVoice(false);
+  };
+
   const clearForm = () => {
+    resetVoiceRecorder();
     setType("need");
     setMode("urgent");
     setTitle("");
@@ -136,16 +159,17 @@ export default function CreatePostModal({
     onClose();
   };
 
-  const summary = useMemo(() => {
-    const modeText = mode === "urgent" ? "Urgent" : "Scheduled";
-    const whenText =
-      mode === "urgent"
-        ? neededWithin
-        : scheduleDate
-          ? `${scheduleDate} ${scheduleTime}`
-          : "time not set";
-    return `${modeText} • ${whenText} • ${locationLabel} • ${radiusKm} km reach`;
-  }, [locationLabel, mode, neededWithin, radiusKm, scheduleDate, scheduleTime]);
+  const timingValue = mode === "schedule" ? SCHEDULE_TIMING_VALUE : neededWithin;
+
+  const handleTimingChange = (value: string) => {
+    if (value === SCHEDULE_TIMING_VALUE) {
+      setMode("schedule");
+      return;
+    }
+
+    setMode("urgent");
+    setNeededWithin(value);
+  };
 
   const publishLabel = useMemo(() => {
     if (type === "service") {
@@ -182,9 +206,7 @@ export default function CreatePostModal({
     return <Paperclip size={14} className="text-slate-500" />;
   };
 
-  const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selected = event.target.files ? Array.from(event.target.files) : [];
-    event.target.value = "";
+  const appendAttachments = (selected: File[]) => {
     if (selected.length === 0) return;
 
     const valid = selected.filter((file) => {
@@ -193,7 +215,7 @@ export default function CreatePostModal({
         file.type.startsWith("video/") ||
         file.type.startsWith("audio/");
       if (!accepted) {
-        alert(`${file.name}: only image, video, or audio files are supported.`);
+        alert(`${file.name}: only media files are supported (image/video/audio/voice).`);
         return false;
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -211,6 +233,88 @@ export default function CreatePostModal({
       return merged.slice(0, MAX_ATTACHMENTS);
     });
   };
+
+  const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files ? Array.from(event.target.files) : [];
+    event.target.value = "";
+    appendAttachments(selected);
+  };
+
+  const startVoiceRecording = async () => {
+    if (recordingVoice || publishing) return;
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      alert(`You can upload up to ${MAX_ATTACHMENTS} files per post.`);
+      return;
+    }
+    if (typeof window === "undefined" || typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      alert("Voice recording is not supported in this browser.");
+      return;
+    }
+    if (typeof MediaRecorder === "undefined") {
+      alert("Voice recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const preferredMimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+      const selectedMimeType = preferredMimeTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType));
+      const recorder = selectedMimeType ? new MediaRecorder(stream, { mimeType: selectedMimeType }) : new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        const extension = recorder.mimeType.includes("mp4")
+          ? "m4a"
+          : recorder.mimeType.includes("ogg")
+            ? "ogg"
+            : "webm";
+        if (blob.size > 0) {
+          const voiceFile = new File([blob], `voice-note-${Date.now()}.${extension}`, {
+            type: blob.type || "audio/webm",
+          });
+          appendAttachments([voiceFile]);
+        }
+        stream.getTracks().forEach((track) => track.stop());
+        voiceRecorderRef.current = null;
+        voiceRecorderStreamRef.current = null;
+        setRecordingVoice(false);
+      };
+
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        voiceRecorderRef.current = null;
+        voiceRecorderStreamRef.current = null;
+        setRecordingVoice(false);
+        alert("Could not record voice note. Please try again.");
+      };
+
+      voiceRecorderRef.current = recorder;
+      voiceRecorderStreamRef.current = stream;
+      setRecordingVoice(true);
+      recorder.start();
+    } catch {
+      alert("Microphone access denied. Enable mic permission to record a voice note.");
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    const recorder = voiceRecorderRef.current;
+    if (!recorder || recorder.state !== "recording") return;
+    recorder.stop();
+  };
+
+  useEffect(() => {
+    return () => {
+      resetVoiceRecorder();
+    };
+  }, []);
 
   const removeAttachment = (index: number) => {
     setAttachments((current) => current.filter((_, i) => i !== index));
@@ -315,11 +419,6 @@ export default function CreatePostModal({
       return;
     }
 
-    if (!trimmedDetails) {
-      alert("Please add details.");
-      return;
-    }
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -377,7 +476,7 @@ export default function CreatePostModal({
 
     const composedText = [
       trimmedTitle,
-      trimmedDetails,
+      trimmedDetails || "No additional details",
       `Type: ${type}`,
       `Mode: ${mode}`,
       `Needed: ${
@@ -721,127 +820,33 @@ export default function CreatePostModal({
         </div>
 
         <div className="p-4 sm:p-6 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-1 grid grid-cols-3 gap-1">
-            {(["need", "service", "product"] as PostType[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setType(option)}
-                className={`rounded-lg px-3 py-2.5 text-sm font-semibold capitalize transition ${
-                  type === option
-                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                    : "text-slate-600 hover:bg-white"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("urgent")}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 ${
-                mode === "urgent"
-                  ? "bg-amber-100 text-amber-700 border border-amber-300"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <Zap size={16} /> Urgent
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("schedule")}
-              className={`rounded-xl px-4 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 ${
-                mode === "schedule"
-                  ? "bg-indigo-100 text-indigo-700 border border-indigo-300"
-                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <CalendarDays size={16} /> Schedule for Later
-            </button>
-          </div>
-
           <p className="text-sm text-slate-600">
-            {mode === "urgent"
-              ? "Urgent posts are highlighted and pushed faster to nearby providers."
-              : "Scheduled posts will go live at the selected date and time."}
+            Tell us what you need in one quick form. Nearby providers can respond fast.
           </p>
 
-          <div>
-            <label className="text-sm text-slate-700">Title</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={
-                type === "need"
-                  ? "Looking for an Electrician"
-                  : type === "service"
-                    ? "I offer AC repair"
-                    : "Selling cordless drill"
-              }
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-700">Details</label>
-            <textarea
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder="Describe what you need or offer..."
-              rows={4}
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-700">Attachments (image/video/audio)</label>
-            <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
-              <Paperclip size={16} />
-              Add files
-              <input
-                type="file"
-                multiple
-                accept="image/*,video/*,audio/*"
-                onChange={handleAttachmentChange}
-                className="hidden"
-              />
-            </label>
-            {attachments.length > 0 && (
-              <div className="mt-2 space-y-2">
-                {attachments.map((file, index) => (
-                  <div
-                    key={`${file.name}-${file.size}-${index}`}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      {pickAttachmentIcon(file.type)}
-                      <span className="truncate text-slate-700">{file.name}</span>
-                      <span className="text-xs text-slate-400">{formatBytes(file.size)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeAttachment(index)}
-                      className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-sm text-slate-700">Needed Within</label>
+              <label className="text-sm text-slate-700">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              >
+                {defaultCategories.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-slate-700">When do you need this?</label>
               <div className="mt-1.5 relative">
                 <Clock3 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <select
-                  value={neededWithin}
-                  onChange={(e) => setNeededWithin(e.target.value)}
+                  value={timingValue}
+                  onChange={(e) => handleTimingChange(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 >
                   {urgencyWindows.map((window) => (
@@ -849,26 +854,14 @@ export default function CreatePostModal({
                       {window}
                     </option>
                   ))}
+                  <option value={SCHEDULE_TIMING_VALUE}>Schedule for later</option>
                 </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm text-slate-700">Budget</label>
-              <div className="mt-1.5 relative">
-                <Wallet size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                  placeholder="Enter budget"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                />
               </div>
             </div>
           </div>
 
           {mode === "schedule" && (
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-sm text-slate-700">Date</label>
                 <input
@@ -890,65 +883,93 @@ export default function CreatePostModal({
             </div>
           )}
 
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-sm text-slate-700">What do you need?</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Looking for an Electrician"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-700">Details (optional)</label>
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              placeholder="Add a short detail so providers can respond clearly."
+              rows={4}
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-sm text-slate-700">Category</label>
+              <label className="text-sm text-slate-700">Budget (optional)</label>
               <div className="mt-1.5 relative">
-                <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-                >
-                  {defaultCategories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-slate-700">Location</label>
-              <div className="mt-1.5 relative">
-                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Wallet size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  value={locationLabel}
-                  onChange={(e) => setLocationLabel(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="Enter budget"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
+
             <div>
-              <label className="text-sm text-slate-700">Reach Radius</label>
-              <div className="mt-1.5 relative">
-                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <select
-                  value={String(radiusKm)}
-                  onChange={(e) => setRadiusKm(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-3 text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              <label className="text-sm text-slate-700">Media (optional)</label>
+              <div className="mt-1.5 flex gap-2">
+                <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition-colors hover:border-indigo-400 hover:text-indigo-600">
+                  <Paperclip size={16} />
+                  Add media
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*,audio/*"
+                    onChange={handleAttachmentChange}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={recordingVoice ? stopVoiceRecording : startVoiceRecording}
+                  disabled={publishing}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+                    recordingVoice
+                      ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                  }`}
                 >
-                  {radiusOptions.map((radius) => (
-                    <option key={radius} value={radius}>
-                      {radius} km
-                    </option>
-                  ))}
-                </select>
+                  {recordingVoice ? <Square size={14} /> : <Mic size={14} />}
+                  {recordingVoice ? "Stop" : "Voice"}
+                </button>
               </div>
+              {attachments.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.size}-${index}`}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        {pickAttachmentIcon(file.type)}
+                        <span className="truncate text-slate-700">{file.name}</span>
+                        <span className="text-xs text-slate-400">{formatBytes(file.size)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={flexibleTiming}
-              onChange={() => setFlexibleTiming((value) => !value)}
-            />
-            Flexible timing
-          </label>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            {summary}
           </div>
 
           <button
