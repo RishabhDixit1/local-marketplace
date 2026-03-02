@@ -22,7 +22,7 @@ A realtime local marketplace platform connecting consumers and providers for ser
 - React 19 + TypeScript
 - Supabase (Auth, Postgres, Realtime, RLS)
 - Tailwind CSS 4
-- Playwright (smoke e2e)
+- Playwright (authenticated smoke + welcome feed e2e)
 
 ## Local Development
 
@@ -107,6 +107,7 @@ Coverage includes:
 - start chat and send message
 - create order
 - task/status transition
+- welcome feed card actions (render/share/context)
 
 Optional env vars for full flow:
 
@@ -114,10 +115,24 @@ Optional env vars for full flow:
 - `E2E_MAGIC_LINK_URL` for authenticated smoke
 - `PLAYWRIGHT_SKIP_WEBSERVER=1` to skip auto web server startup
 
+## CI Authenticated E2E
+
+GitHub Actions workflow: `.github/workflows/e2e-authenticated.yml`
+
+Required repository secrets:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `E2E_MAGIC_LINK_URL`
+
+Optional secret:
+- `E2E_LOGIN_EMAIL`
+
 ## Key Routes
 
 - `/` - landing + auth
 - `/dashboard` - unified marketplace feed
+- `/dashboard/welcome` - visual live local feed
+- `/dashboard/saved` - saved feed cards
 - `/dashboard/chat` - realtime chat
 - `/dashboard/people` - provider discovery + presence
 - `/dashboard/tasks` - task board + status actions

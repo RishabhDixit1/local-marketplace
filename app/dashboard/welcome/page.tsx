@@ -608,6 +608,8 @@ export default function WelcomePage() {
             audienceLabel: card.audienceLabel,
             audienceName: card.audienceName,
             tags: card.tags,
+            image: card.image,
+            mediaGallery: card.mediaGallery,
           },
           updated_at: new Date().toISOString(),
         },
@@ -1460,6 +1462,7 @@ export default function WelcomePage() {
 
     let isActive = true;
     const cardIds = nearbyCards.map((card) => card.id);
+    const cardIdSet = new Set(cardIds);
 
     const refreshMetrics = async () => {
       const nextMetrics = await fetchFeedCardMetrics(cardIds, viewerId);
@@ -1468,15 +1471,60 @@ export default function WelcomePage() {
       }
     };
 
-    void refreshMetrics();
+    const extractCardId = (payload: { new: unknown; old: unknown }) => {
+      const nextRow = (payload.new as { card_id?: string } | null) || null;
+      const prevRow = (payload.old as { card_id?: string } | null) || null;
+      return nextRow?.card_id || prevRow?.card_id || null;
+    };
 
-    const timer = window.setInterval(() => {
-      void refreshMetrics();
-    }, 45000);
+    const channel = supabase
+      .channel(`welcome-feed-interactions-${viewerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "feed_card_saves",
+          filter: `user_id=eq.${viewerId}`,
+        },
+        (payload) => {
+          const changedCardId = extractCardId(payload);
+          if (!changedCardId || !cardIdSet.has(changedCardId)) {
+            return;
+          }
+
+          if (payload.eventType === "DELETE") {
+            setSavedCardIds((current) => current.filter((id) => id !== changedCardId));
+          } else {
+            setSavedCardIds((current) => (current.includes(changedCardId) ? current : [...current, changedCardId]));
+          }
+
+          void refreshMetrics();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "feed_card_shares",
+          filter: `user_id=eq.${viewerId}`,
+        },
+        (payload) => {
+          const changedCardId = extractCardId(payload);
+          if (!changedCardId || !cardIdSet.has(changedCardId)) {
+            return;
+          }
+          void refreshMetrics();
+        }
+      )
+      .subscribe();
+
+    void refreshMetrics();
 
     return () => {
       isActive = false;
-      window.clearInterval(timer);
+      void supabase.removeChannel(channel);
     };
   }, [nearbyCards, viewerId]);
 
