@@ -1285,6 +1285,16 @@ export default function MarketplacePage() {
       setCategory(categoryParam);
     }
 
+    const viewParam = params.get("view");
+    if (viewParam === "groups") {
+      setFeedLayout("thread");
+    }
+
+    const groupParam = params.get("group") || params.get("q");
+    if (groupParam) {
+      setSearch(groupParam);
+    }
+
     const id = params.get("focus");
     const type = params.get("type");
     const helpRequestParam = params.get("help_request");

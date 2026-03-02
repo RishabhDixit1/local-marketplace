@@ -238,6 +238,36 @@ const describeMatchReason = (person: ProviderCard, online: boolean) => {
 export default function PeoplePage() {
   const router = useRouter();
   const reloadTimerRef = useRef<number | null>(null);
+  const deepLinkProviderAppliedRef = useRef(false);
+  const [deepLinkContext] = useState<{
+    providerId: string | null;
+    query: string;
+    tab: (typeof TABS)[number] | null;
+    intent: string | null;
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get("source");
+    const providerId = params.get("provider");
+    const query = params.get("q") || params.get("context_audience") || params.get("context_title") || "";
+    const tabParam = params.get("tab");
+    const tab = TABS.includes((tabParam as (typeof TABS)[number]) || "All")
+      ? ((tabParam as (typeof TABS)[number]) || null)
+      : null;
+    const intent = params.get("intent");
+
+    if (!providerId && !query && !tab && source !== "welcome_feed") {
+      return null;
+    }
+
+    return {
+      providerId,
+      query,
+      tab,
+      intent,
+    };
+  });
+  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderCard[]>([]);
@@ -340,6 +370,22 @@ export default function PeoplePage() {
     sortBy,
     verifiedOnly,
   ]);
+
+  useEffect(() => {
+    if (!deepLinkContext || deepLinkApplied) return;
+
+    if (deepLinkContext.query) {
+      setSearch(deepLinkContext.query);
+    }
+
+    if (deepLinkContext.tab) {
+      setActiveTab(deepLinkContext.tab);
+    } else if (deepLinkContext.intent === "connections") {
+      setActiveTab("Nearby");
+    }
+
+    setDeepLinkApplied(true);
+  }, [deepLinkApplied, deepLinkContext]);
 
   const loadProviders = useCallback(async (soft = false) => {
     if (!soft) setLoading(true);
@@ -590,6 +636,14 @@ export default function PeoplePage() {
   useEffect(() => {
     void loadProviders();
   }, [loadProviders]);
+
+  useEffect(() => {
+    if (!deepLinkContext?.providerId || deepLinkProviderAppliedRef.current) return;
+    if (!providers.some((provider) => provider.id === deepLinkContext.providerId)) return;
+
+    setSelectedProvider(deepLinkContext.providerId);
+    deepLinkProviderAppliedRef.current = true;
+  }, [deepLinkContext?.providerId, providers]);
 
   useEffect(() => {
     if (!currentUserId) return;
