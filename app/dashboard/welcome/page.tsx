@@ -1482,16 +1482,16 @@ export default function WelcomePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
-        <div className="w-full max-w-[2200px] mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
+      <div className="min-h-screen bg-linear-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
+        <div className="w-full max-w-550 mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-gradient-to-br from-sky-600 via-indigo-600 to-fuchsia-600 shadow-xl"
+            className="relative overflow-hidden rounded-3xl p-5 sm:p-7 bg-linear-to-br from-sky-600 via-indigo-600 to-fuchsia-600 shadow-xl"
           >
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.3),transparent_45%),radial-gradient(circle_at_85%_90%,rgba(255,255,255,0.18),transparent_42%)]" />
-              <div className="absolute inset-0 opacity-25 [background-size:32px_32px] [background-image:linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)]" />
+              <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-size-[32px_32px]" />
               <motion.div
                 className="absolute -left-16 top-8 h-40 w-40 rounded-full bg-cyan-300/35 blur-3xl"
                 animate={{ x: [0, 28, 0], y: [0, -18, 0], opacity: [0.35, 0.7, 0.35] }}
@@ -1572,7 +1572,7 @@ export default function WelcomePage() {
                     <div key={`scene-progress-${scene.title}`} className="h-1.5 overflow-hidden rounded-full bg-white/20">
                       <motion.div
                         key={`scene-progress-fill-${scene.title}-${index === activeHeroScene}`}
-                        className={`h-full rounded-full bg-gradient-to-r ${heroToneTrackClasses[scene.tone]}`}
+                        className={`h-full rounded-full bg-linear-to-r ${heroToneTrackClasses[scene.tone]}`}
                         initial={{ width: "0%" }}
                         animate={{ width: index === activeHeroScene ? "100%" : "0%" }}
                         transition={{
@@ -1586,14 +1586,14 @@ export default function WelcomePage() {
 
                 <div className="relative mt-2 overflow-hidden rounded-xl border border-white/20 bg-slate-950/65 p-3">
                   <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute inset-0 opacity-25 [background-size:26px_26px] [background-image:linear-gradient(to_right,rgba(148,163,184,0.28)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.28)_1px,transparent_1px)]" />
+                    <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,rgba(148,163,184,0.28)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.28)_1px,transparent_1px)] bg-size-[26px_26px]" />
                     <motion.div
                       className={`absolute -left-14 top-2 h-32 w-32 rounded-full blur-3xl ${heroToneGlowClasses[currentHeroScene.tone]}`}
                       animate={{ x: [0, 18, 0], y: [0, -10, 0], opacity: [0.35, 0.65, 0.35] }}
                       transition={{ duration: 5.4, repeat: Infinity, ease: "easeInOut" }}
                     />
                     <motion.div
-                      className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/15 to-transparent"
+                      className="absolute inset-x-0 top-0 h-20 bg-linear-to-b from-white/15 to-transparent"
                       animate={{ opacity: [0.2, 0.45, 0.2] }}
                       transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     />
@@ -1950,7 +1950,7 @@ export default function WelcomePage() {
                               </div>
                             </div>
 
-                            <aside className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-indigo-50/60 p-2.5">
+                            <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-indigo-50/60 p-2.5">
                               <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
                                 <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
                                 <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -2002,7 +2002,7 @@ export default function WelcomePage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-5">
+              <div className="rounded-2xl border border-indigo-100 bg-linear-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-600">About Local Marketplace</p>
                 <h2 className="mt-2 text-lg sm:text-xl font-semibold text-slate-900">
                   A realtime neighborhood network for needs, services, and products.
