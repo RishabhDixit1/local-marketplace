@@ -11,20 +11,13 @@ import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
   ArrowRight,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Circle,
   ClipboardList,
-  Clock3,
-  MapPin,
   MessageCircle,
-  Plus,
   ShieldCheck,
   Star,
-  TrendingUp,
   Users,
-  Wrench,
   Zap,
 } from "lucide-react";
 
@@ -33,13 +26,6 @@ type WelcomeStats = {
   activeTasks: number;
   unreadMessages: number;
   trustScore: number;
-};
-
-type ProviderSnapshot = {
-  services: number;
-  products: number;
-  openOrders: number;
-  profileReady: boolean;
 };
 
 type UserProfile = {
@@ -82,15 +68,6 @@ type EnrichedNearbyCard = NearbyCard & {
   mediaGallery: [string, string, string];
 };
 
-type OnboardingStep = {
-  id: string;
-  title: string;
-  hint: string;
-  done: boolean;
-  path: string;
-  cta: string;
-};
-
 type RawPost = {
   id: string;
   text: string | null;
@@ -123,13 +100,9 @@ type MessageUnreadRow = {
 const routes = {
   posts: "/dashboard",
   people: "/dashboard/people",
-  profile: "/dashboard/profile",
   tasks: "/dashboard/tasks",
   chat: "/dashboard/chat",
   addService: "/dashboard/provider/add-service",
-  addProduct: "/dashboard/provider/add-product",
-  listings: "/dashboard/provider/listings",
-  orders: "/dashboard/tasks",
 } as const;
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
@@ -263,7 +236,6 @@ export default function WelcomePage() {
   const [loadError, setLoadError] = useState("");
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
-  const [profileStrength, setProfileStrength] = useState(40);
   const [stats, setStats] = useState<WelcomeStats>({
     nearbyPosts: 0,
     activeTasks: 0,
@@ -271,53 +243,6 @@ export default function WelcomePage() {
     trustScore: 4.7,
   });
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
-  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([]);
-  const [providerSnapshot, setProviderSnapshot] = useState<ProviderSnapshot>({
-    services: 0,
-    products: 0,
-    openOrders: 0,
-    profileReady: false,
-  });
-
-  const features = [
-    {
-      title: "Real-time Needs",
-      desc: "Post requests and get instant responses nearby.",
-      icon: Zap,
-    },
-    {
-      title: "Hyperlocal Discovery",
-      desc: "Find services and products within your radius.",
-      icon: MapPin,
-    },
-    {
-      title: "Trust and Ratings",
-      desc: "Build reputation through verified work.",
-      icon: ShieldCheck,
-    },
-  ];
-
-  const statCards = useMemo(
-    () => [
-      { label: "Nearby Posts", value: String(stats.nearbyPosts), icon: MapPin },
-      { label: "Active Tasks", value: String(stats.activeTasks), icon: ClipboardList },
-      { label: "Unread Messages", value: String(stats.unreadMessages), icon: MessageCircle },
-      { label: "Trust Score", value: stats.trustScore.toFixed(1), icon: Star },
-    ],
-    [stats]
-  );
-
-  const primaryHeroAction = isProvider
-    ? {
-        label: "Add Service",
-        action: () => router.push(routes.addService),
-      }
-    : {
-        label: "Post a Need",
-        action: () => setOpenPostModal(true),
-      };
-
-  const completedOnboarding = onboardingSteps.filter((step) => step.done).length;
 
   const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
     const demandAltMedia = [
@@ -388,6 +313,13 @@ export default function WelcomePage() {
 
   const storyItems = useMemo(() => storyBaseItems, [storyBaseItems]);
 
+  const formatStoryPriceLine = (story: EnrichedNearbyCard) => {
+    if (story.type === "demand") {
+      return /^budget/i.test(story.priceLabel) ? story.priceLabel : `Budget ${story.priceLabel}`;
+    }
+    return /^price/i.test(story.priceLabel) ? story.priceLabel : `Price ${story.priceLabel}`;
+  };
+
   const scrollStories = (direction: "left" | "right") => {
     const container = storiesScrollRef.current;
     if (!container) return;
@@ -443,6 +375,36 @@ export default function WelcomePage() {
     [nearbyCards]
   );
 
+  const aboutCards = useMemo(
+    () => [
+      {
+        title: "Realtime Matching Engine",
+        desc: "Every post is routed by urgency, category, and local radius so nearby providers can respond fast.",
+        metric: `${demandCards.length} live needs`,
+        icon: Zap,
+      },
+      {
+        title: "Trust Layer Built In",
+        desc: "Profiles, reviews, and fulfillment history help customers choose reliable local providers quickly.",
+        metric: `${stats.trustScore.toFixed(1)} trust index`,
+        icon: ShieldCheck,
+      },
+      {
+        title: "Conversation to Completion",
+        desc: "From first message to final delivery, chat and task updates stay in one execution thread.",
+        metric: `${stats.unreadMessages + 12} active threads`,
+        icon: MessageCircle,
+      },
+      {
+        title: "Neighborhood Supply Grid",
+        desc: "Services and products from nearby sellers reduce wait time and increase successful local outcomes.",
+        metric: `${stats.activeTasks} tasks in motion`,
+        icon: Activity,
+      },
+    ],
+    [demandCards.length, stats.activeTasks, stats.trustScore, stats.unreadMessages]
+  );
+
   const heroScenes = useMemo<HeroScene[]>(() => {
     const topDemand = demandCards[0];
     const topService = nearbyCards.find((card) => card.type === "service");
@@ -473,30 +435,54 @@ export default function WelcomePage() {
     ];
   }, [demandCards, nearbyCards, stats.activeTasks, stats.trustScore, stats.unreadMessages]);
 
-  const quickActionItems = useMemo(
-    () => [
-      {
-        title: "Respond",
-        icon: Zap,
-        action: () => router.push(`${routes.posts}?category=demand`),
-      },
-      {
-        title: "Connect",
-        icon: MessageCircle,
-        action: () => router.push(routes.chat),
-      },
-      {
-        title: "Offer Help",
-        icon: Wrench,
-        action: () => router.push(`${routes.posts}?category=demand`),
-      },
-      {
-        title: "Post Need",
-        icon: Plus,
-        action: () => setOpenPostModal(true),
-      },
-    ],
-    [router]
+  const heroQuickActions = useMemo(
+    () =>
+      isProvider
+        ? [
+            {
+              title: "Respond to Needs",
+              icon: Zap,
+              action: () => router.push(`${routes.posts}?category=demand`),
+            },
+            {
+              title: "Add Service",
+              icon: ClipboardList,
+              action: () => router.push(routes.addService),
+            },
+            {
+              title: "Open Chat",
+              icon: MessageCircle,
+              action: () => router.push(routes.chat),
+            },
+            {
+              title: "View Tasks",
+              icon: Activity,
+              action: () => router.push(routes.tasks),
+            },
+          ]
+        : [
+            {
+              title: "Create Post",
+              icon: Zap,
+              action: () => setOpenPostModal(true),
+            },
+            {
+              title: "Find People",
+              icon: Users,
+              action: () => router.push(routes.people),
+            },
+            {
+              title: "Open Chat",
+              icon: MessageCircle,
+              action: () => router.push(routes.chat),
+            },
+            {
+              title: "Browse Feed",
+              icon: ArrowRight,
+              action: () => router.push(routes.posts),
+            },
+          ],
+    [isProvider, router]
   );
 
   const marketSignals = useMemo(
@@ -569,18 +555,6 @@ export default function WelcomePage() {
 
         setUserName(profileData?.name || currentUser.email?.split("@")[0] || "Neighbor");
         setIsProvider(isProviderRole);
-
-        const profilePoints =
-          (profileData?.name ? 15 : 0) +
-          (profileData?.location ? 15 : 0) +
-          ((profileData?.bio || "").trim().length >= 20 ? 20 : 0) +
-          ((profileData?.services?.length || 0) > 0 ? 20 : 0) +
-          (profileData?.email ? 10 : 0) +
-          (profileData?.phone ? 10 : 0) +
-          (profileData?.website ? 10 : 0);
-
-        const profileCompletion = Math.min(100, profilePoints);
-        setProfileStrength(profileCompletion);
 
         const [{ count: nearbyPostsCount }, { data: myOrders }, { data: myConversations }, { data: reviewsData }] =
           await Promise.all([
@@ -850,83 +824,6 @@ export default function WelcomePage() {
           ? allCards
           : fallbackCards
       );
-
-        const [{ count: myPostsCount }, { count: myServicesCount }, { count: myProductsCount }] = await Promise.all([
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("user_id", currentUser.id),
-          supabase.from("service_listings").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
-          supabase.from("product_catalog").select("*", { count: "exact", head: true }).eq("provider_id", currentUser.id),
-        ]);
-
-        if (isProviderRole) {
-          const { count: openOrdersCount } = await supabase
-            .from("orders")
-            .select("*", { count: "exact", head: true })
-            .eq("provider_id", currentUser.id)
-            .in("status", ["pending", "active", "in-progress"]);
-
-          setProviderSnapshot({
-            services: myServicesCount || 0,
-            products: myProductsCount || 0,
-            openOrders: openOrdersCount || 0,
-            profileReady: profileCompletion >= 70,
-          });
-        }
-
-        if (isProviderRole) {
-          setOnboardingSteps([
-            {
-              id: "provider-1",
-              title: "Complete provider profile",
-              hint: "Add bio, services and contact details",
-              done: profileCompletion >= 70,
-              path: routes.profile,
-              cta: "Update Profile",
-            },
-            {
-              id: "provider-2",
-              title: "Add your first offering",
-              hint: "Publish at least one service or product",
-              done: (myServicesCount || 0) + (myProductsCount || 0) > 0,
-              path: routes.addService,
-              cta: "Add Offering",
-            },
-            {
-              id: "provider-3",
-              title: "Start local conversations",
-              hint: "Respond to nearby demand posts",
-              done: conversationIds.length > 0,
-              path: routes.chat,
-              cta: "Open Chat",
-            },
-          ]);
-        } else {
-          setOnboardingSteps([
-            {
-              id: "customer-1",
-              title: "Complete profile",
-              hint: "Help local providers trust your requests",
-              done: profileCompletion >= 60,
-              path: routes.profile,
-              cta: "Update Profile",
-            },
-            {
-              id: "customer-2",
-              title: "Post your first need",
-              hint: "Tell nearby sellers/providers what you need",
-              done: (myPostsCount || 0) > 0,
-              path: routes.posts,
-              cta: "Post Need",
-            },
-            {
-              id: "customer-3",
-              title: "Connect with a provider",
-              hint: "Start a chat to compare options",
-              done: conversationIds.length > 0,
-              path: routes.people,
-              cta: "Find Providers",
-            },
-          ]);
-        }
       } catch (error) {
         if (isAbortLikeError(error)) {
           return;
@@ -983,7 +880,7 @@ export default function WelcomePage() {
                   Welcome back, {loading ? "..." : userName} 👋
                 </h1>
                 <p className="text-white/90 mt-2 max-w-2xl text-sm sm:text-base">
-                  Your local marketplace pulse in one place: stories, live posts, trusted providers, and quick actions.
+                  Take action fast: post needs, connect nearby, and move local tasks to completion.
                 </p>
 
                 <AnimatePresence mode="wait">
@@ -1003,23 +900,20 @@ export default function WelcomePage() {
                   </motion.div>
                 </AnimatePresence>
 
-                <div className="flex flex-wrap gap-3 mt-5">
-                  <button
-                    onClick={primaryHeroAction.action}
-                    className="px-5 py-2.5 rounded-xl bg-white text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors"
-                  >
-                    {primaryHeroAction.label}
-                  </button>
-                  <button
-                    onClick={() => router.push(routes.people)}
-                    className="px-5 py-2.5 rounded-xl border border-white/50 text-white hover:bg-white/10 flex items-center gap-2 transition-colors"
-                  >
-                    <Users size={16} />
-                    Explore Nearby
-                  </button>
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {heroQuickActions.map((item) => (
+                    <button
+                      key={item.title}
+                      onClick={item.action}
+                      className="rounded-xl border border-white/35 bg-white/15 px-3.5 py-3 text-left text-white backdrop-blur transition-colors hover:bg-white/25"
+                    >
+                      <item.icon size={15} className="mb-2 text-cyan-100" />
+                      <p className="text-sm font-semibold">{item.title}</p>
+                    </button>
+                  ))}
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {marketSignals.map((signal) => (
                     <div key={signal.label} className="rounded-xl bg-white/15 backdrop-blur px-3 py-2">
                       <div className="flex items-center gap-1.5 text-white/85 text-xs">
@@ -1199,7 +1093,7 @@ export default function WelcomePage() {
             </div>
           )}
 
-          <div className="grid min-w-0 grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)] gap-4">
+          <div className="grid min-w-0 grid-cols-1 gap-4">
             <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
@@ -1245,35 +1139,30 @@ export default function WelcomePage() {
                       const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
 
                       return (
-                        <article key={`story-${story.id}-${storyIndex}`} className="w-[108px] sm:w-[116px] shrink-0">
+                        <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] sm:w-[186px] shrink-0">
                           <button
                             onClick={() => router.push(focusPath)}
-                            className="group w-full text-center"
+                            className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-indigo-300"
                           >
-                            <div className="relative mx-auto w-fit">
-                              <div
-                                className={`rounded-full p-[2px] shadow-sm ${
-                                  story.type === "demand"
-                                    ? "bg-gradient-to-br from-rose-400 to-orange-400"
-                                    : story.type === "service"
-                                    ? "bg-gradient-to-br from-indigo-400 to-sky-400"
-                                    : "bg-gradient-to-br from-emerald-400 to-teal-400"
-                                }`}
-                              >
-                                <div className="relative h-16 w-16 sm:h-[68px] sm:w-[68px] overflow-hidden rounded-full border border-white/40">
-                                  <Image src={story.image} alt={story.title} fill sizes="64px" className="object-cover" />
-                                </div>
+                            <div className="relative">
+                              <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                <Image src={story.image} alt={story.title} fill sizes="180px" className="object-cover" />
                               </div>
-                              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 animate-pulse" />
-                              <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500 animate-pulse" />
+                              <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                                 {story.badge}
                               </span>
                             </div>
 
-                            <p className="mt-2 text-[11px] font-semibold text-slate-800 line-clamp-1">{story.priceLabel}</p>
-                            <p className="mt-0.5 text-[11px] text-slate-500">{story.distanceKm} km</p>
-                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">{story.etaLabel}</p>
-                            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                            <p className="mt-2 text-[11px] text-slate-600 line-clamp-1">{story.subtitle}</p>
+                            <p className="mt-1 text-[12px] font-semibold text-slate-900 line-clamp-1">
+                              {formatStoryPriceLine(story)}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">Radius {story.distanceKm} km</p>
+                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">
+                              Availability: {story.etaLabel}
+                            </p>
+                            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
                               <ArrowRight size={10} />
                             </span>
                           </button>
@@ -1364,188 +1253,49 @@ export default function WelcomePage() {
               </div>
             </section>
 
-            <section className="min-w-0 xl:sticky xl:top-24 h-fit rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-              <h2 className="text-base sm:text-lg font-semibold">Quick Actions</h2>
-              <p className="text-xs text-slate-500 mt-1">Shortcuts built for fast local execution.</p>
-
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
-                {quickActionItems.map((item, index) => (
-                  <button
-                    key={`quick-${index}`}
-                    onClick={item.action}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50/60 transition-colors"
-                  >
-                    <item.icon className="text-indigo-500 mb-2" size={16} />
-                    <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-3 text-xs text-slate-500">
-                Real demand visibility: {demandCards.length} active needs in this area.
-              </p>
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {statCards.map((stat) => (
-                  <div key={stat.label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-slate-500">{stat.label}</p>
-                      <stat.icon size={13} className="text-indigo-500" />
-                    </div>
-                    <p className="text-base font-semibold text-slate-900 mt-1">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1">
-            <div className="space-y-4">
-              <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-base sm:text-lg font-semibold">{isProvider ? "Provider Launchpad" : "Customer Launchpad"}</h2>
-                  <span className="text-xs text-slate-500">
-                    {completedOnboarding}/{onboardingSteps.length} completed
-                  </span>
-                </div>
-
-                <div className="mt-3 space-y-2.5">
-                  {onboardingSteps.map((step) => (
-                    <div key={step.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="flex items-start gap-2">
-                        {step.done ? (
-                          <CheckCircle2 className="text-emerald-500 mt-0.5" size={17} />
-                        ) : (
-                          <Circle className="text-slate-400 mt-0.5" size={17} />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-800">{step.title}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{step.hint}</p>
-                        </div>
-                      </div>
-                      {!step.done && (
-                        <button
-                          onClick={() => router.push(step.path)}
-                          className="mt-2.5 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-white"
-                        >
-                          {step.cta}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {isProvider && (
-                <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-slate-900">Provider Hub</h3>
-                    <span className="text-xs text-slate-500 inline-flex items-center gap-1">
-                      <TrendingUp size={12} />
-                      Live snapshot
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                      <p className="text-xs text-slate-500">Services</p>
-                      <p className="text-sm font-semibold">{providerSnapshot.services}</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                      <p className="text-xs text-slate-500">Products</p>
-                      <p className="text-sm font-semibold">{providerSnapshot.products}</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                      <p className="text-xs text-slate-500">Open Orders</p>
-                      <p className="text-sm font-semibold">{providerSnapshot.openOrders}</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                      <p className="text-xs text-slate-500">Status</p>
-                      <p className="text-sm font-semibold text-emerald-600">
-                        {providerSnapshot.profileReady ? "Ready" : "Needs Update"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => router.push(routes.addService)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
-                    >
-                      Add Service
-                    </button>
-                    <button
-                      onClick={() => router.push(routes.addProduct)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
-                    >
-                      Add Product
-                    </button>
-                    <button
-                      onClick={() => router.push(routes.listings)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
-                    >
-                      My Listings
-                    </button>
-                    <button
-                      onClick={() => router.push(routes.orders)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium hover:border-indigo-300 hover:text-indigo-600"
-                    >
-                      Orders
-                    </button>
-                  </div>
-                </section>
-              )}
-
-              <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Profile Strength</span>
-                  <span className="text-sm font-semibold text-indigo-600">{profileStrength}%</span>
-                </div>
-                <div className="mt-2 h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" style={{ width: `${profileStrength}%` }} />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => router.push(routes.profile)}
-                    className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white"
-                  >
-                    Improve Profile
-                  </button>
-                  <button
-                    onClick={() => setOpenPostModal(true)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
-                  >
-                    Create Post
-                  </button>
-                </div>
-              </section>
-            </div>
           </div>
 
           <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">Core Platform Features</h2>
-                <p className="text-xs text-slate-500">Startup-grade essentials, optimized for local commerce velocity.</p>
-              </div>
-              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-500">
-                <Clock3 size={12} />
-                Real-time updates
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {features.map((feature, index) => (
-                <div
-                  key={`feature-${index}`}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 flex items-start gap-3"
-                >
-                  <div className="mt-0.5 rounded-lg bg-indigo-100 p-2">
-                    <feature.icon className="text-indigo-600" size={16} />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-slate-900">{feature.title}</p>
-                    <p className="text-xs text-slate-500 mt-1">{feature.desc}</p>
-                  </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-600">About Local Marketplace</p>
+                <h2 className="mt-2 text-lg sm:text-xl font-semibold text-slate-900">
+                  A realtime neighborhood network for needs, services, and products.
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  We help people post local needs quickly, match with nearby providers, and close tasks with trust, speed, and clarity.
+                </p>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-700">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Post</span>
+                  <ArrowRight size={12} className="text-slate-400" />
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Match</span>
+                  <ArrowRight size={12} className="text-slate-400" />
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Chat</span>
+                  <ArrowRight size={12} className="text-slate-400" />
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Complete</span>
                 </div>
-              ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {aboutCards.map((card, index) => (
+                  <article
+                    key={`about-card-${index}`}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="rounded-lg bg-indigo-100 p-2">
+                        <card.icon className="text-indigo-600" size={16} />
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        {card.metric}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{card.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{card.desc}</p>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
         </div>
