@@ -119,23 +119,6 @@ export default function DashboardLayout({
 
               <div className="flex items-center gap-2">
                 <NotificationCenter />
-                <button
-                  onClick={() => router.push("/dashboard/profile")}
-                  className="relative group"
-                  title="View Profile"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg transition-transform duration-200 group-hover:scale-105">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-                </button>
-                <button
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="text-sm">Logout</span>
-                </button>
               </div>
             </div>
           </header>
