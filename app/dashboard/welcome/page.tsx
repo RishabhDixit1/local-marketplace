@@ -114,7 +114,28 @@ type FeedCardSaveRow = {
   card_id: string;
 };
 
+type FeedCardShareRow = {
+  card_id: string;
+};
+
+type FeedCardMetricRow = {
+  card_id: string;
+  saves: number | string | null;
+  shares: number | string | null;
+};
+
 type FeedShareChannel = "native" | "clipboard";
+
+type CardMetrics = {
+  saves: number;
+  shares: number;
+};
+
+type FeedToast = {
+  id: number;
+  kind: "success" | "error" | "info";
+  message: string;
+};
 
 const routes = {
   posts: "/dashboard",
@@ -256,6 +277,10 @@ export default function WelcomePage() {
   const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
   const [messageCardId, setMessageCardId] = useState<string | null>(null);
+  const [savingCardIds, setSavingCardIds] = useState<string[]>([]);
+  const [sharingCardIds, setSharingCardIds] = useState<string[]>([]);
+  const [cardMetricsById, setCardMetricsById] = useState<Record<string, CardMetrics>>({});
+  const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
@@ -266,6 +291,105 @@ export default function WelcomePage() {
     trustScore: 4.7,
   });
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
+
+  const pushFeedToast = (kind: FeedToast["kind"], message: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setFeedToasts((current) => [...current, { id, kind, message }]);
+    window.setTimeout(() => {
+      setFeedToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 2600);
+  };
+
+  const adjustCardMetrics = (cardId: string, updates: Partial<CardMetrics>) => {
+    setCardMetricsById((current) => {
+      const existing = current[cardId] || { saves: 0, shares: 0 };
+      return {
+        ...current,
+        [cardId]: {
+          saves: Math.max(0, updates.saves ?? existing.saves),
+          shares: Math.max(0, updates.shares ?? existing.shares),
+        },
+      };
+    });
+  };
+
+  const fetchFeedCardMetrics = async (
+    cardIds: string[],
+    userId: string
+  ): Promise<Record<string, CardMetrics>> => {
+    const normalizedIds = Array.from(new Set(cardIds.filter(Boolean)));
+    const emptyMetrics = Object.fromEntries(normalizedIds.map((id) => [id, { saves: 0, shares: 0 }]));
+
+    if (normalizedIds.length === 0) {
+      return {};
+    }
+
+    const metricResult = await supabase.rpc("get_feed_card_metrics", {
+      card_ids: normalizedIds,
+    });
+
+    if (!metricResult.error) {
+      const rows = (metricResult.data as FeedCardMetricRow[] | null) || [];
+      const metrics: Record<string, CardMetrics> = { ...emptyMetrics };
+
+      rows.forEach((row) => {
+        if (!row?.card_id) return;
+        const saves = Number(row.saves || 0);
+        const shares = Number(row.shares || 0);
+        metrics[row.card_id] = {
+          saves: Number.isFinite(saves) ? saves : 0,
+          shares: Number.isFinite(shares) ? shares : 0,
+        };
+      });
+
+      return metrics;
+    }
+
+    const metricErrorMessage = metricResult.error.message.toLowerCase();
+    const missingMetricsFunction =
+      metricErrorMessage.includes("get_feed_card_metrics") ||
+      metricErrorMessage.includes("function public.get_feed_card_metrics");
+
+    if (!missingMetricsFunction) {
+      console.warn("Failed to load feed card metrics:", metricResult.error.message);
+      return emptyMetrics;
+    }
+
+    const [{ data: saveRows, error: saveRowsError }, { data: shareRows, error: shareRowsError }] = await Promise.all([
+      supabase.from("feed_card_saves").select("card_id").eq("user_id", userId).in("card_id", normalizedIds),
+      supabase.from("feed_card_shares").select("card_id").eq("user_id", userId).in("card_id", normalizedIds),
+    ]);
+
+    if (saveRowsError || shareRowsError) {
+      console.warn(
+        "Failed to load fallback feed metrics:",
+        saveRowsError?.message || shareRowsError?.message || "unknown error"
+      );
+      return emptyMetrics;
+    }
+
+    const metrics: Record<string, CardMetrics> = { ...emptyMetrics };
+
+    ((saveRows as FeedCardSaveRow[] | null) || []).forEach((row) => {
+      if (!row?.card_id) return;
+      const existing = metrics[row.card_id] || { saves: 0, shares: 0 };
+      metrics[row.card_id] = {
+        saves: existing.saves + 1,
+        shares: existing.shares,
+      };
+    });
+
+    ((shareRows as FeedCardShareRow[] | null) || []).forEach((row) => {
+      if (!row?.card_id) return;
+      const existing = metrics[row.card_id] || { saves: 0, shares: 0 };
+      metrics[row.card_id] = {
+        saves: existing.saves,
+        shares: existing.shares + 1,
+      };
+    });
+
+    return metrics;
+  };
 
   const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
     const demandAltMedia = [
@@ -339,6 +463,8 @@ export default function WelcomePage() {
     ];
 
     return nearbyCards.map((card, index) => {
+      const liveMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+      const totalEngagement = liveMetrics.saves + liveMetrics.shares;
       const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
       const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
       const audience = audiences[index % audiences.length];
@@ -368,10 +494,10 @@ export default function WelcomePage() {
             : "Seller replies in ~5 min",
         proofLabel:
           card.type === "demand"
-            ? `${5 + index} local matches`
+            ? `${totalEngagement} live interactions`
             : card.type === "service"
-            ? `${14 + index} verified jobs`
-            : `${9 + index} repeat buyers`,
+            ? `${liveMetrics.saves} saves by local buyers`
+            : `${liveMetrics.shares} shares in nearby groups`,
         mediaLabel: card.type === "demand" ? "Issue photos" : card.type === "service" ? "Before/after media" : "Product gallery",
         mediaCount: 3 + (index % 5),
         mediaGallery,
@@ -381,15 +507,11 @@ export default function WelcomePage() {
         networkActionLabel: audience.actionLabel,
         networkActionPath: audience.actionPath,
         engagementLabel:
-          card.type === "demand"
-            ? `${11 + index} comments • ${3 + (index % 3)} shares`
-            : card.type === "service"
-            ? `${7 + index} inquiries • ${2 + (index % 4)} saves`
-            : `${15 + index} views • ${2 + (index % 3)} shares`,
+          `${liveMetrics.saves} saves • ${liveMetrics.shares} shares • ${card.momentumLabel}`,
         tags,
       };
     });
-  }, [nearbyCards]);
+  }, [cardMetricsById, nearbyCards]);
 
   const storyBaseItems = useMemo(() => {
     if (!enrichedCards.length) return [];
@@ -544,6 +666,7 @@ export default function WelcomePage() {
   const toggleCardSave = async (card: EnrichedNearbyCard) => {
     const wasSaved = savedCardIds.includes(card.id);
     const shouldSave = !wasSaved;
+    setSavingCardIds((current) => (current.includes(card.id) ? current : [...current, card.id]));
 
     setSavedCardIds((current) => {
       if (shouldSave) {
@@ -552,21 +675,32 @@ export default function WelcomePage() {
       return current.filter((id) => id !== card.id);
     });
 
-    if (!viewerId) {
-      return;
-    }
-
-    const persisted = await persistCardSave(card, shouldSave);
-    if (persisted) {
-      return;
-    }
-
-    setSavedCardIds((current) => {
-      if (wasSaved) {
-        return current.includes(card.id) ? current : [...current, card.id];
+    try {
+      if (!viewerId) {
+        pushFeedToast("info", "Sign in to sync saved posts across devices.");
+        return;
       }
-      return current.filter((id) => id !== card.id);
-    });
+
+      const persisted = await persistCardSave(card, shouldSave);
+      if (persisted) {
+        const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+        adjustCardMetrics(card.id, {
+          saves: existingMetrics.saves + (shouldSave ? 1 : -1),
+        });
+        pushFeedToast("success", shouldSave ? "Post saved." : "Removed from saved.");
+        return;
+      }
+
+      setSavedCardIds((current) => {
+        if (wasSaved) {
+          return current.includes(card.id) ? current : [...current, card.id];
+        }
+        return current.filter((id) => id !== card.id);
+      });
+      pushFeedToast("error", "Could not update saved state. Try again.");
+    } finally {
+      setSavingCardIds((current) => current.filter((id) => id !== card.id));
+    }
   };
 
   const appendCardContextQuery = (
@@ -717,34 +851,45 @@ export default function WelcomePage() {
     const focusPath = buildFeedFocusPath(card);
     const shareUrl = `${window.location.origin}${focusPath}`;
     const shareText = `${card.title} • ${card.priceLabel} • ${card.etaLabel} • ${card.audienceName}`;
+    setSharingCardIds((current) => (current.includes(card.id) ? current : [...current, card.id]));
 
-    if (navigator.share) {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share({
           title: `${card.badge}: ${card.title}`,
           text: shareText,
           url: shareUrl,
         });
         markCardShared(card.id);
+        const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+        adjustCardMetrics(card.id, {
+          shares: existingMetrics.shares + 1,
+        });
         void persistShareEvent(card, "native");
+        pushFeedToast("success", "Post shared.");
         return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
       }
-    }
 
-    if (!navigator.clipboard?.writeText) {
-      return;
-    }
+      if (!navigator.clipboard?.writeText) {
+        pushFeedToast("error", "Share is not supported in this browser context.");
+        return;
+      }
 
-    try {
       await navigator.clipboard.writeText(`${card.title}\n${shareText}\n${shareUrl}`);
       markCardShared(card.id);
+      const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+      adjustCardMetrics(card.id, {
+        shares: existingMetrics.shares + 1,
+      });
       void persistShareEvent(card, "clipboard");
-    } catch {
-      // Clipboard can fail on restricted browser contexts. Keep interaction non-blocking.
+      pushFeedToast("success", "Share link copied.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      pushFeedToast("error", "Unable to share right now.");
+    } finally {
+      setSharingCardIds((current) => current.filter((id) => id !== card.id));
     }
   };
 
@@ -922,6 +1067,7 @@ export default function WelcomePage() {
           if (isActive) {
             setViewerId(null);
             setSavedCardIds([]);
+            setCardMetricsById({});
           }
           return;
         }
@@ -1272,11 +1418,17 @@ export default function WelcomePage() {
         },
       ];
 
-      setNearbyCards(
-        allCards.length
-          ? allCards
-          : fallbackCards
+      const nextCards = allCards.length ? allCards : fallbackCards;
+      setNearbyCards(nextCards);
+
+      const nextMetrics = await fetchFeedCardMetrics(
+        nextCards.map((card) => card.id),
+        currentUser.id
       );
+
+      if (isActive) {
+        setCardMetricsById(nextMetrics);
+      }
       } catch (error) {
         if (isAbortLikeError(error)) {
           return;
@@ -1302,6 +1454,31 @@ export default function WelcomePage() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!viewerId || nearbyCards.length === 0) return;
+
+    let isActive = true;
+    const cardIds = nearbyCards.map((card) => card.id);
+
+    const refreshMetrics = async () => {
+      const nextMetrics = await fetchFeedCardMetrics(cardIds, viewerId);
+      if (isActive) {
+        setCardMetricsById(nextMetrics);
+      }
+    };
+
+    void refreshMetrics();
+
+    const timer = window.setInterval(() => {
+      void refreshMetrics();
+    }, 45000);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(timer);
+    };
+  }, [nearbyCards, viewerId]);
 
   return (
     <>
@@ -1639,15 +1816,22 @@ export default function WelcomePage() {
                     </button>
                   </div>
 
-                  <div className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
+                  <div data-testid="welcome-live-feed" className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
                     {enrichedCards.map((card) => {
                       const focusPath = buildFeedFocusPath(card);
                       const networkPath = buildNetworkActionPath(card);
                       const isSaved = savedCardIds.includes(card.id);
                       const messageInFlight = messageCardId === card.id;
+                      const saveInFlight = savingCardIds.includes(card.id);
+                      const shareInFlight = sharingCardIds.includes(card.id);
 
                       return (
-                        <article key={`feed-inline-${card.id}`} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
+                        <article
+                          key={`feed-inline-${card.id}`}
+                          data-testid="welcome-feed-card"
+                          data-card-id={card.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4"
+                        >
                           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-1.5">
@@ -1696,44 +1880,66 @@ export default function WelcomePage() {
 
                               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                                 <button
+                                  type="button"
                                   onClick={() => router.push(focusPath)}
+                                  aria-label={`${card.actionLabel} post ${card.title}`}
+                                  title={`${card.actionLabel} this post`}
+                                  data-testid="feed-action-primary"
                                   className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
                                 >
                                   {card.actionLabel}
                                   <ArrowRight size={11} />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => void handleMessageCard(card)}
                                   disabled={messageInFlight}
+                                  aria-label={`Message about ${card.title}`}
+                                  title="Open contextual chat"
+                                  data-testid="feed-action-message"
                                   className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
                                 >
                                   <MessageCircle size={12} />
                                   {messageInFlight ? "Opening..." : "Message"}
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => router.push(networkPath)}
+                                  aria-label={`${card.networkActionLabel} for ${card.title}`}
+                                  title="Open connection or group context"
+                                  data-testid="feed-action-network"
                                   className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                                 >
                                   <UsersRound size={12} />
                                   {card.networkActionLabel}
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => void handleShareCard(card)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                  disabled={shareInFlight}
+                                  aria-label={`Share ${card.title}`}
+                                  title="Share post"
+                                  data-testid="feed-action-share"
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
                                 >
                                   <Share2 size={12} />
-                                  {sharedCardId === card.id ? "Shared" : "Share"}
+                                  {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => void toggleCardSave(card)}
-                                  className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                    isSaved
+                                  disabled={saveInFlight}
+                                  aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
+                                  title={isSaved ? "Remove from saved" : "Save post"}
+                                  data-testid="feed-action-save"
+                                  className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
+                                    isSaved && !saveInFlight
                                       ? "border-indigo-200 bg-indigo-50 text-indigo-700"
                                       : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
                                   }`}
                                 >
                                   <Bookmark size={12} />
-                                  {isSaved ? "Saved" : "Save"}
+                                  {saveInFlight ? "Saving..." : isSaved ? "Saved" : "Save"}
                                 </button>
                               </div>
 
@@ -1745,7 +1951,7 @@ export default function WelcomePage() {
                             </div>
 
                             <aside className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-indigo-50/60 p-2.5">
-                              <div className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
+                              <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
                                 <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
                                 <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
                                   {card.ownerLabel}
@@ -1838,6 +2044,28 @@ export default function WelcomePage() {
             </div>
           </section>
         </div>
+      </div>
+
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="pointer-events-none fixed bottom-6 right-4 z-[1200] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
+      >
+        {feedToasts.map((toast) => (
+          <div
+            key={toast.id}
+            role="status"
+            className={`rounded-xl border px-3 py-2 text-sm shadow-lg backdrop-blur ${
+              toast.kind === "success"
+                ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
+                : toast.kind === "error"
+                ? "border-rose-200 bg-rose-50/95 text-rose-800"
+                : "border-indigo-200 bg-indigo-50/95 text-indigo-800"
+            }`}
+          >
+            {toast.message}
+          </div>
+        ))}
       </div>
 
       <CreatePostModal

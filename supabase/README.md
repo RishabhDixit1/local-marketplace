@@ -24,6 +24,11 @@ Run `add_feed_interactions.sql` to persist Welcome feed card actions per user:
 
 This script also enables RLS + per-user policies for these tables.
 
+## Feed metrics RPC (run after feed interactions)
+
+Run `add_feed_card_metrics_function.sql` to create `public.get_feed_card_metrics(card_ids text[])`.
+The Welcome feed uses this RPC to load aggregated `saves` and `shares` counts per card.
+
 ## Verification (run after setup)
 
 Run `verify_realtime_setup.sql` to validate:
