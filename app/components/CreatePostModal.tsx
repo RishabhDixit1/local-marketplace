@@ -249,6 +249,13 @@ export default function CreatePostModal({
     return "flexible";
   };
 
+  const getStorageTypeVariants = (postType: PostType): string[] => {
+    if (postType === "need") {
+      return ["need", "demand"];
+    }
+    return [postType];
+  };
+
   const resolveRequestCoordinates = async (
     userId: string
   ): Promise<{ latitude: number; longitude: number } | null> => {
@@ -391,10 +398,17 @@ export default function CreatePostModal({
         : "Media: None",
     ].join(" | ");
 
+    const storageTypeVariants = getStorageTypeVariants(type);
+    let activeStorageTypeIndex = 0;
+
     const payload: Record<string, string> = {
       user_id: user.id,
-      type,
-      post_type: type,
+      created_by: user.id,
+      author_id: user.id,
+      requester_id: user.id,
+      owner_id: user.id,
+      type: storageTypeVariants[activeStorageTypeIndex],
+      post_type: storageTypeVariants[activeStorageTypeIndex],
       status: "open",
       text: composedText,
       content: composedText,
@@ -426,6 +440,9 @@ export default function CreatePostModal({
       const match = details?.match(/is not present in table \"([^\"]+)\"/i);
       return match?.[1] || null;
     };
+
+    const isRowLevelSecurityError = (error: { message: string; code?: string | null }) =>
+      error.code === "42501" || /row-level security policy/i.test(error.message);
 
     const ensureAuthorReference = async () => {
       const { data: profile } = await supabase
@@ -490,6 +507,7 @@ export default function CreatePostModal({
       const missing = getMissingColumn(result.error.message);
       if (missing && payload[missing] !== undefined) {
         delete payload[missing];
+        blockedColumns.add(missing);
         continue;
       }
 
@@ -503,12 +521,16 @@ export default function CreatePostModal({
           payload[required] = trimmedTitle;
           continue;
         }
-        if (["user_id", "created_by", "provider_id", "author_id"].includes(required)) {
+        if (["user_id", "created_by", "provider_id", "author_id", "requester_id", "owner_id"].includes(required)) {
           payload[required] = user.id;
           continue;
         }
-        if (["type", "post_type", "category"].includes(required)) {
-          payload[required] = type;
+        if (["type", "post_type"].includes(required)) {
+          payload[required] = storageTypeVariants[activeStorageTypeIndex];
+          continue;
+        }
+        if (required === "category") {
+          payload[required] = category;
           continue;
         }
         if (["status", "state"].includes(required)) {
@@ -544,12 +566,37 @@ export default function CreatePostModal({
         }
       }
 
+      if (isRowLevelSecurityError(result.error)) {
+        if (activeStorageTypeIndex < storageTypeVariants.length - 1) {
+          activeStorageTypeIndex += 1;
+          const nextStorageType = storageTypeVariants[activeStorageTypeIndex];
+          payload.type = nextStorageType;
+          payload.post_type = nextStorageType;
+          continue;
+        }
+
+        let ownershipChanged = false;
+        for (const ownerColumn of ["user_id", "created_by", "author_id", "requester_id", "owner_id"]) {
+          if (blockedColumns.has(ownerColumn)) continue;
+          if (payload[ownerColumn] !== user.id) {
+            payload[ownerColumn] = user.id;
+            ownershipChanged = true;
+          }
+        }
+        if (ownershipChanged) {
+          continue;
+        }
+      }
+
       break;
     }
 
     if (publishError) {
       setPublishing(false);
-      alert(`Failed to publish post: ${publishError.message}`);
+      const message = isRowLevelSecurityError(publishError)
+        ? `${publishError.message}. Check posts INSERT policy to allow authenticated users with their own owner-id columns.`
+        : publishError.message;
+      alert(`Failed to publish post: ${message}`);
       return;
     }
 
