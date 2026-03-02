@@ -388,6 +388,13 @@ export default function WelcomePage() {
 
   const storyItems = useMemo(() => storyBaseItems, [storyBaseItems]);
 
+  const formatStoryPriceLine = (story: EnrichedNearbyCard) => {
+    if (story.type === "demand") {
+      return /^budget/i.test(story.priceLabel) ? story.priceLabel : `Budget ${story.priceLabel}`;
+    }
+    return /^price/i.test(story.priceLabel) ? story.priceLabel : `Price ${story.priceLabel}`;
+  };
+
   const scrollStories = (direction: "left" | "right") => {
     const container = storiesScrollRef.current;
     if (!container) return;
@@ -1245,35 +1252,30 @@ export default function WelcomePage() {
                       const focusPath = `${story.actionPath}?focus=${encodeURIComponent(story.focusId)}&type=${encodeURIComponent(story.type)}`;
 
                       return (
-                        <article key={`story-${story.id}-${storyIndex}`} className="w-[108px] sm:w-[116px] shrink-0">
+                        <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] sm:w-[186px] shrink-0">
                           <button
                             onClick={() => router.push(focusPath)}
-                            className="group w-full text-center"
+                            className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-indigo-300"
                           >
-                            <div className="relative mx-auto w-fit">
-                              <div
-                                className={`rounded-full p-[2px] shadow-sm ${
-                                  story.type === "demand"
-                                    ? "bg-gradient-to-br from-rose-400 to-orange-400"
-                                    : story.type === "service"
-                                    ? "bg-gradient-to-br from-indigo-400 to-sky-400"
-                                    : "bg-gradient-to-br from-emerald-400 to-teal-400"
-                                }`}
-                              >
-                                <div className="relative h-16 w-16 sm:h-[68px] sm:w-[68px] overflow-hidden rounded-full border border-white/40">
-                                  <Image src={story.image} alt={story.title} fill sizes="64px" className="object-cover" />
-                                </div>
+                            <div className="relative">
+                              <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                <Image src={story.image} alt={story.title} fill sizes="180px" className="object-cover" />
                               </div>
-                              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 animate-pulse" />
-                              <span className="absolute left-1/2 -translate-x-1/2 -bottom-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500 animate-pulse" />
+                              <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
                                 {story.badge}
                               </span>
                             </div>
 
-                            <p className="mt-2 text-[11px] font-semibold text-slate-800 line-clamp-1">{story.priceLabel}</p>
-                            <p className="mt-0.5 text-[11px] text-slate-500">{story.distanceKm} km</p>
-                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">{story.etaLabel}</p>
-                            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                            <p className="mt-2 text-[11px] text-slate-600 line-clamp-1">{story.subtitle}</p>
+                            <p className="mt-1 text-[12px] font-semibold text-slate-900 line-clamp-1">
+                              {formatStoryPriceLine(story)}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">Radius {story.distanceKm} km</p>
+                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">
+                              Availability: {story.etaLabel}
+                            </p>
+                            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
                               <ArrowRight size={10} />
                             </span>
                           </button>
