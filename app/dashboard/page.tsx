@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import ProviderPopup from "@/app/components/ProviderPopup";
+import RouteObservability from "@/app/components/RouteObservability";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -1726,6 +1727,7 @@ const layoutLabel = feedLayout === "thread" ? "Thread Feed" : "Card Feed";
 
 return (
   <div className="min-h-screen bg-transparent text-slate-900">
+    <RouteObservability route="dashboard" />
     <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
       <div className="market-hero-surface rounded-3xl border border-sky-200/25 bg-gradient-to-r from-slate-900 via-indigo-900 to-sky-800 shadow-[0_24px_80px_rgba(15,23,42,0.45)]">
         <div className="market-orb-float absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />

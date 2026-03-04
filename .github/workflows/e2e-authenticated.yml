@@ -12,6 +12,7 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       E2E_LOGIN_EMAIL: ${{ secrets.E2E_LOGIN_EMAIL }}
       E2E_MAGIC_LINK_URL: ${{ secrets.E2E_MAGIC_LINK_URL }}
@@ -31,15 +32,38 @@ jobs:
       - name: Validate required E2E secrets
         run: |
           missing=0
-          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY E2E_MAGIC_LINK_URL; do
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
             if [ -z "${!var}" ]; then
               echo "Missing required secret: $var"
               missing=1
             fi
           done
+
+          if [ -z "${E2E_MAGIC_LINK_URL:-}" ]; then
+            echo "E2E_MAGIC_LINK_URL not set; will try generating one."
+            if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+              echo "Missing required secret for magic-link generation: SUPABASE_SERVICE_ROLE_KEY"
+              missing=1
+            fi
+            if [ -z "${E2E_LOGIN_EMAIL:-}" ]; then
+              echo "Missing required secret for magic-link generation: E2E_LOGIN_EMAIL"
+              missing=1
+            fi
+          fi
+
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
+
+      - name: Generate E2E magic link (when missing)
+        if: env.E2E_MAGIC_LINK_URL == ''
+        run: |
+          generated_url="$(node scripts/generate_e2e_magic_link.mjs)"
+          if [ -z "$generated_url" ]; then
+            echo "Magic-link generation failed: empty URL"
+            exit 1
+          fi
+          echo "E2E_MAGIC_LINK_URL=$generated_url" >> "$GITHUB_ENV"
 
       - name: Lint
         run: npm run lint

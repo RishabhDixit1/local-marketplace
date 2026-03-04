@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import RouteObservability from "@/app/components/RouteObservability";
 import {
   Activity,
   ArrowLeft,
@@ -1056,6 +1057,7 @@ export default function ChatPage() {
 
   return (
     <div className="relative h-[calc(100vh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]">
+      <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
         <div className="absolute -left-16 bottom-0 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
