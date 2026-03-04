@@ -137,6 +137,7 @@ Optional env vars for full flow:
 - `E2E_LOGIN_EMAIL` for login request smoke
 - `E2E_MAGIC_LINK_URL` for authenticated smoke
 - `SUPABASE_SERVICE_ROLE_KEY` to auto-generate `E2E_MAGIC_LINK_URL` when running `npm run test:e2e:auth`
+- `E2E_ENABLE_LOGIN_REQUEST_SMOKE=1` to opt into login-request smoke (disabled by default in CI)
 - `PLAYWRIGHT_SKIP_WEBSERVER=1` to skip auto web server startup
 
 Recommended local authenticated run:
