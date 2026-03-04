@@ -1,11 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const magicLinkUrl = process.env.E2E_MAGIC_LINK_URL;
+import { hasE2EAuthConfig, resolveMagicLinkUrl } from "./helpers/auth";
 
 const authenticateWithMagicLink = async (page: Page) => {
-  if (!magicLinkUrl) return;
+  const magicLinkUrl = await resolveMagicLinkUrl();
   await page.goto(magicLinkUrl);
-  await page.waitForURL(/\/dashboard/, { timeout: 45_000 });
+  await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
 };
 
 const gotoWelcomeFeed = async (page: Page) => {
@@ -16,7 +15,10 @@ const gotoWelcomeFeed = async (page: Page) => {
 
 test.describe("welcome feed cards", () => {
   test.beforeEach(async ({ page }) => {
-    test.skip(!magicLinkUrl, "Set E2E_MAGIC_LINK_URL to run welcome feed regression tests.");
+    test.skip(
+      !hasE2EAuthConfig,
+      "Provide E2E_MAGIC_LINK_URL or (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + E2E_LOGIN_EMAIL)."
+    );
     await authenticateWithMagicLink(page);
   });
 

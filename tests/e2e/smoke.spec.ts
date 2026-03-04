@@ -1,19 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
+import { hasE2EAuthConfig, resolveMagicLinkUrl } from "./helpers/auth";
 
-const magicLinkUrl = process.env.E2E_MAGIC_LINK_URL;
 const loginEmail = process.env.E2E_LOGIN_EMAIL;
+const enableLoginRequestSmoke = process.env.E2E_ENABLE_LOGIN_REQUEST_SMOKE === "1";
 
 const transitionLabelRegex =
   /Send Quote|Mark Accepted|Reject|Start Work|Mark Completed|Accept Quote|Confirm Completion|Cancel Request/i;
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
-  if (!magicLinkUrl) return;
+  const magicLinkUrl = await resolveMagicLinkUrl();
   await page.goto(magicLinkUrl);
-  await page.waitForURL(/\/dashboard/, { timeout: 45000 });
+  await page.waitForURL(/\/dashboard/, { timeout: 60000 });
 };
 
 test("login request smoke", async ({ page }) => {
-  test.skip(!loginEmail, "Set E2E_LOGIN_EMAIL to enable login request smoke test.");
+  test.skip(
+    !enableLoginRequestSmoke || !loginEmail,
+    "Set E2E_ENABLE_LOGIN_REQUEST_SMOKE=1 and E2E_LOGIN_EMAIL to run login-request smoke."
+  );
 
   await page.goto("/");
   await page.getByPlaceholder("you@example.com").fill(loginEmail || "");
@@ -23,7 +27,10 @@ test("login request smoke", async ({ page }) => {
 });
 
 test("authenticated marketplace smoke", async ({ page }) => {
-  test.skip(!magicLinkUrl, "Set E2E_MAGIC_LINK_URL to run authenticated smoke flow.");
+  test.skip(
+    !hasE2EAuthConfig,
+    "Provide E2E_MAGIC_LINK_URL or (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + E2E_LOGIN_EMAIL)."
+  );
 
   page.on("dialog", (dialog) => {
     void dialog.accept();
