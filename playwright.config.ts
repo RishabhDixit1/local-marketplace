@@ -5,12 +5,14 @@ const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  globalSetup: "tests/e2e/global-setup.ts",
   timeout: 60_000,
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL,
+    storageState: "tests/e2e/.auth/user.json",
     trace: "on-first-retry",
     video: "retain-on-failure",
     screenshot: "only-on-failure",
