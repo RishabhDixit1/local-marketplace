@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import RouteObservability from "@/app/components/RouteObservability";
 import { useRouter } from "next/navigation";
 import {
   canTransitionOrderStatus,
@@ -823,6 +824,7 @@ export default function TasksPage() {
 
   return (
     <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6 lg:space-y-8">
+      <RouteObservability route="tasks" />
       <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.28),transparent_44%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.24),transparent_50%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:36px_36px]" />

@@ -1,5 +1,18 @@
 # Supabase Seeds
 
+## One-command setup (from project root)
+
+```bash
+export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'
+npm run supabase:setup
+```
+
+Optional seeds:
+
+```bash
+npm run supabase:setup -- --with-seeds
+```
+
 ## Security + unread migration (run first)
 
 Run `secure_realtime_rls.sql` before seeding to:
