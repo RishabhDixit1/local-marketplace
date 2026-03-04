@@ -8,6 +8,9 @@ const transitionLabelRegex =
   /Send Quote|Mark Accepted|Reject|Start Work|Mark Completed|Accept Quote|Confirm Completion|Cancel Request/i;
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
+  await page.goto("/dashboard");
+  if (/\/dashboard/i.test(page.url())) return;
+
   const magicLinkUrl = await resolveMagicLinkUrl();
   await page.goto(magicLinkUrl);
   await page.waitForURL(/\/dashboard/, { timeout: 60000 });

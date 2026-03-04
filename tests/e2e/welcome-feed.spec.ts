@@ -2,6 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { hasE2EAuthConfig, resolveMagicLinkUrl } from "./helpers/auth";
 
 const authenticateWithMagicLink = async (page: Page) => {
+  await page.goto("/dashboard");
+  if (/\/dashboard/i.test(page.url())) return;
+
   const magicLinkUrl = await resolveMagicLinkUrl();
   await page.goto(magicLinkUrl);
   await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
