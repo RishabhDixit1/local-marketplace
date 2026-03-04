@@ -33,7 +33,7 @@ test("authenticated marketplace smoke", async ({ page }) => {
 
   await test.step("provider discovery", async () => {
     await page.goto("/dashboard/people");
-    await expect(page.getByRole("heading", { name: /People Near You/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /People Near You|People Network/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Chat/i }).first()).toBeVisible();
   });
 
@@ -41,7 +41,7 @@ test("authenticated marketplace smoke", async ({ page }) => {
     await page.getByRole("button", { name: /Chat/i }).first().click();
     await page.waitForURL(/\/dashboard\/chat/, { timeout: 30000 });
 
-    const composer = page.getByPlaceholder("Type a message...");
+    const composer = page.getByPlaceholder(/Type a message|Write a message/i);
     await expect(composer).toBeVisible();
 
     const message = `e2e smoke ${Date.now()}`;
@@ -60,7 +60,7 @@ test("authenticated marketplace smoke", async ({ page }) => {
 
   await test.step("task status transition", async () => {
     await page.goto("/dashboard/tasks");
-    await expect(page.getByRole("heading", { name: /My Tasks/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /My Tasks|Task Operations/i })).toBeVisible();
 
     const transitionButton = page
       .locator("button")
