@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
@@ -9,6 +8,8 @@ const AUTH_HARD_TIMEOUT_MS = 30000;
 const AUTH_REACHABILITY_TIMEOUT_MS = 5000;
 
 const cleanUrl = (value: string | undefined): string => value?.trim().replace(/\/+$/, "") ?? "";
+const isAbortLikeMessage = (value: string): boolean =>
+  /aborterror|signal is aborted|aborted without reason/i.test(value);
 
 const getSupabaseConfig = (): { url: string; host: string; anonKey: string } | null => {
   const url = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -30,22 +31,28 @@ const getSupabaseConfig = (): { url: string; host: string; anonKey: string } | n
 const buildSupabaseReachabilityMessage = (host: string): string =>
   `Browser could not complete Supabase auth request (${host}). Check VPN/firewall and disable ad-block/privacy extensions, then retry.`;
 
+type SendLinkResponse = {
+  ok: boolean;
+  error?: string;
+};
+
 const probeSupabaseAuthReachability = async (url: string): Promise<boolean> => {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REACHABILITY_TIMEOUT_MS);
+  const healthPromise = fetch(`${url}/auth/v1/health`, {
+    method: "GET",
+    cache: "no-store",
+  })
+    .then(() => true)
+    .catch(() => false);
+
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<boolean>((resolve) => {
+    timeoutId = window.setTimeout(() => resolve(false), AUTH_REACHABILITY_TIMEOUT_MS);
+  });
 
   try {
-    await fetch(`${url}/auth/v1/health`, {
-      method: "GET",
-      signal: controller.signal,
-      cache: "no-store",
-    });
-
-    return true;
-  } catch {
-    return false;
+    return await Promise.race([healthPromise, timeoutPromise]);
   } finally {
-    window.clearTimeout(timeoutId);
+    if (timeoutId) window.clearTimeout(timeoutId);
   }
 };
 
@@ -100,24 +107,31 @@ export default function LoginPage() {
     }
 
     try {
-      const { error } = await withHardTimeout(
-        supabase.auth.signInWithOtp({
-          email: trimmedEmail,
-          options: {
-            emailRedirectTo: redirectTo,
+      const response = await withHardTimeout(
+        fetch("/api/auth/send-link", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            email: trimmedEmail,
+            redirectTo,
+          }),
         }),
         AUTH_HARD_TIMEOUT_MS
       );
+      const payload = (await response.json().catch(() => null)) as SendLinkResponse | null;
 
-      if (error) {
-        const message = error.message || "Unable to send login link right now.";
+      if (!response.ok || !payload?.ok) {
+        const message = payload?.error || "Unable to send login link right now.";
 
         if (/redirect|site url|not allowed|url/i.test(message)) {
           setErrorMessage(
             `Auth redirect is not allowed. Add ${redirectTo} in Supabase Auth Redirect URLs.`
           );
-        } else if (/fetch|network|failed to fetch|load failed/i.test(message)) {
+        } else if (isAbortLikeMessage(message)) {
+          setErrorMessage("Request was interrupted before completion. Retry in a few seconds.");
+        } else if (/fetch|network|failed to fetch|load failed|dns|firewall|vpn/i.test(message)) {
           const isSupabaseReachable = await probeSupabaseAuthReachability(supabaseConfig.url);
 
           if (!isSupabaseReachable) {
@@ -151,6 +165,8 @@ export default function LoginPage() {
             "Auth server is taking too long. The link may still arrive shortly, or you can retry now."
           );
         }
+      } else if (isAbortLikeMessage(message)) {
+        setErrorMessage("Request was interrupted before completion. Retry in a few seconds.");
       } else if (/fetch|network|failed to fetch|load failed/i.test(message)) {
         setErrorMessage(buildSupabaseReachabilityMessage(supabaseConfig.host));
       } else {
