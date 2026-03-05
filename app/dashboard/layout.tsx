@@ -7,6 +7,8 @@ import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
   Bookmark,
+  ChevronsLeft,
+  ChevronsRight,
   Compass,
   Home,
   LogOut,
@@ -22,7 +24,6 @@ import {
 const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Sparkles },
   { name: "Posts", path: "/dashboard", icon: Home },
-  { name: "Saved", path: "/dashboard/saved", icon: Bookmark },
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: Package },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
@@ -36,6 +37,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -45,20 +47,37 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-72 lg:flex-col lg:border-r lg:border-slate-200/90 lg:bg-white/85 lg:backdrop-blur-xl">
-          <div className="px-6 py-6 border-b border-slate-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
-                <Home className="w-6 h-6 text-white" />
+        <aside
+          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200/90 lg:bg-white/85 lg:backdrop-blur-xl lg:transition-[width] lg:duration-200 ${
+            desktopNavCollapsed ? "lg:w-24" : "lg:w-72"
+          }`}
+        >
+          <div className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+                  <Home className="w-6 h-6 text-white" />
+                </div>
+                {!desktopNavCollapsed && (
+                  <div>
+                    <h1 className="text-lg font-bold text-slate-900">Local Marketplace</h1>
+                    <p className="text-xs text-slate-500">Connect & Collaborate</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-slate-900">Local Marketplace</h1>
-                <p className="text-xs text-slate-500">Connect & Collaborate</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setDesktopNavCollapsed((current) => !current)}
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+                title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+              >
+                {desktopNavCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <nav className={`flex-1 py-6 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2" : "px-4"}`}>
             {navigationTabs.map((tab) => {
               const isActive = pathname === tab.path;
               const Icon = tab.icon;
@@ -66,38 +85,51 @@ export default function DashboardLayout({
                 <Link
                   key={tab.path}
                   href={tab.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  title={desktopNavCollapsed ? tab.name : undefined}
+                  className={`flex items-center rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                  } ${
                     isActive
                       ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  {tab.name}
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {desktopNavCollapsed ? <span className="sr-only">{tab.name}</span> : tab.name}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="px-4 py-4 border-t border-slate-200 space-y-3">
+          <div className={`border-t border-slate-200 space-y-2 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
             <button
               onClick={() => router.push("/dashboard/profile")}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors"
+              title={desktopNavCollapsed ? "My Profile" : undefined}
+              className={`w-full flex items-center rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors ${
+                desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+              }`}
+              aria-label="Open my profile"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-slate-900">My Profile</p>
-                <p className="text-xs text-slate-500">Manage account</p>
-              </div>
+              {!desktopNavCollapsed && (
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-slate-900">My Profile</p>
+                  <p className="text-xs text-slate-500">Manage account</p>
+                </div>
+              )}
             </button>
             <button
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
+              className={`w-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors ${
+                desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-2.5"
+              }`}
               onClick={handleLogout}
+              title={desktopNavCollapsed ? "Logout" : undefined}
+              aria-label="Logout"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm">Logout</span>
+              {!desktopNavCollapsed && <span className="text-sm">Logout</span>}
             </button>
           </div>
         </aside>
@@ -120,6 +152,15 @@ export default function DashboardLayout({
               </div>
 
               <div className="flex items-center gap-2">
+                <Link
+                  href="/dashboard/saved"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                  aria-label="Open saved posts"
+                  title="Saved posts"
+                >
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Saved</span>
+                </Link>
                 <NotificationCenter />
               </div>
             </div>
