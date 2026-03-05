@@ -12,20 +12,15 @@ import {
   Activity,
   ArrowRight,
   Bookmark,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
   ClipboardList,
-  Handshake,
   MessageCircle,
   Play,
-  Radar,
   Share2,
   ShieldCheck,
   Sparkles,
   Star,
-  Users,
   UsersRound,
   Zap,
 } from "lucide-react";
@@ -221,18 +216,6 @@ const heroToneSurfaceClasses: Record<HeroTone, string> = {
   rose: "from-rose-400/20 via-slate-900/70 to-slate-950/90",
   sky: "from-sky-400/20 via-slate-900/70 to-slate-950/90",
   emerald: "from-emerald-400/20 via-slate-900/70 to-slate-950/90",
-};
-
-const heroToneStageClasses: Record<HeroTone, string> = {
-  rose: "border-rose-300/45 bg-rose-400/20 text-rose-50",
-  sky: "border-sky-300/45 bg-sky-400/20 text-sky-50",
-  emerald: "border-emerald-300/45 bg-emerald-400/20 text-emerald-50",
-};
-
-const heroToneTextClasses: Record<HeroTone, string> = {
-  rose: "text-rose-200",
-  sky: "text-sky-200",
-  emerald: "text-emerald-200",
 };
 
 const heroToneStrokeColors: Record<HeroTone, string> = {
@@ -1003,11 +986,6 @@ export default function WelcomePage() {
               icon: MessageCircle,
               action: () => router.push(routes.chat),
             },
-            {
-              title: "View Tasks",
-              icon: Activity,
-              action: () => router.push(routes.tasks),
-            },
           ]
         : [
             {
@@ -1016,17 +994,12 @@ export default function WelcomePage() {
               action: () => setOpenPostModal(true),
             },
             {
-              title: "Find People",
-              icon: Users,
-              action: () => router.push(routes.people),
-            },
-            {
               title: "Open Chat",
               icon: MessageCircle,
               action: () => router.push(routes.chat),
             },
             {
-              title: "Browse Feed",
+              title: "Browse Posts",
               icon: ArrowRight,
               action: () => router.push(routes.posts),
             },
@@ -1061,49 +1034,6 @@ export default function WelcomePage() {
   );
 
   const currentHeroScene = heroScenes[activeHeroScene];
-
-  const heroLifecycle = useMemo(
-    () => [
-      {
-        label: "Need",
-        detail: `${demandCards.length} live`,
-        icon: Radar,
-        tone: "rose" as HeroTone,
-      },
-      {
-        label: "Match",
-        detail: `${Math.max(2, demandCards.length + stats.activeTasks)} providers pinged`,
-        icon: Handshake,
-        tone: "sky" as HeroTone,
-      },
-      {
-        label: "Chat",
-        detail: `${stats.unreadMessages + 12} threads`,
-        icon: MessageCircle,
-        tone: "sky" as HeroTone,
-      },
-      {
-        label: "Fulfill",
-        detail: `${stats.activeTasks} active`,
-        icon: CheckCircle2,
-        tone: "emerald" as HeroTone,
-      },
-    ],
-    [demandCards.length, stats.activeTasks, stats.unreadMessages]
-  );
-
-  const heroTickerItems = useMemo(
-    () => [
-      `${demandCards.length} demand requests are currently routed in your radius.`,
-      `${stats.activeTasks} tasks are in active execution right now.`,
-      `${stats.unreadMessages} unread messages can unblock local work instantly.`,
-      `Trust score is steady at ${stats.trustScore.toFixed(1)} across nearby providers.`,
-    ],
-    [demandCards.length, stats.activeTasks, stats.trustScore, stats.unreadMessages]
-  );
-
-  const heroCurrentTicker = heroTickerItems[activeHeroScene % heroTickerItems.length];
-  const heroCurrentStageIndex = activeHeroScene % heroLifecycle.length;
   const heroShadowMedia = useMemo(() => {
     const liveMedia = Array.from(new Set(enrichedCards.flatMap((card) => card.mediaGallery)));
 
@@ -1849,7 +1779,7 @@ export default function WelcomePage() {
                   </motion.div>
                 </AnimatePresence>
 
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {heroQuickActions.map((item) => (
                     <button
                       key={item.title}
@@ -1864,7 +1794,7 @@ export default function WelcomePage() {
 
                 <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {marketSignals.map((signal) => (
-                    <div key={signal.label} className="rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 backdrop-blur">
+                    <div key={signal.label} className="rounded-lg border border-white/18 bg-slate-900/42 px-2.5 py-1.5 backdrop-blur">
                       <div className="flex items-center gap-1 text-[11px] text-white/85">
                         <signal.icon size={12} />
                         {signal.label}
@@ -1872,48 +1802,6 @@ export default function WelcomePage() {
                       <p className="mt-0.5 text-base font-semibold text-white">{signal.value}</p>
                     </div>
                   ))}
-                </div>
-
-                <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {heroLifecycle.map((step, index) => {
-                    const isActive = index === heroCurrentStageIndex;
-
-                    return (
-                      <div
-                        key={`hero-stage-${step.label}`}
-                        className={`rounded-lg border px-2 py-1.5 transition-colors ${
-                          isActive
-                            ? heroToneStageClasses[step.tone]
-                            : "border-white/20 bg-slate-900/45 text-white/70"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1">
-                          <step.icon
-                            size={11}
-                            className={isActive ? "" : heroToneTextClasses[step.tone]}
-                          />
-                          <span className="text-[10px] font-semibold">{step.label}</span>
-                        </div>
-                        <p className="mt-0.5 truncate text-[10px]">{step.detail}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-2">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={`hero-ticker-${heroCurrentTicker}`}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.28 }}
-                      className="flex items-start gap-2 rounded-lg border border-white/20 bg-slate-900/55 px-2.5 py-1.5"
-                    >
-                      <CircleDot size={13} className={`mt-0.5 shrink-0 ${heroToneTextClasses[currentHeroScene.tone]}`} />
-                      <p className="text-[11px] text-white/85">{heroCurrentTicker}</p>
-                    </motion.div>
-                  </AnimatePresence>
                 </div>
               </div>
             </div>
