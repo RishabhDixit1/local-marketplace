@@ -4,9 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
-import ProviderPopup from "@/app/components/ProviderPopup";
 import RouteObservability from "@/app/components/RouteObservability";
-import type { PublishPostResult } from "@/app/components/CreatePostModal";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -21,14 +19,8 @@ import {
   distanceBetweenCoordinatesKm,
   getBrowserCoordinates,
   resolveCoordinates,
-  type Coordinates,
 } from "@/lib/geo";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
-
-const MarketplaceMap = dynamic(
-() => import("@/app/components/MarketplaceMap").then((mod) => mod.default),
-{ ssr: false }
-);
 
 const ProviderTrustPanel = dynamic(
   () => import("@/app/components/ProviderTrustPanel").then((mod) => mod.default),
@@ -45,39 +37,19 @@ Search,
 MapPin,
 MessageCircle,
 Filter,
-TrendingUp,
-Sparkles,
-Users,
-Activity,
-SlidersHorizontal,
-ShieldCheck,
-Zap,
-ImageIcon,
 RotateCcw,
 RefreshCw,
-ChevronUp,
-ChevronDown,
 Bookmark,
 BookmarkCheck,
-Rows3,
-LayoutGrid,
-Flame,
-Radar,
-BellRing,
-EyeOff,
-ExternalLink,
-CircleDot,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 24;
 const MAX_PROFILE_LOOKUP = 120;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
-const MARKETPLACE_LAYOUT_STORAGE_KEY = "local-marketplace-dashboard-feed-layout-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const FEED_POLL_INTERVAL_MS = 120000;
 const MIN_SOFT_REFRESH_GAP_MS = 5000;
-const QUICK_SEARCH_CHIPS = ["Cleaning", "Repair", "Delivery", "Food", "Electrician"] as const;
 
 /* ================= TYPES ================= */
 
@@ -103,6 +75,12 @@ type Listing = {
   responseMinutes: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
   isDemo?: boolean;
+};
+
+type DisplayListing = Listing & {
+  displayTitle: string;
+  displayDescription: string;
+  displayCreator: string;
 };
 
 type FeedMedia = {
@@ -165,34 +143,16 @@ type ReviewRow = {
 
 type FlexibleRow = Record<string, unknown>;
 
-type HelpRequestRow = {
-  id: string;
-  title: string;
-  matched_count: number | null;
-  status: string | null;
-};
-
-type HelpRequestMatchRow = {
-  provider_id: string;
-  score: number | null;
-  distance_km: number | null;
-  reason: string | null;
-  status: string | null;
-};
-
-type HelpMatchCard = {
-  providerId: string;
-  name: string;
-  avatar: string;
-  role: string;
-  score: number;
-  distanceKm: number | null;
-  reason: string;
-  status: string;
-};
-
-type FeedLayout = "cards" | "thread";
 type RealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
+type FeedFilterState = {
+  query: string;
+  category: string;
+  maxDistanceKm: number;
+  verifiedOnly: boolean;
+  urgentOnly: boolean;
+  mediaOnly: boolean;
+  freshOnly: boolean;
+};
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -221,23 +181,45 @@ const numberFromRow = (row: FlexibleRow, keys: string[], fallback = 0) => {
 const buildDemoFeed = (): Listing[] => {
   const baseLat = 28.6139;
   const baseLng = 77.209;
+  const now = Date.now();
 
   const rows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
     {
-      title: "Need Plumber ASAP",
-      description: "Bathroom pipe leaking. Need help within 2 hours.",
+      title: "Need urgent electrician nearby",
+      description: "Power issue in 2BHK apartment. Need support within 30 minutes.",
       price: 2500,
       category: "Need",
       provider_id: "demo-provider-amit",
       type: "demand",
       avatar: "https://i.pravatar.cc/150?u=amit",
-      distance: 2.0,
+      distance: 1.4,
       urgent: true,
       creatorName: "Amit P",
       businessSlug: createBusinessSlug("Amit P", "demo-provider-amit"),
       profileCompletion: 78,
-      responseMinutes: 8,
+      responseMinutes: 7,
       verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/electric-urgent/980/620" }],
+      createdAt: new Date(now - 34 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Laptop Repair near me",
+      description: "Macbook M1 stops charging intermittently. Looking for same-day specialist.",
+      price: 900,
+      category: "Need",
+      provider_id: "demo-provider-anuj",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=anuj",
+      distance: 3.2,
+      urgent: true,
+      creatorName: "Anuj K",
+      businessSlug: createBusinessSlug("Anuj K", "demo-provider-anuj"),
+      profileCompletion: 72,
+      responseMinutes: 11,
+      verificationStatus: "unclaimed",
+      media: [{ mimeType: "video/mp4", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }],
+      createdAt: new Date(now - 78 * 60 * 1000).toISOString(),
       isDemo: true,
     },
     {
@@ -254,6 +236,8 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 91,
       responseMinutes: 14,
       verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/electric-service/980/620" }],
+      createdAt: new Date(now - 112 * 60 * 1000).toISOString(),
       isDemo: true,
     },
     {
@@ -270,22 +254,8 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 86,
       responseMinutes: 18,
       verificationStatus: "verified",
-      isDemo: true,
-    },
-    {
-      title: "Fresh Baked Cakes",
-      description: "Custom cakes with same-day delivery in your locality.",
-      price: 600,
-      category: "Food",
-      provider_id: "demo-provider-cakes",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=cakeshop",
-      distance: 5.5,
-      creatorName: "Delicious Cakes",
-      businessSlug: createBusinessSlug("Delicious Cakes", "demo-provider-cakes"),
-      profileCompletion: 82,
-      responseMinutes: 24,
-      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/cleaning-pro/980/620" }],
+      createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
     {
@@ -303,6 +273,8 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 69,
       responseMinutes: 6,
       verificationStatus: "unclaimed",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/ac-repair/980/620" }],
+      createdAt: new Date(now - 26 * 60 * 1000).toISOString(),
       isDemo: true,
     },
     {
@@ -319,6 +291,118 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 74,
       responseMinutes: 12,
       verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/grocery-fast/980/620" }],
+      createdAt: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Fresh farm vegetables bundle",
+      description: "Chemical-free weekly produce basket with next-morning delivery.",
+      price: 399,
+      category: "Product",
+      provider_id: "demo-provider-farmcart",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=farmcart",
+      distance: 4.9,
+      creatorName: "FarmCart Local",
+      businessSlug: createBusinessSlug("FarmCart Local", "demo-provider-farmcart"),
+      profileCompletion: 84,
+      responseMinutes: 20,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/farm-basket/980/620" }],
+      createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Voice brief: setup wedding photography package",
+      description: "Need a candid + reels team for one-day function near Indiranagar.",
+      price: 12000,
+      category: "Need",
+      provider_id: "demo-provider-megha",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=megha",
+      distance: 6.1,
+      urgent: false,
+      creatorName: "Megha S",
+      businessSlug: createBusinessSlug("Megha S", "demo-provider-megha"),
+      profileCompletion: 77,
+      responseMinutes: 16,
+      verificationStatus: "pending",
+      media: [{ mimeType: "audio/mpeg", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3" }],
+      createdAt: new Date(now - 11 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Fresh Baked Cakes",
+      description: "Custom cakes with same-day delivery in your locality.",
+      price: 600,
+      category: "Food",
+      provider_id: "demo-provider-cakes",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=cakeshop",
+      distance: 5.5,
+      creatorName: "Delicious Cakes",
+      businessSlug: createBusinessSlug("Delicious Cakes", "demo-provider-cakes"),
+      profileCompletion: 82,
+      responseMinutes: 24,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/cake-fresh/980/620" }],
+      createdAt: new Date(now - 13 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Moving support: one bedroom apartment shift",
+      description: "Need labour + mini-truck for 3-hour move this evening.",
+      price: 3200,
+      category: "Need",
+      provider_id: "demo-provider-sarthak",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=sarthak",
+      distance: 2.4,
+      urgent: true,
+      creatorName: "Sarthak J",
+      businessSlug: createBusinessSlug("Sarthak J", "demo-provider-sarthak"),
+      profileCompletion: 65,
+      responseMinutes: 9,
+      verificationStatus: "unclaimed",
+      media: [{ mimeType: "image/svg+xml", url: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_VS_SVG.svg" }],
+      createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Verified AC servicing package",
+      description: "Filter cleaning + gas top-up + 30-day performance support.",
+      price: 1499,
+      category: "Service",
+      provider_id: "demo-provider-chilltech",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=chilltech",
+      distance: 2.1,
+      creatorName: "ChillTech Services",
+      businessSlug: createBusinessSlug("ChillTech Services", "demo-provider-chilltech"),
+      profileCompletion: 89,
+      responseMinutes: 10,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/ac-service-pro/980/620" }],
+      createdAt: new Date(now - 14 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Premium power tools kit",
+      description: "Heavy-duty drill, cutters, safety set. Pickup or same-day delivery.",
+      price: 2799,
+      category: "Product",
+      provider_id: "demo-provider-toolhub",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=toolhub",
+      distance: 7.3,
+      creatorName: "ToolHub Local",
+      businessSlug: createBusinessSlug("ToolHub Local", "demo-provider-toolhub"),
+      profileCompletion: 88,
+      responseMinutes: 22,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/toolkit-pro/980/620" }],
+      createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
   ];
@@ -460,11 +544,19 @@ const formatRelativeAge = (value?: string) => {
   return `${days}d ago`;
 };
 
-const formatSyncTime = (iso?: string) => {
-  if (!iso) return "--";
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return "--";
-  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const looksLikeNoisyText = (value: string) => {
+  const normalized = value.trim();
+  if (!normalized) return true;
+  if (normalized.length < 3) return true;
+  if (/^[a-z0-9]{10,}$/i.test(normalized)) return true;
+  if (/^(.)\1{4,}$/i.test(normalized)) return true;
+  return false;
+};
+
+const toDisplayText = (value: string | undefined, fallback: string) => {
+  const normalized = (value || "").replace(/\s+/g, " ").trim();
+  if (looksLikeNoisyText(normalized)) return fallback;
+  return normalized;
 };
 
 const getListingSignals = (item: Listing) => {
@@ -476,6 +568,62 @@ const getListingSignals = (item: Listing) => {
   if ((item.media?.length || 0) > 0) signals.push("Media attached");
   if (item.rankScore >= 85) signals.push(`High match ${item.rankScore}`);
   return signals.slice(0, 3);
+};
+
+const getMediaKinds = (media?: FeedMedia[]) => {
+  if (!media?.length) return [] as string[];
+
+  const kinds = new Set<string>();
+  media.forEach((mediaItem) => {
+    const mime = mediaItem.mimeType.toLowerCase();
+    if (mime.startsWith("image/svg") || mime.includes("pdf") || mime.includes("illustration")) {
+      kinds.add("Graphics");
+      return;
+    }
+    if (mime.startsWith("image/")) {
+      kinds.add("Image");
+      return;
+    }
+    if (mime.startsWith("video/")) {
+      kinds.add("Video");
+      return;
+    }
+    if (mime.startsWith("audio/")) {
+      kinds.add("Voice");
+      return;
+    }
+    kinds.add("Graphics");
+  });
+
+  const orderedKinds = ["Image", "Video", "Graphics", "Voice"];
+  return orderedKinds.filter((kind) => kinds.has(kind));
+};
+
+const matchesFeedFilters = (item: Listing, state: FeedFilterState) => {
+  const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName || ""}`.toLowerCase();
+  const matchesSearch = !state.query || haystack.includes(state.query);
+
+  const normalizedCategory = state.category.toLowerCase();
+  const matchesCategory =
+    state.category === "all" ||
+    item.category.toLowerCase().includes(normalizedCategory) ||
+    item.type === normalizedCategory;
+
+  const matchesDistance = state.maxDistanceKm > 0 ? item.distance <= state.maxDistanceKm : true;
+  const matchesVerified = state.verifiedOnly ? item.verificationStatus === "verified" : true;
+  const matchesUrgent = state.urgentOnly ? !!item.urgent : true;
+  const matchesMedia = state.mediaOnly ? (item.media?.length || 0) > 0 : true;
+  const matchesFresh = state.freshOnly ? isFreshListing(item.createdAt) : true;
+
+  return (
+    matchesSearch &&
+    matchesCategory &&
+    matchesDistance &&
+    matchesVerified &&
+    matchesUrgent &&
+    matchesMedia &&
+    matchesFresh
+  );
 };
 
 const mapRealtimeHealth = (status: string): RealtimeHealth => {
@@ -529,18 +677,12 @@ export default function MarketplacePage() {
   const [feed, setFeed] = useState<Listing[]>(demoFeed);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [feedError, setFeedError] = useState("");
-  const [dedupedCount, setDedupedCount] = useState(0);
   const [usingDemoFeed, setUsingDemoFeed] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
-  const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("best");
-  const [feedLayout, setFeedLayout] = useState<FeedLayout>("cards");
-  const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(0);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -549,45 +691,12 @@ export default function MarketplacePage() {
   const [freshOnly, setFreshOnly] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
   const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
-  const [listingVotes, setListingVotes] = useState<Record<string, number>>({});
-  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
-  const [liveEventCount, setLiveEventCount] = useState(0);
-  const [lastLiveEventAt, setLastLiveEventAt] = useState("");
-  const [lastLiveEventSource, setLastLiveEventSource] = useState("market");
   const [openPostModal, setOpenPostModal] = useState(false);
-  const [activeHelpRequestId, setActiveHelpRequestId] = useState<string | null>(null);
-  const [activeHelpRequestTitle, setActiveHelpRequestTitle] = useState("");
-  const [helpMatches, setHelpMatches] = useState<HelpMatchCard[]>([]);
-  const [helpMatchesLoading, setHelpMatchesLoading] = useState(false);
-  const [helpMatchesSyncing, setHelpMatchesSyncing] = useState(false);
-  const [helpMatchesError, setHelpMatchesError] = useState("");
-  const [helpRequestMatchedCount, setHelpRequestMatchedCount] = useState<number>(0);
-  const [focusTarget, setFocusTarget] = useState<{
-    id: string;
-    type: string;
-  } | null>(null);
-  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const reloadTimerRef = useRef<number | null>(null);
-  const helpMatchesReloadTimerRef = useRef<number | null>(null);
   const fetchInFlightRef = useRef(false);
   const lastSoftFetchStartedAtRef = useRef(0);
-
-  const setHelpRequestQueryParam = useCallback((helpRequestId: string | null) => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
-    if (helpRequestId) {
-      params.set("help_request", helpRequestId);
-    } else {
-      params.delete("help_request");
-    }
-
-    const nextQuery = params.toString();
-    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-    window.history.replaceState({}, "", nextUrl);
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -599,7 +708,6 @@ export default function MarketplacePage() {
       const parsed = JSON.parse(raw) as {
         category?: string;
         sortBy?: "best" | "distance" | "price" | "latest";
-        showTrendingOnly?: boolean;
         maxDistanceKm?: number;
         verifiedOnly?: boolean;
         urgentOnly?: boolean;
@@ -612,7 +720,6 @@ export default function MarketplacePage() {
       if (parsed.sortBy && ["best", "distance", "price", "latest"].includes(parsed.sortBy)) {
         setSortBy(parsed.sortBy);
       }
-      if (typeof parsed.showTrendingOnly === "boolean") setShowTrendingOnly(parsed.showTrendingOnly);
       if (Number.isFinite(parsed.maxDistanceKm)) setMaxDistanceKm(Number(parsed.maxDistanceKm));
       if (typeof parsed.verifiedOnly === "boolean") setVerifiedOnly(parsed.verifiedOnly);
       if (typeof parsed.urgentOnly === "boolean") setUrgentOnly(parsed.urgentOnly);
@@ -626,18 +733,9 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedLayout = window.localStorage.getItem(MARKETPLACE_LAYOUT_STORAGE_KEY);
-    if (storedLayout === "cards" || storedLayout === "thread") {
-      setFeedLayout(storedLayout);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     const payload = {
       category,
       sortBy,
-      showTrendingOnly,
       maxDistanceKm,
       verifiedOnly,
       urgentOnly,
@@ -652,112 +750,10 @@ export default function MarketplacePage() {
     maxDistanceKm,
     mediaOnly,
     showAdvancedFilters,
-    showTrendingOnly,
     sortBy,
     urgentOnly,
     verifiedOnly,
   ]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(MARKETPLACE_LAYOUT_STORAGE_KEY, feedLayout);
-  }, [feedLayout]);
-
-  const loadHelpRequestMatches = useCallback(
-    async (helpRequestId: string, soft = false) => {
-      if (!helpRequestId) return;
-
-      if (soft) {
-        setHelpMatchesSyncing(true);
-      } else {
-        setHelpMatchesLoading(true);
-      }
-
-      const { data: helpRequest, error: helpRequestError } = await supabase
-        .from("help_requests")
-        .select("id,title,matched_count,status")
-        .eq("id", helpRequestId)
-        .maybeSingle();
-
-      if (helpRequestError || !helpRequest) {
-        if (!soft) {
-          setHelpMatches([]);
-        }
-        setHelpMatchesError(
-          helpRequestError
-            ? helpRequestError.message
-            : "Could not find this help request."
-        );
-        setHelpMatchesLoading(false);
-        setHelpMatchesSyncing(false);
-        return;
-      }
-
-      setActiveHelpRequestTitle(
-        ((helpRequest as HelpRequestRow).title || "Help request").trim()
-      );
-      setHelpRequestMatchedCount(Number((helpRequest as HelpRequestRow).matched_count || 0));
-
-      const { data: matches, error: matchesError } = await supabase
-        .from("help_request_matches")
-        .select("provider_id,score,distance_km,reason,status")
-        .eq("help_request_id", helpRequestId)
-        .order("score", { ascending: false })
-        .limit(8);
-
-      if (matchesError) {
-        if (!soft) {
-          setHelpMatches([]);
-        }
-        setHelpMatchesError(matchesError.message);
-        setHelpMatchesLoading(false);
-        setHelpMatchesSyncing(false);
-        return;
-      }
-
-      const matchRows = ((matches as HelpRequestMatchRow[] | null) || []).filter((row) => !!row.provider_id);
-      const providerIds = Array.from(new Set(matchRows.map((row) => row.provider_id)));
-      let profileMap = new Map<string, { name: string; avatar_url: string; role: string }>();
-
-      if (providerIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id,name,avatar_url,role")
-          .in("id", providerIds);
-
-        profileMap = new Map(
-          (((profiles as FlexibleRow[] | null) || []).map((row) => [
-            String(row.id || ""),
-            {
-              name: String(row.name || "Provider"),
-              avatar_url: String(row.avatar_url || `https://i.pravatar.cc/150?u=${row.id || "provider"}`),
-              role: String(row.role || "Service Provider"),
-            },
-          ]))
-        );
-      }
-
-      const mappedMatches: HelpMatchCard[] = matchRows.map((row) => {
-        const profile = profileMap.get(row.provider_id);
-        return {
-          providerId: row.provider_id,
-          name: profile?.name || "Provider",
-          avatar: profile?.avatar_url || `https://i.pravatar.cc/150?u=${row.provider_id}`,
-          role: profile?.role || "Service Provider",
-          score: Number(row.score || 0),
-          distanceKm: Number.isFinite(Number(row.distance_km)) ? Number(row.distance_km) : null,
-          reason: row.reason || "Good match for your request",
-          status: row.status || "suggested",
-        };
-      });
-
-      setHelpMatches(mappedMatches);
-      setHelpMatchesError("");
-      setHelpMatchesLoading(false);
-      setHelpMatchesSyncing(false);
-    },
-    []
-  );
 
   /* ================= FETCH ================= */
   const fetchFeed = useCallback(async (soft = false) => {
@@ -777,7 +773,7 @@ export default function MarketplacePage() {
     setFeedError("");
 
     try {
-      const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS).catch(() => null);
+      void getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS).catch(() => null);
 
       const selectRowsWithFallback = async (table: string, primarySelect: string): Promise<FlexibleRow[]> => {
         const primaryResult = await supabase
@@ -906,13 +902,6 @@ export default function MarketplacePage() {
         seed: currentUserId,
       });
       const fallbackViewerCoordinates = profileCoordinates || defaultMarketCoordinates();
-      setViewerCoordinates(fallbackViewerCoordinates);
-
-      void browserCoordinatesPromise.then((browserCoordinates) => {
-        if (browserCoordinates) {
-          setViewerCoordinates(browserCoordinates);
-        }
-      });
       const resolvedViewerCoordinates = fallbackViewerCoordinates;
 
       const serviceRows: ServiceRow[] = serviceRowsRaw
@@ -1178,17 +1167,14 @@ export default function MarketplacePage() {
 
       const rawLiveFeed = [...formattedPosts, ...formattedServices, ...formattedProducts];
       const liveFeed = dedupeListings(rawLiveFeed);
-      setDedupedCount(Math.max(0, rawLiveFeed.length - liveFeed.length));
       if (liveFeed.length === 0) {
         setFeed(demoFeed);
-        setDedupedCount(0);
         setUsingDemoFeed(true);
         setFeedError("No live listings yet. Showing demo marketplace cards.");
       } else {
         setFeed(liveFeed);
         setUsingDemoFeed(false);
       }
-      setLastSyncedAt(new Date().toISOString());
     } catch (error) {
       if (isAbortLikeError(error)) {
         return;
@@ -1203,7 +1189,6 @@ export default function MarketplacePage() {
         setFeedError(`${feedErrorMessage}. Keeping current feed.`);
       } else {
         setFeed(demoFeed);
-        setDedupedCount(0);
         setUsingDemoFeed(true);
         setFeedError(`${feedErrorMessage}. Showing demo feed.`);
       }
@@ -1222,12 +1207,7 @@ export default function MarketplacePage() {
   }, [fetchFeed]);
 
   useEffect(() => {
-    const scheduleReload = (payload?: { table?: string }) => {
-      setLiveEventCount((count) => count + 1);
-      setLastLiveEventAt(new Date().toISOString());
-      if (payload?.table) {
-        setLastLiveEventSource(payload.table.replaceAll("_", " "));
-      }
+    const scheduleReload = () => {
       if (reloadTimerRef.current) {
         window.clearTimeout(reloadTimerRef.current);
       }
@@ -1268,13 +1248,6 @@ export default function MarketplacePage() {
   }, [fetchFeed]);
 
   useEffect(() => {
-    const mapTimer = window.setTimeout(() => {
-      setMapReady(true);
-    }, 900);
-    return () => window.clearTimeout(mapTimer);
-  }, []);
-
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const composeParam = params.get("compose");
     if (composeParam === "1" || composeParam === "true") {
@@ -1286,134 +1259,36 @@ export default function MarketplacePage() {
       setCategory(categoryParam);
     }
 
-    const viewParam = params.get("view");
-    if (viewParam === "groups") {
-      setFeedLayout("thread");
-    }
-
     const groupParam = params.get("group") || params.get("q");
     if (groupParam) {
       setSearch(groupParam);
     }
 
-    const id = params.get("focus");
     const type = params.get("type");
-    const helpRequestParam = params.get("help_request");
 
-    if (helpRequestParam) {
-      setActiveHelpRequestId(helpRequestParam);
-      void loadHelpRequestMatches(helpRequestParam);
+    if (type && ["demand", "service", "product"].includes(type)) {
+      setCategory(type);
     }
-
-    if (!id) return;
-    setFocusTarget({
-      id,
-      type: type || "",
-    });
-  }, [loadHelpRequestMatches]);
-
-  useEffect(() => {
-    if (!focusTarget?.id || feed.length === 0) return;
-
-    if (focusTarget.type && ["demand", "service", "product"].includes(focusTarget.type)) {
-      setCategory(focusTarget.type);
-    } else {
-      setCategory("all");
-    }
-    setShowTrendingOnly(false);
-    setSearch("");
-
-    const timer = setTimeout(() => {
-      const target = cardRefs.current[focusTarget.id];
-      if (!target) return;
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-      setHighlightedId(focusTarget.id);
-      setTimeout(() => setHighlightedId(null), 2600);
-    }, 120);
-
-    return () => clearTimeout(timer);
-  }, [feed.length, focusTarget]);
-
-  useEffect(() => {
-    if (!activeHelpRequestId) return;
-
-    const scheduleReload = () => {
-      if (helpMatchesReloadTimerRef.current) {
-        window.clearTimeout(helpMatchesReloadTimerRef.current);
-      }
-      helpMatchesReloadTimerRef.current = window.setTimeout(() => {
-        void loadHelpRequestMatches(activeHelpRequestId, true);
-      }, 300);
-    };
-
-    const channel = supabase
-      .channel(`help-request-live-${activeHelpRequestId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "help_request_matches",
-          filter: `help_request_id=eq.${activeHelpRequestId}`,
-        },
-        scheduleReload
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "help_requests",
-          filter: `id=eq.${activeHelpRequestId}`,
-        },
-        scheduleReload
-      )
-      .subscribe();
-
-    return () => {
-      if (helpMatchesReloadTimerRef.current) {
-        window.clearTimeout(helpMatchesReloadTimerRef.current);
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [activeHelpRequestId, loadHelpRequestMatches]);
+  }, []);
 
 /* ================= FILTER + SORT ================= */
 
+const filterState = useMemo<FeedFilterState>(
+  () => ({
+    query: search.toLowerCase().trim(),
+    category,
+    maxDistanceKm,
+    verifiedOnly,
+    urgentOnly,
+    mediaOnly,
+    freshOnly,
+  }),
+  [category, freshOnly, maxDistanceKm, mediaOnly, search, urgentOnly, verifiedOnly]
+);
+
 const filtered = useMemo(() => {
-  const query = search.toLowerCase().trim();
   return [...feed]
-    .filter((item) => {
-      const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName || ""}`.toLowerCase();
-      const matchesSearch = !query || haystack.includes(query);
-
-      const normalizedCategory = category.toLowerCase();
-      const matchesCategory =
-        category === "all" ||
-        item.category.toLowerCase().includes(normalizedCategory) ||
-        item.type === normalizedCategory;
-
-      const matchesTrending = showTrendingOnly ? item.type === "demand" : true;
-      const matchesDistance = maxDistanceKm > 0 ? item.distance <= maxDistanceKm : true;
-      const matchesVerified = verifiedOnly ? item.verificationStatus === "verified" : true;
-      const matchesUrgent = urgentOnly ? !!item.urgent : true;
-      const matchesMedia = mediaOnly ? (item.media?.length || 0) > 0 : true;
-      const matchesFresh = freshOnly ? isFreshListing(item.createdAt) : true;
-
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesTrending &&
-        matchesDistance &&
-        matchesVerified &&
-        matchesUrgent &&
-        matchesMedia &&
-        matchesFresh
-      );
-    })
+    .filter((item) => matchesFeedFilters(item, filterState))
     .sort((a, b) => {
       if (sortBy === "best") {
         return b.rankScore - a.rankScore || a.distance - b.distance;
@@ -1426,15 +1301,31 @@ const filtered = useMemo(() => {
       }
       return a.price - b.price;
     });
-}, [category, feed, freshOnly, maxDistanceKm, mediaOnly, search, showTrendingOnly, sortBy, urgentOnly, verifiedOnly]);
+}, [feed, filterState, sortBy]);
 
 const visibleFeed = useMemo(
   () => filtered.filter((item) => !hiddenListingIds.has(item.id)),
   [filtered, hiddenListingIds]
 );
 
+const blendedVisibleFeed = useMemo(() => {
+  if (visibleFeed.length >= 10) return visibleFeed;
+
+  const existingFingerprints = new Set(visibleFeed.map((item) => listingFingerprint(item)));
+  const fallbackSeeds = demoFeed
+    .filter((item) => matchesFeedFilters(item, filterState))
+    .filter((item) => !existingFingerprints.has(listingFingerprint(item)))
+    .slice(0, 10 - visibleFeed.length)
+    .map((item, index) => ({
+      ...item,
+      id: `seed-${item.id}-${index}`,
+      isDemo: true,
+    }));
+
+  return [...visibleFeed, ...fallbackSeeds];
+}, [demoFeed, filterState, visibleFeed]);
+
 const activeFilterCount =
-  Number(showTrendingOnly) +
   Number(maxDistanceKm > 0) +
   Number(verifiedOnly) +
   Number(urgentOnly) +
@@ -1442,104 +1333,68 @@ const activeFilterCount =
   Number(freshOnly);
 
 const filteredStats = useMemo(() => {
-  const verified = visibleFeed.filter((item) => item.verificationStatus === "verified").length;
-  const urgent = visibleFeed.filter((item) => item.urgent).length;
-  const withMedia = visibleFeed.filter((item) => (item.media?.length || 0) > 0).length;
-  const avgMatch = visibleFeed.length
-    ? Math.round(visibleFeed.reduce((sum, item) => sum + item.rankScore, 0) / visibleFeed.length)
+  const verified = blendedVisibleFeed.filter((item) => item.verificationStatus === "verified").length;
+  const urgent = blendedVisibleFeed.filter((item) => item.urgent).length;
+  const withMedia = blendedVisibleFeed.filter((item) => (item.media?.length || 0) > 0).length;
+  const avgMatch = blendedVisibleFeed.length
+    ? Math.round(blendedVisibleFeed.reduce((sum, item) => sum + item.rankScore, 0) / blendedVisibleFeed.length)
     : 0;
   return {
-    total: visibleFeed.length,
+    total: blendedVisibleFeed.length,
     verified,
     urgent,
     withMedia,
     avgMatch,
   };
-}, [visibleFeed]);
+}, [blendedVisibleFeed]);
 
-const trendingDemands = useMemo(
+const displayFeed = useMemo<DisplayListing[]>(
   () =>
-    visibleFeed
-      .filter((item) => item.type === "demand")
-      .sort((a, b) => b.rankScore - a.rankScore)
-      .slice(0, 3),
-  [visibleFeed]
+    blendedVisibleFeed.map((item, index) => {
+      const defaultTitle =
+        item.type === "demand"
+          ? "Need local support"
+          : item.type === "service"
+          ? `${item.category || "Local"} service available`
+          : `${item.category || "Local"} product available`;
+      const defaultDescription =
+        item.type === "demand"
+          ? "Looking for fast verified responses from nearby providers."
+          : "Trusted local listing with clear pricing and quick response.";
+
+      return {
+        ...item,
+        displayTitle: toDisplayText(item.title, defaultTitle),
+        displayDescription: toDisplayText(item.description, defaultDescription),
+        displayCreator: toDisplayText(item.creatorName, `Local ${item.type === "demand" ? "requester" : "provider"}`),
+        createdAt: item.createdAt || new Date(Date.now() - (index + 1) * 18 * 60 * 1000).toISOString(),
+      };
+    }),
+  [blendedVisibleFeed]
 );
 
-const feedMix = useMemo(() => {
-  const demand = visibleFeed.filter((item) => item.type === "demand").length;
-  const service = visibleFeed.filter((item) => item.type === "service").length;
-  const product = visibleFeed.filter((item) => item.type === "product").length;
-  return { demand, service, product };
-}, [visibleFeed]);
+const featuredListing = displayFeed[0] || null;
+const secondaryListings = displayFeed.slice(1);
 
-const feedMixPercentages = useMemo(() => {
-  const total = Math.max(1, feedMix.demand + feedMix.service + feedMix.product);
+const quickFilterCounts = useMemo(() => {
+  const demand = feed.filter((item) => item.type === "demand").length;
+  const service = feed.filter((item) => item.type === "service").length;
+  const product = feed.filter((item) => item.type === "product").length;
   return {
-    demand: Math.round((feedMix.demand / total) * 100),
-    service: Math.round((feedMix.service / total) * 100),
-    product: Math.round((feedMix.product / total) * 100),
+    all: feed.length,
+    demand,
+    service,
+    product,
   };
-}, [feedMix.demand, feedMix.product, feedMix.service]);
+}, [feed]);
 
-const hottestCategories = useMemo(
+const trendingOpportunities = useMemo(
   () =>
-    [...visibleFeed]
+    [...displayFeed]
       .sort((a, b) => b.rankScore - a.rankScore)
-      .slice(0, 4)
-      .map((item) => item.category)
-      .filter((value, index, array) => array.indexOf(value) === index),
-  [visibleFeed]
+      .slice(0, 4),
+  [displayFeed]
 );
-
-const activeNeedSpotlight = useMemo(() => {
-  const needs = visibleFeed.filter((item) => item.type === "demand");
-  if (needs.length === 0) return null;
-
-  return [...needs].sort((a, b) => {
-    if (Boolean(b.urgent) !== Boolean(a.urgent)) return Number(Boolean(b.urgent)) - Number(Boolean(a.urgent));
-    return b.rankScore - a.rankScore || parseDateMs(b.createdAt) - parseDateMs(a.createdAt);
-  })[0];
-}, [visibleFeed]);
-
-const categoryFilters = useMemo(
-  () => {
-    const demandCount = feed.filter((item) => item.type === "demand").length;
-    const serviceCount = feed.filter((item) => item.type === "service").length;
-    const productCount = feed.filter((item) => item.type === "product").length;
-
-    return [
-      { value: "all", label: "ALL", count: feed.length },
-      { value: "demand", label: "NEED", count: demandCount },
-      { value: "service", label: "SERVICE", count: serviceCount },
-      { value: "product", label: "PRODUCT", count: productCount },
-    ];
-  },
-  [feed]
-);
-
-const startupReadinessScore = useMemo(() => {
-  const verifiedSignal =
-    filteredStats.total > 0 ? Math.round((filteredStats.verified / filteredStats.total) * 100) : 0;
-  const fastResponseCount = feed.filter((item) => item.responseMinutes <= 15).length;
-  const responseSignal =
-    feed.length > 0 ? Math.round((fastResponseCount / feed.length) * 100) : 0;
-  const streamSignal =
-    feedChannelHealth === "connected"
-      ? 100
-      : feedChannelHealth === "connecting" || feedChannelHealth === "reconnecting"
-      ? 72
-      : feedChannelHealth === "idle"
-      ? 56
-      : 35;
-
-  return Math.round(verifiedSignal * 0.45 + responseSignal * 0.35 + streamSignal * 0.2);
-}, [
-  feed,
-  feedChannelHealth,
-  filteredStats.total,
-  filteredStats.verified,
-]);
 
 const clearAdvancedFilters = () => {
   setMaxDistanceKm(0);
@@ -1566,17 +1421,6 @@ const hideListing = (listingId: string) => {
     const next = new Set(previous);
     next.add(listingId);
     return next;
-  });
-};
-
-const voteOnListing = (listingId: string, direction: "up" | "down", baselineScore: number) => {
-  setListingVotes((previous) => {
-    const current = previous[listingId] ?? Math.max(1, Math.round(baselineScore / 7));
-    const nextValue = direction === "up" ? current + 1 : Math.max(0, current - 1);
-    return {
-      ...previous,
-      [listingId]: nextValue,
-    };
   });
 };
 
@@ -1701,858 +1545,439 @@ setMessageLoadingId(null);
 router.push(`/dashboard/chat?open=${targetConversationId}`);
 };
 
-const dashboardStats = useMemo(() => {
-  const providers = new Set(feed.map((item) => item.provider_id).filter(Boolean)).size;
-  const urgentCount = feed.filter((item) => item.type === "demand" && item.urgent).length;
-  const avgMatch = feed.length
-    ? Math.round(feed.reduce((sum, item) => sum + item.rankScore, 0) / feed.length)
-    : 0;
-  const fastResponses = feed.filter((item) => item.responseMinutes <= 15).length;
-
-  return {
-    providers,
-    urgentCount,
-    avgMatch,
-    fastResponses,
-  };
-}, [feed]);
-
 const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
-const liveSourceLabel = lastLiveEventSource
-  ? `${lastLiveEventSource.charAt(0).toUpperCase()}${lastLiveEventSource.slice(1)}`
-  : "market";
-const layoutLabel = feedLayout === "thread" ? "Thread Feed" : "Card Feed";
 
 /* ================= UI ================= */
 
 return (
   <div className="min-h-screen bg-transparent text-slate-900">
     <RouteObservability route="dashboard" />
-    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
-      <div className="market-hero-surface rounded-3xl border border-sky-200/25 bg-gradient-to-r from-slate-900 via-indigo-900 to-sky-800 shadow-[0_24px_80px_rgba(15,23,42,0.45)]">
-        <div className="market-orb-float absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />
-        <div className="market-orb-float-delayed absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
-        <div className="market-orb-float absolute -left-10 top-16 h-36 w-36 rounded-full bg-cyan-200/10 blur-3xl" />
-
-        <div className="relative p-5 sm:p-7 lg:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                <Sparkles size={13} />
-                Market Command Feed
-              </div>
-              <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                {feedMix.demand > 0
-                  ? `${feedMix.demand} active needs are live in your local market`
-                  : "Ship faster with realtime local demand intelligence"}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm sm:text-base text-white/90">
-                {activeNeedSpotlight
-                  ? `Spotlight: "${activeNeedSpotlight.title}" is ready for response within ${activeNeedSpotlight.distance} km.`
-                  : "Production-ready marketplace stream for nearby needs, verified providers, and conversion-focused actions."}
-              </p>
-            </div>
-
-            <div className="w-full lg:w-[560px] space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-white/90">
-                <span className="inline-flex items-center gap-1.5">
-                  {syncing ? <RefreshCw size={12} className="animate-spin" /> : <Radar size={12} />}
-                  {syncing ? "Syncing marketplace..." : `Last sync ${formatSyncTime(lastSyncedAt)}`}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${realtimeStyle.className}`}>
-                    <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
-                    {realtimeStyle.label}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void fetchFeed(true)}
-                    disabled={syncing}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
-                    Refresh
-                  </button>
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-white/90">
-                <p className="text-[10px] uppercase tracking-[0.14em] text-white/70">Active Need Spotlight</p>
-                {activeNeedSpotlight ? (
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <p className="line-clamp-1 font-semibold">{activeNeedSpotlight.title}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const target = cardRefs.current[activeNeedSpotlight.id];
-                        if (!target) return;
-                        target.scrollIntoView({ behavior: "smooth", block: "center" });
-                        setHighlightedId(activeNeedSpotlight.id);
-                        setTimeout(() => setHighlightedId(null), 1200);
-                      }}
-                      className="shrink-0 rounded-full border border-white/40 bg-white/20 px-2 py-1 text-[11px] font-semibold text-white hover:bg-white/30 transition-colors"
-                    >
-                      Respond
-                    </button>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-white/80">No active needs in current filters. Remove filters to expand demand view.</p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => router.push("/dashboard/profile")}
-                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-                >
-                  Complete Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenPostModal(true)}
-                  className="rounded-xl border border-white/40 bg-white px-3 py-2.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
-                >
-                  Post New Need
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/dashboard/provider/add-service")}
-                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-                >
-                  Add Service
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFeed(demoFeed);
-                    setDedupedCount(0);
-                    setUsingDemoFeed(true);
-                    setFeedError("Demo seed loaded. Add your real posts/services to replace it.");
-                  }}
-                  className="rounded-xl border border-white/35 bg-white/15 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-white/25 transition-colors"
-                >
-                  Load Demo Seed
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
-            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-wide text-white/80">Providers</p>
-              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.providers || 520}</p>
-            </div>
-            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-wide text-white/80">Urgent Needs</p>
-              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.urgentCount}</p>
-            </div>
-            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-wide text-white/80">Avg Match</p>
-              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.avgMatch}</p>
-            </div>
-            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-wide text-white/80">Fast Replies</p>
-              <p className="mt-1 text-xl font-bold text-white">{dashboardStats.fastResponses}</p>
-            </div>
-            <div className="rounded-xl border border-white/25 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-wide text-white/80">Live Events</p>
-              <p className="mt-1 text-xl font-bold text-white">{liveEventCount}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs">
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-100/90 px-2.5 py-1 font-semibold text-emerald-800">
-              Startup readiness {startupReadinessScore}%
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-white/90">
-              {filteredStats.total} active listings in view
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2.5 py-1 text-white/90">
-              {activeFilterCount > 0 ? `${activeFilterCount} active filters` : "No active advanced filters"}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 mt-5">
-      <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex items-center gap-2 bg-white p-3 rounded-xl flex-1 border border-slate-200 shadow-sm">
-            <Search size={16} className="text-slate-500" />
-            <input
-              placeholder="Search services, products, needs..."
-              className="bg-transparent outline-none flex-1 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-4">
-            <select
-              value={sortBy}
-              onChange={(e) =>
-                setSortBy(
-                  e.target.value === "best"
-                    ? "best"
-                    : e.target.value === "price"
-                    ? "price"
-                    : e.target.value === "latest"
-                    ? "latest"
-                    : "distance"
-                )
-              }
-              className="bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm shadow-sm"
-            >
-              <option value="best">Sort: Best Match</option>
-              <option value="distance">Sort: Distance</option>
-              <option value="price">Sort: Price</option>
-              <option value="latest">Sort: Latest</option>
-            </select>
-
-            <button
-              onClick={() => setShowTrendingOnly(!showTrendingOnly)}
-              className={`border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-sm transition-colors ${
-                showTrendingOnly
-                  ? "bg-indigo-600 border-indigo-600 text-white"
-                  : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
-              }`}
-            >
-              <Filter size={16} />
-              {showTrendingOnly ? "Trending On" : "Trending"}
-            </button>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-              <div className="grid grid-cols-2 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setFeedLayout("cards")}
-                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
-                    feedLayout === "cards" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  <LayoutGrid size={14} />
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedLayout("thread")}
-                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
-                    feedLayout === "thread" ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  <Rows3 size={14} />
-                  Thread
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAdvancedFilters((current) => !current)}
-              className="border px-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-sm bg-white border-slate-200 text-slate-700 hover:border-indigo-300 transition-colors"
-            >
-              <SlidersHorizontal size={16} />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-4 mt-4 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <Activity size={12} />
-            {filteredStats.total} results
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <ShieldCheck size={12} />
-            {filteredStats.verified} verified
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <Zap size={12} />
-            {filteredStats.urgent} urgent
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <ImageIcon size={12} />
-            {filteredStats.withMedia} with media
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-indigo-700">
-            Match {filteredStats.avgMatch}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <Flame size={12} />
-            {layoutLabel}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-            <BellRing size={12} />
-            {liveEventCount} updates
-          </span>
-          {dedupedCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700">
-              {dedupedCount} duplicates removed
-            </span>
-          )}
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearAdvancedFilters}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <RotateCcw size={12} />
-              Reset advanced
-            </button>
-          )}
-        </div>
-
-        {lastLiveEventAt && (
-          <div className="mb-4 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
-            Live event from {liveSourceLabel} at {formatSyncTime(lastLiveEventAt)}.
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
-          {categoryFilters.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setCategory(cat.value)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                category === cat.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              {cat.label} ({cat.count})
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1">
-          {QUICK_SEARCH_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => {
-                setCategory("all");
-                setSearch(chip);
-              }}
-              className="px-4 py-2 bg-slate-100 rounded-xl text-sm text-slate-700 whitespace-nowrap hover:bg-indigo-600 hover:text-white transition-colors"
-            >
-              {chip}
-            </button>
-          ))}
-          {hottestCategories.map((chip) => (
-            <button
-              key={`hot-${chip}`}
-              onClick={() => {
-                setCategory("all");
-                setSearch(chip);
-              }}
-              className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 whitespace-nowrap hover:bg-amber-100 transition-colors"
-            >
-              <span className="inline-flex items-center gap-1">
-                <Flame size={12} />
-                {chip}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {showAdvancedFilters && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="text-xs text-slate-600">
-                Max distance
-                <select
-                  value={String(maxDistanceKm)}
-                  onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                >
-                  <option value="0">Any distance</option>
-                  <option value="3">Within 3 km</option>
-                  <option value="8">Within 8 km</option>
-                  <option value="15">Within 15 km</option>
-                </select>
+    <div className="mx-auto max-w-[2200px] px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] 2xl:gap-7">
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm sm:p-4">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+                <Search size={16} className="text-slate-500" />
+                <input
+                  placeholder="Search posts, services, or help nearby"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
               </label>
               <button
                 type="button"
-                onClick={() => setVerifiedOnly((value) => !value)}
-                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                  verifiedOnly
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                }`}
+                onClick={() => setShowAdvancedFilters((current) => !current)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
-                Verified only
+                <Filter size={15} />
+                Filter
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
               <button
                 type="button"
-                onClick={() => setUrgentOnly((value) => !value)}
-                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                  urgentOnly
-                    ? "border-rose-300 bg-rose-50 text-rose-700"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                }`}
+                onClick={() => void fetchFeed(true)}
+                disabled={syncing}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Urgent only
+                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                {syncing ? "Syncing..." : "Refresh"}
               </button>
               <button
                 type="button"
-                onClick={() => setMediaOnly((value) => !value)}
-                className={`mt-5 h-10 rounded-lg border px-3 text-sm font-medium transition-colors ${
-                  mediaOnly
-                    ? "border-violet-300 bg-violet-50 text-violet-700"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                }`}
+                onClick={() => {
+                  setFeed(demoFeed);
+                  setUsingDemoFeed(true);
+                  setFeedError("Startup demo stream loaded.");
+                  setHiddenListingIds(new Set());
+                }}
+                className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
               >
-                Media only
+                Load Demo Stream
               </button>
             </div>
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setFreshOnly((value) => !value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  freshOnly
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                Last 24 hours only
-              </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                {filteredStats.total} posts
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                {filteredStats.withMedia} with media
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                {filteredStats.urgent} urgent
+              </span>
+              {hiddenListingIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setHiddenListingIds(new Set())}
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                >
+                  Restore hidden ({hiddenListingIds.size})
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </div>
-    </div>
 
-    <div className="max-w-[2200px] mx-auto px-4 sm:px-6 grid lg:grid-cols-3 gap-6 pb-20">
-      <div className="lg:col-span-2 space-y-5">
-        {isFeedLoading && feed.length === 0 ? (
-          <div className="space-y-4">
-            {[0, 1, 2].map((index) => (
-              <div
-                key={`feed-skeleton-${index}`}
-                className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
-              >
-                <div className="h-4 w-24 rounded bg-slate-200" />
-                <div className="mt-4 h-5 w-2/3 rounded bg-slate-200" />
-                <div className="mt-3 h-4 w-full rounded bg-slate-200" />
-                <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {(usingDemoFeed || !!feedError || isFeedLoading) && (
-              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-indigo-900">
-                      {usingDemoFeed ? "Demo seed feed is active" : "Syncing live feed"}
-                    </p>
-                    <p className="text-xs text-indigo-700 mt-1">
-                      {feedError || "Live listings are loading in the background. You can still browse and interact."}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void fetchFeed(true)}
-                      disabled={syncing}
-                      className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {syncing ? "Refreshing..." : "Refresh Live Data"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/dashboard/provider/add-service")}
-                      className="rounded-xl border border-indigo-300 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:border-indigo-500 transition-colors"
-                    >
-                      Add Service
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!!activeHelpRequestId && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-900">
-                      Help request matching
-                    </p>
-                    <p className="mt-1 text-xs text-emerald-700">
-                      {activeHelpRequestTitle
-                        ? `"${activeHelpRequestTitle}" • ${helpRequestMatchedCount} matches`
-                        : `${helpRequestMatchedCount} matches found`}
-                    </p>
-                    {helpMatchesSyncing && (
-                      <p className="mt-1 text-[11px] text-emerald-700 inline-flex items-center gap-1">
-                        <RefreshCw size={11} className="animate-spin" />
-                        Syncing new matches...
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void loadHelpRequestMatches(activeHelpRequestId, true)}
-                      disabled={helpMatchesLoading || helpMatchesSyncing}
-                      className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Refresh matches
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveHelpRequestId(null);
-                        setHelpRequestQueryParam(null);
-                      }}
-                      className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-
-                {!!helpMatchesError && (
-                  <p className="mt-2 text-xs text-rose-700">{helpMatchesError}</p>
-                )}
-
-                {helpMatchesLoading ? (
-                  <div className="mt-3 text-xs text-emerald-700 inline-flex items-center gap-2">
-                    <RefreshCw size={12} className="animate-spin" />
-                    Loading provider matches...
-                  </div>
-                ) : helpMatches.length > 0 ? (
-                  <div className="mt-3 grid gap-2">
-                    {helpMatches.slice(0, 4).map((match) => (
-                      <div
-                        key={`${activeHelpRequestId}-${match.providerId}`}
-                        className="rounded-xl border border-emerald-200 bg-white px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Image
-                              src={match.avatar}
-                              alt={match.name}
-                              width={30}
-                              height={30}
-                              className="h-7 w-7 rounded-full object-cover"
-                            />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-slate-900">{match.name}</p>
-                              <p className="truncate text-[11px] text-slate-500">{match.role}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs font-semibold text-emerald-700">Score {Math.round(match.score)}</p>
-                            <p className="text-[11px] text-slate-500">
-                              {match.distanceKm !== null ? `${match.distanceKm.toFixed(1)} km` : "Nearby"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                            {match.reason}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => void messageProvider(match.providerId)}
-                            className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
-                          >
-                            Chat
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProvider(match.providerId)}
-                            className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
-                          >
-                            Trust profile
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-xs text-emerald-800">
-                    Matching is in progress. Providers will appear here as scores are computed.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {feed.length === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <h3 className="text-lg font-semibold text-slate-900">No listings available yet</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Create your first post or listing to populate the dashboard.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+          {showAdvancedFilters && (
+            <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="text-xs text-slate-600">
+                  Sort by
+                  <select
+                    value={sortBy}
+                    onChange={(event) =>
+                      setSortBy(
+                        event.target.value === "best"
+                          ? "best"
+                          : event.target.value === "price"
+                          ? "price"
+                          : event.target.value === "latest"
+                          ? "latest"
+                          : "distance"
+                      )
+                    }
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <option value="best">Best match</option>
+                    <option value="distance">Nearest first</option>
+                    <option value="price">Price low to high</option>
+                    <option value="latest">Latest first</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-600">
+                  Max distance
+                  <select
+                    value={String(maxDistanceKm)}
+                    onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <option value="0">Any distance</option>
+                    <option value="3">Within 3 km</option>
+                    <option value="8">Within 8 km</option>
+                    <option value="15">Within 15 km</option>
+                  </select>
+                </label>
+                <div className="mt-5 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setOpenPostModal(true)}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors"
+                    onClick={() => setVerifiedOnly((value) => !value)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      verifiedOnly
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
-                    Post a Need
+                    Verified
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push("/dashboard/provider/add-product")}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-400 transition-colors"
+                    onClick={() => setUrgentOnly((value) => !value)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      urgentOnly
+                        ? "border-rose-300 bg-rose-50 text-rose-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
-                    Add Product
+                    Urgent
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaOnly((value) => !value)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      mediaOnly
+                        ? "border-violet-300 bg-violet-50 text-violet-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    Media
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreshOnly((value) => !value)}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      freshOnly
+                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    Last 24h
                   </button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
-                      <TrendingUp size={16} />
-                      Hot Lane Near You
-                    </h2>
-                    {hiddenListingIds.size > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setHiddenListingIds(new Set())}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                      >
-                        Restore hidden ({hiddenListingIds.size})
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {trendingDemands.map((item) => (
-                      <button
-                        key={`trend-${item.id}`}
-                        type="button"
-                        onClick={() => {
-                          const target = cardRefs.current[item.id];
-                          if (!target) return;
-                          target.scrollIntoView({ behavior: "smooth", block: "center" });
-                          setHighlightedId(item.id);
-                          setTimeout(() => setHighlightedId(null), 1200);
-                        }}
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left hover:border-indigo-300 hover:bg-indigo-50/40"
-                      >
-                        <div className="text-xs text-slate-500">
-                          {item.distance} km away • {item.responseMinutes}m response
-                        </div>
-                        <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-900">{item.title}</p>
-                        <div className="mt-1 text-xs text-indigo-700">₹ {item.price} • {formatRelativeAge(item.createdAt)}</div>
-                      </button>
-                    ))}
-                    {trendingDemands.length === 0 && (
-                      <div className="sm:col-span-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                        No active demand trends for these filters yet.
-                      </div>
-                    )}
-                  </div>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAdvancedFilters}
+                  className="mt-3 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <RotateCcw size={12} />
+                  Reset filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {(usingDemoFeed || !!feedError) && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              {feedError || "Demo seed feed is active while live listings are syncing."}
+            </div>
+          )}
+
+          {isFeedLoading && feed.length === 0 ? (
+            <div className="space-y-4">
+              {[0, 1].map((index) => (
+                <div
+                  key={`feed-skeleton-${index}`}
+                  className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
+                >
+                  <div className="h-4 w-24 rounded bg-slate-200" />
+                  <div className="mt-4 h-6 w-2/3 rounded bg-slate-200" />
+                  <div className="mt-3 h-4 w-full rounded bg-slate-200" />
+                  <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
                 </div>
+              ))}
+            </div>
+          ) : !featuredListing ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8">
+              <h3 className="text-xl font-semibold text-slate-900">No posts match current filters</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Try widening filters or create a new post to activate this lane.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setCategory("all");
+                    setSortBy("best");
+                    clearAdvancedFilters();
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300"
+                >
+                  Reset filters
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="relative overflow-hidden rounded-3xl border border-indigo-200/70 bg-gradient-to-br from-indigo-100 via-white to-sky-100 p-4 shadow-sm sm:p-5">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_15%,rgba(99,102,241,0.18),transparent_35%),radial-gradient(circle_at_85%_85%,rgba(56,189,248,0.12),transparent_30%)]" />
+                <article className="relative rounded-2xl border border-white/70 bg-white/95 p-4 shadow-md backdrop-blur-sm sm:p-5">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">LIVE</span>
+                        <span className="text-slate-500">{formatRelativeAge(featuredListing.createdAt)}</span>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${realtimeStyle.className}`}>
+                          <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
+                          {realtimeStyle.label}
+                        </span>
+                      </div>
 
-                {visibleFeed.map((item, index) => {
-                  const listingSignals = getListingSignals(item);
-                  const freshLabel = formatRelativeAge(item.createdAt);
-                  const freshClassName = isFreshListing(item.createdAt)
-                    ? "text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded"
-                    : "text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded";
-                  const threadMode = feedLayout === "thread";
-                  const voteScore = listingVotes[item.id] ?? Math.max(1, Math.round(item.rankScore / 7));
-                  const saved = savedListingIds.has(item.id);
-                  const enterDelay = Math.min(index * 45, 320);
+                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900">
+                        {featuredListing.displayTitle}
+                      </h2>
 
-                  return (
-                    <div
-                      key={item.id}
-                      ref={(el) => {
-                        cardRefs.current[item.id] = el;
-                      }}
-                      style={{ "--enter-delay": `${enterDelay}ms` } as CSSProperties}
-                      className={`post-card-enter group border bg-white transition-all duration-300 shadow-sm hover:shadow-lg ${
-                        threadMode ? "overflow-hidden rounded-2xl" : "rounded-3xl p-4 sm:p-6"
-                      } ${
-                        highlightedId === item.id
-                          ? "border-indigo-400 shadow-[0_0_0_2px_rgba(99,102,241,0.35)]"
-                          : "border-slate-200/90"
-                      }`}
-                    >
-                      <div className={`flex ${threadMode ? "flex-row gap-0" : "flex-col gap-4 sm:flex-row"}`}>
-                        <div
-                          className={`flex flex-col items-center gap-1 border-slate-200 bg-slate-50 ${
-                            threadMode
-                              ? "w-14 shrink-0 border-r py-4"
-                              : "w-full flex-row rounded-2xl border px-2 py-2 sm:w-16 sm:flex-col sm:rounded-xl sm:border-0 sm:bg-transparent sm:p-0"
-                          }`}
+                      <div className="mt-3 flex items-center gap-3">
+                        <Image
+                          src={featuredListing.avatar}
+                          alt={featuredListing.displayCreator}
+                          width={44}
+                          height={44}
+                          className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                        />
+                        <div>
+                          <p className="text-base font-medium text-slate-800">{featuredListing.displayCreator}</p>
+                          <p className="text-sm text-slate-500">{featuredListing.distance} km away</p>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-lg text-slate-700">{featuredListing.displayDescription}</p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                        {featuredListing.price > 0 && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">₹ {featuredListing.price}</span>
+                        )}
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Respond within {featuredListing.responseMinutes} mins</span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Match {featuredListing.rankScore}</span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{featuredListing.profileCompletion}% profile</span>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            featuredListing.type === "demand"
+                              ? void messageProvider(featuredListing.provider_id)
+                              : void bookNow(featuredListing)
+                          }
+                          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                         >
-                          <button
-                            type="button"
-                            onClick={() => voteOnListing(item.id, "up", item.rankScore)}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700"
-                            title="Boost post"
-                          >
-                            <ChevronUp size={16} />
-                          </button>
-                          <p className="text-xs font-semibold text-slate-700">{voteScore}</p>
-                          <button
-                            type="button"
-                            onClick={() => voteOnListing(item.id, "down", item.rankScore)}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-100 hover:text-rose-700"
-                            title="Lower priority"
-                          >
-                            <ChevronDown size={16} />
-                          </button>
+                          {featuredListing.type === "demand" ? (
+                            messageLoadingId === featuredListing.provider_id ? (
+                              "Starting..."
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5">
+                                <MessageCircle size={14} />
+                                Respond
+                              </span>
+                            )
+                          ) : (
+                            "Book Now"
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProvider(featuredListing.provider_id)}
+                          className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                        >
+                          View Profile
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            featuredListing.businessSlug
+                              ? router.push(`/business/${featuredListing.businessSlug}`)
+                              : setSelectedProvider(featuredListing.provider_id)
+                          }
+                          className="text-sm font-medium text-indigo-700 hover:text-indigo-600"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                      {featuredListing.media?.[0] ? (
+                        <>
+                          {featuredListing.media[0].mimeType.startsWith("image/") &&
+                          !featuredListing.media[0].mimeType.startsWith("image/svg") ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={featuredListing.media[0].url}
+                              alt={featuredListing.displayTitle}
+                              className="h-full min-h-[280px] w-full object-cover"
+                            />
+                          ) : featuredListing.media[0].mimeType.startsWith("video/") ? (
+                            <video
+                              src={featuredListing.media[0].url}
+                              controls
+                              preload="metadata"
+                              className="h-full min-h-[280px] w-full object-cover"
+                            />
+                          ) : featuredListing.media[0].mimeType.startsWith("audio/") ? (
+                            <div className="grid min-h-[280px] place-items-center p-4">
+                              <div className="w-full">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Voice Attachment</p>
+                                <audio src={featuredListing.media[0].url} controls className="w-full" preload="metadata" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid min-h-[280px] place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-center">
+                              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">Graphics Attachment</p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="grid min-h-[280px] place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">Graphic Preview</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              {secondaryListings.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                  {secondaryListings.map((item, index) => {
+                    const saved = savedListingIds.has(item.id);
+                    const mediaKinds = getMediaKinds(item.media);
+                    const listingSignals = getListingSignals(item);
+                    const primaryMedia = item.media?.[0] || null;
+                    const enterDelay = Math.min(index * 55, 260);
+
+                    return (
+                      <article
+                        key={item.id}
+                        style={{ "--enter-delay": `${enterDelay}ms` } as CSSProperties}
+                        className="post-card-enter overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                      >
+                        <div className="relative">
+                          {primaryMedia ? (
+                            <>
+                              {primaryMedia.mimeType.startsWith("image/") && !primaryMedia.mimeType.startsWith("image/svg") ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={primaryMedia.url}
+                                  alt={item.displayTitle}
+                                  className="h-44 w-full object-cover"
+                                />
+                              ) : primaryMedia.mimeType.startsWith("video/") ? (
+                                <video
+                                  src={primaryMedia.url}
+                                  controls
+                                  preload="metadata"
+                                  className="h-44 w-full object-cover"
+                                />
+                              ) : primaryMedia.mimeType.startsWith("audio/") ? (
+                                <div className="grid h-44 place-items-center bg-slate-100 p-4">
+                                  <audio src={primaryMedia.url} controls className="w-full" preload="metadata" />
+                                </div>
+                              ) : (
+                                <div className="grid h-44 place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                                  Graphics
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="grid h-44 place-items-center bg-gradient-to-br from-slate-100 via-white to-indigo-50 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                              Visual Preview
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => toggleSaveListing(item.id)}
-                            className="mt-1 rounded-lg p-1.5 text-slate-500 hover:bg-indigo-100 hover:text-indigo-700"
-                            title="Save listing"
+                            className="absolute right-2 top-2 rounded-full border border-white/70 bg-white/90 p-1.5 text-slate-600 shadow-sm transition-colors hover:text-indigo-700"
+                            title="Save post"
                           >
-                            {saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => hideListing(item.id)}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
-                            title="Hide listing"
-                          >
-                            <EyeOff size={16} />
+                            {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                           </button>
                         </div>
 
-                        <div className={`min-w-0 flex-1 ${threadMode ? "p-4 sm:p-5" : ""}`}>
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                              {item.type}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-1 rounded ${
-                                item.verificationStatus === "verified"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : item.verificationStatus === "pending"
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-slate-100 text-slate-600"
-                              }`}
-                            >
-                              {item.verificationStatus === "verified"
-                                ? "Verified"
-                                : item.verificationStatus === "pending"
-                                ? "Pending"
-                                : "Unclaimed"}
-                            </span>
-                            {item.urgent && (
-                              <span className="text-xs bg-red-500 text-white font-semibold px-2 py-1 rounded">
-                                URGENT
+                        <div className="p-4">
+                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] uppercase text-slate-600">{item.type}</span>
+                            {mediaKinds.map((kind) => (
+                              <span key={`${item.id}-${kind}`} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700">
+                                {kind}
                               </span>
-                            )}
-                            <span className={freshClassName}>{freshLabel}</span>
-                            {saved && (
-                              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                                Saved
-                              </span>
-                            )}
+                            ))}
                           </div>
 
-                          <div className="flex items-start gap-3">
-                            <ProviderPopup userId={item.provider_id}>
-                              <Image
-                                src={item.avatar}
-                                alt={`${item.title} avatar`}
-                                width={46}
-                                height={46}
-                                onClick={() => setSelectedProvider(item.provider_id)}
-                                className="h-11 w-11 rounded-full border border-slate-200 cursor-pointer object-cover hover:scale-105 transition"
-                              />
-                            </ProviderPopup>
-                            <div className="min-w-0 flex-1">
-                              <h3 className={`font-semibold text-slate-900 ${threadMode ? "text-base" : "text-lg"}`}>
-                                {item.title}
-                              </h3>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span>by {item.creatorName || "Local Provider"}</span>
-                                {!!item.businessSlug && (
-                                  <button
-                                    onClick={() => router.push(`/business/${item.businessSlug}`)}
-                                    className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-500"
-                                  >
-                                    Business profile
-                                    <ExternalLink size={11} />
-                                  </button>
-                                )}
-                              </div>
-                              <p className={`text-slate-500 mt-1 ${threadMode ? "line-clamp-2 text-sm" : "text-sm"}`}>
-                                {item.description}
-                              </p>
-                            </div>
-                          </div>
+                          <h3 className="line-clamp-1 text-lg font-semibold text-slate-900">{item.displayTitle}</h3>
+                          <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.displayDescription}</p>
 
-                          {!!item.media?.length && (
-                            <div className={`mt-3 grid gap-2 ${threadMode ? "sm:grid-cols-2" : ""}`}>
-                              {item.media.slice(0, threadMode ? 1 : 3).map((mediaItem, index) => {
-                                if (mediaItem.mimeType.startsWith("image/")) {
-                                  return (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      key={`${item.id}-media-${index}`}
-                                      src={mediaItem.url}
-                                      alt="Post attachment"
-                                      className={`w-full rounded-xl border border-slate-200 object-cover ${
-                                        threadMode ? "max-h-44" : "max-h-64"
-                                      }`}
-                                    />
-                                  );
-                                }
-                                if (mediaItem.mimeType.startsWith("video/")) {
-                                  return (
-                                    <video
-                                      key={`${item.id}-media-${index}`}
-                                      src={mediaItem.url}
-                                      controls
-                                      preload="metadata"
-                                      className={`w-full rounded-xl border border-slate-200 ${threadMode ? "max-h-52" : "max-h-72"}`}
-                                    />
-                                  );
-                                }
-                                if (mediaItem.mimeType.startsWith("audio/")) {
-                                  return (
-                                    <div
-                                      key={`${item.id}-media-${index}`}
-                                      className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                                    >
-                                      <audio src={mediaItem.url} controls className="w-full" preload="metadata" />
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })}
-                              {!threadMode && item.media.length > 3 && (
-                                <p className="text-xs text-slate-500">
-                                  +{item.media.length - 3} more attachment(s)
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                             <span className="inline-flex items-center gap-1">
-                              <MapPin size={13} />
+                              <MapPin size={12} />
                               {item.distance} km
                             </span>
-                            <span>~{item.responseMinutes} min response</span>
-                            <span>{item.profileCompletion}% profile</span>
+                            <span>{formatRelativeAge(item.createdAt)}</span>
                             <span className="text-indigo-600">Match {item.rankScore}</span>
                           </div>
 
                           {listingSignals.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
-                              {listingSignals.map((signal) => (
+                              {listingSignals.slice(0, 2).map((signal) => (
                                 <span
-                                  key={`${item.id}-${signal}`}
-                                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
+                                  key={`${item.id}-signal-${signal}`}
+                                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700"
                                 >
                                   {signal}
                                 </span>
@@ -2560,295 +1985,128 @@ return (
                             </div>
                           )}
 
-                          <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
-                            {item.type === "demand" ? (
-                              <>
-                                <button
-                                  onClick={() => messageProvider(item.provider_id)}
-                                  disabled={!item.provider_id}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
-                                >
-                                  {messageLoadingId === item.provider_id ? (
-                                    "Starting..."
-                                  ) : (
-                                    <>
-                                      <MessageCircle size={15} />
-                                      Respond
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedProvider(item.provider_id)}
-                                  disabled={!item.provider_id}
-                                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
-                                >
-                                  Connect
-                                </button>
-                                <button
-                                  onClick={() => bookNow(item)}
-                                  disabled={!item.provider_id}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
-                                >
-                                  Offer Help
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => bookNow(item)}
-                                  disabled={!item.provider_id}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-semibold hover:brightness-110 transition disabled:opacity-60"
-                                >
-                                  Book Now
-                                </button>
-                                <button
-                                  onClick={() => messageProvider(item.provider_id)}
-                                  disabled={!item.provider_id}
-                                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors disabled:opacity-60"
-                                >
-                                  {messageLoadingId === item.provider_id ? (
-                                    "Starting..."
-                                  ) : (
-                                    <>
-                                      <MessageCircle size={15} />
-                                      Chat
-                                    </>
-                                  )}
-                                </button>
-                              </>
-                            )}
-                            {!!item.businessSlug && (
-                              <button
-                                onClick={() => router.push(`/business/${item.businessSlug}`)}
-                                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
-                              >
-                                Business Page
-                              </button>
-                            )}
-                            {item.price > 0 && (
-                              <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                                ₹ {item.price}
-                              </span>
-                            )}
+                          <div className="mt-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                item.type === "demand" ? void messageProvider(item.provider_id) : void bookNow(item)
+                              }
+                              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                            >
+                              {item.type === "demand"
+                                ? messageLoadingId === item.provider_id
+                                  ? "Starting..."
+                                  : "Respond"
+                                : "Book Now"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => item.provider_id && setSelectedProvider(item.provider_id)}
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                            >
+                              Profile
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => hideListing(item.id)}
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+                            >
+                              Hide
+                            </button>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {!visibleFeed.length && (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-8">
-                    <h3 className="text-xl font-semibold text-slate-900">No listings match current filters</h3>
-                    <p className="text-slate-500 mt-2">
-                      Try widening your filters or create a new post/listing to activate this market segment.
-                    </p>
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearch("");
-                          setCategory("all");
-                          setSortBy("best");
-                          setShowTrendingOnly(false);
-                          clearAdvancedFilters();
-                          setHiddenListingIds(new Set());
-                        }}
-                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
-                      >
-                        Reset filters
-                      </button>
-                      <button
-                        onClick={() => setOpenPostModal(true)}
-                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
-                      >
-                        Post a Need
-                      </button>
-                      <button
-                        onClick={() => router.push("/dashboard/provider/add-service")}
-                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
-                      >
-                        Add Service
-                      </button>
-                      <button
-                        onClick={() => router.push("/dashboard/provider/add-product")}
-                        className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200"
-                      >
-                        Add Product
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="flex items-center gap-2 text-slate-900 font-semibold">
-            <CircleDot size={16} />
-            Feed Pulse
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Realtime community activity and composition in your current filter context.
-          </p>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-[11px] text-slate-500">Needs</p>
-              <p className="text-sm font-semibold text-slate-900">{feedMix.demand}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-[11px] text-slate-500">Services</p>
-              <p className="text-sm font-semibold text-slate-900">{feedMix.service}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-[11px] text-slate-500">Products</p>
-              <p className="text-sm font-semibold text-slate-900">{feedMix.product}</p>
-            </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Need velocity</span>
-                <span>{feedMixPercentages.demand}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-rose-500 transition-all duration-700"
-                  style={{ width: `${feedMixPercentages.demand}%` }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Service supply</span>
-                <span>{feedMixPercentages.service}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-indigo-500 transition-all duration-700"
-                  style={{ width: `${feedMixPercentages.service}%` }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Product lane</span>
-                <span>{feedMixPercentages.product}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                  style={{ width: `${feedMixPercentages.product}%` }}
-                />
-              </div>
-            </div>
-          </div>
-          <div className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${realtimeStyle.className}`}>
-            <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
-            Stream {realtimeStyle.label.toLowerCase()}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-500">
-            Prioritize top scoring urgent needs to increase conversion while stream quality is high.
-          </p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-          <h2 className="flex items-center gap-2 mb-3 text-slate-900 font-semibold">
-            <MapPin size={17} />
-            Nearby Map
-          </h2>
-
-          <div className="h-[15rem] sm:h-60 rounded-xl">
-            {mapReady ? (
-              <MarketplaceMap
-                items={visibleFeed.slice(0, 40).map((item) => ({
-                  id: item.id,
-                  title: item.title,
-                  lat: item.lat,
-                  lng: item.lng,
-                }))}
-                center={
-                  viewerCoordinates
-                    ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude }
-                    : null
-                }
-              />
-            ) : (
-              <div className="h-full rounded-xl border border-slate-200 bg-slate-100 animate-pulse grid place-items-center text-xs text-slate-500">
-                Loading map...
-              </div>
-            )}
-          </div>
-
-          {viewerCoordinates && (
-            <p className="mt-2 text-[11px] text-slate-500">
-              Search center: {viewerCoordinates.latitude.toFixed(3)}, {viewerCoordinates.longitude.toFixed(3)}
-            </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
+        </section>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
-              <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
-                <Users size={12} />
-                Providers
-              </p>
-              <p className="text-sm font-semibold text-slate-900">{dashboardStats.providers}</p>
+        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-2xl font-semibold tracking-tight text-slate-900">Boost Your Activity</h3>
+            <p className="mt-1 text-sm text-slate-600">Boost your reach and discover more local opportunities.</p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <p className="text-slate-500">Live posts</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.total}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <p className="text-slate-500">Urgent</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.urgent}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <p className="text-slate-500">Avg match</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.avgMatch}</p>
+              </div>
             </div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
-              <p className="text-[11px] text-slate-500 inline-flex items-center gap-1">
-                <Activity size={12} />
-                Urgent
-              </p>
-              <p className="text-sm font-semibold text-slate-900">{dashboardStats.urgentCount}</p>
+            <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+              Focus on urgent, high-match cards to increase response conversion.
             </div>
-          </div>
-        </div>
+          </section>
 
-        <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-900 mb-1">
-            Create Post
-          </h3>
-          <p className="text-xs text-slate-500">
-            Launch a demand or offering in under a minute.
-          </p>
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-2xl font-semibold text-slate-900">Post a New Need</h3>
+            <p className="mt-1 text-sm text-slate-600">Create a post to get local responses quickly.</p>
+            <button
+              type="button"
+              onClick={() => setOpenPostModal(true)}
+              className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+            >
+              Create Post
+            </button>
+          </section>
 
-          <div className="mt-4 space-y-2 text-sm">
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-              Need something
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-2xl font-semibold text-slate-900">Quick Filters</h3>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              {[
+                { key: "all", label: "All", count: quickFilterCounts.all },
+                { key: "demand", label: "Demand", count: quickFilterCounts.demand },
+                { key: "service", label: "Service", count: quickFilterCounts.service },
+                { key: "product", label: "Product", count: quickFilterCounts.product },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setCategory(option.key)}
+                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                    category === option.key
+                      ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300"
+                  }`}
+                >
+                  <span className="font-semibold">{option.label}</span>
+                  <span className="ml-1 text-xs text-slate-500">({option.count})</span>
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-              Offer a service
-            </div>
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Sell a product
-            </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setOpenPostModal(true)}
-            className="w-full mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-2.5 rounded-xl hover:brightness-110 transition"
-          >
-            Continue →
-          </button>
-        </div>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <h4 className="text-sm font-semibold text-slate-900">Trending Opportunities</h4>
+              <div className="mt-2 space-y-2">
+                {trendingOpportunities.slice(0, 3).map((item) => (
+                  <button
+                    key={`trending-${item.id}`}
+                    type="button"
+                    onClick={() => setSearch(item.displayTitle)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-indigo-300"
+                  >
+                    <p className="line-clamp-1 text-sm font-medium text-slate-900">{item.displayTitle}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.distance} km away</p>
+                  </button>
+                ))}
+                {trendingOpportunities.length === 0 && (
+                  <p className="text-xs text-slate-500">No opportunities for the current filter set.</p>
+                )}
+              </div>
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
-
-    <button
-      type="button"
-      onClick={() => setOpenPostModal(true)}
-      className="market-fab-float fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gradient-to-r from-indigo-600 to-sky-500 text-white w-12 h-12 sm:w-14 sm:h-14 rounded-full text-xl sm:text-2xl shadow-2xl hover:scale-110 transition"
-    >
-      +
-    </button>
     {selectedProvider && (
       <ProviderTrustPanel
         userId={selectedProvider}
@@ -2860,15 +2118,8 @@ return (
       <CreatePostModal
         open={openPostModal}
         onClose={() => setOpenPostModal(false)}
-        onPublished={(result?: PublishPostResult) => {
+        onPublished={() => {
           void fetchFeed(true);
-
-          if (result?.helpRequestId) {
-            setActiveHelpRequestId(result.helpRequestId);
-            setHelpRequestMatchedCount(Number(result.matchedCount || 0));
-            setHelpRequestQueryParam(result.helpRequestId);
-            void loadHelpRequestMatches(result.helpRequestId);
-          }
         }}
       />
     )}
