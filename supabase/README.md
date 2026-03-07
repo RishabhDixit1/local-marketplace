@@ -28,6 +28,7 @@ Run `secure_realtime_rls.sql` before seeding to:
 
 Run `fix_hosted_auth_and_posting.sql` to ensure production-ready defaults for:
 - `posts` RLS read/write policies for authenticated users
+- `profiles` self-service insert/update policies (needed when post `author_id` has FK to `profiles`)
 - `help_requests` select + insert/update/delete policies for authenticated marketplace users
 - `post-media` storage bucket + object policies for user-scoped uploads
 

@@ -502,9 +502,14 @@ export default function CreatePostModal({
 
     const payload: Record<string, string> = {
       user_id: user.id,
+      created_by: user.id,
+      requester_id: user.id,
+      owner_id: user.id,
       type: storageTypeVariants[activeStorageTypeIndex],
       post_type: storageTypeVariants[activeStorageTypeIndex],
       status: "open",
+      state: "open",
+      category,
       text: composedText,
       content: composedText,
       description: composedText,
@@ -672,7 +677,7 @@ export default function CreatePostModal({
           }
         }
 
-        if (["author_id", "provider_id", "created_by"].includes(foreignKeyColumn)) {
+        if (["author_id", "provider_id", "created_by", "requester_id", "owner_id"].includes(foreignKeyColumn)) {
           delete payload[foreignKeyColumn];
           blockedColumns.add(foreignKeyColumn);
           continue;

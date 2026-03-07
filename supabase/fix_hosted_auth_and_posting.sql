@@ -106,6 +106,44 @@ begin
     select 1
     from information_schema.tables
     where table_schema = 'public'
+      and table_name = 'profiles'
+  ) then
+    execute 'alter table public.profiles enable row level security';
+
+    execute 'drop policy if exists profiles_select_authenticated on public.profiles';
+    execute 'drop policy if exists profiles_insert_own on public.profiles';
+    execute 'drop policy if exists profiles_update_own on public.profiles';
+
+    execute '
+      create policy profiles_select_authenticated
+      on public.profiles
+      for select
+      to authenticated
+      using (true)
+    ';
+
+    execute '
+      create policy profiles_insert_own
+      on public.profiles
+      for insert
+      to authenticated
+      with check (id = auth.uid())
+    ';
+
+    execute '
+      create policy profiles_update_own
+      on public.profiles
+      for update
+      to authenticated
+      using (id = auth.uid())
+      with check (id = auth.uid())
+    ';
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.tables
+    where table_schema = 'public'
       and table_name = 'help_requests'
   ) then
     execute 'alter table public.help_requests enable row level security';
