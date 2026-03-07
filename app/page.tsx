@@ -86,17 +86,14 @@ export default function LoginPage() {
     setErrorMessage("");
 
     const browserOrigin = cleanUrl(typeof window !== "undefined" ? window.location.origin : "");
-    const configuredSiteUrl = cleanUrl(process.env.NEXT_PUBLIC_SITE_URL);
-    const baseUrl = browserOrigin || configuredSiteUrl;
-
-    if (!baseUrl) {
+    if (!browserOrigin) {
       setErrorMessage("Could not resolve app URL for auth redirect. Please refresh and try again.");
       setLoading(false);
       setSent(false);
       return;
     }
 
-    const redirectTo = `${baseUrl}/auth/callback`;
+    const redirectTo = `${browserOrigin}/auth/callback`;
     const supabaseConfig = getSupabaseConfig();
 
     if (!supabaseConfig) {
