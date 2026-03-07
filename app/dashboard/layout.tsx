@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
   Bookmark,
+  ClipboardList,
   ChevronsLeft,
   ChevronsRight,
   Compass,
@@ -14,18 +15,17 @@ import {
   LogOut,
   Menu,
   MessageCircle,
-  Package,
-  Sparkles,
+  Newspaper,
   User,
   Users,
   X,
 } from "lucide-react";
 
 const navigationTabs = [
-  { name: "Welcome", path: "/dashboard/welcome", icon: Sparkles },
-  { name: "Posts", path: "/dashboard", icon: Home },
+  { name: "Welcome", path: "/dashboard/welcome", icon: Home },
+  { name: "Posts", path: "/dashboard", icon: Newspaper },
   { name: "People", path: "/dashboard/people", icon: Users },
-  { name: "Tasks", path: "/dashboard/tasks", icon: Package },
+  { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
 ];
 
