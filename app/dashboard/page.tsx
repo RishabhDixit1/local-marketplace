@@ -124,6 +124,21 @@ type PostRow = {
   created_at?: string;
 };
 
+type HelpRequestRow = {
+  id: string;
+  requester_id?: string;
+  title?: string;
+  details?: string;
+  category?: string;
+  urgency?: string;
+  budget_min?: number;
+  budget_max?: number;
+  location_label?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at?: string;
+};
+
 type ProfileRow = {
   id: string;
   name?: string;
@@ -160,6 +175,8 @@ type FeedFilterState = {
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
+const isMissingRelationError = (message: string) =>
+  /relation .* does not exist|table .* does not exist/i.test(message);
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
@@ -1102,6 +1119,43 @@ export default function MarketplacePage() {
         return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
       };
 
+      const selectOpenHelpRequestsRows = async (): Promise<FlexibleRow[]> => {
+        const primaryResult = await supabase
+          .from("help_requests")
+          .select(
+            "id,requester_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at"
+          )
+          .eq("status", "open")
+          .limit(FEED_LIMIT_PER_TYPE);
+
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (isMissingRelationError(primaryResult.error.message)) {
+          return [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase
+          .from("help_requests")
+          .select("*")
+          .limit(FEED_LIMIT_PER_TYPE);
+
+        if (fallbackResult.error && isMissingRelationError(fallbackResult.error.message)) {
+          return [];
+        }
+
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
       const selectCurrentUserProfile = async (currentUserId: string): Promise<FlexibleRow | null> => {
         if (!currentUserId) return null;
 
@@ -1163,11 +1217,12 @@ export default function MarketplacePage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const currentUserId = sessionData.session?.user?.id || "";
 
-      const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw] = await Promise.all([
+      const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
         selectCurrentUserProfile(currentUserId),
         selectRowsWithFallback("service_listings", "id,title,description,price,category,provider_id,created_at"),
         selectRowsWithFallback("product_catalog", "id,title,description,price,category,provider_id,created_at"),
         selectOpenPostsRows(),
+        selectOpenHelpRequestsRows(),
       ]);
 
       const profileCoordinates = resolveCoordinates({
@@ -1219,12 +1274,40 @@ export default function MarketplacePage() {
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }));
 
+      const helpRequestRows: HelpRequestRow[] = helpRequestRowsRaw
+        .filter((row) => {
+          const status = stringFromRow(row, ["status", "state"], "");
+          return !status || status.toLowerCase() === "open";
+        })
+        .map((row, index) => ({
+          id: stringFromRow(row, ["id"], `help-request-${index}`),
+          requester_id: stringFromRow(row, ["requester_id", "user_id", "created_by"], ""),
+          title: stringFromRow(row, ["title", "name"], ""),
+          details: stringFromRow(row, ["details", "description", "text"], ""),
+          category: stringFromRow(row, ["category"], "Need"),
+          urgency: stringFromRow(row, ["urgency"], ""),
+          budget_min: numberFromRow(row, ["budget_min", "budget"], 0),
+          budget_max: numberFromRow(row, ["budget_max"], 0),
+          location_label: stringFromRow(row, ["location_label", "location"], ""),
+          latitude: (() => {
+            const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
+            return Number.isFinite(value) ? value : null;
+          })(),
+          longitude: (() => {
+            const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
+            return Number.isFinite(value) ? value : null;
+          })(),
+          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
+        }))
+        .filter((row) => !!row.requester_id);
+
       const profileIds = [
         ...serviceRows.map((row) => row.provider_id),
         ...productRows.map((row) => row.provider_id),
         ...postRows
           .map((row) => row.user_id || row.provider_id || row.created_by || "")
           .filter(Boolean),
+        ...helpRequestRows.map((row) => row.requester_id || "").filter(Boolean),
       ];
 
       const uniqueProfileIds = Array.from(new Set(profileIds)).slice(0, MAX_PROFILE_LOOKUP);
@@ -1439,7 +1522,51 @@ export default function MarketplacePage() {
         };
       });
 
-      const rawLiveFeed = [...formattedPosts, ...formattedServices, ...formattedProducts];
+      const formattedHelpRequests: Listing[] = helpRequestRows.map((request) => {
+        const ownerId = request.requester_id || "";
+        const stats = ownerId ? getProviderStats(ownerId) : null;
+        const fallbackCoordinates = resolveCoordinates({
+          row: {
+            latitude: request.latitude,
+            longitude: request.longitude,
+          },
+          location: request.location_label,
+          seed: request.id,
+        });
+        const targetCoordinates = stats?.coordinates || fallbackCoordinates;
+        const distance = stats?.distance || distanceBetweenCoordinatesKm(resolvedViewerCoordinates, fallbackCoordinates);
+        const budgetValue = Math.max(Number(request.budget_max || 0), Number(request.budget_min || 0));
+        const normalizedUrgency = (request.urgency || "").toLowerCase();
+
+        return {
+          id: `help-${request.id}`,
+          title: request.title || "Need local support",
+          description: request.details || "Looking for nearby help",
+          price: Number.isFinite(budgetValue) ? budgetValue : 0,
+          category: request.category || "Need",
+          provider_id: ownerId,
+          type: "demand",
+          avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=7",
+          distance,
+          urgent: normalizedUrgency === "urgent" || normalizedUrgency === "today",
+          lat: targetCoordinates.latitude,
+          lng: targetCoordinates.longitude,
+          createdAt: request.created_at,
+          creatorName: stats?.profile?.name || "Community Member",
+          businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
+          rankScore: stats?.rankScore || 52,
+          responseMinutes: stats?.responseMinutes || 24,
+          profileCompletion: stats?.profileCompletion || 48,
+          verificationStatus: stats?.verificationStatus || "unclaimed",
+        };
+      });
+
+      const rawLiveFeed = [
+        ...formattedHelpRequests,
+        ...formattedPosts,
+        ...formattedServices,
+        ...formattedProducts,
+      ];
       const liveFeed = dedupeListings(rawLiveFeed);
       if (liveFeed.length === 0) {
         setFeed(demoFeed);
@@ -1493,6 +1620,7 @@ export default function MarketplacePage() {
     const channel = supabase
       .channel("dashboard-feed-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)

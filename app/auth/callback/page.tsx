@@ -15,10 +15,23 @@ export default function AuthCallbackPage() {
         setMessage("Sign-in is taking longer than expected. Redirecting to login...");
         router.replace("/");
       }
-    }, 15000);
+    }, 30000);
 
     const completeLogin = async () => {
+      let subscription: { unsubscribe: () => void } | null = null;
       try {
+        const params = new URLSearchParams(window.location.search);
+        const authCode = params.get("code");
+        const authError = params.get("error_description") || params.get("error");
+        if (authError) {
+          throw new Error(decodeURIComponent(authError));
+        }
+
+        if (authCode) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (exchangeError) throw exchangeError;
+        }
+
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
 
@@ -28,17 +41,21 @@ export default function AuthCallbackPage() {
         }
 
         const {
-          data: { subscription },
+          data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === "SIGNED_IN" && session) {
+          if (!cancelled && event === "SIGNED_IN" && session) {
             router.replace("/dashboard");
           }
         });
+        subscription = authSubscription;
 
-        // Cleanup handled by outer return.
-        return () => subscription.unsubscribe();
-      } catch {
-        setMessage("Unable to complete sign-in. Please request a new login link.");
+        return () => subscription?.unsubscribe();
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Unable to complete sign-in. Please request a new login link.";
+        setMessage(message);
       }
     };
 

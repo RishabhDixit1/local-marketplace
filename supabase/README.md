@@ -24,7 +24,14 @@ Run `secure_realtime_rls.sql` before seeding to:
 - add indexes + helper functions for participant-based access checks
 - add `get_provider_order_stats(provider_ids uuid[])` RPC used by People/Business surfaces
 
-## Realtime publication setup (run second)
+## Hosted auth + posting patch (run second)
+
+Run `fix_hosted_auth_and_posting.sql` to ensure production-ready defaults for:
+- `posts` RLS read/write policies for authenticated users
+- `help_requests` open-feed visibility for authenticated marketplace users
+- `post-media` storage bucket + object policies for user-scoped uploads
+
+## Realtime publication setup (run third)
 
 Run `enable_realtime_publication.sql` to register all live marketplace tables in `supabase_realtime` publication.
 Without this step, UI subscriptions can connect but receive no row-change events.

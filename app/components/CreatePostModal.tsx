@@ -690,7 +690,8 @@ export default function CreatePostModal({
       break;
     }
 
-    if (publishError) {
+    const postCreated = !publishError;
+    if (publishError && type !== "need") {
       setPublishing(false);
       const message = isRowLevelSecurityError(publishError)
         ? `${publishError.message}. Check posts INSERT policy to allow authenticated users with their own owner-id columns.`
@@ -699,8 +700,17 @@ export default function CreatePostModal({
       return;
     }
 
+    const postPublishWarning =
+      publishError && type === "need"
+        ? "Post table permissions blocked direct insert. Published via structured request fallback."
+        : "";
+    if (postPublishWarning) {
+      console.warn(postPublishWarning, publishError?.message || "");
+    }
+
     let helpRequestId: string | undefined;
     let matchedCount: number | undefined;
+    let helpRequestCreated = false;
 
     if (type === "need") {
       const numericBudget = Number((budget || "").replace(/[^\d.]/g, ""));
@@ -754,6 +764,7 @@ export default function CreatePostModal({
       } else if (insertedHelpRequest?.id) {
         helpRequestId = insertedHelpRequest.id as string;
         matchedCount = Number(insertedHelpRequest.matched_count || 0);
+        helpRequestCreated = true;
 
         const { data: matchResult, error: matchError } = await supabase.rpc("match_help_request", {
           target_help_request_id: helpRequestId,
@@ -769,6 +780,12 @@ export default function CreatePostModal({
       }
     }
 
+    if (type === "need" && !postCreated && !helpRequestCreated) {
+      setPublishing(false);
+      alert("Failed to publish request. Database permissions are preventing both post and help request inserts.");
+      return;
+    }
+
     setPublishing(false);
 
     await onPublished?.({
@@ -778,11 +795,11 @@ export default function CreatePostModal({
     });
 
     if (type === "need" && helpRequestId) {
-      alert(
+      const baseMessage =
         matchedCount && matchedCount > 0
           ? `Help request published. ${matchedCount} provider matches are ready.`
-          : "Help request published. Matching is in progress."
-      );
+          : "Help request published. Matching is in progress.";
+      alert(postPublishWarning ? `${baseMessage} (${postPublishWarning})` : baseMessage);
     } else {
       alert("Post published successfully");
     }
