@@ -62,10 +62,28 @@ export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supaba
 npm run supabase:migrate
 ```
 
+If your database password has special URL characters (for example `@`, `:`, `/`, `?`, `#`), URL-encode them first.
+Example: use `%40` instead of `@` in the password segment.
+
 Optional demo seeds:
 
 ```bash
 npm run supabase:setup -- --with-seeds
+```
+
+### SQL Editor fallback (no direct DB access)
+
+If your network cannot reach the direct database host (for example, IPv6-only routing issues), generate a single SQL bundle and run it in Supabase SQL Editor:
+
+```bash
+npm run supabase:sql-editor
+```
+
+This command copies canonical migrations + verification SQL to your clipboard.
+Optional demo seeds can be included with:
+
+```bash
+npm run supabase:sql-editor -- --with-seeds
 ```
 
 ### Canonical migration source
@@ -125,6 +143,7 @@ Important:
 - `npm run test:e2e:auth` - run authenticated Playwright suite (auto-generates `E2E_MAGIC_LINK_URL` when possible)
 - `npm run supabase:setup` - apply canonical Supabase migrations
 - `npm run supabase:migrate` - apply migrations + verification checks
+- `npm run supabase:sql-editor` - copy canonical migration SQL bundle for Supabase SQL Editor
 
 ## E2E Smoke Tests
 

@@ -12,16 +12,28 @@ export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supaba
 npm run supabase:migrate
 ```
 
+If your database password contains URL-reserved characters (such as `@`, `:`, `/`, `?`, `#`), URL-encode them.
+Example: `my@pass` becomes `my%40pass` inside `SUPABASE_DB_URL`.
+
 ### Apply migrations without verification
 
 ```bash
 npm run supabase:setup
 ```
 
+### SQL Editor fallback (clipboard bundle)
+
+```bash
+npm run supabase:sql-editor
+```
+
+This copies canonical migrations plus verification SQL into your clipboard so you can paste/run once in Supabase SQL Editor.
+
 ### Optional demo seeds
 
 ```bash
 npm run supabase:setup -- --with-seeds
+npm run supabase:sql-editor -- --with-seeds
 ```
 
 ## What the canonical migration currently enforces
