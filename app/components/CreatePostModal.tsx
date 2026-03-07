@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { supabase } from "@/lib/supabase";
+import type {
+  PublishNeedRequest,
+  PublishNeedResponse,
+  PublishPostRequest,
+  PublishPostResponse,
+} from "@/lib/api/publish";
 import { motion } from "framer-motion";
 import {
   Clock3,
@@ -345,21 +351,6 @@ export default function CreatePostModal({
     return uploaded;
   };
 
-  const mapUrgencyWindow = (value: string): "urgent" | "today" | "24h" | "week" | "flexible" => {
-    if (value === "Within 1 hour") return "urgent";
-    if (value === "Today") return "today";
-    if (value === "Within 24 hours") return "24h";
-    if (value === "This week") return "week";
-    return "flexible";
-  };
-
-  const getStorageTypeVariants = (postType: PostType): string[] => {
-    if (postType === "need") {
-      return ["need", "demand"];
-    }
-    return [postType];
-  };
-
   const resolveRequestCoordinates = async (
     userId: string
   ): Promise<{ latitude: number; longitude: number } | null> => {
@@ -420,10 +411,12 @@ export default function CreatePostModal({
     }
 
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user || null;
+    const accessToken = session?.access_token || "";
 
-    if (!user) {
+    if (!user || !accessToken) {
       alert("Login required");
       return;
     }
@@ -474,353 +467,79 @@ export default function CreatePostModal({
       return;
     }
 
-    const composedText = [
-      trimmedTitle,
-      trimmedDetails || "No additional details",
-      `Type: ${type}`,
-      `Mode: ${mode}`,
-      `Needed: ${
-        mode === "urgent"
-          ? neededWithin
-          : scheduleDate
-            ? `${scheduleDate} ${scheduleTime}`
-            : "flexible"
-      }`,
-      budget.trim() ? `Budget: ₹${budget.trim()}` : "Budget: Not specified",
-      `Category: ${category}`,
-      `Location: ${locationLabel}`,
-      flexibleTiming ? "Timing: Flexible" : "Timing: Fixed",
-      uploadedMedia.length
-        ? `Media: ${uploadedMedia
-            .map((item) => `[${item.type}] ${item.url}`)
-            .join(", ")}`
-        : "Media: None",
-    ].join(" | ");
+    const numericBudget = Number((budget || "").replace(/[^\d.]/g, ""));
+    const normalizedBudget = Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null;
 
-    const storageTypeVariants = getStorageTypeVariants(type);
-    let activeStorageTypeIndex = 0;
-
-    const payload: Record<string, string> = {
-      user_id: user.id,
-      created_by: user.id,
-      requester_id: user.id,
-      owner_id: user.id,
-      type: storageTypeVariants[activeStorageTypeIndex],
-      post_type: storageTypeVariants[activeStorageTypeIndex],
-      status: "open",
-      state: "open",
-      category,
-      text: composedText,
-      content: composedText,
-      description: composedText,
+    const requestPayloadBase = {
       title: trimmedTitle,
-      name: trimmedTitle,
+      details: trimmedDetails,
+      category,
+      budget: normalizedBudget,
+      locationLabel,
+      radiusKm,
+      mode,
+      neededWithin,
+      scheduleDate,
+      scheduleTime,
+      flexibleTiming,
+      media: uploadedMedia,
     };
-
-    const getMissingColumn = (message: string) => {
-      const match = message.match(/could not find the '([^']+)' column of 'posts'/i);
-      return match?.[1] || null;
-    };
-
-    const getRequiredNullColumn = (message: string) => {
-      const match = message.match(/null value in column \"([^\"]+)\"/i);
-      return match?.[1] || null;
-    };
-
-    const getForeignKeyColumn = (message: string, details?: string | null) => {
-      const detailMatch = details?.match(/Key \(([^)]+)\)=\([^)]+\) is not present in table/i);
-      if (detailMatch?.[1]) {
-        return detailMatch[1];
-      }
-      const constraintName = message.match(/constraint\s+\"([^\"]+_fkey)\"/i)?.[1]?.toLowerCase() || "";
-      if (!constraintName) return null;
-
-      const knownForeignKeyColumns = [
-        "author_id",
-        "created_by",
-        "provider_id",
-        "requester_id",
-        "owner_id",
-        "user_id",
-      ];
-
-      for (const columnName of knownForeignKeyColumns) {
-        if (constraintName.includes(`_${columnName}_fkey`)) {
-          return columnName;
-        }
-      }
-
-      const genericMatch = constraintName.match(/^[a-z0-9]+_(.+)_fkey$/i);
-      return genericMatch?.[1] || null;
-    };
-
-    const getForeignKeyTargetTable = (details?: string | null) => {
-      const match = details?.match(/is not present in table \"([^\"]+)\"/i);
-      return match?.[1] || null;
-    };
-
-    const isRowLevelSecurityError = (error: { message: string; code?: string | null }) =>
-      error.code === "42501" || /row-level security policy/i.test(error.message);
-
-    const ensureAuthorReference = async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.id) {
-        return profile.id as string;
-      }
-
-      const fallbackName =
-        (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()) ||
-        (typeof user.user_metadata?.name === "string" && user.user_metadata.name.trim()) ||
-        user.email?.split("@")[0] ||
-        "Local User";
-
-      const profilePayloads: Record<string, unknown>[] = [
-        {
-          id: user.id,
-          name: fallbackName,
-          location: "Not set",
-          bio: "Joined local marketplace",
-          role: "seeker",
-          services: [],
-          availability: "available",
-          email: user.email || null,
-        },
-        {
-          id: user.id,
-          name: fallbackName,
-          email: user.email || null,
-        },
-        { id: user.id },
-      ];
-
-      for (const profilePayload of profilePayloads) {
-        const { error } = await supabase
-          .from("profiles")
-          .upsert(profilePayload, { onConflict: "id" });
-
-        if (!error) {
-          return user.id;
-        }
-      }
-
-      return null;
-    };
-
-    let publishError: { message: string } | null = null;
-    const blockedColumns = new Set<string>();
-
-    for (let i = 0; i < 20; i += 1) {
-      const result = await supabase.from("posts").insert(payload);
-      if (!result.error) {
-        publishError = null;
-        break;
-      }
-
-      publishError = result.error;
-      const missing = getMissingColumn(result.error.message);
-      if (missing && payload[missing] !== undefined) {
-        delete payload[missing];
-        blockedColumns.add(missing);
-        continue;
-      }
-
-      const required = getRequiredNullColumn(result.error.message);
-      if (required && !blockedColumns.has(required)) {
-        if (["text", "content", "description", "body", "message"].includes(required)) {
-          payload[required] = composedText;
-          continue;
-        }
-        if (["title", "name", "subject"].includes(required)) {
-          payload[required] = trimmedTitle;
-          continue;
-        }
-        if (["user_id", "created_by", "provider_id", "author_id", "requester_id", "owner_id"].includes(required)) {
-          payload[required] = user.id;
-          continue;
-        }
-        if (["type", "post_type"].includes(required)) {
-          payload[required] = storageTypeVariants[activeStorageTypeIndex];
-          continue;
-        }
-        if (required === "category") {
-          payload[required] = category;
-          continue;
-        }
-        if (["status", "state"].includes(required)) {
-          payload[required] = "open";
-          continue;
-        }
-      }
-
-      const foreignKeyColumn = getForeignKeyColumn(
-        result.error.message,
-        "details" in result.error ? result.error.details : null
-      );
-      if (foreignKeyColumn && payload[foreignKeyColumn] !== undefined) {
-        const foreignKeyTargetTable = getForeignKeyTargetTable(
-          "details" in result.error ? result.error.details : null
-        );
-
-        if (
-          foreignKeyColumn === "author_id" &&
-          (foreignKeyTargetTable === "profiles" || !foreignKeyTargetTable)
-        ) {
-          const ensuredAuthorId = await ensureAuthorReference();
-          if (ensuredAuthorId) {
-            payload[foreignKeyColumn] = ensuredAuthorId;
-            continue;
-          }
-        }
-
-        if (["author_id", "provider_id", "created_by", "requester_id", "owner_id"].includes(foreignKeyColumn)) {
-          delete payload[foreignKeyColumn];
-          blockedColumns.add(foreignKeyColumn);
-          continue;
-        }
-      }
-
-      if (isRowLevelSecurityError(result.error)) {
-        if (activeStorageTypeIndex < storageTypeVariants.length - 1) {
-          activeStorageTypeIndex += 1;
-          const nextStorageType = storageTypeVariants[activeStorageTypeIndex];
-          payload.type = nextStorageType;
-          payload.post_type = nextStorageType;
-          continue;
-        }
-
-        let ownershipChanged = false;
-        for (const ownerColumn of ["user_id", "created_by", "author_id", "requester_id", "owner_id"]) {
-          if (blockedColumns.has(ownerColumn)) continue;
-          if (payload[ownerColumn] !== user.id) {
-            payload[ownerColumn] = user.id;
-            ownershipChanged = true;
-          }
-        }
-        if (ownershipChanged) {
-          continue;
-        }
-      }
-
-      break;
-    }
-
-    const postCreated = !publishError;
-    if (publishError && type !== "need") {
-      setPublishing(false);
-      const message = isRowLevelSecurityError(publishError)
-        ? `${publishError.message}. Check posts INSERT policy to allow authenticated users with their own owner-id columns.`
-        : publishError.message;
-      alert(`Failed to publish post: ${message}`);
-      return;
-    }
-
-    const postPublishWarning =
-      publishError && type === "need"
-        ? "Post table permissions blocked direct insert. Published via structured request fallback."
-        : "";
-    if (postPublishWarning) {
-      console.warn(postPublishWarning, publishError?.message || "");
-    }
 
     let helpRequestId: string | undefined;
     let matchedCount: number | undefined;
-    let helpRequestCreated = false;
-    let helpRequestPublishError: { message: string; code?: string | null } | null = null;
 
     if (type === "need") {
-      const numericBudget = Number((budget || "").replace(/[^\d.]/g, ""));
       const requestCoordinates = await resolveRequestCoordinates(user.id);
-      const scheduledDateTime =
-        mode === "schedule" && scheduleDate
-          ? new Date(`${scheduleDate}T${scheduleTime || "00:00"}`)
-          : null;
+      const needPayload: PublishNeedRequest = {
+        ...requestPayloadBase,
+        postType: "need",
+        latitude: requestCoordinates?.latitude || null,
+        longitude: requestCoordinates?.longitude || null,
+      };
 
-      const { data: insertedHelpRequest, error: helpRequestError } = await supabase
-        .from("help_requests")
-        .insert({
-          requester_id: user.id,
-          title: trimmedTitle,
-          details: trimmedDetails,
-          category,
-          urgency: mode === "urgent" ? mapUrgencyWindow(neededWithin) : "flexible",
-          needed_by:
-            scheduledDateTime && Number.isFinite(scheduledDateTime.getTime())
-              ? scheduledDateTime.toISOString()
-              : null,
-          budget_min: Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null,
-          budget_max: Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null,
-          location_label: locationLabel,
-          latitude: requestCoordinates?.latitude || null,
-          longitude: requestCoordinates?.longitude || null,
-          radius_km: radiusKm,
-          metadata: {
-            source: "create_post_modal",
-            mode,
-            needed_within: neededWithin,
-            flexible_timing: flexibleTiming,
-            attachment_count: uploadedMedia.length,
-          },
-        })
-        .select("id,matched_count")
-        .single();
+      const response = await fetch("/api/needs/publish", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(needPayload),
+      });
 
-      if (helpRequestError) {
-        helpRequestPublishError = helpRequestError;
-        const missingTable =
-          /relation .*help_requests.* does not exist|could not find the 'help_requests' table/i.test(
-            helpRequestError.message
-          ) || /could not find the table 'public\.help_requests' in the schema cache/i.test(helpRequestError.message);
-        if (missingTable) {
-          alert(
-            'Post published, but structured matching is disabled. Run "supabase/secure_realtime_rls.sql" to enable help requests.'
-          );
-        } else {
-          console.warn("Could not create help request:", helpRequestError.message);
-        }
-      } else if (insertedHelpRequest?.id) {
-        helpRequestId = insertedHelpRequest.id as string;
-        matchedCount = Number(insertedHelpRequest.matched_count || 0);
-        helpRequestCreated = true;
-
-        const { data: matchResult, error: matchError } = await supabase.rpc("match_help_request", {
-          target_help_request_id: helpRequestId,
-        });
-
-        if (!matchError) {
-          if (typeof matchResult === "number") {
-            matchedCount = Number(matchResult);
-          } else if (Array.isArray(matchResult) && typeof matchResult[0] === "number") {
-            matchedCount = Number(matchResult[0]);
-          }
-        }
+      const payload = (await response.json().catch(() => null)) as PublishNeedResponse | null;
+      if (!response.ok || !payload?.ok) {
+        const message = payload && "message" in payload ? payload.message : "Failed to publish request.";
+        const details = payload && "details" in payload ? payload.details : "";
+        setPublishing(false);
+        alert(details ? `${message}\n\n${details}` : message);
+        return;
       }
-    }
 
-    if (type === "need" && !postCreated && !helpRequestCreated) {
-      setPublishing(false);
-      const postFailureMessage = publishError?.message || "unknown post insert error";
-      const helpRequestFailureMessage = helpRequestPublishError?.message || "unknown help request insert error";
-      const blockedByRls =
-        !!publishError &&
-        !!helpRequestPublishError &&
-        isRowLevelSecurityError(publishError) &&
-        isRowLevelSecurityError(helpRequestPublishError);
+      helpRequestId = payload.helpRequestId;
+      matchedCount = Number(payload.matchedCount || 0);
+    } else {
+      const postPayload: PublishPostRequest = {
+        ...requestPayloadBase,
+        postType: type,
+      };
 
-      if (blockedByRls) {
-        alert(
-          `Failed to publish request due to database RLS policies. Run "supabase/fix_hosted_auth_and_posting.sql" in Supabase SQL Editor, then retry.\n\nposts: ${postFailureMessage}\nhelp_requests: ${helpRequestFailureMessage}`
-        );
-      } else {
-        alert(
-          `Failed to publish request.\n\nposts: ${postFailureMessage}\nhelp_requests: ${helpRequestFailureMessage}`
-        );
+      const response = await fetch("/api/posts/publish", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postPayload),
+      });
+
+      const payload = (await response.json().catch(() => null)) as PublishPostResponse | null;
+      if (!response.ok || !payload?.ok) {
+        const message = payload && "message" in payload ? payload.message : "Failed to publish post.";
+        const details = payload && "details" in payload ? payload.details : "";
+        setPublishing(false);
+        alert(details ? `${message}\n\n${details}` : message);
+        return;
       }
-      return;
     }
 
     setPublishing(false);
@@ -836,7 +555,7 @@ export default function CreatePostModal({
         matchedCount && matchedCount > 0
           ? `Help request published. ${matchedCount} provider matches are ready.`
           : "Help request published. Matching is in progress.";
-      alert(postPublishWarning ? `${baseMessage} (${postPublishWarning})` : baseMessage);
+      alert(baseMessage);
     } else {
       alert("Post published successfully");
     }

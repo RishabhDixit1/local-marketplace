@@ -59,7 +59,7 @@ Set your database connection string and run:
 
 ```bash
 export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'
-npm run supabase:setup
+npm run supabase:migrate
 ```
 
 Optional demo seeds:
@@ -68,20 +68,19 @@ Optional demo seeds:
 npm run supabase:setup -- --with-seeds
 ```
 
-### Manual SQL order (SQL Editor)
+### Canonical migration source
 
-1. `supabase/secure_realtime_rls.sql`
-2. `supabase/fix_hosted_auth_and_posting.sql`
-3. `supabase/enable_realtime_publication.sql`
-4. `supabase/add_feed_interactions.sql`
-5. `supabase/add_feed_card_metrics_function.sql`
-6. `supabase/verify_realtime_setup.sql`
-7. `supabase/seed_dashboard_demo.sql` (optional)
-8. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
+Use only:
+
+- `supabase/migrations/*.sql`
+
+Legacy root-level SQL files in `supabase/` are retained for reference, but production should follow the migration runner to avoid schema drift.
 
 Important:
 - In Supabase SQL Editor, paste the SQL file contents and run them.
-- Do not run filenames like `supabase/secure_realtime_rls.sql` as SQL text.
+- Do not run filenames as SQL text.
+- Set `SUPABASE_SERVICE_ROLE_KEY` in server environments (Vercel) for server-side publish APIs.
+- Set `ADMIN_EMAIL_ALLOWLIST` for startup schema diagnostics banner (admin-only).
 
 This enables:
 
@@ -124,7 +123,8 @@ Important:
 - `npm run test:e2e` - run Playwright smoke tests
 - `npm run test:e2e:headed` - run Playwright smoke tests in headed mode
 - `npm run test:e2e:auth` - run authenticated Playwright suite (auto-generates `E2E_MAGIC_LINK_URL` when possible)
-- `npm run supabase:setup` - apply Supabase setup SQL in documented order
+- `npm run supabase:setup` - apply canonical Supabase migrations
+- `npm run supabase:migrate` - apply migrations + verification checks
 
 ## E2E Smoke Tests
 

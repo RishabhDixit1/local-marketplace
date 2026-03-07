@@ -39,6 +39,9 @@ export default function DashboardLayout({
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [showStartupIssues, setShowStartupIssues] = useState(false);
+  const [startupIssues, setStartupIssues] = useState<string[]>([]);
+  const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -79,6 +82,112 @@ export default function DashboardLayout({
       subscription.unsubscribe();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    let active = true;
+
+    const runStartupCheck = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active || !session?.access_token) return;
+
+      try {
+        const response = await fetch("/api/system/startup-check", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          admin?: boolean;
+          issues?: string[];
+          fixInstructions?: string[];
+        } | null;
+
+        if (!active) return;
+
+        if (!payload?.admin) {
+          setShowStartupIssues(false);
+          setStartupIssues([]);
+          setStartupFixInstructions([]);
+          return;
+        }
+
+        const issues = Array.isArray(payload.issues) ? payload.issues.filter(Boolean) : [];
+        const fixInstructions = Array.isArray(payload.fixInstructions)
+          ? payload.fixInstructions.filter(Boolean)
+          : [];
+
+        setStartupIssues(issues);
+        setStartupFixInstructions(fixInstructions);
+        setShowStartupIssues(!payload.ok && issues.length > 0);
+      } catch {
+        // Ignore startup-check transport errors for non-blocking UX.
+      }
+    };
+
+    void runStartupCheck();
+    const intervalId = window.setInterval(() => {
+      void runStartupCheck();
+    }, 3 * 60 * 1000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [authReady]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    let active = true;
+
+    const pingPresence = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active || !session?.access_token) return;
+
+      try {
+        await fetch("/api/presence/ping", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            isOnline: document.visibilityState === "visible",
+            availability: document.visibilityState === "visible" ? "available" : "away",
+            responseSlaMinutes: 15,
+          }),
+        });
+      } catch {
+        // Presence ping is best effort.
+      }
+    };
+
+    void pingPresence();
+    const intervalId = window.setInterval(() => {
+      void pingPresence();
+    }, 45 * 1000);
+
+    const handleVisibilityChange = () => {
+      void pingPresence();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [authReady]);
 
   if (!authReady) {
     return (
@@ -217,7 +326,29 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</main>
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            {showStartupIssues && (
+              <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
+                <p className="text-sm font-semibold">Startup schema checks need admin action</p>
+                <ul className="mt-2 list-disc pl-5 text-xs space-y-1">
+                  {startupIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+                {startupFixInstructions.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold">Fix instructions</p>
+                    <ul className="mt-1 list-disc pl-5 text-xs space-y-1">
+                      {startupFixInstructions.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            {children}
+          </main>
         </div>
       </div>
 

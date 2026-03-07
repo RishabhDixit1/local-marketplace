@@ -160,6 +160,15 @@ type ReviewRow = {
   rating: number | null;
 };
 
+type ProviderPresenceRow = {
+  provider_id: string;
+  is_online: boolean | null;
+  availability: string | null;
+  response_sla_minutes: number | null;
+  rolling_response_minutes: number | null;
+  last_seen: string | null;
+};
+
 type FlexibleRow = Record<string, unknown>;
 
 type RealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
@@ -1315,13 +1324,20 @@ export default function MarketplacePage() {
       const uniqueProfileIds = Array.from(new Set(profileIds)).slice(0, MAX_PROFILE_LOOKUP);
       let profileMap = new Map<string, ProfileRow>();
       let reviewRows: ReviewRow[] = [];
+      let presenceMap = new Map<string, ProviderPresenceRow>();
 
       if (uniqueProfileIds.length > 0) {
-        const [profileRowsRaw, reviewsResult] = await Promise.all([
+        const [profileRowsRaw, reviewsResult, presenceResult] = await Promise.all([
           selectProfilesWithFallback(uniqueProfileIds),
           supabase
             .from("reviews")
             .select("provider_id,rating")
+            .in("provider_id", uniqueProfileIds),
+          supabase
+            .from("provider_presence")
+            .select(
+              "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen"
+            )
             .in("provider_id", uniqueProfileIds),
         ]);
 
@@ -1363,6 +1379,15 @@ export default function MarketplacePage() {
         } else {
           reviewRows = (reviewsResult.data as ReviewRow[] | null) || [];
         }
+
+        if (presenceResult.error) {
+          if (!isMissingRelationError(presenceResult.error.message)) {
+            console.warn("Could not load provider presence for feed scoring:", presenceResult.error.message);
+          }
+        } else {
+          const rows = (presenceResult.data as ProviderPresenceRow[] | null) || [];
+          presenceMap = new Map(rows.filter((row) => !!row.provider_id).map((row) => [row.provider_id, row]));
+        }
       }
 
       const serviceCountMap = new Map<string, number>();
@@ -1388,6 +1413,7 @@ export default function MarketplacePage() {
 
       const getProviderStats = (providerId: string) => {
         const profile = providerId ? profileMap.get(providerId) : undefined;
+        const presence = providerId ? presenceMap.get(providerId) : undefined;
         const coordinates = resolveCoordinates({
           row: (profile as unknown as Record<string, unknown> | undefined) || null,
           location: profile?.location,
@@ -1409,10 +1435,14 @@ export default function MarketplacePage() {
           phone: profile?.phone,
           website: profile?.website,
         });
-        const responseMinutes = estimateResponseMinutes({
-          availability: profile?.availability,
+        const estimatedResponseMinutes = estimateResponseMinutes({
+          availability: presence?.availability || profile?.availability,
           providerId: providerId || profile?.id || "provider",
         });
+        const presenceResponseMinutes = Number(presence?.rolling_response_minutes || Number.NaN);
+        const responseMinutes = Number.isFinite(presenceResponseMinutes)
+          ? Math.max(1, Math.round(presenceResponseMinutes))
+          : estimatedResponseMinutes;
         const distance = distanceBetweenCoordinatesKm(resolvedViewerCoordinates, coordinates);
         const verificationStatus = calculateVerificationStatus({
           role: profile?.role,
@@ -1421,15 +1451,18 @@ export default function MarketplacePage() {
           averageRating,
           reviewCount,
         });
-        const rankScore = calculateLocalRankScore({
+        const rankBase = calculateLocalRankScore({
           distanceKm: distance,
           responseMinutes,
           rating: averageRating,
           profileCompletion,
         });
+        const onlineBonus = presence?.is_online === true ? 6 : presence?.is_online === false ? -4 : 0;
+        const rankScore = Math.max(1, Math.min(100, rankBase + onlineBonus));
 
         return {
           profile,
+          presence,
           coordinates,
           distance,
           responseMinutes,

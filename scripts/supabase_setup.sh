@@ -8,7 +8,7 @@ show_help() {
   cat <<'EOF'
 Usage: bash scripts/supabase_setup.sh [options]
 
-Runs Supabase SQL setup in the documented order using psql.
+Runs canonical Supabase migrations (supabase/migrations/*.sql) in sorted order using psql.
 
 Required env:
   SUPABASE_DB_URL   Postgres connection string for the Supabase project.
@@ -17,6 +17,7 @@ Options:
   --with-dashboard-seed   Apply supabase/seed_dashboard_demo.sql
   --with-realtime-seed    Apply supabase/seed_realtime_tabs_demo.sql (implies dashboard seed)
   --with-seeds            Apply both optional seed files
+  --with-verify           Apply supabase/verify_realtime_setup.sql at the end
   --dry-run               Print the execution plan without running SQL
   -h, --help              Show this help message
 EOF
@@ -24,6 +25,7 @@ EOF
 
 with_dashboard_seed=0
 with_realtime_seed=0
+with_verify=0
 dry_run=0
 
 for arg in "$@"; do
@@ -38,6 +40,9 @@ for arg in "$@"; do
     --with-seeds)
       with_dashboard_seed=1
       with_realtime_seed=1
+      ;;
+    --with-verify)
+      with_verify=1
       ;;
     --dry-run)
       dry_run=1
@@ -83,18 +88,19 @@ run_sql_file() {
   psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$absolute_file"
 }
 
-core_files=(
-  "supabase/secure_realtime_rls.sql"
-  "supabase/fix_hosted_auth_and_posting.sql"
-  "supabase/enable_realtime_publication.sql"
-  "supabase/add_feed_interactions.sql"
-  "supabase/add_feed_card_metrics_function.sql"
-  "supabase/verify_realtime_setup.sql"
+readarray -t migration_files < <(
+  find "$ROOT_DIR/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort
 )
 
-echo "Applying core Supabase setup SQL..."
-for sql_file in "${core_files[@]}"; do
-  run_sql_file "$sql_file"
+if [[ "${#migration_files[@]}" -eq 0 ]]; then
+  echo "No migration files found in supabase/migrations."
+  exit 1
+fi
+
+echo "Applying canonical Supabase migrations..."
+for absolute_sql_file in "${migration_files[@]}"; do
+  relative_sql_file="${absolute_sql_file#$ROOT_DIR/}"
+  run_sql_file "$relative_sql_file"
 done
 
 if [[ "$with_dashboard_seed" -eq 1 ]]; then
@@ -105,6 +111,11 @@ fi
 if [[ "$with_realtime_seed" -eq 1 ]]; then
   echo "Applying optional realtime tab seed..."
   run_sql_file "supabase/seed_realtime_tabs_demo.sql"
+fi
+
+if [[ "$with_verify" -eq 1 ]]; then
+  echo "Applying verification checks..."
+  run_sql_file "supabase/verify_realtime_setup.sql"
 fi
 
 if [[ "$dry_run" -eq 1 ]]; then

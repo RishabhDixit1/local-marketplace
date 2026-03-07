@@ -12,7 +12,8 @@
     "test:e2e:auth": "bash scripts/run_e2e_authenticated.sh",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "supabase:setup": "bash scripts/supabase_setup.sh"
+    "supabase:setup": "bash scripts/supabase_setup.sh",
+    "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
