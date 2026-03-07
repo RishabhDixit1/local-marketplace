@@ -502,10 +502,6 @@ export default function CreatePostModal({
 
     const payload: Record<string, string> = {
       user_id: user.id,
-      created_by: user.id,
-      author_id: user.id,
-      requester_id: user.id,
-      owner_id: user.id,
       type: storageTypeVariants[activeStorageTypeIndex],
       post_type: storageTypeVariants[activeStorageTypeIndex],
       status: "open",
@@ -531,8 +527,26 @@ export default function CreatePostModal({
       if (detailMatch?.[1]) {
         return detailMatch[1];
       }
-      const constraintMatch = message.match(/constraint\s+\"[^\"]+_([a-z0-9_]+)_fkey\"/i);
-      return constraintMatch?.[1] || null;
+      const constraintName = message.match(/constraint\s+\"([^\"]+_fkey)\"/i)?.[1]?.toLowerCase() || "";
+      if (!constraintName) return null;
+
+      const knownForeignKeyColumns = [
+        "author_id",
+        "created_by",
+        "provider_id",
+        "requester_id",
+        "owner_id",
+        "user_id",
+      ];
+
+      for (const columnName of knownForeignKeyColumns) {
+        if (constraintName.includes(`_${columnName}_fkey`)) {
+          return columnName;
+        }
+      }
+
+      const genericMatch = constraintName.match(/^[a-z0-9]+_(.+)_fkey$/i);
+      return genericMatch?.[1] || null;
     };
 
     const getForeignKeyTargetTable = (details?: string | null) => {
