@@ -68,9 +68,44 @@ if [[ -z "${SUPABASE_DB_URL:-}" && "$dry_run" -eq 0 ]]; then
   exit 1
 fi
 
+validate_supabase_db_url() {
+  local url="$1"
+  local rest authority authority_without_ats at_count
+
+  if [[ "$url" != postgresql://* && "$url" != postgres://* ]]; then
+    echo "SUPABASE_DB_URL must start with postgres:// or postgresql://"
+    exit 1
+  fi
+
+  rest="${url#*://}"
+  authority="${rest%%/*}"
+
+  if [[ -z "$authority" ]]; then
+    echo "SUPABASE_DB_URL is malformed: missing host section."
+    exit 1
+  fi
+
+  if [[ "$authority" == *" "* || "$authority" == *$'\t'* || "$authority" == *$'\n'* ]]; then
+    echo "SUPABASE_DB_URL is malformed: host section contains whitespace."
+    exit 1
+  fi
+
+  authority_without_ats="${authority//@/}"
+  at_count=$(( ${#authority} - ${#authority_without_ats} ))
+
+  if (( at_count > 1 )); then
+    echo "SUPABASE_DB_URL is malformed: found multiple '@' characters before the path."
+    echo "If your DB password contains '@', URL-encode it as %40."
+    echo "Example: postgresql://postgres:pa%40ss@db.<project-ref>.supabase.co:5432/postgres"
+    exit 1
+  fi
+}
+
 psql_mode="dry-run"
 
 if [[ "$dry_run" -eq 0 ]]; then
+  validate_supabase_db_url "$SUPABASE_DB_URL"
+
   if command -v psql >/dev/null 2>&1; then
     psql_mode="local"
   elif command -v docker >/dev/null 2>&1; then

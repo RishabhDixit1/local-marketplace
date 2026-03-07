@@ -13,7 +13,8 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "supabase:setup": "bash scripts/supabase_setup.sh",
-    "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify"
+    "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify",
+    "supabase:sql-editor": "bash scripts/supabase_copy_sql.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
