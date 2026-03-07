@@ -502,9 +502,14 @@ export default function CreatePostModal({
 
     const payload: Record<string, string> = {
       user_id: user.id,
+      created_by: user.id,
+      requester_id: user.id,
+      owner_id: user.id,
       type: storageTypeVariants[activeStorageTypeIndex],
       post_type: storageTypeVariants[activeStorageTypeIndex],
       status: "open",
+      state: "open",
+      category,
       text: composedText,
       content: composedText,
       description: composedText,
@@ -672,7 +677,7 @@ export default function CreatePostModal({
           }
         }
 
-        if (["author_id", "provider_id", "created_by"].includes(foreignKeyColumn)) {
+        if (["author_id", "provider_id", "created_by", "requester_id", "owner_id"].includes(foreignKeyColumn)) {
           delete payload[foreignKeyColumn];
           blockedColumns.add(foreignKeyColumn);
           continue;
@@ -769,7 +774,7 @@ export default function CreatePostModal({
         const missingTable =
           /relation .*help_requests.* does not exist|could not find the 'help_requests' table/i.test(
             helpRequestError.message
-          );
+          ) || /could not find the table 'public\.help_requests' in the schema cache/i.test(helpRequestError.message);
         if (missingTable) {
           alert(
             'Post published, but structured matching is disabled. Run "supabase/secure_realtime_rls.sql" to enable help requests.'

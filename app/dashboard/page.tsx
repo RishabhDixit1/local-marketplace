@@ -176,7 +176,9 @@ type FeedFilterState = {
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
 const isMissingRelationError = (message: string) =>
-  /relation .* does not exist|table .* does not exist/i.test(message);
+  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(
+    message
+  );
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
