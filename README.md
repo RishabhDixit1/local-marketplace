@@ -104,11 +104,15 @@ In Supabase Dashboard -> Authentication -> URL Configuration:
 
 - Site URL:
   - local: `http://localhost:3000`
-  - production: your Vercel domain
+  - production: `https://local-marketplace-eta.vercel.app`
 - Redirect URLs:
   - `http://localhost:3000/auth/callback`
   - `http://127.0.0.1:3000/auth/callback`
-  - `https://<your-production-domain>/auth/callback`
+  - `https://local-marketplace-eta.vercel.app/auth/callback`
+
+Important:
+- Production `Site URL` must never be localhost.
+- If production callback is missing from Redirect URLs, Supabase may fall back to `Site URL` and send users to localhost.
 
 ## Scripts
 
