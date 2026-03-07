@@ -8,7 +8,10 @@ show_help() {
   cat <<'EOF'
 Usage: bash scripts/supabase_setup.sh [options]
 
-Runs canonical Supabase migrations (supabase/migrations/*.sql) in sorted order using psql.
+Runs canonical Supabase migrations (supabase/migrations/*.sql) in sorted order.
+Execution engine preference:
+  1) local `psql`
+  2) Docker fallback (`postgres:16-alpine`) when `psql` is unavailable
 
 Required env:
   SUPABASE_DB_URL   Postgres connection string for the Supabase project.
@@ -59,15 +62,25 @@ for arg in "$@"; do
   esac
 done
 
-if [[ "$dry_run" -eq 0 ]] && ! command -v psql >/dev/null 2>&1; then
-  echo "psql is required but not installed. Install PostgreSQL client tools first."
-  exit 1
-fi
-
 if [[ -z "${SUPABASE_DB_URL:-}" && "$dry_run" -eq 0 ]]; then
   echo "SUPABASE_DB_URL is required."
   echo "Example: export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'"
   exit 1
+fi
+
+psql_mode="dry-run"
+
+if [[ "$dry_run" -eq 0 ]]; then
+  if command -v psql >/dev/null 2>&1; then
+    psql_mode="local"
+  elif command -v docker >/dev/null 2>&1; then
+    psql_mode="docker"
+    echo "psql not found. Using Docker fallback (postgres:16-alpine)."
+  else
+    echo "Neither local psql nor docker is available."
+    echo "Install PostgreSQL client tools (psql) or Docker, then retry."
+    exit 1
+  fi
 fi
 
 run_sql_file() {
@@ -85,12 +98,29 @@ run_sql_file() {
     return
   fi
 
-  psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$absolute_file"
+  if [[ "$psql_mode" == "local" ]]; then
+    psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$absolute_file"
+    return
+  fi
+
+  if [[ "$psql_mode" == "docker" ]]; then
+    docker run --rm \
+      -e SUPABASE_DB_URL="$SUPABASE_DB_URL" \
+      -e SQL_FILE="$relative_file" \
+      -v "$ROOT_DIR:/workspace:ro" \
+      postgres:16-alpine \
+      sh -lc 'psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "/workspace/$SQL_FILE"'
+    return
+  fi
+
+  echo "Unsupported SQL execution mode: $psql_mode"
+  exit 1
 }
 
-readarray -t migration_files < <(
-  find "$ROOT_DIR/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort
-)
+migration_files=()
+while IFS= read -r file; do
+  migration_files+=("$file")
+done < <(find "$ROOT_DIR/supabase/migrations" -maxdepth 1 -type f -name '*.sql' | sort)
 
 if [[ "${#migration_files[@]}" -eq 0 ]]; then
   echo "No migration files found in supabase/migrations."
