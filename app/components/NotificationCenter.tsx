@@ -126,7 +126,7 @@ export default function NotificationCenter() {
           if (isMissingNotificationsTable(error.message)) {
             setNotifications(getDemoNotifications(userId));
             setErrorMessage(
-              "Live notifications are in demo mode. Run supabase/secure_realtime_rls.sql to enable realtime DB events."
+              "Live notifications are in demo mode. Apply canonical Supabase migrations (npm run supabase:migrate or npm run supabase:sql-editor) to enable realtime DB events."
             );
             setDemoMode(true);
             setLoading(false);
