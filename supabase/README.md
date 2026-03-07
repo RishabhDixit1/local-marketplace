@@ -1,66 +1,57 @@
-# Supabase Seeds
+# Supabase Migrations and Seeds
 
-## One-command setup (from project root)
+## Canonical migration flow
+
+Use only `supabase/migrations/*.sql` as the source of truth.
+Do not apply legacy one-off SQL files out of order in production.
+
+### Apply migrations (recommended)
 
 ```bash
 export SUPABASE_DB_URL='postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres'
+npm run supabase:migrate
+```
+
+### Apply migrations without verification
+
+```bash
 npm run supabase:setup
 ```
 
-Optional seeds:
+### Optional demo seeds
 
 ```bash
 npm run supabase:setup -- --with-seeds
 ```
 
-## Security + unread migration (run first)
+## What the canonical migration currently enforces
 
-Run `secure_realtime_rls.sql` before seeding to:
-- enforce RLS on `orders`, `messages`, `conversations`, `conversation_participants`, `reviews`
-- add `conversation_participants.last_read_at` for persistent unread counts
-- create live `notifications` table + triggers from `orders/messages/reviews`
-- create structured `help_requests` + `help_request_matches` with provider scoring + realtime notifications
-- add profile geo columns `latitude` / `longitude` for real distance ranking
-- add indexes + helper functions for participant-based access checks
-- add `get_provider_order_stats(provider_ids uuid[])` RPC used by People/Business surfaces
+- `posts` + `help_requests` publishing policies for authenticated users
+- server-safe profile bootstrap policies (`profiles_insert_own`, `profiles_update_own`)
+- `post-media` storage bucket + object policies
+- realtime-ready `notifications`
+- `help_requests` state machine (`open -> accepted -> in_progress -> completed/cancelled`)
+- immediate matching RPC (`match_help_request`) + provider notifications
+- provider presence table/RPC (`provider_presence`, `upsert_provider_presence`)
+- push subscription storage (`provider_push_subscriptions`)
+- escalation queue primitives for urgent unmatched needs (`notification_escalations`)
+- trust + growth base tables (`provider_trust_metrics`, `referral_events`, `featured_placements`)
+- startup diagnostics RPC (`get_platform_startup_diagnostics`)
 
-## Hosted auth + posting patch (run second)
+## Startup diagnostics (admin only)
 
-Run `fix_hosted_auth_and_posting.sql` to ensure production-ready defaults for:
-- `posts` RLS read/write policies for authenticated users
-- `profiles` self-service insert/update policies (needed when post `author_id` has FK to `profiles`)
-- `help_requests` select + insert/update/delete policies for authenticated marketplace users
-- `post-media` storage bucket + object policies for user-scoped uploads
+The app calls `/api/system/startup-check` at dashboard startup for admin emails.
+If required schema/policies/bucket are missing, an in-app banner shows exact issues and fix steps.
 
-## Realtime publication setup (run third)
+Set admin allowlist env (comma-separated emails):
 
-Run `enable_realtime_publication.sql` to register all live marketplace tables in `supabase_realtime` publication.
-Without this step, UI subscriptions can connect but receive no row-change events.
-
-## Feed interaction persistence (run after security setup)
-
-Run `add_feed_interactions.sql` to persist Welcome feed card actions per user:
-- `Save` state in `feed_card_saves`
-- `Share` events in `feed_card_shares`
-
-This script also enables RLS + per-user policies for these tables.
-
-## Feed metrics RPC (run after feed interactions)
-
-Run `add_feed_card_metrics_function.sql` to create `public.get_feed_card_metrics(card_ids text[])`.
-The Welcome feed uses this RPC to load aggregated `saves` and `shares` counts per card.
-
-## Verification (run after setup)
-
-Run `verify_realtime_setup.sql` to validate:
-- publication table registration
-- RLS enabled on core tables
-- required triggers are present
-- quick row-count sanity checks
+```bash
+ADMIN_EMAIL_ALLOWLIST=admin1@example.com,admin2@example.com
+```
 
 ## SQL Editor usage note
 
-In Supabase SQL Editor, paste the SQL **contents** and run them.
+In Supabase SQL Editor, paste SQL file contents and run them.
 Do not type only the filename (for example `supabase/seed_realtime_tabs_demo.sql`) as SQL input.
 
 ## Dashboard demo seed
