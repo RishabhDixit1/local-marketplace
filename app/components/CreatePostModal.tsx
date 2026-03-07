@@ -774,7 +774,7 @@ export default function CreatePostModal({
         const missingTable =
           /relation .*help_requests.* does not exist|could not find the 'help_requests' table/i.test(
             helpRequestError.message
-          );
+          ) || /could not find the table 'public\.help_requests' in the schema cache/i.test(helpRequestError.message);
         if (missingTable) {
           alert(
             'Post published, but structured matching is disabled. Run "supabase/secure_realtime_rls.sql" to enable help requests.'
