@@ -992,7 +992,6 @@ export default function MarketplacePage() {
   const [mediaOnly, setMediaOnly] = useState(false);
   const [freshOnly, setFreshOnly] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
-  const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
   const [openPostModal, setOpenPostModal] = useState(false);
@@ -1742,8 +1741,8 @@ const filtered = useMemo(() => {
 }, [feed, filterState, sortBy]);
 
 const visibleFeed = useMemo(
-  () => filtered.filter((item) => !hiddenListingIds.has(item.id)),
-  [filtered, hiddenListingIds]
+  () => filtered,
+  [filtered]
 );
 
 const blendedVisibleFeed = useMemo(() => {
@@ -1847,15 +1846,6 @@ const toggleSaveListing = (listingId: string) => {
     return next;
   });
 };
-
-const hideListing = (listingId: string) => {
-  setHiddenListingIds((previous) => {
-    const next = new Set(previous);
-    next.add(listingId);
-    return next;
-  });
-};
-
 
 /* ================= BOOK ================= */
 
@@ -2036,7 +2026,6 @@ return (
                     setFeed(demoFeed);
                     setUsingDemoFeed(true);
                     setFeedError("Startup demo stream loaded.");
-                    setHiddenListingIds(new Set());
                   }}
                   className="inline-flex h-12 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
                 >
@@ -2063,15 +2052,6 @@ return (
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
                   Avg match {filteredStats.avgMatch}
                 </span>
-                {hiddenListingIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setHiddenListingIds(new Set())}
-                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
-                  >
-                    Restore hidden ({hiddenListingIds.size})
-                  </button>
-                )}
               </div>
               {trendingOpportunities.length > 0 && (
                 <div className="mt-3">
@@ -2505,13 +2485,6 @@ return (
                               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
                             >
                               Profile
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => hideListing(item.id)}
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50"
-                            >
-                              Hide
                             </button>
                           </div>
                         </div>
