@@ -111,17 +111,63 @@ begin
     execute 'alter table public.help_requests enable row level security';
 
     execute 'drop policy if exists help_requests_select_visible on public.help_requests';
+    execute 'drop policy if exists help_requests_insert_own on public.help_requests';
+    execute 'drop policy if exists help_requests_update_own on public.help_requests';
+    execute 'drop policy if exists help_requests_delete_own on public.help_requests';
+
+    if exists (
+      select 1
+      from pg_proc
+      where pronamespace = 'public'::regnamespace
+        and proname = 'is_help_request_provider'
+    ) then
+      execute '
+        create policy help_requests_select_visible
+        on public.help_requests
+        for select
+        to authenticated
+        using (
+          lower(coalesce(status, ''open'')) = ''open''
+          or requester_id = auth.uid()
+          or public.is_help_request_provider(id, auth.uid())
+        )
+      ';
+    else
+      execute '
+        create policy help_requests_select_visible
+        on public.help_requests
+        for select
+        to authenticated
+        using (
+          lower(coalesce(status, ''open'')) = ''open''
+          or requester_id = auth.uid()
+        )
+      ';
+    end if;
 
     execute '
-      create policy help_requests_select_visible
+      create policy help_requests_insert_own
       on public.help_requests
-      for select
+      for insert
       to authenticated
-      using (
-        lower(coalesce(status, ''open'')) = ''open''
-        or requester_id = auth.uid()
-        or public.is_help_request_provider(id, auth.uid())
-      )
+      with check (requester_id = auth.uid())
+    ';
+
+    execute '
+      create policy help_requests_update_own
+      on public.help_requests
+      for update
+      to authenticated
+      using (requester_id = auth.uid())
+      with check (requester_id = auth.uid())
+    ';
+
+    execute '
+      create policy help_requests_delete_own
+      on public.help_requests
+      for delete
+      to authenticated
+      using (requester_id = auth.uid())
     ';
   end if;
 end;
