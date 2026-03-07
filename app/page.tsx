@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
@@ -50,10 +51,79 @@ const probeSupabaseAuthReachability = async (url: string): Promise<boolean> => {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let authSubscription: { unsubscribe: () => void } | null = null;
+
+    const completeLoginFromHash = async () => {
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        const authError =
+          hashParams.get("error_description") || hashParams.get("error") || hashParams.get("message");
+
+        if (authError) {
+          if (active) setErrorMessage(decodeURIComponent(authError));
+          return;
+        }
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!active) return;
+
+          if (error) {
+            setErrorMessage(error.message || "Unable to complete sign-in. Please request a new login link.");
+            return;
+          }
+
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          router.replace("/dashboard");
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (!active) return;
+        if (error) return;
+
+        if (data.session) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((event, session) => {
+          if (!active) return;
+          if (event === "SIGNED_IN" && session) {
+            router.replace("/dashboard");
+          }
+        });
+        authSubscription = subscription;
+      } catch {
+        if (active) {
+          setErrorMessage("Unable to complete sign-in. Please request a new login link.");
+        }
+      }
+    };
+
+    void completeLoginFromHash();
+
+    return () => {
+      active = false;
+      authSubscription?.unsubscribe();
+    };
+  }, [router]);
 
   const withHardTimeout = async <T,>(promise: Promise<T>, timeoutMs = AUTH_HARD_TIMEOUT_MS): Promise<T> => {
     let timeoutId: number | undefined;
