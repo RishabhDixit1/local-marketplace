@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
@@ -38,6 +38,57 @@ export default function DashboardLayout({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const verifySession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+
+      if (!session?.user) {
+        router.replace("/");
+        return;
+      }
+
+      setAuthReady(true);
+    };
+
+    void verifySession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+
+      if (!session?.user) {
+        setAuthReady(false);
+        router.replace("/");
+        return;
+      }
+
+      setAuthReady(true);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
+        <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm">
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

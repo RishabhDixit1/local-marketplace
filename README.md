@@ -71,12 +71,13 @@ npm run supabase:setup -- --with-seeds
 ### Manual SQL order (SQL Editor)
 
 1. `supabase/secure_realtime_rls.sql`
-2. `supabase/enable_realtime_publication.sql`
-3. `supabase/add_feed_interactions.sql`
-4. `supabase/add_feed_card_metrics_function.sql`
-5. `supabase/verify_realtime_setup.sql`
-6. `supabase/seed_dashboard_demo.sql` (optional)
-7. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
+2. `supabase/fix_hosted_auth_and_posting.sql`
+3. `supabase/enable_realtime_publication.sql`
+4. `supabase/add_feed_interactions.sql`
+5. `supabase/add_feed_card_metrics_function.sql`
+6. `supabase/verify_realtime_setup.sql`
+7. `supabase/seed_dashboard_demo.sql` (optional)
+8. `supabase/seed_realtime_tabs_demo.sql` (optional, richer demo data)
 
 Important:
 - In Supabase SQL Editor, paste the SQL file contents and run them.

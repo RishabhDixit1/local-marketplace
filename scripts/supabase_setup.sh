@@ -85,6 +85,7 @@ run_sql_file() {
 
 core_files=(
   "supabase/secure_realtime_rls.sql"
+  "supabase/fix_hosted_auth_and_posting.sql"
   "supabase/enable_realtime_publication.sql"
   "supabase/add_feed_interactions.sql"
   "supabase/add_feed_card_metrics_function.sql"
