@@ -711,6 +711,7 @@ export default function CreatePostModal({
     let helpRequestId: string | undefined;
     let matchedCount: number | undefined;
     let helpRequestCreated = false;
+    let helpRequestPublishError: { message: string; code?: string | null } | null = null;
 
     if (type === "need") {
       const numericBudget = Number((budget || "").replace(/[^\d.]/g, ""));
@@ -750,6 +751,7 @@ export default function CreatePostModal({
         .single();
 
       if (helpRequestError) {
+        helpRequestPublishError = helpRequestError;
         const missingTable =
           /relation .*help_requests.* does not exist|could not find the 'help_requests' table/i.test(
             helpRequestError.message
@@ -782,7 +784,23 @@ export default function CreatePostModal({
 
     if (type === "need" && !postCreated && !helpRequestCreated) {
       setPublishing(false);
-      alert("Failed to publish request. Database permissions are preventing both post and help request inserts.");
+      const postFailureMessage = publishError?.message || "unknown post insert error";
+      const helpRequestFailureMessage = helpRequestPublishError?.message || "unknown help request insert error";
+      const blockedByRls =
+        !!publishError &&
+        !!helpRequestPublishError &&
+        isRowLevelSecurityError(publishError) &&
+        isRowLevelSecurityError(helpRequestPublishError);
+
+      if (blockedByRls) {
+        alert(
+          `Failed to publish request due to database RLS policies. Run "supabase/fix_hosted_auth_and_posting.sql" in Supabase SQL Editor, then retry.\n\nposts: ${postFailureMessage}\nhelp_requests: ${helpRequestFailureMessage}`
+        );
+      } else {
+        alert(
+          `Failed to publish request.\n\nposts: ${postFailureMessage}\nhelp_requests: ${helpRequestFailureMessage}`
+        );
+      }
       return;
     }
 

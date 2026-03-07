@@ -28,7 +28,7 @@ Run `secure_realtime_rls.sql` before seeding to:
 
 Run `fix_hosted_auth_and_posting.sql` to ensure production-ready defaults for:
 - `posts` RLS read/write policies for authenticated users
-- `help_requests` open-feed visibility for authenticated marketplace users
+- `help_requests` select + insert/update/delete policies for authenticated marketplace users
 - `post-media` storage bucket + object policies for user-scoped uploads
 
 ## Realtime publication setup (run third)
