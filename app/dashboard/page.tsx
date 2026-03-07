@@ -50,6 +50,10 @@ const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const FEED_POLL_INTERVAL_MS = 120000;
 const MIN_SOFT_REFRESH_GAP_MS = 5000;
+const MIN_EXPLORE_FEED_ITEMS = 18;
+const TEMP_HIDDEN_LISTING_PATTERNS = [
+  /\bneed ac shifting from one flat to another\b/i,
+];
 
 /* ================= TYPES ================= */
 
@@ -182,6 +186,8 @@ const buildDemoFeed = (): Listing[] => {
   const baseLat = 28.6139;
   const baseLng = 77.209;
   const now = Date.now();
+  const unsplash = (id: string, width = 1280) =>
+    `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${width}&q=80`;
 
   const rows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
     {
@@ -199,7 +205,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 78,
       responseMinutes: 7,
       verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/electric-urgent/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1504384308090-c894fdcc538d") }],
       createdAt: new Date(now - 34 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -218,7 +224,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 72,
       responseMinutes: 11,
       verificationStatus: "unclaimed",
-      media: [{ mimeType: "video/mp4", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1498050108023-c5249f4df085") }],
       createdAt: new Date(now - 78 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -236,7 +242,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 91,
       responseMinutes: 14,
       verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/electric-service/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1519710164239-da123dc03ef4") }],
       createdAt: new Date(now - 112 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -254,7 +260,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 86,
       responseMinutes: 18,
       verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/cleaning-pro/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1522202176988-66273c2fd55f") }],
       createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -273,7 +279,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 69,
       responseMinutes: 6,
       verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/ac-repair/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1473968512647-3e447244af8f") }],
       createdAt: new Date(now - 26 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -291,7 +297,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 74,
       responseMinutes: 12,
       verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/grocery-fast/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1484154218962-a197022b5858") }],
       createdAt: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -309,12 +315,12 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 84,
       responseMinutes: 20,
       verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/farm-basket/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1469474968028-56623f02e42e") }],
       createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
     {
-      title: "Voice brief: setup wedding photography package",
+      title: "Need wedding photography + reels team",
       description: "Need a candid + reels team for one-day function near Indiranagar.",
       price: 12000,
       category: "Need",
@@ -328,7 +334,10 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 77,
       responseMinutes: 16,
       verificationStatus: "pending",
-      media: [{ mimeType: "audio/mpeg", url: "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3" }],
+      media: [
+        { mimeType: "video/mp4", url: "/hero/market-live-loop.mp4" },
+        { mimeType: "image/jpeg", url: unsplash("1492724441997-5dc865305da7") },
+      ],
       createdAt: new Date(now - 11 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -346,7 +355,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 82,
       responseMinutes: 24,
       verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/cake-fresh/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1517248135467-4c7edcad34c4") }],
       createdAt: new Date(now - 13 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -365,7 +374,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 65,
       responseMinutes: 9,
       verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/svg+xml", url: "https://upload.wikimedia.org/wikipedia/commons/6/6b/Bitmap_VS_SVG.svg" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1500048993953-d23a436266cf") }],
       createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -383,7 +392,7 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 89,
       responseMinutes: 10,
       verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/ac-service-pro/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1497366811353-6870744d04b2") }],
       createdAt: new Date(now - 14 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
@@ -401,8 +410,265 @@ const buildDemoFeed = (): Listing[] => {
       profileCompletion: 88,
       responseMinutes: 22,
       verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: "https://picsum.photos/seed/toolkit-pro/980/620" }],
+      media: [{ mimeType: "image/jpeg", url: unsplash("1515378791036-0648a3ef77b2") }],
       createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Need plumber for kitchen sink leak",
+      description: "Water leak under sink cabinet. Looking for immediate visit.",
+      price: 1300,
+      category: "Need",
+      provider_id: "demo-provider-ria",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=ria",
+      distance: 1.9,
+      urgent: true,
+      creatorName: "Ria M",
+      businessSlug: createBusinessSlug("Ria M", "demo-provider-ria"),
+      profileCompletion: 76,
+      responseMinutes: 8,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1521791136064-7986c2920216") }],
+      createdAt: new Date(now - 52 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Doorstep Car Wash Express",
+      description: "Interior + exterior wash at your parking spot in under 45 mins.",
+      price: 699,
+      category: "Car Care",
+      provider_id: "demo-provider-sparklewash",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=sparklewash",
+      distance: 4.1,
+      creatorName: "SparkleWash",
+      businessSlug: createBusinessSlug("SparkleWash", "demo-provider-sparklewash"),
+      profileCompletion: 83,
+      responseMinutes: 13,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1505693416388-ac5ce068fe85") }],
+      createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Weekend babysitter required",
+      description: "Need trusted sitter for Saturday evening, 4 hours.",
+      price: 1500,
+      category: "Need",
+      provider_id: "demo-provider-ishita",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=ishita",
+      distance: 2.6,
+      urgent: false,
+      creatorName: "Ishita N",
+      businessSlug: createBusinessSlug("Ishita N", "demo-provider-ishita"),
+      profileCompletion: 68,
+      responseMinutes: 17,
+      verificationStatus: "unclaimed",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1518773553398-650c184e0bb3") }],
+      createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Pet grooming at home",
+      description: "Bath, nail trim, and coat care with pickup and drop option.",
+      price: 999,
+      category: "Pet Care",
+      provider_id: "demo-provider-pawspark",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=pawspark",
+      distance: 5.2,
+      creatorName: "PawSpark Grooming",
+      businessSlug: createBusinessSlug("PawSpark Grooming", "demo-provider-pawspark"),
+      profileCompletion: 87,
+      responseMinutes: 19,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1473186578172-c141e6798cf4") }],
+      createdAt: new Date(now - 7 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Home tuition for class 8-10",
+      description: "Math + science tutor available for weekday evening sessions.",
+      price: 1800,
+      category: "Education",
+      provider_id: "demo-provider-mentorplus",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=mentorplus",
+      distance: 3.6,
+      creatorName: "Mentor Plus Academy",
+      businessSlug: createBusinessSlug("Mentor Plus Academy", "demo-provider-mentorplus"),
+      profileCompletion: 79,
+      responseMinutes: 21,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1504674900247-0877df9cc836") }],
+      createdAt: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Need photographer for cafe launch",
+      description: "Looking for event + social reels coverage for opening weekend.",
+      price: 9500,
+      category: "Need",
+      provider_id: "demo-provider-cafebloom",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=cafebloom",
+      distance: 2.2,
+      urgent: true,
+      creatorName: "Cafe Bloom",
+      businessSlug: createBusinessSlug("Cafe Bloom", "demo-provider-cafebloom"),
+      profileCompletion: 81,
+      responseMinutes: 12,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1493666438817-866a91353ca9") }],
+      createdAt: new Date(now - 95 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Organic milk subscription",
+      description: "Daily fresh A2 milk delivery with monthly plan discounts.",
+      price: 149,
+      category: "Product",
+      provider_id: "demo-provider-freshmoo",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=freshmoo",
+      distance: 6.8,
+      creatorName: "FreshMoo Dairy",
+      businessSlug: createBusinessSlug("FreshMoo Dairy", "demo-provider-freshmoo"),
+      profileCompletion: 73,
+      responseMinutes: 26,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1489515217757-5fd1be406fef") }],
+      createdAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Ergonomic office chairs clearance",
+      description: "Refurbished premium chairs, delivery and setup included.",
+      price: 4200,
+      category: "Product",
+      provider_id: "demo-provider-worknest",
+      type: "product",
+      avatar: "https://i.pravatar.cc/150?u=worknest",
+      distance: 7.4,
+      creatorName: "WorkNest Furnish",
+      businessSlug: createBusinessSlug("WorkNest Furnish", "demo-provider-worknest"),
+      profileCompletion: 86,
+      responseMinutes: 27,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1516914943479-89db7d9ae7f2") }],
+      createdAt: new Date(now - 16 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Need packers for office move",
+      description: "Small office shifting within 4km. Need packing help tomorrow morning.",
+      price: 5200,
+      category: "Need",
+      provider_id: "demo-provider-devansh",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=devansh",
+      distance: 3.1,
+      urgent: true,
+      creatorName: "Devansh T",
+      businessSlug: createBusinessSlug("Devansh T", "demo-provider-devansh"),
+      profileCompletion: 71,
+      responseMinutes: 9,
+      verificationStatus: "unclaimed",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1515378791036-0648a3ef77b2") }],
+      createdAt: new Date(now - 68 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Mobile screen replacement at home",
+      description: "Doorstep iPhone and Android display replacement with warranty.",
+      price: 1800,
+      category: "Repair",
+      provider_id: "demo-provider-fixstreet",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=fixstreet",
+      distance: 2.7,
+      creatorName: "FixStreet",
+      businessSlug: createBusinessSlug("FixStreet", "demo-provider-fixstreet"),
+      profileCompletion: 90,
+      responseMinutes: 11,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1498050108023-c5249f4df085") }],
+      createdAt: new Date(now - 150 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Community yoga trainer",
+      description: "Morning batch in society garden. Beginner-friendly weekend plan.",
+      price: 999,
+      category: "Fitness",
+      provider_id: "demo-provider-namasteflow",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=namasteflow",
+      distance: 4.3,
+      creatorName: "Namaste Flow",
+      businessSlug: createBusinessSlug("Namaste Flow", "demo-provider-namasteflow"),
+      profileCompletion: 75,
+      responseMinutes: 23,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1473186578172-c141e6798cf4") }],
+      createdAt: new Date(now - 19 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Event flower decoration package",
+      description: "Custom stage and entrance decor for birthdays and family functions.",
+      price: 6800,
+      category: "Service",
+      provider_id: "demo-provider-bloomcraft",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=bloomcraft",
+      distance: 5.9,
+      creatorName: "BloomCraft Studio",
+      businessSlug: createBusinessSlug("BloomCraft Studio", "demo-provider-bloomcraft"),
+      profileCompletion: 88,
+      responseMinutes: 18,
+      verificationStatus: "verified",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1489515217757-5fd1be406fef") }],
+      createdAt: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Need same-day medicine delivery",
+      description: "Prescription meds pickup and delivery needed within one hour.",
+      price: 350,
+      category: "Need",
+      provider_id: "demo-provider-karan",
+      type: "demand",
+      avatar: "https://i.pravatar.cc/150?u=karan",
+      distance: 1.2,
+      urgent: true,
+      creatorName: "Karan V",
+      businessSlug: createBusinessSlug("Karan V", "demo-provider-karan"),
+      profileCompletion: 67,
+      responseMinutes: 6,
+      verificationStatus: "unclaimed",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1519710164239-da123dc03ef4") }],
+      createdAt: new Date(now - 41 * 60 * 1000).toISOString(),
+      isDemo: true,
+    },
+    {
+      title: "Handyman for curtain rod installation",
+      description: "Need drilling and mounting support for 5 windows this evening.",
+      price: 1250,
+      category: "Service",
+      provider_id: "demo-provider-handihelp",
+      type: "service",
+      avatar: "https://i.pravatar.cc/150?u=handihelp",
+      distance: 3.9,
+      creatorName: "HandiHelp Team",
+      businessSlug: createBusinessSlug("HandiHelp Team", "demo-provider-handihelp"),
+      profileCompletion: 82,
+      responseMinutes: 15,
+      verificationStatus: "pending",
+      media: [{ mimeType: "image/jpeg", url: unsplash("1521791136064-7986c2920216") }],
+      createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
       isDemo: true,
     },
   ];
@@ -557,6 +823,14 @@ const toDisplayText = (value: string | undefined, fallback: string) => {
   const normalized = (value || "").replace(/\s+/g, " ").trim();
   if (looksLikeNoisyText(normalized)) return fallback;
   return normalized;
+};
+
+const isTemporarilyHiddenListing = (item: Listing) => {
+  const title = item.title || "";
+  const description = item.description || "";
+  return TEMP_HIDDEN_LISTING_PATTERNS.some(
+    (pattern) => pattern.test(title) || pattern.test(description)
+  );
 };
 
 const getListingSignals = (item: Listing) => {
@@ -1288,6 +1562,7 @@ const filterState = useMemo<FeedFilterState>(
 
 const filtered = useMemo(() => {
   return [...feed]
+    .filter((item) => !isTemporarilyHiddenListing(item))
     .filter((item) => matchesFeedFilters(item, filterState))
     .sort((a, b) => {
       if (sortBy === "best") {
@@ -1309,13 +1584,13 @@ const visibleFeed = useMemo(
 );
 
 const blendedVisibleFeed = useMemo(() => {
-  if (visibleFeed.length >= 10) return visibleFeed;
+  if (visibleFeed.length >= MIN_EXPLORE_FEED_ITEMS) return visibleFeed;
 
   const existingFingerprints = new Set(visibleFeed.map((item) => listingFingerprint(item)));
   const fallbackSeeds = demoFeed
     .filter((item) => matchesFeedFilters(item, filterState))
     .filter((item) => !existingFingerprints.has(listingFingerprint(item)))
-    .slice(0, 10 - visibleFeed.length)
+    .slice(0, MIN_EXPLORE_FEED_ITEMS - visibleFeed.length)
     .map((item, index) => ({
       ...item,
       id: `seed-${item.id}-${index}`,
@@ -1373,20 +1648,14 @@ const displayFeed = useMemo<DisplayListing[]>(
   [blendedVisibleFeed]
 );
 
-const featuredListing = displayFeed[0] || null;
-const secondaryListings = displayFeed.slice(1);
-
-const quickFilterCounts = useMemo(() => {
-  const demand = feed.filter((item) => item.type === "demand").length;
-  const service = feed.filter((item) => item.type === "service").length;
-  const product = feed.filter((item) => item.type === "product").length;
-  return {
-    all: feed.length,
-    demand,
-    service,
-    product,
-  };
-}, [feed]);
+const featuredListing = useMemo(
+  () => displayFeed.find((item) => (item.media?.length || 0) > 0) || displayFeed[0] || null,
+  [displayFeed]
+);
+const secondaryListings = useMemo(
+  () => (featuredListing ? displayFeed.filter((item) => item.id !== featuredListing.id) : []),
+  [displayFeed, featuredListing]
+);
 
 const trendingOpportunities = useMemo(
   () =>
@@ -1550,82 +1819,126 @@ const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
 /* ================= UI ================= */
 
 return (
-  <div className="min-h-screen bg-transparent text-slate-900">
+  <div className="relative min-h-screen bg-slate-50 text-slate-900">
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_15%_18%,rgba(99,102,241,0.16),transparent_44%),radial-gradient(circle_at_88%_0%,rgba(14,165,233,0.11),transparent_36%)]" />
     <RouteObservability route="dashboard" />
-    <div className="mx-auto max-w-[2200px] px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] 2xl:gap-7">
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm sm:p-4">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 sm:flex-row sm:items-center">
-              <label className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-                <Search size={16} className="text-slate-500" />
-                <input
-                  placeholder="Search posts, services, or help nearby"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters((current) => !current)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-              >
-                <Filter size={15} />
-                Filter
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => void fetchFeed(true)}
-                disabled={syncing}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-                {syncing ? "Syncing..." : "Refresh"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFeed(demoFeed);
-                  setUsingDemoFeed(true);
-                  setFeedError("Startup demo stream loaded.");
-                  setHiddenListingIds(new Set());
-                }}
-                className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
-              >
-                Load Demo Stream
-              </button>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                {filteredStats.total} posts
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                {filteredStats.withMedia} with media
-              </span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                {filteredStats.urgent} urgent
-              </span>
-              {hiddenListingIds.size > 0 && (
+    <div className="relative mx-auto max-w-[1720px] px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
+      <section className="space-y-4">
+          <div className="market-hero-surface rounded-3xl border border-indigo-200/70 bg-gradient-to-br from-white via-slate-50/95 to-indigo-50/60 p-4 shadow-[0_20px_55px_-36px_rgba(30,64,175,0.45)] sm:p-5">
+            <div className="mx-auto w-full max-w-6xl">
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">Explorer Feed</p>
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+                    Find nearby opportunities in real time
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-500">Curated from live listings with smart demo backfill for discovery.</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+                  <Search size={16} className="text-slate-500" />
+                  <input
+                    placeholder="Search posts, services, or help nearby"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </label>
                 <button
                   type="button"
-                  onClick={() => setHiddenListingIds(new Set())}
-                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                  onClick={() => setShowAdvancedFilters((current) => !current)}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                 >
-                  Restore hidden ({hiddenListingIds.size})
+                  <Filter size={15} />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => void fetchFeed(true)}
+                  disabled={syncing}
+                  className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                  {syncing ? "Syncing..." : "Refresh"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFeed(demoFeed);
+                    setUsingDemoFeed(true);
+                    setFeedError("Startup demo stream loaded.");
+                    setHiddenListingIds(new Set());
+                  }}
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                >
+                  Load Demo Stream
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setOpenPostModal(true)}
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+                >
+                  Create Post
+                </button>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                  {filteredStats.total} posts
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                  {filteredStats.withMedia} with media
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                  {filteredStats.urgent} urgent
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                  Avg match {filteredStats.avgMatch}
+                </span>
+                {hiddenListingIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setHiddenListingIds(new Set())}
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                  >
+                    Restore hidden ({hiddenListingIds.size})
+                  </button>
+                )}
+              </div>
+              {trendingOpportunities.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Explore opportunities now
+                  </p>
+                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                    {trendingOpportunities.map((item) => (
+                      <button
+                        key={`explore-chip-${item.id}`}
+                        type="button"
+                        onClick={() => {
+                          setSearch(item.displayTitle);
+                          setCategory(item.type);
+                          setSortBy("best");
+                        }}
+                        className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                      >
+                        {item.displayTitle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
           {showAdvancedFilters && (
-            <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-2xl border border-indigo-100 bg-white/95 p-3 shadow-sm sm:p-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <label className="text-xs text-slate-600">
                   Sort by
                   <select
@@ -1650,6 +1963,19 @@ return (
                   </select>
                 </label>
                 <label className="text-xs text-slate-600">
+                  Listing type
+                  <select
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <option value="all">All posts</option>
+                    <option value="demand">Demand</option>
+                    <option value="service">Services</option>
+                    <option value="product">Products</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-600">
                   Max distance
                   <select
                     value={String(maxDistanceKm)}
@@ -1662,52 +1988,50 @@ return (
                     <option value="15">Within 15 km</option>
                   </select>
                 </label>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setVerifiedOnly((value) => !value)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      verifiedOnly
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
+                <label className="text-xs text-slate-600">
+                  Verification
+                  <select
+                    value={verifiedOnly ? "verified" : "all"}
+                    onChange={(event) => setVerifiedOnly(event.target.value === "verified")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                   >
-                    Verified
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUrgentOnly((value) => !value)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      urgentOnly
-                        ? "border-rose-300 bg-rose-50 text-rose-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
+                    <option value="all">All providers</option>
+                    <option value="verified">Verified only</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-600">
+                  Urgency
+                  <select
+                    value={urgentOnly ? "urgent" : "all"}
+                    onChange={(event) => setUrgentOnly(event.target.value === "urgent")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                   >
-                    Urgent
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMediaOnly((value) => !value)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      mediaOnly
-                        ? "border-violet-300 bg-violet-50 text-violet-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
+                    <option value="all">All urgency</option>
+                    <option value="urgent">Urgent only</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-600">
+                  Media
+                  <select
+                    value={mediaOnly ? "media" : "all"}
+                    onChange={(event) => setMediaOnly(event.target.value === "media")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                   >
-                    Media
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFreshOnly((value) => !value)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      freshOnly
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
+                    <option value="all">Any media</option>
+                    <option value="media">With media only</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-600">
+                  Freshness
+                  <select
+                    value={freshOnly ? "recent" : "all"}
+                    onChange={(event) => setFreshOnly(event.target.value === "recent")}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                   >
-                    Last 24h
-                  </button>
-                </div>
+                    <option value="all">All time</option>
+                    <option value="recent">Last 24h</option>
+                  </select>
+                </label>
               </div>
               {activeFilterCount > 0 && (
                 <button
@@ -1723,7 +2047,7 @@ return (
           )}
 
           {(usingDemoFeed || !!feedError) && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/90 px-3 py-2 text-xs text-indigo-700 shadow-sm">
               {feedError || "Demo seed feed is active while live listings are syncing."}
             </div>
           )}
@@ -1765,10 +2089,10 @@ return (
             </div>
           ) : (
             <>
-              <div className="relative overflow-hidden rounded-3xl border border-indigo-200/70 bg-gradient-to-br from-indigo-100 via-white to-sky-100 p-4 shadow-sm sm:p-5">
+              <div className="relative overflow-hidden rounded-[28px] border border-indigo-200/70 bg-gradient-to-br from-indigo-100 via-white to-cyan-100 p-4 shadow-[0_22px_48px_-34px_rgba(30,64,175,0.46)] sm:p-6">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_15%,rgba(99,102,241,0.18),transparent_35%),radial-gradient(circle_at_85%_85%,rgba(56,189,248,0.12),transparent_30%)]" />
-                <article className="relative rounded-2xl border border-white/70 bg-white/95 p-4 shadow-md backdrop-blur-sm sm:p-5">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <article className="relative rounded-[22px] border border-white/70 bg-white/95 p-4 shadow-lg backdrop-blur-sm sm:p-6">
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
                     <div>
                       <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">LIVE</span>
@@ -1779,7 +2103,7 @@ return (
                         </span>
                       </div>
 
-                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900">
+                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl">
                         {featuredListing.displayTitle}
                       </h2>
 
@@ -1799,13 +2123,21 @@ return (
 
                       <p className="mt-3 text-lg text-slate-700">{featuredListing.displayDescription}</p>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                         {featuredListing.price > 0 && (
-                          <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">₹ {featuredListing.price}</span>
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">
+                            ₹ {featuredListing.price}
+                          </span>
                         )}
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Respond within {featuredListing.responseMinutes} mins</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Match {featuredListing.rankScore}</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{featuredListing.profileCompletion}% profile</span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                          Respond within {featuredListing.responseMinutes} mins
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                          Match {featuredListing.rankScore}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                          {featuredListing.profileCompletion}% profile
+                        </span>
                       </div>
 
                       <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -1852,7 +2184,7 @@ return (
                       </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-inner">
                       {featuredListing.media?.[0] ? (
                         <>
                           {featuredListing.media[0].mimeType.startsWith("image/") &&
@@ -1861,30 +2193,30 @@ return (
                             <img
                               src={featuredListing.media[0].url}
                               alt={featuredListing.displayTitle}
-                              className="h-full min-h-[280px] w-full object-cover"
+                              className="h-full min-h-[340px] w-full object-cover"
                             />
                           ) : featuredListing.media[0].mimeType.startsWith("video/") ? (
                             <video
                               src={featuredListing.media[0].url}
                               controls
                               preload="metadata"
-                              className="h-full min-h-[280px] w-full object-cover"
+                              className="h-full min-h-[340px] w-full object-cover"
                             />
                           ) : featuredListing.media[0].mimeType.startsWith("audio/") ? (
-                            <div className="grid min-h-[280px] place-items-center p-4">
+                            <div className="grid min-h-[340px] place-items-center p-4">
                               <div className="w-full">
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Voice Attachment</p>
                                 <audio src={featuredListing.media[0].url} controls className="w-full" preload="metadata" />
                               </div>
                             </div>
                           ) : (
-                            <div className="grid min-h-[280px] place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-center">
+                            <div className="grid min-h-[340px] place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-center">
                               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">Graphics Attachment</p>
                             </div>
                           )}
                         </>
                       ) : (
-                        <div className="grid min-h-[280px] place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
+                        <div className="grid min-h-[340px] place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">Graphic Preview</p>
                         </div>
                       )}
@@ -1894,7 +2226,7 @@ return (
               </div>
 
               {secondaryListings.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {secondaryListings.map((item, index) => {
                     const saved = savedListingIds.has(item.id);
                     const mediaKinds = getMediaKinds(item.media);
@@ -1906,7 +2238,7 @@ return (
                       <article
                         key={item.id}
                         style={{ "--enter-delay": `${enterDelay}ms` } as CSSProperties}
-                        className="post-card-enter overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                        className="group post-card-enter overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_16px_30px_-24px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_26px_38px_-24px_rgba(37,99,235,0.4)]"
                       >
                         <div className="relative">
                           {primaryMedia ? (
@@ -1916,27 +2248,27 @@ return (
                                 <img
                                   src={primaryMedia.url}
                                   alt={item.displayTitle}
-                                  className="h-44 w-full object-cover"
+                                  className="h-52 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                                 />
                               ) : primaryMedia.mimeType.startsWith("video/") ? (
                                 <video
                                   src={primaryMedia.url}
                                   controls
                                   preload="metadata"
-                                  className="h-44 w-full object-cover"
+                                  className="h-52 w-full object-cover"
                                 />
                               ) : primaryMedia.mimeType.startsWith("audio/") ? (
-                                <div className="grid h-44 place-items-center bg-slate-100 p-4">
+                                <div className="grid h-52 place-items-center bg-slate-100 p-4">
                                   <audio src={primaryMedia.url} controls className="w-full" preload="metadata" />
                                 </div>
                               ) : (
-                                <div className="grid h-44 place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                                <div className="grid h-52 place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
                                   Graphics
                                 </div>
                               )}
                             </>
                           ) : (
-                            <div className="grid h-44 place-items-center bg-gradient-to-br from-slate-100 via-white to-indigo-50 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                            <div className="grid h-52 place-items-center bg-gradient-to-br from-slate-100 via-white to-indigo-50 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
                               Visual Preview
                             </div>
                           )}
@@ -1952,18 +2284,23 @@ return (
 
                         <div className="p-4">
                           <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] uppercase text-slate-600">{item.type}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">{item.type}</span>
                             {mediaKinds.map((kind) => (
-                              <span key={`${item.id}-${kind}`} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700">
+                              <span key={`${item.id}-${kind}`} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
                                 {kind}
                               </span>
                             ))}
                           </div>
 
-                          <h3 className="line-clamp-1 text-lg font-semibold text-slate-900">{item.displayTitle}</h3>
-                          <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.displayDescription}</p>
+                          <h3 className="line-clamp-1 text-xl font-semibold tracking-tight text-slate-900">{item.displayTitle}</h3>
+                          <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
 
                           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            {item.price > 0 && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                                ₹ {item.price}
+                              </span>
+                            )}
                             <span className="inline-flex items-center gap-1">
                               <MapPin size={12} />
                               {item.distance} km
@@ -1991,7 +2328,7 @@ return (
                               onClick={() =>
                                 item.type === "demand" ? void messageProvider(item.provider_id) : void bookNow(item)
                               }
-                              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                              className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
                             >
                               {item.type === "demand"
                                 ? messageLoadingId === item.provider_id
@@ -2002,14 +2339,14 @@ return (
                             <button
                               type="button"
                               onClick={() => item.provider_id && setSelectedProvider(item.provider_id)}
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
                             >
                               Profile
                             </button>
                             <button
                               type="button"
                               onClick={() => hideListing(item.id)}
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50"
                             >
                               Hide
                             </button>
@@ -2022,90 +2359,7 @@ return (
               )}
             </>
           )}
-        </section>
-
-        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-2xl font-semibold tracking-tight text-slate-900">Boost Your Activity</h3>
-            <p className="mt-1 text-sm text-slate-600">Boost your reach and discover more local opportunities.</p>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="text-slate-500">Live posts</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.total}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="text-slate-500">Urgent</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.urgent}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="text-slate-500">Avg match</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{filteredStats.avgMatch}</p>
-              </div>
-            </div>
-            <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-              Focus on urgent, high-match cards to increase response conversion.
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-2xl font-semibold text-slate-900">Post a New Need</h3>
-            <p className="mt-1 text-sm text-slate-600">Create a post to get local responses quickly.</p>
-            <button
-              type="button"
-              onClick={() => setOpenPostModal(true)}
-              className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
-            >
-              Create Post
-            </button>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-2xl font-semibold text-slate-900">Quick Filters</h3>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              {[
-                { key: "all", label: "All", count: quickFilterCounts.all },
-                { key: "demand", label: "Demand", count: quickFilterCounts.demand },
-                { key: "service", label: "Service", count: quickFilterCounts.service },
-                { key: "product", label: "Product", count: quickFilterCounts.product },
-              ].map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setCategory(option.key)}
-                  className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                    category === option.key
-                      ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300"
-                  }`}
-                >
-                  <span className="font-semibold">{option.label}</span>
-                  <span className="ml-1 text-xs text-slate-500">({option.count})</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <h4 className="text-sm font-semibold text-slate-900">Trending Opportunities</h4>
-              <div className="mt-2 space-y-2">
-                {trendingOpportunities.slice(0, 3).map((item) => (
-                  <button
-                    key={`trending-${item.id}`}
-                    type="button"
-                    onClick={() => setSearch(item.displayTitle)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-indigo-300"
-                  >
-                    <p className="line-clamp-1 text-sm font-medium text-slate-900">{item.displayTitle}</p>
-                    <p className="mt-1 text-xs text-slate-500">{item.distance} km away</p>
-                  </button>
-                ))}
-                {trendingOpportunities.length === 0 && (
-                  <p className="text-xs text-slate-500">No opportunities for the current filter set.</p>
-                )}
-              </div>
-            </div>
-          </section>
-        </aside>
-      </div>
+      </section>
     </div>
     {selectedProvider && (
       <ProviderTrustPanel
