@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +42,8 @@ RotateCcw,
 RefreshCw,
 Bookmark,
 BookmarkCheck,
+UsersRound,
+Zap,
 } from "lucide-react";
 
 const FEED_LIMIT_PER_TYPE = 24;
@@ -54,6 +57,13 @@ const MIN_EXPLORE_FEED_ITEMS = 18;
 const TEMP_HIDDEN_LISTING_PATTERNS = [
   /\bneed ac shifting from one flat to another\b/i,
 ];
+const MARKETPLACE_HERO_LINES = [
+  "Post a Need. Get Local Help. Let Others Earn.",
+  "Where Neighbours Help and Earn in Real Time.",
+  "Small Tasks. Real People. Instant Help.",
+  "Post What You Need. Someone Nearby Will Help.",
+  "Local Help Marketplace for Everyday Needs.",
+] as const;
 
 /* ================= TYPES ================= */
 
@@ -992,12 +1002,22 @@ export default function MarketplacePage() {
   const [mediaOnly, setMediaOnly] = useState(false);
   const [freshOnly, setFreshOnly] = useState(false);
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
+  const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
   const [openPostModal, setOpenPostModal] = useState(false);
+  const [heroLineIndex, setHeroLineIndex] = useState(0);
   const reloadTimerRef = useRef<number | null>(null);
   const fetchInFlightRef = useRef(false);
   const lastSoftFetchStartedAtRef = useRef(0);
+
+  useEffect(() => {
+    const lineTimer = window.setInterval(() => {
+      setHeroLineIndex((current) => (current + 1) % MARKETPLACE_HERO_LINES.length);
+    }, 3200);
+
+    return () => window.clearInterval(lineTimer);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1977,106 +1997,206 @@ return (
     <RouteObservability route="dashboard" />
     <div className="relative mx-auto max-w-[1720px] px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
       <section className="space-y-4">
-          <div className="market-hero-surface rounded-3xl border border-indigo-200/70 bg-gradient-to-br from-white via-slate-50/95 to-indigo-50/60 p-4 shadow-[0_20px_55px_-36px_rgba(30,64,175,0.45)] sm:p-5">
-            <div className="mx-auto w-full max-w-6xl">
-              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-500">Explorer Feed</p>
-                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
-                    Find nearby opportunities in real time
-                  </h2>
-                </div>
-                <p className="text-xs text-slate-500">Curated from live listings with smart demo backfill for discovery.</p>
+          <div className="relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-indigo-950 via-violet-800 to-fuchsia-700 p-3 shadow-[0_20px_50px_-32px_rgba(76,29,149,0.86)] sm:p-4">
+            <div className="pointer-events-none absolute inset-0">
+              <div
+                className="absolute inset-0 opacity-30"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
+                }}
+              />
+              <motion.div
+                className="absolute -right-6 top-2 h-24 w-24 rounded-full bg-cyan-300/30 blur-3xl"
+                animate={{ x: [0, -10, 0], y: [0, 6, 0] }}
+                transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute left-8 bottom-0 h-20 w-20 rounded-full bg-pink-300/26 blur-2xl"
+                animate={{ x: [0, 9, 0], y: [0, -7, 0] }}
+                transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute right-[10%] bottom-[11%] text-white/45"
+                animate={{ y: [0, -6, 0], opacity: [0.55, 0.95, 0.55] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
+              >
+                <MapPin size={18} />
+              </motion.div>
+            </div>
+
+            <div className="relative space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-white">{MARKETPLACE_HERO_LINES[4]}</p>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${realtimeStyle.className}`}>
+                  <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
+                  {realtimeStyle.label}
+                </span>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <label className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
-                  <Search size={16} className="text-slate-500" />
-                  <input
-                    placeholder="Search posts, services, or help nearby"
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </label>
+
+              <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setShowAdvancedFilters((current) => !current)}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  onClick={() => setOpenPostModal(true)}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
                 >
-                  <Filter size={15} />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
-                      {activeFilterCount}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <Zap size={14} />
                     </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void fetchFeed(true)}
-                  disabled={syncing}
-                  className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-                  {syncing ? "Syncing..." : "Refresh"}
+                    <p className="text-base font-semibold">Post a Need</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Get local responses fast.</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setFeed(demoFeed);
-                    setUsingDemoFeed(true);
-                    setFeedError("Startup demo stream loaded.");
+                    setCategory("demand");
+                    setSortBy("best");
+                    setShowAdvancedFilters(true);
                   }}
-                  className="inline-flex h-12 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
                 >
-                  Load Demo Stream
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <UsersRound size={14} />
+                    </span>
+                    <p className="text-base font-semibold">Earn Nearby</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Find urgent local tasks to earn.</p>
                 </button>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2.5">
+
+              <div className="flex flex-wrap gap-1.5">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={`posts-hero-line-${heroLineIndex}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.28 }}
+                    className="rounded-full border border-white/22 bg-white/14 px-2.5 py-1 text-[11px] font-medium text-white/95"
+                  >
+                    {MARKETPLACE_HERO_LINES[heroLineIndex]}
+                  </motion.span>
+                </AnimatePresence>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2.5 py-1 text-[11px] font-medium text-white/95">
+                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 1) % MARKETPLACE_HERO_LINES.length]}
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2.5 py-1 text-[11px] font-medium text-white/95">
+                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 2) % MARKETPLACE_HERO_LINES.length]}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm sm:p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+                <Search size={16} className="text-slate-500" />
+                <input
+                  placeholder="Search posts, services, or help nearby"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters((current) => !current)}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                <Filter size={15} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => void fetchFeed(true)}
+                disabled={syncing}
+                className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                {syncing ? "Syncing..." : "Refresh"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeed(demoFeed);
+                  setUsingDemoFeed(true);
+                  setFeedError("Startup demo stream loaded.");
+                  setHiddenListingIds(new Set());
+                }}
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+              >
+                Load Demo Stream
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setOpenPostModal(true)}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+              >
+                Post a Need
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategory("demand");
+                  setSortBy("best");
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-100"
+              >
+                Earn Nearby
+              </button>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                {filteredStats.total} posts
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                {filteredStats.withMedia} with media
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                {filteredStats.urgent} urgent
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
+                Avg match {filteredStats.avgMatch}
+              </span>
+              {hiddenListingIds.size > 0 && (
                 <button
                   type="button"
-                  onClick={() => setOpenPostModal(true)}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+                  onClick={() => setHiddenListingIds(new Set())}
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
                 >
-                  Create Post
+                  Restore hidden ({hiddenListingIds.size})
                 </button>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                  {filteredStats.total} posts
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                  {filteredStats.withMedia} with media
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                  {filteredStats.urgent} urgent
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                  Avg match {filteredStats.avgMatch}
-                </span>
-              </div>
-              {trendingOpportunities.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Explore opportunities now
-                  </p>
-                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                    {trendingOpportunities.map((item) => (
-                      <button
-                        key={`explore-chip-${item.id}`}
-                        type="button"
-                        onClick={() => {
-                          setSearch(item.displayTitle);
-                          setCategory(item.type);
-                          setSortBy("best");
-                        }}
-                        className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                      >
-                        {item.displayTitle}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
+
+            {trendingOpportunities.length > 0 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {trendingOpportunities.map((item) => (
+                  <button
+                    key={`explore-chip-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      setSearch(item.displayTitle);
+                      setCategory(item.type);
+                      setSortBy("best");
+                    }}
+                    className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                  >
+                    {item.displayTitle}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {showAdvancedFilters && (
