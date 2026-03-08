@@ -117,3 +117,17 @@ select count(*) from conversations;
 select count(*) from conversation_participants;
 select count(*) from messages;
 ```
+
+## Task history seed (optional)
+
+Run `seed_task_history_demo.sql` after `seed_dashboard_demo.sql` when you want a denser `/dashboard/tasks` visualization with:
+- active queue examples
+- in-progress work
+- completed / closed history
+- cancelled / rejected history
+
+Quick checks
+```sql
+select count(*) from orders where id::text like '00000000-0000-4000-8000-00000000045%';
+select count(*) from task_events where metadata->>'seed' = 'task_history_demo';
+```

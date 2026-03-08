@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import RouteObservability from "@/app/components/RouteObservability";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -44,10 +45,13 @@ Bookmark,
 BookmarkCheck,
 UsersRound,
 Zap,
+Loader2,
+Send,
+ArrowUpRight,
 } from "lucide-react";
 
-const FEED_LIMIT_PER_TYPE = 24;
-const MAX_PROFILE_LOOKUP = 120;
+const FEED_LIMIT_PER_TYPE = 60;
+const MAX_PROFILE_LOOKUP = 240;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
@@ -1004,6 +1008,11 @@ export default function MarketplacePage() {
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
   const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
+  const [inlineComposerListingId, setInlineComposerListingId] = useState<string | null>(null);
+  const [inlineMessageDrafts, setInlineMessageDrafts] = useState<Record<string, string>>({});
+  const [inlineMessageStatusByListing, setInlineMessageStatusByListing] = useState<Record<string, string>>({});
+  const [inlineConversationByOwner, setInlineConversationByOwner] = useState<Record<string, string>>({});
+  const [inlineSendingListingId, setInlineSendingListingId] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
   const [openPostModal, setOpenPostModal] = useState(false);
   const [heroLineIndex, setHeroLineIndex] = useState(0);
@@ -1100,6 +1109,7 @@ export default function MarketplacePage() {
         const primaryResult = await supabase
           .from(table)
           .select(primarySelect)
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (!primaryResult.error) {
@@ -1113,6 +1123,7 @@ export default function MarketplacePage() {
         const fallbackResult = await supabase
           .from(table)
           .select("*")
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (fallbackResult.error) {
@@ -1127,6 +1138,7 @@ export default function MarketplacePage() {
           .from("posts")
           .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
           .eq("status", "open")
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (!primaryResult.error) {
@@ -1140,6 +1152,7 @@ export default function MarketplacePage() {
         const fallbackResult = await supabase
           .from("posts")
           .select("*")
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (fallbackResult.error) {
@@ -1155,7 +1168,7 @@ export default function MarketplacePage() {
           .select(
             "id,requester_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at"
           )
-          .eq("status", "open")
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (!primaryResult.error) {
@@ -1173,6 +1186,7 @@ export default function MarketplacePage() {
         const fallbackResult = await supabase
           .from("help_requests")
           .select("*")
+          .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
         if (fallbackResult.error && isMissingRelationError(fallbackResult.error.message)) {
@@ -1307,7 +1321,7 @@ export default function MarketplacePage() {
       const helpRequestRows: HelpRequestRow[] = helpRequestRowsRaw
         .filter((row) => {
           const status = stringFromRow(row, ["status", "state"], "");
-          return !status || status.toLowerCase() === "open";
+          return !["completed", "fulfilled", "closed", "cancelled", "canceled"].includes(status.toLowerCase());
         })
         .map((row, index) => ({
           id: stringFromRow(row, ["id"], `help-request-${index}`),
@@ -1900,91 +1914,176 @@ alert("Booking request sent 🚀");
 
 };
 
-const messageProvider = async (providerId: string) => {
-if (providerId.startsWith("demo-provider-")) {
+const ensureViewerId = async () => {
+const {
+data: { user },
+error,
+} = await supabase.auth.getUser();
+
+if (error || !user) {
+  throw new Error(error?.message || "Login required");
+}
+
+return user.id;
+};
+
+const openChatThread = async (providerId: string) => {
+if (!providerId || providerId.startsWith("demo-")) {
   router.push("/dashboard/people");
   return;
 }
 
 setMessageLoadingId(providerId);
 
-const {
-data: { user },
-} = await supabase.auth.getUser();
-
-if (!user) {
-  setMessageLoadingId(null);
-  alert("Login required");
-  return;
-}
-
-if (user.id === providerId) {
-  setMessageLoadingId(null);
-  alert("This is your own listing.");
-  return;
-}
-
-const { data: myConversations } = await supabase
-  .from("conversation_participants")
-  .select("conversation_id")
-  .eq("user_id", user.id);
-
-const myConversationIds = myConversations?.map((row) => row.conversation_id) || [];
-
-let targetConversationId: string | null = null;
-
-if (myConversationIds.length > 0) {
-  const { data: providerConversation } = await supabase
-    .from("conversation_participants")
-    .select("conversation_id")
-    .in("conversation_id", myConversationIds)
-    .eq("user_id", providerId)
-    .limit(1)
-    .maybeSingle();
-
-  targetConversationId = providerConversation?.conversation_id || null;
-}
-
-if (!targetConversationId) {
-  const { data: conversation, error } = await supabase
-    .from("conversations")
-    .insert({
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (error || !conversation) {
-    setMessageLoadingId(null);
-    alert(`Unable to start chat. ${error?.message || ""}`.trim());
+try {
+  const viewerId = await ensureViewerId();
+  if (viewerId === providerId) {
+    alert("This is your own listing.");
     return;
   }
 
-  targetConversationId = conversation.id;
+  const conversationId =
+    inlineConversationByOwner[providerId] || (await getOrCreateDirectConversationId(supabase, viewerId, providerId));
 
-  const { error: participantError } = await supabase.from("conversation_participants").upsert([
-    {
-      conversation_id: targetConversationId,
-      user_id: user.id,
-    },
-    {
-      conversation_id: targetConversationId,
-      user_id: providerId,
-    },
-  ], {
-    onConflict: "conversation_id,user_id",
-    ignoreDuplicates: true,
+  setInlineConversationByOwner((previous) => ({ ...previous, [providerId]: conversationId }));
+  router.push(`/dashboard/chat?open=${conversationId}`);
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unable to start chat";
+  alert(`Unable to open chat. ${message}`);
+} finally {
+  setMessageLoadingId(null);
+}
+};
+
+const messageProvider = async (item: Listing) => {
+if (!item.provider_id || item.provider_id.startsWith("demo-") || item.isDemo) {
+  router.push("/dashboard/people");
+  return;
+}
+
+try {
+  const viewerId = await ensureViewerId();
+  if (viewerId === item.provider_id) {
+    alert("This is your own listing.");
+    return;
+  }
+
+  setInlineComposerListingId((current) => (current === item.id ? null : item.id));
+  setInlineMessageDrafts((previous) => {
+    if (previous[item.id]) return previous;
+    const creatorName = item.creatorName || "there";
+    return {
+      ...previous,
+      [item.id]: `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`,
+    };
+  });
+  setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Login required";
+  alert(message);
+}
+};
+
+const sendInlineMessage = async (item: Listing) => {
+const draft = (inlineMessageDrafts[item.id] || "").trim();
+if (!draft) {
+  setInlineMessageStatusByListing((previous) => ({
+    ...previous,
+    [item.id]: "Type a message before sending.",
+  }));
+  return;
+}
+
+if (!item.provider_id || item.provider_id.startsWith("demo-")) {
+  setInlineMessageStatusByListing((previous) => ({
+    ...previous,
+    [item.id]: "Live messaging is not available for this card yet.",
+  }));
+  return;
+}
+
+setInlineSendingListingId(item.id);
+setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+
+try {
+  const viewerId = await ensureViewerId();
+  if (viewerId === item.provider_id) {
+    alert("This is your own listing.");
+    return;
+  }
+
+  const { conversationId } = await sendDirectMessage(supabase, {
+    viewerId,
+    recipientId: item.provider_id,
+    content: draft,
   });
 
-  if (participantError) {
-    setMessageLoadingId(null);
-    alert(`Unable to start chat. ${participantError.message}`);
-    return;
-  }
+  setInlineConversationByOwner((previous) => ({ ...previous, [item.provider_id]: conversationId }));
+  setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: "" }));
+  setInlineMessageStatusByListing((previous) => ({
+    ...previous,
+    [item.id]: "Message sent. Open the chat tab to continue in realtime.",
+  }));
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Failed to send message";
+  setInlineMessageStatusByListing((previous) => ({
+    ...previous,
+    [item.id]: `Unable to send. ${message}`,
+  }));
+} finally {
+  setInlineSendingListingId(null);
 }
+};
 
-setMessageLoadingId(null);
-router.push(`/dashboard/chat?open=${targetConversationId}`);
+const renderInlineComposer = (item: DisplayListing, compact = false) => {
+if (item.type !== "demand") return null;
+if (inlineComposerListingId !== item.id) return null;
+
+const inlineDraft = inlineMessageDrafts[item.id] || "";
+const inlineStatus = inlineMessageStatusByListing[item.id] || "";
+const savedConversationId = item.provider_id ? inlineConversationByOwner[item.provider_id] || null : null;
+
+return (
+  <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact ? "mt-3 p-3" : "mt-4 p-4"}`}>
+    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message post owner</p>
+    <textarea
+      value={inlineDraft}
+      onChange={(event) => {
+        const nextValue = event.target.value;
+        setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: nextValue }));
+        if (inlineStatus) {
+          setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+        }
+      }}
+      rows={compact ? 3 : 4}
+      placeholder={`Write a message to ${item.displayCreator}...`}
+      className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+    />
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => void sendInlineMessage(item)}
+        disabled={inlineSendingListingId === item.id || !inlineDraft.trim()}
+        className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {inlineSendingListingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+        {inlineSendingListingId === item.id ? "Sending..." : "Send Message"}
+      </button>
+      {(savedConversationId || messageLoadingId === item.provider_id) && (
+        <button
+          type="button"
+          onClick={() => void openChatThread(item.provider_id)}
+          disabled={messageLoadingId === item.provider_id}
+          className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+        >
+          {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
+          <ArrowUpRight size={13} />
+        </button>
+      )}
+    </div>
+    {!!inlineStatus && <p className="mt-2 text-xs text-slate-600">{inlineStatus}</p>}
+  </div>
+);
 };
 
 const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
@@ -2408,18 +2507,18 @@ return (
                           type="button"
                           onClick={() =>
                             featuredListing.type === "demand"
-                              ? void messageProvider(featuredListing.provider_id)
+                              ? void messageProvider(featuredListing)
                               : void bookNow(featuredListing)
                           }
                           className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
                         >
                           {featuredListing.type === "demand" ? (
-                            messageLoadingId === featuredListing.provider_id ? (
-                              "Starting..."
+                            inlineComposerListingId === featuredListing.id ? (
+                              "Close Chat"
                             ) : (
                               <span className="inline-flex items-center gap-1.5">
                                 <MessageCircle size={14} />
-                                Respond
+                                Message Owner
                               </span>
                             )
                           ) : (
@@ -2444,7 +2543,22 @@ return (
                         >
                           View Details
                         </button>
+                        {featuredListing.type === "demand" &&
+                          (inlineConversationByOwner[featuredListing.provider_id] ||
+                            messageLoadingId === featuredListing.provider_id) && (
+                            <button
+                              type="button"
+                              onClick={() => void openChatThread(featuredListing.provider_id)}
+                              disabled={messageLoadingId === featuredListing.provider_id}
+                              className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
+                            >
+                              {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open Chat"}
+                              <ArrowUpRight size={14} />
+                            </button>
+                          )}
                       </div>
+
+                      {renderInlineComposer(featuredListing)}
                     </div>
 
                     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-inner">
@@ -2589,14 +2703,14 @@ return (
                             <button
                               type="button"
                               onClick={() =>
-                                item.type === "demand" ? void messageProvider(item.provider_id) : void bookNow(item)
+                                item.type === "demand" ? void messageProvider(item) : void bookNow(item)
                               }
                               className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
                             >
                               {item.type === "demand"
-                                ? messageLoadingId === item.provider_id
-                                  ? "Starting..."
-                                  : "Respond"
+                                ? inlineComposerListingId === item.id
+                                  ? "Close Chat"
+                                  : "Message Owner"
                                 : "Book Now"}
                             </button>
                             <button
@@ -2606,7 +2720,21 @@ return (
                             >
                               Profile
                             </button>
+                            {item.type === "demand" &&
+                              (inlineConversationByOwner[item.provider_id] || messageLoadingId === item.provider_id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => void openChatThread(item.provider_id)}
+                                  disabled={messageLoadingId === item.provider_id}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+                                >
+                                  {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
+                                  <ArrowUpRight size={12} />
+                                </button>
+                              )}
                           </div>
+
+                          {renderInlineComposer(item, true)}
                         </div>
                       </article>
                     );

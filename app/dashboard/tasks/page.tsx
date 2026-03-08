@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import RouteObservability from "@/app/components/RouteObservability";
 import { supabase } from "@/lib/supabase";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   canTransitionOrderStatus,
   getAllowedTransitions,
@@ -140,6 +141,33 @@ const demoTasks: Task[] = [
   {
     id: "demo-task-3",
     orderId: "demo-order-3",
+    title: "Laptop Repair Quote",
+    description: "Customer is reviewing your motherboard repair quote and pickup window.",
+    type: "posted",
+    status: "active",
+    rawStatus: "quoted",
+    budget: "INR 1,899",
+    timeline: "Quote sent",
+    location: "Bellandur",
+    postedBy: {
+      id: "demo-consumer-3",
+      name: "You",
+      image: "https://i.pravatar.cc/150?img=8",
+    },
+    assignedTo: {
+      id: "demo-provider-3",
+      name: "CircuitFix Lab",
+      image: "https://i.pravatar.cc/150?img=15",
+    },
+    tags: ["IT Support", "Quoted", "Pickup"],
+    listingType: "service",
+    counterpartyId: "demo-provider-3",
+    amount: 1899,
+    createdAtRaw: demoIsoFromMsAgo(9 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-task-4",
+    orderId: "demo-order-6",
     title: "Switchboard Safety Kit",
     description: "Product order delivered and closed successfully.",
     type: "posted",
@@ -163,6 +191,60 @@ const demoTasks: Task[] = [
     counterpartyId: "demo-provider-3",
     amount: 899,
     createdAtRaw: demoIsoFromMsAgo(2 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-task-5",
+    orderId: "demo-order-4",
+    title: "Balcony Plant Delivery",
+    description: "Bulk plant order was cancelled after delivery slot changed twice.",
+    type: "posted",
+    status: "cancelled",
+    rawStatus: "cancelled",
+    budget: "INR 1,250",
+    timeline: "Cancelled",
+    location: "Whitefield",
+    postedBy: {
+      id: "demo-consumer-4",
+      name: "You",
+      image: "https://i.pravatar.cc/150?img=8",
+    },
+    assignedTo: {
+      id: "demo-provider-4",
+      name: "Green Basket Co",
+      image: "https://i.pravatar.cc/150?img=32",
+    },
+    tags: ["Plants", "Cancelled"],
+    listingType: "product",
+    counterpartyId: "demo-provider-4",
+    amount: 1250,
+    createdAtRaw: demoIsoFromMsAgo(4 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-task-6",
+    orderId: "demo-order-5",
+    title: "Office Wi-Fi Reconfiguration",
+    description: "The provider completed the network reset and the order was formally closed.",
+    type: "accepted",
+    status: "completed",
+    rawStatus: "closed",
+    budget: "INR 2,400",
+    timeline: "Closed",
+    location: "MG Road",
+    postedBy: {
+      id: "demo-consumer-5",
+      name: "Ankit P",
+      image: "https://i.pravatar.cc/150?img=51",
+    },
+    assignedTo: {
+      id: "demo-provider-5",
+      name: "You",
+      image: "https://i.pravatar.cc/150?img=12",
+    },
+    tags: ["Network", "Closed"],
+    listingType: "service",
+    counterpartyId: "demo-consumer-5",
+    amount: 2400,
+    createdAtRaw: demoIsoFromMsAgo(6 * 24 * 60 * 60 * 1000),
   },
 ];
 
@@ -192,6 +274,17 @@ const demoTaskEvents: TaskEventFeedItem[] = [
   {
     id: "demo-event-3",
     orderId: "demo-order-3",
+    title: "Quote shared",
+    description: "A structured quote with visit timing was sent to the requester.",
+    taskTitle: "Laptop Repair Quote",
+    tone: "amber",
+    statusLabel: "Quoted",
+    eventType: "price_updated",
+    createdAtRaw: demoIsoFromMsAgo(7 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-event-4",
+    orderId: "demo-order-6",
     title: "Task completed",
     description: "Delivery was confirmed and the order was closed successfully.",
     taskTitle: "Switchboard Safety Kit",
@@ -199,6 +292,28 @@ const demoTaskEvents: TaskEventFeedItem[] = [
     statusLabel: "Completed",
     eventType: "status_changed",
     createdAtRaw: demoIsoFromMsAgo(2 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-event-5",
+    orderId: "demo-order-4",
+    title: "Order cancelled",
+    description: "The requester cancelled after repeated delivery-slot changes.",
+    taskTitle: "Balcony Plant Delivery",
+    tone: "rose",
+    statusLabel: "Cancelled",
+    eventType: "status_changed",
+    createdAtRaw: demoIsoFromMsAgo(4 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "demo-event-6",
+    orderId: "demo-order-5",
+    title: "Order closed",
+    description: "The support request was completed and archived after handoff.",
+    taskTitle: "Office Wi-Fi Reconfiguration",
+    tone: "emerald",
+    statusLabel: "Closed",
+    eventType: "status_changed",
+    createdAtRaw: demoIsoFromMsAgo(6 * 24 * 60 * 60 * 1000),
   },
 ];
 
@@ -282,6 +397,14 @@ const getToneClassNames = (tone: TaskEventTone) => {
     card: "border-slate-200 bg-slate-50/80",
   };
 };
+
+const getCounterpartyLabel = (task: Task) =>
+  task.type === "posted" ? task.assignedTo?.name || "Provider" : task.postedBy.name;
+
+const getCounterpartyAvatar = (task: Task) =>
+  task.type === "posted" ? task.assignedTo?.image || fallbackAvatar : task.postedBy.image || fallbackAvatar;
+
+const getCounterpartyMetaLabel = (task: Task) => (task.type === "posted" ? "Provider" : "Requester");
 
 const realtimeStateMeta: Record<
   RealtimeState,
@@ -374,10 +497,11 @@ export default function TasksPage() {
       const liveOrders = (orderRows as OrderRow[] | null) || [];
 
       if (liveOrders.length === 0) {
-        setTasks([]);
-        setTaskEvents([]);
-        setUsingDemo(false);
-        setLastSyncAt(new Date().toISOString());
+        setTasks(demoTasks);
+        setTaskEvents(demoTaskEvents);
+        setUsingDemo(true);
+        setRealtimeState("offline");
+        setLastSyncAt(null);
         setLoading(false);
         return;
       }
@@ -688,8 +812,10 @@ export default function TasksPage() {
         const stageDelta = stageOrder.indexOf(a.status) - stageOrder.indexOf(b.status);
         if (stageDelta !== 0) return stageDelta;
 
-        const aTime = a.createdAtRaw ? new Date(a.createdAtRaw).getTime() : 0;
-        const bTime = b.createdAtRaw ? new Date(b.createdAtRaw).getTime() : 0;
+        const aLatestEventAt = latestEventByOrderId.get(a.orderId)?.createdAtRaw || a.createdAtRaw;
+        const bLatestEventAt = latestEventByOrderId.get(b.orderId)?.createdAtRaw || b.createdAtRaw;
+        const aTime = aLatestEventAt ? new Date(aLatestEventAt).getTime() : 0;
+        const bTime = bLatestEventAt ? new Date(bLatestEventAt).getTime() : 0;
         return bTime - aTime;
       });
   }, [deferredSearchQuery, latestEventByOrderId, selectedStatus, selectedTab, tasks]);
@@ -794,61 +920,19 @@ export default function TasksPage() {
 
     setChatLoadingOrderId(task.orderId);
 
-    const { data: myRows } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", currentUserId);
-
-    const myConversationIds = myRows?.map((row) => row.conversation_id) || [];
-    let targetConversationId: string | null = null;
-
-    if (myConversationIds.length > 0) {
-      const { data: existing } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .in("conversation_id", myConversationIds)
-        .eq("user_id", task.counterpartyId)
-        .limit(1)
-        .maybeSingle();
-
-      targetConversationId = existing?.conversation_id || null;
-    }
-
-    if (!targetConversationId) {
-      const { data: conversation, error } = await supabase
-        .from("conversations")
-        .insert({ created_by: currentUserId })
-        .select("id")
-        .single();
-
-      if (error || !conversation) {
-        setChatLoadingOrderId(null);
-        alert(`Unable to start chat. ${error?.message || ""}`.trim());
-        return;
-      }
-
-      targetConversationId = conversation.id;
-
-      const { error: participantError } = await supabase.from("conversation_participants").upsert(
-        [
-          { conversation_id: targetConversationId, user_id: currentUserId },
-          { conversation_id: targetConversationId, user_id: task.counterpartyId },
-        ],
-        {
-          onConflict: "conversation_id,user_id",
-          ignoreDuplicates: true,
-        }
+    try {
+      const targetConversationId = await getOrCreateDirectConversationId(
+        supabase,
+        currentUserId,
+        task.counterpartyId
       );
-
-      if (participantError) {
-        setChatLoadingOrderId(null);
-        alert(`Unable to start chat. ${participantError.message}`);
-        return;
-      }
+      router.push(`/dashboard/chat?open=${targetConversationId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start chat.";
+      alert(`Unable to start chat. ${message}`);
+    } finally {
+      setChatLoadingOrderId(null);
     }
-
-    setChatLoadingOrderId(null);
-    router.push(`/dashboard/chat?open=${targetConversationId}`);
   };
 
   const updateOrderStatus = async (task: Task, nextStatus: CanonicalOrderStatus) => {
@@ -907,18 +991,22 @@ export default function TasksPage() {
     setUpdatingOrderId(null);
   };
 
-  const renderActions = (task: Task) => {
+  const renderActions = (task: Task, compact = false) => {
     const busy = updatingOrderId === task.orderId;
     const chatBusy = chatLoadingOrderId === task.orderId;
     const actor: OrderActorRole = task.type === "posted" ? "consumer" : "provider";
     const transitions = getAllowedTransitions(task.rawStatus, actor).filter((status) => status !== "closed");
+    const chatClassName = compact
+      ? "inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70"
+      : "inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70";
+    const transitionBaseClassName = compact ? "rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-70" : "rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-70";
 
     return (
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => void startChat(task)}
           disabled={chatBusy}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70"
+          className={chatClassName}
         >
           <MessageCircle className="h-4 w-4" />
           {chatBusy ? "Opening..." : "Chat"}
@@ -929,7 +1017,7 @@ export default function TasksPage() {
             key={`${task.orderId}-${nextStatus}`}
             disabled={busy}
             onClick={() => void updateOrderStatus(task, nextStatus)}
-            className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-70 ${
+            className={`${transitionBaseClassName} ${
               ["rejected", "cancelled"].includes(nextStatus)
                 ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                 : ["completed", "closed"].includes(nextStatus)
@@ -1006,8 +1094,8 @@ export default function TasksPage() {
 
       {usingDemo && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Showing the local preview set. Supabase data takes over automatically as soon as a signed-in account has live
-          orders or seeded task activity.
+          Showing the preview task dataset so you can inspect the compact queue and order history layout. Supabase data
+          takes over automatically as soon as this account has live orders or you run a task seed.
         </div>
       )}
 
@@ -1209,166 +1297,151 @@ export default function TasksPage() {
             </div>
           </div>
         ) : (
-          filteredLiveTasks.map((task) => {
-            const StatusIcon = getStatusIcon(task.status);
-            const progress = statusProgressMap[task.status];
-            const latestEvent = latestEventByOrderId.get(task.orderId);
+          <div className="grid gap-4 xl:grid-cols-2">
+            {filteredLiveTasks.map((task) => {
+              const StatusIcon = getStatusIcon(task.status);
+              const progress = statusProgressMap[task.status];
+              const latestEvent = latestEventByOrderId.get(task.orderId);
+              const toneClasses = latestEvent ? getToneClassNames(latestEvent.tone) : null;
+              const counterpartyLabel = getCounterpartyLabel(task);
+              const counterpartyAvatar = getCounterpartyAvatar(task);
 
-            return (
-              <div
-                key={task.id}
-                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
-              >
-                <div className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${getStatusAccentClass(task.status)}`} />
+              return (
+                <article
+                  key={task.id}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-5"
+                >
+                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
 
-                <div className="space-y-4 pl-2">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                          {getListingTypeLabel(task.listingType)}
-                        </span>
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
-                          {getOrderStatusLabel(task.rawStatus)}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                          Order #{task.orderId.slice(0, 8)}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-900 sm:text-xl">{task.title}</h3>
-                      <p className="text-sm text-slate-600">{task.description}</p>
-                    </div>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              {getListingTypeLabel(task.listingType)}
+                            </span>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
+                              {getOrderStatusLabel(task.rawStatus)}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              #{task.orderId.slice(0, 8)}
+                            </span>
+                          </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(task.status)}`}
-                      >
-                        <StatusIcon className="h-3.5 w-3.5" />
-                        {formatTaskStatus(task.status)}
-                      </span>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          task.type === "posted" ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
-                        }`}
-                      >
-                        {task.type === "posted" ? "Posted by You" : "Accepted by You"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {latestEvent && (
-                    <div className={`rounded-xl border px-3 py-3 ${getToneClassNames(latestEvent.tone).card}`}>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Latest activity</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-900">{latestEvent.title}</p>
-                          <p className="mt-1 text-sm text-slate-600">{latestEvent.description}</p>
+                          <div>
+                            <h3 className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{task.title}</h3>
+                            <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{task.description}</p>
+                          </div>
                         </div>
-                        <div className="text-xs font-semibold text-slate-500">
-                          {formatAgo(latestEvent.createdAtRaw, clockMs)}
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className={`font-semibold ${getStatusTextClass(task.status)}`}>
-                        {task.timeline || "Open"}
-                      </span>
-                      <span className="font-semibold text-slate-500">{progress}% flow progress</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-slate-500" />
-                      <div>
-                        <div className="text-xs text-slate-500">Budget</div>
-                        <div className="font-semibold text-slate-900">{task.budget || "Price on request"}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-slate-500" />
-                      <div>
-                        <div className="text-xs text-slate-500">Timeline</div>
-                        <div className="font-semibold text-slate-900">{task.timeline || "Open"}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-slate-500" />
-                      <div>
-                        <div className="text-xs text-slate-500">Location</div>
-                        <div className="font-semibold text-slate-900">{task.location}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-slate-500" />
-                      <div>
-                        <div className="text-xs text-slate-500">Created</div>
-                        <div className="font-semibold text-slate-900">{formatAgo(task.createdAtRaw, clockMs)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                      <Image
-                        src={task.postedBy.image || fallbackAvatar}
-                        alt={task.postedBy.name}
-                        width={36}
-                        height={36}
-                        className="h-9 w-9 rounded-xl border border-slate-200 object-cover"
-                      />
-                      <div>
-                        <div className="text-xs text-slate-500">Posted by</div>
-                        <div className="text-sm font-semibold text-slate-900">{task.postedBy.name}</div>
-                      </div>
-                    </div>
-
-                    {task.assignedTo && (
-                      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                        <Image
-                          src={task.assignedTo.image || fallbackAvatar}
-                          alt={task.assignedTo.name}
-                          width={36}
-                          height={36}
-                          className="h-9 w-9 rounded-xl border border-slate-200 object-cover"
-                        />
-                        <div>
-                          <div className="text-xs text-slate-500">Assigned to</div>
-                          <div className="text-sm font-semibold text-slate-900">{task.assignedTo.name}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {task.tags.slice(0, 4).map((tag, index) => (
                         <span
-                          key={`${task.id}-${index}`}
-                          className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ${getStatusColor(task.status)}`}
                         >
-                          {tag}
+                          <StatusIcon className="h-3.5 w-3.5" />
+                          {formatTaskStatus(task.status)}
                         </span>
-                      ))}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <DollarSign className="h-3.5 w-3.5 text-slate-500" />
+                          {task.budget || "Price on request"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                          {task.location}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <Clock className="h-3.5 w-3.5 text-slate-500" />
+                          {task.timeline || "Open"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                          {formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs)}
+                        </span>
+                      </div>
+
+                      {latestEvent && toneClasses && (
+                        <div className={`rounded-2xl border px-3.5 py-3 ${toneClasses.card}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${toneClasses.dot}`} />
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  {latestEvent.title}
+                                </p>
+                                {latestEvent.statusLabel && (
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClasses.pill}`}>
+                                    {latestEvent.statusLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1.5 line-clamp-2 text-sm text-slate-700">{latestEvent.description}</p>
+                            </div>
+                            <span className="shrink-0 text-[11px] font-semibold text-slate-500">
+                              {formatAgo(latestEvent.createdAtRaw, clockMs)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {task.tags.slice(0, 3).map((tag, index) => (
+                          <span
+                            key={`${task.id}-${index}`}
+                            className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    {renderActions(task)}
+
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 lg:max-w-[250px]">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={counterpartyAvatar}
+                          alt={counterpartyLabel}
+                          width={44}
+                          height={44}
+                          className="h-11 w-11 rounded-2xl border border-slate-200 object-cover"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            {getCounterpartyMetaLabel(task)}
+                          </div>
+                          <div className="truncate text-sm font-semibold text-slate-900">{counterpartyLabel}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {task.type === "posted" ? "You created this order" : "You are fulfilling this order"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                          <span className={`font-semibold uppercase tracking-wide ${getStatusTextClass(task.status)}`}>
+                            {task.type === "posted" ? "Posted by you" : "Accepted by you"}
+                          </span>
+                          <span className="font-semibold text-slate-500">{progress}% progress</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-slate-200 pt-3">
+                        {renderActions(task, true)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -1387,61 +1460,122 @@ export default function TasksPage() {
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {filteredHistoryTasks.map((task, index) => {
+          <div className="grid gap-4 xl:grid-cols-2">
+            {filteredHistoryTasks.map((task) => {
               const latestEvent = latestEventByOrderId.get(task.orderId);
               const StatusIcon = getStatusIcon(task.status);
+              const toneClasses = latestEvent ? getToneClassNames(latestEvent.tone) : null;
+              const counterpartyLabel = getCounterpartyLabel(task);
+              const counterpartyAvatar = getCounterpartyAvatar(task);
 
               return (
-                <div
+                <article
                   key={task.id}
-                  className={`flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${
-                    index === 0 ? "" : "border-t border-slate-200"
-                  }`}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                        {getListingTypeLabel(task.listingType)}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(task.status)}`}
-                      >
-                        <StatusIcon className="h-3.5 w-3.5" />
-                        {formatTaskStatus(task.status)}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                        Order #{task.orderId.slice(0, 8)}
-                      </span>
-                    </div>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              {getListingTypeLabel(task.listingType)}
+                            </span>
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
+                              {getOrderStatusLabel(task.rawStatus)}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              #{task.orderId.slice(0, 8)}
+                            </span>
+                          </div>
 
-                    <div className="mt-2 flex flex-col gap-1">
-                      <h3 className="truncate text-base font-bold text-slate-900">{task.title}</h3>
-                      <p className="text-sm text-slate-600">
-                        {latestEvent?.description || task.description}
-                      </p>
-                    </div>
-                  </div>
+                          <div>
+                            <h3 className="text-base font-semibold tracking-tight text-slate-900">{task.title}</h3>
+                            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                              {latestEvent?.description || task.description}
+                            </p>
+                          </div>
+                        </div>
 
-                  <div className="grid gap-3 sm:min-w-[360px] sm:grid-cols-3">
-                    <div>
-                      <div className="text-xs text-slate-500">Counterparty</div>
-                      <div className="text-sm font-semibold text-slate-900">
-                        {task.type === "posted" ? task.assignedTo?.name || "Provider" : task.postedBy.name}
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(task.status)}`}
+                        >
+                          <StatusIcon className="h-3.5 w-3.5" />
+                          {formatTaskStatus(task.status)}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <DollarSign className="h-3.5 w-3.5 text-slate-500" />
+                          {task.budget || "Price on request"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <MapPin className="h-3.5 w-3.5 text-slate-500" />
+                          {task.location}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <Clock className="h-3.5 w-3.5 text-slate-500" />
+                          {task.timeline || "Closed"}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                          <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                          {formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs)}
+                        </span>
+                      </div>
+
+                      {latestEvent && toneClasses && (
+                        <div className={`rounded-2xl border px-3.5 py-3 ${toneClasses.card}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                {latestEvent.title}
+                              </p>
+                              <p className="mt-1.5 line-clamp-2 text-sm text-slate-700">{latestEvent.description}</p>
+                            </div>
+                            <span className="shrink-0 text-[11px] font-semibold text-slate-500">
+                              {formatAgo(latestEvent.createdAtRaw, clockMs)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {task.tags.slice(0, 3).map((tag, index) => (
+                          <span
+                            key={`${task.id}-history-${index}`}
+                            className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-slate-500">Amount</div>
-                      <div className="text-sm font-semibold text-slate-900">{task.budget || "Price on request"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-500">Logged</div>
-                      <div className="text-sm font-semibold text-slate-900">
-                        {formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs)}
+
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 lg:max-w-[250px]">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={counterpartyAvatar}
+                          alt={counterpartyLabel}
+                          width={44}
+                          height={44}
+                          className="h-11 w-11 rounded-2xl border border-slate-200 object-cover"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            {getCounterpartyMetaLabel(task)}
+                          </div>
+                          <div className="truncate text-sm font-semibold text-slate-900">{counterpartyLabel}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">{getOrderStatusLabel(task.rawStatus)}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-slate-200 pt-3">
+                        {renderActions(task, true)}
                       </div>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -1479,7 +1613,8 @@ export default function TasksPage() {
       {!loading && usingDemo && (
         <div className="inline-flex items-center gap-2 rounded-xl border border-indigo-400/30 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
           <XCircle className="h-4 w-4" />
-          Preview mode is active. Sign in or seed the realtime dataset to switch this board fully to live operations.
+          Preview mode is active. Seed `supabase/seed_task_history_demo.sql` or `supabase/seed_realtime_tabs_demo.sql`
+          to switch this board to Supabase-backed task history.
         </div>
       )}
     </div>
