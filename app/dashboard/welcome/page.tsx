@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import CreatePostModal from "../../components/CreatePostModal";
@@ -669,70 +670,14 @@ export default function WelcomePage() {
     let targetPath = fallbackChatPath;
 
     try {
-      const { data: myRows, error: myRowsError } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", viewerId);
-
-      if (myRowsError) {
-        console.warn("Failed to load existing conversations for contextual message:", myRowsError.message);
-      }
-
-      const myConversationIds = ((myRows as Array<{ conversation_id: string }> | null) || []).map(
-        (row) => row.conversation_id
-      );
-      let targetConversationId: string | null = null;
-
-      if (myConversationIds.length > 0) {
-        const { data: existingConversation, error: existingConversationError } = await supabase
-          .from("conversation_participants")
-          .select("conversation_id")
-          .in("conversation_id", myConversationIds)
-          .eq("user_id", recipientId)
-          .limit(1)
-          .maybeSingle();
-
-        if (existingConversationError) {
-          console.warn("Failed to find matching conversation for contextual message:", existingConversationError.message);
-        } else {
-          targetConversationId = existingConversation?.conversation_id || null;
-        }
-      }
-
-      if (!targetConversationId) {
-        const { data: conversation, error: conversationError } = await supabase
-          .from("conversations")
-          .insert({ created_by: viewerId })
-          .select("id")
-          .single();
-
-        if (conversationError || !conversation) {
-          console.warn(
-            "Failed to create conversation for contextual message:",
-            conversationError?.message || "unknown error"
-          );
-        } else {
-          targetConversationId = conversation.id;
-          const { error: participantsError } = await supabase.from("conversation_participants").upsert(
-            [
-              { conversation_id: targetConversationId, user_id: viewerId },
-              { conversation_id: targetConversationId, user_id: recipientId },
-            ],
-            {
-              onConflict: "conversation_id,user_id",
-              ignoreDuplicates: true,
-            }
-          );
-
-          if (participantsError) {
-            console.warn("Failed to attach conversation participants for contextual message:", participantsError.message);
-          }
-        }
-      }
+      const targetConversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
 
       if (targetConversationId) {
         targetPath = buildMessagePath(card, targetConversationId);
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.warn("Failed to prepare contextual chat:", message);
     } finally {
       setMessageCardId((current) => (current === card.id ? null : current));
     }

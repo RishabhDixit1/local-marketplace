@@ -3,10 +3,11 @@
 --
 -- Seeds:
 --   1) orders
---   2) reviews
---   3) conversations
---   4) conversation_participants
---   5) messages
+--   2) task_events
+--   3) reviews
+--   4) conversations
+--   5) conversation_participants
+--   6) messages
 --
 -- Prerequisites:
 --   - At least one row in auth.users
@@ -182,7 +183,125 @@ set
   status = excluded.status;
 
 -- ---------------------------------------------------------------------------
--- 2) REVIEWS
+-- 2) TASK EVENTS
+-- ---------------------------------------------------------------------------
+delete from public.task_events
+where order_id in (
+  '00000000-0000-4000-8000-000000000401'::uuid,
+  '00000000-0000-4000-8000-000000000402'::uuid,
+  '00000000-0000-4000-8000-000000000403'::uuid,
+  '00000000-0000-4000-8000-000000000404'::uuid,
+  '00000000-0000-4000-8000-000000000405'::uuid
+);
+
+insert into public.task_events (
+  order_id,
+  consumer_id,
+  provider_id,
+  actor_id,
+  event_type,
+  previous_status,
+  next_status,
+  title,
+  description,
+  metadata,
+  created_at
+)
+select
+  o.id,
+  o.consumer_id,
+  o.provider_id,
+  case
+    when e.event_type in ('status_changed', 'price_updated') then coalesce(o.provider_id, o.consumer_id)
+    else o.consumer_id
+  end,
+  e.event_type,
+  e.previous_status,
+  e.next_status,
+  e.title,
+  e.description,
+  jsonb_build_object('seed', 'realtime_tabs_demo'),
+  timezone('utc', now()) - e.offset_interval
+from public.orders o
+join (
+  values
+    (
+      '00000000-0000-4000-8000-000000000401'::uuid,
+      'created'::text,
+      null::text,
+      'new_lead'::text,
+      'Task created'::text,
+      'Weekend cleaning request entered the live queue.'::text,
+      interval '5 hours'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000402'::uuid,
+      'created'::text,
+      null::text,
+      'new_lead'::text,
+      'Task created'::text,
+      'Emergency plumbing request entered the live queue.'::text,
+      interval '2 hours 20 minutes'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000402'::uuid,
+      'status_changed'::text,
+      'new_lead'::text,
+      'accepted'::text,
+      'Quote accepted'::text,
+      'The provider accepted the emergency visit and moved it into execution.'::text,
+      interval '2 hours'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000402'::uuid,
+      'price_updated'::text,
+      'accepted'::text,
+      'accepted'::text,
+      'Quote amount updated'::text,
+      'The final visit value was confirmed for the provider workflow.'::text,
+      interval '1 hour 50 minutes'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000403'::uuid,
+      'created'::text,
+      null::text,
+      'accepted'::text,
+      'Task accepted'::text,
+      'Switchboard safety kit order entered the delivery pipeline.'::text,
+      interval '2 days 4 hours'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000403'::uuid,
+      'status_changed'::text,
+      'accepted'::text,
+      'completed'::text,
+      'Task completed'::text,
+      'The product order was delivered and confirmed by the requester.'::text,
+      interval '2 days'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000404'::uuid,
+      'created'::text,
+      null::text,
+      'quoted'::text,
+      'Quote sent'::text,
+      'A provider responded to the open demand with a structured quote.'::text,
+      interval '7 hours'
+    ),
+    (
+      '00000000-0000-4000-8000-000000000405'::uuid,
+      'created'::text,
+      null::text,
+      'cancelled'::text,
+      'Task cancelled'::text,
+      'The requester closed this demand before the workflow started.'::text,
+      interval '1 day 3 hours'
+    )
+) as e(order_id, event_type, previous_status, next_status, title, description, offset_interval)
+  on e.order_id = o.id;
+
+-- ---------------------------------------------------------------------------
+-- 3) REVIEWS
 -- ---------------------------------------------------------------------------
 -- Keep seeded comments deterministic; remove/reinsert by seed marker.
 delete from public.reviews where comment like '[seed-demo] %';
@@ -253,7 +372,7 @@ where rr.provider_id is not null
   and rr.provider_id <> rr.reviewer_id;
 
 -- ---------------------------------------------------------------------------
--- 3) CONVERSATIONS + PARTICIPANTS + MESSAGES
+-- 4) CONVERSATIONS + PARTICIPANTS + MESSAGES
 -- ---------------------------------------------------------------------------
 with base_users as (
   select id, row_number() over (order by created_at asc) as rn

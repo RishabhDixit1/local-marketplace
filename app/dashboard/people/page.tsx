@@ -6,6 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
+import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
 import {
   Activity,
   ArrowUpRight,
@@ -79,6 +80,17 @@ type ProductRow = {
   price?: number | null;
 };
 
+type PostRow = {
+  user_id: string;
+  category: string;
+};
+
+type HelpRequestRow = {
+  requester_id: string;
+  category: string;
+  budget: number;
+};
+
 type ReviewRow = {
   provider_id: string;
   rating: number;
@@ -110,6 +122,7 @@ type ProviderCard = {
   online: boolean;
   serviceCount: number;
   productCount: number;
+  demandCount?: number;
   completedJobs: number;
   openLeads: number;
   responseMinutes: number;
@@ -122,6 +135,36 @@ type ProviderCard = {
   verificationStatus: "verified" | "pending" | "unclaimed";
   latitude: number;
   longitude: number;
+};
+
+type FlexibleRow = Record<string, unknown>;
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
+const isMissingRelationError = (message: string) =>
+  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(
+    message
+  );
+
+const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+  return fallback;
+};
+
+const numberFromRow = (row: FlexibleRow, keys: string[], fallback = 0) => {
+  for (const key of keys) {
+    const value = row[key];
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
 };
 
 const TABS = ["All", "Nearby", "Active Now", "Verified"] as const;
@@ -861,231 +904,342 @@ export default function PeoplePage() {
 
       setCurrentUserId(user?.id || null);
 
-      const [{ data: services, error: servicesError }, { data: products, error: productsError }] = await Promise.all([
-        supabase.from("service_listings").select("provider_id,category,price"),
-        supabase.from("product_catalog").select("provider_id,category,price"),
+      const selectRowsWithFallback = async (
+        table: string,
+        primarySelect: string,
+        options?: { allowMissingRelation?: boolean }
+      ): Promise<FlexibleRow[]> => {
+        const primaryResult = await supabase.from(table).select(primarySelect);
+
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (options?.allowMissingRelation && isMissingRelationError(primaryResult.error.message)) {
+          return [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase.from(table).select("*");
+        if (fallbackResult.error) {
+          if (options?.allowMissingRelation && isMissingRelationError(fallbackResult.error.message)) {
+            return [];
+          }
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
+        selectRowsWithFallback("service_listings", "provider_id,category,price"),
+        selectRowsWithFallback("product_catalog", "provider_id,category,price"),
+        selectRowsWithFallback("posts", "user_id,author_id,created_by,provider_id,category,type,post_type,status,state", {
+          allowMissingRelation: true,
+        }),
+        selectRowsWithFallback(
+          "help_requests",
+          "requester_id,category,budget_min,budget_max,status",
+          { allowMissingRelation: true }
+        ),
       ]);
 
-      if (servicesError || productsError) {
-        setProviders(demoPeople);
-        setUsingDemo(true);
-        setErrorMessage(
-          `Could not load provider listings: ${servicesError?.message || productsError?.message || "unknown error"}`
-        );
-        return;
-      }
+      const serviceRows: ServiceRow[] = serviceRowsRaw
+        .map((row) => ({
+          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
+          category: stringFromRow(row, ["category", "service_category", "type"], ""),
+          price: numberFromRow(row, ["price", "amount", "rate"], Number.NaN),
+        }))
+        .filter((row) => !!row.provider_id);
 
-    const serviceRows = (services as ServiceRow[] | null) || [];
-    const productRows = (products as ProductRow[] | null) || [];
-    const providerIdsFromListings = Array.from(
-      new Set(
-        [...serviceRows.map((row) => row.provider_id), ...productRows.map((row) => row.provider_id)].filter(
-          (id): id is string => Boolean(id)
+      const productRows: ProductRow[] = productRowsRaw
+        .map((row) => ({
+          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
+          category: stringFromRow(row, ["category", "product_category", "type"], ""),
+          price: numberFromRow(row, ["price", "amount", "mrp"], Number.NaN),
+        }))
+        .filter((row) => !!row.provider_id);
+
+      const postRows: PostRow[] = postRowsRaw
+        .filter((row) => {
+          const status = stringFromRow(row, ["status", "state"], "");
+          return !status || status.toLowerCase() === "open";
+        })
+        .map((row) => ({
+          user_id: stringFromRow(
+            row,
+            ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
+            ""
+          ),
+          category: stringFromRow(row, ["category", "post_type", "type"], "Need"),
+        }))
+        .filter((row) => !!row.user_id);
+
+      const helpRequestRows: HelpRequestRow[] = helpRequestRowsRaw
+        .filter((row) => {
+          const status = stringFromRow(row, ["status", "state"], "");
+          return !["completed", "fulfilled", "closed", "cancelled", "canceled"].includes(status.toLowerCase());
+        })
+        .map((row) => ({
+          requester_id: stringFromRow(row, ["requester_id", "user_id", "created_by"], ""),
+          category: stringFromRow(row, ["category"], "Need"),
+          budget: Math.max(
+            numberFromRow(row, ["budget_max"], 0),
+            numberFromRow(row, ["budget_min", "budget"], 0)
+          ),
+        }))
+        .filter((row) => !!row.requester_id);
+
+      const activeMemberIds = Array.from(
+        new Set(
+          [
+            ...serviceRows.map((row) => row.provider_id),
+            ...productRows.map((row) => row.provider_id),
+            ...postRows.map((row) => row.user_id),
+            ...helpRequestRows.map((row) => row.requester_id),
+          ].filter((id): id is string => Boolean(id))
         )
-      )
-    );
-    const profileIdsToLoad = Array.from(
-      new Set([...(user?.id ? [user.id] : []), ...providerIdsFromListings])
-    );
+      );
 
-    const [{ data: profiles, error: profilesError }, { data: reviews, error: reviewsError }] = await Promise.all([
-      profileIdsToLoad.length
-        ? supabase
-            .from("profiles")
-            .select("*")
-            .in("id", profileIdsToLoad)
-        : Promise.resolve({ data: [] as ProfileRow[], error: null }),
-      providerIdsFromListings.length
-        ? supabase.from("reviews").select("provider_id,rating").in("provider_id", providerIdsFromListings)
-        : Promise.resolve({ data: [] as ReviewRow[], error: null }),
-    ]);
+      const profileIdsToLoad = Array.from(new Set([...(user?.id ? [user.id] : []), ...activeMemberIds]));
+
+      const [{ data: profiles, error: profilesError }, { data: reviews, error: reviewsError }] = await Promise.all([
+        profileIdsToLoad.length
+          ? supabase.from("profiles").select("*").in("id", profileIdsToLoad)
+          : Promise.resolve({ data: [] as ProfileRow[], error: null }),
+        activeMemberIds.length
+          ? supabase.from("reviews").select("provider_id,rating").in("provider_id", activeMemberIds)
+          : Promise.resolve({ data: [] as ReviewRow[], error: null }),
+      ]);
 
       if (profilesError) {
         setProviders(demoPeople);
         setUsingDemo(true);
-        setErrorMessage(`Could not load providers: ${profilesError?.message || "unknown error"}`);
+        setErrorMessage(`Could not load people: ${profilesError.message}`);
         return;
       }
 
-    if (reviewsError) {
-      console.warn("Could not load provider reviews:", reviewsError.message);
-    }
+      if (reviewsError) {
+        console.warn("Could not load provider reviews:", reviewsError.message);
+      }
 
-    const reviewRows = reviewsError ? [] : (reviews as ReviewRow[] | null) || [];
-    const profileRows = (profiles as ProfileRow[] | null) || [];
-    const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
-    const profileCoordinates = currentUserProfile
-      ? resolveCoordinates({
-          row: currentUserProfile as unknown as Record<string, unknown>,
-          location: currentUserProfile.location,
-          seed: currentUserProfile.id,
+      const reviewRows = reviewsError ? [] : (reviews as ReviewRow[] | null) || [];
+      const profileRows = (profiles as ProfileRow[] | null) || [];
+      const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
+      const profileCoordinates = currentUserProfile
+        ? resolveCoordinates({
+            row: currentUserProfile as unknown as Record<string, unknown>,
+            location: currentUserProfile.location,
+            seed: currentUserProfile.id,
+          })
+        : null;
+      const browserCoordinates = await browserCoordinatesPromise;
+      const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
+      setViewerCoordinates(effectiveViewerCoordinates);
+
+      const serviceCountMap = new Map<string, number>();
+      const productCountMap = new Map<string, number>();
+      const demandCountMap = new Map<string, number>();
+      const serviceTagMap = new Map<string, Set<string>>();
+      const productTagMap = new Map<string, Set<string>>();
+      const demandTagMap = new Map<string, Set<string>>();
+      const combinedTagMap = new Map<string, Set<string>>();
+      const ratingMap = new Map<string, { sum: number; count: number }>();
+      const providerPriceMap = new Map<string, number[]>();
+
+      serviceRows.forEach((row) => {
+        serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
+        if (!serviceTagMap.has(row.provider_id)) serviceTagMap.set(row.provider_id, new Set());
+        if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
+        if (row.category) {
+          serviceTagMap.get(row.provider_id)?.add(row.category);
+          combinedTagMap.get(row.provider_id)?.add(row.category);
+        }
+        if (Number.isFinite(Number(row.price))) {
+          const existing = providerPriceMap.get(row.provider_id) || [];
+          providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
+        }
+      });
+
+      productRows.forEach((row) => {
+        productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
+        if (!productTagMap.has(row.provider_id)) productTagMap.set(row.provider_id, new Set());
+        if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
+        if (row.category) {
+          productTagMap.get(row.provider_id)?.add(row.category);
+          combinedTagMap.get(row.provider_id)?.add(row.category);
+        }
+        if (Number.isFinite(Number(row.price))) {
+          const existing = providerPriceMap.get(row.provider_id) || [];
+          providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
+        }
+      });
+
+      postRows.forEach((row) => {
+        demandCountMap.set(row.user_id, (demandCountMap.get(row.user_id) || 0) + 1);
+        if (!demandTagMap.has(row.user_id)) demandTagMap.set(row.user_id, new Set());
+        if (!combinedTagMap.has(row.user_id)) combinedTagMap.set(row.user_id, new Set());
+        if (row.category) {
+          demandTagMap.get(row.user_id)?.add(row.category);
+          combinedTagMap.get(row.user_id)?.add(row.category);
+        }
+      });
+
+      helpRequestRows.forEach((row) => {
+        demandCountMap.set(row.requester_id, (demandCountMap.get(row.requester_id) || 0) + 1);
+        if (!demandTagMap.has(row.requester_id)) demandTagMap.set(row.requester_id, new Set());
+        if (!combinedTagMap.has(row.requester_id)) combinedTagMap.set(row.requester_id, new Set());
+        if (row.category) {
+          demandTagMap.get(row.requester_id)?.add(row.category);
+          combinedTagMap.get(row.requester_id)?.add(row.category);
+        }
+        if (row.budget > 0) {
+          const existing = providerPriceMap.get(row.requester_id) || [];
+          providerPriceMap.set(row.requester_id, [...existing, row.budget]);
+        }
+      });
+
+      reviewRows.forEach((row) => {
+        const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
+        ratingMap.set(row.provider_id, {
+          sum: previous.sum + (row.rating || 0),
+          count: previous.count + 1,
+        });
+      });
+
+      const memberIds = profileRows
+        .filter((profile) => profile.id !== user?.id)
+        .filter((profile) => {
+          const servicesCount = serviceCountMap.get(profile.id) || 0;
+          const productsCount = productCountMap.get(profile.id) || 0;
+          const demandsCount = demandCountMap.get(profile.id) || 0;
+          return servicesCount + productsCount + demandsCount > 0;
         })
-      : null;
-    const browserCoordinates = await browserCoordinatesPromise;
-    const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
-    setViewerCoordinates(effectiveViewerCoordinates);
+        .map((profile) => profile.id);
 
-    const serviceCountMap = new Map<string, number>();
-    const productCountMap = new Map<string, number>();
-    const serviceTagMap = new Map<string, Set<string>>();
-    const productTagMap = new Map<string, Set<string>>();
-    const combinedTagMap = new Map<string, Set<string>>();
-    const ratingMap = new Map<string, { sum: number; count: number }>();
-    const providerPriceMap = new Map<string, number[]>();
+      const { data: providerOrderStatsRows, error: providerOrderStatsError } = memberIds.length
+        ? await supabase.rpc("get_provider_order_stats", { provider_ids: memberIds })
+        : { data: [] as ProviderOrderStatsRow[], error: null };
 
-    serviceRows.forEach((row) => {
-      serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
-      if (!serviceTagMap.has(row.provider_id)) serviceTagMap.set(row.provider_id, new Set());
-      if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
-      if (row.category) {
-        serviceTagMap.get(row.provider_id)?.add(row.category);
-        combinedTagMap.get(row.provider_id)?.add(row.category);
+      if (providerOrderStatsError) {
+        console.warn("Unable to load provider order stats:", providerOrderStatsError.message);
       }
-      if (Number.isFinite(Number(row.price))) {
-        const existing = providerPriceMap.get(row.provider_id) || [];
-        providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
-      }
-    });
 
-    productRows.forEach((row) => {
-      productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
-      if (!productTagMap.has(row.provider_id)) productTagMap.set(row.provider_id, new Set());
-      if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
-      if (row.category) {
-        productTagMap.get(row.provider_id)?.add(row.category);
-        combinedTagMap.get(row.provider_id)?.add(row.category);
-      }
-      if (Number.isFinite(Number(row.price))) {
-        const existing = providerPriceMap.get(row.provider_id) || [];
-        providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
-      }
-    });
+      const completedJobsMap = new Map<string, number>();
+      const openLeadsMap = new Map<string, number>();
 
-    reviewRows.forEach((row) => {
-      const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
-      ratingMap.set(row.provider_id, {
-        sum: previous.sum + (row.rating || 0),
-        count: previous.count + 1,
+      ((providerOrderStatsRows as ProviderOrderStatsRow[] | null) || []).forEach((row) => {
+        completedJobsMap.set(row.provider_id, Number(row.completed_jobs || 0));
+        openLeadsMap.set(row.provider_id, Number(row.open_leads || 0));
       });
-    });
 
-    const providerIds = profileRows
-      .filter((profile) => profile.id !== user?.id)
-      .filter((profile) => {
-        const servicesCount = serviceCountMap.get(profile.id) || 0;
-        const productsCount = productCountMap.get(profile.id) || 0;
-        return servicesCount + productsCount > 0;
-      })
-      .map((profile) => profile.id);
+      const cards: ProviderCard[] = profileRows
+        .filter((profile) => profile.id !== user?.id)
+        .filter((profile) => {
+          const servicesCount = serviceCountMap.get(profile.id) || 0;
+          const productsCount = productCountMap.get(profile.id) || 0;
+          const demandsCount = demandCountMap.get(profile.id) || 0;
+          return servicesCount + productsCount + demandsCount > 0;
+        })
+        .map((profile) => {
+          const servicesCount = serviceCountMap.get(profile.id) || 0;
+          const productsCount = productCountMap.get(profile.id) || 0;
+          const demandsCount = demandCountMap.get(profile.id) || 0;
+          const ratings = ratingMap.get(profile.id);
+          const reviewCount = ratings?.count || 0;
+          const avgRating = reviewCount > 0 ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.5;
+          const providerCoordinates = resolveCoordinates({
+            row: profile as unknown as Record<string, unknown>,
+            location: profile.location,
+            seed: profile.id,
+          });
+          const distanceKm = distanceBetweenCoordinatesKm(effectiveViewerCoordinates, providerCoordinates);
+          const responseMinutes = estimateResponseMinutes({
+            availability: profile.availability,
+            providerId: profile.id,
+          });
+          const profileCompletion = calculateProfileCompletion({
+            name: profile.name,
+            location: profile.location,
+            bio: profile.bio,
+            services: profile.services,
+            email: profile.email,
+            phone: profile.phone,
+            website: profile.website,
+          });
+          const verificationStatus = calculateVerificationStatus({
+            role: profile.role,
+            profileCompletion,
+            listingsCount: servicesCount + productsCount,
+            averageRating: avgRating,
+            reviewCount,
+          });
+          const rankScore = calculateLocalRankScore({
+            distanceKm,
+            responseMinutes,
+            rating: avgRating,
+            profileCompletion,
+          });
 
-    const { data: providerOrderStatsRows, error: providerOrderStatsError } = providerIds.length
-      ? await supabase.rpc("get_provider_order_stats", { provider_ids: providerIds })
-      : { data: [] as ProviderOrderStatsRow[], error: null };
+          const prices = providerPriceMap.get(profile.id) || [];
+          const startingPrice = prices.length
+            ? Math.max(1, Math.min(...prices.map((value) => Math.floor(value))))
+            : hashNumber(profile.id, 199, 1499);
+          const serviceTags = Array.from(serviceTagMap.get(profile.id) || []).slice(0, 4);
+          const productTags = Array.from(productTagMap.get(profile.id) || []).slice(0, 4);
+          const demandTags = Array.from(demandTagMap.get(profile.id) || []).slice(0, 4);
+          const combinedTags = Array.from(combinedTagMap.get(profile.id) || []);
+          const mediaGallery = buildProviderMediaGallery(profile.id, profile.role || "", [
+            ...combinedTags,
+            profile.role || "",
+          ]);
+          const defaultRole =
+            servicesCount + productsCount > 0
+              ? profile.role || "Service Provider"
+              : profile.role || "Marketplace Member";
+          const defaultBio =
+            demandsCount > 0 && servicesCount + productsCount === 0
+              ? "Active marketplace member posting local requests and collaborating with nearby providers."
+              : "Trusted neighborhood provider.";
 
-    if (providerOrderStatsError) {
-      console.warn("Unable to load provider order stats:", providerOrderStatsError.message);
-    }
-
-    const completedJobsMap = new Map<string, number>();
-    const openLeadsMap = new Map<string, number>();
-
-    ((providerOrderStatsRows as ProviderOrderStatsRow[] | null) || []).forEach((row) => {
-      completedJobsMap.set(row.provider_id, Number(row.completed_jobs || 0));
-      openLeadsMap.set(row.provider_id, Number(row.open_leads || 0));
-    });
-
-    const cards: ProviderCard[] = profileRows
-      .filter((profile) => profile.id !== user?.id)
-      .filter((profile) => {
-        const servicesCount = serviceCountMap.get(profile.id) || 0;
-        const productsCount = productCountMap.get(profile.id) || 0;
-        return servicesCount + productsCount > 0;
-      })
-      .map((profile) => {
-        const servicesCount = serviceCountMap.get(profile.id) || 0;
-        const productsCount = productCountMap.get(profile.id) || 0;
-        const ratings = ratingMap.get(profile.id);
-        const reviewCount = ratings?.count || 0;
-        const avgRating = reviewCount > 0 ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.5;
-        const providerCoordinates = resolveCoordinates({
-          row: profile as unknown as Record<string, unknown>,
-          location: profile.location,
-          seed: profile.id,
+          return {
+            id: profile.id,
+            name: profile.name || "Local Member",
+            businessSlug: createBusinessSlug(profile.name, profile.id),
+            avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
+            coverImage: mediaGallery[0],
+            mediaGallery,
+            role: defaultRole,
+            bio: profile.bio || defaultBio,
+            location: profile.location || "Nearby",
+            email: profile.email || null,
+            phone: profile.phone || null,
+            website: profile.website || null,
+            distanceKm,
+            rating: avgRating,
+            reviews: reviewCount,
+            verified: verificationStatus === "verified",
+            online: (profile.availability || "").toLowerCase() !== "offline",
+            serviceCount: servicesCount,
+            productCount: productsCount,
+            demandCount: demandsCount,
+            completedJobs: completedJobsMap.get(profile.id) ?? hashNumber(`done-${profile.id}`, 8, 140),
+            openLeads: openLeadsMap.get(profile.id) ?? hashNumber(`open-${profile.id}`, 1, 6),
+            responseMinutes,
+            startingPrice,
+            tags: combinedTags,
+            serviceTags,
+            productTags: [...productTags, ...demandTags].slice(0, 4),
+            profileCompletion,
+            rankScore,
+            verificationStatus,
+            latitude: providerCoordinates.latitude,
+            longitude: providerCoordinates.longitude,
+          };
         });
-        const distanceKm = distanceBetweenCoordinatesKm(effectiveViewerCoordinates, providerCoordinates);
-        const responseMinutes = estimateResponseMinutes({
-          availability: profile.availability,
-          providerId: profile.id,
-        });
-        const profileCompletion = calculateProfileCompletion({
-          name: profile.name,
-          location: profile.location,
-          bio: profile.bio,
-          services: profile.services,
-          email: profile.email,
-          phone: profile.phone,
-          website: profile.website,
-        });
-        const verificationStatus = calculateVerificationStatus({
-          role: profile.role,
-          profileCompletion,
-          listingsCount: servicesCount + productsCount,
-          averageRating: avgRating,
-          reviewCount,
-        });
-        const rankScore = calculateLocalRankScore({
-          distanceKm,
-          responseMinutes,
-          rating: avgRating,
-          profileCompletion,
-        });
-
-        const prices = providerPriceMap.get(profile.id) || [];
-        const startingPrice = prices.length
-          ? Math.max(1, Math.min(...prices.map((value) => Math.floor(value))))
-          : hashNumber(profile.id, 199, 1499);
-        const serviceTags = Array.from(serviceTagMap.get(profile.id) || []).slice(0, 4);
-        const productTags = Array.from(productTagMap.get(profile.id) || []).slice(0, 4);
-        const combinedTags = Array.from(combinedTagMap.get(profile.id) || []);
-        const mediaGallery = buildProviderMediaGallery(profile.id, profile.role || "", [
-          ...combinedTags,
-          profile.role || "",
-        ]);
-
-        return {
-          id: profile.id,
-          name: profile.name || "Local Provider",
-          businessSlug: createBusinessSlug(profile.name, profile.id),
-          avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
-          coverImage: mediaGallery[0],
-          mediaGallery,
-          role: profile.role || "Service Provider",
-          bio: profile.bio || "Trusted neighborhood provider.",
-          location: profile.location || "Nearby",
-          email: profile.email || null,
-          phone: profile.phone || null,
-          website: profile.website || null,
-          distanceKm,
-          rating: avgRating,
-          reviews: reviewCount,
-          verified: verificationStatus === "verified",
-          online: (profile.availability || "").toLowerCase() !== "offline",
-          serviceCount: servicesCount,
-          productCount: productsCount,
-          completedJobs: completedJobsMap.get(profile.id) ?? hashNumber(`done-${profile.id}`, 8, 140),
-          openLeads: openLeadsMap.get(profile.id) ?? hashNumber(`open-${profile.id}`, 1, 6),
-          responseMinutes,
-          startingPrice,
-          tags: combinedTags,
-          serviceTags,
-          productTags,
-          profileCompletion,
-          rankScore,
-          verificationStatus,
-          latitude: providerCoordinates.latitude,
-          longitude: providerCoordinates.longitude,
-        };
-      });
 
       if (cards.length === 0) {
         setProviders(demoPeople);
@@ -1259,7 +1413,11 @@ export default function PeoplePage() {
     } else if (sortBy === "Top Rated") {
       filtered.sort((a, b) => b.rating - a.rating);
     } else if (sortBy === "Most Listings") {
-      filtered.sort((a, b) => b.serviceCount + b.productCount - (a.serviceCount + a.productCount));
+      filtered.sort(
+        (a, b) =>
+          (b.serviceCount + b.productCount + (b.demandCount || 0)) -
+          (a.serviceCount + a.productCount + (a.demandCount || 0))
+      );
     } else if (sortBy === "Fast Response") {
       filtered.sort((a, b) => a.responseMinutes - b.responseMinutes);
     } else {
@@ -1388,67 +1546,6 @@ export default function PeoplePage() {
     [resolveDemoChatRecipientId]
   );
 
-  const getOrCreateConversationId = useCallback(async (viewerId: string, recipientId: string): Promise<string> => {
-    const { data: myRows, error: myRowsError } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", viewerId);
-
-    if (myRowsError) {
-      throw new Error(myRowsError.message);
-    }
-
-    const myConversationIds = myRows?.map((row) => row.conversation_id) || [];
-    let conversationId: string | null = null;
-
-    if (myConversationIds.length > 0) {
-      const { data: existing, error: existingError } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .in("conversation_id", myConversationIds)
-        .eq("user_id", recipientId)
-        .limit(1)
-        .maybeSingle();
-
-      if (existingError) {
-        throw new Error(existingError.message);
-      }
-
-      conversationId = existing?.conversation_id || null;
-    }
-
-    if (!conversationId) {
-      const { data: conversation, error } = await supabase
-        .from("conversations")
-        .insert({ created_by: viewerId })
-        .select("id")
-        .single();
-
-      if (error || !conversation) {
-        throw new Error(error?.message || "Unable to create conversation");
-      }
-
-      conversationId = conversation.id;
-      const { error: participantError } = await supabase.from("conversation_participants").upsert([
-        { conversation_id: conversationId, user_id: viewerId },
-        { conversation_id: conversationId, user_id: recipientId },
-      ], {
-        onConflict: "conversation_id,user_id",
-        ignoreDuplicates: true,
-      });
-
-      if (participantError) {
-        throw new Error(participantError.message);
-      }
-    }
-
-    if (!conversationId) {
-      throw new Error("Unable to resolve conversation");
-    }
-
-    return conversationId;
-  }, []);
-
   const openChatThread = async (providerId: string) => {
     setLoadingChatId(providerId);
 
@@ -1466,7 +1563,7 @@ export default function PeoplePage() {
           alert("No chat recipient is available for this card yet.");
           return;
         }
-        conversationId = await getOrCreateConversationId(viewerId, recipientId);
+        conversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
       }
 
       if (!conversationId) {
@@ -1512,16 +1609,11 @@ export default function PeoplePage() {
         return;
       }
 
-      const conversationId = await getOrCreateConversationId(viewerId, recipientId);
-      const { error: messageError } = await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        sender_id: viewerId,
+      const { conversationId } = await sendDirectMessage(supabase, {
+        viewerId,
+        recipientId,
         content: draft,
       });
-
-      if (messageError) {
-        throw new Error(messageError.message);
-      }
 
       setInlineConversationByProvider((previous) => ({ ...previous, [provider.id]: conversationId }));
       setInlineMessageDrafts((previous) => ({ ...previous, [provider.id]: "" }));
@@ -1546,7 +1638,10 @@ export default function PeoplePage() {
   const fastResponders = providers.filter(
     (provider) => provider.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES
   ).length;
-  const totalListings = providers.reduce((sum, provider) => sum + provider.serviceCount + provider.productCount, 0);
+  const totalMarketplaceActivity = providers.reduce(
+    (sum, provider) => sum + provider.serviceCount + provider.productCount + (provider.demandCount || 0),
+    0
+  );
   const totalOpenLeads = providers.reduce((sum, provider) => sum + provider.openLeads, 0);
   const averageResponse = providers.length
     ? Math.round(providers.reduce((sum, provider) => sum + provider.responseMinutes, 0) / providers.length)
@@ -1682,7 +1777,12 @@ export default function PeoplePage() {
             <MetricCard icon={Activity} label="Active Now" value={activeNow} helper={`${activeCoverage}% coverage`} />
             <MetricCard icon={Star} label="Avg Rating" value={`${avgRating}★`} helper={`${verifiedCount} verified`} />
             <MetricCard icon={Zap} label="Fast Response" value={fastResponders} helper={`~${averageResponse || "--"} min avg`} />
-            <MetricCard icon={BarChart3} label="Open Leads" value={formatCompactNumber(totalOpenLeads)} helper={`${totalListings} listings`} />
+            <MetricCard
+              icon={BarChart3}
+              label="Open Leads"
+              value={formatCompactNumber(totalOpenLeads)}
+              helper={`${formatCompactNumber(totalMarketplaceActivity)} active profiles`}
+            />
             <MetricCard icon={ShieldCheck} label="Verified Live" value={verifiedLiveCount} helper="trusted + online" />
           </div>
 
@@ -1711,7 +1811,7 @@ export default function PeoplePage() {
 
       {usingDemo && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          Showing demo people because no provider listings were found in DB yet.
+          Showing demo people because no live marketplace profiles were found in DB yet.
         </div>
       )}
 
@@ -2005,6 +2105,15 @@ export default function PeoplePage() {
             const inlineDraft = inlineMessageDrafts[person.id] || "";
             const inlineStatus = inlineMessageStatusByProvider[person.id] || "";
             const savedConversationId = inlineConversationByProvider[person.id] || null;
+            const listingCount = person.serviceCount + person.productCount;
+            const demandCount = person.demandCount || 0;
+            const activityCount = listingCount + demandCount;
+            const primaryCountLabel = listingCount > 0 ? "listings" : "requests";
+            const primaryCountValue = listingCount > 0 ? listingCount : demandCount;
+            const openLeadsLabel = listingCount > 0 ? "open leads" : "active asks";
+            const openLeadsValue = listingCount > 0 ? person.openLeads : demandCount;
+            const activityHeading = listingCount > 0 ? "Available listings" : "Recent request themes";
+            const activityTags = [...person.serviceTags, ...person.productTags].slice(0, 6);
             return (
               <article
                 key={person.id}
@@ -2082,8 +2191,8 @@ export default function PeoplePage() {
                       <MapPin size={12} />
                       {person.location}
                     </span>
-                    <span>{person.serviceCount + person.productCount} listings</span>
-                    <span>{person.openLeads} open leads</span>
+                    <span>{primaryCountValue} {primaryCountLabel}</span>
+                    <span>{openLeadsValue} {openLeadsLabel}</span>
                     <span>{person.completedJobs} jobs done</span>
                   </div>
 
@@ -2126,26 +2235,20 @@ export default function PeoplePage() {
                   )}
 
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Available listings</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{activityHeading}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1">
-                      {person.serviceTags.slice(0, 3).map((tag) => (
+                      {activityTags.slice(0, 6).map((tag) => (
                         <span
-                          key={`${person.id}-service-${tag}`}
+                          key={`${person.id}-activity-${tag}`}
                           className="rounded-full bg-indigo-100 px-2 py-1 text-[11px] font-medium text-indigo-700"
                         >
                           {tag}
                         </span>
                       ))}
-                      {person.productTags.slice(0, 3).map((tag) => (
-                        <span
-                          key={`${person.id}-product-${tag}`}
-                          className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-700"
-                        >
-                          {tag}
+                      {!activityTags.length && (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
+                          {activityCount > 0 ? "General neighborhood support" : "No recent activity"}
                         </span>
-                      ))}
-                      {!person.serviceTags.length && !person.productTags.length && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">General neighborhood support</span>
                       )}
                     </div>
                   </div>

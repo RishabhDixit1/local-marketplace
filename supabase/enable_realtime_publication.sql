@@ -15,6 +15,7 @@ declare
     'conversation_participants',
     'messages',
     'notifications',
+    'task_events',
     'help_requests',
     'help_request_matches'
   ];
@@ -32,4 +33,3 @@ begin
     end;
   end loop;
 end $$;
-

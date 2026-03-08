@@ -17,6 +17,7 @@ where pubname = 'supabase_realtime'
     'conversation_participants',
     'messages',
     'notifications',
+    'task_events',
     'help_requests',
     'help_request_matches'
   )
@@ -33,6 +34,7 @@ where schemaname = 'public'
     'conversation_participants',
     'reviews',
     'notifications',
+    'task_events',
     'help_requests',
     'help_request_matches'
   )
@@ -59,5 +61,5 @@ select
   (select count(*) from public.posts) as posts_count,
   (select count(*) from public.orders) as orders_count,
   (select count(*) from public.messages) as messages_count,
-  (select count(*) from public.notifications) as notifications_count;
-
+  (select count(*) from public.notifications) as notifications_count,
+  (select count(*) from public.task_events) as task_events_count;
