@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { ensureClientProfile } from "@/lib/clientProfile";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
 import {
@@ -96,6 +97,15 @@ type ReviewRow = {
   rating: number;
 };
 
+type ProviderPresenceRow = {
+  provider_id: string;
+  is_online?: boolean | null;
+  availability?: string | null;
+  response_sla_minutes?: number | string | null;
+  rolling_response_minutes?: number | string | null;
+  last_seen?: string | null;
+};
+
 type ProviderOrderStatsRow = {
   provider_id: string;
   completed_jobs: number | string;
@@ -175,6 +185,7 @@ const FAST_RESPONSE_THRESHOLD_MINUTES = 15;
 const PEOPLE_PREFERENCES_STORAGE_KEY = "local-marketplace-people-preferences-v1";
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const PROVIDERS_BATCH_SIZE = 8;
+const MAX_DISCOVERABLE_PROFILES = 120;
 const DEMO_CHAT_PREFERRED_NAMES = ["User", "Test User 2"] as const;
 
 const demoPeople: ProviderCard[] = [
@@ -632,6 +643,45 @@ const hashNumber = (seed: string, min: number, max: number) => {
   return min + (hash % (max - min + 1));
 };
 
+const buildFallbackMemberProfile = (params: {
+  memberId: string;
+  serviceCount: number;
+  productCount: number;
+  demandCount: number;
+  tags: string[];
+}) => {
+  const { memberId, serviceCount, productCount, demandCount, tags } = params;
+  const role =
+    serviceCount + productCount > 0
+      ? "Service Provider"
+      : demandCount > 0
+      ? "Marketplace Member"
+      : "Local Member";
+
+  const bio =
+    serviceCount + productCount > 0
+      ? "Available for nearby requests, quotes, and realtime marketplace chat."
+      : demandCount > 0
+      ? "Active local member posting requests and collaborating with nearby providers."
+      : "Available for nearby marketplace collaboration.";
+
+  return {
+    id: memberId,
+    name: `Local Member ${memberId.slice(0, 4).toUpperCase()}`,
+    avatar_url: `https://i.pravatar.cc/200?u=${encodeURIComponent(memberId)}`,
+    role,
+    bio,
+    location: "Nearby",
+    availability: "available",
+    services: tags.slice(0, 4),
+    email: null,
+    phone: null,
+    website: null,
+    latitude: null,
+    longitude: null,
+  } satisfies ProfileRow;
+};
+
 const ROLE_MEDIA_LIBRARY = {
   electrician: [
     "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
@@ -903,6 +953,9 @@ export default function PeoplePage() {
       }
 
       setCurrentUserId(user?.id || null);
+      if (user) {
+        await ensureClientProfile(user).catch(() => false);
+      }
 
       const selectRowsWithFallback = async (
         table: string,
@@ -932,6 +985,82 @@ export default function PeoplePage() {
         }
 
         return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const selectProfilesWithFallback = async (profileIds: string[]): Promise<FlexibleRow[]> => {
+        if (!profileIds.length) return [];
+
+        const primaryResult = await supabase.from("profiles").select("*").in("id", profileIds);
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase.from("profiles").select("*").in("id", profileIds);
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const selectDiscoverableProfilesWithFallback = async (limit: number): Promise<FlexibleRow[]> => {
+        const primaryResult = await supabase.from("profiles").select("*").limit(limit);
+        if (!primaryResult.error) {
+          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
+        }
+
+        if (!isMissingColumnError(primaryResult.error.message)) {
+          throw new Error(primaryResult.error.message);
+        }
+
+        const fallbackResult = await supabase.from("profiles").select("*").limit(limit);
+        if (fallbackResult.error) {
+          throw new Error(fallbackResult.error.message);
+        }
+
+        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
+      };
+
+      const normalizeProfileRows = (rows: FlexibleRow[]) => {
+        const byId = new Map<string, ProfileRow>();
+
+        rows.forEach((row) => {
+          const profileId = stringFromRow(row, ["id", "user_id"], "");
+          if (!profileId || byId.has(profileId)) return;
+
+          const servicesValue = row.services;
+          const normalizedServices = Array.isArray(servicesValue)
+            ? servicesValue.filter((item): item is string => typeof item === "string" && !!item.trim())
+            : null;
+
+          byId.set(profileId, {
+            id: profileId,
+            name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
+            avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
+            role: stringFromRow(row, ["role", "account_type"], ""),
+            bio: stringFromRow(row, ["bio", "about"], ""),
+            location: stringFromRow(row, ["location", "city"], ""),
+            availability: stringFromRow(row, ["availability", "status"], ""),
+            services: normalizedServices,
+            email: stringFromRow(row, ["email"], ""),
+            phone: stringFromRow(row, ["phone", "phone_number"], ""),
+            website: stringFromRow(row, ["website", "site_url"], ""),
+            latitude: (() => {
+              const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
+              return Number.isFinite(value) ? value : null;
+            })(),
+            longitude: (() => {
+              const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
+              return Number.isFinite(value) ? value : null;
+            })(),
+          });
+        });
+
+        return Array.from(byId.values());
       };
 
       const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
@@ -1004,42 +1133,6 @@ export default function PeoplePage() {
         )
       );
 
-      const profileIdsToLoad = Array.from(new Set([...(user?.id ? [user.id] : []), ...activeMemberIds]));
-
-      const [{ data: profiles, error: profilesError }, { data: reviews, error: reviewsError }] = await Promise.all([
-        profileIdsToLoad.length
-          ? supabase.from("profiles").select("*").in("id", profileIdsToLoad)
-          : Promise.resolve({ data: [] as ProfileRow[], error: null }),
-        activeMemberIds.length
-          ? supabase.from("reviews").select("provider_id,rating").in("provider_id", activeMemberIds)
-          : Promise.resolve({ data: [] as ReviewRow[], error: null }),
-      ]);
-
-      if (profilesError) {
-        setProviders(demoPeople);
-        setUsingDemo(true);
-        setErrorMessage(`Could not load people: ${profilesError.message}`);
-        return;
-      }
-
-      if (reviewsError) {
-        console.warn("Could not load provider reviews:", reviewsError.message);
-      }
-
-      const reviewRows = reviewsError ? [] : (reviews as ReviewRow[] | null) || [];
-      const profileRows = (profiles as ProfileRow[] | null) || [];
-      const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
-      const profileCoordinates = currentUserProfile
-        ? resolveCoordinates({
-            row: currentUserProfile as unknown as Record<string, unknown>,
-            location: currentUserProfile.location,
-            seed: currentUserProfile.id,
-          })
-        : null;
-      const browserCoordinates = await browserCoordinatesPromise;
-      const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
-      setViewerCoordinates(effectiveViewerCoordinates);
-
       const serviceCountMap = new Map<string, number>();
       const productCountMap = new Map<string, number>();
       const demandCountMap = new Map<string, number>();
@@ -1102,6 +1195,98 @@ export default function PeoplePage() {
         }
       });
 
+      const profileIdsToLoad = Array.from(new Set([...(user?.id ? [user.id] : []), ...activeMemberIds]));
+
+      let activeProfileRowsRaw: FlexibleRow[] = [];
+      let discoverableProfileRowsRaw: FlexibleRow[] = [];
+
+      try {
+        [activeProfileRowsRaw, discoverableProfileRowsRaw] = await Promise.all([
+          selectProfilesWithFallback(profileIdsToLoad),
+          selectDiscoverableProfilesWithFallback(MAX_DISCOVERABLE_PROFILES),
+        ]);
+      } catch (profileError) {
+        const message =
+          profileError instanceof Error ? profileError.message : "Could not load people profiles.";
+        setProviders(demoPeople);
+        setUsingDemo(true);
+        setErrorMessage(`Could not load people: ${message}`);
+        return;
+      }
+
+      const normalizedProfileRows = normalizeProfileRows([
+        ...discoverableProfileRowsRaw,
+        ...activeProfileRowsRaw,
+      ]);
+      const existingProfileIds = new Set(normalizedProfileRows.map((profile) => profile.id));
+      const fallbackProfiles = activeMemberIds
+        .filter((memberId) => memberId !== user?.id && !existingProfileIds.has(memberId))
+        .map((memberId) =>
+          buildFallbackMemberProfile({
+            memberId,
+            serviceCount: serviceCountMap.get(memberId) || 0,
+            productCount: productCountMap.get(memberId) || 0,
+            demandCount: demandCountMap.get(memberId) || 0,
+            tags: Array.from(combinedTagMap.get(memberId) || []),
+          })
+        );
+
+      const profileRows = [...normalizedProfileRows, ...fallbackProfiles];
+      const currentUserProfile = profileRows.find((profile) => profile.id === user?.id) || null;
+      const profileCoordinates = currentUserProfile
+        ? resolveCoordinates({
+            row: currentUserProfile as unknown as Record<string, unknown>,
+            location: currentUserProfile.location,
+            seed: currentUserProfile.id,
+          })
+        : null;
+      const browserCoordinates = await browserCoordinatesPromise;
+      const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
+      setViewerCoordinates(effectiveViewerCoordinates);
+
+      const memberIds = Array.from(
+        new Set(
+          [
+            ...profileRows.map((profile) => profile.id),
+            ...activeMemberIds,
+          ].filter((memberId) => !!memberId && memberId !== user?.id)
+        )
+      );
+
+      const [reviewsResult, presenceResult, providerOrderStatsResult] = await Promise.all([
+        memberIds.length
+          ? supabase.from("reviews").select("provider_id,rating").in("provider_id", memberIds)
+          : Promise.resolve({ data: [] as ReviewRow[], error: null }),
+        memberIds.length
+          ? supabase
+              .from("provider_presence")
+              .select(
+                "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen"
+              )
+              .in("provider_id", memberIds)
+          : Promise.resolve({ data: [] as ProviderPresenceRow[], error: null }),
+        memberIds.length
+          ? supabase.rpc("get_provider_order_stats", { provider_ids: memberIds })
+          : Promise.resolve({ data: [] as ProviderOrderStatsRow[], error: null }),
+      ]);
+
+      if (reviewsResult.error) {
+        console.warn("Could not load provider reviews:", reviewsResult.error.message);
+      }
+
+      if (presenceResult.error && !isMissingRelationError(presenceResult.error.message)) {
+        console.warn("Could not load provider presence:", presenceResult.error.message);
+      }
+
+      const presenceErrorMessage = presenceResult.error ? presenceResult.error.message : "";
+      const reviewRows = reviewsResult.error ? [] : (reviewsResult.data as ReviewRow[] | null) || [];
+      const presenceRows =
+        presenceResult.error || isMissingRelationError(presenceErrorMessage)
+          ? []
+          : (presenceResult.data as ProviderPresenceRow[] | null) || [];
+      const providerOrderStatsRows =
+        providerOrderStatsResult.error ? [] : (providerOrderStatsResult.data as ProviderOrderStatsRow[] | null) || [];
+
       reviewRows.forEach((row) => {
         const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
         ratingMap.set(row.provider_id, {
@@ -1110,19 +1295,11 @@ export default function PeoplePage() {
         });
       });
 
-      const memberIds = profileRows
-        .filter((profile) => profile.id !== user?.id)
-        .filter((profile) => {
-          const servicesCount = serviceCountMap.get(profile.id) || 0;
-          const productsCount = productCountMap.get(profile.id) || 0;
-          const demandsCount = demandCountMap.get(profile.id) || 0;
-          return servicesCount + productsCount + demandsCount > 0;
-        })
-        .map((profile) => profile.id);
+      const presenceMap = new Map(
+        presenceRows.filter((row) => !!row.provider_id).map((row) => [row.provider_id, row])
+      );
 
-      const { data: providerOrderStatsRows, error: providerOrderStatsError } = memberIds.length
-        ? await supabase.rpc("get_provider_order_stats", { provider_ids: memberIds })
-        : { data: [] as ProviderOrderStatsRow[], error: null };
+      const { error: providerOrderStatsError } = providerOrderStatsResult;
 
       if (providerOrderStatsError) {
         console.warn("Unable to load provider order stats:", providerOrderStatsError.message);
@@ -1131,19 +1308,13 @@ export default function PeoplePage() {
       const completedJobsMap = new Map<string, number>();
       const openLeadsMap = new Map<string, number>();
 
-      ((providerOrderStatsRows as ProviderOrderStatsRow[] | null) || []).forEach((row) => {
+      providerOrderStatsRows.forEach((row) => {
         completedJobsMap.set(row.provider_id, Number(row.completed_jobs || 0));
         openLeadsMap.set(row.provider_id, Number(row.open_leads || 0));
       });
 
       const cards: ProviderCard[] = profileRows
         .filter((profile) => profile.id !== user?.id)
-        .filter((profile) => {
-          const servicesCount = serviceCountMap.get(profile.id) || 0;
-          const productsCount = productCountMap.get(profile.id) || 0;
-          const demandsCount = demandCountMap.get(profile.id) || 0;
-          return servicesCount + productsCount + demandsCount > 0;
-        })
         .map((profile) => {
           const servicesCount = serviceCountMap.get(profile.id) || 0;
           const productsCount = productCountMap.get(profile.id) || 0;
@@ -1151,16 +1322,23 @@ export default function PeoplePage() {
           const ratings = ratingMap.get(profile.id);
           const reviewCount = ratings?.count || 0;
           const avgRating = reviewCount > 0 ? Number((ratings!.sum / reviewCount).toFixed(1)) : 4.5;
+          const presence = presenceMap.get(profile.id) || null;
           const providerCoordinates = resolveCoordinates({
             row: profile as unknown as Record<string, unknown>,
             location: profile.location,
             seed: profile.id,
           });
           const distanceKm = distanceBetweenCoordinatesKm(effectiveViewerCoordinates, providerCoordinates);
-          const responseMinutes = estimateResponseMinutes({
-            availability: profile.availability,
-            providerId: profile.id,
-          });
+          const presenceAvailability = presence?.availability || profile.availability || "available";
+          const presenceResponseMinutes = Number(
+            presence?.rolling_response_minutes ?? presence?.response_sla_minutes ?? Number.NaN
+          );
+          const responseMinutes = Number.isFinite(presenceResponseMinutes)
+            ? Math.max(1, Math.round(presenceResponseMinutes))
+            : estimateResponseMinutes({
+                availability: presenceAvailability,
+                providerId: profile.id,
+              });
           const profileCompletion = calculateProfileCompletion({
             name: profile.name,
             location: profile.location,
@@ -1177,21 +1355,45 @@ export default function PeoplePage() {
             averageRating: avgRating,
             reviewCount,
           });
-          const rankScore = calculateLocalRankScore({
+          const rankBase = calculateLocalRankScore({
             distanceKm,
             responseMinutes,
             rating: avgRating,
             profileCompletion,
           });
+          const online =
+            typeof presence?.is_online === "boolean"
+              ? presence.is_online
+              : presenceAvailability.toLowerCase() !== "offline";
+          const rankScore = Math.max(1, Math.min(100, rankBase + (online ? 4 : 0)));
 
           const prices = providerPriceMap.get(profile.id) || [];
           const startingPrice = prices.length
             ? Math.max(1, Math.min(...prices.map((value) => Math.floor(value))))
             : hashNumber(profile.id, 199, 1499);
-          const serviceTags = Array.from(serviceTagMap.get(profile.id) || []).slice(0, 4);
-          const productTags = Array.from(productTagMap.get(profile.id) || []).slice(0, 4);
-          const demandTags = Array.from(demandTagMap.get(profile.id) || []).slice(0, 4);
-          const combinedTags = Array.from(combinedTagMap.get(profile.id) || []);
+          const profileServiceTags = Array.isArray(profile.services)
+            ? profile.services.filter((tag): tag is string => typeof tag === "string" && !!tag.trim())
+            : [];
+          const serviceTags = Array.from(
+            new Set([...Array.from(serviceTagMap.get(profile.id) || []), ...profileServiceTags])
+          ).slice(0, 4);
+          const productTags = Array.from(
+            new Set([
+              ...Array.from(productTagMap.get(profile.id) || []),
+              ...Array.from(demandTagMap.get(profile.id) || []),
+            ])
+          ).slice(0, 4);
+          const combinedTags = Array.from(
+            new Set([
+              ...Array.from(combinedTagMap.get(profile.id) || []),
+              ...profileServiceTags,
+              profile.role || "",
+              profile.location || "",
+              demandsCount > 0 && servicesCount + productsCount === 0 ? "Requests" : "",
+            ])
+          )
+            .filter(Boolean)
+            .slice(0, 6);
           const mediaGallery = buildProviderMediaGallery(profile.id, profile.role || "", [
             ...combinedTags,
             profile.role || "",
@@ -1201,9 +1403,13 @@ export default function PeoplePage() {
               ? profile.role || "Service Provider"
               : profile.role || "Marketplace Member";
           const defaultBio =
-            demandsCount > 0 && servicesCount + productsCount === 0
+            profile.bio ||
+            (demandsCount > 0 && servicesCount + productsCount === 0
               ? "Active marketplace member posting local requests and collaborating with nearby providers."
-              : "Trusted neighborhood provider.";
+              : servicesCount + productsCount > 0
+              ? "Trusted neighborhood provider available for nearby requests and realtime chat."
+              : "Visible to your local marketplace so nearby members can connect and start a chat.");
+          const resolvedTags = combinedTags.length > 0 ? combinedTags : [defaultRole];
 
           return {
             id: profile.id,
@@ -1213,7 +1419,7 @@ export default function PeoplePage() {
             coverImage: mediaGallery[0],
             mediaGallery,
             role: defaultRole,
-            bio: profile.bio || defaultBio,
+            bio: defaultBio,
             location: profile.location || "Nearby",
             email: profile.email || null,
             phone: profile.phone || null,
@@ -1222,7 +1428,7 @@ export default function PeoplePage() {
             rating: avgRating,
             reviews: reviewCount,
             verified: verificationStatus === "verified",
-            online: (profile.availability || "").toLowerCase() !== "offline",
+            online,
             serviceCount: servicesCount,
             productCount: productsCount,
             demandCount: demandsCount,
@@ -1230,9 +1436,9 @@ export default function PeoplePage() {
             openLeads: openLeadsMap.get(profile.id) ?? hashNumber(`open-${profile.id}`, 1, 6),
             responseMinutes,
             startingPrice,
-            tags: combinedTags,
+            tags: resolvedTags,
             serviceTags,
-            productTags: [...productTags, ...demandTags].slice(0, 4),
+            productTags,
             profileCompletion,
             rankScore,
             verificationStatus,
@@ -1337,6 +1543,9 @@ export default function PeoplePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "provider_presence" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
       .subscribe();
@@ -1781,7 +1990,7 @@ export default function PeoplePage() {
               icon={BarChart3}
               label="Open Leads"
               value={formatCompactNumber(totalOpenLeads)}
-              helper={`${formatCompactNumber(totalMarketplaceActivity)} active profiles`}
+              helper={`${formatCompactNumber(totalMarketplaceActivity)} marketplace signals`}
             />
             <MetricCard icon={ShieldCheck} label="Verified Live" value={verifiedLiveCount} helper="trusted + online" />
           </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { ensureClientProfile } from "@/lib/clientProfile";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
   Bookmark,
@@ -172,6 +173,20 @@ export default function DashboardLayout({
     if (!authReady) return;
     let active = true;
 
+    const bootstrapProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active || !user) return;
+      await ensureClientProfile(user).catch(() => false);
+    };
+
+    void bootstrapProfile();
+    const bootstrapIntervalId = window.setInterval(() => {
+      void bootstrapProfile();
+    }, 5 * 60 * 1000);
+
     const pingPresence = async () => {
       const {
         data: { session },
@@ -198,7 +213,7 @@ export default function DashboardLayout({
     };
 
     void pingPresence();
-    const intervalId = window.setInterval(() => {
+    const presenceIntervalId = window.setInterval(() => {
       void pingPresence();
     }, 45 * 1000);
 
@@ -210,7 +225,8 @@ export default function DashboardLayout({
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
+      window.clearInterval(bootstrapIntervalId);
+      window.clearInterval(presenceIntervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [authReady]);

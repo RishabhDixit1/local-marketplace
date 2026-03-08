@@ -135,6 +135,9 @@ type PostRow = {
   user_id?: string;
   provider_id?: string;
   created_by?: string;
+  type?: string;
+  post_type?: string;
+  category?: string;
   created_at?: string;
 };
 
@@ -731,6 +734,12 @@ const buildDemoFeed = (): Listing[] => {
 
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
 
+const normalizeMarketplacePostKind = (value?: string | null): Listing["type"] => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "service" || normalized === "product") return normalized;
+  return "demand";
+};
+
 const parsePostText = (rawText: string) => {
   const fallback = {
     title: rawText,
@@ -738,6 +747,7 @@ const parsePostText = (rawText: string) => {
     budget: 0,
     category: "Need",
     location: "",
+    kind: "demand" as Listing["type"],
     media: [] as FeedMedia[],
   };
 
@@ -752,11 +762,15 @@ const parsePostText = (rawText: string) => {
   const budgetPart = parts.find((item) => item.startsWith("Budget:"));
   const categoryPart = parts.find((item) => item.startsWith("Category:"));
   const locationPart = parts.find((item) => item.startsWith("Location:"));
+  const typePart = parts.find((item) => item.startsWith("Type:"));
   const mediaPart = parts.find((item) => item.startsWith("Media:"));
 
   const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
   const budget = budgetMatch ? Number(budgetMatch[1]) : 0;
-  const category = categoryPart?.replace("Category:", "").trim() || fallback.category;
+  const kind = normalizeMarketplacePostKind(typePart?.replace("Type:", "").trim());
+  const category =
+    categoryPart?.replace("Category:", "").trim() ||
+    (kind === "demand" ? fallback.category : kind === "service" ? "Service" : "Product");
   const location = locationPart?.replace("Location:", "").trim() || fallback.location;
 
   const media: FeedMedia[] = [];
@@ -770,7 +784,7 @@ const parsePostText = (rawText: string) => {
     }
   }
 
-  return { title, description, budget, category, location, media };
+  return { title, description, budget, category, location, kind, media };
 };
 
 const parseDateMs = (value?: string) => {
@@ -1136,8 +1150,9 @@ export default function MarketplacePage() {
       const selectOpenPostsRows = async (): Promise<FlexibleRow[]> => {
         const primaryResult = await supabase
           .from("posts")
-          .select("id,text,content,description,title,user_id,provider_id,created_by,status,state,created_at")
-          .eq("status", "open")
+          .select(
+            "id,text,content,description,title,user_id,provider_id,created_by,type,post_type,category,status,state,created_at"
+          )
           .order("created_at", { ascending: false })
           .limit(FEED_LIMIT_PER_TYPE);
 
@@ -1315,6 +1330,9 @@ export default function MarketplacePage() {
           user_id: stringFromRow(row, ["user_id", "author_id", "created_by"], ""),
           provider_id: stringFromRow(row, ["provider_id", "user_id"], ""),
           created_by: stringFromRow(row, ["created_by", "author_id", "user_id"], ""),
+          type: stringFromRow(row, ["type"], ""),
+          post_type: stringFromRow(row, ["post_type"], ""),
+          category: stringFromRow(row, ["category"], ""),
           created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
         }));
 
@@ -1557,6 +1575,7 @@ export default function MarketplacePage() {
       const formattedPosts: Listing[] = postRows.map((post) => {
         const rawText = post.text || post.content || post.description || post.title || "Local post";
         const parsed = parsePostText(rawText);
+        const listingType = normalizeMarketplacePostKind(post.type || post.post_type || parsed.kind);
         const ownerId = post.user_id || post.provider_id || post.created_by || "";
         const stats = ownerId ? getProviderStats(ownerId) : null;
         const fallbackCoordinates = resolveCoordinates({
@@ -1571,17 +1590,26 @@ export default function MarketplacePage() {
           title: parsed.title,
           description: parsed.description,
           price: parsed.budget,
-          category: parsed.category,
+          category:
+            parsed.category ||
+            post.category ||
+            (listingType === "demand" ? "Need" : listingType === "service" ? "Service" : "Product"),
           provider_id: ownerId,
-          type: "demand",
+          type: listingType,
           avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
           distance,
-          urgent: true,
+          urgent: listingType === "demand",
           lat: targetCoordinates.latitude,
           lng: targetCoordinates.longitude,
           media: parsed.media,
           createdAt: post.created_at,
-          creatorName: stats?.profile?.name || "Community Member",
+          creatorName:
+            stats?.profile?.name ||
+            (listingType === "demand"
+              ? "Community Member"
+              : listingType === "service"
+              ? "Local Provider"
+              : "Local Seller"),
           businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
           rankScore: stats?.rankScore || 50,
           responseMinutes: stats?.responseMinutes || 30,
@@ -1972,9 +2000,15 @@ try {
   setInlineMessageDrafts((previous) => {
     if (previous[item.id]) return previous;
     const creatorName = item.creatorName || "there";
+    const defaultMessage =
+      item.type === "demand"
+        ? `Hi ${creatorName}, I saw your post "${item.title}". Is it still open?`
+        : item.type === "product"
+        ? `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`
+        : `Hi ${creatorName}, I am interested in "${item.title}". Can we connect?`;
     return {
       ...previous,
-      [item.id]: `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`,
+      [item.id]: defaultMessage,
     };
   });
   setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
@@ -2036,16 +2070,18 @@ try {
 };
 
 const renderInlineComposer = (item: DisplayListing, compact = false) => {
-if (item.type !== "demand") return null;
+if (!item.provider_id) return null;
 if (inlineComposerListingId !== item.id) return null;
 
 const inlineDraft = inlineMessageDrafts[item.id] || "";
 const inlineStatus = inlineMessageStatusByListing[item.id] || "";
 const savedConversationId = item.provider_id ? inlineConversationByOwner[item.provider_id] || null : null;
+const recipientLabel =
+  item.type === "demand" ? "post owner" : item.type === "product" ? "seller" : "provider";
 
 return (
   <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact ? "mt-3 p-3" : "mt-4 p-4"}`}>
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message post owner</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message {recipientLabel}</p>
     <textarea
       value={inlineDraft}
       onChange={(event) => {
@@ -2525,6 +2561,15 @@ return (
                             "Book Now"
                           )}
                         </button>
+                        {featuredListing.type !== "demand" && (
+                          <button
+                            type="button"
+                            onClick={() => void messageProvider(featuredListing)}
+                            className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                          >
+                            {inlineComposerListingId === featuredListing.id ? "Close Chat" : "Connect"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedProvider(featuredListing.provider_id)}
@@ -2543,19 +2588,18 @@ return (
                         >
                           View Details
                         </button>
-                        {featuredListing.type === "demand" &&
-                          (inlineConversationByOwner[featuredListing.provider_id] ||
-                            messageLoadingId === featuredListing.provider_id) && (
-                            <button
-                              type="button"
-                              onClick={() => void openChatThread(featuredListing.provider_id)}
-                              disabled={messageLoadingId === featuredListing.provider_id}
-                              className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
-                            >
-                              {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open Chat"}
-                              <ArrowUpRight size={14} />
-                            </button>
-                          )}
+                        {(inlineConversationByOwner[featuredListing.provider_id] ||
+                          messageLoadingId === featuredListing.provider_id) && (
+                          <button
+                            type="button"
+                            onClick={() => void openChatThread(featuredListing.provider_id)}
+                            disabled={messageLoadingId === featuredListing.provider_id}
+                            className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
+                          >
+                            {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open Chat"}
+                            <ArrowUpRight size={14} />
+                          </button>
+                        )}
                       </div>
 
                       {renderInlineComposer(featuredListing)}
@@ -2713,6 +2757,15 @@ return (
                                   : "Message Owner"
                                 : "Book Now"}
                             </button>
+                            {item.type !== "demand" && (
+                              <button
+                                type="button"
+                                onClick={() => void messageProvider(item)}
+                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                              >
+                                {inlineComposerListingId === item.id ? "Close Chat" : "Connect"}
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => item.provider_id && setSelectedProvider(item.provider_id)}
@@ -2720,8 +2773,7 @@ return (
                             >
                               Profile
                             </button>
-                            {item.type === "demand" &&
-                              (inlineConversationByOwner[item.provider_id] || messageLoadingId === item.provider_id) && (
+                            {(inlineConversationByOwner[item.provider_id] || messageLoadingId === item.provider_id) && (
                                 <button
                                   type="button"
                                   onClick={() => void openChatThread(item.provider_id)}
