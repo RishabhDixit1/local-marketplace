@@ -322,6 +322,14 @@ export default function DashboardLayout({
                   <span className="hidden sm:inline">Saved</span>
                 </Link>
                 <NotificationCenter />
+                <Link
+                  href="/dashboard/profile"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                  aria-label="Open profile"
+                  title="My profile"
+                >
+                  <User className="w-4 h-4" />
+                </Link>
               </div>
             </div>
           </header>

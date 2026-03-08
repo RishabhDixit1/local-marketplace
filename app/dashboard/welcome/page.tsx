@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
@@ -14,13 +14,10 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
+  MapPin,
   MessageCircle,
-  Play,
   Share2,
   ShieldCheck,
-  Sparkles,
-  Star,
   UsersRound,
   Zap,
 } from "lucide-react";
@@ -148,125 +145,14 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 
-type HeroTone = "rose" | "sky" | "emerald";
-
-type HeroScene = {
-  label: string;
-  title: string;
-  meta: string;
-  eta: string;
-  tone: HeroTone;
-};
-
-const defaultHeroScenes: HeroScene[] = [
-  {
-    label: "Urgent Need",
-    title: "Electrical fault in 2.1 km radius",
-    meta: "4 providers matched in 38s",
-    eta: "ETA 12m",
-    tone: "rose",
-  },
-  {
-    label: "Service Match",
-    title: "Deep cleaning request now covered",
-    meta: "Top match score 93",
-    eta: "ETA 45m",
-    tone: "sky",
-  },
-  {
-    label: "Fast Commerce",
-    title: "Nearby product order accepted",
-    meta: "Chat reply in 27s",
-    eta: "ETA 22m",
-    tone: "emerald",
-  },
-];
-
-const heroToneBadgeClasses: Record<HeroTone, string> = {
-  rose: "bg-rose-100 text-rose-700",
-  sky: "bg-sky-100 text-sky-700",
-  emerald: "bg-emerald-100 text-emerald-700",
-};
-
-const heroToneDotClasses: Record<HeroTone, string> = {
-  rose: "bg-rose-300",
-  sky: "bg-sky-300",
-  emerald: "bg-emerald-300",
-};
-
-const heroToneGlowClasses: Record<HeroTone, string> = {
-  rose: "bg-rose-300/35",
-  sky: "bg-sky-300/35",
-  emerald: "bg-emerald-300/35",
-};
-
-const heroToneRingClasses: Record<HeroTone, string> = {
-  rose: "border-rose-200/85",
-  sky: "border-sky-200/85",
-  emerald: "border-emerald-200/85",
-};
-
-const heroToneTrackClasses: Record<HeroTone, string> = {
-  rose: "from-rose-300/90 to-orange-200/70",
-  sky: "from-sky-300/90 to-cyan-200/70",
-  emerald: "from-emerald-300/90 to-lime-200/70",
-};
-
-const heroToneSurfaceClasses: Record<HeroTone, string> = {
-  rose: "from-rose-400/20 via-slate-900/70 to-slate-950/90",
-  sky: "from-sky-400/20 via-slate-900/70 to-slate-950/90",
-  emerald: "from-emerald-400/20 via-slate-900/70 to-slate-950/90",
-};
-
-const heroToneStrokeColors: Record<HeroTone, string> = {
-  rose: "rgba(251, 113, 133, 0.9)",
-  sky: "rgba(56, 189, 248, 0.9)",
-  emerald: "rgba(52, 211, 153, 0.9)",
-};
-
-const heroFlowPaths = [
-  { id: "flow-need-hub", d: "M16 72 Q31 57 46 52", delay: 0 },
-  { id: "flow-hub-provider", d: "M46 52 Q62 36 79 30", delay: 0.25 },
-  { id: "flow-hub-fulfill", d: "M46 52 Q64 67 82 74", delay: 0.5 },
-  { id: "flow-provider-fulfill", d: "M79 30 Q84 50 82 74", delay: 0.75 },
+const MARKETPLACE_HERO_LINES = [
+  "Post a Need. Get Local Help. Let Others Earn.",
+  "Where Neighbours Help and Earn in Real Time.",
+  "Small Tasks. Real People. Instant Help.",
+  "Post What You Need. Someone Nearby Will Help.",
+  "Local Help Marketplace for Everyday Needs.",
 ] as const;
-
-const heroNetworkNodes = [
-  { id: "need", label: "Need", x: "16%", y: "72%", tone: "rose" as HeroTone },
-  { id: "hub", label: "Marketplace", x: "46%", y: "52%", tone: "sky" as HeroTone },
-  { id: "provider", label: "Provider", x: "79%", y: "30%", tone: "emerald" as HeroTone },
-  { id: "fulfill", label: "Fulfillment", x: "82%", y: "74%", tone: "sky" as HeroTone },
-] as const;
-
-const heroDataStreams: Array<{
-  id: string;
-  left: string[];
-  top: string[];
-  duration: number;
-  delay: number;
-}> = [
-  {
-    id: "stream-1",
-    left: ["16%", "31%", "46%", "62%", "79%"],
-    top: ["72%", "58%", "52%", "40%", "30%"],
-    duration: 3.2,
-    delay: 0.2,
-  },
-  {
-    id: "stream-2",
-    left: ["82%", "64%", "46%", "31%", "16%"],
-    top: ["74%", "67%", "52%", "57%", "72%"],
-    duration: 3.6,
-    delay: 1,
-  },
-  {
-    id: "stream-3",
-    left: ["46%", "64%", "82%"],
-    top: ["52%", "66%", "74%"],
-    duration: 2.9,
-    delay: 0.7,
-  },
-];
+const HERO_SHADOW_VIDEO_SRC = "/hero/market-live-loop.mp4";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -278,8 +164,7 @@ export default function WelcomePage() {
   });
 
   const [openPostModal, setOpenPostModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [activeHeroScene, setActiveHeroScene] = useState(0);
+  const [heroLineIndex, setHeroLineIndex] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
@@ -289,7 +174,6 @@ export default function WelcomePage() {
   const [cardMetricsById, setCardMetricsById] = useState<Record<string, CardMetrics>>({});
   const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
-  const [userName, setUserName] = useState("Neighbor");
   const [isProvider, setIsProvider] = useState(false);
   const [stats, setStats] = useState<WelcomeStats>({
     nearbyPosts: 0,
@@ -937,132 +821,18 @@ export default function WelcomePage() {
     [demandCards.length, stats.activeTasks, stats.trustScore, stats.unreadMessages]
   );
 
-  const heroScenes = useMemo<HeroScene[]>(() => {
-    const topDemand = demandCards[0];
-    const topService = nearbyCards.find((card) => card.type === "service");
-    const topProduct = nearbyCards.find((card) => card.type === "product");
-
-    return [
-      {
-        label: "Active Needs",
-        title: topDemand?.title || defaultHeroScenes[0].title,
-        meta: `${demandCards.length} demand posts are live nearby`,
-        eta: stats.unreadMessages > 0 ? `${stats.unreadMessages} unread` : "ETA 12m",
-        tone: "rose",
-      },
-      {
-        label: "Service Supply",
-        title: topService?.title || defaultHeroScenes[1].title,
-        meta: `${stats.activeTasks} active tasks currently in progress`,
-        eta: stats.activeTasks > 0 ? "Live now" : "ETA 45m",
-        tone: "sky",
-      },
-      {
-        label: "Trust Pulse",
-        title: topProduct?.title || defaultHeroScenes[2].title,
-        meta: `Local trust score ${stats.trustScore.toFixed(1)}`,
-        eta: "ETA 22m",
-        tone: "emerald",
-      },
-    ];
-  }, [demandCards, nearbyCards, stats.activeTasks, stats.trustScore, stats.unreadMessages]);
-
-  const heroQuickActions = useMemo(
-    () =>
-      isProvider
-        ? [
-            {
-              title: "Respond to Needs",
-              icon: Zap,
-              action: () => router.push(`${routes.posts}?category=demand`),
-            },
-            {
-              title: "Add Service",
-              icon: ClipboardList,
-              action: () => router.push(routes.addService),
-            },
-            {
-              title: "Open Chat",
-              icon: MessageCircle,
-              action: () => router.push(routes.chat),
-            },
-          ]
-        : [
-            {
-              title: "Create Post",
-              icon: Zap,
-              action: () => setOpenPostModal(true),
-            },
-            {
-              title: "Open Chat",
-              icon: MessageCircle,
-              action: () => router.push(routes.chat),
-            },
-            {
-              title: "Browse Posts",
-              icon: ArrowRight,
-              action: () => router.push(routes.posts),
-            },
-          ],
-    [isProvider, router]
-  );
-
-  const marketSignals = useMemo(
-    () => [
-      {
-        label: "Open Needs",
-        value: demandCards.length,
-        icon: Activity,
-      },
-      {
-        label: "Active Tasks",
-        value: stats.activeTasks,
-        icon: ClipboardList,
-      },
-      {
-        label: "Unread",
-        value: stats.unreadMessages,
-        icon: MessageCircle,
-      },
-      {
-        label: "Avg Trust",
-        value: stats.trustScore.toFixed(1),
-        icon: Star,
-      },
-    ],
-    [demandCards.length, stats.activeTasks, stats.unreadMessages, stats.trustScore]
-  );
-
-  const currentHeroScene = heroScenes[activeHeroScene];
-  const heroShadowMedia = useMemo(() => {
-    const liveMedia = Array.from(new Set(enrichedCards.flatMap((card) => card.mediaGallery)));
-
-    if (liveMedia.length >= 3) {
-      return liveMedia.slice(0, 3);
-    }
-
-    const fallbackMedia = [
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80",
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
-      "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?w=1200&q=80",
-    ];
-
-    return [...liveMedia, ...fallbackMedia].slice(0, 3);
-  }, [enrichedCards]);
-
   useEffect(() => {
-    const heroSceneTimer = window.setInterval(() => {
-      setActiveHeroScene((prev) => (prev + 1) % heroScenes.length);
+    const lineTimer = window.setInterval(() => {
+      setHeroLineIndex((current) => (current + 1) % MARKETPLACE_HERO_LINES.length);
     }, 3200);
 
-    return () => window.clearInterval(heroSceneTimer);
-  }, [heroScenes.length]);
+    return () => window.clearInterval(lineTimer);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
 
     const loadWelcome = async () => {
-      setLoading(true);
       setLoadError("");
 
       try {
@@ -1097,7 +867,6 @@ export default function WelcomePage() {
         const role = (profileData?.role || "").toLowerCase();
         const isProviderRole = providerRoles.has(role);
 
-        setUserName(profileData?.name || currentUser.email?.split("@")[0] || "Neighbor");
         setIsProvider(isProviderRole);
 
         const [
@@ -1455,10 +1224,6 @@ export default function WelcomePage() {
         if (isActive) {
           setLoadError(message);
         }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
       }
     };
 
@@ -1544,268 +1309,102 @@ export default function WelcomePage() {
     <>
       <div className="min-h-screen bg-linear-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
         <div className="w-full max-w-550 mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
-          <motion.div
+          <motion.section
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="market-hero-surface relative overflow-hidden rounded-[1.7rem] border border-indigo-300/35 bg-linear-to-br from-slate-950 via-indigo-950 to-sky-900 p-4 shadow-[0_22px_52px_-34px_rgba(15,23,42,0.92)] sm:p-5"
+            className="relative overflow-hidden rounded-[1.3rem] border border-violet-300/40 bg-linear-to-br from-indigo-900 via-violet-700 to-fuchsia-600 p-3 shadow-[0_20px_46px_-30px_rgba(91,33,182,0.9)] sm:p-4"
           >
             <div className="pointer-events-none absolute inset-0">
+              <div className="absolute inset-0 overflow-hidden">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-hidden="true"
+                  className="h-full w-full scale-[1.08] object-cover opacity-28 grayscale contrast-125 brightness-[0.5] saturate-0 blur-[0.8px]"
+                >
+                  <source src={HERO_SHADOW_VIDEO_SRC} type="video/mp4" />
+                </video>
+              </div>
+              <div className="absolute inset-0 bg-linear-to-r from-indigo-950/55 via-violet-900/42 to-fuchsia-900/55" />
               <div
-                className="absolute inset-0"
+                className="absolute inset-0 opacity-28"
                 style={{
                   backgroundImage:
-                    "radial-gradient(circle at 18% 20%, rgba(56,189,248,0.28), transparent 45%), radial-gradient(circle at 86% 84%, rgba(244,114,182,0.26), transparent 42%), radial-gradient(circle at 52% 82%, rgba(52,211,153,0.2), transparent 38%)",
-                }}
-              />
-              <div
-                className="absolute inset-0 opacity-35"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, rgba(191,219,254,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(191,219,254,0.16) 1px, transparent 1px)",
-                  backgroundSize: "34px 34px",
+                    "linear-gradient(to right, rgba(255,255,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.16) 1px, transparent 1px)",
+                  backgroundSize: "30px 30px",
                 }}
               />
               <motion.div
-                className="market-orb-float absolute -left-20 top-9 h-44 w-44 rounded-full bg-cyan-300/35 blur-3xl"
-                animate={{ x: [0, 28, 0], y: [0, -18, 0], opacity: [0.35, 0.7, 0.35] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -right-5 top-2 h-24 w-24 rounded-full bg-cyan-300/30 blur-3xl"
+                animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+                transition={{ duration: 6.6, repeat: Infinity, ease: "easeInOut" }}
               />
               <motion.div
-                className="market-orb-float-delayed absolute -right-8 top-0 h-40 w-40 rounded-full bg-fuchsia-300/30 blur-3xl"
-                animate={{ x: [0, -20, 0], y: [0, 16, 0], opacity: [0.3, 0.55, 0.3] }}
-                transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute left-6 bottom-0 h-20 w-20 rounded-full bg-pink-300/25 blur-2xl"
+                animate={{ x: [0, 10, 0], y: [0, -6, 0] }}
+                transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
               />
               <motion.div
-                className="absolute bottom-5 left-1/3 h-32 w-32 rounded-full bg-emerald-300/20 blur-3xl"
-                animate={{ x: [0, 18, 0], y: [0, 12, 0], opacity: [0.2, 0.45, 0.2] }}
-                transition={{ duration: 6.4, repeat: Infinity, ease: "easeInOut" }}
-              />
+                className="absolute right-[12%] bottom-[12%] text-white/45"
+                animate={{ y: [0, -6, 0], opacity: [0.5, 0.95, 0.5] }}
+                transition={{ duration: 2.4, repeat: Infinity }}
+              >
+                <MapPin size={18} />
+              </motion.div>
             </div>
 
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-0 opacity-55">
-                <div
-                  className={`absolute -right-6 inset-y-0 w-[72%] rounded-[1.4rem] bg-linear-to-br ${heroToneSurfaceClasses[currentHeroScene.tone]}`}
-                />
-
-                <div className="absolute -right-2 top-5 hidden h-40 w-[50%] overflow-hidden rounded-2xl border border-white/20 bg-slate-950/30 shadow-[0_20px_42px_-24px_rgba(15,23,42,0.95)] md:block">
-                  <motion.div
-                    className="relative h-full w-full"
-                    animate={{ scale: [1, 1.03, 1], x: [0, -5, 0], y: [0, -2, 0] }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <video
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      preload="auto"
-                      poster={heroShadowMedia[0]}
-                      className="h-full w-full object-cover opacity-86 contrast-120 brightness-95 saturate-110"
-                    >
-                      <source src="/hero/market-live-loop.mp4" type="video/mp4" />
-                    </video>
-                  </motion.div>
-                  <div className="absolute inset-0 bg-linear-to-br from-slate-950/34 via-indigo-900/12 to-slate-950/28" />
-                  <div className="absolute inset-0 rounded-2xl ring-1 ring-white/18 ring-inset" />
-                  <div
-                    className="absolute inset-0 opacity-12"
-                    style={{
-                      backgroundImage:
-                        "repeating-linear-gradient(to bottom, rgba(226,232,240,0.32) 0px, rgba(226,232,240,0.32) 1px, transparent 1px, transparent 4px)",
-                    }}
-                  />
-                  <motion.div
-                    className="absolute inset-x-0 -top-8 h-14 bg-linear-to-b from-cyan-200/30 to-transparent"
-                    animate={{ y: [-8, 154, -8], opacity: [0, 0.52, 0] }}
-                    transition={{ duration: 6.6, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/25 bg-slate-900/65 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
-                    Live Feed
-                  </span>
-                  <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/90">
-                    <Play size={9} />
-                    Preview
-                  </span>
-                </div>
-
-                <div className="absolute right-[6.35rem] top-[8.65rem] hidden h-[5.3rem] w-[8.9rem] rotate-[-4deg] overflow-hidden rounded-lg border border-white/14 bg-slate-950/30 shadow-[0_16px_26px_-22px_rgba(15,23,42,0.95)] lg:block">
-                  <motion.div
-                    className="relative h-full w-full"
-                    animate={{ scale: [1, 1.1, 1], x: [0, 6, 0] }}
-                    transition={{ duration: 8.9, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-                  >
-                    <Image
-                      src={heroShadowMedia[2]}
-                      alt=""
-                      fill
-                      sizes="160px"
-                      className="object-cover opacity-72 contrast-120 brightness-95 saturate-120"
-                    />
-                  </motion.div>
-                  <div className="absolute inset-0 bg-linear-to-r from-slate-950/38 via-transparent to-indigo-900/22" />
-                  <div className="absolute inset-0 rounded-lg ring-1 ring-white/14 ring-inset" />
-                </div>
-
-                <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {heroFlowPaths.map((path) => (
-                    <motion.path
-                      key={`hero-shadow-${path.id}`}
-                      d={path.d}
-                      fill="none"
-                      stroke={heroToneStrokeColors[currentHeroScene.tone]}
-                      strokeWidth="0.95"
-                      strokeLinecap="round"
-                      strokeDasharray="2.4 6"
-                      animate={{ strokeDashoffset: [0, -32], opacity: [0.1, 0.36, 0.1] }}
-                      transition={{
-                        duration: 5.8,
-                        repeat: Infinity,
-                        ease: "linear",
-                        delay: path.delay,
-                      }}
-                    />
-                  ))}
-                </svg>
-
-                {heroDataStreams.map((stream) => (
-                  <motion.span
-                    key={`hero-shadow-stream-${stream.id}`}
-                    className={`absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full ${heroToneDotClasses[currentHeroScene.tone]}`}
-                    style={{
-                      left: stream.left[0],
-                      top: stream.top[0],
-                      boxShadow: `0 0 16px ${heroToneStrokeColors[currentHeroScene.tone]}`,
-                    }}
-                    animate={{
-                      left: stream.left,
-                      top: stream.top,
-                      opacity: [0, 0.6, 0.6, 0.1, 0],
-                      scale: [0.6, 0.95, 1, 0.9, 0.6],
-                    }}
-                    transition={{
-                      duration: stream.duration + 0.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: stream.delay,
-                    }}
-                  />
-                ))}
-
-                {heroNetworkNodes.map((node, index) => (
-                  <div
-                    key={`hero-shadow-node-${node.id}`}
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: node.x, top: node.y }}
-                  >
-                    <span
-                      className={`absolute inset-0 h-3 w-3 rounded-full ${heroToneDotClasses[node.tone]}`}
-                      style={{ boxShadow: `0 0 14px ${heroToneStrokeColors[node.tone]}` }}
-                    />
-                    <motion.span
-                      className={`absolute inset-0 h-3 w-3 rounded-full border ${heroToneRingClasses[node.tone]}`}
-                      animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
-                      transition={{
-                        duration: 2.6,
-                        repeat: Infinity,
-                        ease: "easeOut",
-                        delay: index * 0.25,
-                      }}
-                    />
-                  </div>
-                ))}
-
-                <motion.div
-                  className={`absolute right-[12%] top-[34%] h-24 w-24 rounded-full blur-3xl ${heroToneGlowClasses[currentHeroScene.tone]}`}
-                  animate={{ x: [0, 12, 0], y: [0, -8, 0], opacity: [0.25, 0.48, 0.25] }}
-                  transition={{ duration: 5.6, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
-
-              <div className="relative">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/90 backdrop-blur">
-                    <Sparkles size={12} />
-                    Startup grade control room
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-100">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-200 animate-pulse" />
-                    Realtime
-                  </span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {heroScenes.map((scene, index) => (
-                    <div key={`scene-progress-${scene.title}`} className="h-1.5 w-16 overflow-hidden rounded-full bg-white/20">
-                      <motion.div
-                        key={`scene-progress-fill-${scene.title}-${index === activeHeroScene}`}
-                        className={`h-full rounded-full bg-linear-to-r ${heroToneTrackClasses[scene.tone]}`}
-                        initial={{ width: "0%" }}
-                        animate={{ width: index === activeHeroScene ? "100%" : "0%" }}
-                        transition={{
-                          duration: index === activeHeroScene ? 3.1 : 0.2,
-                          ease: "linear",
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <h1 className="mt-3 text-2xl font-bold text-white sm:text-[2rem]">
-                  Welcome back, {loading ? "..." : userName} 👋
-                </h1>
-                <p className="mt-1.5 max-w-3xl text-sm text-white/90 sm:text-base">
-                  Turn local needs into completed outcomes with live routing, trust signals, and coordinated execution in one tab.
+            <div className="relative space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-white">
+                  {MARKETPLACE_HERO_LINES[4]}
                 </p>
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-cyan-50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                  {demandCards.length} live
+                </span>
+              </div>
 
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`hero-inline-${currentHeroScene.title}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.28 }}
-                    className="mt-3 max-w-2xl rounded-xl border border-white/25 bg-slate-900/32 px-3 py-2 backdrop-blur"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${heroToneBadgeClasses[currentHeroScene.tone]}`}>
-                        {currentHeroScene.label}
-                      </span>
-                      <span className="text-[11px] text-white/75">{currentHeroScene.eta}</span>
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-white">{currentHeroScene.title}</p>
-                    <p className="text-xs text-white/80">{currentHeroScene.meta}</p>
-                  </motion.div>
-                </AnimatePresence>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  onClick={() => setOpenPostModal(true)}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <Zap size={14} />
+                    </span>
+                    <p className="text-base font-semibold">Post a Need</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Get local help quickly.</p>
+                </button>
 
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {heroQuickActions.map((item) => (
-                    <button
-                      key={item.title}
-                      onClick={item.action}
-                      className="group rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-left text-white backdrop-blur transition-colors hover:bg-white/20"
-                    >
-                      <item.icon size={13} className="text-cyan-100 transition-transform group-hover:translate-x-0.5" />
-                      <p className="mt-1 text-[13px] font-semibold">{item.title}</p>
-                    </button>
-                  ))}
-                </div>
+                <button
+                  onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <UsersRound size={14} />
+                    </span>
+                    <p className="text-base font-semibold">Earn Nearby</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Respond to nearby tasks and earn.</p>
+                </button>
+              </div>
 
-                <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {marketSignals.map((signal) => (
-                    <div key={signal.label} className="rounded-lg border border-white/18 bg-slate-900/42 px-2.5 py-1.5 backdrop-blur">
-                      <div className="flex items-center gap-1 text-[11px] text-white/85">
-                        <signal.icon size={12} />
-                        {signal.label}
-                      </div>
-                      <p className="mt-0.5 text-base font-semibold text-white">{signal.value}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {MARKETPLACE_HERO_LINES[heroLineIndex]}
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 1) % MARKETPLACE_HERO_LINES.length]}
+                </span>
               </div>
             </div>
-          </motion.div>
+          </motion.section>
 
           {!!loadError && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
