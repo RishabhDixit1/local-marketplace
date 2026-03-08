@@ -45,6 +45,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let active = true;
+    let redirectTimer: number | null = null;
 
     const verifySession = async () => {
       const {
@@ -53,32 +54,57 @@ export default function DashboardLayout({
 
       if (!active) return;
 
-      if (!session?.user) {
-        router.replace("/");
+      if (session?.user) {
+        setAuthReady(true);
         return;
       }
 
-      setAuthReady(true);
+      // Give magic-link callbacks a short window to hydrate session before redirecting.
+      redirectTimer = window.setTimeout(async () => {
+        if (!active) return;
+        const {
+          data: { session: retrySession },
+        } = await supabase.auth.getSession();
+
+        if (!active) return;
+        if (retrySession?.user) {
+          setAuthReady(true);
+          return;
+        }
+
+        setAuthReady(false);
+        router.replace("/");
+      }, 8000);
     };
 
     void verifySession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
 
-      if (!session?.user) {
+      if (session?.user) {
+        if (redirectTimer) {
+          window.clearTimeout(redirectTimer);
+          redirectTimer = null;
+        }
+        setAuthReady(true);
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
         setAuthReady(false);
         router.replace("/");
         return;
       }
-
-      setAuthReady(true);
     });
 
     return () => {
       active = false;
+      if (redirectTimer) {
+        window.clearTimeout(redirectTimer);
+      }
       subscription.unsubscribe();
     };
   }, [router]);

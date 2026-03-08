@@ -11,17 +11,22 @@ import {
   ArrowUpRight,
   BarChart3,
   BadgeCheck,
+  ChevronsDown,
   Clock3,
+  ExternalLink,
   Filter,
   Gauge,
   Globe2,
   Loader2,
+  Mail,
   MapPin,
   MessageCircle,
+  Phone,
   Radar,
   RefreshCw,
   RotateCcw,
   Search,
+  Send,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -91,9 +96,13 @@ type ProviderCard = {
   businessSlug: string;
   avatar: string;
   coverImage: string;
+  mediaGallery: string[];
   role: string;
   bio: string;
   location: string;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
   distanceKm: number;
   rating: number;
   reviews: number;
@@ -106,6 +115,8 @@ type ProviderCard = {
   responseMinutes: number;
   startingPrice: number;
   tags: string[];
+  serviceTags: string[];
+  productTags: string[];
   profileCompletion: number;
   rankScore: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
@@ -120,6 +131,8 @@ const SORT_OPTIONS = ["Best Match", "Nearest", "Top Rated", "Most Listings", "Fa
 const FAST_RESPONSE_THRESHOLD_MINUTES = 15;
 const PEOPLE_PREFERENCES_STORAGE_KEY = "local-marketplace-people-preferences-v1";
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
+const PROVIDERS_BATCH_SIZE = 8;
+const DEMO_CHAT_PREFERRED_NAMES = ["User", "Test User 2"] as const;
 
 const demoPeople: ProviderCard[] = [
   {
@@ -127,10 +140,18 @@ const demoPeople: ProviderCard[] = [
     name: "Test Electrician",
     businessSlug: "test-electrician-demo-1",
     avatar: "https://i.pravatar.cc/200?img=12",
-    coverImage: "https://picsum.photos/seed/electrician-cover/900/420",
+    coverImage: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1456613820599-bfe244172af5?auto=format&fit=crop&w=600&q=80",
+    ],
     role: "Electrician",
     bio: "Home electrical repair and emergency support.",
     location: "Nearby",
+    email: "electrician.demo@localmarket.test",
+    phone: "+91 90100 22110",
+    website: "https://services.localmarket.test/electrician",
     distanceKm: 1.2,
     rating: 4.8,
     reviews: 22,
@@ -143,6 +164,8 @@ const demoPeople: ProviderCard[] = [
     responseMinutes: 6,
     startingPrice: 299,
     tags: ["Electrician", "Repair", "Urgent"],
+    serviceTags: ["Wiring", "Switchboard", "Power Backup"],
+    productTags: ["MCB", "LED Lights"],
     profileCompletion: 88,
     rankScore: 91,
     verificationStatus: "verified",
@@ -154,10 +177,18 @@ const demoPeople: ProviderCard[] = [
     name: "Test Cleaning Team",
     businessSlug: "test-cleaning-team-demo-2",
     avatar: "https://i.pravatar.cc/200?img=32",
-    coverImage: "https://picsum.photos/seed/cleaning-cover/900/420",
+    coverImage: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=600&q=80",
+    ],
     role: "Cleaning Service",
     bio: "Residential deep cleaning and move-in cleaning.",
     location: "West Side",
+    email: "cleaning.demo@localmarket.test",
+    phone: "+91 90100 88221",
+    website: "https://services.localmarket.test/cleaning",
     distanceKm: 2.7,
     rating: 4.6,
     reviews: 14,
@@ -170,6 +201,8 @@ const demoPeople: ProviderCard[] = [
     responseMinutes: 11,
     startingPrice: 399,
     tags: ["Cleaning", "Home", "Office"],
+    serviceTags: ["Deep Clean", "Move-in Clean", "Office Sanitization"],
+    productTags: ["Eco Liquids"],
     profileCompletion: 82,
     rankScore: 84,
     verificationStatus: "verified",
@@ -181,10 +214,18 @@ const demoPeople: ProviderCard[] = [
     name: "Test Plumbing Pro",
     businessSlug: "test-plumbing-pro-demo-3",
     avatar: "https://i.pravatar.cc/200?img=19",
-    coverImage: "https://picsum.photos/seed/plumbing-cover/900/420",
+    coverImage: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1523419409543-0a4d5f7c3f77?auto=format&fit=crop&w=600&q=80",
+    ],
     role: "Plumber",
     bio: "Leakage, fittings, bathroom pipeline and kitchen sink fixes.",
     location: "East End",
+    email: "plumbing.demo@localmarket.test",
+    phone: "+91 90100 55440",
+    website: "https://services.localmarket.test/plumbing",
     distanceKm: 3.1,
     rating: 4.9,
     reviews: 31,
@@ -197,11 +238,346 @@ const demoPeople: ProviderCard[] = [
     responseMinutes: 5,
     startingPrice: 349,
     tags: ["Plumbing", "Fittings", "Emergency"],
+    serviceTags: ["Leak Fix", "Bathroom Fittings", "Emergency Visit"],
+    productTags: ["Pipes", "Faucets"],
     profileCompletion: 92,
     rankScore: 95,
     verificationStatus: "verified",
     latitude: 12.9789,
     longitude: 77.5886,
+  },
+  {
+    id: "demo-4",
+    name: "Rapid AC Care",
+    businessSlug: "rapid-ac-care-demo-4",
+    avatar: "https://i.pravatar.cc/200?img=24",
+    coverImage: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "AC Technician",
+    bio: "Split and central AC installation, gas refill, and urgent cooling support.",
+    location: "North Block",
+    email: "ac.demo@localmarket.test",
+    phone: "+91 90100 44551",
+    website: "https://services.localmarket.test/ac-care",
+    distanceKm: 4.4,
+    rating: 4.7,
+    reviews: 19,
+    verified: true,
+    online: true,
+    serviceCount: 6,
+    productCount: 1,
+    completedJobs: 63,
+    openLeads: 5,
+    responseMinutes: 9,
+    startingPrice: 599,
+    tags: ["AC", "Cooling", "Repair"],
+    serviceTags: ["AC Install", "Gas Refill", "Cooling Fix"],
+    productTags: ["AC Filters"],
+    profileCompletion: 90,
+    rankScore: 89,
+    verificationStatus: "verified",
+    latitude: 12.9999,
+    longitude: 77.5922,
+  },
+  {
+    id: "demo-5",
+    name: "MarketFresh Vendor",
+    businessSlug: "marketfresh-vendor-demo-5",
+    avatar: "https://i.pravatar.cc/200?img=41",
+    coverImage: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Local Vendor",
+    bio: "Daily essentials, groceries, and quick neighborhood fulfillment.",
+    location: "Central Market",
+    email: "marketfresh.demo@localmarket.test",
+    phone: "+91 90100 66431",
+    website: "https://services.localmarket.test/marketfresh",
+    distanceKm: 1.8,
+    rating: 4.7,
+    reviews: 41,
+    verified: true,
+    online: true,
+    serviceCount: 2,
+    productCount: 12,
+    completedJobs: 104,
+    openLeads: 6,
+    responseMinutes: 7,
+    startingPrice: 99,
+    tags: ["Vendor", "Groceries", "Delivery"],
+    serviceTags: ["Same Day Delivery", "Bulk Supply"],
+    productTags: ["Groceries", "Dairy", "Fresh Produce"],
+    profileCompletion: 93,
+    rankScore: 94,
+    verificationStatus: "verified",
+    latitude: 12.9711,
+    longitude: 77.6047,
+  },
+  {
+    id: "demo-6",
+    name: "Prime Carpentry Studio",
+    businessSlug: "prime-carpentry-studio-demo-6",
+    avatar: "https://i.pravatar.cc/200?img=46",
+    coverImage: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Carpenter",
+    bio: "Custom furniture repair, modular fitting, and interior woodwork.",
+    location: "South Avenue",
+    email: "carpentry.demo@localmarket.test",
+    phone: "+91 90100 77214",
+    website: "https://services.localmarket.test/carpentry",
+    distanceKm: 4.9,
+    rating: 4.5,
+    reviews: 16,
+    verified: false,
+    online: false,
+    serviceCount: 5,
+    productCount: 3,
+    completedJobs: 44,
+    openLeads: 3,
+    responseMinutes: 24,
+    startingPrice: 799,
+    tags: ["Carpentry", "Furniture", "Interior"],
+    serviceTags: ["Furniture Repair", "Wardrobe Fit", "Door Install"],
+    productTags: ["Cabinet Panels", "Wood Boards"],
+    profileCompletion: 79,
+    rankScore: 78,
+    verificationStatus: "pending",
+    latitude: 12.9418,
+    longitude: 77.6087,
+  },
+  {
+    id: "demo-7",
+    name: "QuickFix Laptop Lab",
+    businessSlug: "quickfix-laptop-lab-demo-7",
+    avatar: "https://i.pravatar.cc/200?img=55",
+    coverImage: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Electronics Repair",
+    bio: "Laptop diagnostics, SSD upgrades, motherboard checks, and home pickup.",
+    location: "IT Corridor",
+    email: "laptop.demo@localmarket.test",
+    phone: "+91 90100 11336",
+    website: "https://services.localmarket.test/laptop-lab",
+    distanceKm: 4.7,
+    rating: 4.8,
+    reviews: 27,
+    verified: true,
+    online: true,
+    serviceCount: 7,
+    productCount: 4,
+    completedJobs: 88,
+    openLeads: 4,
+    responseMinutes: 13,
+    startingPrice: 699,
+    tags: ["Repair", "Laptop", "IT"],
+    serviceTags: ["Laptop Repair", "Data Recovery", "Home Pickup"],
+    productTags: ["SSD", "Laptop Battery", "Adapters"],
+    profileCompletion: 91,
+    rankScore: 90,
+    verificationStatus: "verified",
+    latitude: 12.9352,
+    longitude: 77.6245,
+  },
+  {
+    id: "demo-8",
+    name: "Aqua RO Service Hub",
+    businessSlug: "aqua-ro-service-hub-demo-8",
+    avatar: "https://i.pravatar.cc/200?img=61",
+    coverImage: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Water Purifier Technician",
+    bio: "RO maintenance, filter replacement, and water quality checks.",
+    location: "Lake View",
+    email: "aqua.demo@localmarket.test",
+    phone: "+91 90100 90422",
+    website: "https://services.localmarket.test/aqua-ro",
+    distanceKm: 4.3,
+    rating: 4.4,
+    reviews: 12,
+    verified: false,
+    online: true,
+    serviceCount: 4,
+    productCount: 4,
+    completedJobs: 38,
+    openLeads: 2,
+    responseMinutes: 18,
+    startingPrice: 449,
+    tags: ["RO", "Water", "Maintenance"],
+    serviceTags: ["RO Service", "Filter Change", "Pipeline Check"],
+    productTags: ["RO Filters", "UV Lamp"],
+    profileCompletion: 74,
+    rankScore: 73,
+    verificationStatus: "pending",
+    latitude: 12.9504,
+    longitude: 77.5753,
+  },
+  {
+    id: "demo-9",
+    name: "GreenLeaf Nursery Vendor",
+    businessSlug: "greenleaf-nursery-vendor-demo-9",
+    avatar: "https://i.pravatar.cc/200?img=36",
+    coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Plant Vendor",
+    bio: "Indoor plants, soil supplies, and balcony garden setup.",
+    location: "Garden Lane",
+    email: "greenleaf.demo@localmarket.test",
+    phone: "+91 90100 44127",
+    website: "https://services.localmarket.test/greenleaf",
+    distanceKm: 2.2,
+    rating: 4.9,
+    reviews: 33,
+    verified: true,
+    online: true,
+    serviceCount: 3,
+    productCount: 10,
+    completedJobs: 70,
+    openLeads: 3,
+    responseMinutes: 8,
+    startingPrice: 149,
+    tags: ["Vendor", "Plants", "Garden"],
+    serviceTags: ["Garden Setup", "Plant Care Visits"],
+    productTags: ["Indoor Plants", "Pots", "Compost"],
+    profileCompletion: 94,
+    rankScore: 92,
+    verificationStatus: "verified",
+    latitude: 12.9678,
+    longitude: 77.6319,
+  },
+  {
+    id: "demo-10",
+    name: "Swift Bike Mechanic",
+    businessSlug: "swift-bike-mechanic-demo-10",
+    avatar: "https://i.pravatar.cc/200?img=49",
+    coverImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Bike Mechanic",
+    bio: "Doorstep bike servicing, puncture support, and chain tuneups.",
+    location: "East Circle",
+    email: "bike.demo@localmarket.test",
+    phone: "+91 90100 77233",
+    website: "https://services.localmarket.test/bike-mechanic",
+    distanceKm: 4.8,
+    rating: 4.3,
+    reviews: 18,
+    verified: false,
+    online: false,
+    serviceCount: 6,
+    productCount: 2,
+    completedJobs: 46,
+    openLeads: 2,
+    responseMinutes: 28,
+    startingPrice: 299,
+    tags: ["Mechanic", "Bike", "Doorstep"],
+    serviceTags: ["Bike Service", "Puncture Fix", "Brake Tune"],
+    productTags: ["Chain Oil", "Brake Pads"],
+    profileCompletion: 71,
+    rankScore: 69,
+    verificationStatus: "unclaimed",
+    latitude: 12.9872,
+    longitude: 77.6431,
+  },
+  {
+    id: "demo-11",
+    name: "HomeChef Tiffin Vendor",
+    businessSlug: "homechef-tiffin-vendor-demo-11",
+    avatar: "https://i.pravatar.cc/200?img=9",
+    coverImage: "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Food Vendor",
+    bio: "Healthy tiffin subscriptions and office meal box delivery.",
+    location: "Office District",
+    email: "homechef.demo@localmarket.test",
+    phone: "+91 90100 50110",
+    website: "https://services.localmarket.test/homechef",
+    distanceKm: 3.4,
+    rating: 4.8,
+    reviews: 57,
+    verified: true,
+    online: true,
+    serviceCount: 4,
+    productCount: 9,
+    completedJobs: 126,
+    openLeads: 8,
+    responseMinutes: 6,
+    startingPrice: 129,
+    tags: ["Food", "Vendor", "Delivery"],
+    serviceTags: ["Tiffin Subscription", "Corporate Meals"],
+    productTags: ["Meal Box", "Snacks", "Beverages"],
+    profileCompletion: 95,
+    rankScore: 96,
+    verificationStatus: "verified",
+    latitude: 12.9563,
+    longitude: 77.6133,
+  },
+  {
+    id: "demo-12",
+    name: "Event Decor & Lights",
+    businessSlug: "event-decor-lights-demo-12",
+    avatar: "https://i.pravatar.cc/200?img=53",
+    coverImage: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
+    mediaGallery: [
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+    ],
+    role: "Decor Vendor",
+    bio: "Birthday, wedding, and office decor setup with custom lighting.",
+    location: "West Point",
+    email: "decor.demo@localmarket.test",
+    phone: "+91 90100 66287",
+    website: "https://services.localmarket.test/decor",
+    distanceKm: 4.6,
+    rating: 4.6,
+    reviews: 21,
+    verified: true,
+    online: false,
+    serviceCount: 5,
+    productCount: 6,
+    completedJobs: 59,
+    openLeads: 3,
+    responseMinutes: 19,
+    startingPrice: 1499,
+    tags: ["Decor", "Lights", "Events"],
+    serviceTags: ["Event Setup", "Light Design", "On-site Team"],
+    productTags: ["Backdrop", "Party Lights", "Props"],
+    profileCompletion: 85,
+    rankScore: 82,
+    verificationStatus: "verified",
+    latitude: 12.9307,
+    longitude: 77.5968,
   },
 ];
 
@@ -211,6 +587,73 @@ const hashNumber = (seed: string, min: number, max: number) => {
     hash = (hash * 33 + seed.charCodeAt(i)) % 10000;
   }
   return min + (hash % (max - min + 1));
+};
+
+const ROLE_MEDIA_LIBRARY = {
+  electrician: [
+    "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1456613820599-bfe244172af5?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80",
+  ],
+  plumbing: [
+    "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1523419409543-0a4d5f7c3f77?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1600&q=80",
+  ],
+  cleaning: [
+    "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1511551203524-9a24350a5771?auto=format&fit=crop&w=1600&q=80",
+  ],
+  vendor: [
+    "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80",
+  ],
+  carpentry: [
+    "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1560185007-c5ca9d2c014d?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1600&q=80",
+  ],
+  default: [
+    "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
+    "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80",
+  ],
+} as const;
+
+const resolveMediaPool = (role: string, tags: string[]) => {
+  const context = `${role} ${tags.join(" ")}`.toLowerCase();
+  if (/(electric|wire|power|ac|hvac)/.test(context)) return ROLE_MEDIA_LIBRARY.electrician;
+  if (/(plumb|pipe|tap|bathroom)/.test(context)) return ROLE_MEDIA_LIBRARY.plumbing;
+  if (/(clean|housekeep|sanitize|laundry)/.test(context)) return ROLE_MEDIA_LIBRARY.cleaning;
+  if (/(vendor|seller|retail|shop|market|supply|delivery)/.test(context)) return ROLE_MEDIA_LIBRARY.vendor;
+  if (/(carpen|wood|furniture|interior|fabrication)/.test(context)) return ROLE_MEDIA_LIBRARY.carpentry;
+  return ROLE_MEDIA_LIBRARY.default;
+};
+
+const buildProviderMediaGallery = (seed: string, role: string, tags: string[]) => {
+  const pool = resolveMediaPool(role, tags);
+  const start = hashNumber(seed, 0, pool.length - 1);
+  return [pool[start], pool[(start + 1) % pool.length], pool[(start + 2) % pool.length]];
+};
+
+const normalizeWebsiteUrl = (website: string | null | undefined) => {
+  if (!website) return null;
+  if (/^https?:\/\//i.test(website)) return website;
+  return `https://${website}`;
+};
+
+const normalizePhoneForHref = (phone: string | null | undefined) => {
+  if (!phone) return null;
+  const normalized = phone.replace(/[^\d+]/g, "");
+  return normalized ? `tel:${normalized}` : null;
 };
 
 const formatSyncTime = (iso: string) => {
@@ -238,6 +681,8 @@ const describeMatchReason = (person: ProviderCard, online: boolean) => {
 export default function PeoplePage() {
   const router = useRouter();
   const reloadTimerRef = useRef<number | null>(null);
+  const loadMoreTimerRef = useRef<number | null>(null);
+  const infiniteSentinelRef = useRef<HTMLDivElement | null>(null);
   const deepLinkProviderAppliedRef = useRef(false);
   const [deepLinkContext] = useState<{
     providerId: string | null;
@@ -274,6 +719,11 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [loadingChatId, setLoadingChatId] = useState<string | null>(null);
+  const [inlineComposerProviderId, setInlineComposerProviderId] = useState<string | null>(null);
+  const [inlineMessageDrafts, setInlineMessageDrafts] = useState<Record<string, string>>({});
+  const [inlineSendingProviderId, setInlineSendingProviderId] = useState<string | null>(null);
+  const [inlineConversationByProvider, setInlineConversationByProvider] = useState<Record<string, string>>({});
+  const [inlineMessageStatusByProvider, setInlineMessageStatusByProvider] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("All");
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
@@ -291,6 +741,8 @@ export default function PeoplePage() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PROVIDERS_BATCH_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
@@ -475,14 +927,20 @@ export default function PeoplePage() {
 
     const serviceCountMap = new Map<string, number>();
     const productCountMap = new Map<string, number>();
-    const tagMap = new Map<string, Set<string>>();
+    const serviceTagMap = new Map<string, Set<string>>();
+    const productTagMap = new Map<string, Set<string>>();
+    const combinedTagMap = new Map<string, Set<string>>();
     const ratingMap = new Map<string, { sum: number; count: number }>();
     const providerPriceMap = new Map<string, number[]>();
 
     serviceRows.forEach((row) => {
       serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
-      if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
-      if (row.category) tagMap.get(row.provider_id)?.add(row.category);
+      if (!serviceTagMap.has(row.provider_id)) serviceTagMap.set(row.provider_id, new Set());
+      if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
+      if (row.category) {
+        serviceTagMap.get(row.provider_id)?.add(row.category);
+        combinedTagMap.get(row.provider_id)?.add(row.category);
+      }
       if (Number.isFinite(Number(row.price))) {
         const existing = providerPriceMap.get(row.provider_id) || [];
         providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
@@ -491,8 +949,12 @@ export default function PeoplePage() {
 
     productRows.forEach((row) => {
       productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
-      if (!tagMap.has(row.provider_id)) tagMap.set(row.provider_id, new Set());
-      if (row.category) tagMap.get(row.provider_id)?.add(row.category);
+      if (!productTagMap.has(row.provider_id)) productTagMap.set(row.provider_id, new Set());
+      if (!combinedTagMap.has(row.provider_id)) combinedTagMap.set(row.provider_id, new Set());
+      if (row.category) {
+        productTagMap.get(row.provider_id)?.add(row.category);
+        combinedTagMap.get(row.provider_id)?.add(row.category);
+      }
       if (Number.isFinite(Number(row.price))) {
         const existing = providerPriceMap.get(row.provider_id) || [];
         providerPriceMap.set(row.provider_id, [...existing, Number(row.price)]);
@@ -582,16 +1044,27 @@ export default function PeoplePage() {
         const startingPrice = prices.length
           ? Math.max(1, Math.min(...prices.map((value) => Math.floor(value))))
           : hashNumber(profile.id, 199, 1499);
+        const serviceTags = Array.from(serviceTagMap.get(profile.id) || []).slice(0, 4);
+        const productTags = Array.from(productTagMap.get(profile.id) || []).slice(0, 4);
+        const combinedTags = Array.from(combinedTagMap.get(profile.id) || []);
+        const mediaGallery = buildProviderMediaGallery(profile.id, profile.role || "", [
+          ...combinedTags,
+          profile.role || "",
+        ]);
 
         return {
           id: profile.id,
           name: profile.name || "Local Provider",
           businessSlug: createBusinessSlug(profile.name, profile.id),
           avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
-          coverImage: `https://picsum.photos/seed/provider-${profile.id}/900/420`,
+          coverImage: mediaGallery[0],
+          mediaGallery,
           role: profile.role || "Service Provider",
           bio: profile.bio || "Trusted neighborhood provider.",
           location: profile.location || "Nearby",
+          email: profile.email || null,
+          phone: profile.phone || null,
+          website: profile.website || null,
           distanceKm,
           rating: avgRating,
           reviews: reviewCount,
@@ -603,7 +1076,9 @@ export default function PeoplePage() {
           openLeads: openLeadsMap.get(profile.id) ?? hashNumber(`open-${profile.id}`, 1, 6),
           responseMinutes,
           startingPrice,
-          tags: Array.from(tagMap.get(profile.id) || []),
+          tags: combinedTags,
+          serviceTags,
+          productTags,
           profileCompletion,
           rankScore,
           verificationStatus,
@@ -720,6 +1195,35 @@ export default function PeoplePage() {
     };
   }, [loadProviders]);
 
+  useEffect(() => {
+    if (!usingDemo || loading) return;
+
+    const demoRealtimeTimer = window.setInterval(() => {
+      const tick = Math.floor(Date.now() / 12000);
+      setProviders((current) =>
+        current.map((provider, index) => {
+          if (!provider.id.startsWith("demo-")) return provider;
+          const isOnline = (tick + index) % 3 !== 0;
+          const leadDelta = (tick + index) % 4 === 0 ? 1 : (tick + index) % 5 === 0 ? -1 : 0;
+          const responseDelta = isOnline ? -1 : 1;
+
+          return {
+            ...provider,
+            online: isOnline,
+            openLeads: Math.max(0, Math.min(18, provider.openLeads + leadDelta)),
+            responseMinutes: Math.max(3, Math.min(40, provider.responseMinutes + responseDelta)),
+            rankScore: Math.max(62, Math.min(99, provider.rankScore + (isOnline ? 1 : -1))),
+          };
+        })
+      );
+      setLastSyncedAt(new Date().toISOString());
+    }, 12000);
+
+    return () => {
+      window.clearInterval(demoRealtimeTimer);
+    };
+  }, [loading, usingDemo]);
+
   const isProviderOnline = useCallback(
     (provider: ProviderCard) => onlineUserIds.has(provider.id) || provider.online,
     [onlineUserIds]
@@ -778,75 +1282,262 @@ export default function PeoplePage() {
     verifiedOnly,
   ]);
 
-  const startChat = async (providerId: string) => {
-    if (!currentUserId) {
-      alert("Login required");
-      return;
+  const hasMoreProviders = visibleCount < filteredProviders.length;
+  const visibleProviders = useMemo(
+    () => filteredProviders.slice(0, Math.max(PROVIDERS_BATCH_SIZE, visibleCount)),
+    [filteredProviders, visibleCount]
+  );
+
+  useEffect(() => {
+    if (loadMoreTimerRef.current) {
+      window.clearTimeout(loadMoreTimerRef.current);
+      loadMoreTimerRef.current = null;
+    }
+    setVisibleCount(Math.min(PROVIDERS_BATCH_SIZE, filteredProviders.length));
+    setLoadingMore(false);
+  }, [filteredProviders.length]);
+
+  useEffect(() => {
+    return () => {
+      if (loadMoreTimerRef.current) {
+        window.clearTimeout(loadMoreTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (loading || !hasMoreProviders || !infiniteSentinelRef.current) return;
+
+    const sentinel = infiniteSentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting || loadingMore || !hasMoreProviders) return;
+
+        setLoadingMore(true);
+        if (loadMoreTimerRef.current) {
+          window.clearTimeout(loadMoreTimerRef.current);
+        }
+        loadMoreTimerRef.current = window.setTimeout(() => {
+          setVisibleCount((current) => Math.min(current + PROVIDERS_BATCH_SIZE, filteredProviders.length));
+          setLoadingMore(false);
+          loadMoreTimerRef.current = null;
+        }, 260);
+      },
+      {
+        rootMargin: "260px 0px",
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredProviders.length, hasMoreProviders, loading, loadingMore]);
+
+  const resolveDemoChatRecipientId = useCallback(async (providerId: string, viewerId: string) => {
+    const pickCandidate = (rows: ProfileRow[] | null | undefined) => {
+      const candidates = (rows || []).filter((row) => !!row?.id && row.id !== viewerId);
+      if (!candidates.length) return null;
+      return candidates[hashNumber(providerId, 0, candidates.length - 1)]?.id || null;
+    };
+
+    const { data: preferredRows, error: preferredError } = await supabase
+      .from("profiles")
+      .select("id,name")
+      .in("name", [...DEMO_CHAT_PREFERRED_NAMES])
+      .neq("id", viewerId)
+      .limit(12);
+
+    if (!preferredError) {
+      const target = pickCandidate((preferredRows as ProfileRow[] | null) || []);
+      if (target) return target;
     }
 
-    if (providerId.startsWith("demo-")) {
-      router.push("/dashboard");
-      return;
+    const { data: fallbackRows, error: fallbackError } = await supabase
+      .from("profiles")
+      .select("id,name")
+      .neq("id", viewerId)
+      .limit(20);
+
+    if (fallbackError) {
+      throw new Error(`Could not load chat recipients: ${fallbackError.message}`);
     }
 
-    if (providerId === currentUserId) {
-      alert("This is your own profile.");
-      return;
+    return pickCandidate((fallbackRows as ProfileRow[] | null) || []);
+  }, []);
+
+  const ensureViewerId = useCallback(async () => {
+    if (currentUserId) return currentUserId;
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error(authError?.message || "Login required");
     }
 
-    setLoadingChatId(providerId);
+    setCurrentUserId(user.id);
+    return user.id;
+  }, [currentUserId]);
 
-    const { data: myRows } = await supabase
+  const resolveChatRecipientId = useCallback(
+    async (providerId: string, viewerId: string) => {
+      if (!providerId.startsWith("demo-")) return providerId;
+      return resolveDemoChatRecipientId(providerId, viewerId);
+    },
+    [resolveDemoChatRecipientId]
+  );
+
+  const getOrCreateConversationId = useCallback(async (viewerId: string, recipientId: string): Promise<string> => {
+    const { data: myRows, error: myRowsError } = await supabase
       .from("conversation_participants")
       .select("conversation_id")
-      .eq("user_id", currentUserId);
+      .eq("user_id", viewerId);
+
+    if (myRowsError) {
+      throw new Error(myRowsError.message);
+    }
 
     const myConversationIds = myRows?.map((row) => row.conversation_id) || [];
-    let targetConversationId: string | null = null;
+    let conversationId: string | null = null;
 
     if (myConversationIds.length > 0) {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("conversation_participants")
         .select("conversation_id")
         .in("conversation_id", myConversationIds)
-        .eq("user_id", providerId)
+        .eq("user_id", recipientId)
         .limit(1)
         .maybeSingle();
 
-      targetConversationId = existing?.conversation_id || null;
+      if (existingError) {
+        throw new Error(existingError.message);
+      }
+
+      conversationId = existing?.conversation_id || null;
     }
 
-    if (!targetConversationId) {
+    if (!conversationId) {
       const { data: conversation, error } = await supabase
         .from("conversations")
-        .insert({ created_by: currentUserId })
+        .insert({ created_by: viewerId })
         .select("id")
         .single();
 
       if (error || !conversation) {
-        setLoadingChatId(null);
-        alert(`Unable to start chat. ${error?.message || ""}`.trim());
-        return;
+        throw new Error(error?.message || "Unable to create conversation");
       }
 
-      targetConversationId = conversation.id;
+      conversationId = conversation.id;
       const { error: participantError } = await supabase.from("conversation_participants").upsert([
-        { conversation_id: targetConversationId, user_id: currentUserId },
-        { conversation_id: targetConversationId, user_id: providerId },
+        { conversation_id: conversationId, user_id: viewerId },
+        { conversation_id: conversationId, user_id: recipientId },
       ], {
         onConflict: "conversation_id,user_id",
         ignoreDuplicates: true,
       });
 
       if (participantError) {
-        setLoadingChatId(null);
-        alert(`Unable to start chat. ${participantError.message}`);
-        return;
+        throw new Error(participantError.message);
       }
     }
 
-    setLoadingChatId(null);
-    router.push(`/dashboard/chat?open=${targetConversationId}`);
+    if (!conversationId) {
+      throw new Error("Unable to resolve conversation");
+    }
+
+    return conversationId;
+  }, []);
+
+  const openChatThread = async (providerId: string) => {
+    setLoadingChatId(providerId);
+
+    try {
+      const viewerId = await ensureViewerId();
+      if (providerId === viewerId) {
+        alert("This is your own profile.");
+        return;
+      }
+
+      let conversationId = inlineConversationByProvider[providerId] || null;
+      if (!conversationId) {
+        const recipientId = await resolveChatRecipientId(providerId, viewerId);
+        if (!recipientId) {
+          alert("No chat recipient is available for this card yet.");
+          return;
+        }
+        conversationId = await getOrCreateConversationId(viewerId, recipientId);
+      }
+
+      if (!conversationId) {
+        throw new Error("Unable to resolve conversation");
+      }
+
+      setInlineConversationByProvider((previous) => ({ ...previous, [providerId]: conversationId }));
+      router.push(`/dashboard/chat?open=${conversationId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to open chat";
+      alert(`Unable to open chat. ${message}`);
+    } finally {
+      setLoadingChatId(null);
+    }
+  };
+
+  const sendInlineMessage = async (provider: ProviderCard) => {
+    const draft = (inlineMessageDrafts[provider.id] || "").trim();
+    if (!draft) {
+      setInlineMessageStatusByProvider((previous) => ({
+        ...previous,
+        [provider.id]: "Type a message before sending.",
+      }));
+      return;
+    }
+
+    setInlineSendingProviderId(provider.id);
+    setInlineMessageStatusByProvider((previous) => ({ ...previous, [provider.id]: "" }));
+
+    try {
+      const viewerId = await ensureViewerId();
+      if (provider.id === viewerId) {
+        alert("This is your own profile.");
+        return;
+      }
+
+      const recipientId = await resolveChatRecipientId(provider.id, viewerId);
+      if (!recipientId) {
+        setInlineMessageStatusByProvider((previous) => ({
+          ...previous,
+          [provider.id]: "No chat recipient is available for this profile yet.",
+        }));
+        return;
+      }
+
+      const conversationId = await getOrCreateConversationId(viewerId, recipientId);
+      const { error: messageError } = await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        sender_id: viewerId,
+        content: draft,
+      });
+
+      if (messageError) {
+        throw new Error(messageError.message);
+      }
+
+      setInlineConversationByProvider((previous) => ({ ...previous, [provider.id]: conversationId }));
+      setInlineMessageDrafts((previous) => ({ ...previous, [provider.id]: "" }));
+      setInlineMessageStatusByProvider((previous) => ({
+        ...previous,
+        [provider.id]: "Message sent. It is saved in Chat tab.",
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to send message";
+      setInlineMessageStatusByProvider((previous) => ({
+        ...previous,
+        [provider.id]: `Unable to send. ${message}`,
+      }));
+    } finally {
+      setInlineSendingProviderId(null);
+    }
   };
 
   const peopleNearby = providers.filter((provider) => provider.distanceKm <= 5).length;
@@ -1082,6 +1773,10 @@ export default function PeoplePage() {
             {filteredProviders.length} matches
           </span>
           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+            <Users size={12} />
+            feed {visibleProviders.length}/{filteredProviders.length}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
             <Gauge size={12} />
             sorted by {sortBy}
           </span>
@@ -1300,10 +1995,16 @@ export default function PeoplePage() {
           </div>
         </div>
       ) : (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filteredProviders.map((person) => {
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          {visibleProviders.map((person) => {
             const isOnline = isProviderOnline(person);
             const matchReasons = describeMatchReason(person, isOnline);
+            const websiteHref = normalizeWebsiteUrl(person.website);
+            const phoneHref = normalizePhoneForHref(person.phone);
+            const isInlineComposerOpen = inlineComposerProviderId === person.id;
+            const inlineDraft = inlineMessageDrafts[person.id] || "";
+            const inlineStatus = inlineMessageStatusByProvider[person.id] || "";
+            const savedConversationId = inlineConversationByProvider[person.id] || null;
             return (
               <article
                 key={person.id}
@@ -1361,6 +2062,21 @@ export default function PeoplePage() {
                     </div>
                   </div>
 
+                  {person.mediaGallery.length > 1 && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {person.mediaGallery.slice(1, 3).map((imageUrl, index) => (
+                        <Image
+                          key={`${person.id}-gallery-${index}`}
+                          src={imageUrl}
+                          alt={`${person.name} preview ${index + 1}`}
+                          width={500}
+                          height={280}
+                          className="h-20 w-full rounded-lg object-cover"
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 sm:grid-cols-4">
                     <span className="inline-flex items-center gap-1">
                       <MapPin size={12} />
@@ -1390,7 +2106,7 @@ export default function PeoplePage() {
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">from INR {person.startingPrice}</span>
                     <span className="rounded-full bg-indigo-100 px-2 py-1 text-indigo-700">Match {person.rankScore}</span>
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-700 inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-700">
                       <Star size={11} className="fill-amber-500 text-amber-500" />
                       {person.rating} ({person.reviews})
                     </span>
@@ -1409,27 +2125,81 @@ export default function PeoplePage() {
                     </div>
                   )}
 
-                  {person.tags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {person.tags.slice(0, 4).map((tag) => (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Available listings</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {person.serviceTags.slice(0, 3).map((tag) => (
                         <span
-                          key={`${person.id}-${tag}`}
-                          className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
+                          key={`${person.id}-service-${tag}`}
+                          className="rounded-full bg-indigo-100 px-2 py-1 text-[11px] font-medium text-indigo-700"
                         >
                           {tag}
                         </span>
                       ))}
+                      {person.productTags.slice(0, 3).map((tag) => (
+                        <span
+                          key={`${person.id}-product-${tag}`}
+                          className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {!person.serviceTags.length && !person.productTags.length && (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">General neighborhood support</span>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {phoneHref && (
+                      <a
+                        href={phoneHref}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <Phone size={12} />
+                        Call
+                      </a>
+                    )}
+                    {person.email && (
+                      <a
+                        href={`mailto:${person.email}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <Mail size={12} />
+                        Email
+                      </a>
+                    )}
+                    {websiteHref && (
+                      <a
+                        href={websiteHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <ExternalLink size={12} />
+                        Website
+                      </a>
+                    )}
+                  </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => void startChat(person.id)}
-                      disabled={loadingChatId === person.id}
+                      onClick={() => {
+                        setInlineComposerProviderId((current) => (current === person.id ? null : person.id));
+                        setInlineMessageDrafts((previous) => {
+                          if (previous[person.id]) return previous;
+                          const quickContext = person.tags[0] || person.role;
+                          return {
+                            ...previous,
+                            [person.id]: `Hi ${person.name}, I need help with ${quickContext}.`,
+                          };
+                        });
+                        setInlineMessageStatusByProvider((previous) => ({ ...previous, [person.id]: "" }));
+                      }}
                       className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
                     >
                       <MessageCircle size={14} />
-                      {loadingChatId === person.id ? "Opening..." : "Chat"}
+                      {isInlineComposerOpen ? "Close Chat" : "Chat"}
                     </button>
                     <button
                       onClick={() => setSelectedProvider(person.id)}
@@ -1437,16 +2207,66 @@ export default function PeoplePage() {
                     >
                       View Profile
                     </button>
+                    {(savedConversationId || loadingChatId === person.id) && (
+                      <button
+                        onClick={() => void openChatThread(person.id)}
+                        disabled={loadingChatId === person.id}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
+                      >
+                        {loadingChatId === person.id ? "Opening..." : "Open Chat Tab"}
+                        <ArrowUpRight size={13} />
+                      </button>
+                    )}
                     {!usingDemo && (
                       <button
                         onClick={() => router.push(`/business/${person.businessSlug}`)}
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
-                        Business Page
+                        Access Listings
                         <ArrowUpRight size={13} />
                       </button>
                     )}
                   </div>
+
+                  {isInlineComposerOpen && (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold text-slate-700">Message profile owner</p>
+                      <textarea
+                        value={inlineDraft}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setInlineMessageDrafts((previous) => ({ ...previous, [person.id]: nextValue }));
+                          if (inlineStatus) {
+                            setInlineMessageStatusByProvider((previous) => ({ ...previous, [person.id]: "" }));
+                          }
+                        }}
+                        rows={3}
+                        placeholder={`Write a message to ${person.name}...`}
+                        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => void sendInlineMessage(person)}
+                          disabled={inlineSendingProviderId === person.id || !inlineDraft.trim()}
+                          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {inlineSendingProviderId === person.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                          {inlineSendingProviderId === person.id ? "Sending..." : "Send Message"}
+                        </button>
+                        {savedConversationId && (
+                          <button
+                            onClick={() => void openChatThread(person.id)}
+                            disabled={loadingChatId === person.id}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+                          >
+                            {loadingChatId === person.id ? "Opening..." : "Open Thread"}
+                            <ArrowUpRight size={13} />
+                          </button>
+                        )}
+                      </div>
+                      {!!inlineStatus && <p className="mt-2 text-xs text-slate-600">{inlineStatus}</p>}
+                    </div>
+                  )}
                 </div>
               </article>
             );
@@ -1474,6 +2294,19 @@ export default function PeoplePage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {hasMoreProviders && !!visibleProviders.length && (
+            <div ref={infiniteSentinelRef} className="col-span-full flex justify-center pt-1 pb-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm">
+                {loadingMore ? <Loader2 size={14} className="animate-spin" /> : <ChevronsDown size={14} />}
+                {loadingMore ? "Loading more providers..." : "Scroll for more providers"}
+              </div>
+            </div>
+          )}
+
+          {!hasMoreProviders && filteredProviders.length > PROVIDERS_BATCH_SIZE && (
+            <p className="col-span-full text-center text-xs text-slate-500">You have reached the end of the local feed.</p>
           )}
         </section>
       )}

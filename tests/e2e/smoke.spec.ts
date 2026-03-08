@@ -8,9 +8,6 @@ const transitionLabelRegex =
   /Send Quote|Mark Accepted|Reject|Start Work|Mark Completed|Accept Quote|Confirm Completion|Cancel Request/i;
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
-  await page.goto("/dashboard");
-  if (/\/dashboard/i.test(page.url())) return;
-
   const magicLinkUrl = await resolveMagicLinkUrl();
   await page.goto(magicLinkUrl);
   await page.waitForURL(/\/dashboard/, { timeout: 60000 });
@@ -43,21 +40,31 @@ test("authenticated marketplace smoke", async ({ page }) => {
 
   await test.step("provider discovery", async () => {
     await page.goto("/dashboard/people");
-    await expect(page.getByRole("heading", { name: /People Near You|People Network/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Chat/i }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /People Near You|People Network/i })).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("article").first().getByRole("button", { name: /^Chat$/i })).toBeVisible({ timeout: 15_000 });
   });
 
-  await test.step("start chat + send message", async () => {
-    await page.getByRole("button", { name: /Chat/i }).first().click();
-    await page.waitForURL(/\/dashboard\/chat/, { timeout: 30000 });
+  await test.step("start inline chat + send message + open thread", async () => {
+    const firstCard = page.locator("article").first();
+    await firstCard.getByRole("button", { name: /^Chat$/i }).click();
 
-    const composer = page.getByPlaceholder(/Type a message|Write a message/i);
+    const composer = firstCard.getByPlaceholder(/Write a message to/i);
     await expect(composer).toBeVisible();
 
     const message = `e2e smoke ${Date.now()}`;
     await composer.fill(message);
-    await composer.press("Enter");
+    await firstCard.getByRole("button", { name: /Send Message/i }).click();
 
+    await expect(firstCard.getByText(/Message sent\. It is saved in Chat tab\./i)).toBeVisible({ timeout: 15000 });
+
+    const openThreadButton =
+      (await firstCard.getByRole("button", { name: /Open Thread/i }).count()) > 0
+        ? firstCard.getByRole("button", { name: /Open Thread/i }).first()
+        : firstCard.getByRole("button", { name: /Open Chat Tab/i }).first();
+    await expect(openThreadButton).toBeVisible({ timeout: 15000 });
+    await openThreadButton.click();
+
+    await page.waitForURL(/\/dashboard\/chat/, { timeout: 30000 });
     await expect(page.getByText(message).last()).toBeVisible({ timeout: 15000 });
   });
 
