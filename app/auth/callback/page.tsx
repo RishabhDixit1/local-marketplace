@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import { ensureClientProfile } from "@/lib/clientProfile";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -54,7 +55,8 @@ export default function AuthCallbackPage() {
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
 
-        if (data.session) {
+        if (data.session?.user) {
+          await ensureClientProfile(data.session.user).catch(() => false);
           router.replace("/dashboard");
           return;
         }
@@ -63,7 +65,11 @@ export default function AuthCallbackPage() {
           data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
           if (!cancelled && event === "SIGNED_IN" && session) {
-            router.replace("/dashboard");
+            void ensureClientProfile(session.user).finally(() => {
+              if (!cancelled) {
+                router.replace("/dashboard");
+              }
+            });
           }
         });
         subscription = authSubscription;

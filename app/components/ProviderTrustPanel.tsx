@@ -119,6 +119,34 @@ const buildDemoProfile = (id: string): ProfileRow => {
   };
 };
 
+const buildLiveFallbackProfile = (
+  id: string,
+  options?: { servicesCount?: number; productsCount?: number; reviewsCount?: number }
+): ProfileRow => {
+  const servicesCount = options?.servicesCount || 0;
+  const productsCount = options?.productsCount || 0;
+  const reviewsCount = options?.reviewsCount || 0;
+  const role =
+    servicesCount + productsCount > 0 ? "provider" : reviewsCount > 0 ? "marketplace_member" : "member";
+
+  return {
+    id,
+    name: `Local Member ${id.slice(0, 4).toUpperCase()}`,
+    location: "Nearby",
+    bio:
+      servicesCount + productsCount > 0
+        ? "This member is active on the marketplace and can be contacted in realtime."
+        : "This member is visible on the marketplace and can be contacted in realtime.",
+    role,
+    services: [],
+    availability: "available",
+    email: null,
+    phone: null,
+    website: null,
+    avatar_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(id)}`,
+  };
+};
+
 export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
@@ -185,10 +213,21 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           console.warn("Provider order stats RPC unavailable, using fallback stats:", statsError.message);
         }
 
-        setProfile(profileRow || null);
-        setReviews((reviewRows as ReviewRow[] | null) || []);
-        setServicesCount((serviceRows || []).length);
-        setProductsCount((productRows || []).length);
+        const normalizedReviews = (reviewRows as ReviewRow[] | null) || [];
+        const normalizedServicesCount = (serviceRows || []).length;
+        const normalizedProductsCount = (productRows || []).length;
+
+        setProfile(
+          profileRow ||
+            buildLiveFallbackProfile(userId, {
+              servicesCount: normalizedServicesCount,
+              productsCount: normalizedProductsCount,
+              reviewsCount: normalizedReviews.length,
+            })
+        );
+        setReviews(normalizedReviews);
+        setServicesCount(normalizedServicesCount);
+        setProductsCount(normalizedProductsCount);
 
         const statsRows = statsError ? [] : (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
         const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : 0;

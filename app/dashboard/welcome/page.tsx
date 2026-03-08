@@ -81,6 +81,17 @@ type EnrichedNearbyCard = NearbyCard & {
 type RawPost = {
   id: string;
   text: string | null;
+  content: string | null;
+  description: string | null;
+  title: string | null;
+  user_id: string | null;
+  provider_id: string | null;
+  created_by: string | null;
+  type: string | null;
+  post_type: string | null;
+  category: string | null;
+  status: string | null;
+  state: string | null;
 };
 
 type RawService = {
@@ -145,6 +156,42 @@ const routes = {
 } as const;
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
+
+const normalizeMarketplaceCardType = (value?: string | null): NearbyCard["type"] => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "service" || normalized === "product") return normalized;
+  return "demand";
+};
+
+const isLiveMarketplacePost = (status?: string | null, state?: string | null) => {
+  const normalizedStatus = (status || state || "").trim().toLowerCase();
+  return !normalizedStatus || normalizedStatus === "open";
+};
+
+const parseMarketplacePostPreview = (rawText: string) => {
+  const fallback = {
+    title: rawText.trim() || "New local post",
+    kind: "demand" as NearbyCard["type"],
+    category: "",
+    budget: 0,
+  };
+
+  if (!rawText.includes(" | ")) return fallback;
+
+  const parts = rawText.split(" | ");
+  const title = parts[0]?.trim() || fallback.title;
+  const typePart = parts.find((item) => item.startsWith("Type:"));
+  const categoryPart = parts.find((item) => item.startsWith("Category:"));
+  const budgetPart = parts.find((item) => item.startsWith("Budget:"));
+  const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
+
+  return {
+    title,
+    kind: normalizeMarketplaceCardType(typePart?.replace("Type:", "").trim()),
+    category: categoryPart?.replace("Category:", "").trim() || "",
+    budget: budgetMatch ? Number(budgetMatch[1]) : 0,
+  };
+};
 
 const MARKETPLACE_HERO_LINES = [
   "Post a Need. Get Local Help. Let Others Earn.",
@@ -815,14 +862,18 @@ export default function WelcomePage() {
         setIsProvider(isProviderRole);
 
         const [
-          { count: nearbyPostsCount },
+          { data: nearbyPostRows },
           { data: myOrders },
           { data: myConversations },
           { data: reviewsData },
           { data: savedCardRows, error: savedCardError },
         ] =
           await Promise.all([
-            supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "open"),
+            supabase
+              .from("posts")
+              .select("id,status,state")
+              .order("created_at", { ascending: false })
+              .limit(120),
             supabase
               .from("orders")
               .select("status")
@@ -873,14 +924,23 @@ export default function WelcomePage() {
         }
 
         setStats({
-          nearbyPosts: nearbyPostsCount || 0,
+          nearbyPosts:
+            ((nearbyPostRows as Array<{ status?: string | null; state?: string | null }> | null) || []).filter((row) =>
+              isLiveMarketplacePost(row.status, row.state)
+            ).length || 0,
           activeTasks,
           unreadMessages,
           trustScore,
         });
 
         const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-          supabase.from("posts").select("id, text").eq("status", "open").limit(5),
+          supabase
+            .from("posts")
+            .select(
+              "id,text,content,description,title,user_id,provider_id,created_by,type,post_type,category,status,state"
+            )
+            .order("created_at", { ascending: false })
+            .limit(8),
           supabase.from("service_listings").select("id, title, category, price, provider_id").limit(5),
           supabase.from("product_catalog").select("id, title, category, price, provider_id").limit(5),
         ]);
@@ -902,21 +962,66 @@ export default function WelcomePage() {
       const productSignals = ["Trusted seller", "Pickup in 30m", "Local warranty"];
 
       const mappedPosts: NearbyCard[] =
-        (recentPosts as RawPost[] | null)?.map((post, index) => ({
-          id: `post-${post.id}`,
-          focusId: post.id,
-          type: "demand",
-          title: post.text || "New local need",
-          subtitle: index % 2 === 0 ? "Shared in your connections feed" : "Posted in Residency Help group",
-          priceLabel: "Budget shared in chat",
-          distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
-          etaLabel: index === 0 ? "Starts in 15m" : `Starts in ${20 + index * 5}m`,
-          signalLabel: demandSignals[index % demandSignals.length],
-          momentumLabel: `${6 + index * 2} responders watching`,
-          image: demandImages[index % demandImages.length],
-          actionLabel: "Respond",
-          actionPath: routes.posts,
-        })) || [];
+        ((recentPosts as RawPost[] | null) || [])
+          .filter((post) => isLiveMarketplacePost(post.status, post.state))
+          .map((post, index) => {
+            const rawText = post.text || post.content || post.description || post.title || "New local post";
+            const parsed = parseMarketplacePostPreview(rawText);
+            const cardType = normalizeMarketplaceCardType(post.type || post.post_type || parsed.kind);
+            const categoryLabel = parsed.category || post.category || (cardType === "demand" ? "Need" : cardType);
+            const imagePool =
+              cardType === "service" ? serviceImages : cardType === "product" ? productImages : demandImages;
+            const signalPool =
+              cardType === "service" ? serviceSignals : cardType === "product" ? productSignals : demandSignals;
+            const ownerId = post.user_id || post.provider_id || post.created_by || undefined;
+
+            return {
+              id: `post-${post.id}`,
+              focusId: post.id,
+              type: cardType,
+              ownerId,
+              title: parsed.title,
+              subtitle:
+                cardType === "demand"
+                  ? index % 2 === 0
+                    ? "Shared in your connections feed"
+                    : "Posted in Residency Help group"
+                  : cardType === "service"
+                  ? `${categoryLabel} • shared in Services group`
+                  : `${categoryLabel} • posted in Buy/Sell group`,
+              priceLabel:
+                parsed.budget > 0
+                  ? `₹${parsed.budget}`
+                  : cardType === "demand"
+                  ? "Budget shared in chat"
+                  : cardType === "service"
+                  ? "Service post"
+                  : "Product post",
+              distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
+              etaLabel:
+                cardType === "demand"
+                  ? index === 0
+                    ? "Starts in 15m"
+                    : `Starts in ${20 + index * 5}m`
+                  : cardType === "service"
+                  ? index === 0
+                    ? "Available now"
+                    : `Available in ${15 + index * 10}m`
+                  : index === 0
+                  ? "Same-day pickup"
+                  : `Pickup in ${30 + index * 15}m`,
+              signalLabel: signalPool[index % signalPool.length],
+              momentumLabel:
+                cardType === "demand"
+                  ? `${6 + index * 2} responders watching`
+                  : cardType === "service"
+                  ? `${3 + index} bookings in progress`
+                  : `${4 + index} chats opened today`,
+              image: imagePool[index % imagePool.length],
+              actionLabel: cardType === "demand" ? "Respond" : cardType === "service" ? "Connect" : "View",
+              actionPath: routes.posts,
+            };
+          }) || [];
 
       const mappedServices: NearbyCard[] =
         (recentServices as RawService[] | null)?.map((service, index) => ({
