@@ -102,6 +102,7 @@ Run `seed_realtime_tabs_demo.sql` after `seed_dashboard_demo.sql` to preload ric
 
 ### What it seeds
 - `orders`
+- `task_events`
 - `reviews`
 - `conversations`
 - `conversation_participants`
@@ -110,6 +111,7 @@ Run `seed_realtime_tabs_demo.sql` after `seed_dashboard_demo.sql` to preload ric
 ### Quick checks
 ```sql
 select count(*) from orders;
+select count(*) from task_events;
 select count(*) from reviews;
 select count(*) from conversations;
 select count(*) from conversation_participants;
