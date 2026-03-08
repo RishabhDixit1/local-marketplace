@@ -21,10 +21,29 @@ export default function AuthCallbackPage() {
       let subscription: { unsubscribe: () => void } | null = null;
       try {
         const params = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const authCode = params.get("code");
         const authError = params.get("error_description") || params.get("error");
+        const hashError = hashParams.get("error_description") || hashParams.get("error");
+        const hashAccessToken = hashParams.get("access_token");
+        const hashRefreshToken = hashParams.get("refresh_token");
         if (authError) {
           throw new Error(decodeURIComponent(authError));
+        }
+        if (hashError) {
+          throw new Error(decodeURIComponent(hashError));
+        }
+
+        if (hashAccessToken && hashRefreshToken) {
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+          if (setSessionError) throw setSessionError;
+
+          if (window.location.hash) {
+            window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+          }
         }
 
         if (authCode) {
