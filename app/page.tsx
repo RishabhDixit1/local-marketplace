@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { ensureProfileForUser, resolveCurrentProfileDestination } from "@/lib/profile/client";
 
 const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
 const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
@@ -69,6 +70,19 @@ export default function LoginPage() {
     let active = true;
     let authSubscription: { unsubscribe: () => void } | null = null;
 
+    const redirectAuthenticatedUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active || !user) return;
+
+      const profile = await ensureProfileForUser(user).catch(() => null);
+      if (!active) return;
+
+      router.replace(resolveCurrentProfileDestination(profile));
+    };
+
     const completeLoginFromHash = async () => {
       try {
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -96,7 +110,7 @@ export default function LoginPage() {
           }
 
           window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-          router.replace("/dashboard");
+          await redirectAuthenticatedUser();
           return;
         }
 
@@ -105,7 +119,7 @@ export default function LoginPage() {
         if (error) return;
 
         if (data.session) {
-          router.replace("/dashboard");
+          await redirectAuthenticatedUser();
           return;
         }
 
@@ -114,7 +128,7 @@ export default function LoginPage() {
         } = supabase.auth.onAuthStateChange((event, session) => {
           if (!active) return;
           if (event === "SIGNED_IN" && session) {
-            router.replace("/dashboard");
+            void redirectAuthenticatedUser();
           }
         });
         authSubscription = subscription;

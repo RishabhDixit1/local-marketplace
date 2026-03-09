@@ -31,11 +31,13 @@ const resolveIpv4ViaPublicDns = (host: string): Promise<string> =>
 const postOtpThroughResolvedIp = ({
   ip,
   host,
+  path,
   anonKey,
   payload,
 }: {
   ip: string;
   host: string;
+  path: string;
   anonKey: string;
   payload: string;
 }): Promise<{ status: number; body: string }> =>
@@ -45,7 +47,7 @@ const postOtpThroughResolvedIp = ({
         hostname: ip,
         port: 443,
         method: "POST",
-        path: "/auth/v1/otp",
+        path,
         servername: host,
         headers: {
           Host: host,
@@ -102,6 +104,7 @@ const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
 };
 
 export async function POST(request: Request) {
+  const isDevelopment = process.env.NODE_ENV !== "production";
   const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
@@ -135,11 +138,16 @@ export async function POST(request: Request) {
     request,
     requestedRedirectTo: body.redirectTo,
   });
+  const otpUrl = new URL("/auth/v1/otp", supabaseUrl.origin);
+  otpUrl.searchParams.set("redirect_to", redirectTo);
+
+  if (isDevelopment) {
+    console.info(`[auth/send-link] redirect_to=${redirectTo}`);
+  }
 
   const payload = JSON.stringify({
     email,
     create_user: true,
-    redirect_to: redirectTo,
   });
 
   const headers = {
@@ -152,7 +160,7 @@ export async function POST(request: Request) {
   let rawBody = "";
 
   try {
-    const directResponse = await fetch(`${supabaseUrl.origin}/auth/v1/otp`, {
+    const directResponse = await fetch(otpUrl.toString(), {
       method: "POST",
       headers,
       body: payload,
@@ -167,6 +175,7 @@ export async function POST(request: Request) {
       const fallbackResponse = await postOtpThroughResolvedIp({
         ip: resolvedIp,
         host: supabaseUrl.hostname,
+        path: `${otpUrl.pathname}${otpUrl.search}`,
         anonKey,
         payload,
       });
@@ -184,7 +193,7 @@ export async function POST(request: Request) {
   }
 
   if (status >= 200 && status < 300) {
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(isDevelopment ? { ok: true, redirectTo } : { ok: true });
   }
 
   const message = extractAuthErrorMessage(rawBody, `Unable to send login link right now (${status}).`);

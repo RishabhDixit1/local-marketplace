@@ -1,3 +1,5 @@
+import { calculateProfileCompletionPercent, normalizeStoredProfileRole } from "@/lib/profile/utils";
+
 type NullableString = string | null | undefined;
 
 export type NormalizedRole = "seeker" | "provider" | "business";
@@ -40,33 +42,25 @@ export const extractBusinessIdFromSlug = (slug: string) => {
 export const isProviderRole = (role: NullableString) => providerRoleSet.has((role || "").toLowerCase());
 
 export const normalizeRole = (role: NullableString): NormalizedRole => {
-  const lower = (role || "").toLowerCase();
-  if (lower === "business") return "business";
-  if (providerRoleSet.has(lower)) return "provider";
-  return "seeker";
+  return normalizeStoredProfileRole(role);
 };
 
 export const isClaimedBusiness = (role: NullableString) => (role || "").toLowerCase() === "business";
 
 export const calculateProfileCompletion = (profile: {
   name?: NullableString;
+  full_name?: NullableString;
   location?: NullableString;
   bio?: NullableString;
+  interests?: string[] | null;
   services?: string[] | null;
   email?: NullableString;
   phone?: NullableString;
   website?: NullableString;
+  avatar_url?: NullableString;
+  role?: NullableString;
 }) => {
-  const score =
-    (profile.name ? 15 : 0) +
-    (profile.location ? 15 : 0) +
-    (((profile.bio || "").trim().length >= 20 ? 20 : 0)) +
-    (((profile.services || []).length > 0 ? 20 : 0)) +
-    (profile.email ? 10 : 0) +
-    (profile.phone ? 10 : 0) +
-    (profile.website ? 10 : 0);
-
-  return clamp(Math.round(score), 0, 100);
+  return clamp(calculateProfileCompletionPercent(profile), 0, 100);
 };
 
 export const estimateResponseMinutes = (params: {

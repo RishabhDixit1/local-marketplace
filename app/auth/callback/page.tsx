@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { ensureClientProfile } from "@/lib/clientProfile";
+import { ensureProfileForUser, resolveCurrentProfileDestination } from "@/lib/profile/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -56,8 +56,8 @@ export default function AuthCallbackPage() {
         if (error) throw error;
 
         if (data.session?.user) {
-          await ensureClientProfile(data.session.user).catch(() => false);
-          router.replace("/dashboard");
+          const profile = await ensureProfileForUser(data.session.user).catch(() => null);
+          router.replace(resolveCurrentProfileDestination(profile));
           return;
         }
 
@@ -65,11 +65,13 @@ export default function AuthCallbackPage() {
           data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
           if (!cancelled && event === "SIGNED_IN" && session) {
-            void ensureClientProfile(session.user).finally(() => {
-              if (!cancelled) {
-                router.replace("/dashboard");
-              }
-            });
+            void ensureProfileForUser(session.user)
+              .catch(() => null)
+              .then((profile) => {
+                if (!cancelled) {
+                  router.replace(resolveCurrentProfileDestination(profile));
+                }
+              });
           }
         });
         subscription = authSubscription;

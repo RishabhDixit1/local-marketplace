@@ -1,49 +1,58 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabase";
-import { 
-  User, 
-  Briefcase, 
-  Plus, 
-  X, 
-  Save, 
-  Award,
-  Clock,
-  Mail,
-  Phone,
-  Globe,
-  CheckCircle2,
-  AlertCircle,
-  Store,
-  ShoppingBag,
+import { startTransition, useCallback, useEffect, useEffectEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
   ArrowRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  Clock3,
   Copy,
   ExternalLink,
-  BadgeCheck,
+  Loader2,
+  Mail,
+  MapPinHouse,
+  NotebookText,
+  Sparkles,
+  UserRound,
 } from "lucide-react";
-import {
-  calculateProfileCompletion,
-  calculateVerificationStatus,
-  createBusinessSlug,
-  isClaimedBusiness,
-  normalizeRole,
-  verificationLabel,
-} from "@/lib/business";
+import ProfileAvatarField from "@/app/components/profile/ProfileAvatarField";
+import ProfileCompletionChecklist from "@/app/components/profile/ProfileCompletionChecklist";
+import ProfileContactFields from "@/app/components/profile/ProfileContactFields";
+import ProfileHeader from "@/app/components/profile/ProfileHeader";
+import InterestsChipsInput from "@/app/components/profile/InterestsChipsInput";
+import { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
+import ProfileToastViewport from "@/app/components/profile/ProfileToastViewport";
+import ProfileRoleToggle from "@/app/components/profile/ProfileRoleToggle";
+import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
+import ProfileStickySaveBar from "@/app/components/profile/ProfileStickySaveBar";
+import { useProfileContext } from "@/app/components/profile/ProfileContext";
+import { calculateVerificationStatus, createBusinessSlug, verificationLabel } from "@/lib/business";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
-
-interface ProfileData {
-  name: string;
-  location: string;
-  bio: string;
-  role: string;
-  services: string[];
-  availability: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-}
+import {
+  saveCurrentUserProfile,
+  uploadProfileAvatar,
+} from "@/lib/profile/client";
+import {
+  POST_LOGIN_REDIRECT_ROUTE,
+  PROFILE_AUTOSAVE_DEBOUNCE_MS,
+  PROFILE_BIO_MIN_LENGTH,
+  PROFILE_TOPIC_LIMIT,
+  type ProfileFormValues,
+  type ProfileValidationErrors,
+  type StoredProfileRole,
+} from "@/lib/profile/types";
+import {
+  calculateProfileCompletionPercent,
+  createProfileCompletionChecklist,
+  isProfileOnboardingComplete,
+  normalizePhone,
+  normalizeTopics,
+  normalizeWebsite,
+  toProfileFormValues,
+} from "@/lib/profile/utils";
+import { canAutosaveProfile, validateProfileValues } from "@/lib/profile/validation";
+import { supabase } from "@/lib/supabase";
 
 type ServiceInsightRow = {
   id: string;
@@ -91,29 +100,88 @@ type SeekerInsight = {
   activeOrders: number;
 };
 
-export default function ProfilePage() {
-  const router = useRouter();
+const emptyProfileForm: ProfileFormValues = {
+  fullName: "",
+  location: "",
+  role: "seeker",
+  bio: "",
+  interests: [],
+  email: "",
+  phone: "",
+  website: "",
+  avatarUrl: "",
+  availability: "available",
+};
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [loadingInsights, setLoadingInsights] = useState(false);
+const availabilityOptions = [
+  {
+    value: "available",
+    title: "Available",
+    description: "Shown as actively reachable in nearby discovery.",
+  },
+  {
+    value: "busy",
+    title: "Busy",
+    description: "Still visible, but expectations stay realistic.",
+  },
+  {
+    value: "offline",
+    title: "Offline",
+    description: "You stay listed but response expectations are lowered.",
+  },
+] as const;
 
-  const [profileData, setProfileData] = useState<ProfileData>({
-    name: "",
-    location: "",
-    bio: "",
-    role: "provider",
-    services: [],
-    availability: "available",
-    email: "",
-    phone: "",
-    website: "",
+const createToast = (kind: ProfileToast["kind"], message: string): ProfileToast => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  kind,
+  message,
+});
+
+const serializeFormValues = (values: ProfileFormValues) =>
+  JSON.stringify({
+    fullName: values.fullName.trim(),
+    location: values.location.trim(),
+    role: values.role,
+    bio: values.bio.trim(),
+    interests: normalizeTopics(values.interests),
+    email: values.email.trim().toLowerCase(),
+    phone: normalizePhone(values.phone),
+    website: normalizeWebsite(values.website),
+    avatarUrl: values.avatarUrl.trim(),
+    availability: values.availability,
   });
 
-  const [serviceInput, setServiceInput] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+const buildVisibleErrors = (params: {
+  touched: Partial<Record<keyof ProfileValidationErrors, boolean>>;
+  submitAttempted: boolean;
+  submitErrors: ProfileValidationErrors;
+  draftErrors: ProfileValidationErrors;
+}) => {
+  const visible: ProfileValidationErrors = { ...params.draftErrors };
+
+  (Object.keys(params.submitErrors) as Array<keyof ProfileValidationErrors>).forEach((key) => {
+    if (params.submitAttempted || params.touched[key]) {
+      const message = params.submitErrors[key];
+      if (message) visible[key] = message;
+    }
+  });
+
+  return visible;
+};
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, profile, loading, setProfile } = useProfileContext();
+
+  const [formValues, setFormValues] = useState<ProfileFormValues>(emptyProfileForm);
+  const [tagInput, setTagInput] = useState("");
+  const [touched, setTouched] = useState<Partial<Record<keyof ProfileValidationErrors, boolean>>>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error" | "blocked">("idle");
+  const [toasts, setToasts] = useState<ProfileToast[]>([]);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [loadingInsights, setLoadingInsights] = useState(false);
   const [providerInsight, setProviderInsight] = useState<ProviderInsight>({
     servicesCount: 0,
     productsCount: 0,
@@ -126,867 +194,840 @@ export default function ProfilePage() {
     activeOrders: 0,
   });
   const [featuredListings, setFeaturedListings] = useState<FeaturedListing[]>([]);
-  const [copiedBusinessLink, setCopiedBusinessLink] = useState(false);
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
+  const [serverVersion, setServerVersion] = useState("");
 
-  const isProvider = profileData.role === "provider" || profileData.role === "business";
-  const businessClaimed = isClaimedBusiness(profileData.role);
-  const profileCompletion = calculateProfileCompletion({
-    name: profileData.name,
-    location: profileData.location,
-    bio: profileData.bio,
-    services: profileData.services,
-    email: profileData.email,
-    phone: profileData.phone,
-    website: profileData.website,
+  const currentStoredRole: StoredProfileRole =
+    formValues.role === "provider"
+      ? profile?.role === "business"
+        ? "business"
+        : "provider"
+      : "seeker";
+  const roleFamily = formValues.role;
+  const businessClaimed = currentStoredRole === "business";
+  const onboardingQuery = searchParams.get("onboarding") === "1";
+
+  const submitErrors = validateProfileValues(formValues, { mode: "submit" });
+  const draftErrors = validateProfileValues(formValues, { mode: "draft" });
+  const visibleErrors = buildVisibleErrors({
+    touched,
+    submitAttempted,
+    submitErrors,
+    draftErrors,
   });
+
+  const comparableSnapshot = serializeFormValues(formValues);
+  const dirty = Boolean(lastSavedSnapshot) && comparableSnapshot !== lastSavedSnapshot;
+
+  const previewProfile = {
+    full_name: formValues.fullName,
+    location: formValues.location,
+    role: currentStoredRole,
+    bio: formValues.bio,
+    interests: formValues.interests,
+    services: formValues.interests,
+    email: formValues.email,
+    phone: normalizePhone(formValues.phone),
+    website: normalizeWebsite(formValues.website),
+    avatar_url: formValues.avatarUrl,
+  };
+
+  const profileCompletion = calculateProfileCompletionPercent(previewProfile);
+  const checklist = createProfileCompletionChecklist(previewProfile);
+  const onboardingReady = Object.keys(submitErrors).length === 0;
+  const onboardingComplete = isProfileOnboardingComplete(previewProfile);
+  const businessSlug = user?.id ? createBusinessSlug(formValues.fullName, user.id) : "";
+  const publicProfilePath = businessSlug ? `/business/${businessSlug}` : "";
   const verificationStatus = calculateVerificationStatus({
-    role: profileData.role,
+    role: currentStoredRole,
     profileCompletion,
     listingsCount: providerInsight.servicesCount + providerInsight.productsCount,
     averageRating: providerInsight.averageRating,
     reviewCount: providerInsight.reviewCount,
   });
-  const businessSlug = currentUserId ? createBusinessSlug(profileData.name, currentUserId) : "";
-  const businessProfileUrl = businessSlug ? `/business/${businessSlug}` : "";
+  const checklistCompleteCount = checklist.filter((item) => item.complete).length;
+  const visibleSuggestions = checklist.filter((item) => !item.complete).slice(0, 3);
 
-  const loadRoleInsights = useCallback(async (userId: string, role: string) => {
+  const loadRoleInsights = useEffectEvent(async () => {
+    if (!user?.id) return;
+
     setLoadingInsights(true);
 
-    if (normalizeRole(role) !== "seeker") {
-      const [{ data: services, count: servicesCount }, { data: products, count: productsCount }, { data: reviews }, { data: orders }] =
-        await Promise.all([
-          supabase
-            .from("service_listings")
-            .select("id,title,category,price,availability", { count: "exact" })
-            .eq("provider_id", userId)
-            .limit(4),
-          supabase
-            .from("product_catalog")
-            .select("id,title,category,price,stock", { count: "exact" })
-            .eq("provider_id", userId)
-            .limit(4),
-          supabase.from("reviews").select("rating").eq("provider_id", userId),
-          supabase.from("orders").select("status").eq("provider_id", userId),
-        ]);
+    try {
+      if (roleFamily === "provider") {
+        const [{ data: services, count: servicesCount }, { data: products, count: productsCount }, { data: reviews }, { data: orders }] =
+          await Promise.all([
+            supabase.from("service_listings").select("id,title,category,price,availability", { count: "exact" }).eq("provider_id", user.id).limit(4),
+            supabase.from("product_catalog").select("id,title,category,price,stock", { count: "exact" }).eq("provider_id", user.id).limit(4),
+            supabase.from("reviews").select("rating").eq("provider_id", user.id),
+            supabase.from("orders").select("status").eq("provider_id", user.id),
+          ]);
 
-      const reviewRows = (reviews as ReviewRow[] | null) || [];
-      const ratingValues = reviewRows
-        .map((row) => Number(row.rating))
-        .filter((rating) => Number.isFinite(rating) && rating > 0);
+        const reviewRows = (reviews as ReviewRow[] | null) || [];
+        const ratingValues = reviewRows
+          .map((row) => Number(row.rating))
+          .filter((rating) => Number.isFinite(rating) && rating > 0);
+        const averageRating = ratingValues.length
+          ? Number((ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length).toFixed(1))
+          : 0;
+        const orderRows = (orders as OrderStatusRow[] | null) || [];
+        const activeOrders = orderRows.filter((order) => !isFinalOrderStatus(order.status)).length;
 
-      const averageRating = ratingValues.length
-        ? Number((ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length).toFixed(1))
-        : 0;
+        const serviceCards: FeaturedListing[] = ((services as ServiceInsightRow[] | null) || []).map((service) => ({
+          id: service.id,
+          type: "service",
+          title: service.title || "Untitled service",
+          category: service.category || "Service",
+          price: Number(service.price || 0),
+          status: (service.availability || "available").toLowerCase(),
+        }));
 
-      const orderRows = (orders as OrderStatusRow[] | null) || [];
-      const activeOrders = orderRows.filter(
-        (order) => !isFinalOrderStatus(order.status)
-      ).length;
+        const productCards: FeaturedListing[] = ((products as ProductInsightRow[] | null) || []).map((product) => ({
+          id: product.id,
+          type: "product",
+          title: product.title || "Untitled product",
+          category: product.category || "Product",
+          price: Number(product.price || 0),
+          status: (product.stock || 0) > 0 ? "in stock" : "out of stock",
+        }));
 
-      const serviceCards: FeaturedListing[] = ((services as ServiceInsightRow[] | null) || []).map((service) => ({
-        id: service.id,
-        type: "service",
-        title: service.title || "Untitled service",
-        category: service.category || "Service",
-        price: Number(service.price || 0),
-        status: (service.availability || "available").toLowerCase(),
-      }));
-
-      const productCards: FeaturedListing[] = ((products as ProductInsightRow[] | null) || []).map((product) => ({
-        id: product.id,
-        type: "product",
-        title: product.title || "Untitled product",
-        category: product.category || "Product",
-        price: Number(product.price || 0),
-        status: (product.stock || 0) > 0 ? "in stock" : "out of stock",
-      }));
-
-      setProviderInsight({
-        servicesCount: servicesCount || 0,
-        productsCount: productsCount || 0,
-        averageRating,
-        reviewCount: reviewRows.length,
-        activeOrders,
-      });
-      setSeekerInsight({
-        postsCount: 0,
-        activeOrders: 0,
-      });
-      setFeaturedListings([...serviceCards, ...productCards].slice(0, 6));
-      setLoadingInsights(false);
-      return;
-    }
-
-    const [{ count: postsCount }, { data: orders }] = await Promise.all([
-      supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
-      supabase.from("orders").select("status").eq("consumer_id", userId),
-    ]);
-
-    const orderRows = (orders as OrderStatusRow[] | null) || [];
-    const activeOrders = orderRows.filter(
-      (order) => !isFinalOrderStatus(order.status)
-    ).length;
-
-    setSeekerInsight({
-      postsCount: postsCount || 0,
-      activeOrders,
-    });
-    setProviderInsight({
-      servicesCount: 0,
-      productsCount: 0,
-      averageRating: 0,
-      reviewCount: 0,
-      activeOrders: 0,
-    });
-    setFeaturedListings([]);
-    setLoadingInsights(false);
-  }, []);
-
-  // Load profile
-  useEffect(() => {
-    const loadProfile = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        router.push("/");
+        setProviderInsight({
+          servicesCount: servicesCount || 0,
+          productsCount: productsCount || 0,
+          averageRating,
+          reviewCount: reviewRows.length,
+          activeOrders,
+        });
+        setSeekerInsight({
+          postsCount: 0,
+          activeOrders: 0,
+        });
+        setFeaturedListings([...serviceCards, ...productCards].slice(0, 6));
+        setLoadingInsights(false);
         return;
       }
 
-      const userId = sessionData.session.user.id;
-      setCurrentUserId(userId);
+      const [{ count: postsCount }, { data: orders }] = await Promise.all([
+        supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("orders").select("status").eq("consumer_id", user.id),
+      ]);
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const orderRows = (orders as OrderStatusRow[] | null) || [];
+      const activeOrders = orderRows.filter((order) => !isFinalOrderStatus(order.status)).length;
 
-      let nextRole: "provider" | "business" | "seeker" = "provider";
-      if (data) {
-        nextRole = normalizeRole(data.role);
-        setProfileData({
-          name: data.name || "",
-          location: data.location || "",
-          bio: data.bio || "",
-          role: nextRole,
-          services: data.services || [],
-          availability: data.availability || "available",
-          email: data.email || "",
-          phone: data.phone || "",
-          website: data.website || "",
-        });
-      }
+      setSeekerInsight({
+        postsCount: postsCount || 0,
+        activeOrders,
+      });
+      setProviderInsight({
+        servicesCount: 0,
+        productsCount: 0,
+        averageRating: 0,
+        reviewCount: 0,
+        activeOrders: 0,
+      });
+      setFeaturedListings([]);
+      setLoadingInsights(false);
+    } catch {
+      setLoadingInsights(false);
+    }
+  });
 
-      setLoading(false);
-    };
+  const enqueueToast = useCallback((kind: ProfileToast["kind"], message: string) => {
+    const toast = createToast(kind, message);
+    setToasts((current) => [...current, toast]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== toast.id));
+    }, 4500);
+  }, []);
 
-    loadProfile();
-  }, [router]);
+  const adoptServerProfile = useEffectEvent((shouldNotifyOnConflict: boolean) => {
+    if (!profile) return;
+
+    const nextForm = toProfileFormValues(profile);
+    const nextSnapshot = serializeFormValues(nextForm);
+    const nextVersion = profile.updated_at || nextSnapshot;
+
+    if (!serverVersion) {
+      setFormValues(nextForm);
+      setLastSavedSnapshot(nextSnapshot);
+      setServerVersion(nextVersion);
+      return;
+    }
+
+    if (nextVersion === serverVersion) return;
+
+    if (dirty && shouldNotifyOnConflict) {
+      enqueueToast("info", "Profile changed in another tab. Your local edits are still on screen.");
+      setServerVersion(nextVersion);
+      return;
+    }
+
+    setFormValues(nextForm);
+    setLastSavedSnapshot(nextSnapshot);
+    setServerVersion(nextVersion);
+  });
 
   useEffect(() => {
-    if (!currentUserId) return;
-    loadRoleInsights(currentUserId, profileData.role);
-  }, [currentUserId, loadRoleInsights, profileData.role]);
+    if (!profile) return;
+    adoptServerProfile(true);
+  }, [profile]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setProfileData((prev) => ({
-      ...prev,
-      [name]: value,
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadRoleInsights();
+  }, [roleFamily, user?.id]);
+
+  useEffect(() => {
+    if (!dirty && saveState === "saved") {
+      const timeoutId = window.setTimeout(() => setSaveState("idle"), 2200);
+      return () => window.clearTimeout(timeoutId);
+    }
+  }, [dirty, saveState]);
+
+  useEffect(() => {
+    if (!dirty) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [dirty]);
+
+  const performSave = useCallback(async (mode: "manual" | "autosave") => {
+    if (!user || !profile) return null;
+
+    const validationErrors = validateProfileValues(formValues, {
+      mode: mode === "manual" ? "submit" : "draft",
+    });
+
+    if (mode === "manual" && Object.keys(validationErrors).length > 0) {
+      setSaveState("blocked");
+      enqueueToast("error", "Complete the highlighted fields before saving.");
+      return null;
+    }
+
+    if (mode === "autosave" && !canAutosaveProfile(formValues)) {
+      return null;
+    }
+
+    setSaveState("saving");
+
+    try {
+      const nextProfile = await saveCurrentUserProfile({
+        user,
+        values: formValues,
+      });
+
+      if (!nextProfile) {
+        throw new Error("Profile save returned no profile row.");
+      }
+
+      setProfile(nextProfile);
+      const nextForm = toProfileFormValues(nextProfile);
+      setFormValues(nextForm);
+      setLastSavedSnapshot(serializeFormValues(nextForm));
+      setServerVersion(nextProfile.updated_at || serializeFormValues(nextForm));
+      setSaveState("saved");
+
+      if (mode === "manual") {
+        const becameOnboarded = nextProfile.onboarding_completed;
+        enqueueToast(
+          "success",
+          becameOnboarded && onboardingQuery ? "Profile completed. Redirecting you into the marketplace." : "Profile saved."
+        );
+
+        if (becameOnboarded && onboardingQuery) {
+          startTransition(() => {
+            router.replace(POST_LOGIN_REDIRECT_ROUTE);
+          });
+        }
+      }
+
+      return nextProfile;
+    } catch (error) {
+      setSaveState("error");
+      enqueueToast(
+        "error",
+        error instanceof Error ? error.message : "Unable to save your profile right now. Please retry."
+      );
+      return null;
+    }
+  }, [enqueueToast, formValues, onboardingQuery, profile, router, setProfile, user]);
+
+  useEffect(() => {
+    if (!user || !profile || !dirty || isUploadingAvatar) return;
+    if (!canAutosaveProfile(formValues)) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void performSave("autosave");
+    }, PROFILE_AUTOSAVE_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dirty, formValues, isUploadingAvatar, performSave, profile, user]);
+
+  const updateField = (field: keyof ProfileFormValues, value: string) => {
+    setFormValues((current) => ({
+      ...current,
+      [field]: value,
     }));
-    
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
   };
 
-  const validateProfile = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!profileData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!profileData.location.trim()) {
-      newErrors.location = "Location is required";
-    }
-
-    if (profileData.bio.trim().length < 20) {
-      newErrors.bio = "Bio should be at least 20 characters";
-    }
-
-    if (profileData.services.length === 0) {
-      newErrors.services =
-        isProvider
-          ? "Add at least one service or product category"
-          : "Add at least one interest so providers can match you faster";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const markTouched = (field: keyof ProfileValidationErrors) => {
+    setTouched((current) => ({ ...current, [field]: true }));
   };
 
-  const saveProfile = async () => {
-    if (!validateProfile()) {
+  const handleAddTag = () => {
+    const nextTag = tagInput.trim();
+    if (!nextTag) return;
+
+    if (formValues.interests.length >= PROFILE_TOPIC_LIMIT) {
+      enqueueToast("error", `You can add up to ${PROFILE_TOPIC_LIMIT} tags.`);
       return;
     }
 
-    setSaving(true);
+    const normalized = normalizeTopics([...formValues.interests, nextTag]);
+    if (normalized.length === formValues.interests.length) {
+      enqueueToast("info", "That tag is already added.");
+      return;
+    }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user.id;
+    setFormValues((current) => ({
+      ...current,
+      interests: normalized,
+    }));
+    setTagInput("");
+    markTouched("interests");
+  };
 
-    if (!userId) return;
+  const handleRemoveTag = (value: string) => {
+    setFormValues((current) => ({
+      ...current,
+      interests: current.interests.filter((item) => item !== value),
+    }));
+    markTouched("interests");
+  };
 
+  const handleAvatarUpload = async (file: File) => {
+    if (!user?.id) return;
+    if (file.size > 5 * 1024 * 1024) {
+      enqueueToast("error", "Avatar must be 5MB or smaller.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
     try {
-      await supabase.from("profiles").upsert({
-        id: userId,
-        ...profileData,
-      });
-
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      const publicUrl = await uploadProfileAvatar({ userId: user.id, file });
+      setFormValues((current) => ({
+        ...current,
+        avatarUrl: publicUrl,
+      }));
+      markTouched("avatarUrl");
+      enqueueToast("success", "Avatar uploaded. It will save automatically.");
     } catch (error) {
-      console.error("Error saving profile:", error);
-      setErrors({ submit: "Failed to save profile. Please try again." });
+      enqueueToast("error", error instanceof Error ? error.message : "Avatar upload failed.");
     } finally {
-      setSaving(false);
+      setIsUploadingAvatar(false);
     }
   };
 
-  const claimBusiness = async () => {
-    if (!currentUserId) return;
-
-    setProfileData((prev) => ({ ...prev, role: "business" }));
-    setSaving(true);
+  const handleCopyPublicProfile = async () => {
+    if (!publicProfilePath || typeof window === "undefined") return;
 
     try {
-      await supabase.from("profiles").upsert({
-        id: currentUserId,
-        ...profileData,
-        role: "business",
-      });
-
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (error) {
-      console.error("Error claiming business:", error);
-      setErrors({ submit: "Could not claim business right now. Please try again." });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const copyBusinessLink = async () => {
-    if (!businessProfileUrl) return;
-    const absoluteUrl = `${window.location.origin}${businessProfileUrl}`;
-    try {
-      await navigator.clipboard.writeText(absoluteUrl);
-      setCopiedBusinessLink(true);
-      setTimeout(() => setCopiedBusinessLink(false), 2200);
+      await navigator.clipboard.writeText(`${window.location.origin}${publicProfilePath}`);
+      enqueueToast("success", "Public profile link copied.");
     } catch {
-      setErrors({ submit: "Unable to copy link. Please copy the URL manually." });
+      enqueueToast("error", "Unable to copy the public profile link.");
     }
   };
 
-  const addService = () => {
-    const trimmedService = serviceInput.trim();
-    if (!trimmedService) return;
-    if (profileData.services.includes(trimmedService)) {
-      setErrors({ services: "Service already added" });
-      return;
-    }
-    if (profileData.services.length >= 15) {
-      setErrors({ services: "Maximum 15 services allowed" });
-      return;
-    }
-
-    setProfileData((prev) => ({
-      ...prev,
-      services: [...prev.services, trimmedService],
-    }));
-    setServiceInput("");
-    setErrors({ ...errors, services: "" });
-  };
-
-  const removeService = (service: string) => {
-    setProfileData((prev) => ({
-      ...prev,
-      services: prev.services.filter((s) => s !== service),
-    }));
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addService();
-    }
-  };
-
-  const availabilityOptions = [
-    { value: "available", label: "Available", emoji: "🟢", color: "text-green-600" },
-    { value: "busy", label: "Busy", emoji: "🟡", color: "text-yellow-600" },
-    { value: "offline", label: "Offline", emoji: "🔴", color: "text-red-600" },
-  ];
-
-  if (loading) {
+  if (loading || !profile || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 font-medium">Loading Profile...</p>
+      <div className="space-y-5">
+        <div className="h-56 animate-pulse rounded-[32px] bg-white/80" />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-5">
+            <div className="h-72 animate-pulse rounded-[28px] bg-white/80" />
+            <div className="h-64 animate-pulse rounded-[28px] bg-white/80" />
+            <div className="h-64 animate-pulse rounded-[28px] bg-white/80" />
+          </div>
+          <div className="space-y-5">
+            <div className="h-64 animate-pulse rounded-[28px] bg-white/80" />
+            <div className="h-80 animate-pulse rounded-[28px] bg-white/80" />
+          </div>
         </div>
       </div>
     );
   }
 
+  const saveButtonLabel =
+    onboardingQuery && !profile.onboarding_completed ? "Save and continue" : dirty ? "Save profile" : "Profile saved";
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
-      <div className="max-w-[2200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
-        
-        {/* Success Message */}
-        {showSuccess && (
-          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top">
-            <div className="bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6" />
-              <span className="font-semibold">Profile saved successfully!</span>
-            </div>
-          </div>
-        )}
+    <div className="space-y-6 pb-20 lg:space-y-8">
+      <ProfileToastViewport
+        toasts={toasts}
+        onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))}
+      />
 
-        {/* Header with Profile Completion */}
-        <div className="mb-8 lg:mb-12">
-          <div className="bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 rounded-3xl p-8 lg:p-10 text-white shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl border-4 border-white/30 shadow-xl">
-                    <User className="w-10 h-10 lg:w-12 lg:h-12" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold mb-2">
-                      {isProvider ? (businessClaimed ? "Business Profile" : "Provider Profile") : "Seeker Profile"}
-                    </h1>
-                    <p className="text-white/90 text-sm lg:text-base">
-                      {isProvider
-                        ? "Showcase your business, build trust, and win nearby customers."
-                        : "Share what you need and get matched with nearby providers faster."}
-                    </p>
-                  </div>
-                </div>
-              </div>
+      <ProfileHeader
+        role={roleFamily}
+        storedRole={currentStoredRole}
+        fullName={formValues.fullName}
+        location={formValues.location}
+        avatarUrl={formValues.avatarUrl}
+        progress={profileCompletion}
+        checklistCompleteCount={checklistCompleteCount}
+        checklistTotalCount={checklist.length}
+        onboardingComplete={onboardingComplete}
+      />
 
-              {/* Profile Completion Bar */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold">Profile Completion</span>
-                  <span className="text-xl font-bold">{profileCompletion}%</span>
-                </div>
-                <div className="h-3 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-500 rounded-full"
-                    style={{ width: `${profileCompletion}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Form */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px] xl:items-start">
         <div className="space-y-6">
-          {/* Basic Information */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                Basic Information
-              </h2>
-            </div>
+          <ProfileSectionCard
+            icon={<UserRound className="h-5 w-5" />}
+            title="Basic Information"
+            description={
+              onboardingQuery
+                ? "Finish these core details once to unlock the rest of the marketplace."
+                : "Keep the essentials current so discovery, trust, and notifications stay accurate."
+            }
+          >
+            <div className="space-y-5">
+              <ProfileAvatarField
+                name={formValues.fullName}
+                avatarUrl={formValues.avatarUrl}
+                uploading={isUploadingAvatar}
+                onUpload={handleAvatarUpload}
+                onRemove={() => {
+                  setFormValues((current) => ({ ...current, avatarUrl: "" }));
+                  markTouched("avatarUrl");
+                }}
+              />
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Full Name *
-                </label>
-                <input
-                  name="name"
-                  placeholder="John Doe"
-                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
-                    errors.name
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                  }`}
-                  value={profileData.name}
-                  onChange={handleInputChange}
-                />
-                {errors.name && (
-                  <p className="mt-2 text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Location *
-                </label>
-                <input
-                  name="location"
-                  placeholder="New York, NY"
-                  className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 ${
-                    errors.location
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                      : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                  }`}
-                  value={profileData.location}
-                  onChange={handleInputChange}
-                />
-                {errors.location && (
-                  <p className="mt-2 text-sm text-red-600">{errors.location}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Role Selection */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                Your Role
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setProfileData({ ...profileData, role: "provider" })}
-                className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
-                  isProvider
-                    ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <Award className="w-5 h-5" />
-                  <span>{businessClaimed ? "Business Owner" : "Service Provider"}</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setProfileData({ ...profileData, role: "seeker" })}
-                className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
-                  profileData.role === "seeker"
-                    ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30 scale-105"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <User className="w-5 h-5" />
-                  <span>Looking for Services</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Role Specific Experience */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            {isProvider ? (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                      <Store className="w-6 h-6 text-indigo-600" />
-                      Business Showcase
-                    </h2>
-                    <p className="text-sm text-slate-600 mt-1">
-                      Treat this like your local LinkedIn page: prove trust, highlight offerings, and convert nearby demand.
-                    </p>
-                    <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-700">
-                      <BadgeCheck className="w-3.5 h-3.5" />
-                      {verificationLabel(verificationStatus)}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => router.push("/dashboard/provider/listings")}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
-                    >
-                      Manage Listings
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/dashboard/provider/orders")}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
-                    >
-                      Lead Pipeline
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={claimBusiness}
-                    disabled={businessClaimed || saving}
-                    className={`rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
-                      businessClaimed
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-70"
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-900">Full name</label>
+                  <input
+                    value={formValues.fullName}
+                    onBlur={() => markTouched("fullName")}
+                    onChange={(event) => updateField("fullName", event.target.value)}
+                    placeholder="Your full name"
+                    className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 ${
+                      visibleErrors.fullName
+                        ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                     }`}
-                  >
-                    {businessClaimed ? "Business Claimed" : "Claim Your Business"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copyBusinessLink}
-                    disabled={!businessProfileUrl}
-                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 inline-flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    <Copy className="w-4 h-4" />
-                    {copiedBusinessLink ? "Copied" : "Copy Public Link"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => businessProfileUrl && window.open(businessProfileUrl, "_blank")}
-                    disabled={!businessProfileUrl}
-                    className="rounded-xl px-4 py-3 text-sm font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 inline-flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    View Public Profile
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Services</p>
-                    <p className="text-2xl font-bold text-slate-900">{providerInsight.servicesCount}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Products</p>
-                    <p className="text-2xl font-bold text-slate-900">{providerInsight.productsCount}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Rating</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {providerInsight.averageRating ? providerInsight.averageRating.toFixed(1) : "New"}
-                    </p>
-                    <p className="text-xs text-slate-500">{providerInsight.reviewCount} reviews</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
-                    <p className="text-2xl font-bold text-slate-900">{providerInsight.activeOrders}</p>
-                  </div>
-                </div>
-
-                {loadingInsights ? (
-                  <p className="text-sm text-slate-500">Loading business insights...</p>
-                ) : featuredListings.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                    No offerings published yet. Add services/products to make your business discoverable in nearby search.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-slate-700">Featured Offerings</p>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {featuredListings.map((listing) => (
-                        <div
-                          key={`${listing.type}-${listing.id}`}
-                          className="rounded-xl border border-slate-200 p-4 bg-slate-50"
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <p className="font-semibold text-slate-900 truncate">{listing.title}</p>
-                            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
-                              {listing.type}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500">{listing.category}</p>
-                          <div className="mt-2 flex items-center justify-between text-sm">
-                            <span className="font-semibold text-slate-900">₹ {listing.price.toLocaleString()}</span>
-                            <span className="text-slate-500 capitalize">{listing.status}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <ShoppingBag className="w-6 h-6 text-purple-600" />
-                    Seeker Profile Strategy
-                  </h2>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Share your needs clearly so local businesses can discover and respond quickly.
+                  />
+                  <p className={`text-sm ${visibleErrors.fullName ? "text-rose-600" : "text-slate-500"}`}>
+                    {visibleErrors.fullName || "This is how other people will recognize you."}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Need Posts</p>
-                    <p className="text-2xl font-bold text-slate-900">{seekerInsight.postsCount}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Active Orders</p>
-                    <p className="text-2xl font-bold text-slate-900">{seekerInsight.activeOrders}</p>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/dashboard/people")}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold transition-colors"
-                  >
-                    Discover Providers
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/dashboard?compose=1")}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition-colors"
-                  >
-                    Post a Need
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
-                  Tip: Add interests below (e.g., &quot;Pastry Catering&quot;, &quot;Custom Cakes&quot;, &quot;Event Decor&quot;) so nearby SMBs can match you faster.
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* About/Bio */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                About You
-              </h2>
-            </div>
-
-            <textarea
-              name="bio"
-              placeholder="Tell people about yourself, your experience, skills, and why they should trust you. Share what makes you unique and how you can help..."
-              className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 resize-none ${
-                errors.bio
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                  : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-              }`}
-              rows={5}
-              value={profileData.bio}
-              onChange={handleInputChange}
-            />
-            {errors.bio && (
-              <p className="mt-2 text-sm text-red-600">{errors.bio}</p>
-            )}
-            <p className="mt-2 text-xs text-slate-500">
-              {profileData.bio.length} characters (minimum 20 characters)
-            </p>
-          </div>
-
-          {/* Services/Skills */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                <Award className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                {isProvider ? "Services & Offerings" : "Needs & Interests"}
-              </h2>
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              <input
-                placeholder={
-                  isProvider
-                    ? "e.g., Plumbing, Cake Design, Home Cleaning"
-                    : "e.g., Pastry Catering, Birthday Cakes, Weekend Delivery"
-                }
-                className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                value={serviceInput}
-                onChange={(e) => setServiceInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-              <button
-                onClick={addService}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Add</span>
-              </button>
-            </div>
-
-            {errors.services && (
-              <p className="mb-3 text-sm text-red-600 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {errors.services}
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {profileData.services.map((service) => (
-                <span
-                  key={service}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full px-4 py-2 text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200"
-                >
-                  {service}
-                  <button
-                    onClick={() => removeService(service)}
-                    className="hover:bg-white/20 rounded-full p-0.5 transition-colors duration-200"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <p className="mt-3 text-xs text-slate-500">
-              {profileData.services.length}/15 {isProvider ? "offerings" : "interests"} added
-            </p>
-          </div>
-
-          {/* Contact Information (Optional) */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                <Mail className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                Contact Information <span className="text-sm font-normal text-slate-500">(Optional)</span>
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                  value={profileData.email}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Phone
-                </label>
-                <input
-                  name="phone"
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                  value={profileData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                  <Globe className="w-4 h-4" />
-                  Website
-                </label>
-                <input
-                  name="website"
-                  type="url"
-                  placeholder="www.yourwebsite.com"
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white text-slate-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                  value={profileData.website}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Availability */}
-          {isProvider && (
-            <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 lg:p-8 border border-slate-200">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  Availability Status
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {availabilityOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setProfileData({ ...profileData, availability: option.value })}
-                    className={`relative overflow-hidden rounded-xl px-6 py-5 font-semibold transition-all duration-300 ${
-                      profileData.availability === option.value
-                        ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-900">Location</label>
+                  <input
+                    value={formValues.location}
+                    onBlur={() => markTouched("location")}
+                    onChange={(event) => updateField("location", event.target.value)}
+                    placeholder="Neighborhood, city, or service area"
+                    className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 ${
+                      visibleErrors.location
+                        ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                     }`}
-                  >
-                    <div className="flex items-center justify-center gap-3">
-                      <span className="text-2xl">{option.emoji}</span>
-                      <span>{option.label}</span>
-                    </div>
-                  </button>
-                ))}
+                  />
+                  <p className={`text-sm ${visibleErrors.location ? "text-rose-600" : "text-slate-500"}`}>
+                    {visibleErrors.location || "Manual location is used unless autocomplete is added later."}
+                  </p>
+                </div>
               </div>
             </div>
-          )}
+          </ProfileSectionCard>
 
-          {/* Error Message */}
-          {errors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-sm text-red-600 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
-                {errors.submit}
+          <ProfileSectionCard
+            icon={<BriefcaseBusiness className="h-5 w-5" />}
+            title="Role & Marketplace Strategy"
+            description="Switching roles updates the helper content, summary cards, and discoverability guidance immediately."
+            aside={
+              businessClaimed ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Claimed business profile. Verification status: {verificationLabel(verificationStatus)}.
+                </div>
+              ) : null
+            }
+          >
+            <div className="space-y-5">
+              <ProfileRoleToggle
+                value={roleFamily}
+                onChange={(value) => {
+                  setFormValues((current) => ({ ...current, role: value }));
+                  markTouched("role");
+                }}
+              />
+
+              {roleFamily === "provider" ? (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Services</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.servicesCount}</p>
+                    </div>
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Products</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.productsCount}</p>
+                    </div>
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rating</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">
+                        {providerInsight.averageRating ? providerInsight.averageRating.toFixed(1) : "New"}
+                      </p>
+                      <p className="text-xs text-slate-500">{providerInsight.reviewCount} reviews</p>
+                    </div>
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active orders</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.activeOrders}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Provider actions</p>
+                    <div className="mt-4 grid gap-2 md:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard/provider/listings")}
+                        className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                      >
+                        Manage listings
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard/provider/orders")}
+                        className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                      >
+                        Review order pipeline
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                      {publicProfilePath ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleCopyPublicProfile}
+                            className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                          >
+                            Copy public profile link
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => window.open(publicProfilePath, "_blank", "noopener,noreferrer")}
+                            className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                          >
+                            Open public profile
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Need posts</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">{seekerInsight.postsCount}</p>
+                    </div>
+                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active orders</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">{seekerInsight.activeOrders}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Seeker shortcuts</p>
+                    <div className="mt-4 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard/people")}
+                        className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                      >
+                        Discover providers
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard?compose=1")}
+                        className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                      >
+                        Post a need
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Clock3 className="h-4 w-4 text-slate-500" />
+                  Availability
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {availabilityOptions.map((option) => {
+                    const active = formValues.availability === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormValues((current) => ({ ...current, availability: option.value }))}
+                        className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                          active
+                            ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-900/15"
+                            : "border-slate-200 bg-white text-slate-900 hover:border-slate-300"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">{option.title}</p>
+                        <p className={`mt-1 text-sm leading-6 ${active ? "text-white/70" : "text-slate-600"}`}>
+                          {option.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                {roleFamily === "provider"
+                  ? "Provider profiles with strong summaries, discoverability tags, and contact details tend to convert better in nearby discovery."
+                  : "Seeker profiles with clear location, context, and need tags receive faster local responses."}
+              </div>
+
+              {roleFamily === "provider" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">Featured listings</p>
+                    {loadingInsights ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+                  </div>
+                  {featuredListings.length > 0 ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {featuredListings.map((listing) => (
+                        <article key={`${listing.type}-${listing.id}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-900">{listing.title}</h3>
+                              <p className="mt-1 text-sm text-slate-600">{listing.category}</p>
+                            </div>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm">
+                              {listing.type}
+                            </span>
+                          </div>
+                          <div className="mt-4 flex items-center justify-between text-sm">
+                            <span className="font-semibold text-slate-950">₹ {listing.price.toLocaleString()}</span>
+                            <span className="capitalize text-slate-500">{listing.status}</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                      No published services or products yet. Add listings to strengthen trust and conversion.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </ProfileSectionCard>
+
+          <ProfileSectionCard
+            icon={<NotebookText className="h-5 w-5" />}
+            title="About You"
+            description={`This summary is required for onboarding. Aim for at least ${PROFILE_BIO_MIN_LENGTH} characters and make it specific.`}
+          >
+            <div className="space-y-2">
+              <textarea
+                value={formValues.bio}
+                onBlur={() => markTouched("bio")}
+                onChange={(event) => updateField("bio", event.target.value)}
+                rows={6}
+                placeholder={
+                  roleFamily === "provider"
+                    ? "Describe what you offer, what areas you serve, and why people can trust you."
+                    : "Describe what you're looking for, when you usually need help, and what kind of providers fit best."
+                }
+                className={`min-h-[180px] w-full rounded-[24px] border bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 ${
+                  visibleErrors.bio
+                    ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                    : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                }`}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className={`text-sm ${visibleErrors.bio ? "text-rose-600" : "text-slate-500"}`}>
+                  {visibleErrors.bio ||
+                    (roleFamily === "provider"
+                      ? "Good provider profiles mention specialty, service area, and response style."
+                      : "Good seeker profiles mention the kind of help, timing, and local context.")}
+                </p>
+                <p className="text-sm font-medium text-slate-500">{formValues.bio.trim().length} characters</p>
+              </div>
+            </div>
+          </ProfileSectionCard>
+
+          <ProfileSectionCard
+            icon={<Sparkles className="h-5 w-5" />}
+            title={roleFamily === "provider" ? "Services & Discoverability Tags" : "Needs & Interests"}
+            description={
+              roleFamily === "provider"
+                ? "These tags are mirrored into your public profile and help local discovery surfaces rank you better."
+                : "Use specific needs, categories, or service types so providers understand what to respond to."
+            }
+          >
+            <div className="space-y-3">
+              <InterestsChipsInput
+                label={roleFamily === "provider" ? "Offerings" : "Interests"}
+                description={
+                  roleFamily === "provider"
+                    ? "Examples: Home cleaning, pastry catering, AC repair, event decor."
+                    : "Examples: Weekly tiffin, birthday cakes, appliance repair, pet grooming."
+                }
+                placeholder={
+                  roleFamily === "provider"
+                    ? "Type an offering or niche"
+                    : "Type a need or interest"
+                }
+                values={formValues.interests}
+                inputValue={tagInput}
+                error={visibleErrors.interests}
+                onInputChange={setTagInput}
+                onAdd={handleAddTag}
+                onRemove={handleRemoveTag}
+              />
+              <p className="text-sm text-slate-500">
+                {formValues.interests.length}/{PROFILE_TOPIC_LIMIT} tags used.
               </p>
             </div>
-          )}
+          </ProfileSectionCard>
 
-          {/* Save Button */}
-          <div className="sticky bottom-6 z-10">
-            <button
-              onClick={saveProfile}
-              disabled={saving}
-              className="w-full px-6 py-4 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 hover:from-blue-600 hover:via-indigo-700 hover:to-purple-700 text-white rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-3xl hover:scale-[1.02] flex items-center justify-center gap-3"
-            >
-              {saving ? (
-                <>
-                  <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving Profile...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  <span>Save Profile</span>
-                </>
-              )}
-            </button>
-          </div>
+          <ProfileSectionCard
+            icon={<Mail className="h-5 w-5" />}
+            title="Contact Information"
+            description="Email is prefilled from auth when available. Phone and website stay optional but improve trust and conversions."
+          >
+            <ProfileContactFields
+              email={formValues.email}
+              phone={formValues.phone}
+              website={formValues.website}
+              emailReadOnly={Boolean(user.email)}
+              errors={visibleErrors}
+              onChange={(field, value) => {
+                updateField(field, value);
+                markTouched(field);
+              }}
+            />
+          </ProfileSectionCard>
         </div>
+
+        <aside className="space-y-6 xl:sticky xl:top-24">
+          <ProfileCompletionChecklist items={checklist} />
+
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-lg shadow-slate-200/40 sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <BadgeCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight text-slate-950">Live Preview</h2>
+                <p className="text-sm text-slate-600">How your profile currently reads inside the marketplace.</p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white text-lg font-semibold uppercase text-slate-900 shadow-sm">
+                  {formValues.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={formValues.avatarUrl} alt={formValues.fullName || "Avatar"} className="h-full w-full object-cover" />
+                  ) : (
+                    <span>{(formValues.fullName || "LM").slice(0, 2)}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-slate-950">{formValues.fullName || "Your name"}</p>
+                  <p className="text-sm text-slate-500">
+                    {roleFamily === "provider" ? "Service Provider" : "Looking for Services"}
+                  </p>
+                  {formValues.location ? (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm">
+                      <MapPinHouse className="h-3.5 w-3.5" />
+                      {formValues.location}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                {formValues.bio || "Your profile summary will appear here as you write it."}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {formValues.interests.length > 0 ? (
+                  formValues.interests.slice(0, 6).map((item) => (
+                    <span key={item} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-500">Add tags to improve discoverability.</span>
+                )}
+              </div>
+
+              <div className="mt-4 space-y-2 text-sm text-slate-600">
+                <p>{formValues.email || "Email not shown yet"}</p>
+                <p>{normalizePhone(formValues.phone) || "Phone not added"}</p>
+                <p>{normalizeWebsite(formValues.website) || "Website not added"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-lg shadow-slate-200/40 sm:p-6">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-950">Suggestions</h2>
+            <div className="mt-4 space-y-3">
+              {visibleSuggestions.length > 0 ? (
+                visibleSuggestions.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{item.helper}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+                  Your profile basics are in good shape. Optional improvements now help ranking, trust, and response quality.
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
       </div>
+
+      <ProfileStickySaveBar
+        dirty={dirty}
+        saveState={saveState}
+        buttonLabel={
+          onboardingQuery && !profile.onboarding_completed && !onboardingReady ? "Complete required fields" : saveButtonLabel
+        }
+        saveDisabled={!user || isUploadingAvatar}
+        onSave={() => {
+          setSubmitAttempted(true);
+          void performSave("manual");
+        }}
+      />
     </div>
   );
 }

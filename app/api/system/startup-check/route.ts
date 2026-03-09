@@ -13,7 +13,8 @@ type DiagnosticsPayload = {
 const baseFixInstructions = [
   "Apply canonical migrations from supabase/migrations in sorted order.",
   "Recommended command: npm run supabase:setup -- --with-verify",
-  "Ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel production env.",
+  "Ensure SUPABASE_SERVICE_ROLE_KEY is configured in local/server env when relying on server-side avatar uploads.",
+  "Apply storage policies for bucket profile-avatars if you want browser-direct avatar uploads without a service-role key.",
   "Confirm required auth URLs in Supabase Authentication URL configuration.",
 ];
 
@@ -24,6 +25,7 @@ const fallbackDiagnostics = async () => {
     posts_table: true,
     help_requests_table: true,
     post_media_bucket: true,
+    profile_avatar_bucket: true,
   };
   const issues: string[] = [];
 
@@ -52,6 +54,17 @@ const fallbackDiagnostics = async () => {
   if (bucketProbe.error || !(bucketProbe.data as { id?: string } | null)?.id) {
     checks.post_media_bucket = false;
     issues.push("Missing storage bucket: post-media");
+  }
+
+  const profileAvatarBucketProbe = await admin
+    .schema("storage")
+    .from("buckets")
+    .select("id")
+    .eq("id", "profile-avatars")
+    .maybeSingle();
+  if (profileAvatarBucketProbe.error || !(profileAvatarBucketProbe.data as { id?: string } | null)?.id) {
+    checks.profile_avatar_bucket = false;
+    issues.push("Missing storage bucket: profile-avatars");
   }
 
   return {
