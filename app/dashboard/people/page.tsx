@@ -7,12 +7,22 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ensureClientProfile } from "@/lib/clientProfile";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
+import {
+  createConnectionBuckets,
+  createConnectionStateMap,
+  deriveConnectionState,
+  listCurrentUserConnectionRows,
+  respondToConnectionRequest,
+  sendConnectionRequest,
+  type ConnectionRequestRow,
+} from "@/lib/connections";
 import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
 import {
   Activity,
   ArrowUpRight,
   BarChart3,
   BadgeCheck,
+  Check,
   ChevronsDown,
   Clock3,
   ExternalLink,
@@ -34,7 +44,10 @@ import {
   Sparkles,
   Star,
   Target,
+  UserCheck,
+  UserPlus,
   Users,
+  XCircle,
   Zap,
 } from "lucide-react";
 import {
@@ -110,6 +123,11 @@ type ProviderOrderStatsRow = {
   provider_id: string;
   completed_jobs: number | string;
   open_leads: number | string;
+};
+
+type ConnectionNotice = {
+  kind: "success" | "error";
+  message: string;
 };
 
 type ProviderCard = {
@@ -831,12 +849,27 @@ export default function PeoplePage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [usingDemo, setUsingDemo] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [connectionRows, setConnectionRows] = useState<ConnectionRequestRow[]>([]);
+  const [busyConnectionTargetId, setBusyConnectionTargetId] = useState<string | null>(null);
+  const [busyConnectionRequestId, setBusyConnectionRequestId] = useState<string | null>(null);
+  const [connectionNotice, setConnectionNotice] = useState<ConnectionNotice | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const [visibleCount, setVisibleCount] = useState(PROVIDERS_BATCH_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    if (!connectionNotice) return;
+    const timerId = window.setTimeout(() => {
+      setConnectionNotice(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [connectionNotice]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -948,6 +981,7 @@ export default function PeoplePage() {
       if (authError) {
         setProviders(demoPeople);
         setUsingDemo(true);
+        setConnectionRows([]);
         setErrorMessage(`Auth error: ${authError.message}`);
         return;
       }
@@ -956,6 +990,18 @@ export default function PeoplePage() {
       if (user) {
         await ensureClientProfile(user).catch(() => false);
       }
+
+      let liveConnectionRows: ConnectionRequestRow[] = [];
+      if (user?.id) {
+        try {
+          liveConnectionRows = await listCurrentUserConnectionRows(user.id);
+        } catch (connectionError) {
+          const message =
+            connectionError instanceof Error ? connectionError.message : "Could not load connection requests.";
+          console.warn("Unable to load connection requests:", message);
+        }
+      }
+      setConnectionRows(liveConnectionRows);
 
       const selectRowsWithFallback = async (
         table: string,
@@ -1461,6 +1507,7 @@ export default function PeoplePage() {
       console.warn("Unable to load providers:", message);
       setProviders(demoPeople);
       setUsingDemo(true);
+      setConnectionRows([]);
       setErrorMessage(`Auth error: ${message}`);
     } finally {
       setLoading(false);
@@ -1545,6 +1592,7 @@ export default function PeoplePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "connection_requests" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "provider_presence" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
@@ -1747,6 +1795,82 @@ export default function PeoplePage() {
     return user.id;
   }, [currentUserId]);
 
+  const refreshConnectionRows = useCallback(
+    async (viewerIdOverride?: string | null) => {
+      const viewerId = viewerIdOverride || currentUserId;
+      if (!viewerId) return [];
+
+      const nextRows = await listCurrentUserConnectionRows(viewerId);
+      setConnectionRows(nextRows);
+      return nextRows;
+    },
+    [currentUserId]
+  );
+
+  const handleConnect = useCallback(
+    async (targetUserId: string) => {
+      setBusyConnectionTargetId(targetUserId);
+      setConnectionNotice(null);
+
+      try {
+        const viewerId = await ensureViewerId();
+        if (viewerId === targetUserId) {
+          throw new Error("This is your own profile.");
+        }
+
+        const previousState = deriveConnectionState(viewerId, targetUserId, connectionRows);
+        await sendConnectionRequest(targetUserId);
+        await refreshConnectionRows(viewerId);
+
+        setConnectionNotice({
+          kind: "success",
+          message:
+            previousState.kind === "incoming_pending"
+              ? "Connection accepted. You can now coordinate directly."
+              : "Connection request sent.",
+        });
+      } catch (error) {
+        setConnectionNotice({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unable to send connection request.",
+        });
+      } finally {
+        setBusyConnectionTargetId(null);
+      }
+    },
+    [connectionRows, ensureViewerId, refreshConnectionRows]
+  );
+
+  const handleConnectionDecision = useCallback(
+    async (requestId: string, decision: "accepted" | "rejected" | "cancelled") => {
+      setBusyConnectionRequestId(requestId);
+      setConnectionNotice(null);
+
+      try {
+        await respondToConnectionRequest({ requestId, decision });
+        const viewerId = await ensureViewerId();
+        await refreshConnectionRows(viewerId);
+        setConnectionNotice({
+          kind: "success",
+          message:
+            decision === "accepted"
+              ? "Connection accepted."
+              : decision === "rejected"
+              ? "Connection request declined."
+              : "Connection request cancelled.",
+        });
+      } catch (error) {
+        setConnectionNotice({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unable to update connection request.",
+        });
+      } finally {
+        setBusyConnectionRequestId(null);
+      }
+    },
+    [ensureViewerId, refreshConnectionRows]
+  );
+
   const resolveChatRecipientId = useCallback(
     async (providerId: string, viewerId: string) => {
       if (!providerId.startsWith("demo-")) return providerId;
@@ -1903,6 +2027,18 @@ export default function PeoplePage() {
   };
   const featuredProviders = [...filteredProviders].sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
   const liveProviders = filteredProviders.filter((provider) => isProviderOnline(provider)).slice(0, 8);
+  const providerNameById = useMemo(
+    () => new Map(providers.map((provider) => [provider.id, provider.name])),
+    [providers]
+  );
+  const connectionStateByUserId = useMemo(
+    () => createConnectionStateMap(currentUserId, connectionRows),
+    [connectionRows, currentUserId]
+  );
+  const connectionBuckets = useMemo(
+    () => createConnectionBuckets(currentUserId, connectionRows),
+    [connectionRows, currentUserId]
+  );
 
   return (
     <div className="w-full max-w-550 mx-auto space-y-5 sm:space-y-6 lg:space-y-7">
@@ -2022,6 +2158,177 @@ export default function PeoplePage() {
         <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
           Showing demo people because no live marketplace profiles were found in DB yet.
         </div>
+      )}
+
+      {currentUserId && !usingDemo && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">Connections</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Real connection requests, accepted contacts, and network introductions for early testers.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs sm:min-w-[280px]">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <p className="font-semibold text-emerald-700">Incoming</p>
+                <p className="mt-1 text-lg font-bold text-emerald-900">{connectionBuckets.incoming.length}</p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="font-semibold text-amber-700">Pending</p>
+                <p className="mt-1 text-lg font-bold text-amber-900">{connectionBuckets.outgoing.length}</p>
+              </div>
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2">
+                <p className="font-semibold text-indigo-700">Connected</p>
+                <p className="mt-1 text-lg font-bold text-indigo-900">{connectionBuckets.accepted.length}</p>
+              </div>
+            </div>
+          </div>
+
+          {connectionNotice && (
+            <div
+              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                connectionNotice.kind === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {connectionNotice.message}
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <UserPlus size={16} className="text-emerald-600" />
+                Incoming requests
+              </div>
+              <div className="mt-3 space-y-2">
+                {connectionBuckets.incoming.length === 0 && (
+                  <p className="text-sm text-slate-500">No pending requests right now.</p>
+                )}
+                {connectionBuckets.incoming.slice(0, 4).map((entry) => {
+                  const isBusy = busyConnectionRequestId === entry.requestId;
+                  return (
+                    <div key={entry.requestId} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {providerNameById.get(entry.userId) || "Local member"}
+                          </p>
+                          <p className="text-xs text-slate-500">Wants to connect with you.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProvider(entry.userId)}
+                          className="text-xs font-semibold text-indigo-700 hover:text-indigo-800"
+                        >
+                          View
+                        </button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => void handleConnectionDecision(entry.requestId, "accepted")}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+                        >
+                          <Check size={13} />
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => void handleConnectionDecision(entry.requestId, "rejected")}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-70"
+                        >
+                          <XCircle size={13} />
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Activity size={16} className="text-amber-600" />
+                Sent by you
+              </div>
+              <div className="mt-3 space-y-2">
+                {connectionBuckets.outgoing.length === 0 && (
+                  <p className="text-sm text-slate-500">No outgoing requests in flight.</p>
+                )}
+                {connectionBuckets.outgoing.slice(0, 4).map((entry) => {
+                  const isBusy = busyConnectionRequestId === entry.requestId;
+                  return (
+                    <div key={entry.requestId} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {providerNameById.get(entry.userId) || "Local member"}
+                          </p>
+                          <p className="text-xs text-slate-500">Awaiting their response.</p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => void handleConnectionDecision(entry.requestId, "cancelled")}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <UserCheck size={16} className="text-indigo-600" />
+                Accepted connections
+              </div>
+              <div className="mt-3 space-y-2">
+                {connectionBuckets.accepted.length === 0 && (
+                  <p className="text-sm text-slate-500">Accepted connections will appear here.</p>
+                )}
+                {connectionBuckets.accepted.slice(0, 4).map((entry) => (
+                  <div key={entry.requestId} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {providerNameById.get(entry.userId) || "Connected member"}
+                        </p>
+                        <p className="text-xs text-slate-500">Ready for direct chat and coordination.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProvider(entry.userId)}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          Profile
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void openChatThread(entry.userId)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          <MessageCircle size={13} />
+                          Chat
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -2314,6 +2621,16 @@ export default function PeoplePage() {
             const inlineDraft = inlineMessageDrafts[person.id] || "";
             const inlineStatus = inlineMessageStatusByProvider[person.id] || "";
             const savedConversationId = inlineConversationByProvider[person.id] || null;
+            const connectionState = connectionStateByUserId.get(person.id) || {
+              kind: "none" as const,
+              requestId: null,
+              updatedAt: null,
+              row: null,
+            };
+            const isDemoProfile = person.id.startsWith("demo-");
+            const connectionBusy =
+              busyConnectionTargetId === person.id ||
+              (connectionState.requestId ? busyConnectionRequestId === connectionState.requestId : false);
             const listingCount = person.serviceCount + person.productCount;
             const demandCount = person.demandCount || 0;
             const activityCount = listingCount + demandCount;
@@ -2495,6 +2812,62 @@ export default function PeoplePage() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {isDemoProfile ? (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-600">
+                        Demo preview
+                      </span>
+                    ) : connectionState.kind === "incoming_pending" && connectionState.requestId ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void handleConnectionDecision(connectionState.requestId!, "accepted")}
+                          disabled={connectionBusy}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+                        >
+                          <Check size={14} />
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleConnectionDecision(connectionState.requestId!, "rejected")}
+                          disabled={connectionBusy}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-70"
+                        >
+                          <XCircle size={14} />
+                          Decline
+                        </button>
+                      </>
+                    ) : connectionState.kind === "outgoing_pending" && connectionState.requestId ? (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+                          <Activity size={14} />
+                          Request sent
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleConnectionDecision(connectionState.requestId!, "cancelled")}
+                          disabled={connectionBusy}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : connectionState.kind === "accepted" ? (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                        <UserCheck size={14} />
+                        Connected
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleConnect(person.id)}
+                        disabled={connectionBusy}
+                        className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-70"
+                      >
+                        <UserPlus size={14} />
+                        {connectionState.kind === "rejected" || connectionState.kind === "cancelled" ? "Connect again" : "Connect"}
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setInlineComposerProviderId((current) => (current === person.id ? null : person.id));

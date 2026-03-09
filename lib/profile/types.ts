@@ -3,7 +3,7 @@ export const PROFILE_TOPIC_LIMIT = 15;
 export const PROFILE_AUTOSAVE_DEBOUNCE_MS = 1600;
 export const PROFILE_AVATAR_BUCKET = "profile-avatars";
 export const PROFILE_ROUTE = "/dashboard/profile";
-export const POST_LOGIN_REDIRECT_ROUTE = "/dashboard";
+export const POST_LOGIN_REDIRECT_ROUTE = "/dashboard/welcome";
 
 export type StoredProfileRole = "provider" | "business" | "seeker";
 export type ProfileRoleFamily = "provider" | "seeker";

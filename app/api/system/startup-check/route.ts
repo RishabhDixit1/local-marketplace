@@ -24,6 +24,10 @@ const fallbackDiagnostics = async () => {
   const checks: Record<string, boolean> = {
     posts_table: true,
     help_requests_table: true,
+    orders_table: true,
+    connection_requests_table: true,
+    conversations_table: true,
+    messages_table: true,
     post_media_bucket: true,
     profile_avatar_bucket: true,
   };
@@ -48,6 +52,30 @@ const fallbackDiagnostics = async () => {
   if (helpRequestsProbe.error && missingTablePattern.test(helpRequestsProbe.error.message || "")) {
     checks.help_requests_table = false;
     issues.push("Missing table: public.help_requests");
+  }
+
+  const ordersProbe = await admin.from("orders").select("id").limit(1);
+  if (ordersProbe.error && missingTablePattern.test(ordersProbe.error.message || "")) {
+    checks.orders_table = false;
+    issues.push("Missing table: public.orders");
+  }
+
+  const connectionRequestsProbe = await admin.from("connection_requests").select("id").limit(1);
+  if (connectionRequestsProbe.error && missingTablePattern.test(connectionRequestsProbe.error.message || "")) {
+    checks.connection_requests_table = false;
+    issues.push("Missing table: public.connection_requests");
+  }
+
+  const conversationsProbe = await admin.from("conversations").select("id").limit(1);
+  if (conversationsProbe.error && missingTablePattern.test(conversationsProbe.error.message || "")) {
+    checks.conversations_table = false;
+    issues.push("Missing table: public.conversations");
+  }
+
+  const messagesProbe = await admin.from("messages").select("id").limit(1);
+  if (messagesProbe.error && missingTablePattern.test(messagesProbe.error.message || "")) {
+    checks.messages_table = false;
+    issues.push("Missing table: public.messages");
   }
 
   const bucketProbe = await admin.schema("storage").from("buckets").select("id").eq("id", "post-media").maybeSingle();

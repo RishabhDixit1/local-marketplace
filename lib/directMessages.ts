@@ -8,6 +8,11 @@ type ConversationInsertRow = {
   id: string;
 };
 
+const isMissingRpcError = (message: string) =>
+  /function .* does not exist|could not find the function .* in the schema cache|get_or_create_direct_conversation/i.test(
+    message
+  );
+
 const normalizeConversationIds = (rows: ConversationParticipantRow[] | null | undefined) =>
   (rows || [])
     .map((row) => row.conversation_id)
@@ -64,6 +69,18 @@ export const getOrCreateDirectConversationId = async (
 
   if (viewerId === recipientId) {
     throw new Error("Cannot create a direct conversation with yourself.");
+  }
+
+  const rpcResult = await supabase.rpc("get_or_create_direct_conversation", {
+    target_user_id: recipientId,
+  });
+
+  if (!rpcResult.error) {
+    if (typeof rpcResult.data === "string" && rpcResult.data) {
+      return rpcResult.data;
+    }
+  } else if (!isMissingRpcError(rpcResult.error.message || "")) {
+    throw new Error(rpcResult.error.message);
   }
 
   const existingConversationId = await findDirectConversationId(supabase, viewerId, recipientId);
