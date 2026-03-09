@@ -12,6 +12,7 @@ import {
   extractBusinessIdFromSlug,
   verificationLabel,
 } from "@/lib/business";
+import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
 type Params = {
@@ -151,7 +152,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}/business/${business.canonicalSlug}`;
   const title = `${business.profile.name || "Local Business"} | Local Marketplace`;
   const description =
@@ -200,7 +201,7 @@ export default async function BusinessProfilePage({ params }: Params) {
     canonicalSlug,
   } = business;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}/business/${canonicalSlug}`;
 
   const structuredData = {

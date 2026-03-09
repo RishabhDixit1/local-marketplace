@@ -129,7 +129,11 @@ In Supabase Dashboard -> Authentication -> URL Configuration:
 
 Important:
 - Production `Site URL` must never be localhost.
-- If production callback is missing from Redirect URLs, Supabase may fall back to `Site URL` and send users to localhost.
+- `POST /api/auth/send-link` now derives the auth callback from the current request origin, so local logins stay on localhost and deployed logins stay on the active site host.
+- `NEXT_PUBLIC_SITE_URL` should still be set per environment for canonical/share URLs and scripts:
+  - local `.env.local`: `http://localhost:3000`
+  - Vercel production env: `https://local-marketplace-eta.vercel.app`
+- If a callback URL is missing from Redirect URLs, Supabase may still fall back to `Site URL`.
 
 ## Scripts
 

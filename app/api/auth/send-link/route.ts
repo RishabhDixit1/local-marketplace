@@ -1,6 +1,7 @@
 import https from "node:https";
 import { Resolver } from "node:dns";
 import { NextResponse } from "next/server";
+import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,6 @@ type SendLinkBody = {
   redirectTo?: string;
 };
 
-const cleanUrl = (value: string | undefined): string => value?.trim().replace(/\/+$/, "") ?? "";
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 const resolveIpv4ViaPublicDns = (host: string): Promise<string> =>
@@ -102,7 +102,7 @@ const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
 };
 
 export async function POST(request: Request) {
-  const supabaseUrlValue = cleanUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
   if (!supabaseUrlValue || !anonKey) {
@@ -131,22 +131,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const redirectToRaw = body.redirectTo?.trim() ?? "";
-  let redirectTo: string;
-  try {
-    const redirectUrl = new URL(redirectToRaw);
-    if (redirectUrl.protocol !== "http:" && redirectUrl.protocol !== "https:") {
-      throw new Error("Invalid protocol.");
-    }
-    redirectTo = redirectUrl.toString();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Invalid auth callback URL." }, { status: 400 });
-  }
+  const redirectTo = resolveAuthCallbackUrl({
+    request,
+    requestedRedirectTo: body.redirectTo,
+  });
 
   const payload = JSON.stringify({
     email,
     create_user: true,
-    email_redirect_to: redirectTo,
+    redirect_to: redirectTo,
   });
 
   const headers = {
