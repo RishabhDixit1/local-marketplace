@@ -3,8 +3,15 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { BadgeCheck, Clock3, ExternalLink, MapPin, MessageCircle, Star, X } from "lucide-react";
+import { BadgeCheck, Check, Clock3, ExternalLink, Loader2, MapPin, MessageCircle, Star, UserCheck, UserPlus, X, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import {
+  deriveConnectionState,
+  listCurrentUserConnectionRows,
+  respondToConnectionRequest,
+  sendConnectionRequest,
+  type ConnectionRequestRow,
+} from "@/lib/connections";
 import ReviewModal from "./ReviewModal";
 import {
   calculateProfileCompletion,
@@ -156,6 +163,10 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [completedJobs, setCompletedJobs] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [connectionRows, setConnectionRows] = useState<ConnectionRequestRow[]>([]);
+  const [connectionBusy, setConnectionBusy] = useState(false);
+  const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
   const isUuidUserId = UUID_PATTERN.test(userId);
 
   useEffect(() => {
@@ -250,6 +261,52 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     if (!open) setOpenReview(false);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !isUuidUserId) return;
+
+    let mounted = true;
+    setConnectionNotice(null);
+
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!mounted) return;
+
+      setViewerId(user?.id || null);
+
+      if (!user?.id || user.id === userId) {
+        setConnectionRows([]);
+        return;
+      }
+
+      try {
+        const rows = await listCurrentUserConnectionRows(user.id);
+        if (mounted) {
+          setConnectionRows(rows);
+        }
+      } catch (error) {
+        if (mounted) {
+          setConnectionNotice(error instanceof Error ? error.message : "Unable to load connection state.");
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isUuidUserId, open, userId]);
+
+  useEffect(() => {
+    if (!connectionNotice) return;
+    const timerId = window.setTimeout(() => setConnectionNotice(null), 2800);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [connectionNotice]);
+
   const avgRating = useMemo(() => {
     if (!reviews.length) return 0;
     const ratings = reviews
@@ -292,6 +349,64 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   }, [avgRating, profile, profileCompletion, productsCount, reviews.length, servicesCount]);
 
   const businessSlug = profile ? createBusinessSlug(profile.name, profile.id) : "";
+  const connectionState = useMemo(
+    () => deriveConnectionState(viewerId, userId, connectionRows),
+    [connectionRows, userId, viewerId]
+  );
+
+  const refreshConnections = async (currentViewerId: string) => {
+    const rows = await listCurrentUserConnectionRows(currentViewerId);
+    setConnectionRows(rows);
+    return rows;
+  };
+
+  const handleConnect = async () => {
+    if (!viewerId || !isUuidUserId || viewerId === userId) return;
+
+    setConnectionBusy(true);
+    setConnectionNotice(null);
+
+    try {
+      const previousState = deriveConnectionState(viewerId, userId, connectionRows);
+      await sendConnectionRequest(userId);
+      await refreshConnections(viewerId);
+      setConnectionNotice(
+        previousState.kind === "incoming_pending"
+          ? "Connection accepted."
+          : "Connection request sent."
+      );
+    } catch (error) {
+      setConnectionNotice(error instanceof Error ? error.message : "Unable to send connection request.");
+    } finally {
+      setConnectionBusy(false);
+    }
+  };
+
+  const handleDecision = async (decision: "accepted" | "rejected" | "cancelled") => {
+    if (!connectionState.requestId || !viewerId) return;
+
+    setConnectionBusy(true);
+    setConnectionNotice(null);
+
+    try {
+      await respondToConnectionRequest({
+        requestId: connectionState.requestId,
+        decision,
+      });
+      await refreshConnections(viewerId);
+      setConnectionNotice(
+        decision === "accepted"
+          ? "Connection accepted."
+          : decision === "rejected"
+          ? "Connection request declined."
+          : "Connection request cancelled."
+      );
+    } catch (error) {
+      setConnectionNotice(error instanceof Error ? error.message : "Unable to update connection request.");
+    } finally {
+      setConnectionBusy(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -391,6 +506,69 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
             </div>
 
             <div className="space-y-3">
+              {isUuidUserId && viewerId && viewerId !== userId && (
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Connection status</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {connectionState.kind === "incoming_pending" && connectionState.requestId ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={connectionBusy}
+                          onClick={() => void handleDecision("accepted")}
+                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+                        >
+                          {connectionBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          disabled={connectionBusy}
+                          onClick={() => void handleDecision("rejected")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-70"
+                        >
+                          <XCircle size={14} />
+                          Decline
+                        </button>
+                      </>
+                    ) : connectionState.kind === "outgoing_pending" && connectionState.requestId ? (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+                          <Loader2 size={14} className={connectionBusy ? "animate-spin" : ""} />
+                          Request sent
+                        </span>
+                        <button
+                          type="button"
+                          disabled={connectionBusy}
+                          onClick={() => void handleDecision("cancelled")}
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : connectionState.kind === "accepted" ? (
+                      <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                        <UserCheck size={14} />
+                        Connected
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={connectionBusy}
+                        onClick={() => void handleConnect()}
+                        className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-70"
+                      >
+                        {connectionBusy ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                        {connectionState.kind === "rejected" || connectionState.kind === "cancelled"
+                          ? "Connect again"
+                          : "Connect"}
+                      </button>
+                    )}
+                  </div>
+                  {connectionNotice && <p className="mt-2 text-xs text-slate-600">{connectionNotice}</p>}
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => setOpenReview(true)}
