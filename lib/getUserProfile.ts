@@ -1,3 +1,4 @@
+import { fetchProfileByUserId } from "@/lib/profile/client";
 import { supabase } from "./supabase";
 
 export async function getUserProfile() {
@@ -7,16 +8,10 @@ export async function getUserProfile() {
 
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (error) {
+  try {
+    return await fetchProfileByUserId(user.id, user);
+  } catch (error) {
     console.error("Profile fetch error:", error);
     return null;
   }
-
-  return data;
 }

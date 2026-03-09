@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { ensureClientProfile } from "@/lib/clientProfile";
 import NotificationCenter from "@/app/components/NotificationCenter";
+import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
+import { ProfileProvider } from "@/app/components/profile/ProfileContext";
 import {
+  AlertTriangle,
   Bookmark,
   ClipboardList,
   ChevronsLeft,
@@ -43,6 +45,7 @@ export default function DashboardLayout({
   const [showStartupIssues, setShowStartupIssues] = useState(false);
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -173,20 +176,6 @@ export default function DashboardLayout({
     if (!authReady) return;
     let active = true;
 
-    const bootstrapProfile = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!active || !user) return;
-      await ensureClientProfile(user).catch(() => false);
-    };
-
-    void bootstrapProfile();
-    const bootstrapIntervalId = window.setInterval(() => {
-      void bootstrapProfile();
-    }, 5 * 60 * 1000);
-
     const pingPresence = async () => {
       const {
         data: { session },
@@ -225,7 +214,6 @@ export default function DashboardLayout({
 
     return () => {
       active = false;
-      window.clearInterval(bootstrapIntervalId);
       window.clearInterval(presenceIntervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
@@ -326,7 +314,7 @@ export default function DashboardLayout({
               className={`w-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors ${
                 desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-2.5"
               }`}
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               title={desktopNavCollapsed ? "Logout" : undefined}
               aria-label="Logout"
             >
@@ -397,7 +385,9 @@ export default function DashboardLayout({
                 )}
               </div>
             )}
-            {children}
+            <ProfileProvider>
+              <OnboardingGuard>{children}</OnboardingGuard>
+            </ProfileProvider>
           </main>
         </div>
       </div>
@@ -471,8 +461,8 @@ export default function DashboardLayout({
             </button>
             <button
               onClick={() => {
-                handleLogout();
                 setMenuOpen(false);
+                setShowLogoutConfirm(true);
               }}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
             >
@@ -482,6 +472,43 @@ export default function DashboardLayout({
           </div>
         </aside>
       </div>
+
+      {showLogoutConfirm ? (
+        <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/20">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold text-slate-900">Log out of Local Marketplace?</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  You can always sign back in with a magic link, but any unsaved local changes on open pages will be lost.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  void handleLogout();
+                }}
+                className="inline-flex items-center justify-center rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

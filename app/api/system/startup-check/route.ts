@@ -24,6 +24,7 @@ const fallbackDiagnostics = async () => {
     posts_table: true,
     help_requests_table: true,
     post_media_bucket: true,
+    profile_avatar_bucket: true,
   };
   const issues: string[] = [];
 
@@ -52,6 +53,17 @@ const fallbackDiagnostics = async () => {
   if (bucketProbe.error || !(bucketProbe.data as { id?: string } | null)?.id) {
     checks.post_media_bucket = false;
     issues.push("Missing storage bucket: post-media");
+  }
+
+  const profileAvatarBucketProbe = await admin
+    .schema("storage")
+    .from("buckets")
+    .select("id")
+    .eq("id", "profile-avatars")
+    .maybeSingle();
+  if (profileAvatarBucketProbe.error || !(profileAvatarBucketProbe.data as { id?: string } | null)?.id) {
+    checks.profile_avatar_bucket = false;
+    issues.push("Missing storage bucket: profile-avatars");
   }
 
   return {
