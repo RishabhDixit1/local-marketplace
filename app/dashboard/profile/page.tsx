@@ -49,7 +49,6 @@ import {
   normalizePhone,
   normalizeTopics,
   normalizeWebsite,
-  resolveAuthenticatedProfilePath,
   toProfileFormValues,
 } from "@/lib/profile/utils";
 import { canAutosaveProfile, validateProfileValues } from "@/lib/profile/validation";
@@ -207,7 +206,6 @@ export default function ProfilePage() {
   const roleFamily = formValues.role;
   const businessClaimed = currentStoredRole === "business";
   const onboardingQuery = searchParams.get("onboarding") === "1";
-  const nextPath = searchParams.get("next") || POST_LOGIN_REDIRECT_ROUTE;
 
   const submitErrors = validateProfileValues(formValues, { mode: "submit" });
   const draftErrors = validateProfileValues(formValues, { mode: "draft" });
@@ -424,7 +422,6 @@ export default function ProfilePage() {
       const nextProfile = await saveCurrentUserProfile({
         user,
         values: formValues,
-        existingProfile: profile,
       });
 
       if (!nextProfile) {
@@ -446,9 +443,8 @@ export default function ProfilePage() {
         );
 
         if (becameOnboarded && onboardingQuery) {
-          const target = resolveAuthenticatedProfilePath(nextProfile, nextPath);
           startTransition(() => {
-            router.replace(target);
+            router.replace(POST_LOGIN_REDIRECT_ROUTE);
           });
         }
       }
@@ -462,7 +458,7 @@ export default function ProfilePage() {
       );
       return null;
     }
-  }, [enqueueToast, formValues, nextPath, onboardingQuery, profile, router, setProfile, user]);
+  }, [enqueueToast, formValues, onboardingQuery, profile, router, setProfile, user]);
 
   useEffect(() => {
     if (!user || !profile || !dirty || isUploadingAvatar) return;
@@ -677,24 +673,24 @@ export default function ProfilePage() {
               />
 
               {roleFamily === "provider" ? (
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Services</p>
                       <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.servicesCount}</p>
                     </div>
-                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Products</p>
                       <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.productsCount}</p>
                     </div>
-                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rating</p>
                       <p className="mt-2 text-2xl font-semibold text-slate-950">
                         {providerInsight.averageRating ? providerInsight.averageRating.toFixed(1) : "New"}
                       </p>
                       <p className="text-xs text-slate-500">{providerInsight.reviewCount} reviews</p>
                     </div>
-                    <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="min-h-36 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Active orders</p>
                       <p className="mt-2 text-2xl font-semibold text-slate-950">{providerInsight.activeOrders}</p>
                     </div>
@@ -702,7 +698,7 @@ export default function ProfilePage() {
 
                   <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                     <p className="text-sm font-semibold text-slate-900">Provider actions</p>
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 grid gap-2 md:grid-cols-2">
                       <button
                         type="button"
                         onClick={() => router.push("/dashboard/provider/listings")}

@@ -13,7 +13,8 @@ type DiagnosticsPayload = {
 const baseFixInstructions = [
   "Apply canonical migrations from supabase/migrations in sorted order.",
   "Recommended command: npm run supabase:setup -- --with-verify",
-  "Ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel production env.",
+  "Ensure SUPABASE_SERVICE_ROLE_KEY is configured in local/server env when relying on server-side avatar uploads.",
+  "Apply storage policies for bucket profile-avatars if you want browser-direct avatar uploads without a service-role key.",
   "Confirm required auth URLs in Supabase Authentication URL configuration.",
 ];
 

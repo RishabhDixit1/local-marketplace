@@ -38,6 +38,7 @@ export default function ProfileHeader({
   onboardingComplete: boolean;
 }) {
   const copy = roleCopy[role];
+  const heroTitle = fullName.trim() || "Your Profile";
   const progressWidth = `${Math.max(6, progress)}%`;
 
   return (
@@ -61,7 +62,7 @@ export default function ProfileHeader({
                 {storedRole === "business" ? "Claimed business profile" : role === "provider" ? "Provider mode" : "Seeker mode"}
               </div>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{copy.title}</h1>
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{heroTitle}</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85 sm:text-base">{copy.subtitle}</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-semibold text-white/90">
@@ -71,7 +72,7 @@ export default function ProfileHeader({
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur">
                   <Compass className="h-3.5 w-3.5" />
-                  {fullName || "Your public profile preview"}
+                  {copy.title}
                 </div>
                 {location ? (
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur">

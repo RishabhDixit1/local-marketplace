@@ -1,11 +1,11 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
+import type { SaveProfileResponse, UploadProfileAvatarResponse } from "@/lib/api/profile";
 import { supabase } from "@/lib/supabase";
-import { PROFILE_AVATAR_BUCKET, type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
+import { type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
 import {
   buildBootstrapProfilePatch,
-  createProfileSavePayload,
   normalizeProfileRecord,
   resolveAuthenticatedProfilePath,
 } from "@/lib/profile/utils";
@@ -64,32 +64,63 @@ export const ensureClientProfile = async (user: User | null | undefined) => {
 export const saveCurrentUserProfile = async (params: {
   user: Pick<User, "id" | "email">;
   values: ProfileFormValues;
-  existingProfile: ProfileRecord | null;
 }) => {
-  const payload = createProfileSavePayload(params);
-  const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-  if (error) throw error;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || "";
+
+  if (!accessToken) {
+    throw new Error("You need to be signed in to save your profile.");
+  }
+
+  const response = await fetch("/api/profile/save", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      values: params.values,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as SaveProfileResponse | null;
+  if (!response.ok || !payload || payload.ok === false) {
+    throw new Error(payload && payload.ok === false ? payload.message : "Unable to save profile.");
+  }
+
   bootstrappedUserIds.add(params.user.id);
-  return fetchProfileByUserId(params.user.id, params.user);
+  return payload.profile;
 };
 
 export const uploadProfileAvatar = async (params: { userId: string; file: File }) => {
-  const extension = params.file.name.split(".").pop() || "bin";
-  const fileName = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-  const path = `avatars/${params.userId}/${fileName}`;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || "";
 
-  const { error } = await supabase.storage.from(PROFILE_AVATAR_BUCKET).upload(path, params.file, {
-    contentType: params.file.type || "application/octet-stream",
-    upsert: false,
-  });
-  if (error) {
-    throw new Error(
-      `Failed to upload avatar. Ensure bucket "${PROFILE_AVATAR_BUCKET}" exists and avatar policies are applied.`
-    );
+  if (!accessToken) {
+    throw new Error("You need to be signed in to upload an avatar.");
   }
 
-  const { data } = supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  const body = new FormData();
+  body.set("file", params.file);
+
+  const response = await fetch("/api/profile/avatar", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body,
+  });
+
+  const payload = (await response.json().catch(() => null)) as UploadProfileAvatarResponse | null;
+  if (!response.ok || !payload || payload.ok === false) {
+    throw new Error(payload && payload.ok === false ? payload.message : "Avatar upload failed.");
+  }
+
+  return payload.publicUrl;
 };
 
 export const subscribeToCurrentUserProfile = (userId: string, onChange: () => void) => {

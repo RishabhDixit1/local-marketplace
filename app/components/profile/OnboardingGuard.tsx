@@ -1,21 +1,15 @@
 "use client";
 
 import { startTransition, useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { PROFILE_ROUTE } from "@/lib/profile/types";
 import { buildOnboardingProfileHref, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 
-const buildCurrentPath = (pathname: string, searchParams: URLSearchParams) => {
-  const query = searchParams.toString();
-  return query ? `${pathname}?${query}` : pathname;
-};
-
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { loading, user, profile, errorMessage, refreshProfile } = useProfileContext();
 
   useEffect(() => {
@@ -29,12 +23,11 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
     }
 
     if (profile && !isProfileOnboardingComplete(profile) && pathname !== PROFILE_ROUTE) {
-      const currentPath = buildCurrentPath(pathname, new URLSearchParams(searchParams.toString()));
       startTransition(() => {
-        router.replace(buildOnboardingProfileHref(currentPath));
+        router.replace(buildOnboardingProfileHref());
       });
     }
-  }, [loading, pathname, profile, router, searchParams, user]);
+  }, [loading, pathname, profile, router, user]);
 
   if (loading) {
     return (

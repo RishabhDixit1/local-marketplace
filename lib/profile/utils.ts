@@ -382,10 +382,7 @@ export const createProfileSavePayload = (params: {
   };
 };
 
-export const buildOnboardingProfileHref = (nextPath?: string) => {
-  if (!nextPath || nextPath === PROFILE_ROUTE) return `${PROFILE_ROUTE}?onboarding=1`;
-  return `${PROFILE_ROUTE}?onboarding=1&next=${encodeURIComponent(nextPath)}`;
-};
+export const buildOnboardingProfileHref = () => `${PROFILE_ROUTE}?onboarding=1`;
 
 export const resolveAuthenticatedProfilePath = (profile: FlexibleProfileShape | null | undefined, nextPath?: string) =>
-  isProfileOnboardingComplete(profile) ? nextPath || POST_LOGIN_REDIRECT_ROUTE : buildOnboardingProfileHref(nextPath);
+  isProfileOnboardingComplete(profile) ? nextPath || POST_LOGIN_REDIRECT_ROUTE : buildOnboardingProfileHref();
