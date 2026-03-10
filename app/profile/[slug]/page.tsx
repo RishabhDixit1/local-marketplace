@@ -7,13 +7,10 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Clock3,
-  ExternalLink,
   Globe,
   LayoutDashboard,
   Mail,
   MapPin,
-  MessageCircle,
-  PencilLine,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -196,24 +193,6 @@ export default async function PublicProfilePage({ params }: Params) {
           { label: "Active orders", value: activeOrders },
           { label: "Profile score", value: `${profile.profile_completion_percent}%` },
         ];
-  const statusHighlights =
-    roleFamily === "provider"
-      ? [
-          { label: "Visibility", value: "Public", helper: "Shareable page" },
-          { label: "Availability", value: formatAvailability(profile.availability), helper: "Discovery status" },
-          {
-            label: "Trust",
-            value: verificationLabel(verificationStatus),
-            helper: reviewCount > 0 ? `${reviewCount} public reviews` : "No reviews yet",
-          },
-          { label: "Response", value: `~${responseMinutes} min`, helper: "Estimated reply window" },
-        ]
-      : [
-          { label: "Visibility", value: "Public", helper: "Shareable page" },
-          { label: "Availability", value: formatAvailability(profile.availability), helper: "Open for replies" },
-          { label: "Activity", value: `${activeOrders} active`, helper: "Current marketplace orders" },
-          { label: "Readiness", value: `${profile.profile_completion_percent}%`, helper: "Profile completion" },
-        ];
   const avatarFallback = displayName
     .split(" ")
     .map((part) => part[0] || "")
@@ -326,6 +305,10 @@ export default async function PublicProfilePage({ params }: Params) {
                     </span>
                   </div>
 
+                  <div className="mt-4">
+                    <PublicProfileRealtime profileId={profile.id} roleFamily={roleFamily} />
+                  </div>
+
                   <div className="mt-5">
                     <PublicProfileActions
                       profileUserId={profile.id}
@@ -334,11 +317,6 @@ export default async function PublicProfilePage({ params }: Params) {
                       contactHref="#contact"
                     />
                   </div>
-
-                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Profile link</p>
-                    <p className="mt-2 break-all text-sm leading-6 text-slate-700">{profileUrl}</p>
-                  </div>
                 </section>
               </aside>
             </div>
@@ -346,7 +324,7 @@ export default async function PublicProfilePage({ params }: Params) {
         </section>
 
         <div className="mt-8 space-y-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)_360px]">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
             <section id="details" className="flex h-full flex-col rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
@@ -370,31 +348,6 @@ export default async function PublicProfilePage({ params }: Params) {
                   value={topics.length ? `${topics.length} tags live` : "Tags coming soon"}
                 />
                 <MetaCard label="Current status" value={formatAvailability(profile.availability)} />
-              </div>
-            </section>
-
-            <section className="flex h-full flex-col rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">Collaboration status</h2>
-                  <p className="text-sm text-slate-600">A quick operational read before someone decides to connect.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {statusHighlights.map((item) => (
-                  <MetaCard
-                    key={item.label}
-                    label={item.label}
-                    value={item.value}
-                    helper={item.helper}
-                    valueClassName="text-2xl font-semibold tracking-tight text-slate-950"
-                    className="h-full"
-                  />
-                ))}
               </div>
             </section>
 
@@ -437,215 +390,110 @@ export default async function PublicProfilePage({ params }: Params) {
             </section>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-            <div className="space-y-6">
-              <section id="offerings" className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                    {roleFamily === "provider" ? <BriefcaseBusiness className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                      {roleFamily === "provider" ? "Services & offerings" : "Needs & interests"}
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      {roleFamily === "provider"
-                        ? "These are the topics and listings this member is using for local discovery."
-                        : "These are the interests and service categories this member wants others to notice."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  {topics.length > 0 ? (
-                    topics.map((topic) => (
-                      <span
-                        key={topic}
-                        className="rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-2 text-sm font-medium text-indigo-700"
-                      >
-                        {topic}
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-500">No tags added yet.</p>
-                  )}
-                </div>
-
-                {roleFamily === "provider" ? (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    {[...services, ...products].slice(0, 6).map((item) => (
-                      <article key={`${item.type}-${item.id}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-950">{item.title}</p>
-                            <p className="mt-1 text-sm text-slate-600">{item.category}</p>
-                          </div>
-                          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
-                            {item.type}
-                          </span>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-                          <span className="font-semibold text-slate-950">{formatPrice(item.price)}</span>
-                          <span className="capitalize text-slate-500">{item.status}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <InfoCard label="Need posts" value={postsCount} helper="Signals posted in the marketplace" className="h-full" />
-                    <InfoCard label="Active orders" value={activeOrders} helper="Currently being coordinated" className="h-full" />
-                    <InfoCard
-                      label="Profile score"
-                      value={`${profile.profile_completion_percent}%`}
-                      helper="How complete and discoverable this profile is right now."
-                      className="h-full"
-                    />
-                  </div>
-                )}
-
-                {roleFamily === "provider" && offerings.length === 0 ? (
-                  <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    No public listings yet. This profile still shows the saved summary, contact details, and discovery tags.
-                  </div>
-                ) : null}
-              </section>
-
-              <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                    {roleFamily === "provider" ? <Star className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                      {roleFamily === "provider" ? "Recent reviews" : "How this member can be engaged"}
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      {roleFamily === "provider"
-                        ? "Visible trust signals from marketplace activity."
-                        : "The profile is public, but deeper coordination still happens through connection and direct message."}
-                    </p>
-                  </div>
-                </div>
-
-                {roleFamily === "provider" ? (
-                  <div className="mt-6 space-y-3">
-                    {reviews.length > 0 ? (
-                      reviews.map((review, index) => (
-                        <article key={`${review.createdAt || "review"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                          <p className="text-sm font-semibold text-amber-500">
-                            {"★".repeat(Math.max(1, Math.min(5, Math.round(review.rating || 0))))}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-slate-700">
-                            {review.comment || "A customer left a rating for this profile."}
-                          </p>
-                        </article>
-                      ))
-                    ) : (
-                      <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                        No public reviews yet. Connect or message to start working together.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                    <InfoCard
-                      label="Connect"
-                      value="Network first"
-                      helper="Use connect when you want an ongoing trusted relationship."
-                      className="h-full"
-                    />
-                    <InfoCard
-                      label="Message"
-                      value="Direct chat"
-                      helper="Message opens a conversation thread and moves coordination into Chat."
-                      className="h-full"
-                    />
-                    <InfoCard
-                      label="Access"
-                      value="Public details"
-                      helper="The visible profile stays lightweight, linkable, and public for now."
-                      className="h-full"
-                    />
-                  </div>
-                )}
-              </section>
+          <section id="offerings" className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                {roleFamily === "provider" ? <BriefcaseBusiness className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+                  {roleFamily === "provider" ? "Services & offerings" : "Needs & interests"}
+                </h2>
+                <p className="text-sm text-slate-600">
+                  {roleFamily === "provider"
+                    ? "These are the topics and listings this member is using for local discovery."
+                    : "These are the interests and service categories this member wants others to notice."}
+                </p>
+              </div>
             </div>
 
-            <aside className="space-y-6 xl:sticky xl:top-8">
-              <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-950">Marketplace snapshot</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Live data refreshes as profile, listing, and order activity changes.
-                    </p>
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              {topics.length > 0 ? (
+                topics.map((topic) => (
+                  <span
+                    key={topic}
+                    className="rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-2 text-sm font-medium text-indigo-700"
+                  >
+                    {topic}
+                  </span>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No tags added yet.</p>
+              )}
+            </div>
+
+            {roleFamily === "provider" ? (
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                {[...services, ...products].slice(0, 6).map((item) => (
+                  <article key={`${item.type}-${item.id}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                        <p className="mt-1 text-sm text-slate-600">{item.category}</p>
+                      </div>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
+                        {item.type}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold text-slate-950">{formatPrice(item.price)}</span>
+                      <span className="capitalize text-slate-500">{item.status}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <InfoCard label="Need posts" value={postsCount} helper="Signals posted in the marketplace" className="h-full" />
+                <InfoCard label="Active orders" value={activeOrders} helper="Currently being coordinated" className="h-full" />
+                <InfoCard
+                  label="Profile score"
+                  value={`${profile.profile_completion_percent}%`}
+                  helper="How complete and discoverable this profile is right now."
+                  className="h-full"
+                />
+              </div>
+            )}
+
+            {roleFamily === "provider" && offerings.length === 0 ? (
+              <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                No public listings yet. This profile still shows the saved summary, contact details, and discovery tags.
+              </div>
+            ) : null}
+          </section>
+
+          {roleFamily === "provider" ? (
+            <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                  <Star className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">Recent reviews</h2>
+                  <p className="text-sm text-slate-600">Visible trust signals from marketplace activity.</p>
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                {reviews.length > 0 ? (
+                  reviews.map((review, index) => (
+                    <article key={`${review.createdAt || "review"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-sm font-semibold text-amber-500">
+                        {"★".repeat(Math.max(1, Math.min(5, Math.round(review.rating || 0))))}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                        {review.comment || "A customer left a rating for this profile."}
+                      </p>
+                    </article>
+                  ))
+                ) : (
+                  <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    No public reviews yet. Connect or message to start working together.
                   </div>
-                  <div className="shrink-0">
-                    <PublicProfileRealtime profileId={profile.id} roleFamily={roleFamily} />
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <CompactSnapshotMetric
-                    label="Profile completion"
-                    value={`${profile.profile_completion_percent}%`}
-                    helper="Saved fields"
-                    className="h-full"
-                  />
-                  <CompactSnapshotMetric
-                    label="Availability"
-                    value={formatAvailability(profile.availability)}
-                    helper="Discovery status"
-                    className="h-full"
-                  />
-                  <CompactSnapshotMetric
-                    label={roleFamily === "provider" ? "Response window" : "Current activity"}
-                    value={roleFamily === "provider" ? `~${responseMinutes} min` : `${activeOrders} active orders`}
-                    helper={roleFamily === "provider" ? "Estimated live" : "Based on live records"}
-                    className="h-full"
-                  />
-                  <CompactSnapshotMetric
-                    label={roleFamily === "provider" ? "Trust status" : "Visibility"}
-                    value={roleFamily === "provider" ? verificationLabel(verificationStatus) : "Public to everyone"}
-                    helper={roleFamily === "provider" ? "Quality + reviews" : "Shareable public page"}
-                    className="h-full"
-                  />
-                </div>
-              </section>
-
-              <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <h2 className="text-xl font-semibold tracking-tight text-slate-950">Quick actions</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Jump between the public page, your editor, and the marketplace without losing context.
-                </p>
-
-                <div className="mt-6 grid gap-3">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center justify-between rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100"
-                  >
-                    Join marketplace
-                    <Sparkles className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    href="/dashboard/profile"
-                    className="inline-flex items-center justify-between rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100"
-                  >
-                    Edit your profile
-                    <PencilLine className="h-4 w-4" />
-                  </Link>
-                  <Link
-                    href="/dashboard/welcome"
-                    className="inline-flex items-center justify-between rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100"
-                  >
-                    Back to dashboard
-                    <ExternalLink className="h-4 w-4" />
-                  </Link>
-                </div>
-              </section>
-            </aside>
-          </div>
+                )}
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>
@@ -724,26 +572,6 @@ function MetaCard({
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className={`mt-2 ${valueClassName}`.trim()}>{value}</p>
       {helper ? <p className="mt-2 text-sm leading-6 text-slate-600">{helper}</p> : null}
-    </div>
-  );
-}
-
-function CompactSnapshotMetric({
-  label,
-  value,
-  helper,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4 ${className}`.trim()}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-1 text-sm text-slate-600">{helper}</p>
     </div>
   );
 }
