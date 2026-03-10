@@ -27,7 +27,7 @@ import ProfileRoleToggle from "@/app/components/profile/ProfileRoleToggle";
 import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
 import ProfileStickySaveBar from "@/app/components/profile/ProfileStickySaveBar";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
-import { calculateVerificationStatus, createBusinessSlug, verificationLabel } from "@/lib/business";
+import { calculateVerificationStatus, verificationLabel } from "@/lib/business";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import {
   saveCurrentUserProfile,
@@ -44,6 +44,7 @@ import {
 } from "@/lib/profile/types";
 import {
   calculateProfileCompletionPercent,
+  buildPublicProfilePath,
   createProfileCompletionChecklist,
   isProfileOnboardingComplete,
   normalizePhone,
@@ -236,8 +237,11 @@ export default function ProfilePage() {
   const checklist = createProfileCompletionChecklist(previewProfile);
   const onboardingReady = Object.keys(submitErrors).length === 0;
   const onboardingComplete = isProfileOnboardingComplete(previewProfile);
-  const businessSlug = user?.id ? createBusinessSlug(formValues.fullName, user.id) : "";
-  const publicProfilePath = businessSlug ? `/business/${businessSlug}` : "";
+  const publicProfilePath = buildPublicProfilePath({
+    id: user?.id || "",
+    full_name: formValues.fullName,
+    name: formValues.fullName,
+  });
   const verificationStatus = calculateVerificationStatus({
     role: currentStoredRole,
     profileCompletion,
@@ -437,14 +441,23 @@ export default function ProfilePage() {
 
       if (mode === "manual") {
         const becameOnboarded = nextProfile.onboarding_completed;
+        const nextPublicProfilePath = buildPublicProfilePath(nextProfile);
         enqueueToast(
           "success",
-          becameOnboarded && onboardingQuery ? "Profile completed. Redirecting you into the marketplace." : "Profile saved."
+          becameOnboarded && onboardingQuery
+            ? "Profile completed. Redirecting you into the marketplace."
+            : nextPublicProfilePath
+            ? "Profile saved. Opening your public profile."
+            : "Profile saved."
         );
 
         if (becameOnboarded && onboardingQuery) {
           startTransition(() => {
             router.replace(POST_LOGIN_REDIRECT_ROUTE);
+          });
+        } else if (nextPublicProfilePath) {
+          startTransition(() => {
+            router.push(nextPublicProfilePath);
           });
         }
       }
@@ -715,26 +728,6 @@ export default function ProfilePage() {
                         Review order pipeline
                         <ArrowRight className="h-4 w-4" />
                       </button>
-                      {publicProfilePath ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={handleCopyPublicProfile}
-                            className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
-                          >
-                            Copy public profile link
-                            <Copy className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => window.open(publicProfilePath, "_blank", "noopener,noreferrer")}
-                            className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
-                          >
-                            Open public profile
-                            <ExternalLink className="h-4 w-4" />
-                          </button>
-                        </>
-                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -773,6 +766,40 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
+
+              {publicProfilePath ? (
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Public profile</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        Anyone with this link can view the saved profile, contact details, and marketplace presence for now.
+                      </p>
+                    </div>
+                    <span className="inline-flex w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
+                      Visible to everyone
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-2 md:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyPublicProfile}
+                      className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                    >
+                      Copy public profile link
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.open(publicProfilePath, "_blank", "noopener,noreferrer")}
+                      className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
+                    >
+                      View public profile
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
