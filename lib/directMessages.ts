@@ -1,17 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ChatApiError, DirectConversationResponse, SendChatMessageResponse } from "@/lib/api/chat";
+import { fetchAuthedJson } from "@/lib/clientApi";
 
 type ConversationParticipantRow = {
   conversation_id: string | null;
 };
 
-type ConversationInsertRow = {
-  id: string;
-};
-
-const isMissingRpcError = (message: string) =>
-  /function .* does not exist|could not find the function .* in the schema cache|get_or_create_direct_conversation/i.test(
-    message
-  );
+const getChatApiErrorMessage = (payload: ChatApiError | null | undefined, fallback: string) => payload?.message || fallback;
 
 const normalizeConversationIds = (rows: ConversationParticipantRow[] | null | undefined) =>
   (rows || [])
@@ -71,80 +66,55 @@ export const getOrCreateDirectConversationId = async (
     throw new Error("Cannot create a direct conversation with yourself.");
   }
 
-  const rpcResult = await supabase.rpc("get_or_create_direct_conversation", {
-    target_user_id: recipientId,
+  const payload = await fetchAuthedJson<DirectConversationResponse>(supabase, "/api/chat/direct", {
+    method: "POST",
+    body: JSON.stringify({
+      recipientId,
+    }),
   });
 
-  if (!rpcResult.error) {
-    if (typeof rpcResult.data === "string" && rpcResult.data) {
-      return rpcResult.data;
-    }
-  } else if (!isMissingRpcError(rpcResult.error.message || "")) {
-    throw new Error(rpcResult.error.message);
+  if (!payload.ok) {
+    throw new Error(getChatApiErrorMessage(payload, "Unable to create conversation."));
   }
 
-  const existingConversationId = await findDirectConversationId(supabase, viewerId, recipientId);
-  if (existingConversationId) {
-    return existingConversationId;
-  }
-
-  const { data: createdConversation, error: createdConversationError } = await supabase
-    .from("conversations")
-    .insert({ created_by: viewerId })
-    .select("id")
-    .single();
-
-  if (createdConversationError || !(createdConversation as ConversationInsertRow | null)?.id) {
-    throw new Error(createdConversationError?.message || "Unable to create conversation.");
-  }
-
-  const conversationId = (createdConversation as ConversationInsertRow).id;
-
-  const { error: participantError } = await supabase.from("conversation_participants").upsert(
-    [
-      { conversation_id: conversationId, user_id: viewerId },
-      { conversation_id: conversationId, user_id: recipientId },
-    ],
-    {
-      onConflict: "conversation_id,user_id",
-      ignoreDuplicates: true,
-    }
-  );
-
-  if (participantError) {
-    throw new Error(participantError.message);
-  }
-
-  return conversationId;
+  return payload.conversationId;
 };
 
-export const insertConversationMessage = async (supabase: SupabaseClient, params: {
-  conversationId: string;
-  senderId: string;
-  content: string;
-}) => {
+export const insertConversationMessage = async (
+  supabase: SupabaseClient,
+  params: {
+    conversationId: string;
+    senderId: string;
+    content: string;
+  }
+) => {
   const { conversationId, senderId, content } = params;
 
   if (!conversationId || !senderId || !content.trim()) {
     throw new Error("conversationId, senderId, and content are required.");
   }
 
-  const { error } = await supabase.from("messages").insert({
-    conversation_id: conversationId,
-    sender_id: senderId,
-    content: content.trim(),
+  const payload = await fetchAuthedJson<SendChatMessageResponse>(supabase, "/api/chat/messages", {
+    method: "POST",
+    body: JSON.stringify({
+      conversationId,
+      content: content.trim(),
+    }),
   });
 
-  if (error) {
-    throw new Error(error.message);
+  if (!payload.ok) {
+    throw new Error(getChatApiErrorMessage(payload, "Unable to send message."));
   }
 };
 
-export const sendDirectMessage = async (supabase: SupabaseClient, params: {
-  viewerId: string;
-  recipientId: string;
-  content: string;
-}) => {
+export const sendDirectMessage = async (
+  supabase: SupabaseClient,
+  params: {
+    viewerId: string;
+    recipientId: string;
+    content: string;
+  }
+) => {
   const { viewerId, recipientId, content } = params;
   const conversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
   await insertConversationMessage(supabase, {
