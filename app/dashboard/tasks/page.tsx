@@ -11,11 +11,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   Activity,
   AlertCircle,
-  ArrowUpRight,
   BarChart3,
   Calendar,
   CheckCheck,
@@ -432,6 +432,9 @@ const isMissingSupabaseRelation = (message: string) =>
 export default function TasksPage() {
   const router = useRouter();
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activitySectionRef = useRef<HTMLElement | null>(null);
+  const liveOrdersSectionRef = useRef<HTMLDivElement | null>(null);
+  const historySectionRef = useRef<HTMLElement | null>(null);
   const [selectedTab, setSelectedTab] = useState<TaskTab>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [tasks, setTasks] = useState<Task[]>(demoTasks);
@@ -1036,63 +1039,132 @@ export default function TasksPage() {
 
   const realtimeMeta = realtimeStateMeta[realtimeState];
   const RealtimeIcon = realtimeMeta.icon;
+  const scrollToSection = useCallback((ref: { current: HTMLElement | null }) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-5 sm:space-y-6 lg:space-y-8">
+    <div className="mx-auto w-full max-w-550 space-y-5 sm:space-y-6 lg:space-y-7">
       <RouteObservability route="tasks" />
 
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-indigo-900 to-blue-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.28),transparent_44%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.24),transparent_50%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:36px_36px]" />
+      <motion.section
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[1.3rem] border border-emerald-300/35 bg-linear-to-br from-slate-950 via-emerald-900 to-cyan-800 p-3 text-white shadow-[0_20px_46px_-30px_rgba(6,95,70,0.8)] sm:p-4"
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-28"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+            }}
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-slate-950/58 via-emerald-900/36 to-cyan-900/48" />
+        </div>
+        <motion.div
+          className="pointer-events-none absolute -right-5 top-2 h-24 w-24 rounded-full bg-emerald-300/24 blur-3xl"
+          animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+          transition={{ duration: 6.6, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="pointer-events-none absolute left-6 bottom-0 h-20 w-20 rounded-full bg-cyan-300/18 blur-2xl"
+          animate={{ x: [0, 10, 0], y: [0, -6, 0] }}
+          transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
+        />
 
-        <div className="relative z-10 space-y-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="relative space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-white">Task Operations</p>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-emerald-50">
+              <RealtimeIcon className={`h-3 w-3 ${loading || realtimeState === "connecting" ? "animate-spin" : ""}`} />
+              {loading ? "Syncing task board..." : usingDemo ? "Preview data live" : realtimeMeta.label}
+            </span>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
-                <Activity className="h-3.5 w-3.5" />
-                {loading ? "Syncing task pipeline..." : usingDemo ? "Task operations preview" : "Supabase realtime task operations"}
-              </div>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[34px]">Task Operations</h1>
-                <p className="mt-1.5 max-w-2xl text-sm text-white/80 sm:text-base">
-                  Production-grade control center for incoming leads, active jobs, completed orders, and live status
-                  shifts.
+                <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[34px]">
+                  Keep local task operations moving in realtime.
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-emerald-50/88 sm:text-base">
+                  Refresh the board, focus active work, and track pipeline health from one compact dashboard hero.
                 </p>
               </div>
-              <div className="inline-flex items-center gap-2 text-xs text-white/80">
-                <Sparkles className="h-4 w-4" />
-                {actionRequiredCount} tasks currently require action
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => void loadTasks(true)}
+                  disabled={loading}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                    </span>
+                    <p className="text-base font-semibold">Refresh Board</p>
+                  </div>
+                  <p className="mt-1 text-xs text-emerald-50/90">Pull the latest orders, events, and status changes.</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTab("all");
+                    setSelectedStatus("active");
+                    scrollToSection(liveOrdersSectionRef);
+                  }}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <TrendingUp size={14} />
+                    </span>
+                    <p className="text-base font-semibold">Focus Live Work</p>
+                  </div>
+                  <p className="mt-1 text-xs text-emerald-50/90">Jump straight to active work that needs attention.</p>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {actionRequiredCount} need action
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {taskEvents.length} recent events
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {completionRate}% completion
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {tasks.length} tasks tracked
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  last sync {lastSyncAt ? formatAgo(lastSyncAt, clockMs) : usingDemo ? "demo" : "--"}
+                </span>
               </div>
             </div>
 
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
-            >
-              Open Marketplace
-              <ArrowUpRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {headlineStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white/75">{stat.label}</span>
-                  <div className={`grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br ${stat.color}`}>
-                    <stat.icon className="h-4 w-4 text-white" />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {headlineStats.map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-white/20 bg-white/12 p-3 text-white backdrop-blur">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{stat.label}</div>
+                    <span className={`grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br ${stat.color}`}>
+                      <stat.icon className="h-3.5 w-3.5 text-white" />
+                    </span>
                   </div>
+                  <div className="mt-1 text-2xl font-bold">{stat.value}</div>
+                  <div className="text-[11px] text-white/70">{stat.subtitle}</div>
                 </div>
-                <div className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{stat.value}</div>
-                <div className="mt-1 text-xs text-white/70">{stat.subtitle}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {usingDemo && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -1144,7 +1216,7 @@ export default function TasksPage() {
           })}
         </div>
 
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <aside ref={activitySectionRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)] xl:items-start">
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3 xl:flex-col xl:items-start">
@@ -1280,7 +1352,7 @@ export default function TasksPage() {
         </div>
       </section>
 
-      <div className="space-y-4">
+      <div ref={liveOrdersSectionRef} className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-2xl font-bold text-slate-900">Live Orders</h2>
           <p className="text-sm text-slate-500">
@@ -1466,7 +1538,7 @@ export default function TasksPage() {
       )}
 
       {!loading && filteredHistoryTasks.length > 0 && (
-        <section className="space-y-4">
+        <section ref={historySectionRef} className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-2xl font-bold text-slate-900">Order History</h2>
             <p className="text-sm text-slate-500">

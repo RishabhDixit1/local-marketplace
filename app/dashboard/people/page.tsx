@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ensureClientProfile } from "@/lib/clientProfile";
@@ -20,7 +21,6 @@ import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/direct
 import {
   Activity,
   ArrowUpRight,
-  BarChart3,
   BadgeCheck,
   Check,
   ChevronsDown,
@@ -28,13 +28,11 @@ import {
   ExternalLink,
   Filter,
   Gauge,
-  Globe2,
   Loader2,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
-  Radar,
   RefreshCw,
   RotateCcw,
   Search,
@@ -62,7 +60,6 @@ import {
   distanceBetweenCoordinatesKm,
   getBrowserCoordinates,
   resolveCoordinates,
-  type Coordinates,
 } from "@/lib/geo";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 
@@ -773,9 +770,6 @@ const formatSyncTime = (iso: string) => {
   return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
-const formatCompactNumber = (value: number) =>
-  new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
-
 const describeMatchReason = (person: ProviderCard, online: boolean) => {
   const reasons: string[] = [];
   if (online) reasons.push("Online now");
@@ -794,6 +788,8 @@ export default function PeoplePage() {
   const reloadTimerRef = useRef<number | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
   const infiniteSentinelRef = useRef<HTMLDivElement | null>(null);
+  const connectionsSectionRef = useRef<HTMLElement | null>(null);
+  const resultsSectionRef = useRef<HTMLElement | null>(null);
   const deepLinkProviderAppliedRef = useRef(false);
   const [deepLinkContext] = useState<{
     providerId: string | null;
@@ -855,7 +851,6 @@ export default function PeoplePage() {
   const [connectionNotice, setConnectionNotice] = useState<ConnectionNotice | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
-  const [viewerCoordinates, setViewerCoordinates] = useState<Coordinates | null>(null);
   const [visibleCount, setVisibleCount] = useState(PROVIDERS_BATCH_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
@@ -1288,7 +1283,6 @@ export default function PeoplePage() {
         : null;
       const browserCoordinates = await browserCoordinatesPromise;
       const effectiveViewerCoordinates = browserCoordinates || profileCoordinates || defaultMarketCoordinates();
-      setViewerCoordinates(effectiveViewerCoordinates);
 
       const memberIds = Array.from(
         new Set(
@@ -1967,18 +1961,10 @@ export default function PeoplePage() {
 
   const peopleNearby = providers.filter((provider) => provider.distanceKm <= 5).length;
   const activeNow = providers.filter((provider) => isProviderOnline(provider)).length;
-  const verifiedCount = providers.filter((provider) => provider.verified).length;
   const fastResponders = providers.filter(
     (provider) => provider.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES
   ).length;
-  const totalMarketplaceActivity = providers.reduce(
-    (sum, provider) => sum + provider.serviceCount + provider.productCount + (provider.demandCount || 0),
-    0
-  );
   const totalOpenLeads = providers.reduce((sum, provider) => sum + provider.openLeads, 0);
-  const averageResponse = providers.length
-    ? Math.round(providers.reduce((sum, provider) => sum + provider.responseMinutes, 0) / providers.length)
-    : 0;
   const activeCoverage = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
   const verifiedLiveCount = providers.filter((provider) => provider.verified && isProviderOnline(provider)).length;
   const avgRating = providers.length
@@ -1993,21 +1979,6 @@ export default function PeoplePage() {
     Number(requireReviews) +
     Number(verifiedOnly) +
     Number(instantOnly);
-
-  const topSpecialties = useMemo(() => {
-    const counts = new Map<string, number>();
-    providers.forEach((provider) => {
-      provider.tags.forEach((tag) => {
-        const normalized = tag.trim();
-        if (!normalized) return;
-        counts.set(normalized, (counts.get(normalized) || 0) + 1);
-      });
-    });
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([tag, count]) => ({ tag, count }));
-  }, [providers]);
 
   const clearAdvancedFilters = () => {
     setMinRating(0);
@@ -2025,6 +1996,9 @@ export default function PeoplePage() {
     setShowAdvancedFilters(false);
     clearAdvancedFilters();
   };
+  const scrollToSection = useCallback((ref: { current: HTMLElement | null }) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const featuredProviders = [...filteredProviders].sort((a, b) => b.rankScore - a.rankScore).slice(0, 3);
   const liveProviders = filteredProviders.filter((provider) => isProviderOnline(provider)).slice(0, 8);
   const providerNameById = useMemo(
@@ -2042,113 +2016,145 @@ export default function PeoplePage() {
 
   return (
     <div className="w-full max-w-550 mx-auto space-y-5 sm:space-y-6 lg:space-y-7">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-br from-slate-900 via-indigo-900 to-cyan-900 p-5 text-white shadow-2xl sm:p-7 lg:p-8">
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at top left, rgba(255,255,255,0.24), transparent 40%), radial-gradient(circle at bottom right, rgba(56,189,248,0.28), transparent 44%)",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)",
-            backgroundSize: "34px 34px",
-          }}
-        />
+      <motion.section
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[1.3rem] border border-cyan-300/35 bg-linear-to-br from-slate-950 via-indigo-900 to-cyan-700 p-3 shadow-[0_20px_46px_-30px_rgba(14,116,144,0.75)] sm:p-4"
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px)",
+              backgroundSize: "30px 30px",
+            }}
+          />
+          <div className="absolute inset-0 bg-linear-to-r from-slate-950/58 via-indigo-900/38 to-cyan-900/48" />
+          <motion.div
+            className="absolute -right-5 top-2 h-24 w-24 rounded-full bg-cyan-300/25 blur-3xl"
+            animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+            transition={{ duration: 6.6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute left-6 bottom-0 h-20 w-20 rounded-full bg-indigo-300/20 blur-2xl"
+            animate={{ x: [0, 10, 0], y: [0, -6, 0] }}
+            transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
 
-        <div className="relative z-10 space-y-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="relative space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-white">People Network</p>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-cyan-50">
+              {syncing ? <Loader2 size={12} className="animate-spin" /> : <Activity size={12} />}
+              {syncing ? "Syncing live network..." : networkPulseLabel}
+            </span>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white/90">
-                {syncing ? <Loader2 size={13} className="animate-spin" /> : <Activity size={13} />}
-                {syncing ? "Syncing live network..." : networkPulseLabel}
-              </div>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[34px]">People Network</h1>
-                <p className="mt-1.5 max-w-2xl text-sm text-white/80 sm:text-base">
-                  Discover, verify, and connect with trusted providers in a realtime local graph.
+                <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[34px]">
+                  Discover trusted local providers and act on live availability.
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-cyan-50/88 sm:text-base">
+                  Browse nearby people, filter the strongest matches, and move into connections or active providers
+                  without leaving the dashboard.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-white/85">
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
-                  <Globe2 size={12} />
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => void loadProviders(true)}
+                  disabled={syncing}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+                    </span>
+                    <p className="text-base font-semibold">Refresh Network</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Pull the latest presence and ranking data.</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("Active Now");
+                    scrollToSection(resultsSectionRef);
+                  }}
+                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                      <Users size={14} />
+                    </span>
+                    <p className="text-base font-semibold">Open Live Matches</p>
+                  </div>
+                  <p className="mt-1 text-xs text-cyan-50/90">Jump to providers who are available right now.</p>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
                   {providers.length} providers indexed
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
-                  <Radar size={12} />
-                  {activeCoverage}% active coverage
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {activeNow} active now
                 </span>
-                {!!lastSyncedAt && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
-                    <RefreshCw size={12} />
-                    synced {formatSyncTime(lastSyncedAt)}
-                  </span>
-                )}
-                {viewerCoordinates && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-1">
-                    <MapPin size={12} />
-                    center {viewerCoordinates.latitude.toFixed(2)}, {viewerCoordinates.longitude.toFixed(2)}
-                  </span>
-                )}
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {verifiedLiveCount} verified live
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {avgRating} avg rating
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {fastResponders} fast responders
+                </span>
+                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                  {filteredProviders.length} matches
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/20 bg-white/12 p-3 text-white backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Nearby</div>
+                <div className="mt-1 text-2xl font-bold">{peopleNearby}</div>
+                <div className="text-[11px] text-white/70">within {radiusKm} km</div>
+              </div>
+              <div className="rounded-xl border border-white/20 bg-white/12 p-3 text-white backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Coverage</div>
+                <div className="mt-1 text-2xl font-bold">{activeCoverage}%</div>
+                <div className="text-[11px] text-white/70">active network</div>
+              </div>
               <button
                 type="button"
-                onClick={() => void loadProviders(true)}
-                disabled={syncing}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={() =>
+                  currentUserId && !usingDemo ? scrollToSection(connectionsSectionRef) : router.push("/dashboard/tasks")
+                }
+                className="rounded-xl border border-white/20 bg-white/12 p-3 text-left text-white backdrop-blur transition hover:bg-white/18"
               >
-                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-                Refresh
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Connections</div>
+                <div className="mt-1 text-lg font-bold">
+                  {currentUserId && !usingDemo ? connectionBuckets.accepted.length : totalOpenLeads}
+                </div>
+                <div className="text-[11px] text-white/70">
+                  {currentUserId && !usingDemo ? "open connection hub" : "go to tasks"}
+                </div>
               </button>
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/tasks")}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
-              >
-                Go To Tasks
-                <ArrowUpRight size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <MetricCard icon={MapPin} label="Nearby" value={peopleNearby} helper="within 5 km" />
-            <MetricCard icon={Activity} label="Active Now" value={activeNow} helper={`${activeCoverage}% coverage`} />
-            <MetricCard icon={Star} label="Avg Rating" value={`${avgRating}★`} helper={`${verifiedCount} verified`} />
-            <MetricCard icon={Zap} label="Fast Response" value={fastResponders} helper={`~${averageResponse || "--"} min avg`} />
-            <MetricCard
-              icon={BarChart3}
-              label="Open Leads"
-              value={formatCompactNumber(totalOpenLeads)}
-              helper={`${formatCompactNumber(totalMarketplaceActivity)} marketplace signals`}
-            />
-            <MetricCard icon={ShieldCheck} label="Verified Live" value={verifiedLiveCount} helper="trusted + online" />
-          </div>
-
-          {!!topSpecialties.length && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Top specialties in network</p>
-              <div className="flex flex-wrap gap-2">
-                {topSpecialties.map((item) => (
-                  <span
-                    key={`specialty-${item.tag}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs"
-                  >
-                    {item.tag}
-                    <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">{item.count}</span>
-                  </span>
-                ))}
+              <div className="rounded-xl border border-white/20 bg-white/12 p-3 text-white backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">Last sync</div>
+                <div className="mt-1 text-lg font-bold">{lastSyncedAt ? formatSyncTime(lastSyncedAt) : "--"}</div>
+                <div className="text-[11px] text-white/70">{sortBy}</div>
               </div>
             </div>
-          )}
+          </div>
         </div>
-      </section>
+      </motion.section>
 
       {!!errorMessage && !usingDemo && (
         <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
@@ -2161,7 +2167,7 @@ export default function PeoplePage() {
       )}
 
       {currentUserId && !usingDemo && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section ref={connectionsSectionRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-950">Connections</h2>
@@ -2331,7 +2337,7 @@ export default function PeoplePage() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section ref={resultsSectionRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
             <Search size={16} className="text-slate-500" />
@@ -3001,29 +3007,6 @@ export default function PeoplePage() {
         open={!!selectedProvider}
         onClose={() => setSelectedProvider(null)}
       />
-    </div>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  helper,
-}: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  value: string | number;
-  helper: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-sm sm:p-4">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold text-white/75">{label}</p>
-        <Icon size={14} className="text-white/80" />
-      </div>
-      <p className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">{value}</p>
-      <p className="mt-0.5 text-[11px] text-white/65">{helper}</p>
     </div>
   );
 }
