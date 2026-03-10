@@ -13,6 +13,7 @@ import {
 } from "@/lib/profile/types";
 
 type FlexibleProfileShape = {
+  id?: string | null;
   full_name?: string | null;
   name?: string | null;
   location?: string | null;
@@ -33,6 +34,7 @@ type FlexibleProfileShape = {
 
 const providerRoles = new Set(["provider", "service_provider", "seller", "business"]);
 const availabilityValues = new Set<ProfileAvailability>(["available", "busy", "offline"]);
+const profileIdPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const trim = (value: string | null | undefined) => value?.trim() ?? "";
 
@@ -105,6 +107,35 @@ export const normalizeWebsite = (value: string | null | undefined) => {
   } catch {
     return "";
   }
+};
+
+export const slugifyProfileName = (value: string | null | undefined) => {
+  const raw = trim(value).toLowerCase() || "local-member";
+  return (
+    raw
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "local-member"
+  );
+};
+
+export const createPublicProfileSlug = (name: string | null | undefined, id: string | null | undefined) => {
+  const safeName = slugifyProfileName(name);
+  const safeId = trim(id);
+  if (!safeId) return safeName;
+  return `${safeName}-${safeId}`;
+};
+
+export const extractProfileIdFromSlug = (slug: string) => {
+  const match = slug.match(profileIdPattern);
+  return match ? match[0] : null;
+};
+
+export const buildPublicProfilePath = (profile: FlexibleProfileShape | null | undefined) => {
+  const id = trim(profile?.id);
+  if (!id) return "";
+  return `/profile/${createPublicProfileSlug(getProfileDisplayName(profile), id)}`;
 };
 
 export const inferProfileNameFromUser = (user: User) => {

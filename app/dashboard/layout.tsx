@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
-import { ProfileProvider } from "@/app/components/profile/ProfileContext";
+import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
+import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
   Bookmark,
@@ -37,8 +38,21 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <ProfileProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </ProfileProvider>
+  );
+}
+
+function DashboardShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
+  const { profile, loading: profileLoading } = useProfileContext();
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -46,6 +60,10 @@ export default function DashboardLayout({
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const myProfileHref =
+    !profileLoading && profile && isProfileOnboardingComplete(profile)
+      ? buildPublicProfilePath(profile) || "/dashboard/profile"
+      : "/dashboard/profile";
 
   useEffect(() => {
     let active = true;
@@ -293,7 +311,7 @@ export default function DashboardLayout({
 
           <div className={`border-t border-slate-200 space-y-2 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
             <button
-              onClick={() => router.push("/dashboard/profile")}
+              onClick={() => router.push(myProfileHref)}
               title={desktopNavCollapsed ? "My Profile" : undefined}
               className={`w-full flex items-center rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors ${
                 desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
@@ -306,7 +324,9 @@ export default function DashboardLayout({
               {!desktopNavCollapsed && (
                 <div className="text-left">
                   <p className="text-sm font-semibold text-slate-900">My Profile</p>
-                  <p className="text-xs text-slate-500">Manage account</p>
+                  <p className="text-xs text-slate-500">
+                    {myProfileHref === "/dashboard/profile" ? "Complete profile" : "View public profile"}
+                  </p>
                 </div>
               )}
             </button>
@@ -353,7 +373,7 @@ export default function DashboardLayout({
                 </Link>
                 <NotificationCenter />
                 <Link
-                  href="/dashboard/profile"
+                  href={myProfileHref}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
                   aria-label="Open profile"
                   title="My profile"
@@ -385,9 +405,7 @@ export default function DashboardLayout({
                 )}
               </div>
             )}
-            <ProfileProvider>
-              <OnboardingGuard>{children}</OnboardingGuard>
-            </ProfileProvider>
+            <OnboardingGuard>{children}</OnboardingGuard>
           </main>
         </div>
       </div>
@@ -452,7 +470,7 @@ export default function DashboardLayout({
             <button
               onClick={() => {
                 setMenuOpen(false);
-                router.push("/dashboard/profile");
+                router.push(myProfileHref);
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800"
             >
