@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, MessageCircle, SquarePen, UserCheck, UserPlus, XCircle } from "lucide-react";
+import { ExternalLink, Loader2, MessageCircle, SquarePen, UserCheck, UserPlus, XCircle, Zap } from "lucide-react";
 import {
   deriveConnectionState,
   listCurrentUserConnectionRows,
@@ -39,6 +39,7 @@ export default function PublicProfileActions({
     () => deriveConnectionState(viewerId, profileUserId, connectionRows),
     [connectionRows, profileUserId, viewerId]
   );
+  const canMessage = isSelf || connectionState.kind === "accepted";
 
   const refreshConnections = useCallback(async (currentViewerId: string) => {
     const rows = await listCurrentUserConnectionRows(currentViewerId);
@@ -155,6 +156,11 @@ export default function PublicProfileActions({
       return;
     }
 
+    if (connectionState.kind !== "accepted") {
+      setNotice("Connect with this member first to start a direct chat.");
+      return;
+    }
+
     setMessageBusy(true);
 
     try {
@@ -165,7 +171,37 @@ export default function PublicProfileActions({
     } finally {
       setMessageBusy(false);
     }
-  }, [isSelf, profileUserId, redirectToSignIn, router, viewerId]);
+  }, [connectionState.kind, isSelf, profileUserId, redirectToSignIn, router, viewerId]);
+
+  const handleLiveTalk = useCallback(async () => {
+    setNotice(null);
+
+    if (isSelf) {
+      router.push("/dashboard/chat");
+      return;
+    }
+
+    if (!viewerId) {
+      redirectToSignIn();
+      return;
+    }
+
+    if (connectionState.kind !== "accepted") {
+      setNotice("Connect with this member first to start Live Talk.");
+      return;
+    }
+
+    setMessageBusy(true);
+
+    try {
+      const conversationId = await getOrCreateDirectConversationId(supabase, viewerId, profileUserId);
+      router.push(`/dashboard/chat?open=${conversationId}&liveTalk=1`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to start Live Talk right now.");
+    } finally {
+      setMessageBusy(false);
+    }
+  }, [connectionState.kind, isSelf, profileUserId, redirectToSignIn, router, viewerId]);
 
   const connectButton = (() => {
     if (isSelf) {
@@ -225,12 +261,22 @@ export default function PublicProfileActions({
 
         <button
           type="button"
-          disabled={messageBusy}
+          disabled={messageBusy || (!isSelf && authResolved && !!viewerId && !canMessage)}
           onClick={() => void handleMessage()}
           className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
         >
           {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-          {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to message" : "Message"}
+          {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to message" : canMessage ? "Message" : "Chat after connect"}
+        </button>
+
+        <button
+          type="button"
+          disabled={messageBusy || (!isSelf && authResolved && !!viewerId && !canMessage)}
+          onClick={() => void handleLiveTalk()}
+          className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-3 text-sm font-semibold text-cyan-800 transition hover:border-cyan-300 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+        >
+          {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+          {authResolved && !viewerId ? "Sign in for Live Talk" : canMessage ? "Start Live Talk" : "Live Talk after connect"}
         </button>
 
         <a

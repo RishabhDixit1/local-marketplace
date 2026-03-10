@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   Activity,
@@ -79,9 +81,6 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
-const DEMO_CHAT_TARGET_COUNT = 2;
-const DEMO_CHAT_PREFERRED_NAMES = ["User", "Test User 2"];
-const DEMO_CHAT_WELCOME_MESSAGE = "Welcome - demo conversation is ready for this account.";
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -169,12 +168,46 @@ const mapChannelHealth = (status: string): ChannelHealth => {
   return "connecting";
 };
 
+const mapLiveTalkRow = (row: Record<string, unknown> | null | undefined): LiveTalkRequestRecord | null => {
+  const id = typeof row?.id === "string" ? row.id.trim() : "";
+  const conversationId = typeof row?.conversation_id === "string" ? row.conversation_id.trim() : "";
+  const callerId = typeof row?.caller_id === "string" ? row.caller_id.trim() : "";
+  const recipientId = typeof row?.recipient_id === "string" ? row.recipient_id.trim() : "";
+  const status = typeof row?.status === "string" ? row.status.trim().toLowerCase() : "pending";
+
+  if (!id || !conversationId || !callerId || !recipientId) return null;
+
+  return {
+    id,
+    conversation_id: conversationId,
+    caller_id: callerId,
+    recipient_id: recipientId,
+    status:
+      status === "accepted" || status === "declined" || status === "ended" || status === "cancelled"
+        ? status
+        : "pending",
+    mode: "audio_video",
+    created_at: typeof row?.created_at === "string" ? row.created_at : new Date().toISOString(),
+    updated_at: typeof row?.updated_at === "string" ? row.updated_at : new Date().toISOString(),
+    responded_at: typeof row?.responded_at === "string" ? row.responded_at : null,
+    metadata:
+      row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : null,
+  };
+};
+
 export default function ChatPage() {
   const router = useRouter();
   const [requestedChatId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
     return params.get("open");
+  });
+  const [requestedLiveTalk] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("liveTalk") === "1";
   });
   const [feedContext] = useState<FeedMessageContext | null>(() => {
     if (typeof window === "undefined") return null;
@@ -219,6 +252,8 @@ export default function ChatPage() {
   const [streamConnection, setStreamConnection] = useState<ChannelHealth>("connecting");
   const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState<string | null>(null);
   const [supportsReadReceipts, setSupportsReadReceipts] = useState(true);
+  const [liveTalkRequest, setLiveTalkRequest] = useState<LiveTalkRequestRecord | null>(null);
+  const [liveTalkBusy, setLiveTalkBusy] = useState(false);
 
   const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -228,6 +263,7 @@ export default function ChatPage() {
   const localTypingRef = useRef(false);
   const stopTypingTimerRef = useRef<number | null>(null);
   const remoteTypingTimerRef = useRef<number | null>(null);
+  const autoRequestedLiveTalkRef = useRef(false);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedChat) || null,
@@ -269,124 +305,6 @@ export default function ChatPage() {
     },
     [userId]
   );
-
-  const ensureDemoConversationsForUser = useCallback(async () => {
-    if (!userId) return false;
-
-    const preferredProfilesResult = await supabase
-      .from("profiles")
-      .select("id,name")
-      .in("name", DEMO_CHAT_PREFERRED_NAMES)
-      .neq("id", userId)
-      .limit(6);
-
-    const chosenProfiles: ProfileRow[] = [];
-    const chosenProfileIds = new Set<string>();
-
-    const pushProfiles = (rows: ProfileRow[] | null) => {
-      (rows || []).forEach((row) => {
-        if (!row?.id || row.id === userId || chosenProfileIds.has(row.id)) return;
-        chosenProfileIds.add(row.id);
-        chosenProfiles.push(row);
-      });
-    };
-
-    if (!preferredProfilesResult.error) {
-      pushProfiles((preferredProfilesResult.data as ProfileRow[] | null) || []);
-    }
-
-    if (chosenProfiles.length < DEMO_CHAT_TARGET_COUNT) {
-      const fallbackProfilesResult = await supabase
-        .from("profiles")
-        .select("id,name")
-        .neq("id", userId)
-        .limit(8);
-
-      if (!fallbackProfilesResult.error) {
-        pushProfiles((fallbackProfilesResult.data as ProfileRow[] | null) || []);
-      }
-    }
-
-    const demoTargets = chosenProfiles.slice(0, DEMO_CHAT_TARGET_COUNT);
-    if (!demoTargets.length) return false;
-
-    const { data: myConversationRows, error: myConversationRowsError } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", userId);
-
-    if (myConversationRowsError) {
-      return false;
-    }
-
-    const myConversationIds =
-      ((myConversationRows as Array<{ conversation_id: string }> | null) || []).map((row) => row.conversation_id);
-    const demoTargetIds = demoTargets.map((target) => target.id);
-    const existingTargetUserIds = new Set<string>();
-
-    if (myConversationIds.length > 0) {
-      const { data: existingRows } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id,user_id")
-        .in("conversation_id", myConversationIds)
-        .in("user_id", demoTargetIds);
-
-      ((existingRows as Array<{ conversation_id: string; user_id: string }> | null) || []).forEach((row) => {
-        if (row.user_id && row.user_id !== userId) {
-          existingTargetUserIds.add(row.user_id);
-        }
-      });
-    }
-
-    let createdAnyConversation = false;
-
-    for (const target of demoTargets) {
-      if (existingTargetUserIds.has(target.id)) continue;
-
-      const { data: createdConversation, error: createConversationError } = await supabase
-        .from("conversations")
-        .insert({
-          created_by: userId,
-        })
-        .select("id")
-        .single();
-
-      if (createConversationError || !createdConversation?.id) {
-        continue;
-      }
-
-      const { error: participantError } = await supabase.from("conversation_participants").upsert(
-        [
-          {
-            conversation_id: createdConversation.id,
-            user_id: userId,
-          },
-          {
-            conversation_id: createdConversation.id,
-            user_id: target.id,
-          },
-        ],
-        {
-          onConflict: "conversation_id,user_id",
-          ignoreDuplicates: true,
-        }
-      );
-
-      if (participantError) {
-        continue;
-      }
-
-      await supabase.from("messages").insert({
-        conversation_id: createdConversation.id,
-        sender_id: userId,
-        content: DEMO_CHAT_WELCOME_MESSAGE,
-      });
-
-      createdAnyConversation = true;
-    }
-
-    return createdAnyConversation;
-  }, [userId]);
 
   const loadConversations = useCallback(
     async (soft = false) => {
@@ -618,6 +536,86 @@ export default function ChatPage() {
     [supportsReadReceipts, userId]
   );
 
+  const loadLiveTalkRequest = useCallback(async (conversationId: string) => {
+    if (!conversationId) {
+      setLiveTalkRequest(null);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("live_talk_requests")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      if (!isMissingColumnError(error.message)) {
+        console.warn("Failed to load live talk state:", error.message);
+      }
+      setLiveTalkRequest(null);
+      return;
+    }
+
+    setLiveTalkRequest(mapLiveTalkRow((data as Record<string, unknown> | null) || null));
+  }, []);
+
+  const startLiveTalk = useCallback(
+    async (conversationIdOverride?: string) => {
+      const conversationId = conversationIdOverride || selectedChat;
+      if (!conversationId) return;
+
+      setLiveTalkBusy(true);
+      setChatError(null);
+
+      try {
+        const payload = await fetchAuthedJson<CreateLiveTalkRequest>(supabase, "/api/live-talk", {
+          method: "POST",
+          body: JSON.stringify({
+            conversationId,
+          }),
+        });
+
+        if (!payload.ok) {
+          throw new Error(payload.message || "Unable to start Live Talk.");
+        }
+
+        setLiveTalkRequest(payload.request);
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : "Unable to start Live Talk.");
+      } finally {
+        setLiveTalkBusy(false);
+      }
+    },
+    [selectedChat]
+  );
+
+  const updateLiveTalk = useCallback(async (requestId: string, status: "accepted" | "declined" | "ended" | "cancelled") => {
+    setLiveTalkBusy(true);
+    setChatError(null);
+
+    try {
+      const payload = await fetchAuthedJson<CreateLiveTalkRequest>(supabase, "/api/live-talk", {
+        method: "PATCH",
+        body: JSON.stringify({
+          requestId,
+          status,
+        }),
+      });
+
+      if (!payload.ok) {
+        throw new Error(payload.message || "Unable to update Live Talk.");
+      }
+
+      setLiveTalkRequest(payload.request);
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Unable to update Live Talk.");
+    } finally {
+      setLiveTalkBusy(false);
+    }
+  }, []);
+
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -651,18 +649,16 @@ export default function ChatPage() {
     if (!userId) return;
 
     let isCancelled = false;
-    const bootstrapAndLoad = async () => {
-      await ensureDemoConversationsForUser();
-      if (isCancelled) return;
-      await loadConversations();
-    };
-
-    void bootstrapAndLoad();
+    void loadConversations().catch(() => {
+      if (!isCancelled) {
+        setLoadingConversations(false);
+      }
+    });
 
     return () => {
       isCancelled = true;
     };
-  }, [ensureDemoConversationsForUser, loadConversations, userId]);
+  }, [loadConversations, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -717,10 +713,49 @@ export default function ChatPage() {
   useEffect(() => {
     if (!selectedChat) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadMessages(selectedChat);
     void markConversationAsRead(selectedChat);
-  }, [loadMessages, markConversationAsRead, selectedChat]);
+    void loadLiveTalkRequest(selectedChat);
+  }, [loadLiveTalkRequest, loadMessages, markConversationAsRead, selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat) {
+      setLiveTalkRequest(null);
+      return;
+    }
+
+    const liveTalkChannel = supabase
+      .channel(`live-talk-${selectedChat}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "live_talk_requests",
+          filter: `conversation_id=eq.${selectedChat}`,
+        },
+        (payload) => {
+          setLastRealtimeEventAt(new Date().toISOString());
+          const nextRow = mapLiveTalkRow((payload.new as Record<string, unknown> | undefined) || null);
+          if (payload.eventType === "DELETE") {
+            setLiveTalkRequest(null);
+            return;
+          }
+          setLiveTalkRequest(nextRow);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(liveTalkChannel);
+    };
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!requestedLiveTalk || !selectedChat || autoRequestedLiveTalkRef.current) return;
+    autoRequestedLiveTalkRef.current = true;
+    void startLiveTalk(selectedChat);
+  }, [requestedLiveTalk, selectedChat, startLiveTalk]);
 
   useEffect(() => {
     if (!selectedChat || !userId) return;
@@ -911,25 +946,31 @@ export default function ChatPage() {
       messageInputRef.current.style.height = "44px";
     }
 
-    const { data: insertedMessage, error } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id: selectedChat,
-        sender_id: userId,
-        content: trimmed,
-      })
-      .select("id,conversation_id,content,sender_id,created_at")
-      .single();
+    let insertedMessage: Message | null = null;
 
-    if (error) {
+    try {
+      const payload = await fetchAuthedJson<SendChatMessageResponse>(supabase, "/api/chat/messages", {
+        method: "POST",
+        body: JSON.stringify({
+          conversationId: selectedChat,
+          content: trimmed,
+        }),
+      });
+
+      if (!payload.ok) {
+        throw new Error(payload.message || "Unable to send message.");
+      }
+
+      insertedMessage = payload.message as Message;
+    } catch (error) {
       setMessages((previous) => previous.filter((message) => message.id !== optimisticId));
       setInput(trimmed);
-      setChatError(`Failed to send message: ${error.message}`);
+      setChatError(`Failed to send message: ${error instanceof Error ? error.message : "unknown error"}`);
       setSending(false);
       return;
     }
 
-    setLastRealtimeEventAt((insertedMessage as Message).created_at || new Date().toISOString());
+    setLastRealtimeEventAt(insertedMessage?.created_at || new Date().toISOString());
 
     setMessages((previous) => {
       const withoutOptimistic = previous.filter((message) => message.id !== optimisticId);
@@ -946,7 +987,7 @@ export default function ChatPage() {
           ? {
               ...conversation,
               lastMessage: trimmed,
-              lastMessageAt: (insertedMessage as Message).created_at,
+              lastMessageAt: insertedMessage?.created_at,
               lastSenderId: userId,
               unreadCount: 0,
             }
@@ -1054,6 +1095,26 @@ export default function ChatPage() {
   const lastRealtimeLabel = lastRealtimeEventAt
     ? `Last event ${formatTimeAgo(lastRealtimeEventAt)} ago`
     : "Awaiting first live event";
+  const liveTalkRole =
+    liveTalkRequest && userId
+      ? liveTalkRequest.caller_id === userId
+        ? "caller"
+        : liveTalkRequest.recipient_id === userId
+        ? "recipient"
+        : null
+      : null;
+  const liveTalkStatusLabel =
+    liveTalkRequest?.status === "accepted"
+      ? "Live Talk accepted"
+      : liveTalkRequest?.status === "declined"
+      ? "Live Talk declined"
+      : liveTalkRequest?.status === "ended"
+      ? "Live Talk ended"
+      : liveTalkRequest?.status === "cancelled"
+      ? "Live Talk cancelled"
+      : liveTalkRequest
+      ? "Live Talk requested"
+      : null;
 
   return (
     <div className="relative h-[calc(100vh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]">
@@ -1367,6 +1428,17 @@ export default function ChatPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {selectedConversation?.otherUserId && (
+                      <button
+                        type="button"
+                        onClick={() => void startLiveTalk()}
+                        disabled={liveTalkBusy}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70"
+                      >
+                        {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                        {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
+                      </button>
+                    )}
                     {[
                       { label: "Presence", state: presenceConnection },
                       { label: "Messages", state: streamConnection },
@@ -1388,6 +1460,69 @@ export default function ChatPage() {
               </header>
 
               <div className="relative flex-1 overflow-y-auto bg-slate-50/65 px-4 py-5 sm:px-6">
+                {liveTalkRequest && (
+                  <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-sm text-slate-700 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">Live Talk</p>
+                        <p className="mt-1 font-semibold text-slate-900">{liveTalkStatusLabel}</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {liveTalkRequest.status === "pending"
+                            ? liveTalkRole === "recipient"
+                              ? "This member wants to launch the live audio/video workspace for this chat."
+                              : "Your live audio/video request is pending. Keep using chat while the other member responds."
+                            : liveTalkRequest.status === "accepted"
+                            ? "Realtime chat is active now. This placeholder is ready for WebRTC media wiring in the next pass."
+                            : liveTalkRequest.status === "declined"
+                            ? "The request was declined. You can keep coordinating in chat and retry later."
+                            : "This Live Talk session is no longer active."}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {liveTalkRequest.status === "pending" && liveTalkRole === "recipient" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void updateLiveTalk(liveTalkRequest.id, "accepted")}
+                              disabled={liveTalkBusy}
+                              className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void updateLiveTalk(liveTalkRequest.id, "declined")}
+                              disabled={liveTalkBusy}
+                              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-70"
+                            >
+                              Decline
+                            </button>
+                          </>
+                        )}
+                        {liveTalkRequest.status === "pending" && liveTalkRole === "caller" && (
+                          <button
+                            type="button"
+                            onClick={() => void updateLiveTalk(liveTalkRequest.id, "cancelled")}
+                            disabled={liveTalkBusy}
+                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                          >
+                            Cancel request
+                          </button>
+                        )}
+                        {liveTalkRequest.status === "accepted" && (
+                          <button
+                            type="button"
+                            onClick={() => void updateLiveTalk(liveTalkRequest.id, "ended")}
+                            disabled={liveTalkBusy}
+                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                          >
+                            End session
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {loadingMessages ? (
                   <p className="inline-flex items-center gap-2 text-sm text-slate-600">
                     <Loader2 className="h-4 w-4 animate-spin" />

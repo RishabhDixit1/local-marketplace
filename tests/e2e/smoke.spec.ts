@@ -40,12 +40,22 @@ test("authenticated marketplace smoke", async ({ page }) => {
 
   await test.step("provider discovery", async () => {
     await page.goto("/dashboard/people");
-    await expect(page.getByRole("heading", { name: /People Near You|People Network/i })).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator("article").first().getByRole("button", { name: /^Chat$/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/People Network/i).first()).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByRole("heading", { name: /Discover trusted local providers and act on live availability\./i })
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 });
   });
 
   await test.step("start inline chat + send message + open thread", async () => {
-    const firstCard = page.locator("article").first();
+    const connectedCard = page.locator("article").filter({ has: page.getByRole("button", { name: /^Chat$/i }) }).first();
+    if ((await connectedCard.count()) === 0) {
+      const gatedCard = page.locator("article").filter({ has: page.getByRole("button", { name: /Chat after connect/i }) }).first();
+      await expect(gatedCard).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+
+    const firstCard = connectedCard;
     await firstCard.getByRole("button", { name: /^Chat$/i }).click();
 
     const composer = firstCard.getByPlaceholder(/Write a message to/i);

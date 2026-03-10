@@ -6,6 +6,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import type { CommunityPeopleResponse } from "@/lib/api/community";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { ensureClientProfile } from "@/lib/clientProfile";
 import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 import {
@@ -163,13 +165,6 @@ type ProviderCard = {
 };
 
 type FlexibleRow = Record<string, unknown>;
-
-const isMissingColumnError = (message: string) =>
-  /column .* does not exist|could not find the '.*' column/i.test(message);
-const isMissingRelationError = (message: string) =>
-  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(
-    message
-  );
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
@@ -998,74 +993,6 @@ export default function PeoplePage() {
       }
       setConnectionRows(liveConnectionRows);
 
-      const selectRowsWithFallback = async (
-        table: string,
-        primarySelect: string,
-        options?: { allowMissingRelation?: boolean }
-      ): Promise<FlexibleRow[]> => {
-        const primaryResult = await supabase.from(table).select(primarySelect);
-
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (options?.allowMissingRelation && isMissingRelationError(primaryResult.error.message)) {
-          return [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase.from(table).select("*");
-        if (fallbackResult.error) {
-          if (options?.allowMissingRelation && isMissingRelationError(fallbackResult.error.message)) {
-            return [];
-          }
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const selectProfilesWithFallback = async (profileIds: string[]): Promise<FlexibleRow[]> => {
-        if (!profileIds.length) return [];
-
-        const primaryResult = await supabase.from("profiles").select("*").in("id", profileIds);
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase.from("profiles").select("*").in("id", profileIds);
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const selectDiscoverableProfilesWithFallback = async (limit: number): Promise<FlexibleRow[]> => {
-        const primaryResult = await supabase.from("profiles").select("*").limit(limit);
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase.from("profiles").select("*").limit(limit);
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
       const normalizeProfileRows = (rows: FlexibleRow[]) => {
         const byId = new Map<string, ProfileRow>();
 
@@ -1104,18 +1031,15 @@ export default function PeoplePage() {
         return Array.from(byId.values());
       };
 
-      const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
-        selectRowsWithFallback("service_listings", "provider_id,category,price"),
-        selectRowsWithFallback("product_catalog", "provider_id,category,price"),
-        selectRowsWithFallback("posts", "user_id,author_id,created_by,provider_id,category,type,post_type,status,state", {
-          allowMissingRelation: true,
-        }),
-        selectRowsWithFallback(
-          "help_requests",
-          "requester_id,category,budget_min,budget_max,status",
-          { allowMissingRelation: true }
-        ),
-      ]);
+      const peoplePayload = await fetchAuthedJson<CommunityPeopleResponse>(supabase, "/api/community/people");
+      if (!peoplePayload.ok) {
+        throw new Error(peoplePayload.message || "Could not load people.");
+      }
+
+      const serviceRowsRaw = (peoplePayload.services as unknown as FlexibleRow[] | null) || [];
+      const productRowsRaw = (peoplePayload.products as unknown as FlexibleRow[] | null) || [];
+      const postRowsRaw = (peoplePayload.posts as unknown as FlexibleRow[] | null) || [];
+      const helpRequestRowsRaw = (peoplePayload.helpRequests as unknown as FlexibleRow[] | null) || [];
 
       const serviceRows: ServiceRow[] = serviceRowsRaw
         .map((row) => ({
@@ -1236,29 +1160,9 @@ export default function PeoplePage() {
         }
       });
 
-      const profileIdsToLoad = Array.from(new Set([...(user?.id ? [user.id] : []), ...activeMemberIds]));
-
-      let activeProfileRowsRaw: FlexibleRow[] = [];
-      let discoverableProfileRowsRaw: FlexibleRow[] = [];
-
-      try {
-        [activeProfileRowsRaw, discoverableProfileRowsRaw] = await Promise.all([
-          selectProfilesWithFallback(profileIdsToLoad),
-          selectDiscoverableProfilesWithFallback(MAX_DISCOVERABLE_PROFILES),
-        ]);
-      } catch (profileError) {
-        const message =
-          profileError instanceof Error ? profileError.message : "Could not load people profiles.";
-        setProviders(demoPeople);
-        setUsingDemo(true);
-        setErrorMessage(`Could not load people: ${message}`);
-        return;
-      }
-
-      const normalizedProfileRows = normalizeProfileRows([
-        ...discoverableProfileRowsRaw,
-        ...activeProfileRowsRaw,
-      ]);
+      const normalizedProfileRows = normalizeProfileRows(
+        (((peoplePayload.profiles as unknown as FlexibleRow[] | null) || []).slice(0, MAX_DISCOVERABLE_PROFILES)) as FlexibleRow[]
+      );
       const existingProfileIds = new Set(normalizedProfileRows.map((profile) => profile.id));
       const fallbackProfiles = activeMemberIds
         .filter((memberId) => memberId !== user?.id && !existingProfileIds.has(memberId))
@@ -1293,39 +1197,15 @@ export default function PeoplePage() {
         )
       );
 
-      const [reviewsResult, presenceResult, providerOrderStatsResult] = await Promise.all([
-        memberIds.length
-          ? supabase.from("reviews").select("provider_id,rating").in("provider_id", memberIds)
-          : Promise.resolve({ data: [] as ReviewRow[], error: null }),
-        memberIds.length
-          ? supabase
-              .from("provider_presence")
-              .select(
-                "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen"
-              )
-              .in("provider_id", memberIds)
-          : Promise.resolve({ data: [] as ProviderPresenceRow[], error: null }),
-        memberIds.length
-          ? supabase.rpc("get_provider_order_stats", { provider_ids: memberIds })
-          : Promise.resolve({ data: [] as ProviderOrderStatsRow[], error: null }),
-      ]);
-
-      if (reviewsResult.error) {
-        console.warn("Could not load provider reviews:", reviewsResult.error.message);
-      }
-
-      if (presenceResult.error && !isMissingRelationError(presenceResult.error.message)) {
-        console.warn("Could not load provider presence:", presenceResult.error.message);
-      }
-
-      const presenceErrorMessage = presenceResult.error ? presenceResult.error.message : "";
-      const reviewRows = reviewsResult.error ? [] : (reviewsResult.data as ReviewRow[] | null) || [];
-      const presenceRows =
-        presenceResult.error || isMissingRelationError(presenceErrorMessage)
-          ? []
-          : (presenceResult.data as ProviderPresenceRow[] | null) || [];
-      const providerOrderStatsRows =
-        providerOrderStatsResult.error ? [] : (providerOrderStatsResult.data as ProviderOrderStatsRow[] | null) || [];
+      const reviewRows = (((peoplePayload.reviews as ReviewRow[] | null) || []).filter((row) =>
+        memberIds.includes(row.provider_id)
+      ) || []) as ReviewRow[];
+      const presenceRows = (((peoplePayload.presence as ProviderPresenceRow[] | null) || []).filter((row) =>
+        memberIds.includes(row.provider_id)
+      ) || []) as ProviderPresenceRow[];
+      const providerOrderStatsRows = (((peoplePayload.orderStats as ProviderOrderStatsRow[] | null) || []).filter((row) =>
+        memberIds.includes(row.provider_id)
+      ) || []) as ProviderOrderStatsRow[];
 
       reviewRows.forEach((row) => {
         const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
@@ -1338,12 +1218,6 @@ export default function PeoplePage() {
       const presenceMap = new Map(
         presenceRows.filter((row) => !!row.provider_id).map((row) => [row.provider_id, row])
       );
-
-      const { error: providerOrderStatsError } = providerOrderStatsResult;
-
-      if (providerOrderStatsError) {
-        console.warn("Unable to load provider order stats:", providerOrderStatsError.message);
-      }
 
       const completedJobsMap = new Map<string, number>();
       const openLeadsMap = new Map<string, number>();
@@ -1636,6 +1510,7 @@ export default function PeoplePage() {
 
   const filteredProviders = useMemo(() => {
     const query = search.toLowerCase().trim();
+    const isWithinRadius = (person: ProviderCard) => person.distanceKm <= radiusKm;
 
     const filtered = providers
       .filter((person) => {
@@ -1644,7 +1519,6 @@ export default function PeoplePage() {
           .toLowerCase()
           .includes(query);
       })
-      .filter((person) => person.distanceKm <= radiusKm)
       .filter((person) => person.rating >= minRating)
       .filter((person) => (maxResponseMinutes > 0 ? person.responseMinutes <= maxResponseMinutes : true))
       .filter((person) => person.profileCompletion >= minProfileCompletion)
@@ -1653,7 +1527,7 @@ export default function PeoplePage() {
       .filter((person) => (instantOnly ? isProviderOnline(person) && person.responseMinutes <= FAST_RESPONSE_THRESHOLD_MINUTES : true))
       .filter((person) => {
         if (activeTab === "All") return true;
-        if (activeTab === "Nearby") return person.distanceKm <= 1;
+        if (activeTab === "Nearby") return isWithinRadius(person);
         if (activeTab === "Active Now") return isProviderOnline(person);
         if (activeTab === "Verified") return person.verified;
         return true;
@@ -1873,15 +1747,32 @@ export default function PeoplePage() {
     [resolveDemoChatRecipientId]
   );
 
-  const openChatThread = async (providerId: string) => {
+  const ensureConnectedMember = useCallback(
+    async (providerId: string, intent: "chat" | "live_talk") => {
+      const viewerId = await ensureViewerId();
+      if (providerId === viewerId) {
+        throw new Error("This is your own profile.");
+      }
+
+      const connectionState = deriveConnectionState(viewerId, providerId, connectionRows);
+      if (connectionState.kind === "accepted") {
+        return viewerId;
+      }
+
+      throw new Error(
+        intent === "live_talk"
+          ? "Connect with this member first to start Live Talk."
+          : "Connect with this member first to open chat."
+      );
+    },
+    [connectionRows, ensureViewerId]
+  );
+
+  const openChatThread = async (providerId: string, options?: { startLiveTalk?: boolean }) => {
     setLoadingChatId(providerId);
 
     try {
-      const viewerId = await ensureViewerId();
-      if (providerId === viewerId) {
-        alert("This is your own profile.");
-        return;
-      }
+      const viewerId = await ensureConnectedMember(providerId, options?.startLiveTalk ? "live_talk" : "chat");
 
       let conversationId = inlineConversationByProvider[providerId] || null;
       if (!conversationId) {
@@ -1898,10 +1789,16 @@ export default function PeoplePage() {
       }
 
       setInlineConversationByProvider((previous) => ({ ...previous, [providerId]: conversationId }));
-      router.push(`/dashboard/chat?open=${conversationId}`);
+      const params = new URLSearchParams({ open: conversationId });
+      if (options?.startLiveTalk) {
+        params.set("liveTalk", "1");
+      }
+      router.push(`/dashboard/chat?${params.toString()}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to open chat";
-      alert(`Unable to open chat. ${message}`);
+      setConnectionNotice({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Unable to open chat.",
+      });
     } finally {
       setLoadingChatId(null);
     }
@@ -1921,11 +1818,7 @@ export default function PeoplePage() {
     setInlineMessageStatusByProvider((previous) => ({ ...previous, [provider.id]: "" }));
 
     try {
-      const viewerId = await ensureViewerId();
-      if (provider.id === viewerId) {
-        alert("This is your own profile.");
-        return;
-      }
+      const viewerId = await ensureConnectedMember(provider.id, "chat");
 
       const recipientId = await resolveChatRecipientId(provider.id, viewerId);
       if (!recipientId) {
@@ -2637,6 +2530,7 @@ export default function PeoplePage() {
             const connectionBusy =
               busyConnectionTargetId === person.id ||
               (connectionState.requestId ? busyConnectionRequestId === connectionState.requestId : false);
+            const canUseRealtimeActions = !isDemoProfile && connectionState.kind === "accepted";
             const listingCount = person.serviceCount + person.productCount;
             const demandCount = person.demandCount || 0;
             const activityCount = listingCount + demandCount;
@@ -2875,7 +2769,9 @@ export default function PeoplePage() {
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => {
+                        if (!canUseRealtimeActions) return;
                         setInlineComposerProviderId((current) => (current === person.id ? null : person.id));
                         setInlineMessageDrafts((previous) => {
                           if (previous[person.id]) return previous;
@@ -2887,10 +2783,20 @@ export default function PeoplePage() {
                         });
                         setInlineMessageStatusByProvider((previous) => ({ ...previous, [person.id]: "" }));
                       }}
-                      className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+                      disabled={!canUseRealtimeActions}
+                      className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
                     >
                       <MessageCircle size={14} />
-                      {isInlineComposerOpen ? "Close Chat" : "Chat"}
+                      {canUseRealtimeActions ? (isInlineComposerOpen ? "Close Chat" : "Chat") : "Chat after connect"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void openChatThread(person.id, { startLiveTalk: true })}
+                      disabled={!canUseRealtimeActions}
+                      className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+                    >
+                      <Zap size={14} />
+                      Live Talk
                     </button>
                     <button
                       onClick={() => setSelectedProvider(person.id)}
@@ -2898,7 +2804,7 @@ export default function PeoplePage() {
                     >
                       View Profile
                     </button>
-                    {(savedConversationId || loadingChatId === person.id) && (
+                    {canUseRealtimeActions && (savedConversationId || loadingChatId === person.id) && (
                       <button
                         onClick={() => void openChatThread(person.id)}
                         disabled={loadingChatId === person.id}
@@ -2919,7 +2825,7 @@ export default function PeoplePage() {
                     )}
                   </div>
 
-                  {isInlineComposerOpen && (
+                  {canUseRealtimeActions && isInlineComposerOpen && (
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <p className="text-xs font-semibold text-slate-700">Message profile owner</p>
                       <textarea

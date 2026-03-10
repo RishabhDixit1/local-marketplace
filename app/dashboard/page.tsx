@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import type { CommunityFeedResponse } from "@/lib/api/community";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import RouteObservability from "@/app/components/RouteObservability";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -50,7 +52,6 @@ Send,
 ArrowUpRight,
 } from "lucide-react";
 
-const FEED_LIMIT_PER_TYPE = 60;
 const MAX_PROFILE_LOOKUP = 240;
 const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -198,13 +199,6 @@ type FeedFilterState = {
   mediaOnly: boolean;
   freshOnly: boolean;
 };
-
-const isMissingColumnError = (message: string) =>
-  /column .* does not exist|could not find the '.*' column/i.test(message);
-const isMissingRelationError = (message: string) =>
-  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(
-    message
-  );
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
@@ -1012,7 +1006,7 @@ export default function MarketplacePage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("best");
+  const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("latest");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(0);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -1119,170 +1113,17 @@ export default function MarketplacePage() {
     try {
       void getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS).catch(() => null);
 
-      const selectRowsWithFallback = async (table: string, primarySelect: string): Promise<FlexibleRow[]> => {
-        const primaryResult = await supabase
-          .from(table)
-          .select(primarySelect)
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
+      const feedPayload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed");
+      if (!feedPayload.ok) {
+        throw new Error(feedPayload.message || "Unable to load community feed.");
+      }
 
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase
-          .from(table)
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
-
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const selectOpenPostsRows = async (): Promise<FlexibleRow[]> => {
-        const primaryResult = await supabase
-          .from("posts")
-          .select(
-            "id,text,content,description,title,user_id,provider_id,created_by,type,post_type,category,status,state,created_at"
-          )
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
-
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase
-          .from("posts")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
-
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const selectOpenHelpRequestsRows = async (): Promise<FlexibleRow[]> => {
-        const primaryResult = await supabase
-          .from("help_requests")
-          .select(
-            "id,requester_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at"
-          )
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
-
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (isMissingRelationError(primaryResult.error.message)) {
-          return [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase
-          .from("help_requests")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(FEED_LIMIT_PER_TYPE);
-
-        if (fallbackResult.error && isMissingRelationError(fallbackResult.error.message)) {
-          return [];
-        }
-
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const selectCurrentUserProfile = async (currentUserId: string): Promise<FlexibleRow | null> => {
-        if (!currentUserId) return null;
-
-        const primaryResult = await supabase
-          .from("profiles")
-          .select("id,location,latitude,longitude")
-          .eq("id", currentUserId)
-          .maybeSingle();
-
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow | null) || null;
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase
-          .from("profiles")
-          .select("id,location")
-          .eq("id", currentUserId)
-          .maybeSingle();
-
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow | null) || null;
-      };
-
-      const selectProfilesWithFallback = async (profileIds: string[]): Promise<FlexibleRow[]> => {
-        if (profileIds.length === 0) return [];
-
-        const primaryResult = await supabase
-          .from("profiles")
-          .select("id,name,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude")
-          .in("id", profileIds);
-
-        if (!primaryResult.error) {
-          return (primaryResult.data as unknown as FlexibleRow[] | null) || [];
-        }
-
-        if (!isMissingColumnError(primaryResult.error.message)) {
-          throw new Error(primaryResult.error.message);
-        }
-
-        const fallbackResult = await supabase
-          .from("profiles")
-          .select("*")
-          .in("id", profileIds);
-
-        if (fallbackResult.error) {
-          throw new Error(fallbackResult.error.message);
-        }
-
-        return (fallbackResult.data as unknown as FlexibleRow[] | null) || [];
-      };
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentUserId = sessionData.session?.user?.id || "";
-
-      const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
-        selectCurrentUserProfile(currentUserId),
-        selectRowsWithFallback("service_listings", "id,title,description,price,category,provider_id,created_at"),
-        selectRowsWithFallback("product_catalog", "id,title,description,price,category,provider_id,created_at"),
-        selectOpenPostsRows(),
-        selectOpenHelpRequestsRows(),
-      ]);
+      const currentUserId = feedPayload.currentUserId;
+      const currentUserProfileRow = (feedPayload.currentUserProfile as unknown as FlexibleRow | null) || null;
+      const serviceRowsRaw = (feedPayload.services as unknown as FlexibleRow[] | null) || [];
+      const productRowsRaw = (feedPayload.products as unknown as FlexibleRow[] | null) || [];
+      const postRowsRaw = (feedPayload.posts as unknown as FlexibleRow[] | null) || [];
+      const helpRequestRowsRaw = (feedPayload.helpRequests as unknown as FlexibleRow[] | null) || [];
 
       const profileCoordinates = resolveCoordinates({
         row: currentUserProfileRow,
@@ -1363,83 +1204,57 @@ export default function MarketplacePage() {
         }))
         .filter((row) => !!row.requester_id);
 
-      const profileIds = [
-        ...serviceRows.map((row) => row.provider_id),
-        ...productRows.map((row) => row.provider_id),
-        ...postRows
-          .map((row) => row.user_id || row.provider_id || row.created_by || "")
-          .filter(Boolean),
-        ...helpRequestRows.map((row) => row.requester_id || "").filter(Boolean),
-      ];
+      const uniqueProfileIds = Array.from(
+        new Set(
+          [
+            ...serviceRows.map((row) => row.provider_id),
+            ...productRows.map((row) => row.provider_id),
+            ...postRows
+              .map((row) => row.user_id || row.provider_id || row.created_by || "")
+              .filter(Boolean),
+            ...helpRequestRows.map((row) => row.requester_id || "").filter(Boolean),
+          ].filter(Boolean)
+        )
+      ).slice(0, MAX_PROFILE_LOOKUP);
 
-      const uniqueProfileIds = Array.from(new Set(profileIds)).slice(0, MAX_PROFILE_LOOKUP);
-      let profileMap = new Map<string, ProfileRow>();
-      let reviewRows: ReviewRow[] = [];
-      let presenceMap = new Map<string, ProviderPresenceRow>();
+      const normalizedProfiles: ProfileRow[] = (((feedPayload.profiles as unknown as FlexibleRow[] | null) || []).map((row) => {
+        const profileId = stringFromRow(row, ["id", "user_id"], "");
+        const servicesValue = row.services;
+        const normalizedServices = Array.isArray(servicesValue)
+          ? servicesValue.filter((item): item is string => typeof item === "string")
+          : null;
+        return {
+          id: profileId,
+          name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
+          avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
+          role: stringFromRow(row, ["role", "account_type"], ""),
+          bio: stringFromRow(row, ["bio", "about"], ""),
+          location: stringFromRow(row, ["location", "city"], ""),
+          availability: stringFromRow(row, ["availability", "status"], ""),
+          services: normalizedServices,
+          email: stringFromRow(row, ["email"], ""),
+          phone: stringFromRow(row, ["phone", "phone_number"], ""),
+          website: stringFromRow(row, ["website", "site_url"], ""),
+          latitude: (() => {
+            const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
+            return Number.isFinite(value) ? value : null;
+          })(),
+          longitude: (() => {
+            const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
+            return Number.isFinite(value) ? value : null;
+          })(),
+        };
+      }) as ProfileRow[]).filter((row) => !!row.id && uniqueProfileIds.includes(row.id));
 
-      if (uniqueProfileIds.length > 0) {
-        const [profileRowsRaw, reviewsResult, presenceResult] = await Promise.all([
-          selectProfilesWithFallback(uniqueProfileIds),
-          supabase
-            .from("reviews")
-            .select("provider_id,rating")
-            .in("provider_id", uniqueProfileIds),
-          supabase
-            .from("provider_presence")
-            .select(
-              "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen"
-            )
-            .in("provider_id", uniqueProfileIds),
-        ]);
-
-        const normalizedProfiles: ProfileRow[] = profileRowsRaw
-          .map((row) => {
-            const profileId = stringFromRow(row, ["id", "user_id"], "");
-            const servicesValue = row.services;
-            const normalizedServices = Array.isArray(servicesValue)
-              ? servicesValue.filter((item): item is string => typeof item === "string")
-              : null;
-            return {
-              id: profileId,
-              name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
-              avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
-              role: stringFromRow(row, ["role", "account_type"], ""),
-              bio: stringFromRow(row, ["bio", "about"], ""),
-              location: stringFromRow(row, ["location", "city"], ""),
-              availability: stringFromRow(row, ["availability", "status"], ""),
-              services: normalizedServices,
-              email: stringFromRow(row, ["email"], ""),
-              phone: stringFromRow(row, ["phone", "phone_number"], ""),
-              website: stringFromRow(row, ["website", "site_url"], ""),
-              latitude: (() => {
-                const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
-                return Number.isFinite(value) ? value : null;
-              })(),
-              longitude: (() => {
-                const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
-                return Number.isFinite(value) ? value : null;
-              })(),
-            };
-          })
-          .filter((row) => !!row.id);
-
-        profileMap = new Map(normalizedProfiles.map((row) => [row.id, row]));
-
-        if (reviewsResult.error) {
-          console.warn("Could not load review ratings for feed scoring:", reviewsResult.error.message);
-        } else {
-          reviewRows = (reviewsResult.data as ReviewRow[] | null) || [];
-        }
-
-        if (presenceResult.error) {
-          if (!isMissingRelationError(presenceResult.error.message)) {
-            console.warn("Could not load provider presence for feed scoring:", presenceResult.error.message);
-          }
-        } else {
-          const rows = (presenceResult.data as ProviderPresenceRow[] | null) || [];
-          presenceMap = new Map(rows.filter((row) => !!row.provider_id).map((row) => [row.provider_id, row]));
-        }
-      }
+      const profileMap = new Map(normalizedProfiles.map((row) => [row.id, row]));
+      const reviewRows: ReviewRow[] = ((feedPayload.reviews as ReviewRow[] | null) || []).filter((row) =>
+        uniqueProfileIds.includes(row.provider_id)
+      );
+      const presenceMap = new Map(
+        (((feedPayload.presence as ProviderPresenceRow[] | null) || []).filter((row) => uniqueProfileIds.includes(row.provider_id))).map(
+          (row) => [row.provider_id, row]
+        )
+      );
 
       const serviceCountMap = new Map<string, number>();
       const productCountMap = new Map<string, number>();
