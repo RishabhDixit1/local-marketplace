@@ -49,7 +49,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` in your browser. Do not use `https://localhost:3000` for local development.
+If a previous local Next dev process was left behind, rerunning `npm run dev` now cleans it up automatically before starting the app.
 
 ## Supabase Setup
 
