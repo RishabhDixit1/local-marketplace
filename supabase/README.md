@@ -41,10 +41,13 @@ npm run supabase:sql-editor -- --with-seeds
 - `posts` + `help_requests` publishing policies for authenticated users
 - server-safe profile bootstrap policies (`profiles_insert_own`, `profiles_update_own`)
 - `post-media` storage bucket + object policies
-- realtime-ready `notifications`
+- realtime-ready `notifications` + notification helper RPCs
 - `help_requests` state machine (`open -> accepted -> in_progress -> completed/cancelled`)
 - immediate matching RPC (`match_help_request`) + provider notifications
 - provider presence table/RPC (`provider_presence`, `upsert_provider_presence`)
+- connection request + direct chat RPCs (`send_connection_request`, `respond_to_connection_request`, `get_or_create_direct_conversation`)
+- live talk request table + realtime notifications
+- welcome feed interaction tables/functions (`feed_card_saves`, `feed_card_shares`, `get_feed_card_metrics`)
 - push subscription storage (`provider_push_subscriptions`)
 - escalation queue primitives for urgent unmatched needs (`notification_escalations`)
 - trust + growth base tables (`provider_trust_metrics`, `referral_events`, `featured_placements`)

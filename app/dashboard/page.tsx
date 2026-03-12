@@ -8,9 +8,12 @@ import { supabase } from "@/lib/supabase";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import RouteObservability from "@/app/components/RouteObservability";
+import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
+import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
+import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -24,6 +27,7 @@ import {
   getBrowserCoordinates,
   resolveCoordinates,
 } from "@/lib/geo";
+import { CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE } from "@/lib/connectionErrors";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 
 const ProviderTrustPanel = dynamic(
@@ -50,6 +54,7 @@ Zap,
 Loader2,
 Send,
 ArrowUpRight,
+Share2,
 } from "lucide-react";
 
 const MAX_PROFILE_LOOKUP = 240;
@@ -1016,6 +1021,8 @@ export default function MarketplacePage() {
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
   const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
   const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
+  const [savingListingIds, setSavingListingIds] = useState<Set<string>>(new Set());
+  const [sharingListingIds, setSharingListingIds] = useState<Set<string>>(new Set());
   const [inlineComposerListingId, setInlineComposerListingId] = useState<string | null>(null);
   const [inlineMessageDrafts, setInlineMessageDrafts] = useState<Record<string, string>>({});
   const [inlineMessageStatusByListing, setInlineMessageStatusByListing] = useState<Record<string, string>>({});
@@ -1024,9 +1031,22 @@ export default function MarketplacePage() {
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
   const [openPostModal, setOpenPostModal] = useState(false);
   const [heroLineIndex, setHeroLineIndex] = useState(0);
+  const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const reloadTimerRef = useRef<number | null>(null);
   const fetchInFlightRef = useRef(false);
   const lastSoftFetchStartedAtRef = useRef(0);
+  const {
+    viewerId: connectionViewerId,
+    busyTargetId: busyConnectionTargetId,
+    busyRequestId: busyConnectionRequestId,
+    busyActionKey,
+    schemaReady: connectionSchemaReady,
+    schemaMessage: connectionSchemaMessage,
+    getConnectionState,
+    sendRequest,
+    respond,
+  } = useConnectionRequests();
+  const connectionSetupMessage = connectionSchemaMessage || CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE;
 
   useEffect(() => {
     const lineTimer = window.setInterval(() => {
@@ -1034,6 +1054,19 @@ export default function MarketplacePage() {
     }, 3200);
 
     return () => window.clearInterval(lineTimer);
+  }, []);
+
+  const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
+    const nextToast = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      kind,
+      message,
+    } satisfies ProfileToast;
+
+    setToasts((current) => [...current, nextToast]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== nextToast.id));
+    }, 2800);
   }, []);
 
   useEffect(() => {
@@ -1704,6 +1737,109 @@ const trendingOpportunities = useMemo(
   [displayFeed]
 );
 
+const buildFeedCardId = (item: Listing) => `dashboard:${item.type}:${item.id}`;
+
+const buildFeedContextPath = (item: DisplayListing) => {
+  const params = new URLSearchParams({
+    source: "dashboard_feed",
+    context_card: buildFeedCardId(item),
+    context_focus: item.id,
+    context_type: item.type,
+    context_title: item.displayTitle,
+    focus: item.id,
+    type: item.type,
+  });
+
+  return `/dashboard?${params.toString()}`;
+};
+
+const buildFeedSaveMetadata = (item: DisplayListing) => {
+  const mediaGallery = (item.media || []).map((media) => media.url).filter(Boolean).slice(0, 3);
+  const image =
+    mediaGallery[0] ||
+    (item.avatar?.trim() ? item.avatar : null);
+
+  return {
+    priceLabel: item.price > 0 ? `₹ ${item.price}` : item.type === "demand" ? "Budget shared in chat" : "Price on request",
+    etaLabel: `Respond within ${item.responseMinutes} mins`,
+    audienceName: item.displayCreator,
+    tags: [item.category, `Match ${item.rankScore}`],
+    image,
+    mediaGallery,
+  };
+};
+
+const loadSavedListings = useCallback(
+  async (viewerIdOverride?: string | null) => {
+    const activeViewerId = viewerIdOverride || connectionViewerId;
+    if (!activeViewerId) {
+      setSavedListingIds(new Set());
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("feed_card_saves")
+      .select("card_id")
+      .eq("user_id", activeViewerId)
+      .limit(300);
+
+    if (error) {
+      console.warn("Failed to load saved dashboard cards:", error.message);
+      return;
+    }
+
+    const nextIds = new Set(
+      (((data as Array<{ card_id?: string }> | null) || [])
+        .map((row) => row.card_id)
+        .filter((cardId): cardId is string => typeof cardId === "string" && cardId.length > 0))
+    );
+    setSavedListingIds(nextIds);
+  },
+  [connectionViewerId]
+);
+
+useEffect(() => {
+  void loadSavedListings();
+}, [loadSavedListings]);
+
+useEffect(() => {
+  if (!connectionViewerId) return;
+
+  const channel = supabase
+    .channel(`dashboard-feed-saves-${connectionViewerId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "feed_card_saves",
+        filter: `user_id=eq.${connectionViewerId}`,
+      },
+      (payload) => {
+        const nextRow = (payload.new as { card_id?: string } | null) || null;
+        const previousRow = (payload.old as { card_id?: string } | null) || null;
+        const cardId = nextRow?.card_id || previousRow?.card_id || null;
+
+        if (!cardId) return;
+
+        setSavedListingIds((current) => {
+          const next = new Set(current);
+          if (payload.eventType === "DELETE") {
+            next.delete(cardId);
+          } else {
+            next.add(cardId);
+          }
+          return next;
+        });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}, [connectionViewerId]);
+
 const clearAdvancedFilters = () => {
   setMaxDistanceKm(0);
   setVerifiedOnly(false);
@@ -1712,230 +1848,577 @@ const clearAdvancedFilters = () => {
   setFreshOnly(false);
 };
 
-const toggleSaveListing = (listingId: string) => {
-  setSavedListingIds((previous) => {
-    const next = new Set(previous);
-    if (next.has(listingId)) {
-      next.delete(listingId);
-    } else {
-      next.add(listingId);
-    }
-    return next;
-  });
-};
-
 /* ================= BOOK ================= */
 
-const bookNow = async (item: Listing) => {
-if (item.isDemo) {
-  if (item.type === "demand") {
-    router.push("/dashboard/provider/add-service");
-    return;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string | null | undefined) => !!value && UUID_PATTERN.test(value);
+
+const getRealtimeOwnerId = (item: Listing) => {
+  const providerId = item.provider_id?.trim() || "";
+  if (!providerId || item.isDemo || providerId.startsWith("demo-") || !isUuid(providerId)) {
+    return null;
   }
-  router.push("/dashboard/people");
-  return;
-}
+  return providerId;
+};
 
-const {
-data: { user },
-} = await supabase.auth.getUser();
+const getListingConnectionMeta = (item: Listing) => {
+  const ownerId = getRealtimeOwnerId(item);
+  if (!ownerId) {
+    return {
+      ownerId: null,
+      state: null,
+      busy: false,
+      demoLabel: item.isDemo ? "Preview only" : null,
+    };
+  }
 
+  const state = getConnectionState(ownerId);
+  const busy =
+    busyConnectionTargetId === ownerId ||
+    (state.requestId ? busyConnectionRequestId === state.requestId : false);
 
-if (!user) return alert("Login required");
+  return {
+    ownerId,
+    state,
+    busy,
+    demoLabel: connectionSchemaReady ? null : "Setup required",
+  };
+};
 
-await supabase.from("orders").insert({
-  listing_id: item.id,
-  listing_type: item.type,
-  consumer_id: user.id,
-  provider_id: item.provider_id,
-  price: item.price,
-  status: "new_lead",
-});
+const isSavedListing = (item: Listing) => {
+  const cardId = buildFeedCardId(item);
+  return savedListingIds.has(cardId) || savedListingIds.has(item.id);
+};
 
-alert("Booking request sent 🚀");
+const isListingBusy = (item: Listing, busyIds: Set<string>) => {
+  const cardId = buildFeedCardId(item);
+  return busyIds.has(cardId) || busyIds.has(item.id);
+};
 
+const getMessageButtonLabel = (item: Listing) => {
+  const { state } = getListingConnectionMeta(item);
+  if (item.isDemo) return item.type === "demand" ? "Explore People" : "Explore Matches";
+  if (connectionViewerId && item.provider_id === connectionViewerId) {
+    return item.type === "demand" ? "Your post" : "Your listing";
+  }
+  if (!connectionSchemaReady) {
+    return "Connections setup required";
+  }
+  if (state?.kind === "accepted") {
+    return inlineComposerListingId === item.id
+      ? "Close chat"
+      : item.type === "demand"
+      ? "Message owner"
+      : "Message";
+  }
+  if (state?.kind === "incoming_pending") {
+    return "Accept to message";
+  }
+  if (state?.kind === "outgoing_pending") {
+    return "Awaiting connection";
+  }
+  return item.type === "demand" ? "Respond after connect" : "Message after connect";
+};
 
+const canOpenInlineComposer = (item: Listing) => {
+  if (item.isDemo) return true;
+  if (connectionViewerId && item.provider_id === connectionViewerId) return false;
+  if (!connectionSchemaReady) return false;
+  const { state } = getListingConnectionMeta(item);
+  return state?.kind === "accepted";
 };
 
 const ensureViewerId = async () => {
-const {
-data: { user },
-error,
-} = await supabase.auth.getUser();
+  if (connectionViewerId) {
+    return connectionViewerId;
+  }
 
-if (error || !user) {
-  throw new Error(error?.message || "Login required");
-}
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-return user.id;
+  if (error || !user) {
+    throw new Error(error?.message || "Login required");
+  }
+
+  return user.id;
 };
 
-const openChatThread = async (providerId: string) => {
-if (!providerId || providerId.startsWith("demo-")) {
-  router.push("/dashboard/people");
-  return;
-}
+const ensureConnectedOwner = async (item: Listing, viewerIdOverride?: string | null) => {
+  const ownerId = getRealtimeOwnerId(item);
+  if (!ownerId) {
+    if (item.isDemo) {
+      router.push("/dashboard/people");
+      return false;
+    }
+    pushToast("info", "This card does not support realtime messaging yet.");
+    return false;
+  }
 
-setMessageLoadingId(providerId);
+  const viewerId = viewerIdOverride || (await ensureViewerId());
+  if (viewerId === ownerId) {
+    pushToast("info", item.type === "demand" ? "This is your own post." : "This is your own listing.");
+    return false;
+  }
 
-try {
-  const viewerId = await ensureViewerId();
-  if (viewerId === providerId) {
-    alert("This is your own listing.");
+  if (!connectionSchemaReady) {
+    pushToast("info", connectionSetupMessage);
+    return false;
+  }
+
+  const connectionState = getConnectionState(ownerId);
+  if (connectionState.kind === "accepted") {
+    return true;
+  }
+
+  if (connectionState.kind === "incoming_pending") {
+    pushToast("info", "Accept the connection request first to start messaging.");
+    return false;
+  }
+
+  if (connectionState.kind === "outgoing_pending") {
+    pushToast("info", "Your request is pending. Messaging unlocks after they accept.");
+    return false;
+  }
+
+  pushToast("info", "Connect first to unlock messaging and connected-only activity.");
+  return false;
+};
+
+const bookNow = async (item: Listing) => {
+  if (item.isDemo) {
+    if (item.type === "demand") {
+      router.push("/dashboard/provider/add-service");
+      return;
+    }
+    router.push("/dashboard/people");
     return;
   }
 
-  const conversationId =
-    inlineConversationByOwner[providerId] || (await getOrCreateDirectConversationId(supabase, viewerId, providerId));
+  try {
+    const viewerId = await ensureViewerId();
+    if (viewerId === item.provider_id) {
+      pushToast("info", "This is your own listing.");
+      return;
+    }
 
-  setInlineConversationByOwner((previous) => ({ ...previous, [providerId]: conversationId }));
-  router.push(`/dashboard/chat?open=${conversationId}`);
-} catch (error) {
-  const message = error instanceof Error ? error.message : "Unable to start chat";
-  alert(`Unable to open chat. ${message}`);
-} finally {
-  setMessageLoadingId(null);
-}
+    const { error } = await supabase.from("orders").insert({
+      listing_id: item.id,
+      listing_type: item.type,
+      consumer_id: viewerId,
+      provider_id: item.provider_id,
+      price: item.price,
+      status: "new_lead",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    pushToast("success", "Booking request sent.");
+  } catch (error) {
+    pushToast("error", error instanceof Error ? error.message : "Unable to place booking.");
+  }
+};
+
+const persistListingShare = async (item: DisplayListing, channel: "native" | "clipboard", viewerId: string | null) => {
+  if (!viewerId) return;
+
+  const { error } = await supabase.from("feed_card_shares").insert({
+    user_id: viewerId,
+    card_id: buildFeedCardId(item),
+    focus_id: item.id,
+    card_type: item.type,
+    title: item.displayTitle,
+    channel,
+    metadata: {
+      subtitle: item.displayDescription,
+      actionPath: buildFeedContextPath(item),
+      ownerName: item.displayCreator,
+      ...buildFeedSaveMetadata(item),
+    },
+  });
+
+  if (error) {
+    console.warn("Failed to record dashboard feed share:", error.message);
+  }
+};
+
+const toggleSaveListing = async (item: DisplayListing) => {
+  const cardId = buildFeedCardId(item);
+  const wasSaved = isSavedListing(item);
+  const shouldSave = !wasSaved;
+
+  setSavingListingIds((current) => new Set(current).add(cardId));
+  setSavedListingIds((current) => {
+    const next = new Set(current);
+    if (shouldSave) {
+      next.add(cardId);
+    } else {
+      next.delete(cardId);
+      next.delete(item.id);
+    }
+    return next;
+  });
+
+  try {
+    const viewerId = await ensureViewerId();
+    if (shouldSave) {
+      const { error } = await supabase.from("feed_card_saves").upsert(
+        {
+          user_id: viewerId,
+          card_id: cardId,
+          focus_id: item.id,
+          card_type: item.type,
+          title: item.displayTitle,
+          subtitle: item.displayDescription,
+          action_path: buildFeedContextPath(item),
+          metadata: {
+            ownerName: item.displayCreator,
+            ...buildFeedSaveMetadata(item),
+          },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,card_id" }
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      pushToast("success", "Post saved.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("feed_card_saves")
+      .delete()
+      .eq("user_id", viewerId)
+      .eq("card_id", cardId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    pushToast("success", "Removed from saved.");
+  } catch (error) {
+    setSavedListingIds((current) => {
+      const next = new Set(current);
+      if (wasSaved) {
+        next.add(cardId);
+      } else {
+        next.delete(cardId);
+      }
+      return next;
+    });
+    pushToast("error", error instanceof Error ? error.message : "Unable to update saved state.");
+  } finally {
+    setSavingListingIds((current) => {
+      const next = new Set(current);
+      next.delete(cardId);
+      next.delete(item.id);
+      return next;
+    });
+  }
+};
+
+const handleShareListing = async (item: DisplayListing) => {
+  const cardId = buildFeedCardId(item);
+  const focusPath = buildFeedContextPath(item);
+  const shareUrl = `${window.location.origin}${focusPath}`;
+  const shareText = `${item.displayTitle} • ${item.displayCreator} • ${item.price > 0 ? `₹ ${item.price}` : item.category}`;
+
+  setSharingListingIds((current) => new Set(current).add(cardId));
+
+  try {
+    let viewerId: string | null = null;
+    try {
+      viewerId = await ensureViewerId();
+    } catch {
+      viewerId = null;
+    }
+
+    if (navigator.share) {
+      await navigator.share({
+        title: item.displayTitle,
+        text: shareText,
+        url: shareUrl,
+      });
+      await persistListingShare(item, "native", viewerId);
+      pushToast("success", "Share sent.");
+      return;
+    }
+
+    if (!navigator.clipboard?.writeText) {
+      pushToast("error", "Sharing is not available in this browser.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(`${item.displayTitle}\n${shareText}\n${shareUrl}`);
+    await persistListingShare(item, "clipboard", viewerId);
+    pushToast("success", "Share link copied.");
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return;
+    }
+    pushToast("error", error instanceof Error ? error.message : "Unable to share this post.");
+  } finally {
+    setSharingListingIds((current) => {
+      const next = new Set(current);
+      next.delete(cardId);
+      next.delete(item.id);
+      return next;
+    });
+  }
+};
+
+const handleFeedConnect = async (item: Listing) => {
+  const ownerId = getRealtimeOwnerId(item);
+  if (!ownerId) {
+    if (item.isDemo) {
+      router.push("/dashboard/people");
+      return;
+    }
+    pushToast("info", "This card does not support live connections yet.");
+    return;
+  }
+
+  if (!connectionSchemaReady) {
+    pushToast("info", connectionSetupMessage);
+    return;
+  }
+
+  try {
+    const viewerId = await ensureViewerId();
+    if (viewerId === ownerId) {
+      pushToast("info", "You cannot connect with yourself.");
+      return;
+    }
+
+    const currentState = getConnectionState(ownerId);
+    if (currentState.kind === "accepted") {
+      pushToast("info", "You are already connected.");
+      return;
+    }
+
+    await sendRequest(ownerId);
+    pushToast(
+      "success",
+      currentState.kind === "rejected" || currentState.kind === "cancelled"
+        ? "Connection request sent again."
+        : "Connection request sent."
+    );
+  } catch (error) {
+    pushToast("error", error instanceof Error ? error.message : "Unable to send connection request.");
+  }
+};
+
+const handleFeedConnectionDecision = async (
+  item: Listing,
+  decision: "accepted" | "rejected" | "cancelled"
+) => {
+  const connectionMeta = getListingConnectionMeta(item);
+  if (!connectionMeta.state?.requestId) return;
+
+  if (!connectionSchemaReady) {
+    pushToast("info", connectionSetupMessage);
+    return;
+  }
+
+  try {
+    await respond(connectionMeta.state.requestId, decision);
+    if (decision === "accepted") {
+      pushToast("success", "Connection accepted. Connected posts now unlock automatically.");
+      return;
+    }
+    if (decision === "cancelled") {
+      pushToast("info", "Connection request cancelled.");
+      return;
+    }
+    pushToast("info", "Connection request declined.");
+  } catch (error) {
+    pushToast("error", error instanceof Error ? error.message : "Unable to update connection request.");
+  }
+};
+
+const openChatThread = async (providerId: string, item?: Listing) => {
+  if (!providerId || providerId.startsWith("demo-")) {
+    router.push("/dashboard/people");
+    return;
+  }
+
+  if (item) {
+    const isConnected = await ensureConnectedOwner(item);
+    if (!isConnected) return;
+  }
+
+  setMessageLoadingId(providerId);
+
+  try {
+    const viewerId = await ensureViewerId();
+    if (viewerId === providerId) {
+      pushToast("info", "This is your own listing.");
+      return;
+    }
+
+    const conversationId =
+      inlineConversationByOwner[providerId] || (await getOrCreateDirectConversationId(supabase, viewerId, providerId));
+
+    setInlineConversationByOwner((previous) => ({ ...previous, [providerId]: conversationId }));
+    router.push(`/dashboard/chat?open=${conversationId}`);
+  } catch (error) {
+    pushToast("error", error instanceof Error ? error.message : "Unable to open chat.");
+  } finally {
+    setMessageLoadingId(null);
+  }
 };
 
 const messageProvider = async (item: Listing) => {
-if (!item.provider_id || item.provider_id.startsWith("demo-") || item.isDemo) {
-  router.push("/dashboard/people");
-  return;
-}
-
-try {
-  const viewerId = await ensureViewerId();
-  if (viewerId === item.provider_id) {
-    alert("This is your own listing.");
+  if (!item.provider_id || item.provider_id.startsWith("demo-") || item.isDemo) {
+    router.push("/dashboard/people");
     return;
   }
 
-  setInlineComposerListingId((current) => (current === item.id ? null : item.id));
-  setInlineMessageDrafts((previous) => {
-    if (previous[item.id]) return previous;
-    const creatorName = item.creatorName || "there";
-    const defaultMessage =
-      item.type === "demand"
-        ? `Hi ${creatorName}, I saw your post "${item.title}". Is it still open?`
-        : item.type === "product"
-        ? `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`
-        : `Hi ${creatorName}, I am interested in "${item.title}". Can we connect?`;
-    return {
-      ...previous,
-      [item.id]: defaultMessage,
-    };
-  });
-  setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-} catch (error) {
-  const message = error instanceof Error ? error.message : "Login required";
-  alert(message);
-}
+  try {
+    const viewerId = await ensureViewerId();
+    const isConnected = await ensureConnectedOwner(item, viewerId);
+    if (!isConnected) return;
+
+    setInlineComposerListingId((current) => (current === item.id ? null : item.id));
+    setInlineMessageDrafts((previous) => {
+      if (previous[item.id]) return previous;
+      const creatorName = item.creatorName || "there";
+      const defaultMessage =
+        item.type === "demand"
+          ? `Hi ${creatorName}, I saw your post "${item.title}". Is it still open?`
+          : item.type === "product"
+          ? `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`
+          : `Hi ${creatorName}, I am interested in "${item.title}". Can we connect on the details?`;
+      return {
+        ...previous,
+        [item.id]: defaultMessage,
+      };
+    });
+    setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+  } catch (error) {
+    pushToast("error", error instanceof Error ? error.message : "Unable to open message composer.");
+  }
 };
 
 const sendInlineMessage = async (item: Listing) => {
-const draft = (inlineMessageDrafts[item.id] || "").trim();
-if (!draft) {
-  setInlineMessageStatusByListing((previous) => ({
-    ...previous,
-    [item.id]: "Type a message before sending.",
-  }));
-  return;
-}
-
-if (!item.provider_id || item.provider_id.startsWith("demo-")) {
-  setInlineMessageStatusByListing((previous) => ({
-    ...previous,
-    [item.id]: "Live messaging is not available for this card yet.",
-  }));
-  return;
-}
-
-setInlineSendingListingId(item.id);
-setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-
-try {
-  const viewerId = await ensureViewerId();
-  if (viewerId === item.provider_id) {
-    alert("This is your own listing.");
+  const draft = (inlineMessageDrafts[item.id] || "").trim();
+  if (!draft) {
+    setInlineMessageStatusByListing((previous) => ({
+      ...previous,
+      [item.id]: "Type a message before sending.",
+    }));
     return;
   }
 
-  const { conversationId } = await sendDirectMessage(supabase, {
-    viewerId,
-    recipientId: item.provider_id,
-    content: draft,
-  });
+  if (!item.provider_id || item.provider_id.startsWith("demo-")) {
+    setInlineMessageStatusByListing((previous) => ({
+      ...previous,
+      [item.id]: "Live messaging is not available for this card yet.",
+    }));
+    return;
+  }
 
-  setInlineConversationByOwner((previous) => ({ ...previous, [item.provider_id]: conversationId }));
-  setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: "" }));
-  setInlineMessageStatusByListing((previous) => ({
-    ...previous,
-    [item.id]: "Message sent. Open the chat tab to continue in realtime.",
-  }));
-} catch (error) {
-  const message = error instanceof Error ? error.message : "Failed to send message";
-  setInlineMessageStatusByListing((previous) => ({
-    ...previous,
-    [item.id]: `Unable to send. ${message}`,
-  }));
-} finally {
-  setInlineSendingListingId(null);
-}
+  setInlineSendingListingId(item.id);
+  setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+
+  try {
+    const viewerId = await ensureViewerId();
+    const isConnected = await ensureConnectedOwner(item, viewerId);
+    if (!isConnected) {
+      setInlineMessageStatusByListing((previous) => ({
+        ...previous,
+        [item.id]: "Accept or complete the connection first to message.",
+      }));
+      return;
+    }
+
+    const { conversationId } = await sendDirectMessage(supabase, {
+      viewerId,
+      recipientId: item.provider_id,
+      content: draft,
+    });
+
+    setInlineConversationByOwner((previous) => ({ ...previous, [item.provider_id]: conversationId }));
+    setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: "" }));
+    setInlineMessageStatusByListing((previous) => ({
+      ...previous,
+      [item.id]: "Message sent. Open the chat tab to continue in realtime.",
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to send message";
+    setInlineMessageStatusByListing((previous) => ({
+      ...previous,
+      [item.id]: `Unable to send. ${message}`,
+    }));
+  } finally {
+    setInlineSendingListingId(null);
+  }
 };
 
 const renderInlineComposer = (item: DisplayListing, compact = false) => {
-if (!item.provider_id) return null;
-if (inlineComposerListingId !== item.id) return null;
+  if (!item.provider_id || inlineComposerListingId !== item.id) return null;
 
-const inlineDraft = inlineMessageDrafts[item.id] || "";
-const inlineStatus = inlineMessageStatusByListing[item.id] || "";
-const savedConversationId = item.provider_id ? inlineConversationByOwner[item.provider_id] || null : null;
-const recipientLabel =
-  item.type === "demand" ? "post owner" : item.type === "product" ? "seller" : "provider";
+  const inlineDraft = inlineMessageDrafts[item.id] || "";
+  const inlineStatus = inlineMessageStatusByListing[item.id] || "";
+  const savedConversationId = item.provider_id ? inlineConversationByOwner[item.provider_id] || null : null;
+  const recipientLabel =
+    item.type === "demand" ? "post owner" : item.type === "product" ? "seller" : "provider";
 
-return (
-  <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact ? "mt-3 p-3" : "mt-4 p-4"}`}>
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message {recipientLabel}</p>
-    <textarea
-      value={inlineDraft}
-      onChange={(event) => {
-        const nextValue = event.target.value;
-        setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: nextValue }));
-        if (inlineStatus) {
-          setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-        }
-      }}
-      rows={compact ? 3 : 4}
-      placeholder={`Write a message to ${item.displayCreator}...`}
-      className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-    />
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={() => void sendInlineMessage(item)}
-        disabled={inlineSendingListingId === item.id || !inlineDraft.trim()}
-        className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {inlineSendingListingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-        {inlineSendingListingId === item.id ? "Sending..." : "Send Message"}
-      </button>
-      {(savedConversationId || messageLoadingId === item.provider_id) && (
+  return (
+    <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact ? "mt-3 p-3" : "mt-4 p-4"}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message {recipientLabel}</p>
+      <textarea
+        value={inlineDraft}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: nextValue }));
+          if (inlineStatus) {
+            setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
+          }
+        }}
+        rows={compact ? 3 : 4}
+        placeholder={`Write a message to ${item.displayCreator}...`}
+        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => void openChatThread(item.provider_id)}
-          disabled={messageLoadingId === item.provider_id}
-          className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+          onClick={() => void sendInlineMessage(item)}
+          disabled={inlineSendingListingId === item.id || !inlineDraft.trim()}
+          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
-          <ArrowUpRight size={13} />
+          {inlineSendingListingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+          {inlineSendingListingId === item.id ? "Sending..." : "Send Message"}
         </button>
-      )}
+        {(savedConversationId || messageLoadingId === item.provider_id) && (
+          <button
+            type="button"
+            onClick={() => void openChatThread(item.provider_id, item)}
+            disabled={messageLoadingId === item.provider_id}
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+          >
+            {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
+            <ArrowUpRight size={13} />
+          </button>
+        )}
+      </div>
+      {!!inlineStatus && <p className="mt-2 text-xs text-slate-600">{inlineStatus}</p>}
     </div>
-    {!!inlineStatus && <p className="mt-2 text-xs text-slate-600">{inlineStatus}</p>}
-  </div>
-);
+  );
 };
+
+const featuredConnectionMeta = featuredListing ? getListingConnectionMeta(featuredListing) : null;
+const featuredSaved = featuredListing ? isSavedListing(featuredListing) : false;
+const featuredSaveBusy = featuredListing ? isListingBusy(featuredListing, savingListingIds) : false;
+const featuredShareBusy = featuredListing ? isListingBusy(featuredListing, sharingListingIds) : false;
+const featuredOwnListing = !!featuredListing && !!connectionViewerId && featuredListing.provider_id === connectionViewerId;
 
 const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
 
@@ -2265,6 +2748,12 @@ return (
             </div>
           )}
 
+          {!connectionSchemaReady && !!connectionSchemaMessage && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-sm">
+              {connectionSchemaMessage}
+            </div>
+          )}
+
           {isFeedLoading && feed.length === 0 ? (
             <div className="space-y-4">
               {[0, 1].map((index) => (
@@ -2361,36 +2850,78 @@ return (
                               ? void messageProvider(featuredListing)
                               : void bookNow(featuredListing)
                           }
-                          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+                          disabled={
+                            featuredOwnListing ||
+                            (featuredListing.type === "demand" && !canOpenInlineComposer(featuredListing))
+                          }
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
                         >
                           {featuredListing.type === "demand" ? (
-                            inlineComposerListingId === featuredListing.id ? (
-                              "Close Chat"
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5">
-                                <MessageCircle size={14} />
-                                Message Owner
-                              </span>
-                            )
+                            <>
+                              <MessageCircle size={14} />
+                              {getMessageButtonLabel(featuredListing)}
+                            </>
                           ) : (
-                            "Book Now"
+                            <>{featuredOwnListing ? "Your listing" : "Book now"}</>
                           )}
                         </button>
                         {featuredListing.type !== "demand" && (
                           <button
                             type="button"
                             onClick={() => void messageProvider(featuredListing)}
-                            className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                            disabled={!canOpenInlineComposer(featuredListing)}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
                           >
-                            {inlineComposerListingId === featuredListing.id ? "Close Chat" : "Connect"}
+                            <MessageCircle size={14} />
+                            {getMessageButtonLabel(featuredListing)}
                           </button>
+                        )}
+                        {featuredConnectionMeta?.state && (
+                          <ConnectionActionGroup
+                            state={featuredConnectionMeta.state}
+                            busy={featuredConnectionMeta.busy}
+                            busyActionKey={busyActionKey}
+                            onConnect={() => void handleFeedConnect(featuredListing)}
+                            onAccept={() =>
+                              void handleFeedConnectionDecision(featuredListing, "accepted")
+                            }
+                            onReject={() =>
+                              void handleFeedConnectionDecision(featuredListing, "rejected")
+                            }
+                            onCancel={() =>
+                              void handleFeedConnectionDecision(featuredListing, "cancelled")
+                            }
+                            demoLabel={featuredConnectionMeta.demoLabel}
+                          />
                         )}
                         <button
                           type="button"
-                          onClick={() => setSelectedProvider(featuredListing.provider_id)}
-                          className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                          onClick={() => void toggleSaveListing(featuredListing)}
+                          disabled={featuredSaveBusy}
+                          className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${
+                            featuredSaved
+                              ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700"
+                          }`}
                         >
-                          View Profile
+                          {featuredSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                          {featuredSaveBusy ? "Saving..." : featuredSaved ? "Saved" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleShareListing(featuredListing)}
+                          disabled={featuredShareBusy}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          <Share2 size={14} />
+                          {featuredShareBusy ? "Sharing..." : "Share"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProvider(featuredListing.provider_id)}
+                          className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        >
+                          View profile
                         </button>
                         <button
                           type="button"
@@ -2399,19 +2930,19 @@ return (
                               ? router.push(`/business/${featuredListing.businessSlug}`)
                               : setSelectedProvider(featuredListing.provider_id)
                           }
-                          className="text-sm font-medium text-indigo-700 hover:text-indigo-600"
+                          className="inline-flex min-h-11 items-center text-sm font-medium text-indigo-700 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                         >
-                          View Details
+                          View details
                         </button>
                         {(inlineConversationByOwner[featuredListing.provider_id] ||
                           messageLoadingId === featuredListing.provider_id) && (
                           <button
                             type="button"
-                            onClick={() => void openChatThread(featuredListing.provider_id)}
+                            onClick={() => void openChatThread(featuredListing.provider_id, featuredListing)}
                             disabled={messageLoadingId === featuredListing.provider_id}
-                            className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
+                            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
                           >
-                            {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open Chat"}
+                            {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open chat"}
                             <ArrowUpRight size={14} />
                           </button>
                         )}
@@ -2464,7 +2995,11 @@ return (
               {secondaryListings.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {secondaryListings.map((item, index) => {
-                    const saved = savedListingIds.has(item.id);
+                    const connectionMeta = getListingConnectionMeta(item);
+                    const saved = isSavedListing(item);
+                    const saveBusy = isListingBusy(item, savingListingIds);
+                    const shareBusy = isListingBusy(item, sharingListingIds);
+                    const ownListing = !!connectionViewerId && item.provider_id === connectionViewerId;
                     const mediaKinds = getMediaKinds(item.media);
                     const listingSignals = getListingSignals(item);
                     const primaryMedia = item.media?.[0] || null;
@@ -2510,11 +3045,12 @@ return (
                           )}
                           <button
                             type="button"
-                            onClick={() => toggleSaveListing(item.id)}
-                            className="absolute right-2 top-2 rounded-full border border-white/70 bg-white/90 p-1.5 text-slate-600 shadow-sm transition-colors hover:text-indigo-700"
+                            onClick={() => void toggleSaveListing(item)}
+                            disabled={saveBusy}
+                            className="absolute right-2 top-2 rounded-full border border-white/70 bg-white/90 p-1.5 text-slate-600 shadow-sm transition-colors hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                             title="Save post"
                           >
-                            {saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
+                            {saveBusy ? <Loader2 size={15} className="animate-spin" /> : saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                           </button>
                         </div>
 
@@ -2558,42 +3094,70 @@ return (
                             </div>
                           )}
 
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
                             <button
                               type="button"
                               onClick={() =>
                                 item.type === "demand" ? void messageProvider(item) : void bookNow(item)
                               }
-                              className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                              disabled={ownListing || (item.type === "demand" && !canOpenInlineComposer(item))}
+                              className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
-                              {item.type === "demand"
-                                ? inlineComposerListingId === item.id
-                                  ? "Close Chat"
-                                  : "Message Owner"
-                                : "Book Now"}
+                              {item.type === "demand" ? (
+                                <>
+                                  <MessageCircle size={12} />
+                                  {getMessageButtonLabel(item)}
+                                </>
+                              ) : (
+                                <>{ownListing ? "Your listing" : "Book now"}</>
+                              )}
                             </button>
                             {item.type !== "demand" && (
                               <button
                                 type="button"
                                 onClick={() => void messageProvider(item)}
-                                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+                                disabled={!canOpenInlineComposer(item)}
+                                className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
                               >
-                                {inlineComposerListingId === item.id ? "Close Chat" : "Connect"}
+                                <MessageCircle size={12} />
+                                {getMessageButtonLabel(item)}
                               </button>
+                            )}
+                            {connectionMeta.state && (
+                              <ConnectionActionGroup
+                                state={connectionMeta.state}
+                                busy={connectionMeta.busy}
+                                busyActionKey={busyActionKey}
+                                onConnect={() => void handleFeedConnect(item)}
+                                onAccept={() => void handleFeedConnectionDecision(item, "accepted")}
+                                onReject={() => void handleFeedConnectionDecision(item, "rejected")}
+                                onCancel={() => void handleFeedConnectionDecision(item, "cancelled")}
+                                size="compact"
+                                demoLabel={connectionMeta.demoLabel}
+                              />
                             )}
                             <button
                               type="button"
+                              onClick={() => void handleShareListing(item)}
+                              disabled={shareBusy}
+                              className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {shareBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
+                              {shareBusy ? "Sharing..." : "Share"}
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => item.provider_id && setSelectedProvider(item.provider_id)}
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                              className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
                             >
                               Profile
                             </button>
                             {(inlineConversationByOwner[item.provider_id] || messageLoadingId === item.provider_id) && (
                                 <button
                                   type="button"
-                                  onClick={() => void openChatThread(item.provider_id)}
+                                  onClick={() => void openChatThread(item.provider_id, item)}
                                   disabled={messageLoadingId === item.provider_id}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
+                                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
                                 >
                                   {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
                                   <ArrowUpRight size={12} />
@@ -2628,6 +3192,12 @@ return (
         }}
       />
     )}
+    <ProfileToastViewport
+      toasts={toasts}
+      onDismiss={(toastId) => {
+        setToasts((current) => current.filter((toast) => toast.id !== toastId));
+      }}
+    />
   </div>
 );
 }

@@ -84,7 +84,9 @@ const normalizeNotificationRows = (rows: NotificationRowRaw[] | null | undefined
 };
 
 const isMissingNotificationsTable = (message: string) =>
-  /relation .*notifications.* does not exist|could not find the 'notifications' table/i.test(message);
+  /relation .*notifications.* does not exist|table .*notifications.* does not exist|could not find the table '.*notifications.*' in the schema cache/i.test(
+    message
+  );
 
 export default function NotificationCenter() {
   const router = useRouter();
@@ -449,7 +451,7 @@ export default function NotificationCenter() {
               {unreadCount} unread ·{" "}
               {demoMode
                 ? "Demo feed (switches to live after SQL setup)"
-                : "Live from orders, messages, reviews, and help matches"}
+                : "Live from orders, messages, reviews, connection updates, and Live Talk"}
             </p>
           </div>
           <div
@@ -524,7 +526,7 @@ export default function NotificationCenter() {
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <p className="font-medium text-slate-800">No notifications yet</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  New alerts appear automatically when chats, orders, reviews, and help matches update.
+                  New alerts appear automatically when chats, orders, reviews, connection requests, and Live Talk updates happen.
                 </p>
               </div>
             </li>

@@ -429,6 +429,7 @@ export const loadCommunityFeedSnapshot = async (
   return {
     ok: true,
     currentUserId,
+    acceptedConnectionIds: Array.from(acceptedPeers),
     currentUserProfile: currentUserProfileRow ? normalizeProfile(currentUserProfileRow) : null,
     services,
     products,

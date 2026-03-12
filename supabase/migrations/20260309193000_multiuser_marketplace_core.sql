@@ -405,7 +405,7 @@ set search_path = public
 as $$
 declare
   actor_id uuid := auth.uid();
-  conversation_id uuid;
+  resolved_conversation_id uuid;
   direct_conversation_key text;
 begin
   if actor_id is null then
@@ -422,15 +422,15 @@ begin
   values ('direct', actor_id, direct_conversation_key, jsonb_build_object('participant_count', 2))
   on conflict (direct_key) do update
     set updated_at = timezone('utc', now())
-  returning id into conversation_id;
+  returning id into resolved_conversation_id;
 
   insert into public.conversation_participants (conversation_id, user_id)
   values
-    (conversation_id, actor_id),
-    (conversation_id, target_user_id)
+    (resolved_conversation_id, actor_id),
+    (resolved_conversation_id, target_user_id)
   on conflict (conversation_id, user_id) do nothing;
 
-  return conversation_id;
+  return resolved_conversation_id;
 end;
 $$;
 

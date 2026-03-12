@@ -105,6 +105,7 @@ export type CommunityFeedResponse =
   | {
       ok: true;
       currentUserId: string;
+      acceptedConnectionIds: string[];
       currentUserProfile: CommunityProfileRecord | null;
       services: CommunityServiceRecord[];
       products: CommunityProductRecord[];

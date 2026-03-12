@@ -3,11 +3,19 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { CommunityFeedResponse } from "@/lib/api/community";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
+import {
+  blendWelcomeFeedCards,
+  buildWelcomeDemoFeedCards,
+  buildWelcomeFeedCards,
+  type WelcomeFeedCard,
+} from "@/lib/welcomeFeed";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
   Activity,
@@ -30,34 +38,7 @@ type WelcomeStats = {
   trustScore: number;
 };
 
-type UserProfile = {
-  name: string | null;
-  role: string | null;
-  location: string | null;
-  bio: string | null;
-  services: string[] | null;
-  availability: string | null;
-  email: string | null;
-  phone: string | null;
-  website: string | null;
-};
-
-type NearbyCard = {
-  id: string;
-  focusId: string;
-  type: "demand" | "service" | "product";
-  ownerId?: string;
-  title: string;
-  subtitle: string;
-  priceLabel: string;
-  distanceKm: number;
-  etaLabel: string;
-  signalLabel: string;
-  momentumLabel: string;
-  image: string;
-  actionLabel: string;
-  actionPath: string;
-};
+type NearbyCard = WelcomeFeedCard;
 
 type EnrichedNearbyCard = NearbyCard & {
   badge: string;
@@ -76,38 +57,6 @@ type EnrichedNearbyCard = NearbyCard & {
   networkActionPath: string;
   engagementLabel: string;
   tags: [string, string];
-};
-
-type RawPost = {
-  id: string;
-  text: string | null;
-  content: string | null;
-  description: string | null;
-  title: string | null;
-  user_id: string | null;
-  provider_id: string | null;
-  created_by: string | null;
-  type: string | null;
-  post_type: string | null;
-  category: string | null;
-  status: string | null;
-  state: string | null;
-};
-
-type RawService = {
-  id: string;
-  title: string | null;
-  category: string | null;
-  price: number | null;
-  provider_id: string | null;
-};
-
-type RawProduct = {
-  id: string;
-  title: string | null;
-  category: string | null;
-  price: number | null;
-  provider_id: string | null;
 };
 
 type ConversationUnreadRow = {
@@ -150,48 +99,10 @@ type FeedToast = {
 const routes = {
   posts: "/dashboard",
   people: "/dashboard/people",
-  tasks: "/dashboard/tasks",
   chat: "/dashboard/chat",
-  addService: "/dashboard/provider/add-service",
 } as const;
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
-
-const normalizeMarketplaceCardType = (value?: string | null): NearbyCard["type"] => {
-  const normalized = (value || "").trim().toLowerCase();
-  if (normalized === "service" || normalized === "product") return normalized;
-  return "demand";
-};
-
-const isLiveMarketplacePost = (status?: string | null, state?: string | null) => {
-  const normalizedStatus = (status || state || "").trim().toLowerCase();
-  return !normalizedStatus || normalizedStatus === "open";
-};
-
-const parseMarketplacePostPreview = (rawText: string) => {
-  const fallback = {
-    title: rawText.trim() || "New local post",
-    kind: "demand" as NearbyCard["type"],
-    category: "",
-    budget: 0,
-  };
-
-  if (!rawText.includes(" | ")) return fallback;
-
-  const parts = rawText.split(" | ");
-  const title = parts[0]?.trim() || fallback.title;
-  const typePart = parts.find((item) => item.startsWith("Type:"));
-  const categoryPart = parts.find((item) => item.startsWith("Category:"));
-  const budgetPart = parts.find((item) => item.startsWith("Budget:"));
-  const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
-
-  return {
-    title,
-    kind: normalizeMarketplaceCardType(typePart?.replace("Type:", "").trim()),
-    category: categoryPart?.replace("Category:", "").trim() || "",
-    budget: budgetMatch ? Number(budgetMatch[1]) : 0,
-  };
-};
 
 const MARKETPLACE_HERO_LINES = [
   "Post a Need. Get Local Help. Let Others Earn.",
@@ -214,6 +125,9 @@ export default function WelcomePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [heroLineIndex, setHeroLineIndex] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [feedEmptyReason, setFeedEmptyReason] = useState<"no_connections" | "no_connected_content" | null>(null);
+  const [acceptedConnectionCount, setAcceptedConnectionCount] = useState(0);
   const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
   const [messageCardId, setMessageCardId] = useState<string | null>(null);
@@ -230,6 +144,7 @@ export default function WelcomePage() {
     trustScore: 4.7,
   });
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
+  const activeRef = useRef(true);
 
   const pushFeedToast = (kind: FeedToast["kind"], message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -238,6 +153,13 @@ export default function WelcomePage() {
       setFeedToasts((current) => current.filter((toast) => toast.id !== id));
     }, 2600);
   };
+
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
+  }, []);
 
   const adjustCardMetrics = (cardId: string, updates: Partial<CardMetrics>) => {
     setCardMetricsById((current) => {
@@ -252,7 +174,7 @@ export default function WelcomePage() {
     });
   };
 
-  const fetchFeedCardMetrics = async (
+  const fetchFeedCardMetrics = useCallback(async (
     cardIds: string[],
     userId: string
   ): Promise<Record<string, CardMetrics>> => {
@@ -328,9 +250,109 @@ export default function WelcomePage() {
     });
 
     return metrics;
-  };
+  }, []);
+
+  const loadConnectedFeed = useCallback(
+    async (userId: string, options: { soft?: boolean } = {}) => {
+      const { soft = false } = options;
+
+      if (!soft) {
+        setIsFeedLoading(true);
+      }
+      setLoadError("");
+
+      try {
+        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed");
+        if (!payload.ok) {
+          throw new Error(payload.message || "Unable to load connected feed.");
+        }
+
+        if (!activeRef.current) {
+          return null;
+        }
+
+        const nextRole = (payload.currentUserProfile?.role || "").toLowerCase();
+        setIsProvider(providerRoles.has(nextRole));
+
+        const buildResult = buildWelcomeFeedCards(payload);
+        const nextCards = buildResult.cards.slice(0, 12);
+        const nextMetrics = nextCards.length
+          ? await fetchFeedCardMetrics(
+              nextCards.map((card) => card.id),
+              userId
+            )
+          : {};
+
+        if (!activeRef.current) {
+          return buildResult;
+        }
+
+        setAcceptedConnectionCount(buildResult.acceptedConnectionIds.length);
+        setFeedEmptyReason(buildResult.emptyReason);
+        setNearbyCards(nextCards);
+        setCardMetricsById(nextMetrics);
+        setStats((current) => ({
+          ...current,
+          nearbyPosts: buildResult.cards.length,
+        }));
+
+        return buildResult;
+      } catch (error) {
+        if (isAbortLikeError(error)) {
+          return null;
+        }
+
+        const message = isFailedFetchError(error)
+          ? "Network issue while loading your connected local feed."
+          : toErrorMessage(error, "Failed to load connected local feed.");
+        console.warn("Connected welcome feed failed:", message);
+
+        if (activeRef.current) {
+          setLoadError(message);
+          if (!soft) {
+            setNearbyCards([]);
+            setCardMetricsById({});
+            setAcceptedConnectionCount(0);
+            setFeedEmptyReason(null);
+          }
+        }
+
+        return null;
+      } finally {
+        if (!soft && activeRef.current) {
+          setIsFeedLoading(false);
+        }
+      }
+    },
+    [fetchFeedCardMetrics]
+  );
+
+  const demoNearbyCards = useMemo(() => buildWelcomeDemoFeedCards(), []);
+
+  const displayCards = useMemo(
+    () =>
+      blendWelcomeFeedCards(nearbyCards, {
+        minimumCardCount: 6,
+        demoCards: demoNearbyCards,
+      }),
+    [demoNearbyCards, nearbyCards]
+  );
+
+  const hasLiveCards = nearbyCards.length > 0;
+  const hasDemoCards = displayCards.some((card) => card.isDemo);
+  const isDemoOnlyFeed = hasDemoCards && !hasLiveCards;
+  const isMixedFeed = hasDemoCards && hasLiveCards;
 
   const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
+    const demoMetricsSeed = Object.fromEntries(
+      demoNearbyCards.map((card, index) => [
+        card.id,
+        {
+          saves: 12 + index * 3,
+          shares: 4 + index * 2,
+        },
+      ])
+    ) as Record<string, CardMetrics>;
     const demandAltMedia = [
       "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1200&q=80",
       "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80",
@@ -401,8 +423,8 @@ export default function WelcomePage() {
       ["Same-day pickup", "Repeat buyers"],
     ];
 
-    return nearbyCards.map((card, index) => {
-      const liveMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+    return displayCards.map((card, index) => {
+      const liveMetrics = cardMetricsById[card.id] || demoMetricsSeed[card.id] || { saves: 0, shares: 0 };
       const totalEngagement = liveMetrics.saves + liveMetrics.shares;
       const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
       const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
@@ -423,7 +445,7 @@ export default function WelcomePage() {
         ...card,
         badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
         pulse: card.type === "demand" ? "Urgent" : card.type === "service" ? "Trusted" : "Fast deal",
-        ownerLabel: ownerPool[index % ownerPool.length],
+        ownerLabel: card.ownerName || ownerPool[index % ownerPool.length],
         postedAgo: `${2 + index * 3}m ago`,
         responseLabel:
           card.type === "demand"
@@ -450,7 +472,7 @@ export default function WelcomePage() {
         tags,
       };
     });
-  }, [cardMetricsById, nearbyCards]);
+  }, [cardMetricsById, demoNearbyCards, displayCards]);
 
   const storyBaseItems = useMemo(() => {
     if (!enrichedCards.length) return [];
@@ -813,6 +835,12 @@ export default function WelcomePage() {
     [demandCards.length, stats.activeTasks, stats.trustScore, stats.unreadMessages]
   );
 
+  const liveStatusLabel = isFeedLoading
+    ? "Syncing feed"
+    : acceptedConnectionCount > 0
+    ? `${acceptedConnectionCount} connections live`
+    : "Connect to unlock";
+
   useEffect(() => {
     const lineTimer = window.setInterval(() => {
       setHeroLineIndex((current) => (current + 1) % MARKETPLACE_HERO_LINES.length);
@@ -844,36 +872,25 @@ export default function WelcomePage() {
             setViewerId(null);
             setSavedCardIds([]);
             setCardMetricsById({});
+            setNearbyCards([]);
+            setAcceptedConnectionCount(0);
+            setFeedEmptyReason(null);
+            setIsFeedLoading(false);
           }
           return;
         }
 
         setViewerId(currentUser.id);
 
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("name, role, location, bio, services, availability, email, phone, website")
-          .eq("id", currentUser.id)
-          .maybeSingle<UserProfile>();
-
-        const role = (profileData?.role || "").toLowerCase();
-        const isProviderRole = providerRoles.has(role);
-
-        setIsProvider(isProviderRole);
-
         const [
-          { data: nearbyPostRows },
+          communityResult,
           { data: myOrders },
           { data: myConversations },
           { data: reviewsData },
           { data: savedCardRows, error: savedCardError },
         ] =
           await Promise.all([
-            supabase
-              .from("posts")
-              .select("id,status,state")
-              .order("created_at", { ascending: false })
-              .limit(120),
+            loadConnectedFeed(currentUser.id),
             supabase
               .from("orders")
               .select("status")
@@ -924,344 +941,11 @@ export default function WelcomePage() {
         }
 
         setStats({
-          nearbyPosts:
-            ((nearbyPostRows as Array<{ status?: string | null; state?: string | null }> | null) || []).filter((row) =>
-              isLiveMarketplacePost(row.status, row.state)
-            ).length || 0,
+          nearbyPosts: communityResult?.cards.length || 0,
           activeTasks,
           unreadMessages,
           trustScore,
         });
-
-        const [{ data: recentPosts }, { data: recentServices }, { data: recentProducts }] = await Promise.all([
-          supabase
-            .from("posts")
-            .select(
-              "id,text,content,description,title,user_id,provider_id,created_by,type,post_type,category,status,state"
-            )
-            .order("created_at", { ascending: false })
-            .limit(8),
-          supabase.from("service_listings").select("id, title, category, price, provider_id").limit(5),
-          supabase.from("product_catalog").select("id, title, category, price, provider_id").limit(5),
-        ]);
-
-      const demandImages = [
-        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1200&q=80",
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
-      ];
-      const serviceImages = [
-        "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&q=80",
-        "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=1200&q=80",
-      ];
-      const productImages = [
-        "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=80",
-        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",
-      ];
-      const demandSignals = ["High urgency", "Budget confirmed", "Frequent requester"];
-      const serviceSignals = ["Verified provider", "4.9 avg rating", "Fast response"];
-      const productSignals = ["Trusted seller", "Pickup in 30m", "Local warranty"];
-
-      const mappedPosts: NearbyCard[] =
-        ((recentPosts as RawPost[] | null) || [])
-          .filter((post) => isLiveMarketplacePost(post.status, post.state))
-          .map((post, index) => {
-            const rawText = post.text || post.content || post.description || post.title || "New local post";
-            const parsed = parseMarketplacePostPreview(rawText);
-            const cardType = normalizeMarketplaceCardType(post.type || post.post_type || parsed.kind);
-            const categoryLabel = parsed.category || post.category || (cardType === "demand" ? "Need" : cardType);
-            const imagePool =
-              cardType === "service" ? serviceImages : cardType === "product" ? productImages : demandImages;
-            const signalPool =
-              cardType === "service" ? serviceSignals : cardType === "product" ? productSignals : demandSignals;
-            const ownerId = post.user_id || post.provider_id || post.created_by || undefined;
-
-            return {
-              id: `post-${post.id}`,
-              focusId: post.id,
-              type: cardType,
-              ownerId,
-              title: parsed.title,
-              subtitle:
-                cardType === "demand"
-                  ? index % 2 === 0
-                    ? "Shared in your connections feed"
-                    : "Posted in Residency Help group"
-                  : cardType === "service"
-                  ? `${categoryLabel} • shared in Services group`
-                  : `${categoryLabel} • posted in Buy/Sell group`,
-              priceLabel:
-                parsed.budget > 0
-                  ? `₹${parsed.budget}`
-                  : cardType === "demand"
-                  ? "Budget shared in chat"
-                  : cardType === "service"
-                  ? "Service post"
-                  : "Product post",
-              distanceKm: Number((0.8 + index * 0.9).toFixed(1)),
-              etaLabel:
-                cardType === "demand"
-                  ? index === 0
-                    ? "Starts in 15m"
-                    : `Starts in ${20 + index * 5}m`
-                  : cardType === "service"
-                  ? index === 0
-                    ? "Available now"
-                    : `Available in ${15 + index * 10}m`
-                  : index === 0
-                  ? "Same-day pickup"
-                  : `Pickup in ${30 + index * 15}m`,
-              signalLabel: signalPool[index % signalPool.length],
-              momentumLabel:
-                cardType === "demand"
-                  ? `${6 + index * 2} responders watching`
-                  : cardType === "service"
-                  ? `${3 + index} bookings in progress`
-                  : `${4 + index} chats opened today`,
-              image: imagePool[index % imagePool.length],
-              actionLabel: cardType === "demand" ? "Respond" : cardType === "service" ? "Connect" : "View",
-              actionPath: routes.posts,
-            };
-          }) || [];
-
-      const mappedServices: NearbyCard[] =
-        (recentServices as RawService[] | null)?.map((service, index) => ({
-          id: `service-${service.id}`,
-          focusId: service.id,
-          type: "service",
-          ownerId: service.provider_id || undefined,
-          title: service.title || "Local service",
-          subtitle: service.category ? `${service.category} • shared in Services group` : "Provider offering in your circles",
-          priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
-          distanceKm: Number((1.2 + index * 0.8).toFixed(1)),
-          etaLabel: index === 0 ? "Available now" : `Available in ${15 + index * 10}m`,
-          signalLabel: serviceSignals[index % serviceSignals.length],
-          momentumLabel: `${3 + index} bookings in progress`,
-          image: serviceImages[index % serviceImages.length],
-          actionLabel: "Book",
-          actionPath: routes.posts,
-        })) || [];
-
-      const mappedProducts: NearbyCard[] =
-        (recentProducts as RawProduct[] | null)?.map((product, index) => ({
-          id: `product-${product.id}`,
-          focusId: product.id,
-          type: "product",
-          ownerId: product.provider_id || undefined,
-          title: product.title || "Local product",
-          subtitle: product.category ? `${product.category} • posted in Buy/Sell group` : "Nearby seller from your network",
-          priceLabel: product.price ? `₹${product.price}` : "Price on request",
-          distanceKm: Number((1.4 + index * 0.8).toFixed(1)),
-          etaLabel: index === 0 ? "Same-day pickup" : `Pickup in ${30 + index * 15}m`,
-          signalLabel: productSignals[index % productSignals.length],
-          momentumLabel: `${4 + index} chats opened today`,
-          image: productImages[index % productImages.length],
-          actionLabel: "View",
-          actionPath: routes.posts,
-        })) || [];
-
-      const allCards = [...mappedPosts, ...mappedServices, ...mappedProducts].slice(0, 12);
-      const fallbackCards: NearbyCard[] = [
-        {
-          id: "demo-demand-electrician",
-          focusId: "demo-demand-electrician",
-          type: "demand",
-          title: "Need urgent electrician nearby",
-          subtitle: "Power issue in 2BHK apartment • shared in Tower A group",
-          priceLabel: "Budget ₹1200",
-          distanceKm: 1.1,
-          etaLabel: "Starts in 20m",
-          signalLabel: "High urgency",
-          momentumLabel: "11 responders watching",
-          image: demandImages[0],
-          actionLabel: "Respond",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-service-cleaning",
-          focusId: "demo-service-cleaning",
-          type: "service",
-          ownerId: "demo-provider-cleaning",
-          title: "Home deep cleaning by verified provider",
-          subtitle: "Cleaning service • recommended by your connections",
-          priceLabel: "From ₹399",
-          distanceKm: 1.9,
-          etaLabel: "Available now",
-          signalLabel: "Verified provider",
-          momentumLabel: "4 bookings in progress",
-          image: serviceImages[0],
-          actionLabel: "Book",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-product-tools",
-          focusId: "demo-product-tools",
-          type: "product",
-          ownerId: "demo-provider-tools",
-          title: "Local seller: power tools kit",
-          subtitle: "Tools and hardware • listed in Neighborhood Buy/Sell",
-          priceLabel: "₹1499",
-          distanceKm: 2.6,
-          etaLabel: "Same-day pickup",
-          signalLabel: "Trusted seller",
-          momentumLabel: "7 chats opened today",
-          image: productImages[0],
-          actionLabel: "View",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-demand-plumber",
-          focusId: "demo-demand-plumber",
-          type: "demand",
-          title: "Plumber needed for kitchen leakage",
-          subtitle: "Immediate fix requested • shared in Building Support group",
-          priceLabel: "Budget ₹850",
-          distanceKm: 2.1,
-          etaLabel: "Starts in 35m",
-          signalLabel: "Budget confirmed",
-          momentumLabel: "8 responders watching",
-          image: demandImages[1],
-          actionLabel: "Respond",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-service-ac",
-          focusId: "demo-service-ac",
-          type: "service",
-          ownerId: "demo-provider-ac",
-          title: "AC servicing with same-day slot",
-          subtitle: "Appliance maintenance • from trusted providers network",
-          priceLabel: "From ₹699",
-          distanceKm: 3.0,
-          etaLabel: "Available in 40m",
-          signalLabel: "4.9 avg rating",
-          momentumLabel: "6 bookings in progress",
-          image: serviceImages[1],
-          actionLabel: "Book",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-product-bike",
-          focusId: "demo-product-bikewash",
-          type: "product",
-          ownerId: "demo-provider-bike",
-          title: "Bike wash kit + polish combo",
-          subtitle: "Automotive essentials • shared in weekend riders group",
-          priceLabel: "₹799",
-          distanceKm: 1.7,
-          etaLabel: "Pickup in 45m",
-          signalLabel: "Local warranty",
-          momentumLabel: "5 chats opened today",
-          image: productImages[1],
-          actionLabel: "View",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-demand-tutor",
-          focusId: "demo-demand-tutor",
-          type: "demand",
-          title: "Math tutor for class 10 board prep",
-          subtitle: "Weekend evening batches • posted in parents network",
-          priceLabel: "Budget ₹500/session",
-          distanceKm: 2.4,
-          etaLabel: "Starts in 60m",
-          signalLabel: "Frequent requester",
-          momentumLabel: "9 responders watching",
-          image: demandImages[0],
-          actionLabel: "Respond",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-service-photo",
-          focusId: "demo-service-photographer",
-          type: "service",
-          ownerId: "demo-provider-photo",
-          title: "Event photographer for small gatherings",
-          subtitle: "Creative services • suggested in creators circle",
-          priceLabel: "From ₹2499",
-          distanceKm: 3.3,
-          etaLabel: "Available in 2h",
-          signalLabel: "Fast response",
-          momentumLabel: "3 bookings in progress",
-          image: serviceImages[0],
-          actionLabel: "Book",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-product-organic",
-          focusId: "demo-product-organic",
-          type: "product",
-          ownerId: "demo-provider-organic",
-          title: "Organic groceries starter basket",
-          subtitle: "Fresh farm produce • listed in weekly grocery group",
-          priceLabel: "₹1299",
-          distanceKm: 1.3,
-          etaLabel: "Pickup in 30m",
-          signalLabel: "Trusted seller",
-          momentumLabel: "10 chats opened today",
-          image: productImages[0],
-          actionLabel: "View",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-demand-paint",
-          focusId: "demo-demand-paint",
-          type: "demand",
-          title: "Need painter for bedroom wall touch-up",
-          subtitle: "Two-hour job • shared in Flat Owners group",
-          priceLabel: "Budget ₹1400",
-          distanceKm: 1.6,
-          etaLabel: "Starts in 50m",
-          signalLabel: "Budget confirmed",
-          momentumLabel: "6 responders watching",
-          image: demandImages[1],
-          actionLabel: "Respond",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-service-laptop",
-          focusId: "demo-service-laptop",
-          type: "service",
-          ownerId: "demo-provider-laptop",
-          title: "On-site laptop diagnostics and cleanup",
-          subtitle: "Tech support • active in office professionals group",
-          priceLabel: "From ₹799",
-          distanceKm: 2.2,
-          etaLabel: "Available in 55m",
-          signalLabel: "Fast response",
-          momentumLabel: "5 bookings in progress",
-          image: serviceImages[1],
-          actionLabel: "Book",
-          actionPath: routes.posts,
-        },
-        {
-          id: "demo-product-desk",
-          focusId: "demo-product-desk",
-          type: "product",
-          ownerId: "demo-provider-desk",
-          title: "Study desk with storage, almost new",
-          subtitle: "Home furniture • posted in moving sale group",
-          priceLabel: "₹3200",
-          distanceKm: 2.8,
-          etaLabel: "Pickup in 90m",
-          signalLabel: "Trusted seller",
-          momentumLabel: "12 chats opened today",
-          image: productImages[1],
-          actionLabel: "View",
-          actionPath: routes.posts,
-        },
-      ];
-
-      const nextCards = allCards.length ? allCards : fallbackCards;
-      setNearbyCards(nextCards);
-
-      const nextMetrics = await fetchFeedCardMetrics(
-        nextCards.map((card) => card.id),
-        currentUser.id
-      );
-
-      if (isActive) {
-        setCardMetricsById(nextMetrics);
-      }
       } catch (error) {
         if (isAbortLikeError(error)) {
           return;
@@ -1282,7 +966,44 @@ export default function WelcomePage() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [loadConnectedFeed]);
+
+  useEffect(() => {
+    if (!viewerId) return;
+
+    let reloadTimer: number | null = null;
+    const scheduleReload = () => {
+      if (reloadTimer) {
+        window.clearTimeout(reloadTimer);
+      }
+
+      reloadTimer = window.setTimeout(() => {
+        void loadConnectedFeed(viewerId, { soft: true });
+      }, 320);
+    };
+
+    const channel = supabase
+      .channel(`welcome-live-feed-${viewerId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "connection_requests" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
+      .subscribe();
+
+    const poller = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void loadConnectedFeed(viewerId, { soft: true });
+    }, 120000);
+
+    return () => {
+      if (reloadTimer) {
+        window.clearTimeout(reloadTimer);
+      }
+      window.clearInterval(poller);
+      void supabase.removeChannel(channel);
+    };
+  }, [loadConnectedFeed, viewerId]);
 
   useEffect(() => {
     if (!viewerId || nearbyCards.length === 0) return;
@@ -1353,7 +1074,7 @@ export default function WelcomePage() {
       isActive = false;
       void supabase.removeChannel(channel);
     };
-  }, [nearbyCards, viewerId]);
+  }, [fetchFeedCardMetrics, nearbyCards, viewerId]);
 
   return (
     <>
@@ -1412,8 +1133,8 @@ export default function WelcomePage() {
                   {MARKETPLACE_HERO_LINES[4]}
                 </p>
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-cyan-50">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                  {demandCards.length} live
+                  <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${acceptedConnectionCount > 0 ? "bg-emerald-300" : "bg-amber-200"}`} />
+                  {liveStatusLabel}
                 </span>
               </div>
 
@@ -1465,8 +1186,18 @@ export default function WelcomePage() {
           <div className="grid min-w-0 grid-cols-1 gap-4">
             <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                    isDemoOnlyFeed
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isDemoOnlyFeed ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
+                    }`}
+                  />
                   Live Stories
                 </div>
                 <div className="flex items-center gap-2">
@@ -1493,6 +1224,22 @@ export default function WelcomePage() {
                 </div>
               </div>
 
+              {hasDemoCards && (
+                <div
+                  className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+                    isMixedFeed
+                      ? "border-indigo-200 bg-indigo-50 text-indigo-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  {isMixedFeed
+                    ? `${nearbyCards.length} live cards are shown first. Preview stories stay in rotation so the Welcome rail and feed remain visually full while more real local posts arrive.`
+                    : feedEmptyReason === "no_connections"
+                    ? "Preview stories are active for visualization while you build your first connections. Accepted connections and their local posts will replace these cards automatically."
+                    : "Connected users are live, but they have not published yet. Preview stories are filling the rail until real local posts arrive."}
+                </div>
+              )}
+
               <div className="mt-4">
                 <div
                   ref={storiesScrollRef}
@@ -1503,42 +1250,69 @@ export default function WelcomePage() {
                   onPointerCancel={handleStoriesPointerUp}
                   className="w-full max-w-full cursor-grab active:cursor-grabbing select-none overflow-x-auto overflow-y-hidden pb-1 overscroll-x-contain touch-pan-x [scrollbar-width:thin]"
                 >
-                  <div className="flex w-max gap-3 sm:gap-3.5">
-                    {storyItems.map((story, storyIndex) => {
-                      const focusPath = buildFeedFocusPath(story);
+                  {isFeedLoading && storyItems.length === 0 ? (
+                    <div className="flex w-max gap-3 sm:gap-3.5">
+                      {[0, 1, 2, 3].map((index) => (
+                        <div
+                          key={`story-skeleton-${index}`}
+                          className="h-[168px] w-[170px] shrink-0 animate-pulse rounded-xl border border-slate-200 bg-white p-2.5 sm:w-[186px]"
+                        >
+                          <div className="h-20 rounded-lg bg-slate-200" />
+                          <div className="mt-3 h-3 w-4/5 rounded bg-slate-200" />
+                          <div className="mt-2 h-3 w-3/5 rounded bg-slate-200" />
+                          <div className="mt-2 h-3 w-2/5 rounded bg-slate-200" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : storyItems.length > 0 ? (
+                    <div className="flex w-max gap-3 sm:gap-3.5">
+                      {storyItems.map((story, storyIndex) => {
+                        const focusPath = buildFeedFocusPath(story);
 
-                      return (
-                        <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] sm:w-[186px] shrink-0">
-                          <button
-                            onClick={() => router.push(focusPath)}
-                            className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-indigo-300"
-                          >
-                            <div className="relative">
-                              <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                                <Image src={story.image} alt={story.title} fill sizes="180px" className="object-cover" />
+                        return (
+                          <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] shrink-0 sm:w-[186px]">
+                            <button
+                              onClick={() => router.push(focusPath)}
+                              className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-indigo-300"
+                            >
+                              <div className="relative">
+                                <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                                  <Image src={story.image} alt={story.title} fill sizes="180px" className="object-cover" />
+                                </div>
+                                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500 animate-pulse" />
+                                <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                  {story.badge}
+                                </span>
+                                {story.isDemo && (
+                                  <span className="absolute bottom-1.5 right-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+                                    Preview
+                                  </span>
+                                )}
                               </div>
-                              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500 animate-pulse" />
-                              <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
-                                {story.badge}
-                              </span>
-                            </div>
 
-                            <p className="mt-2 text-[11px] text-slate-600 line-clamp-1">{story.subtitle}</p>
-                            <p className="mt-1 text-[12px] font-semibold text-slate-900 line-clamp-1">
-                              {formatStoryPriceLine(story)}
-                            </p>
-                            <p className="mt-0.5 text-[11px] text-slate-500">Radius {story.distanceKm} km</p>
-                            <p className="mt-0.5 text-[11px] text-emerald-700 font-medium line-clamp-1">
-                              Availability: {story.etaLabel}
-                            </p>
-                            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
-                              <ArrowRight size={10} />
-                            </span>
-                          </button>
-                        </article>
-                      );
-                    })}
-                  </div>
+                              <p className="mt-2 line-clamp-1 text-[11px] text-slate-600">{story.subtitle}</p>
+                              <p className="mt-1 line-clamp-1 text-[12px] font-semibold text-slate-900">
+                                {formatStoryPriceLine(story)}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-slate-500">Radius {story.distanceKm} km</p>
+                              <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-emerald-700">
+                                Availability: {story.etaLabel}
+                              </p>
+                              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                                <ArrowRight size={10} />
+                              </span>
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                      {feedEmptyReason === "no_connections"
+                        ? "Accept a connection request in People to unlock connected local stories here."
+                        : "Your connections are active, but no one has shared local posts yet."}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 border-t border-slate-200 pt-4">
@@ -1555,184 +1329,234 @@ export default function WelcomePage() {
                     </button>
                   </div>
 
-                  <div data-testid="welcome-live-feed" className="mt-3 space-y-3 min-h-[280px] max-h-[56vh] overflow-y-auto pr-1">
-                    {enrichedCards.map((card, cardIndex) => {
-                      const focusPath = buildFeedFocusPath(card);
-                      const networkPath = buildNetworkActionPath(card);
-                      const isSaved = savedCardIds.includes(card.id);
-                      const messageInFlight = messageCardId === card.id;
-                      const saveInFlight = savingCardIds.includes(card.id);
-                      const shareInFlight = sharingCardIds.includes(card.id);
-
-                      return (
-                        <article
-                          key={`feed-inline-${card.id}`}
-                          data-testid="welcome-feed-card"
-                          data-card-id={card.id}
-                          className="post-card-enter rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4"
-                          style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
-                        >
-                          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                    card.type === "demand"
-                                      ? "bg-rose-100 text-rose-700"
-                                      : card.type === "service"
-                                      ? "bg-indigo-100 text-indigo-700"
-                                      : "bg-emerald-100 text-emerald-700"
-                                  }`}
-                                >
-                                  {card.type}
-                                </span>
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{card.audienceLabel}</span>
-                                <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
-                                <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                              </div>
-
-                              <h3 className="mt-2 text-[16px] font-semibold text-slate-900">{card.title}</h3>
-                              <p className="mt-1 text-xs text-slate-600">{card.subtitle}</p>
-
-                              <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
-                                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
-                                  {card.ownerLabel.slice(0, 2).toUpperCase()}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-[12px] font-semibold text-slate-800 line-clamp-1">{card.ownerLabel}</p>
-                                  <p className="text-[11px] text-slate-500 line-clamp-1">{card.audienceName}</p>
-                                </div>
-                              </div>
-
-                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
-                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
-                                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{card.momentumLabel}</span>
-                              </div>
-
-                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                {card.tags.map((tag) => (
-                                  <span key={`${card.id}-${tag}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-
-                              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(focusPath)}
-                                  aria-label={`${card.actionLabel} post ${card.title}`}
-                                  title={`${card.actionLabel} this post`}
-                                  data-testid="feed-action-primary"
-                                  className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
-                                >
-                                  {card.actionLabel}
-                                  <ArrowRight size={11} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleMessageCard(card)}
-                                  disabled={messageInFlight}
-                                  aria-label={`Message about ${card.title}`}
-                                  title="Open contextual chat"
-                                  data-testid="feed-action-message"
-                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
-                                >
-                                  <MessageCircle size={12} />
-                                  {messageInFlight ? "Opening..." : "Message"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(networkPath)}
-                                  aria-label={`${card.networkActionLabel} for ${card.title}`}
-                                  title="Open connection or group context"
-                                  data-testid="feed-action-network"
-                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
-                                >
-                                  <UsersRound size={12} />
-                                  {card.networkActionLabel}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleShareCard(card)}
-                                  disabled={shareInFlight}
-                                  aria-label={`Share ${card.title}`}
-                                  title="Share post"
-                                  data-testid="feed-action-share"
-                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
-                                >
-                                  <Share2 size={12} />
-                                  {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void toggleCardSave(card)}
-                                  disabled={saveInFlight}
-                                  aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
-                                  title={isSaved ? "Remove from saved" : "Save post"}
-                                  data-testid="feed-action-save"
-                                  className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
-                                    isSaved && !saveInFlight
-                                      ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
-                                  }`}
-                                >
-                                  <Bookmark size={12} />
-                                  {saveInFlight ? "Saving..." : isSaved ? "Saved" : "Save"}
-                                </button>
-                              </div>
-
-                              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                <span>{card.audienceMeta}</span>
-                                <span className="h-1 w-1 rounded-full bg-slate-300" />
-                                <span>{card.engagementLabel}</span>
-                              </div>
-                            </div>
-
-                            <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-indigo-50/60 p-2.5">
-                              <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
-                                <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
-                                <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                  {card.ownerLabel}
-                                </span>
-                                <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                                  +{card.mediaCount} photos
-                                </span>
-                                <span className="absolute left-2 bottom-2 rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                  {card.pulse}
-                                </span>
-                              </div>
-
-                              <div className="mt-2 grid grid-cols-2 gap-2">
-                                {card.mediaGallery.slice(1).map((mediaItem, mediaIndex) => (
-                                  <div key={`${card.id}-media-${mediaIndex}`} className="relative h-20 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                    <Image
-                                      src={mediaItem}
-                                      alt={`${card.title} gallery ${mediaIndex + 2}`}
-                                      fill
-                                      sizes="150px"
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-
-                              <div className="mt-2 grid gap-2 text-[11px]">
-                                <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                                  <p className="text-slate-500">{card.mediaLabel}</p>
-                                  <p className="font-semibold text-slate-800 line-clamp-1">{card.proofLabel}</p>
-                                </div>
-                                <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                                  <p className="text-slate-500">{card.signalLabel}</p>
-                                  <p className="font-semibold text-slate-800 line-clamp-1">{card.responseLabel}</p>
-                                </div>
-                              </div>
-                            </aside>
+                  <div data-testid="welcome-live-feed" className="mt-3 min-h-[280px] max-h-[56vh] space-y-3 overflow-y-auto pr-1">
+                    {isFeedLoading && enrichedCards.length === 0 ? (
+                      <>
+                        {[0, 1, 2].map((index) => (
+                          <div key={`welcome-feed-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="h-3 w-20 rounded bg-slate-200" />
+                            <div className="mt-3 h-5 w-3/5 rounded bg-slate-200" />
+                            <div className="mt-2 h-4 w-full rounded bg-slate-200" />
+                            <div className="mt-2 h-4 w-4/5 rounded bg-slate-200" />
+                            <div className="mt-4 h-32 rounded-xl bg-slate-200" />
                           </div>
-                        </article>
-                      );
-                    })}
+                        ))}
+                      </>
+                    ) : enrichedCards.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+                        <h4 className="text-base font-semibold text-slate-900">
+                          {feedEmptyReason === "no_connections"
+                            ? "Connect with someone to unlock your local live feed"
+                            : "Your connections have not posted yet"}
+                        </h4>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {feedEmptyReason === "no_connections"
+                            ? "Use the People tab to send or accept a connection request. Accepted connections will start appearing here automatically."
+                            : "As soon as a connected user posts a need, service, or product, it will appear here without a manual refresh."}
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => router.push(routes.people)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                          >
+                            <UsersRound size={14} />
+                            Open People
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOpenPostModal(true)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
+                          >
+                            <Zap size={14} />
+                            Post a Need
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      enrichedCards.map((card, cardIndex) => {
+                        const focusPath = buildFeedFocusPath(card);
+                        const networkPath = buildNetworkActionPath(card);
+                        const isSaved = savedCardIds.includes(card.id);
+                        const messageInFlight = messageCardId === card.id;
+                        const saveInFlight = savingCardIds.includes(card.id);
+                        const shareInFlight = sharingCardIds.includes(card.id);
+
+                        return (
+                          <article
+                            key={`feed-inline-${card.id}`}
+                            data-testid="welcome-feed-card"
+                            data-card-id={card.id}
+                            className="post-card-enter rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4"
+                            style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
+                          >
+                            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
+                              <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                      card.type === "demand"
+                                        ? "bg-rose-100 text-rose-700"
+                                        : card.type === "service"
+                                        ? "bg-indigo-100 text-indigo-700"
+                                        : "bg-emerald-100 text-emerald-700"
+                                    }`}
+                                  >
+                                    {card.type}
+                                  </span>
+                                  {card.isDemo && (
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
+                                      Preview
+                                    </span>
+                                  )}
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{card.audienceLabel}</span>
+                                  <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                                  <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
+                                </div>
+
+                                <h3 className="mt-2 text-[16px] font-semibold text-slate-900">{card.title}</h3>
+                                <p className="mt-1 text-xs text-slate-600">{card.subtitle}</p>
+
+                                <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
+                                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                                    {card.ownerLabel.slice(0, 2).toUpperCase()}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="line-clamp-1 text-[12px] font-semibold text-slate-800">{card.ownerLabel}</p>
+                                    <p className="line-clamp-1 text-[11px] text-slate-500">{card.audienceName}</p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
+                                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{card.momentumLabel}</span>
+                                </div>
+
+                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                  {card.tags.map((tag) => (
+                                    <span key={`${card.id}-${tag}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => router.push(focusPath)}
+                                    aria-label={`${card.actionLabel} post ${card.title}`}
+                                    title={`${card.actionLabel} this post`}
+                                    data-testid="feed-action-primary"
+                                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                                  >
+                                    {card.actionLabel}
+                                    <ArrowRight size={11} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleMessageCard(card)}
+                                    disabled={messageInFlight || !!card.isDemo}
+                                    aria-label={card.isDemo ? `${card.title} preview only` : `Message about ${card.title}`}
+                                    title={card.isDemo ? "Preview cards do not open real chats" : "Open contextual chat"}
+                                    data-testid="feed-action-message"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
+                                  >
+                                    <MessageCircle size={12} />
+                                    {card.isDemo ? "Preview only" : messageInFlight ? "Opening..." : "Message"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => router.push(networkPath)}
+                                    aria-label={`${card.networkActionLabel} for ${card.title}`}
+                                    title="Open connection or group context"
+                                    data-testid="feed-action-network"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                  >
+                                    <UsersRound size={12} />
+                                    {card.networkActionLabel}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleShareCard(card)}
+                                    disabled={shareInFlight}
+                                    aria-label={`Share ${card.title}`}
+                                    title="Share post"
+                                    data-testid="feed-action-share"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
+                                  >
+                                    <Share2 size={12} />
+                                    {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void toggleCardSave(card)}
+                                    disabled={saveInFlight}
+                                    aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
+                                    title={isSaved ? "Remove from saved" : "Save post"}
+                                    data-testid="feed-action-save"
+                                    className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
+                                      isSaved && !saveInFlight
+                                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                                    }`}
+                                  >
+                                    <Bookmark size={12} />
+                                    {saveInFlight ? "Saving..." : isSaved ? "Saved" : "Save"}
+                                  </button>
+                                </div>
+
+                                <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                                  <span>{card.audienceMeta}</span>
+                                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                  <span>{card.engagementLabel}</span>
+                                </div>
+                              </div>
+
+                              <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-indigo-50/60 p-2.5">
+                                <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
+                                  <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
+                                  <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                    {card.ownerLabel}
+                                  </span>
+                                  <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                    +{card.mediaCount} photos
+                                  </span>
+                                  <span className="absolute left-2 bottom-2 rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                    {card.pulse}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                  {card.mediaGallery.slice(1).map((mediaItem, mediaIndex) => (
+                                    <div key={`${card.id}-media-${mediaIndex}`} className="relative h-20 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                      <Image
+                                        src={mediaItem}
+                                        alt={`${card.title} gallery ${mediaIndex + 2}`}
+                                        fill
+                                        sizes="150px"
+                                        className="object-cover"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="mt-2 grid gap-2 text-[11px]">
+                                  <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+                                    <p className="text-slate-500">{card.mediaLabel}</p>
+                                    <p className="line-clamp-1 font-semibold text-slate-800">{card.proofLabel}</p>
+                                  </div>
+                                  <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+                                    <p className="text-slate-500">{card.signalLabel}</p>
+                                    <p className="line-clamp-1 font-semibold text-slate-800">{card.responseLabel}</p>
+                                  </div>
+                                </div>
+                              </aside>
+                            </div>
+                          </article>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </div>
