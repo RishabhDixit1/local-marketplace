@@ -83,6 +83,25 @@ describe("notifications", () => {
     });
   });
 
+  it("resolves connection request and live talk actions", () => {
+    expect(resolveNotificationAction(baseNotification({ entity_type: "connection_request" }))).toEqual({
+      ctaLabel: "Open people",
+      href: "/dashboard/people",
+    });
+
+    expect(
+      resolveNotificationAction(
+        baseNotification({
+          entity_type: "live_talk_request",
+          metadata: { conversation_id: "conv-live-1" },
+        })
+      )
+    ).toEqual({
+      ctaLabel: "Open chat",
+      href: "/dashboard/chat?open=conv-live-1",
+    });
+  });
+
   it("falls back to welcome feed for unknown entities", () => {
     expect(resolveNotificationAction(baseNotification({ entity_type: "unknown" }))).toEqual({
       ctaLabel: "View",

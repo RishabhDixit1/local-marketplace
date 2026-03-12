@@ -1,26 +1,10 @@
-"use client";
+import "server-only";
 
-import { supabase } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE,
   isMissingConnectionSchemaError,
 } from "@/lib/connectionErrors";
-export {
-  createConnectionBuckets,
-  createConnectionStateMap,
-  deriveConnectionState,
-  getConnectionActionDescriptors,
-  getConnectionPeerId,
-  normalizeConnectionRow,
-  normalizeConnectionStatus,
-  type ConnectionActionDescriptor,
-  type ConnectionBucketEntry,
-  type ConnectionDecision,
-  type ConnectionRequestRow,
-  type ConnectionState,
-  type ConnectionStateKind,
-  type ConnectionStatus,
-} from "@/lib/connectionState";
 import {
   deriveConnectionState,
   normalizeConnectionRow,
@@ -31,21 +15,19 @@ import {
 const pairFilter = (viewerId: string, otherUserId: string) =>
   `and(requester_id.eq.${viewerId},recipient_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},recipient_id.eq.${viewerId})`;
 
-const getCurrentViewerId = async () => {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+export const hasConnectionRequestSchema = async (db: SupabaseClient) => {
+  const { error } = await db.from("connection_requests").select("id").limit(1);
 
-  if (error || !user?.id) {
-    throw new Error(error?.message || "Login required.");
+  if (error) {
+    if (isMissingConnectionSchemaError(error.message || "")) return false;
+    throw new Error(error.message);
   }
 
-  return user.id;
+  return true;
 };
 
-const fetchPairRows = async (viewerId: string, otherUserId: string) => {
-  const { data, error } = await supabase
+const fetchPairRows = async (db: SupabaseClient, viewerId: string, otherUserId: string) => {
+  const { data, error } = await db
     .from("connection_requests")
     .select("id,requester_id,recipient_id,status,metadata,responded_at,created_at,updated_at")
     .or(pairFilter(viewerId, otherUserId))
@@ -61,10 +43,10 @@ const fetchPairRows = async (viewerId: string, otherUserId: string) => {
     .filter((row): row is ConnectionRequestRow => !!row);
 };
 
-export const listCurrentUserConnectionRows = async (viewerId: string) => {
+export const listViewerConnectionRows = async (db: SupabaseClient, viewerId: string) => {
   if (!viewerId) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("connection_requests")
     .select("id,requester_id,recipient_id,status,metadata,responded_at,created_at,updated_at")
     .or(`requester_id.eq.${viewerId},recipient_id.eq.${viewerId}`)
@@ -80,8 +62,8 @@ export const listCurrentUserConnectionRows = async (viewerId: string) => {
     .filter((row): row is ConnectionRequestRow => !!row);
 };
 
-const tryRpcSendConnectionRequest = async (targetUserId: string) => {
-  const { data, error } = await supabase.rpc("send_connection_request", {
+const tryRpcSendConnectionRequest = async (db: SupabaseClient, targetUserId: string) => {
+  const { data, error } = await db.rpc("send_connection_request", {
     target_user_id: targetUserId,
   });
 
@@ -93,8 +75,12 @@ const tryRpcSendConnectionRequest = async (targetUserId: string) => {
   return typeof data === "string" ? data : null;
 };
 
-const tryRpcRespondToConnectionRequest = async (requestId: string, decision: ConnectionDecision) => {
-  const { data, error } = await supabase.rpc("respond_to_connection_request", {
+const tryRpcRespondToConnectionRequest = async (
+  db: SupabaseClient,
+  requestId: string,
+  decision: ConnectionDecision
+) => {
+  const { data, error } = await db.rpc("respond_to_connection_request", {
     target_request_id: requestId,
     decision,
   });
@@ -107,25 +93,35 @@ const tryRpcRespondToConnectionRequest = async (requestId: string, decision: Con
   return typeof data === "string" ? data : null;
 };
 
-export const sendConnectionRequest = async (targetUserId: string) => {
-  const viewerId = await getCurrentViewerId();
+export const sendViewerConnectionRequest = async (db: SupabaseClient, viewerId: string, targetUserId: string) => {
+  if (!viewerId) {
+    throw new Error("Authentication required.");
+  }
 
-  if (viewerId === targetUserId) {
+  if (!targetUserId || viewerId === targetUserId) {
     throw new Error("You cannot connect with yourself.");
   }
 
-  const rpcRequestId = await tryRpcSendConnectionRequest(targetUserId);
-  if (rpcRequestId) return rpcRequestId;
+  const rpcRequestId = await tryRpcSendConnectionRequest(db, targetUserId);
+  if (rpcRequestId) {
+    return {
+      requestId: rpcRequestId,
+      rows: await listViewerConnectionRows(db, viewerId),
+    };
+  }
 
-  const pairRows = await fetchPairRows(viewerId, targetUserId);
+  const pairRows = await fetchPairRows(db, viewerId, targetUserId);
   const currentState = deriveConnectionState(viewerId, targetUserId, pairRows);
 
   if (currentState.kind === "accepted" || currentState.kind === "outgoing_pending") {
-    return currentState.requestId;
+    return {
+      requestId: currentState.requestId,
+      rows: await listViewerConnectionRows(db, viewerId),
+    };
   }
 
   if (currentState.kind === "incoming_pending" && currentState.requestId) {
-    const { error } = await supabase
+    const { error } = await db
       .from("connection_requests")
       .update({
         status: "accepted",
@@ -134,10 +130,14 @@ export const sendConnectionRequest = async (targetUserId: string) => {
       .eq("id", currentState.requestId);
 
     if (error) throw new Error(error.message);
-    return currentState.requestId;
+
+    return {
+      requestId: currentState.requestId,
+      rows: await listViewerConnectionRows(db, viewerId),
+    };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("connection_requests")
     .insert({
       requester_id: viewerId,
@@ -148,31 +148,48 @@ export const sendConnectionRequest = async (targetUserId: string) => {
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      const latestRows = await fetchPairRows(db, viewerId, targetUserId);
+      return {
+        requestId: deriveConnectionState(viewerId, targetUserId, latestRows).requestId,
+        rows: await listViewerConnectionRows(db, viewerId),
+      };
+    }
     if (isMissingConnectionSchemaError(error.message || "")) {
       throw new Error(CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE);
     }
-    if (error.code === "23505") {
-      const latestRows = await fetchPairRows(viewerId, targetUserId);
-      return deriveConnectionState(viewerId, targetUserId, latestRows).requestId;
-    }
+
     throw new Error(error.message);
   }
 
-  return typeof data?.id === "string" ? data.id : null;
+  return {
+    requestId: typeof data?.id === "string" ? data.id : null,
+    rows: await listViewerConnectionRows(db, viewerId),
+  };
 };
 
-export const respondToConnectionRequest = async (params: {
-  requestId: string;
-  decision: ConnectionDecision;
-}) => {
-  const viewerId = await getCurrentViewerId();
-  const rpcRequestId = await tryRpcRespondToConnectionRequest(params.requestId, params.decision);
-  if (rpcRequestId) return rpcRequestId;
+export const respondViewerConnectionRequest = async (
+  db: SupabaseClient,
+  viewerId: string,
+  requestId: string,
+  decision: ConnectionDecision
+) => {
+  if (!viewerId) {
+    throw new Error("Authentication required.");
+  }
 
-  const { data, error } = await supabase
+  const rpcRequestId = await tryRpcRespondToConnectionRequest(db, requestId, decision);
+  if (rpcRequestId) {
+    return {
+      requestId: rpcRequestId,
+      rows: await listViewerConnectionRows(db, viewerId),
+    };
+  }
+
+  const { data, error } = await db
     .from("connection_requests")
-    .select("id,requester_id,recipient_id,status")
-    .eq("id", params.requestId)
+    .select("id,requester_id,recipient_id,status,metadata,responded_at,created_at,updated_at")
+    .eq("id", requestId)
     .maybeSingle();
 
   if (error) {
@@ -183,23 +200,25 @@ export const respondToConnectionRequest = async (params: {
   }
 
   const row = normalizeConnectionRow(data as Record<string, unknown> | null);
-  if (!row) throw new Error("Connection request not found.");
+  if (!row) {
+    throw new Error("Connection request not found.");
+  }
 
-  if (params.decision === "cancelled" && row.requester_id !== viewerId) {
+  if (decision === "cancelled" && row.requester_id !== viewerId) {
     throw new Error("Only the requester can cancel this connection request.");
   }
 
-  if (params.decision !== "cancelled" && row.recipient_id !== viewerId) {
+  if (decision !== "cancelled" && row.recipient_id !== viewerId) {
     throw new Error("Only the recipient can accept or reject this connection request.");
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from("connection_requests")
     .update({
-      status: params.decision,
+      status: decision,
       responded_at: new Date().toISOString(),
     })
-    .eq("id", params.requestId);
+    .eq("id", requestId);
 
   if (updateError) {
     if (isMissingConnectionSchemaError(updateError.message || "")) {
@@ -208,5 +227,8 @@ export const respondToConnectionRequest = async (params: {
     throw new Error(updateError.message);
   }
 
-  return params.requestId;
+  return {
+    requestId,
+    rows: await listViewerConnectionRows(db, viewerId),
+  };
 };

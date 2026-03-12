@@ -334,6 +334,21 @@ export const runImmediateMatching = async (
   helpRequestId: string
 ): Promise<{ matchedCount: number; notifiedProviders: number; firstNotificationLatencyMs: number }> => {
   const startedAt = Date.now();
+  const { data: existingRequestRow } = await admin
+    .from("help_requests")
+    .select("matched_count")
+    .eq("id", helpRequestId)
+    .maybeSingle();
+
+  const existingMatchedCount = Number((existingRequestRow as { matched_count?: number } | null)?.matched_count || 0);
+  if (existingMatchedCount > 0) {
+    return {
+      matchedCount: existingMatchedCount,
+      notifiedProviders: existingMatchedCount,
+      firstNotificationLatencyMs: Date.now() - startedAt,
+    };
+  }
+
   let matchedCount = 0;
 
   const { data: rpcResult, error: rpcError } = await admin.rpc("match_help_request", {

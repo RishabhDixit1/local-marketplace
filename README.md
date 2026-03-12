@@ -65,6 +65,7 @@ npm run supabase:migrate
 
 If your database password has special URL characters (for example `@`, `:`, `/`, `?`, `#`), URL-encode them first.
 Example: use `%40` instead of `@` in the password segment.
+If the app shows `Could not find the table 'public.connection_requests' in the schema cache`, your target Supabase database is behind the repo schema. Run `npm run supabase:migrate` against that database before testing People, Posts, or the Welcome feed connection flow.
 
 Optional demo seeds:
 

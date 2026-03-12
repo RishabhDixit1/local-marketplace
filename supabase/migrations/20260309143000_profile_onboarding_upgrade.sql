@@ -118,7 +118,7 @@ begin
 end;
 $$;
 
-create or replace function public.normalize_profile_tag_array(values text[])
+create or replace function public.normalize_profile_tag_array(input_values text[])
 returns text[]
 language plpgsql
 immutable
@@ -129,7 +129,7 @@ declare
   value text;
   normalized_value text;
 begin
-  foreach value in array coalesce(values, '{}'::text[]) loop
+  foreach value in array coalesce(input_values, '{}'::text[]) loop
     normalized_value := btrim(coalesce(value, ''));
     if normalized_value = '' then
       continue;

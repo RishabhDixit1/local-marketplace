@@ -100,6 +100,24 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
     };
   }
 
+  if (entityType === "connection_request") {
+    return {
+      ctaLabel: "Open people",
+      href: "/dashboard/people",
+    };
+  }
+
+  if (entityType === "live_talk_request") {
+    const conversationId =
+      (notification.metadata?.conversation_id as string | undefined) ||
+      (notification.metadata?.conversationId as string | undefined);
+
+    return {
+      ctaLabel: "Open chat",
+      href: conversationId ? `/dashboard/chat?open=${conversationId}` : "/dashboard/chat",
+    };
+  }
+
   return {
     ctaLabel: "View",
     href: "/dashboard/welcome",

@@ -88,8 +88,8 @@ begin
       event_title,
       event_description,
       jsonb_build_object(
-        'listing_type', new.listing_type,
-        'price', new.price,
+        'listing_type', to_jsonb(new) ->> 'listing_type',
+        'price', to_jsonb(new) -> 'price',
         'source', 'trigger'
       )
     );
@@ -140,8 +140,8 @@ begin
       event_title,
       event_description,
       jsonb_build_object(
-        'listing_type', new.listing_type,
-        'price', new.price,
+        'listing_type', to_jsonb(new) ->> 'listing_type',
+        'price', to_jsonb(new) -> 'price',
         'source', 'trigger'
       )
     );
@@ -260,8 +260,8 @@ select
     initcap(replace(coalesce(o.status, 'new_lead'), '_', ' '))
   ),
   jsonb_build_object(
-    'listing_type', o.listing_type,
-    'price', o.price,
+    'listing_type', to_jsonb(o) ->> 'listing_type',
+    'price', to_jsonb(o) -> 'price',
     'source', 'backfill'
   )
 from public.orders o
