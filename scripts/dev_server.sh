@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOCK_PATH="$ROOT_DIR/.next/dev/lock"
+LOCK_PATH="$ROOT_DIR/.next-dev/dev/lock"
 
 find_repo_next_pids() {
   local pid cwd_line cwd
