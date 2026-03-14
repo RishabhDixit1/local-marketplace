@@ -20,6 +20,7 @@ import {
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
 import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
 import { verificationLabel } from "@/lib/business";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 
@@ -91,6 +92,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}${publicProfile.publicPath}`;
   const title = `${publicProfile.displayName} | Local Marketplace`;
+  const profileAvatarUrl = resolveProfileAvatarUrl(publicProfile.profile.avatar_url);
   const description =
     publicProfile.profile.bio?.slice(0, 160) ||
     `${publicProfile.displayName} is active on Local Marketplace. View profile details, contact info, and marketplace activity.`;
@@ -107,13 +109,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       url: profileUrl,
       siteName: "Local Marketplace",
       type: "profile",
-      images: publicProfile.profile.avatar_url ? [{ url: publicProfile.profile.avatar_url }] : undefined,
+      images: profileAvatarUrl ? [{ url: profileAvatarUrl }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: publicProfile.profile.avatar_url ? [publicProfile.profile.avatar_url] : undefined,
+      images: profileAvatarUrl ? [profileAvatarUrl] : undefined,
     },
   };
 }
@@ -199,6 +201,7 @@ export default async function PublicProfilePage({ params }: Params) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const profileAvatarUrl = resolveProfileAvatarUrl(profile.avatar_url);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eef2ff_0%,#f8fafc_32%,#f8fafc_100%)] text-slate-950">
@@ -228,8 +231,8 @@ export default async function PublicProfilePage({ params }: Params) {
               <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
                   <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-[28px] border-[6px] border-white bg-slate-950 text-3xl font-semibold text-white shadow-lg shadow-slate-950/15">
-                    {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+                    {profileAvatarUrl ? (
+                      <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
                     ) : (
                       <span>{avatarFallback}</span>
                     )}

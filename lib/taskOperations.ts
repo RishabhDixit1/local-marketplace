@@ -1,4 +1,5 @@
 import { getOrderStatusLabel, normalizeOrderStatus, toTaskWorkflowStatus } from "./orderWorkflow";
+import { resolveProfileAvatarUrl } from "./mediaUrl";
 
 export type TaskType = "posted" | "accepted";
 export type TaskStatus = "active" | "in-progress" | "completed" | "cancelled";
@@ -227,6 +228,7 @@ export const mapOrderToTask = (params: {
   const counterpartyProfile = counterpartyId ? profileMap.get(counterpartyId) : null;
   const consumerProfile = order.consumer_id ? profileMap.get(order.consumer_id) : null;
   const providerProfile = order.provider_id ? profileMap.get(order.provider_id) : null;
+  const currentUserAvatar = resolveProfileAvatarUrl(profileMap.get(currentUserId)?.avatar_url);
 
   let listingTitle = buildTitleFromListingType(listingType);
   let listingDescription = "Track order activity and coordinate next steps.";
@@ -265,12 +267,12 @@ export const mapOrderToTask = (params: {
     postedBy: {
       id: order.consumer_id || "unknown-consumer",
       name: isPostedByMe ? "You" : consumerProfile?.name || "Customer",
-      image: (isPostedByMe ? profileMap.get(currentUserId)?.avatar_url : consumerProfile?.avatar_url) || fallbackAvatar,
+      image: (isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(consumerProfile?.avatar_url)) || fallbackAvatar,
     },
     assignedTo: {
       id: order.provider_id || "unknown-provider",
       name: !isPostedByMe ? "You" : providerProfile?.name || "Provider",
-      image: (!isPostedByMe ? profileMap.get(currentUserId)?.avatar_url : providerProfile?.avatar_url) || fallbackAvatar,
+      image: (!isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(providerProfile?.avatar_url)) || fallbackAvatar,
     },
     tags: [
       listingCategory,

@@ -28,6 +28,7 @@ import {
   resolveCoordinates,
 } from "@/lib/geo";
 import { CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE } from "@/lib/connectionErrors";
+import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 
 const ProviderTrustPanel = dynamic(
@@ -776,9 +777,11 @@ const parsePostText = (rawText: string) => {
   if (mediaPart && !mediaPart.includes("None")) {
     const payload = mediaPart.replace("Media:", "").trim();
     for (const match of payload.matchAll(mediaRegex)) {
+      const mediaUrl = resolvePostMediaUrl(match[2].trim());
+      if (!mediaUrl) continue;
       media.push({
         mimeType: match[1].trim(),
-        url: match[2].trim(),
+        url: mediaUrl,
       });
     }
   }
@@ -1259,7 +1262,7 @@ export default function MarketplacePage() {
         return {
           id: profileId,
           name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
-          avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
+          avatar_url: resolveProfileAvatarUrl(stringFromRow(row, ["avatar_url", "avatar", "image_url"], "")) || "",
           role: stringFromRow(row, ["role", "account_type"], ""),
           bio: stringFromRow(row, ["bio", "about"], ""),
           location: stringFromRow(row, ["location", "city"], ""),
@@ -2815,6 +2818,7 @@ return (
                           alt={featuredListing.displayCreator}
                           width={44}
                           height={44}
+                          unoptimized
                           className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                         />
                         <div>

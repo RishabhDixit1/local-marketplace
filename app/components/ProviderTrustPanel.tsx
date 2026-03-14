@@ -15,6 +15,7 @@ import {
   verificationLabel,
 } from "@/lib/business";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
 type Props = {
   userId: string;
@@ -231,14 +232,18 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
         const normalizedServicesCount = (serviceRows || []).length;
         const normalizedProductsCount = (productRows || []).length;
 
-        setProfile(
-          profileRow ||
-            buildLiveFallbackProfile(userId, {
+        const normalizedProfile = profileRow
+          ? {
+              ...profileRow,
+              avatar_url: resolveProfileAvatarUrl(profileRow.avatar_url),
+            }
+          : buildLiveFallbackProfile(userId, {
               servicesCount: normalizedServicesCount,
               productsCount: normalizedProductsCount,
               reviewsCount: normalizedReviews.length,
-            })
-        );
+            });
+
+        setProfile(normalizedProfile);
         setReviews(normalizedReviews);
         setServicesCount(normalizedServicesCount);
         setProductsCount(normalizedProductsCount);
@@ -396,10 +401,11 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           <>
             <div className="mb-6 text-center">
               <Image
-                src={profile?.avatar_url || "https://i.pravatar.cc/150"}
+                src={resolveProfileAvatarUrl(profile?.avatar_url) || "https://i.pravatar.cc/150"}
                 alt={profile?.name || "Provider"}
                 width={96}
                 height={96}
+                unoptimized
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
               <h2 className="text-xl font-semibold">{profile?.name || "Provider"}</h2>
