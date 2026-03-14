@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { ReactNode } from "react";
 import { BadgeCheck, Briefcase, Clock3, Globe, MapPin, Phone, Star } from "lucide-react";
+import { appName, withAppName } from "@/lib/branding";
 import {
   calculateProfileCompletion,
   calculateVerificationStatus,
@@ -152,17 +153,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (!business) {
     return {
-      title: "Business Not Found | Local Marketplace",
+      title: withAppName("Business Not Found"),
       description: "The requested business profile is not available.",
     };
   }
 
   const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}/business/${business.canonicalSlug}`;
-  const title = `${business.profile.name || "Local Business"} | Local Marketplace`;
+  const title = withAppName(business.profile.name || "Local Business");
   const description =
     business.profile.bio?.slice(0, 160) ||
-    `Explore services and products from ${business.profile.name || "this local business"} on Local Marketplace.`;
+    `Explore services and products from ${business.profile.name || "this local business"} on ${appName}.`;
 
   return {
     title,
@@ -174,7 +175,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       title,
       description,
       url: profileUrl,
-      siteName: "Local Marketplace",
+      siteName: appName,
       type: "website",
       images: business.profile.avatar_url ? [{ url: business.profile.avatar_url }] : undefined,
     },

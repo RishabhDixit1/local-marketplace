@@ -1184,7 +1184,7 @@ begin
   end loop;
 end $$;
 
--- Local Marketplace demo seed for unified dashboard visuals
+-- ServiQ demo seed for unified dashboard visuals
 -- Safe to re-run (upserts by deterministic IDs).
 --
 -- What this seeds:
@@ -1318,7 +1318,7 @@ select
   rp.bio,
   rp.services,
   rp.availability,
-  coalesce(u.email, 'demo+' || rp.seed_key::text || '@local-marketplace.test'),
+  coalesce(u.email, 'demo+' || rp.seed_key::text || '@serviq.test'),
   rp.phone,
   rp.website,
   rp.avatar_url

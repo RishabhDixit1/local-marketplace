@@ -1317,7 +1317,7 @@ export default function PeoplePage() {
               ? "Active marketplace member posting local requests and collaborating with nearby providers."
               : servicesCount + productsCount > 0
               ? "Trusted neighborhood provider available for nearby requests and realtime chat."
-              : "Visible to your local marketplace so nearby members can connect and start a chat.");
+              : "Visible to your local network so nearby members can connect and start a chat.");
           const resolvedTags = combinedTags.length > 0 ? combinedTags : [defaultRole];
 
           return {
@@ -1892,11 +1892,11 @@ export default function PeoplePage() {
     [providers]
   );
   return (
-    <div className="w-full max-w-550 mx-auto space-y-5 sm:space-y-6 lg:space-y-7">
+    <div className="mx-auto w-full max-w-[1480px] space-y-5 sm:space-y-6 lg:space-y-7">
       <motion.section
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[1.3rem] border border-cyan-300/35 bg-linear-to-br from-slate-950 via-indigo-900 to-cyan-700 p-3 shadow-[0_20px_46px_-30px_rgba(14,116,144,0.75)] sm:p-4"
+        className="relative min-h-[230px] overflow-hidden rounded-[1.3rem] border border-cyan-300/35 bg-linear-to-br from-slate-950 via-indigo-900 to-cyan-700 p-4 shadow-[0_20px_46px_-30px_rgba(14,116,144,0.75)] sm:p-5"
       >
         <div className="pointer-events-none absolute inset-0">
           <div
@@ -1920,7 +1920,7 @@ export default function PeoplePage() {
           />
         </div>
 
-        <div className="relative space-y-4">
+        <div className="relative space-y-4 sm:space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-white">People Network</p>
             <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-cyan-50">
@@ -1932,10 +1932,10 @@ export default function PeoplePage() {
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div className="space-y-3">
               <div>
-                <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[34px]">
+                <h1 className="max-w-3xl text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-[34px]">
                   Discover trusted local providers and act on live availability.
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-cyan-50/88 sm:text-base">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-50/88 sm:text-base">
                   Browse nearby people, filter the strongest matches, and move into connections or active providers
                   without leaving the dashboard.
                 </p>

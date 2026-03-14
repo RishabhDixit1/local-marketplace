@@ -1044,13 +1044,13 @@ export default function TasksPage() {
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-550 space-y-5 sm:space-y-6 lg:space-y-7">
+    <div className="mx-auto w-full max-w-[1480px] space-y-5 sm:space-y-6 lg:space-y-7">
       <RouteObservability route="tasks" />
 
       <motion.section
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[1.3rem] border border-emerald-300/35 bg-linear-to-br from-slate-950 via-emerald-900 to-cyan-800 p-3 text-white shadow-[0_20px_46px_-30px_rgba(6,95,70,0.8)] sm:p-4"
+        className="relative min-h-[230px] overflow-hidden rounded-[1.3rem] border border-emerald-300/35 bg-linear-to-br from-slate-950 via-emerald-900 to-cyan-800 p-4 text-white shadow-[0_20px_46px_-30px_rgba(6,95,70,0.8)] sm:p-5"
       >
         <div className="pointer-events-none absolute inset-0">
           <div
@@ -1074,7 +1074,7 @@ export default function TasksPage() {
           transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
         />
 
-        <div className="relative space-y-4">
+        <div className="relative space-y-4 sm:space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-white">Task Operations</p>
             <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-emerald-50">
@@ -1086,10 +1086,10 @@ export default function TasksPage() {
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
             <div className="space-y-3">
               <div>
-                <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[34px]">
+                <h1 className="max-w-3xl text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-[34px]">
                   Keep local task operations moving in realtime.
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-emerald-50/88 sm:text-base">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/88 sm:text-base">
                   Refresh the board, focus active work, and track pipeline health from one compact dashboard hero.
                 </p>
               </div>

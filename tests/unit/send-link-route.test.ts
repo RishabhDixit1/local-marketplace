@@ -126,7 +126,7 @@ describe("POST /api/auth/send-link", () => {
       },
       body: JSON.stringify({
         email: "user@example.com",
-        redirectTo: "https://local-marketplace-eta.vercel.app/auth/callback",
+        redirectTo: "https://app.serviq.example/auth/callback",
       }),
     });
 

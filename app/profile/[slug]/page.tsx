@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
 import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
+import { appName, withAppName } from "@/lib/branding";
 import { verificationLabel } from "@/lib/business";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
@@ -84,18 +85,18 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (!publicProfile) {
     return {
-      title: "Profile Not Found | Local Marketplace",
+      title: withAppName("Profile Not Found"),
       description: "The requested member profile is not available.",
     };
   }
 
   const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}${publicProfile.publicPath}`;
-  const title = `${publicProfile.displayName} | Local Marketplace`;
+  const title = withAppName(publicProfile.displayName);
   const profileAvatarUrl = resolveProfileAvatarUrl(publicProfile.profile.avatar_url);
   const description =
     publicProfile.profile.bio?.slice(0, 160) ||
-    `${publicProfile.displayName} is active on Local Marketplace. View profile details, contact info, and marketplace activity.`;
+    `${publicProfile.displayName} is active on ${appName}. View profile details, contact info, and marketplace activity.`;
 
   return {
     title,
@@ -107,7 +108,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       title,
       description,
       url: profileUrl,
-      siteName: "Local Marketplace",
+      siteName: appName,
       type: "profile",
       images: profileAvatarUrl ? [{ url: profileAvatarUrl }] : undefined,
     },
