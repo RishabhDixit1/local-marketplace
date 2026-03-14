@@ -21,6 +21,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import {
   extractPresenceUserIds,
   getConversationRealtimeChannel,
@@ -444,7 +445,7 @@ export default function ChatPage() {
         return {
           id: conversationId,
           name: profile?.name || "User",
-          avatar: profile?.avatar_url || fallbackAvatar,
+          avatar: resolveProfileAvatarUrl(profile?.avatar_url) || fallbackAvatar,
           lastMessage: lastMessage?.content || "Start chat",
           lastMessageAt: lastMessage?.created_at || null,
           otherUserId: otherUser?.user_id || null,
@@ -1266,6 +1267,7 @@ export default function ChatPage() {
                           alt={`${chat.name} avatar`}
                           width={44}
                           height={44}
+                          unoptimized
                           className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                         />
                         <span
@@ -1401,6 +1403,7 @@ export default function ChatPage() {
                             alt={`${selectedConversation.name} avatar`}
                             width={42}
                             height={42}
+                            unoptimized
                             className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                           />
                           <span

@@ -9,6 +9,7 @@ import {
   createBusinessSlug,
   verificationLabel,
 } from "@/lib/business";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
 type Props = {
   userId: string;
@@ -48,7 +49,13 @@ export default function ProviderPopup({
         .eq("id", userId)
         .single();
 
-      if (data) setProfile(data);
+      if (data) {
+        const typed = data as Profile;
+        setProfile({
+          ...typed,
+          avatar_url: resolveProfileAvatarUrl(typed.avatar_url) || undefined,
+        });
+      }
     };
 
     fetchProfile();
@@ -69,12 +76,13 @@ export default function ProviderPopup({
           <div className="flex items-center gap-3 mb-3">
             <Image
               src={
-                profile.avatar_url ||
+                resolveProfileAvatarUrl(profile.avatar_url) ||
                 "https://i.pravatar.cc/150"
               }
               alt={profile.name || "Provider avatar"}
               width={48}
               height={48}
+              unoptimized
               className="w-12 h-12 rounded-full"
             />
 

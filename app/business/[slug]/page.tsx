@@ -12,6 +12,7 @@ import {
   extractBusinessIdFromSlug,
   verificationLabel,
 } from "@/lib/business";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
@@ -74,6 +75,10 @@ const loadBusiness = cache(async (slug: string) => {
     .maybeSingle<ProfileRow>();
 
   if (!profile) return null;
+  const normalizedProfile: ProfileRow = {
+    ...profile,
+    avatar_url: resolveProfileAvatarUrl(profile.avatar_url),
+  };
 
   const [{ data: services }, { data: products }, { data: reviews }, { data: providerOrderStats }] = await Promise.all([
     supabase
@@ -103,22 +108,22 @@ const loadBusiness = cache(async (slug: string) => {
     : 0;
 
   const profileCompletion = calculateProfileCompletion({
-    name: profile.name,
-    location: profile.location,
-    bio: profile.bio,
-    services: profile.services,
-    email: profile.email,
-    phone: profile.phone,
-    website: profile.website,
+    name: normalizedProfile.name,
+    location: normalizedProfile.location,
+    bio: normalizedProfile.bio,
+    services: normalizedProfile.services,
+    email: normalizedProfile.email,
+    phone: normalizedProfile.phone,
+    website: normalizedProfile.website,
   });
 
   const responseMinutes = estimateResponseMinutes({
-    availability: profile.availability,
-    providerId: profile.id,
+    availability: normalizedProfile.availability,
+    providerId: normalizedProfile.id,
   });
 
   const verificationStatus = calculateVerificationStatus({
-    role: profile.role,
+    role: normalizedProfile.role,
     profileCompletion,
     listingsCount: safeServices.length + safeProducts.length,
     averageRating,
@@ -128,7 +133,7 @@ const loadBusiness = cache(async (slug: string) => {
   const activeLeads = providerStatsRows.length > 0 ? Number(providerStatsRows[0].open_leads || 0) : 0;
 
   return {
-    profile,
+    profile: normalizedProfile,
     services: safeServices,
     products: safeProducts,
     reviews: safeReviews,
@@ -137,7 +142,7 @@ const loadBusiness = cache(async (slug: string) => {
     responseMinutes,
     verificationStatus,
     activeLeads,
-    canonicalSlug: createBusinessSlug(profile.name, profile.id),
+    canonicalSlug: createBusinessSlug(normalizedProfile.name, normalizedProfile.id),
   };
 });
 

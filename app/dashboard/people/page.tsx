@@ -54,6 +54,7 @@ import {
   getBrowserCoordinates,
   resolveCoordinates,
 } from "@/lib/geo";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 
 type ProfileRow = {
@@ -1002,7 +1003,7 @@ export default function PeoplePage() {
           byId.set(profileId, {
             id: profileId,
             name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
-            avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""),
+            avatar_url: resolveProfileAvatarUrl(stringFromRow(row, ["avatar_url", "avatar", "image_url"], "")),
             role: stringFromRow(row, ["role", "account_type"], ""),
             bio: stringFromRow(row, ["bio", "about"], ""),
             location: stringFromRow(row, ["location", "city"], ""),
@@ -1323,7 +1324,7 @@ export default function PeoplePage() {
             id: profile.id,
             name: profile.name || "Local Member",
             businessSlug: createBusinessSlug(profile.name, profile.id),
-            avatar: profile.avatar_url || `https://i.pravatar.cc/200?u=${profile.id}`,
+            avatar: resolveProfileAvatarUrl(profile.avatar_url) || `https://i.pravatar.cc/200?u=${profile.id}`,
             coverImage: mediaGallery[0],
             mediaGallery,
             role: defaultRole,
@@ -2470,6 +2471,7 @@ export default function PeoplePage() {
                   alt={provider.name}
                   width={24}
                   height={24}
+                  unoptimized
                   className="h-6 w-6 rounded-full object-cover"
                 />
                 <span className="font-medium">{provider.name}</span>
@@ -2552,6 +2554,7 @@ export default function PeoplePage() {
                         alt={person.name}
                         width={56}
                         height={56}
+                        unoptimized
                         className="h-14 w-14 rounded-xl border border-slate-200 object-cover"
                       />
                     </button>

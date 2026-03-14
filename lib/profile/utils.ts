@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import {
   POST_LOGIN_REDIRECT_ROUTE,
   PROFILE_BIO_MIN_LENGTH,
@@ -296,6 +297,9 @@ export const normalizeProfileRecord = (
   const interests = parseStringArray(row?.interests);
   const services = parseStringArray(row?.services);
   const mergedTopics = normalizeTopics([...interests, ...services]);
+  const rawAvatarUrl =
+    typeof row?.avatar_url === "string" ? row.avatar_url : typeof row?.avatar === "string" ? row.avatar : "";
+  const resolvedAvatarUrl = resolveProfileAvatarUrl(rawAvatarUrl) || "";
 
   const profile: ProfileRecord = {
     id: typeof row?.id === "string" ? row.id : user?.id || "",
@@ -309,9 +313,7 @@ export const normalizeProfileRecord = (
     email: toNullableString(typeof row?.email === "string" ? row.email : user?.email || ""),
     phone: toNullableString(typeof row?.phone === "string" ? row.phone : ""),
     website: toNullableString(typeof row?.website === "string" ? row.website : ""),
-    avatar_url: toNullableString(
-      typeof row?.avatar_url === "string" ? row.avatar_url : typeof row?.avatar === "string" ? row.avatar : ""
-    ),
+    avatar_url: toNullableString(resolvedAvatarUrl),
     availability: normalizeAvailability(typeof row?.availability === "string" ? row.availability : ""),
     onboarding_completed:
       typeof row?.onboarding_completed === "boolean"
@@ -335,8 +337,7 @@ export const normalizeProfileRecord = (
             email: typeof row?.email === "string" ? row.email : user?.email || "",
             phone: typeof row?.phone === "string" ? row.phone : "",
             website: typeof row?.website === "string" ? row.website : "",
-            avatar_url:
-              typeof row?.avatar_url === "string" ? row.avatar_url : typeof row?.avatar === "string" ? row.avatar : "",
+            avatar_url: resolvedAvatarUrl,
           }),
     latitude: parseNumber(row?.latitude),
     longitude: parseNumber(row?.longitude),

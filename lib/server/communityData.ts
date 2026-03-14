@@ -13,6 +13,7 @@ import type {
   CommunityReviewRecord,
   CommunityServiceRecord,
 } from "@/lib/api/community";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { listAcceptedConnectionPeerIds } from "@/lib/server/chatGuards";
 
 type FlexibleRow = Record<string, unknown>;
@@ -143,11 +144,12 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
   if (!id) return null;
 
   const profileCompletion = numberFromRow(row, ["profile_completion_percent"], Number.NaN);
+  const avatarUrl = resolveProfileAvatarUrl(stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""));
 
   return {
     id,
     name: stringFromRow(row, ["name", "full_name", "display_name"], "") || null,
-    avatar_url: stringFromRow(row, ["avatar_url", "avatar", "image_url"], "") || null,
+    avatar_url: avatarUrl,
     role: stringFromRow(row, ["role", "account_type"], "") || null,
     bio: stringFromRow(row, ["bio", "about"], "") || null,
     location: stringFromRow(row, ["location", "city"], "") || null,

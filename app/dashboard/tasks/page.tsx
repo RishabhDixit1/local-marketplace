@@ -1485,6 +1485,7 @@ export default function TasksPage() {
                             alt={counterpartyLabel}
                             width={48}
                             height={48}
+                            unoptimized
                             className="h-12 w-12 rounded-2xl border border-slate-200 object-cover"
                           />
                           <div className="min-w-0">
@@ -1633,6 +1634,7 @@ export default function TasksPage() {
                           alt={counterpartyLabel}
                           width={40}
                           height={40}
+                          unoptimized
                           className="h-10 w-10 rounded-2xl border border-slate-200 object-cover"
                         />
                         <div className="min-w-0">
