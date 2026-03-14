@@ -5,6 +5,43 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_PATH="$ROOT_DIR/.next-dev/dev/lock"
 
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+ensure_node_available() {
+  if command_exists node; then
+    return
+  fi
+
+  local candidate
+  for candidate in "/c/Program Files/nodejs" "/c/Program Files (x86)/nodejs"; do
+    if [[ -x "$candidate/node.exe" ]]; then
+      export PATH="$candidate:$PATH"
+      break
+    fi
+  done
+
+  if ! command_exists node; then
+    printf 'Node.js is not available in PATH. Install Node LTS and reopen the terminal.\n' >&2
+    exit 1
+  fi
+}
+
+enable_system_ca_for_local_node() {
+  local current_options="${NODE_OPTIONS:-}"
+
+  if [[ " ${current_options} " == *" --use-system-ca "* ]]; then
+    return
+  fi
+
+  if [[ -n "$current_options" ]]; then
+    export NODE_OPTIONS="--use-system-ca ${current_options}"
+  else
+    export NODE_OPTIONS="--use-system-ca"
+  fi
+}
+
 find_repo_next_pids() {
   local pid cwd_line cwd
 
@@ -69,4 +106,6 @@ if [[ -e "$LOCK_PATH" ]]; then
 fi
 
 cd "$ROOT_DIR"
+ensure_node_available
+enable_system_ca_for_local_node
 exec ./node_modules/.bin/next dev --webpack --port 3000
