@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
+import { DashboardPromptBar, DashboardPromptProvider } from "@/app/components/prompt/DashboardPromptContext";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -41,7 +42,9 @@ export default function DashboardLayout({
 }) {
   return (
     <ProfileProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <DashboardPromptProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </DashboardPromptProvider>
     </ProfileProvider>
   );
 }
@@ -343,7 +346,7 @@ function DashboardShell({
 
         <div className="flex-1 flex flex-col min-w-0">
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   className="lg:hidden p-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
@@ -357,7 +360,11 @@ function DashboardShell({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex min-w-0 flex-1 justify-center px-2">
+                <DashboardPromptBar placement="header" />
+              </div>
+
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <Link
                   href="/dashboard/saved"
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"

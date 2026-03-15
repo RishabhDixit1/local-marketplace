@@ -105,6 +105,29 @@ h3,
   animation: marketFabFloat 4.8s ease-in-out infinite;
 }
 
+.market-map-marker-shell {
+  background: transparent;
+  border: 0;
+}
+
+.market-map-marker {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #2563eb;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+  animation: marketMapPulse 2.2s ease-out infinite;
+}
+
+.market-map-marker.is-active {
+  width: 18px;
+  height: 18px;
+  background: #0ea5a4;
+  box-shadow: 0 0 0 0 rgba(14, 165, 164, 0.42);
+}
+
 @keyframes marketScanSweep {
   0% {
     transform: translateX(-140%);
@@ -146,6 +169,18 @@ h3,
   }
 }
 
+@keyframes marketMapPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+  }
+  80% {
+    box-shadow: 0 0 0 12px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .startup-fade,
   .startup-fade-delay,
@@ -153,7 +188,8 @@ h3,
   .market-orb-float,
   .market-orb-float-delayed,
   .post-card-enter,
-  .market-fab-float {
+  .market-fab-float,
+  .market-map-marker {
     animation: none !important;
   }
 }
