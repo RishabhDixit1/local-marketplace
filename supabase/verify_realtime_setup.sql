@@ -1,4 +1,4 @@
--- Realtime + RLS verification checks for Local Marketplace.
+-- Realtime + RLS verification checks for ServiQ.
 -- Safe read-only checks.
 
 -- 1) Ensure required tables are in supabase_realtime publication.

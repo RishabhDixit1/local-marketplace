@@ -5,8 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
+import { DashboardPromptBar, DashboardPromptProvider } from "@/app/components/prompt/DashboardPromptContext";
+import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
+import { appName } from "@/lib/branding";
 import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
@@ -14,7 +17,6 @@ import {
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
-  Compass,
   Home,
   LogOut,
   Menu,
@@ -40,7 +42,9 @@ export default function DashboardLayout({
 }) {
   return (
     <ProfileProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <DashboardPromptProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </DashboardPromptProvider>
     </ProfileProvider>
   );
 }
@@ -239,7 +243,7 @@ function DashboardShell({
 
   if (!authReady) {
     return (
-      <div className="min-h-screen grid place-items-center bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100">
+      <div className="min-h-screen grid place-items-center bg-[var(--surface-app)]">
         <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm">
           Loading dashboard...
         </div>
@@ -253,30 +257,26 @@ function DashboardShell({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
+    <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200/90 lg:bg-white/85 lg:backdrop-blur-xl lg:transition-[width] lg:duration-200 ${
+          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
             desktopNavCollapsed ? "lg:w-24" : "lg:w-72"
           }`}
         >
           <div className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}>
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
-                  <Home className="w-6 h-6 text-white" />
-                </div>
-                {!desktopNavCollapsed && (
-                  <div>
-                    <h1 className="text-lg font-bold text-slate-900">Local Marketplace</h1>
-                    <p className="text-xs text-slate-500">Connect & Collaborate</p>
-                  </div>
+              <div className="min-w-0">
+                {desktopNavCollapsed ? (
+                  <ServiQLogo compact markOnly />
+                ) : (
+                  <ServiQLogo className="max-w-[220px]" />
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => setDesktopNavCollapsed((current) => !current)}
-                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                 aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
                 title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
               >
@@ -298,8 +298,8 @@ function DashboardShell({
                     desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
                   } ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,0.85)]"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
@@ -313,12 +313,12 @@ function DashboardShell({
             <button
               onClick={() => router.push(myProfileHref)}
               title={desktopNavCollapsed ? "My Profile" : undefined}
-              className={`w-full flex items-center rounded-xl bg-white border border-slate-200 hover:border-indigo-400 transition-colors ${
+              className={`w-full flex items-center rounded-xl bg-white border border-slate-200 transition-colors hover:border-[var(--brand-500)]/45 ${
                 desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
               }`}
               aria-label="Open my profile"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-[var(--brand-900)] flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               {!desktopNavCollapsed && (
@@ -331,7 +331,7 @@ function DashboardShell({
               )}
             </button>
             <button
-              className={`w-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors ${
+              className={`w-full flex items-center justify-center rounded-xl bg-slate-900 font-semibold text-white transition-colors hover:bg-slate-800 ${
                 desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-2.5"
               }`}
               onClick={() => setShowLogoutConfirm(true)}
@@ -345,8 +345,8 @@ function DashboardShell({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
-            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   className="lg:hidden p-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
@@ -355,16 +355,19 @@ function DashboardShell({
                 >
                   <Menu className="w-5 h-5" />
                 </button>
-                <div className="lg:hidden flex items-center gap-2 min-w-0">
-                  <Compass className="w-5 h-5 text-indigo-600 shrink-0" />
-                  <span className="text-sm font-semibold text-slate-800 truncate">Local Marketplace</span>
+                <div className="lg:hidden min-w-0">
+                  <ServiQLogo compact className="max-w-[180px]" />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex min-w-0 flex-1 justify-center px-2">
+                <DashboardPromptBar placement="header" />
+              </div>
+
+              <div className="ml-auto flex shrink-0 items-center gap-2">
                 <Link
                   href="/dashboard/saved"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label="Open saved posts"
                   title="Saved posts"
                 >
@@ -374,7 +377,7 @@ function DashboardShell({
                 <NotificationCenter />
                 <Link
                   href={myProfileHref}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label="Open profile"
                   title="My profile"
                 >
@@ -418,22 +421,16 @@ function DashboardShell({
         <button
           aria-label="Close navigation menu"
           onClick={() => setMenuOpen(false)}
-          className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+          className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
         />
         <aside
-          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs bg-white border-r border-slate-200 p-4 flex flex-col transition-transform duration-200 ${
+          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs border-r border-slate-200 bg-white p-4 shadow-xl flex flex-col transition-transform duration-200 ${
             menuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center">
-                <Home className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-900">Local Marketplace</p>
-                <p className="text-xs text-slate-500">Navigation</p>
-              </div>
+            <div className="min-w-0">
+              <ServiQLogo compact className="max-w-[190px]" />
             </div>
             <button
               className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
@@ -455,7 +452,7 @@ function DashboardShell({
                   onClick={() => setMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                      ? "bg-[var(--brand-900)] text-white"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
@@ -482,7 +479,7 @@ function DashboardShell({
                 setMenuOpen(false);
                 setShowLogoutConfirm(true);
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white font-semibold transition-colors hover:bg-slate-800"
             >
               <LogOut className="w-4 h-4" />
               Logout
@@ -499,7 +496,7 @@ function DashboardShell({
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-slate-900">Log out of Local Marketplace?</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Log out of {appName}?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   You can always sign back in with a magic link, but any unsaved local changes on open pages will be lost.
                 </p>

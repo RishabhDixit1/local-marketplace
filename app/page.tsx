@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, CheckCircle2, Clock3, ShieldCheck, Users2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { ensureProfileForUser, resolveCurrentProfileDestination } from "@/lib/profile/client";
+import ServiQLogo from "@/app/components/ServiQLogo";
+import { appName, appTagline } from "@/lib/branding";
 
-const primaryVideoSrc = "https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4";
-const fallbackVideoSrc = "https://videos.pexels.com/video-files/3015488/3015488-hd_1920_1080_24fps.mp4";
 const AUTH_HARD_TIMEOUT_MS = 30000;
 const AUTH_REACHABILITY_TIMEOUT_MS = 5000;
 
@@ -272,290 +273,147 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="page-shell min-h-screen relative overflow-hidden bg-slate-950 flex items-center justify-center px-6 py-10">
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        disablePictureInPicture
-        className="video-layer absolute inset-0 h-full w-full object-cover scale-110 blur-[8px] opacity-40"
-        aria-hidden="true"
-      >
-        <source src={primaryVideoSrc} type="video/mp4" />
-        <source src={fallbackVideoSrc} type="video/mp4" />
-      </video>
-
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/80 via-violet-700/65 to-fuchsia-600/70" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.18),transparent_40%)]" />
-
-      <div className="aurora absolute -top-24 -left-20 w-96 h-96 rounded-full bg-cyan-300/20 blur-3xl" />
-      <div className="aurora absolute -bottom-28 -right-16 w-96 h-96 rounded-full bg-pink-300/30 blur-3xl" />
-      <div className="aurora-delayed absolute top-1/3 left-1/2 -translate-x-1/2 w-[28rem] h-[28rem] rounded-full bg-violet-200/20 blur-3xl" />
-
-      <div className="relative max-w-6xl w-full grid md:grid-cols-2 gap-8 items-center">
-        <div className="text-white space-y-6 fade-up">
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight">
-            Find Local Services.
-            <br />
-            <span className="text-yellow-300">In Real Time.</span>
-          </h1>
-
-          <p className="text-lg text-white/95 max-w-xl">
-            A social marketplace for your neighborhood.
-            Post what you need and connect instantly with nearby providers.
-          </p>
-
-          <div className="inline-flex items-center rounded-full border border-white/35 bg-white/10 backdrop-blur-md px-4 py-2 text-sm font-medium text-white/95 glow-tag">
-            One login for seekers and providers
-          </div>
-
-          <div className="chips flex flex-wrap gap-3">
-            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              Live matching
-            </div>
-            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              Community driven
-            </div>
-            <div className="bg-white/12 backdrop-blur-md px-4 py-2 rounded-lg text-sm border border-white/20">
-              Location first
-            </div>
-          </div>
+    <div className="min-h-screen bg-[var(--surface-app)] px-4 py-5 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-6xl startup-fade">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <ServiQLogo compact />
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
+            Human-centered service network
+          </span>
         </div>
 
-        <div className="login-card bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-8 space-y-6 fade-up-delayed border border-white/60">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">
-              Join Your Local Network
-            </h2>
-            <p className="text-slate-500 text-sm">
-              Login as a seeker or provider. Same account, endless opportunities.
-            </p>
-          </div>
+        <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_38px_90px_-52px_rgba(15,23,42,0.45)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(20,184,166,0.08),transparent_42%),radial-gradient(circle_at_86%_86%,rgba(14,165,233,0.08),transparent_44%)]" />
 
-          {!sent ? (
-            <>
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 transition bg-white/95 text-slate-900 placeholder:text-slate-400 caret-slate-900"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+          <div className="relative grid lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="relative overflow-hidden bg-[linear-gradient(158deg,var(--brand-900)_0%,var(--brand-700)_100%)] p-7 text-white sm:p-10">
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:36px_36px]" />
+
+              <div className="relative">
+                <ServiQLogo
+                  showTagline
+                  wordmarkClassName="text-white"
+                  taglineClassName="text-white/70"
+                  markClassName="border-white/30 bg-white/10 text-white shadow-black/20"
+                  markDotClassName="bg-cyan-300"
+                  qClassName="text-cyan-300"
+                  qRingClassName="border-cyan-300/60"
                 />
-              </div>
 
-              {!!errorMessage && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  {errorMessage}
+                <p className="mt-10 text-xs uppercase tracking-[0.22em] text-cyan-100/80">Trusted For Everyday Urgency</p>
+                <h1 className="brand-display mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
+                  Reliable help for real life, delivered by people nearby.
+                </h1>
+                <p className="mt-5 max-w-xl text-base text-slate-100/92 sm:text-lg">{appTagline}</p>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/18 bg-white/10 p-4 backdrop-blur-sm">
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <ShieldCheck size={16} className="text-cyan-200" />
+                      Verified ecosystem
+                    </p>
+                    <p className="mt-2 text-xs text-slate-100/80">Profiles, context, and trust signals before each conversation.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/18 bg-white/10 p-4 backdrop-blur-sm">
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <Clock3 size={16} className="text-cyan-200" />
+                      Fast turnaround
+                    </p>
+                    <p className="mt-2 text-xs text-slate-100/80">Post needs in seconds and start response threads immediately.</p>
+                  </div>
                 </div>
-              )}
 
-              <button
-                onClick={login}
-                disabled={loading}
-                className="cta-btn w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-3 rounded-lg font-semibold hover:scale-[1.02] transition-transform shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
-              >
-                {loading ? "Sending Secure Link..." : "Send Login Link"}
-              </button>
-
-              <p className="text-xs text-slate-500 text-center">
-                Passwordless login. Secure by default.
-              </p>
-            </>
-          ) : (
-            <div className="text-center space-y-4 fade-up">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 font-bold grid place-items-center">
-                OK
-              </div>
-              <h3 className="text-lg font-semibold text-slate-800">Check Your Email</h3>
-              <p className="text-gray-500 text-sm">
-                We sent a secure login link to:
-                <br />
-                <span className="font-medium">{email}</span>
-              </p>
-
-              <p className="text-xs text-slate-500">
-                Delivery can take 30-90 seconds. Check spam/promotions if needed.
-              </p>
-
-              {!!errorMessage && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  {errorMessage}
+                <div className="mt-7 flex flex-wrap gap-2 text-xs font-medium text-white/90">
+                  <span className="rounded-full border border-white/25 bg-white/8 px-3 py-1.5">Live matching</span>
+                  <span className="rounded-full border border-white/25 bg-white/8 px-3 py-1.5">Quality-first</span>
+                  <span className="rounded-full border border-white/25 bg-white/8 px-3 py-1.5">Built for trust</span>
                 </div>
-              )}
-
-              <button
-                onClick={login}
-                disabled={loading}
-                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? "Sending..." : "Send Again"}
-              </button>
+              </div>
             </div>
-          )}
-        </div>
+
+            <div className="p-7 sm:p-10 lg:p-12 startup-fade-delay">
+              <div className="mx-auto w-full max-w-md">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Secure Access</p>
+                <h2 className="brand-display mt-2 text-3xl font-semibold text-slate-900 sm:text-[2rem]">Welcome to {appName}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Use your email to receive a secure passwordless sign-in link.</p>
+
+                {!sent ? (
+                  <div className="mt-8 space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700">Email address</label>
+                      <input
+                        type="email"
+                        placeholder="you@example.com"
+                        className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+
+                    {!!errorMessage && (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        {errorMessage}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={login}
+                      disabled={loading}
+                      className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {loading ? "Sending Secure Link..." : "Send Login Link"}
+                      {!loading ? <ArrowRight size={14} /> : null}
+                    </button>
+
+                    <p className="text-xs text-slate-500">Passwordless login. Secure by default.</p>
+                  </div>
+                ) : (
+                  <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                        <CheckCircle2 size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-emerald-900">Check your email</h3>
+                        <p className="mt-1 text-sm text-emerald-800">
+                          We sent a secure sign-in link to <span className="font-semibold">{email}</span>.
+                        </p>
+                        <p className="mt-2 text-xs text-emerald-700/90">Delivery can take 30-90 seconds. Check spam/promotions if needed.</p>
+                      </div>
+                    </div>
+
+                    {!!errorMessage && (
+                      <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        {errorMessage}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={login}
+                      disabled={loading}
+                      className="focus-ring mt-4 inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {loading ? "Sending..." : "Send Again"}
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    <Users2 size={13} />
+                    Single account model
+                  </p>
+                  <p className="mt-1 text-sm text-slate-700">Switch between seeking and providing services with the same account.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <p className="mt-4 text-center text-xs text-slate-500">
+          {appName} is built for local communities. Powered by Supabase and Next.js.
+        </p>
       </div>
-
-      <div className="absolute bottom-4 text-white/75 text-xs">
-        Built for local communities. Powered by Supabase and Next.js.
-      </div>
-
-      <style jsx>{`
-        .video-layer {
-          filter: saturate(1.15) contrast(1.12);
-        }
-
-        .page-shell::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background-image: radial-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px);
-          background-size: 36px 36px;
-          mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.08));
-          animation: drift 20s linear infinite;
-        }
-
-        .fade-up {
-          animation: fadeUp 0.75s ease-out both;
-        }
-
-        .fade-up-delayed {
-          animation: fadeUp 0.95s ease-out 0.14s both;
-        }
-
-        .aurora {
-          animation: float 10s ease-in-out infinite;
-        }
-
-        .aurora-delayed {
-          animation: float 12s ease-in-out 0.8s infinite;
-        }
-
-        .glow-tag {
-          box-shadow: 0 0 28px rgba(255, 255, 255, 0.16);
-          animation: pulseGlow 2.8s ease-in-out infinite;
-        }
-
-        .chips > div {
-          animation: riseIn 0.55s ease-out both;
-        }
-
-        .chips > div:nth-child(2) {
-          animation-delay: 0.12s;
-        }
-
-        .chips > div:nth-child(3) {
-          animation-delay: 0.24s;
-        }
-
-        .login-card {
-          animation: cardFloat 5.5s ease-in-out infinite;
-        }
-
-        .cta-btn {
-          position: relative;
-          overflow: hidden;
-        }
-
-        .cta-btn::after {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: -42%;
-          width: 35%;
-          height: 100%;
-          background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
-          transform: skewX(-20deg);
-          animation: shimmer 2.6s ease-in-out infinite;
-        }
-
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(22px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes riseIn {
-          from {
-            opacity: 0;
-            transform: translateY(14px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes float {
-          0%,
-          100% {
-            transform: translate3d(0, 0, 0);
-          }
-          50% {
-            transform: translate3d(0, -18px, 0);
-          }
-        }
-
-        @keyframes pulseGlow {
-          0%,
-          100% {
-            box-shadow: 0 0 26px rgba(255, 255, 255, 0.14);
-          }
-          50% {
-            box-shadow: 0 0 34px rgba(255, 255, 255, 0.26);
-          }
-        }
-
-        @keyframes cardFloat {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-7px);
-          }
-        }
-
-        @keyframes shimmer {
-          0% {
-            left: -42%;
-          }
-          100% {
-            left: 112%;
-          }
-        }
-
-        @keyframes drift {
-          from {
-            transform: translate3d(0, 0, 0);
-          }
-          to {
-            transform: translate3d(-36px, -18px, 0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .aurora,
-          .aurora-delayed,
-          .chips > div,
-          .fade-up,
-          .fade-up-delayed,
-          .glow-tag,
-          .login-card,
-          .cta-btn::after,
-          .page-shell::before {
-            animation: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

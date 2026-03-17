@@ -1,19 +1,35 @@
-"use client";
+﻿"use client";
 
-import Image from "next/image";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import {
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Filter,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  RefreshCw,
+  RotateCcw,
+  Share2,
+  SlidersHorizontal,
+  X,
+  Zap,
+} from "lucide-react";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
+import RouteObservability from "@/app/components/RouteObservability";
+import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import { supabase } from "@/lib/supabase";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import RouteObservability from "@/app/components/RouteObservability";
-import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
-import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { getOrCreateDirectConversationId, sendDirectMessage } from "@/lib/directMessages";
-import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -21,13 +37,7 @@ import {
   createBusinessSlug,
   estimateResponseMinutes,
 } from "@/lib/business";
-import {
-  defaultMarketCoordinates,
-  distanceBetweenCoordinatesKm,
-  getBrowserCoordinates,
-  resolveCoordinates,
-} from "@/lib/geo";
-import { CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE } from "@/lib/connectionErrors";
+import { defaultMarketCoordinates, distanceBetweenCoordinatesKm, getBrowserCoordinates, resolveCoordinates } from "@/lib/geo";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 
@@ -41,64 +51,51 @@ const CreatePostModal = dynamic(
   { ssr: false }
 );
 
-import {
-Search,
-MapPin,
-MessageCircle,
-Filter,
-RotateCcw,
-RefreshCw,
-Bookmark,
-BookmarkCheck,
-UsersRound,
-Zap,
-Loader2,
-Send,
-ArrowUpRight,
-Share2,
-} from "lucide-react";
+const MarketplaceMap = dynamic(() => import("@/app/components/MarketplaceMap").then((mod) => mod.default), {
+  ssr: false,
+});
 
 const MAX_PROFILE_LOOKUP = 240;
-const MARKETPLACE_FILTERS_STORAGE_KEY = "local-marketplace-dashboard-feed-filters-v1";
 const FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const FEED_POLL_INTERVAL_MS = 120000;
 const MIN_SOFT_REFRESH_GAP_MS = 5000;
-const MIN_EXPLORE_FEED_ITEMS = 18;
-const TEMP_HIDDEN_LISTING_PATTERNS = [
-  /\bneed ac shifting from one flat to another\b/i,
-];
-const MARKETPLACE_HERO_LINES = [
-  "Post a Need. Get Local Help. Let Others Earn.",
-  "Where Neighbours Help and Earn in Real Time.",
-  "Small Tasks. Real People. Instant Help.",
-  "Post What You Need. Someone Nearby Will Help.",
-  "Local Help Marketplace for Everyday Needs.",
-] as const;
+const FILTER_STORAGE_KEY = "serviq-posts-filters-v2";
 
-/* ================= TYPES ================= */
+type ListingType = "service" | "product" | "demand";
+type ListingSource = "service_listing" | "product_listing" | "post" | "help_request" | "demo";
+
+type FeedMedia = {
+  mimeType: string;
+  url: string;
+};
 
 type Listing = {
   id: string;
+  source: ListingSource;
+  helpRequestId: string | null;
+  providerId: string;
+  type: ListingType;
   title: string;
   description: string;
-  price: number;
   category: string;
-  provider_id: string;
-  type: "service" | "product" | "demand";
-  avatar: string;
-  distance: number;
+  price: number;
+  avatarUrl: string;
+  creatorName: string;
+  locationLabel: string;
+  distanceKm: number;
   lat: number;
   lng: number;
-  urgent?: boolean;
-  media?: FeedMedia[];
-  createdAt?: string;
-  creatorName?: string;
-  businessSlug?: string;
+  media: FeedMedia[];
+  createdAt: string;
+  urgent: boolean;
   rankScore: number;
   profileCompletion: number;
   responseMinutes: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
+  businessSlug?: string;
+  status: string;
+  acceptedProviderId: string | null;
   isDemo?: boolean;
 };
 
@@ -106,11 +103,23 @@ type DisplayListing = Listing & {
   displayTitle: string;
   displayDescription: string;
   displayCreator: string;
+  timeLabel: string;
+  priceLabel: string;
+  distanceLabel: string;
 };
 
-type FeedMedia = {
-  mimeType: string;
-  url: string;
+type FlexibleRow = Record<string, unknown>;
+
+type RealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
+
+type FeedFilterState = {
+  query: string;
+  category: string;
+  maxDistanceKm: number;
+  urgentOnly: boolean;
+  mediaOnly: boolean;
+  verifiedOnly: boolean;
+  freshOnly: boolean;
 };
 
 type ServiceRow = {
@@ -120,7 +129,7 @@ type ServiceRow = {
   price: number;
   category: string;
   provider_id: string;
-  created_at?: string;
+  created_at: string;
 };
 
 type ProductRow = {
@@ -130,37 +139,41 @@ type ProductRow = {
   price: number;
   category: string;
   provider_id: string;
-  created_at?: string;
+  created_at: string;
 };
 
 type PostRow = {
   id: string;
-  text?: string;
-  content?: string;
-  description?: string;
-  title?: string;
-  user_id?: string;
-  provider_id?: string;
-  created_by?: string;
-  type?: string;
-  post_type?: string;
-  category?: string;
-  created_at?: string;
+  text: string;
+  content: string;
+  description: string;
+  title: string;
+  user_id: string;
+  provider_id: string;
+  created_by: string;
+  type: string;
+  post_type: string;
+  category: string;
+  status: string;
+  state: string;
+  created_at: string;
 };
 
 type HelpRequestRow = {
   id: string;
-  requester_id?: string;
-  title?: string;
-  details?: string;
-  category?: string;
-  urgency?: string;
-  budget_min?: number;
-  budget_max?: number;
-  location_label?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  created_at?: string;
+  requester_id: string;
+  accepted_provider_id: string;
+  title: string;
+  details: string;
+  category: string;
+  urgency: string;
+  budget_min: number;
+  budget_max: number;
+  location_label: string;
+  latitude: number | null;
+  longitude: number | null;
+  status: string;
+  created_at: string;
 };
 
 type ProfileRow = {
@@ -188,29 +201,14 @@ type ProviderPresenceRow = {
   provider_id: string;
   is_online: boolean | null;
   availability: string | null;
-  response_sla_minutes: number | null;
   rolling_response_minutes: number | null;
-  last_seen: string | null;
-};
-
-type FlexibleRow = Record<string, unknown>;
-
-type RealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
-type FeedFilterState = {
-  query: string;
-  category: string;
-  maxDistanceKm: number;
-  verifiedOnly: boolean;
-  urgentOnly: boolean;
-  mediaOnly: boolean;
-  freshOnly: boolean;
 };
 
 const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
   for (const key of keys) {
     const value = row[key];
     if (typeof value === "string" && value.trim()) {
-      return value;
+      return value.trim();
     }
   }
   return fallback;
@@ -219,7 +217,7 @@ const stringFromRow = (row: FlexibleRow, keys: string[], fallback = "") => {
 const numberFromRow = (row: FlexibleRow, keys: string[], fallback = 0) => {
   for (const key of keys) {
     const value = row[key];
-    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
     if (Number.isFinite(parsed)) {
       return parsed;
     }
@@ -227,527 +225,28 @@ const numberFromRow = (row: FlexibleRow, keys: string[], fallback = 0) => {
   return fallback;
 };
 
-const buildDemoFeed = (): Listing[] => {
-  const baseLat = 28.6139;
-  const baseLng = 77.209;
-  const now = Date.now();
-  const unsplash = (id: string, width = 1280) =>
-    `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${width}&q=80`;
-
-  const rows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
-    {
-      title: "Need urgent electrician nearby",
-      description: "Power issue in 2BHK apartment. Need support within 30 minutes.",
-      price: 2500,
-      category: "Need",
-      provider_id: "demo-provider-amit",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=amit",
-      distance: 1.4,
-      urgent: true,
-      creatorName: "Amit P",
-      businessSlug: createBusinessSlug("Amit P", "demo-provider-amit"),
-      profileCompletion: 78,
-      responseMinutes: 7,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1504384308090-c894fdcc538d") }],
-      createdAt: new Date(now - 34 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Laptop Repair near me",
-      description: "Macbook M1 stops charging intermittently. Looking for same-day specialist.",
-      price: 900,
-      category: "Need",
-      provider_id: "demo-provider-anuj",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=anuj",
-      distance: 3.2,
-      urgent: true,
-      creatorName: "Anuj K",
-      businessSlug: createBusinessSlug("Anuj K", "demo-provider-anuj"),
-      profileCompletion: 72,
-      responseMinutes: 11,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1498050108023-c5249f4df085") }],
-      createdAt: new Date(now - 78 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Electrician for Home",
-      description: "Expert electrician for switchboard, fan, and wiring repair.",
-      price: 500,
-      category: "Electrician",
-      provider_id: "demo-provider-mary",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=mary",
-      distance: 3.8,
-      creatorName: "Mary Electricals",
-      businessSlug: createBusinessSlug("Mary Electricals", "demo-provider-mary"),
-      profileCompletion: 91,
-      responseMinutes: 14,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1519710164239-da123dc03ef4") }],
-      createdAt: new Date(now - 112 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "House Cleaning Pro",
-      description: "Deep cleaning for 1BHK/2BHK with eco-safe supplies.",
-      price: 1200,
-      category: "Cleaning",
-      provider_id: "demo-provider-sejal",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=sejal",
-      distance: 4.5,
-      creatorName: "Sejal HomeCare",
-      businessSlug: createBusinessSlug("Sejal HomeCare", "demo-provider-sejal"),
-      profileCompletion: 86,
-      responseMinutes: 18,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1522202176988-66273c2fd55f") }],
-      createdAt: new Date(now - 4 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Urgent AC Repair Needed",
-      description: "Split AC not cooling. Need technician by tonight.",
-      price: 1800,
-      category: "Need",
-      provider_id: "demo-provider-rakesh",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=rakesh",
-      distance: 1.7,
-      urgent: true,
-      creatorName: "Rakesh B",
-      businessSlug: createBusinessSlug("Rakesh B", "demo-provider-rakesh"),
-      profileCompletion: 69,
-      responseMinutes: 6,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1473968512647-3e447244af8f") }],
-      createdAt: new Date(now - 26 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Same-day Grocery Delivery",
-      description: "Daily essentials delivered in 45-90 minutes.",
-      price: 199,
-      category: "Delivery",
-      provider_id: "demo-provider-quickdrop",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=quickdrop",
-      distance: 2.9,
-      creatorName: "QuickDrop",
-      businessSlug: createBusinessSlug("QuickDrop", "demo-provider-quickdrop"),
-      profileCompletion: 74,
-      responseMinutes: 12,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1484154218962-a197022b5858") }],
-      createdAt: new Date(now - 5 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Fresh farm vegetables bundle",
-      description: "Chemical-free weekly produce basket with next-morning delivery.",
-      price: 399,
-      category: "Product",
-      provider_id: "demo-provider-farmcart",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=farmcart",
-      distance: 4.9,
-      creatorName: "FarmCart Local",
-      businessSlug: createBusinessSlug("FarmCart Local", "demo-provider-farmcart"),
-      profileCompletion: 84,
-      responseMinutes: 20,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1469474968028-56623f02e42e") }],
-      createdAt: new Date(now - 9 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Need wedding photography + reels team",
-      description: "Need a candid + reels team for one-day function near Indiranagar.",
-      price: 12000,
-      category: "Need",
-      provider_id: "demo-provider-megha",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=megha",
-      distance: 6.1,
-      urgent: false,
-      creatorName: "Megha S",
-      businessSlug: createBusinessSlug("Megha S", "demo-provider-megha"),
-      profileCompletion: 77,
-      responseMinutes: 16,
-      verificationStatus: "pending",
-      media: [
-        { mimeType: "video/mp4", url: "/hero/market-live-loop.mp4" },
-        { mimeType: "image/jpeg", url: unsplash("1492724441997-5dc865305da7") },
-      ],
-      createdAt: new Date(now - 11 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Fresh Baked Cakes",
-      description: "Custom cakes with same-day delivery in your locality.",
-      price: 600,
-      category: "Food",
-      provider_id: "demo-provider-cakes",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=cakeshop",
-      distance: 5.5,
-      creatorName: "Delicious Cakes",
-      businessSlug: createBusinessSlug("Delicious Cakes", "demo-provider-cakes"),
-      profileCompletion: 82,
-      responseMinutes: 24,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1517248135467-4c7edcad34c4") }],
-      createdAt: new Date(now - 13 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Moving support: one bedroom apartment shift",
-      description: "Need labour + mini-truck for 3-hour move this evening.",
-      price: 3200,
-      category: "Need",
-      provider_id: "demo-provider-sarthak",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=sarthak",
-      distance: 2.4,
-      urgent: true,
-      creatorName: "Sarthak J",
-      businessSlug: createBusinessSlug("Sarthak J", "demo-provider-sarthak"),
-      profileCompletion: 65,
-      responseMinutes: 9,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1500048993953-d23a436266cf") }],
-      createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Verified AC servicing package",
-      description: "Filter cleaning + gas top-up + 30-day performance support.",
-      price: 1499,
-      category: "Service",
-      provider_id: "demo-provider-chilltech",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=chilltech",
-      distance: 2.1,
-      creatorName: "ChillTech Services",
-      businessSlug: createBusinessSlug("ChillTech Services", "demo-provider-chilltech"),
-      profileCompletion: 89,
-      responseMinutes: 10,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1497366811353-6870744d04b2") }],
-      createdAt: new Date(now - 14 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Premium power tools kit",
-      description: "Heavy-duty drill, cutters, safety set. Pickup or same-day delivery.",
-      price: 2799,
-      category: "Product",
-      provider_id: "demo-provider-toolhub",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=toolhub",
-      distance: 7.3,
-      creatorName: "ToolHub Local",
-      businessSlug: createBusinessSlug("ToolHub Local", "demo-provider-toolhub"),
-      profileCompletion: 88,
-      responseMinutes: 22,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1515378791036-0648a3ef77b2") }],
-      createdAt: new Date(now - 18 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Need plumber for kitchen sink leak",
-      description: "Water leak under sink cabinet. Looking for immediate visit.",
-      price: 1300,
-      category: "Need",
-      provider_id: "demo-provider-ria",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=ria",
-      distance: 1.9,
-      urgent: true,
-      creatorName: "Ria M",
-      businessSlug: createBusinessSlug("Ria M", "demo-provider-ria"),
-      profileCompletion: 76,
-      responseMinutes: 8,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1521791136064-7986c2920216") }],
-      createdAt: new Date(now - 52 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Doorstep Car Wash Express",
-      description: "Interior + exterior wash at your parking spot in under 45 mins.",
-      price: 699,
-      category: "Car Care",
-      provider_id: "demo-provider-sparklewash",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=sparklewash",
-      distance: 4.1,
-      creatorName: "SparkleWash",
-      businessSlug: createBusinessSlug("SparkleWash", "demo-provider-sparklewash"),
-      profileCompletion: 83,
-      responseMinutes: 13,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1505693416388-ac5ce068fe85") }],
-      createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Weekend babysitter required",
-      description: "Need trusted sitter for Saturday evening, 4 hours.",
-      price: 1500,
-      category: "Need",
-      provider_id: "demo-provider-ishita",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=ishita",
-      distance: 2.6,
-      urgent: false,
-      creatorName: "Ishita N",
-      businessSlug: createBusinessSlug("Ishita N", "demo-provider-ishita"),
-      profileCompletion: 68,
-      responseMinutes: 17,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1518773553398-650c184e0bb3") }],
-      createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Pet grooming at home",
-      description: "Bath, nail trim, and coat care with pickup and drop option.",
-      price: 999,
-      category: "Pet Care",
-      provider_id: "demo-provider-pawspark",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=pawspark",
-      distance: 5.2,
-      creatorName: "PawSpark Grooming",
-      businessSlug: createBusinessSlug("PawSpark Grooming", "demo-provider-pawspark"),
-      profileCompletion: 87,
-      responseMinutes: 19,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1473186578172-c141e6798cf4") }],
-      createdAt: new Date(now - 7 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Home tuition for class 8-10",
-      description: "Math + science tutor available for weekday evening sessions.",
-      price: 1800,
-      category: "Education",
-      provider_id: "demo-provider-mentorplus",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=mentorplus",
-      distance: 3.6,
-      creatorName: "Mentor Plus Academy",
-      businessSlug: createBusinessSlug("Mentor Plus Academy", "demo-provider-mentorplus"),
-      profileCompletion: 79,
-      responseMinutes: 21,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1504674900247-0877df9cc836") }],
-      createdAt: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Need photographer for cafe launch",
-      description: "Looking for event + social reels coverage for opening weekend.",
-      price: 9500,
-      category: "Need",
-      provider_id: "demo-provider-cafebloom",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=cafebloom",
-      distance: 2.2,
-      urgent: true,
-      creatorName: "Cafe Bloom",
-      businessSlug: createBusinessSlug("Cafe Bloom", "demo-provider-cafebloom"),
-      profileCompletion: 81,
-      responseMinutes: 12,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1493666438817-866a91353ca9") }],
-      createdAt: new Date(now - 95 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Organic milk subscription",
-      description: "Daily fresh A2 milk delivery with monthly plan discounts.",
-      price: 149,
-      category: "Product",
-      provider_id: "demo-provider-freshmoo",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=freshmoo",
-      distance: 6.8,
-      creatorName: "FreshMoo Dairy",
-      businessSlug: createBusinessSlug("FreshMoo Dairy", "demo-provider-freshmoo"),
-      profileCompletion: 73,
-      responseMinutes: 26,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1489515217757-5fd1be406fef") }],
-      createdAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Ergonomic office chairs clearance",
-      description: "Refurbished premium chairs, delivery and setup included.",
-      price: 4200,
-      category: "Product",
-      provider_id: "demo-provider-worknest",
-      type: "product",
-      avatar: "https://i.pravatar.cc/150?u=worknest",
-      distance: 7.4,
-      creatorName: "WorkNest Furnish",
-      businessSlug: createBusinessSlug("WorkNest Furnish", "demo-provider-worknest"),
-      profileCompletion: 86,
-      responseMinutes: 27,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1516914943479-89db7d9ae7f2") }],
-      createdAt: new Date(now - 16 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Need packers for office move",
-      description: "Small office shifting within 4km. Need packing help tomorrow morning.",
-      price: 5200,
-      category: "Need",
-      provider_id: "demo-provider-devansh",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=devansh",
-      distance: 3.1,
-      urgent: true,
-      creatorName: "Devansh T",
-      businessSlug: createBusinessSlug("Devansh T", "demo-provider-devansh"),
-      profileCompletion: 71,
-      responseMinutes: 9,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1515378791036-0648a3ef77b2") }],
-      createdAt: new Date(now - 68 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Mobile screen replacement at home",
-      description: "Doorstep iPhone and Android display replacement with warranty.",
-      price: 1800,
-      category: "Repair",
-      provider_id: "demo-provider-fixstreet",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=fixstreet",
-      distance: 2.7,
-      creatorName: "FixStreet",
-      businessSlug: createBusinessSlug("FixStreet", "demo-provider-fixstreet"),
-      profileCompletion: 90,
-      responseMinutes: 11,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1498050108023-c5249f4df085") }],
-      createdAt: new Date(now - 150 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Community yoga trainer",
-      description: "Morning batch in society garden. Beginner-friendly weekend plan.",
-      price: 999,
-      category: "Fitness",
-      provider_id: "demo-provider-namasteflow",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=namasteflow",
-      distance: 4.3,
-      creatorName: "Namaste Flow",
-      businessSlug: createBusinessSlug("Namaste Flow", "demo-provider-namasteflow"),
-      profileCompletion: 75,
-      responseMinutes: 23,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1473186578172-c141e6798cf4") }],
-      createdAt: new Date(now - 19 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Event flower decoration package",
-      description: "Custom stage and entrance decor for birthdays and family functions.",
-      price: 6800,
-      category: "Service",
-      provider_id: "demo-provider-bloomcraft",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=bloomcraft",
-      distance: 5.9,
-      creatorName: "BloomCraft Studio",
-      businessSlug: createBusinessSlug("BloomCraft Studio", "demo-provider-bloomcraft"),
-      profileCompletion: 88,
-      responseMinutes: 18,
-      verificationStatus: "verified",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1489515217757-5fd1be406fef") }],
-      createdAt: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Need same-day medicine delivery",
-      description: "Prescription meds pickup and delivery needed within one hour.",
-      price: 350,
-      category: "Need",
-      provider_id: "demo-provider-karan",
-      type: "demand",
-      avatar: "https://i.pravatar.cc/150?u=karan",
-      distance: 1.2,
-      urgent: true,
-      creatorName: "Karan V",
-      businessSlug: createBusinessSlug("Karan V", "demo-provider-karan"),
-      profileCompletion: 67,
-      responseMinutes: 6,
-      verificationStatus: "unclaimed",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1519710164239-da123dc03ef4") }],
-      createdAt: new Date(now - 41 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-    {
-      title: "Handyman for curtain rod installation",
-      description: "Need drilling and mounting support for 5 windows this evening.",
-      price: 1250,
-      category: "Service",
-      provider_id: "demo-provider-handihelp",
-      type: "service",
-      avatar: "https://i.pravatar.cc/150?u=handihelp",
-      distance: 3.9,
-      creatorName: "HandiHelp Team",
-      businessSlug: createBusinessSlug("HandiHelp Team", "demo-provider-handihelp"),
-      profileCompletion: 82,
-      responseMinutes: 15,
-      verificationStatus: "pending",
-      media: [{ mimeType: "image/jpeg", url: unsplash("1521791136064-7986c2920216") }],
-      createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
-      isDemo: true,
-    },
-  ];
-
-  return rows.map((row, index) => ({
-    ...row,
-    id: `demo-${index + 1}`,
-    lat: baseLat + index * 0.01,
-    lng: baseLng + index * 0.012,
-    rankScore: calculateLocalRankScore({
-      distanceKm: row.distance,
-      responseMinutes: row.responseMinutes,
-      rating: row.verificationStatus === "verified" ? 4.8 : 4.4,
-      profileCompletion: row.profileCompletion,
-    }),
-  }));
+const parseDateMs = (value?: string) => {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
-
-const normalizeMarketplacePostKind = (value?: string | null): Listing["type"] => {
+const normalizeMarketplacePostKind = (value?: string | null): ListingType => {
   const normalized = (value || "").trim().toLowerCase();
   if (normalized === "service" || normalized === "product") return normalized;
   return "demand";
 };
 
+const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
+
 const parsePostText = (rawText: string) => {
   const fallback = {
-    title: rawText,
-    description: rawText,
+    title: rawText || "Local post",
+    description: rawText || "Local post",
     budget: 0,
     category: "Need",
     location: "",
-    kind: "demand" as Listing["type"],
+    kind: "demand" as ListingType,
     media: [] as FeedMedia[],
   };
 
@@ -770,8 +269,8 @@ const parsePostText = (rawText: string) => {
   const kind = normalizeMarketplacePostKind(typePart?.replace("Type:", "").trim());
   const category =
     categoryPart?.replace("Category:", "").trim() ||
-    (kind === "demand" ? fallback.category : kind === "service" ? "Service" : "Product");
-  const location = locationPart?.replace("Location:", "").trim() || fallback.location;
+    (kind === "demand" ? "Need" : kind === "service" ? "Service" : "Product");
+  const location = locationPart?.replace("Location:", "").trim() || "";
 
   const media: FeedMedia[] = [];
   if (mediaPart && !mediaPart.includes("None")) {
@@ -789,45 +288,66 @@ const parsePostText = (rawText: string) => {
   return { title, description, budget, category, location, kind, media };
 };
 
-const parseDateMs = (value?: string) => {
-  if (!value) return 0;
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : 0;
+const formatRelativeAge = (value?: string) => {
+  const createdAtMs = parseDateMs(value);
+  if (!createdAtMs) return "Recently posted";
+
+  const diffMs = Math.max(0, Date.now() - createdAtMs);
+  const minutes = Math.floor(diffMs / (60 * 1000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 };
 
-const normalizeForFingerprint = (value: string) =>
-  value
+const toDisplayText = (value: string | undefined, fallback: string) => {
+  const normalized = (value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return fallback;
+  if (/^[a-z0-9]{10,}$/i.test(normalized)) return fallback;
+  if (/^(.)\1{4,}$/i.test(normalized)) return fallback;
+  return normalized;
+};
+
+const listingFingerprint = (item: Listing) => {
+  const normalizedTitle = (item.title || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim().slice(0, 56);
+  const normalizedDescription = (item.description || "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
-    .trim();
-
-const listingFingerprint = (item: Listing) => {
-  const normalizedTitle = normalizeForFingerprint(item.title).slice(0, 56);
-  const normalizedDescription = normalizeForFingerprint(item.description).slice(0, 96);
-  const normalizedCategory = normalizeForFingerprint(item.category);
-  const normalizedOwner = (item.provider_id || "community").trim().toLowerCase();
+    .trim()
+    .slice(0, 96);
+  const normalizedCategory = (item.category || "").toLowerCase().trim();
+  const normalizedOwner = (item.providerId || "community").toLowerCase().trim();
   const roundedPrice = item.price > 0 ? Math.round(item.price) : 0;
 
-  return [
-    item.type,
-    normalizedOwner,
-    normalizedCategory,
-    normalizedTitle,
-    normalizedDescription,
-    roundedPrice,
-  ].join("|");
+  return [item.type, normalizedOwner, normalizedCategory, normalizedTitle, normalizedDescription, roundedPrice].join("|");
+};
+
+const sourcePriority: Record<ListingSource, number> = {
+  help_request: 5,
+  post: 4,
+  service_listing: 3,
+  product_listing: 3,
+  demo: 1,
 };
 
 const pickPreferredListing = (current: Listing, incoming: Listing) => {
+  if (sourcePriority[incoming.source] !== sourcePriority[current.source]) {
+    return sourcePriority[incoming.source] > sourcePriority[current.source] ? incoming : current;
+  }
+
   const incomingDate = parseDateMs(incoming.createdAt);
   const currentDate = parseDateMs(current.createdAt);
   if (incomingDate !== currentDate) {
     return incomingDate > currentDate ? incoming : current;
   }
+
   if (incoming.rankScore !== current.rankScore) {
     return incoming.rankScore > current.rankScore ? incoming : current;
   }
+
   return incoming.responseMinutes < current.responseMinutes ? incoming : current;
 };
 
@@ -854,109 +374,256 @@ const isFreshListing = (value?: string) => {
   return Date.now() - createdAtMs <= FRESH_WINDOW_MS;
 };
 
-const formatRelativeAge = (value?: string) => {
-  const createdAtMs = parseDateMs(value);
-  if (!createdAtMs) return "Recently posted";
-
-  const diffMs = Math.max(0, Date.now() - createdAtMs);
-  const minutes = Math.floor(diffMs / (60 * 1000));
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
-const looksLikeNoisyText = (value: string) => {
-  const normalized = value.trim();
-  if (!normalized) return true;
-  if (normalized.length < 3) return true;
-  if (/^[a-z0-9]{10,}$/i.test(normalized)) return true;
-  if (/^(.)\1{4,}$/i.test(normalized)) return true;
-  return false;
-};
-
-const toDisplayText = (value: string | undefined, fallback: string) => {
-  const normalized = (value || "").replace(/\s+/g, " ").trim();
-  if (looksLikeNoisyText(normalized)) return fallback;
-  return normalized;
-};
-
-const isTemporarilyHiddenListing = (item: Listing) => {
-  const title = item.title || "";
-  const description = item.description || "";
-  return TEMP_HIDDEN_LISTING_PATTERNS.some(
-    (pattern) => pattern.test(title) || pattern.test(description)
-  );
-};
-
-const getListingSignals = (item: Listing) => {
-  const signals: string[] = [];
-  if (item.urgent) signals.push("Urgent demand");
-  if (item.distance <= 3) signals.push(`${item.distance} km nearby`);
-  if (item.responseMinutes <= 15) signals.push(`Responds in ~${item.responseMinutes}m`);
-  if (item.verificationStatus === "verified") signals.push("Verified business");
-  if ((item.media?.length || 0) > 0) signals.push("Media attached");
-  if (item.rankScore >= 85) signals.push(`High match ${item.rankScore}`);
-  return signals.slice(0, 3);
-};
-
-const getMediaKinds = (media?: FeedMedia[]) => {
-  if (!media?.length) return [] as string[];
-
-  const kinds = new Set<string>();
-  media.forEach((mediaItem) => {
-    const mime = mediaItem.mimeType.toLowerCase();
-    if (mime.startsWith("image/svg") || mime.includes("pdf") || mime.includes("illustration")) {
-      kinds.add("Graphics");
-      return;
-    }
-    if (mime.startsWith("image/")) {
-      kinds.add("Image");
-      return;
-    }
-    if (mime.startsWith("video/")) {
-      kinds.add("Video");
-      return;
-    }
-    if (mime.startsWith("audio/")) {
-      kinds.add("Voice");
-      return;
-    }
-    kinds.add("Graphics");
-  });
-
-  const orderedKinds = ["Image", "Video", "Graphics", "Voice"];
-  return orderedKinds.filter((kind) => kinds.has(kind));
-};
+const normalizeSearchTokens = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
 const matchesFeedFilters = (item: Listing, state: FeedFilterState) => {
-  const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName || ""}`.toLowerCase();
-  const matchesSearch = !state.query || haystack.includes(state.query);
+  const queryTokens = normalizeSearchTokens(state.query);
+  const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName} ${item.locationLabel} ${item.type}`.toLowerCase();
+  const matchesSearch = queryTokens.every((token) => haystack.includes(token));
 
   const normalizedCategory = state.category.toLowerCase();
   const matchesCategory =
     state.category === "all" ||
-    item.category.toLowerCase().includes(normalizedCategory) ||
-    item.type === normalizedCategory;
+    item.type === normalizedCategory ||
+    item.category.toLowerCase().includes(normalizedCategory);
 
-  const matchesDistance = state.maxDistanceKm > 0 ? item.distance <= state.maxDistanceKm : true;
+  const matchesDistance = state.maxDistanceKm > 0 ? item.distanceKm <= state.maxDistanceKm : true;
+  const matchesUrgent = state.urgentOnly ? item.urgent : true;
+  const matchesMedia = state.mediaOnly ? item.media.length > 0 : true;
   const matchesVerified = state.verifiedOnly ? item.verificationStatus === "verified" : true;
-  const matchesUrgent = state.urgentOnly ? !!item.urgent : true;
-  const matchesMedia = state.mediaOnly ? (item.media?.length || 0) > 0 : true;
   const matchesFresh = state.freshOnly ? isFreshListing(item.createdAt) : true;
 
-  return (
-    matchesSearch &&
-    matchesCategory &&
-    matchesDistance &&
-    matchesVerified &&
-    matchesUrgent &&
-    matchesMedia &&
-    matchesFresh
-  );
+  return matchesSearch && matchesCategory && matchesDistance && matchesUrgent && matchesMedia && matchesVerified && matchesFresh;
 };
+
+const formatPriceLabel = (item: Pick<Listing, "price" | "type">) => {
+  if (item.price > 0) return `INR ${Math.round(item.price).toLocaleString("en-IN")}`;
+  if (item.type === "demand") return "Budget shared in chat";
+  return "Price on request";
+};
+
+const buildDemoFeed = (): Listing[] => {
+  const now = Date.now();
+  const baseLat = 28.6139;
+  const baseLng = 77.209;
+  const demoRows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-requester-1",
+      type: "demand",
+      title: "Need urgent electrician for switchboard issue",
+      description: "Frequent sparks in kitchen switchboard. Need support today.",
+      category: "Electrical",
+      price: 1800,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-1",
+      creatorName: "Amit P",
+      locationLabel: "Indiranagar",
+      distanceKm: 1.8,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=1200&q=80" }],
+      createdAt: new Date(now - 30 * 60 * 1000).toISOString(),
+      urgent: true,
+      profileCompletion: 78,
+      responseMinutes: 8,
+      verificationStatus: "pending",
+      businessSlug: createBusinessSlug("Amit P", "demo-requester-1"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-requester-2",
+      type: "demand",
+      title: "Looking for same-day laptop repair",
+      description: "Laptop charging port stopped working. Need doorstep repair.",
+      category: "Repair",
+      price: 2400,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-2",
+      creatorName: "Ria M",
+      locationLabel: "Koramangala",
+      distanceKm: 2.9,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80" }],
+      createdAt: new Date(now - 70 * 60 * 1000).toISOString(),
+      urgent: true,
+      profileCompletion: 82,
+      responseMinutes: 11,
+      verificationStatus: "pending",
+      businessSlug: createBusinessSlug("Ria M", "demo-requester-2"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-provider-1",
+      type: "service",
+      title: "Verified AC servicing package",
+      description: "Filter cleaning, gas top-up, and coil care with 30-day support.",
+      category: "HVAC",
+      price: 1499,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-provider-1",
+      creatorName: "ChillTech Services",
+      locationLabel: "HSR Layout",
+      distanceKm: 3.3,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80" }],
+      createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+      urgent: false,
+      profileCompletion: 91,
+      responseMinutes: 14,
+      verificationStatus: "verified",
+      businessSlug: createBusinessSlug("ChillTech Services", "demo-provider-1"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-seller-1",
+      type: "product",
+      title: "Power tools combo set",
+      description: "Drill, precision bits, safety gloves, and carrying case.",
+      category: "Tools",
+      price: 3299,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-seller-1",
+      creatorName: "ToolHub Local",
+      locationLabel: "Whitefield",
+      distanceKm: 6.4,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1200&q=80" }],
+      createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+      urgent: false,
+      profileCompletion: 88,
+      responseMinutes: 20,
+      verificationStatus: "verified",
+      businessSlug: createBusinessSlug("ToolHub Local", "demo-seller-1"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-requester-3",
+      type: "demand",
+      title: "Need quick home deep-clean support",
+      description: "1BHK deep clean before guests arrive this evening.",
+      category: "Cleaning",
+      price: 2200,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-3",
+      creatorName: "Megha S",
+      locationLabel: "BTM Layout",
+      distanceKm: 4.1,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1200&q=80" }],
+      createdAt: new Date(now - 110 * 60 * 1000).toISOString(),
+      urgent: true,
+      profileCompletion: 72,
+      responseMinutes: 10,
+      verificationStatus: "unclaimed",
+      businessSlug: createBusinessSlug("Megha S", "demo-requester-3"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-provider-2",
+      type: "service",
+      title: "Doorstep car wash express",
+      description: "Interior and exterior wash within 45 minutes.",
+      category: "Car Care",
+      price: 799,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-provider-2",
+      creatorName: "SparkleWash",
+      locationLabel: "Jayanagar",
+      distanceKm: 5.2,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200&q=80" }],
+      createdAt: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
+      urgent: false,
+      profileCompletion: 85,
+      responseMinutes: 16,
+      verificationStatus: "verified",
+      businessSlug: createBusinessSlug("SparkleWash", "demo-provider-2"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-requester-4",
+      type: "demand",
+      title: "Need photographer for cafe launch",
+      description: "Candid plus short-form reels coverage for opening day.",
+      category: "Photography",
+      price: 12000,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-4",
+      creatorName: "Cafe Bloom",
+      locationLabel: "MG Road",
+      distanceKm: 2.3,
+      media: [
+        { mimeType: "video/mp4", url: "/hero/market-live-loop.mp4" },
+        { mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=1200&q=80" },
+      ],
+      createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
+      urgent: true,
+      profileCompletion: 81,
+      responseMinutes: 13,
+      verificationStatus: "pending",
+      businessSlug: createBusinessSlug("Cafe Bloom", "demo-requester-4"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+    {
+      source: "demo",
+      helpRequestId: null,
+      providerId: "demo-seller-2",
+      type: "product",
+      title: "Fresh farm produce bundle",
+      description: "Weekly produce basket with early-morning delivery.",
+      category: "Groceries",
+      price: 499,
+      avatarUrl: "https://i.pravatar.cc/150?u=demo-seller-2",
+      creatorName: "FarmCart Local",
+      locationLabel: "Sarjapur",
+      distanceKm: 7.1,
+      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&q=80" }],
+      createdAt: new Date(now - 14 * 60 * 60 * 1000).toISOString(),
+      urgent: false,
+      profileCompletion: 84,
+      responseMinutes: 24,
+      verificationStatus: "verified",
+      businessSlug: createBusinessSlug("FarmCart Local", "demo-seller-2"),
+      status: "open",
+      acceptedProviderId: null,
+      isDemo: true,
+    },
+  ];
+
+  return demoRows.map((row, index) => ({
+    ...row,
+    id: `demo-${index + 1}`,
+    lat: baseLat + index * 0.013,
+    lng: baseLng + index * 0.011,
+    rankScore: calculateLocalRankScore({
+      distanceKm: row.distanceKm,
+      responseMinutes: row.responseMinutes,
+      rating: row.verificationStatus === "verified" ? 4.8 : 4.4,
+      profileCompletion: row.profileCompletion,
+    }),
+  }));
+};
+
+const buildFeedCardId = (item: Listing | DisplayListing) => `dashboard:${item.source}:${item.type}:${item.id}`;
 
 const mapRealtimeHealth = (status: string): RealtimeHealth => {
   if (status === "SUBSCRIBED") return "connected";
@@ -1001,781 +668,335 @@ const REALTIME_HEALTH_STYLES: Record<
   },
 };
 
-/* ================= PAGE ================= */
+function MediaCarousel({ media, title }: { media: FeedMedia[]; title: string }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  if (!media.length) {
+    return (
+      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-center">
+        <div>
+          <p className="text-xs font-semibold text-slate-600">No media yet</p>
+          <p className="mt-1 text-[11px] text-slate-500">This post does not include image or video attachments.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(activeIndex, media.length - 1);
+  const current = media[safeIndex];
+  const canNavigate = media.length > 1;
+
+  const goNext = () => {
+    setActiveIndex((currentIndex) => {
+      const normalized = Math.min(currentIndex, media.length - 1);
+      return (normalized + 1) % media.length;
+    });
+  };
+
+  const goPrev = () => {
+    setActiveIndex((currentIndex) => {
+      const normalized = Math.min(currentIndex, media.length - 1);
+      return (normalized - 1 + media.length) % media.length;
+    });
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+      <div className="aspect-[16/9]">
+        {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.url} alt={title} className="h-full w-full object-cover" />
+        ) : current.mimeType.startsWith("video/") ? (
+          <video src={current.url} controls preload="metadata" className="h-full w-full object-cover" />
+        ) : current.mimeType.startsWith("audio/") ? (
+          <div className="grid h-full place-items-center bg-slate-900 p-4 text-center">
+            <div className="w-full max-w-xs space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Audio Attachment</p>
+              <audio src={current.url} controls className="w-full" preload="metadata" />
+            </div>
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Media Preview</p>
+          </div>
+        )}
+      </div>
+
+      {canNavigate && (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            aria-label="Previous media"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            aria-label="Next media"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </>
+      )}
+
+      <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
+        {Math.min(safeIndex + 1, media.length)} / {media.length}
+      </div>
+    </div>
+  );
+}
+
+type AcceptConfirmDialogProps = {
+  open: boolean;
+  listing: DisplayListing | null;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+function AcceptConfirmDialog({ open, listing, busy, onCancel, onConfirm }: AcceptConfirmDialogProps) {
+  if (!open || !listing) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.55)]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Confirm Task Acceptance</p>
+            <p className="mt-1 text-sm text-slate-600">Are you sure you want to accept this task?</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
+            aria-label="Close confirmation"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="line-clamp-1 text-sm font-semibold text-slate-900">{listing.displayTitle}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-slate-600">{listing.displayDescription}</p>
+        </div>
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-65"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            {busy ? "Accepting..." : "Yes, Accept"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const DEFAULT_FILTER_STATE: FeedFilterState = {
+  query: "",
+  category: "all",
+  maxDistanceKm: 0,
+  urgentOnly: false,
+  mediaOnly: false,
+  verifiedOnly: false,
+  freshOnly: false,
+};
+
+const CLOSED_STATUSES = new Set([
+  "cancelled",
+  "canceled",
+  "closed",
+  "completed",
+  "fulfilled",
+  "archived",
+  "deleted",
+  "hidden",
+]);
+
+const isClosedStatus = (status?: string | null) => CLOSED_STATUSES.has((status || "").trim().toLowerCase());
+
+const FALLBACK_AVATAR = "https://i.pravatar.cc/150?u=serviq-default";
+
+const getListingOwnerIdFromPost = (row: FlexibleRow) =>
+  stringFromRow(row, ["user_id", "provider_id", "created_by", "author_id", "requester_id", "owner_id"], "");
+
+const normalizeStatusLabel = (status?: string | null) => {
+  const normalized = (status || "open").trim().toLowerCase();
+  if (!normalized) return "Open";
+  return normalized
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+};
+
+const isUUIDLike = (value?: string | null) =>
+  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const demoFeed = useMemo(() => buildDemoFeed(), []);
-  const [feed, setFeed] = useState<Listing[]>(demoFeed);
-  const [isFeedLoading, setIsFeedLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [feedError, setFeedError] = useState("");
-  const [usingDemoFeed, setUsingDemoFeed] = useState(true);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [sortBy, setSortBy] = useState<"best" | "distance" | "price" | "latest">("latest");
+
+  const [feed, setFeed] = useState<Listing[]>([]);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [viewerCoordinates, setViewerCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  const [filters, setFilters] = useState<FeedFilterState>(DEFAULT_FILTER_STATE);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(0);
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [urgentOnly, setUrgentOnly] = useState(false);
-  const [mediaOnly, setMediaOnly] = useState(false);
-  const [freshOnly, setFreshOnly] = useState(false);
+
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
-  const [hiddenListingIds, setHiddenListingIds] = useState<Set<string>>(new Set());
-  const [messageLoadingId, setMessageLoadingId] = useState<string | null>(null);
   const [savingListingIds, setSavingListingIds] = useState<Set<string>>(new Set());
   const [sharingListingIds, setSharingListingIds] = useState<Set<string>>(new Set());
-  const [inlineComposerListingId, setInlineComposerListingId] = useState<string | null>(null);
-  const [inlineMessageDrafts, setInlineMessageDrafts] = useState<Record<string, string>>({});
-  const [inlineMessageStatusByListing, setInlineMessageStatusByListing] = useState<Record<string, string>>({});
-  const [inlineConversationByOwner, setInlineConversationByOwner] = useState<Record<string, string>>({});
-  const [inlineSendingListingId, setInlineSendingListingId] = useState<string | null>(null);
+  const [acceptingListingIds, setAcceptingListingIds] = useState<Set<string>>(new Set());
+  const [chatOpeningProviderId, setChatOpeningProviderId] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
+
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [openPostModal, setOpenPostModal] = useState(false);
-  const [heroLineIndex, setHeroLineIndex] = useState(0);
+  const [activeMapItemId, setActiveMapItemId] = useState<string | null>(null);
+  const [acceptTarget, setAcceptTarget] = useState<DisplayListing | null>(null);
+
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
-  const reloadTimerRef = useRef<number | null>(null);
-  const fetchInFlightRef = useRef(false);
-  const lastSoftFetchStartedAtRef = useRef(0);
-  const {
-    viewerId: connectionViewerId,
-    busyTargetId: busyConnectionTargetId,
-    busyRequestId: busyConnectionRequestId,
-    busyActionKey,
-    schemaReady: connectionSchemaReady,
-    schemaMessage: connectionSchemaMessage,
-    getConnectionState,
-    sendRequest,
-    respond,
-  } = useConnectionRequests();
-  const connectionSetupMessage = connectionSchemaMessage || CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE;
 
-  useEffect(() => {
-    const lineTimer = window.setInterval(() => {
-      setHeroLineIndex((current) => (current + 1) % MARKETPLACE_HERO_LINES.length);
-    }, 3200);
-
-    return () => window.clearInterval(lineTimer);
-  }, []);
+  const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const toastTimersRef = useRef<Map<string, number>>(new Map());
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const refreshTimeoutRef = useRef<number | null>(null);
+  const lastSoftRefreshAtRef = useRef(0);
 
   const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
-    const nextToast = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      kind,
-      message,
-    } satisfies ProfileToast;
+    const toastId =
+      typeof window !== "undefined" && window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    setToasts((current) => [...current, nextToast]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== nextToast.id));
-    }, 2800);
+    setToasts((current) => [...current, { id: toastId, kind, message }]);
+
+    const timeoutId = window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== toastId));
+      toastTimersRef.current.delete(toastId);
+    }, 4600);
+
+    toastTimersRef.current.set(toastId, timeoutId);
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const timers = toastTimersRef.current;
 
-    try {
-      const raw = window.localStorage.getItem(MARKETPLACE_FILTERS_STORAGE_KEY);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw) as {
-        category?: string;
-        sortBy?: "best" | "distance" | "price" | "latest";
-        maxDistanceKm?: number;
-        verifiedOnly?: boolean;
-        urgentOnly?: boolean;
-        mediaOnly?: boolean;
-        freshOnly?: boolean;
-        showAdvancedFilters?: boolean;
-      };
-
-      if (typeof parsed.category === "string") setCategory(parsed.category);
-      if (parsed.sortBy && ["best", "distance", "price", "latest"].includes(parsed.sortBy)) {
-        setSortBy(parsed.sortBy);
+    return () => {
+      timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      timers.clear();
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
       }
-      if (Number.isFinite(parsed.maxDistanceKm)) setMaxDistanceKm(Number(parsed.maxDistanceKm));
-      if (typeof parsed.verifiedOnly === "boolean") setVerifiedOnly(parsed.verifiedOnly);
-      if (typeof parsed.urgentOnly === "boolean") setUrgentOnly(parsed.urgentOnly);
-      if (typeof parsed.mediaOnly === "boolean") setMediaOnly(parsed.mediaOnly);
-      if (typeof parsed.freshOnly === "boolean") setFreshOnly(parsed.freshOnly);
-      if (typeof parsed.showAdvancedFilters === "boolean") setShowAdvancedFilters(parsed.showAdvancedFilters);
-    } catch {
-      window.localStorage.removeItem(MARKETPLACE_FILTERS_STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const payload = {
-      category,
-      sortBy,
-      maxDistanceKm,
-      verifiedOnly,
-      urgentOnly,
-      mediaOnly,
-      freshOnly,
-      showAdvancedFilters,
+      fetchAbortRef.current?.abort();
     };
-    window.localStorage.setItem(MARKETPLACE_FILTERS_STORAGE_KEY, JSON.stringify(payload));
-  }, [
-    category,
-    freshOnly,
-    maxDistanceKm,
-    mediaOnly,
-    showAdvancedFilters,
-    sortBy,
-    urgentOnly,
-    verifiedOnly,
-  ]);
+  }, []);
 
-  /* ================= FETCH ================= */
-  const fetchFeed = useCallback(async (soft = false) => {
-    if (fetchInFlightRef.current) return;
-    if (soft) {
-      const now = Date.now();
-      if (now - lastSoftFetchStartedAtRef.current < MIN_SOFT_REFRESH_GAP_MS) return;
-      lastSoftFetchStartedAtRef.current = now;
-    }
-    fetchInFlightRef.current = true;
-
-    if (soft) {
-      setSyncing(true);
-    } else {
-      setIsFeedLoading(true);
-    }
-    setFeedError("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     try {
-      void getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS).catch(() => null);
-
-      const feedPayload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed");
-      if (!feedPayload.ok) {
-        throw new Error(feedPayload.message || "Unable to load community feed.");
-      }
-
-      const currentUserId = feedPayload.currentUserId;
-      const currentUserProfileRow = (feedPayload.currentUserProfile as unknown as FlexibleRow | null) || null;
-      const serviceRowsRaw = (feedPayload.services as unknown as FlexibleRow[] | null) || [];
-      const productRowsRaw = (feedPayload.products as unknown as FlexibleRow[] | null) || [];
-      const postRowsRaw = (feedPayload.posts as unknown as FlexibleRow[] | null) || [];
-      const helpRequestRowsRaw = (feedPayload.helpRequests as unknown as FlexibleRow[] | null) || [];
-
-      const profileCoordinates = resolveCoordinates({
-        row: currentUserProfileRow,
-        location: stringFromRow(currentUserProfileRow || {}, ["location"], ""),
-        seed: currentUserId,
-      });
-      const fallbackViewerCoordinates = profileCoordinates || defaultMarketCoordinates();
-      const resolvedViewerCoordinates = fallbackViewerCoordinates;
-
-      const serviceRows: ServiceRow[] = serviceRowsRaw
-        .map((row, index) => ({
-          id: stringFromRow(row, ["id"], `service-${index}`),
-          title: stringFromRow(row, ["title", "name", "service_title"], "Local service"),
-          description: stringFromRow(row, ["description", "details", "text"], "Service listing"),
-          price: numberFromRow(row, ["price", "amount", "rate"], 0),
-          category: stringFromRow(row, ["category", "service_category", "type"], "Service"),
-          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
-          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
-        }))
-        .filter((row) => !!row.provider_id);
-
-      const productRows: ProductRow[] = productRowsRaw
-        .map((row, index) => ({
-          id: stringFromRow(row, ["id"], `product-${index}`),
-          title: stringFromRow(row, ["title", "name", "product_name"], "Local product"),
-          description: stringFromRow(row, ["description", "details", "text"], "Product listing"),
-          price: numberFromRow(row, ["price", "amount", "mrp"], 0),
-          category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
-          provider_id: stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], ""),
-          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
-        }))
-        .filter((row) => !!row.provider_id);
-
-      const postRows: PostRow[] = postRowsRaw
-        .filter((row) => {
-          const status = stringFromRow(row, ["status", "state"], "");
-          return !status || status.toLowerCase() === "open";
-        })
-        .map((row, index) => ({
-          id: stringFromRow(row, ["id"], `post-${index}`),
-          text: stringFromRow(row, ["text", "content", "description", "title"], ""),
-          content: stringFromRow(row, ["content", "text"], ""),
-          description: stringFromRow(row, ["description", "text"], ""),
-          title: stringFromRow(row, ["title", "name"], ""),
-          user_id: stringFromRow(row, ["user_id", "author_id", "created_by"], ""),
-          provider_id: stringFromRow(row, ["provider_id", "user_id"], ""),
-          created_by: stringFromRow(row, ["created_by", "author_id", "user_id"], ""),
-          type: stringFromRow(row, ["type"], ""),
-          post_type: stringFromRow(row, ["post_type"], ""),
-          category: stringFromRow(row, ["category"], ""),
-          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
+      const rawFilters = window.localStorage.getItem(FILTER_STORAGE_KEY);
+      if (rawFilters) {
+        const parsed = JSON.parse(rawFilters) as Partial<FeedFilterState>;
+        setFilters((current) => ({
+          ...current,
+          ...parsed,
+          query: typeof parsed.query === "string" ? parsed.query : current.query,
+          category: typeof parsed.category === "string" ? parsed.category : current.category,
+          maxDistanceKm:
+            typeof parsed.maxDistanceKm === "number" && Number.isFinite(parsed.maxDistanceKm)
+              ? Math.max(0, parsed.maxDistanceKm)
+              : current.maxDistanceKm,
+          urgentOnly: typeof parsed.urgentOnly === "boolean" ? parsed.urgentOnly : current.urgentOnly,
+          mediaOnly: typeof parsed.mediaOnly === "boolean" ? parsed.mediaOnly : current.mediaOnly,
+          verifiedOnly: typeof parsed.verifiedOnly === "boolean" ? parsed.verifiedOnly : current.verifiedOnly,
+          freshOnly: typeof parsed.freshOnly === "boolean" ? parsed.freshOnly : current.freshOnly,
         }));
-
-      const helpRequestRows: HelpRequestRow[] = helpRequestRowsRaw
-        .filter((row) => {
-          const status = stringFromRow(row, ["status", "state"], "");
-          return !["completed", "fulfilled", "closed", "cancelled", "canceled"].includes(status.toLowerCase());
-        })
-        .map((row, index) => ({
-          id: stringFromRow(row, ["id"], `help-request-${index}`),
-          requester_id: stringFromRow(row, ["requester_id", "user_id", "created_by"], ""),
-          title: stringFromRow(row, ["title", "name"], ""),
-          details: stringFromRow(row, ["details", "description", "text"], ""),
-          category: stringFromRow(row, ["category"], "Need"),
-          urgency: stringFromRow(row, ["urgency"], ""),
-          budget_min: numberFromRow(row, ["budget_min", "budget"], 0),
-          budget_max: numberFromRow(row, ["budget_max"], 0),
-          location_label: stringFromRow(row, ["location_label", "location"], ""),
-          latitude: (() => {
-            const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
-            return Number.isFinite(value) ? value : null;
-          })(),
-          longitude: (() => {
-            const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
-            return Number.isFinite(value) ? value : null;
-          })(),
-          created_at: stringFromRow(row, ["created_at", "createdAt"], ""),
-        }))
-        .filter((row) => !!row.requester_id);
-
-      const uniqueProfileIds = Array.from(
-        new Set(
-          [
-            ...serviceRows.map((row) => row.provider_id),
-            ...productRows.map((row) => row.provider_id),
-            ...postRows
-              .map((row) => row.user_id || row.provider_id || row.created_by || "")
-              .filter(Boolean),
-            ...helpRequestRows.map((row) => row.requester_id || "").filter(Boolean),
-          ].filter(Boolean)
-        )
-      ).slice(0, MAX_PROFILE_LOOKUP);
-
-      const normalizedProfiles: ProfileRow[] = (((feedPayload.profiles as unknown as FlexibleRow[] | null) || []).map((row) => {
-        const profileId = stringFromRow(row, ["id", "user_id"], "");
-        const servicesValue = row.services;
-        const normalizedServices = Array.isArray(servicesValue)
-          ? servicesValue.filter((item): item is string => typeof item === "string")
-          : null;
-        return {
-          id: profileId,
-          name: stringFromRow(row, ["name", "full_name", "display_name"], ""),
-          avatar_url: resolveProfileAvatarUrl(stringFromRow(row, ["avatar_url", "avatar", "image_url"], "")) || "",
-          role: stringFromRow(row, ["role", "account_type"], ""),
-          bio: stringFromRow(row, ["bio", "about"], ""),
-          location: stringFromRow(row, ["location", "city"], ""),
-          availability: stringFromRow(row, ["availability", "status"], ""),
-          services: normalizedServices,
-          email: stringFromRow(row, ["email"], ""),
-          phone: stringFromRow(row, ["phone", "phone_number"], ""),
-          website: stringFromRow(row, ["website", "site_url"], ""),
-          latitude: (() => {
-            const value = numberFromRow(row, ["latitude", "lat"], Number.NaN);
-            return Number.isFinite(value) ? value : null;
-          })(),
-          longitude: (() => {
-            const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
-            return Number.isFinite(value) ? value : null;
-          })(),
-        };
-      }) as ProfileRow[]).filter((row) => !!row.id && uniqueProfileIds.includes(row.id));
-
-      const profileMap = new Map(normalizedProfiles.map((row) => [row.id, row]));
-      const reviewRows: ReviewRow[] = ((feedPayload.reviews as ReviewRow[] | null) || []).filter((row) =>
-        uniqueProfileIds.includes(row.provider_id)
-      );
-      const presenceMap = new Map(
-        (((feedPayload.presence as ProviderPresenceRow[] | null) || []).filter((row) => uniqueProfileIds.includes(row.provider_id))).map(
-          (row) => [row.provider_id, row]
-        )
-      );
-
-      const serviceCountMap = new Map<string, number>();
-      const productCountMap = new Map<string, number>();
-      const ratingMap = new Map<string, { sum: number; count: number }>();
-
-      serviceRows.forEach((row) => {
-        serviceCountMap.set(row.provider_id, (serviceCountMap.get(row.provider_id) || 0) + 1);
-      });
-
-      productRows.forEach((row) => {
-        productCountMap.set(row.provider_id, (productCountMap.get(row.provider_id) || 0) + 1);
-      });
-
-      reviewRows.forEach((row) => {
-        if (!row.provider_id) return;
-        const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
-        ratingMap.set(row.provider_id, {
-          sum: previous.sum + Number(row.rating || 0),
-          count: previous.count + 1,
-        });
-      });
-
-      const getProviderStats = (providerId: string) => {
-        const profile = providerId ? profileMap.get(providerId) : undefined;
-        const presence = providerId ? presenceMap.get(providerId) : undefined;
-        const coordinates = resolveCoordinates({
-          row: (profile as unknown as Record<string, unknown> | undefined) || null,
-          location: profile?.location,
-          seed: providerId || profile?.id || "provider",
-        });
-        const serviceCount = serviceCountMap.get(providerId) || 0;
-        const productCount = productCountMap.get(providerId) || 0;
-        const ratings = ratingMap.get(providerId);
-        const reviewCount = ratings?.count || 0;
-        const averageRating = reviewCount
-          ? Number((((ratings?.sum || 0) / reviewCount) || 0).toFixed(1))
-          : 4.4;
-        const profileCompletion = calculateProfileCompletion({
-          name: profile?.name,
-          location: profile?.location,
-          bio: profile?.bio,
-          services: profile?.services,
-          email: profile?.email,
-          phone: profile?.phone,
-          website: profile?.website,
-        });
-        const estimatedResponseMinutes = estimateResponseMinutes({
-          availability: presence?.availability || profile?.availability,
-          providerId: providerId || profile?.id || "provider",
-        });
-        const presenceResponseMinutes = Number(presence?.rolling_response_minutes || Number.NaN);
-        const responseMinutes = Number.isFinite(presenceResponseMinutes)
-          ? Math.max(1, Math.round(presenceResponseMinutes))
-          : estimatedResponseMinutes;
-        const distance = distanceBetweenCoordinatesKm(resolvedViewerCoordinates, coordinates);
-        const verificationStatus = calculateVerificationStatus({
-          role: profile?.role,
-          profileCompletion,
-          listingsCount: serviceCount + productCount,
-          averageRating,
-          reviewCount,
-        });
-        const rankBase = calculateLocalRankScore({
-          distanceKm: distance,
-          responseMinutes,
-          rating: averageRating,
-          profileCompletion,
-        });
-        const onlineBonus = presence?.is_online === true ? 6 : presence?.is_online === false ? -4 : 0;
-        const rankScore = Math.max(1, Math.min(100, rankBase + onlineBonus));
-
-        return {
-          profile,
-          presence,
-          coordinates,
-          distance,
-          responseMinutes,
-          profileCompletion,
-          verificationStatus,
-          rankScore,
-        };
-      };
-
-      /* ---------- FORMAT ---------- */
-      const formattedServices: Listing[] = serviceRows.map((s) => {
-        const stats = getProviderStats(s.provider_id);
-        return {
-          id: s.id,
-          title: s.title || "Local service",
-          description: s.description || "Service listing",
-          price: s.price || 0,
-          category: s.category || "Service",
-          provider_id: s.provider_id,
-          type: "service",
-          avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=12",
-          distance: stats.distance,
-          lat: stats.coordinates.latitude,
-          lng: stats.coordinates.longitude,
-          createdAt: s.created_at,
-          creatorName: stats.profile?.name || "Local Provider",
-          businessSlug: createBusinessSlug(stats.profile?.name, s.provider_id),
-          rankScore: stats.rankScore,
-          responseMinutes: stats.responseMinutes,
-          profileCompletion: stats.profileCompletion,
-          verificationStatus: stats.verificationStatus,
-        };
-      });
-
-      const formattedProducts: Listing[] = productRows.map((p) => {
-        const stats = getProviderStats(p.provider_id);
-        return {
-          id: p.id,
-          title: p.title || "Local product",
-          description: p.description || "Product listing",
-          price: p.price || 0,
-          category: p.category || "Product",
-          provider_id: p.provider_id,
-          type: "product",
-          avatar: stats.profile?.avatar_url || "https://i.pravatar.cc/150?img=32",
-          distance: stats.distance,
-          lat: stats.coordinates.latitude,
-          lng: stats.coordinates.longitude,
-          createdAt: p.created_at,
-          creatorName: stats.profile?.name || "Local Seller",
-          businessSlug: createBusinessSlug(stats.profile?.name, p.provider_id),
-          rankScore: stats.rankScore,
-          responseMinutes: stats.responseMinutes,
-          profileCompletion: stats.profileCompletion,
-          verificationStatus: stats.verificationStatus,
-        };
-      });
-
-      const formattedPosts: Listing[] = postRows.map((post) => {
-        const rawText = post.text || post.content || post.description || post.title || "Local post";
-        const parsed = parsePostText(rawText);
-        const listingType = normalizeMarketplacePostKind(post.type || post.post_type || parsed.kind);
-        const ownerId = post.user_id || post.provider_id || post.created_by || "";
-        const stats = ownerId ? getProviderStats(ownerId) : null;
-        const fallbackCoordinates = resolveCoordinates({
-          location: parsed.location,
-          seed: post.id,
-        });
-        const targetCoordinates = stats?.coordinates || fallbackCoordinates;
-        const distance = stats?.distance || distanceBetweenCoordinatesKm(resolvedViewerCoordinates, fallbackCoordinates);
-
-        return {
-          id: post.id,
-          title: parsed.title,
-          description: parsed.description,
-          price: parsed.budget,
-          category:
-            parsed.category ||
-            post.category ||
-            (listingType === "demand" ? "Need" : listingType === "service" ? "Service" : "Product"),
-          provider_id: ownerId,
-          type: listingType,
-          avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=5",
-          distance,
-          urgent: listingType === "demand",
-          lat: targetCoordinates.latitude,
-          lng: targetCoordinates.longitude,
-          media: parsed.media,
-          createdAt: post.created_at,
-          creatorName:
-            stats?.profile?.name ||
-            (listingType === "demand"
-              ? "Community Member"
-              : listingType === "service"
-              ? "Local Provider"
-              : "Local Seller"),
-          businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
-          rankScore: stats?.rankScore || 50,
-          responseMinutes: stats?.responseMinutes || 30,
-          profileCompletion: stats?.profileCompletion || 40,
-          verificationStatus: stats?.verificationStatus || "unclaimed",
-        };
-      });
-
-      const formattedHelpRequests: Listing[] = helpRequestRows.map((request) => {
-        const ownerId = request.requester_id || "";
-        const stats = ownerId ? getProviderStats(ownerId) : null;
-        const fallbackCoordinates = resolveCoordinates({
-          row: {
-            latitude: request.latitude,
-            longitude: request.longitude,
-          },
-          location: request.location_label,
-          seed: request.id,
-        });
-        const targetCoordinates = stats?.coordinates || fallbackCoordinates;
-        const distance = stats?.distance || distanceBetweenCoordinatesKm(resolvedViewerCoordinates, fallbackCoordinates);
-        const budgetValue = Math.max(Number(request.budget_max || 0), Number(request.budget_min || 0));
-        const normalizedUrgency = (request.urgency || "").toLowerCase();
-
-        return {
-          id: `help-${request.id}`,
-          title: request.title || "Need local support",
-          description: request.details || "Looking for nearby help",
-          price: Number.isFinite(budgetValue) ? budgetValue : 0,
-          category: request.category || "Need",
-          provider_id: ownerId,
-          type: "demand",
-          avatar: stats?.profile?.avatar_url || "https://i.pravatar.cc/150?img=7",
-          distance,
-          urgent: normalizedUrgency === "urgent" || normalizedUrgency === "today",
-          lat: targetCoordinates.latitude,
-          lng: targetCoordinates.longitude,
-          createdAt: request.created_at,
-          creatorName: stats?.profile?.name || "Community Member",
-          businessSlug: ownerId ? createBusinessSlug(stats?.profile?.name, ownerId) : undefined,
-          rankScore: stats?.rankScore || 52,
-          responseMinutes: stats?.responseMinutes || 24,
-          profileCompletion: stats?.profileCompletion || 48,
-          verificationStatus: stats?.verificationStatus || "unclaimed",
-        };
-      });
-
-      const rawLiveFeed = [
-        ...formattedHelpRequests,
-        ...formattedPosts,
-        ...formattedServices,
-        ...formattedProducts,
-      ];
-      const liveFeed = dedupeListings(rawLiveFeed);
-      if (liveFeed.length === 0) {
-        setFeed(demoFeed);
-        setUsingDemoFeed(true);
-        setFeedError("No live listings yet. Showing demo marketplace cards.");
-      } else {
-        setFeed(liveFeed);
-        setUsingDemoFeed(false);
-      }
-    } catch (error) {
-      if (isAbortLikeError(error)) {
-        return;
       }
 
-      const fallbackMessage = "Failed to fetch marketplace feed";
-      const feedErrorMessage = isFailedFetchError(error)
-        ? "Network connection issue while loading live marketplace data."
-        : toErrorMessage(error, fallbackMessage);
-      console.warn("Failed to load marketplace feed:", feedErrorMessage);
-      if (soft) {
-        setFeedError(`${feedErrorMessage}. Keeping current feed.`);
-      } else {
-        setFeed(demoFeed);
-        setUsingDemoFeed(true);
-        setFeedError(`${feedErrorMessage}. Showing demo feed.`);
+      const params = new URLSearchParams(window.location.search);
+      const queryParam = params.get("q") || "";
+      const focusParam = params.get("focus") || "";
+      if (queryParam.trim()) {
+        setFilters((current) => ({ ...current, query: queryParam.trim() }));
       }
-    } finally {
-      fetchInFlightRef.current = false;
-      if (soft) {
-        setSyncing(false);
-      } else {
-        setIsFeedLoading(false);
+      if (focusParam.trim()) {
+        setActiveMapItemId(focusParam.trim());
       }
-    }
-  }, [demoFeed]);
-
-  useEffect(() => {
-    void fetchFeed();
-  }, [fetchFeed]);
-
-  useEffect(() => {
-    const scheduleReload = () => {
-      if (reloadTimerRef.current) {
-        window.clearTimeout(reloadTimerRef.current);
-      }
-      reloadTimerRef.current = window.setTimeout(() => {
-        void fetchFeed(true);
-      }, 700);
-    };
-
-    const channel = supabase
-      .channel("dashboard-feed-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
-      .subscribe((status) => {
-        setFeedChannelHealth(mapRealtimeHealth(status));
-      });
-
-    return () => {
-      if (reloadTimerRef.current) {
-        window.clearTimeout(reloadTimerRef.current);
-      }
-      setFeedChannelHealth("idle");
-      supabase.removeChannel(channel);
-    };
-  }, [fetchFeed]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void fetchFeed(true);
-    }, FEED_POLL_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [fetchFeed]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const composeParam = params.get("compose");
-    if (composeParam === "1" || composeParam === "true") {
-      setOpenPostModal(true);
-    }
-
-    const categoryParam = params.get("category");
-    if (categoryParam && ["all", "demand", "service", "product"].includes(categoryParam)) {
-      setCategory(categoryParam);
-    }
-
-    const groupParam = params.get("group") || params.get("q");
-    if (groupParam) {
-      setSearch(groupParam);
-    }
-
-    const type = params.get("type");
-
-    if (type && ["demand", "service", "product"].includes(type)) {
-      setCategory(type);
+    } catch {
+      // Local storage hydration is best effort.
     }
   }, []);
 
-/* ================= FILTER + SORT ================= */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
 
-const filterState = useMemo<FeedFilterState>(
-  () => ({
-    query: search.toLowerCase().trim(),
-    category,
-    maxDistanceKm,
-    verifiedOnly,
-    urgentOnly,
-    mediaOnly,
-    freshOnly,
-  }),
-  [category, freshOnly, maxDistanceKm, mediaOnly, search, urgentOnly, verifiedOnly]
-);
+  const ensureViewerId = useCallback(async () => {
+    if (viewerId) return viewerId;
 
-const filtered = useMemo(() => {
-  return [...feed]
-    .filter((item) => !isTemporarilyHiddenListing(item))
-    .filter((item) => matchesFeedFilters(item, filterState))
-    .sort((a, b) => {
-      if (sortBy === "best") {
-        return b.rankScore - a.rankScore || a.distance - b.distance;
-      }
-      if (sortBy === "distance") {
-        return a.distance - b.distance;
-      }
-      if (sortBy === "latest") {
-        return parseDateMs(b.createdAt) - parseDateMs(a.createdAt) || b.rankScore - a.rankScore;
-      }
-      return a.price - b.price;
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      throw new Error(error?.message || "Login required to continue.");
+    }
+
+    setViewerId(user.id);
+    return user.id;
+  }, [viewerId]);
+
+  const buildFeedContextPath = useCallback((item: DisplayListing) => {
+    const params = new URLSearchParams({
+      source: "posts_feed",
+      focus: item.id,
+      q: filters.query || "",
     });
-}, [feed, filterState, sortBy]);
+    return `/dashboard?${params.toString()}`;
+  }, [filters.query]);
 
-const visibleFeed = useMemo(
-  () => filtered,
-  [filtered]
-);
+  const buildSaveMetadata = useCallback((item: DisplayListing) => {
+    const gallery = item.media.map((entry) => entry.url).filter(Boolean).slice(0, 3);
+    return {
+      subtitle: item.displayDescription,
+      ownerName: item.displayCreator,
+      category: item.category,
+      status: item.status,
+      priceLabel: item.priceLabel,
+      etaLabel: `Responds in ~${item.responseMinutes} mins`,
+      locationLabel: item.locationLabel,
+      mediaGallery: gallery,
+      image: gallery[0] || item.avatarUrl || null,
+      tags: [item.type, item.category, item.verificationStatus],
+    };
+  }, []);
 
-const blendedVisibleFeed = useMemo(() => {
-  if (visibleFeed.length >= MIN_EXPLORE_FEED_ITEMS) return visibleFeed;
-
-  const existingFingerprints = new Set(visibleFeed.map((item) => listingFingerprint(item)));
-  const fallbackSeeds = demoFeed
-    .filter((item) => matchesFeedFilters(item, filterState))
-    .filter((item) => !existingFingerprints.has(listingFingerprint(item)))
-    .slice(0, MIN_EXPLORE_FEED_ITEMS - visibleFeed.length)
-    .map((item, index) => ({
-      ...item,
-      id: `seed-${item.id}-${index}`,
-      isDemo: true,
-    }));
-
-  return [...visibleFeed, ...fallbackSeeds];
-}, [demoFeed, filterState, visibleFeed]);
-
-const activeFilterCount =
-  Number(maxDistanceKm > 0) +
-  Number(verifiedOnly) +
-  Number(urgentOnly) +
-  Number(mediaOnly) +
-  Number(freshOnly);
-
-const filteredStats = useMemo(() => {
-  const verified = blendedVisibleFeed.filter((item) => item.verificationStatus === "verified").length;
-  const urgent = blendedVisibleFeed.filter((item) => item.urgent).length;
-  const withMedia = blendedVisibleFeed.filter((item) => (item.media?.length || 0) > 0).length;
-  const avgMatch = blendedVisibleFeed.length
-    ? Math.round(blendedVisibleFeed.reduce((sum, item) => sum + item.rankScore, 0) / blendedVisibleFeed.length)
-    : 0;
-  return {
-    total: blendedVisibleFeed.length,
-    verified,
-    urgent,
-    withMedia,
-    avgMatch,
-  };
-}, [blendedVisibleFeed]);
-
-const displayFeed = useMemo<DisplayListing[]>(
-  () =>
-    blendedVisibleFeed.map((item, index) => {
-      const defaultTitle =
-        item.type === "demand"
-          ? "Need local support"
-          : item.type === "service"
-          ? `${item.category || "Local"} service available`
-          : `${item.category || "Local"} product available`;
-      const defaultDescription =
-        item.type === "demand"
-          ? "Looking for fast verified responses from nearby providers."
-          : "Trusted local listing with clear pricing and quick response.";
-
-      return {
-        ...item,
-        displayTitle: toDisplayText(item.title, defaultTitle),
-        displayDescription: toDisplayText(item.description, defaultDescription),
-        displayCreator: toDisplayText(item.creatorName, `Local ${item.type === "demand" ? "requester" : "provider"}`),
-        createdAt: item.createdAt || new Date(Date.now() - (index + 1) * 18 * 60 * 1000).toISOString(),
-      };
-    }),
-  [blendedVisibleFeed]
-);
-
-const featuredListing = useMemo(
-  () => displayFeed.find((item) => (item.media?.length || 0) > 0) || displayFeed[0] || null,
-  [displayFeed]
-);
-const secondaryListings = useMemo(
-  () => (featuredListing ? displayFeed.filter((item) => item.id !== featuredListing.id) : []),
-  [displayFeed, featuredListing]
-);
-
-const trendingOpportunities = useMemo(
-  () =>
-    [...displayFeed]
-      .sort((a, b) => b.rankScore - a.rankScore)
-      .slice(0, 4),
-  [displayFeed]
-);
-
-const buildFeedCardId = (item: Listing) => `dashboard:${item.type}:${item.id}`;
-
-const buildFeedContextPath = (item: DisplayListing) => {
-  const params = new URLSearchParams({
-    source: "dashboard_feed",
-    context_card: buildFeedCardId(item),
-    context_focus: item.id,
-    context_type: item.type,
-    context_title: item.displayTitle,
-    focus: item.id,
-    type: item.type,
-  });
-
-  return `/dashboard?${params.toString()}`;
-};
-
-const buildFeedSaveMetadata = (item: DisplayListing) => {
-  const mediaGallery = (item.media || []).map((media) => media.url).filter(Boolean).slice(0, 3);
-  const image =
-    mediaGallery[0] ||
-    (item.avatar?.trim() ? item.avatar : null);
-
-  return {
-    priceLabel: item.price > 0 ? `₹ ${item.price}` : item.type === "demand" ? "Budget shared in chat" : "Price on request",
-    etaLabel: `Respond within ${item.responseMinutes} mins`,
-    audienceName: item.displayCreator,
-    tags: [item.category, `Match ${item.rankScore}`],
-    image,
-    mediaGallery,
-  };
-};
-
-const loadSavedListings = useCallback(
-  async (viewerIdOverride?: string | null) => {
-    const activeViewerId = viewerIdOverride || connectionViewerId;
-    if (!activeViewerId) {
+  const loadSavedListings = useCallback(async () => {
+    if (!viewerId) {
       setSavedListingIds(new Set());
       return;
     }
@@ -1783,1425 +1004,1423 @@ const loadSavedListings = useCallback(
     const { data, error } = await supabase
       .from("feed_card_saves")
       .select("card_id")
-      .eq("user_id", activeViewerId)
+      .eq("user_id", viewerId)
       .limit(300);
 
     if (error) {
-      console.warn("Failed to load saved dashboard cards:", error.message);
+      if (/relation .* does not exist|table .* does not exist/i.test(error.message || "")) {
+        return;
+      }
+      console.warn("Unable to load saved cards:", error.message);
       return;
     }
 
-    const nextIds = new Set(
+    const nextSavedIds = new Set(
       (((data as Array<{ card_id?: string }> | null) || [])
         .map((row) => row.card_id)
         .filter((cardId): cardId is string => typeof cardId === "string" && cardId.length > 0))
     );
-    setSavedListingIds(nextIds);
-  },
-  [connectionViewerId]
-);
+    setSavedListingIds(nextSavedIds);
+  }, [viewerId]);
 
-useEffect(() => {
-  void loadSavedListings();
-}, [loadSavedListings]);
+  useEffect(() => {
+    let active = true;
 
-useEffect(() => {
-  if (!connectionViewerId) return;
+    const boot = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  const channel = supabase
-    .channel(`dashboard-feed-saves-${connectionViewerId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "feed_card_saves",
-        filter: `user_id=eq.${connectionViewerId}`,
-      },
-      (payload) => {
-        const nextRow = (payload.new as { card_id?: string } | null) || null;
-        const previousRow = (payload.old as { card_id?: string } | null) || null;
-        const cardId = nextRow?.card_id || previousRow?.card_id || null;
+      if (!active) return;
+      setViewerId(user?.id || null);
+    };
 
-        if (!cardId) return;
+    void boot();
 
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setViewerId(session?.user?.id || null);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const resolveViewerCoords = async () => {
+      const browserCoordinates = await getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
+      if (!active || !browserCoordinates) return;
+      setViewerCoordinates({ latitude: browserCoordinates.latitude, longitude: browserCoordinates.longitude });
+    };
+
+    void resolveViewerCoords();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadSavedListings();
+  }, [loadSavedListings]);
+
+  useEffect(() => {
+    if (!viewerId) return;
+
+    const channel = supabase
+      .channel(`posts-feed-saves-${viewerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "feed_card_saves",
+          filter: `user_id=eq.${viewerId}`,
+        },
+        (payload) => {
+          const previous = (payload.old as { card_id?: string } | null)?.card_id || "";
+          const next = (payload.new as { card_id?: string } | null)?.card_id || "";
+          const cardId = next || previous;
+          if (!cardId) return;
+
+          setSavedListingIds((current) => {
+            const updated = new Set(current);
+            if (payload.eventType === "DELETE") {
+              updated.delete(cardId);
+            } else {
+              updated.add(cardId);
+            }
+            return updated;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [viewerId]);
+
+  const buildListingsFromSnapshot = useCallback(
+    (payload: Extract<CommunityFeedResponse, { ok: true }>) => {
+      const profileRows = (payload.profiles || []) as ProfileRow[];
+      const serviceRows = (payload.services || []) as ServiceRow[];
+      const productRows = (payload.products || []) as ProductRow[];
+      const postRows = (payload.posts || []) as PostRow[];
+      const helpRows = (payload.helpRequests || []) as HelpRequestRow[];
+      const reviewRows = (payload.reviews || []) as ReviewRow[];
+      const presenceRows = (payload.presence || []) as ProviderPresenceRow[];
+
+      const profileMap = new Map<string, ProfileRow>();
+      profileRows.slice(0, MAX_PROFILE_LOOKUP).forEach((profile) => {
+        if (profile.id) {
+          profileMap.set(profile.id, profile);
+        }
+      });
+
+      const reviewStats = new Map<string, { total: number; count: number }>();
+      reviewRows.forEach((row) => {
+        if (!row.provider_id || typeof row.rating !== "number" || !Number.isFinite(row.rating)) return;
+        const current = reviewStats.get(row.provider_id) || { total: 0, count: 0 };
+        reviewStats.set(row.provider_id, {
+          total: current.total + row.rating,
+          count: current.count + 1,
+        });
+      });
+
+      const presenceMap = new Map<string, ProviderPresenceRow>();
+      presenceRows.forEach((row) => {
+        if (row.provider_id) {
+          presenceMap.set(row.provider_id, row);
+        }
+      });
+
+      const listingVolumeByProvider = new Map<string, number>();
+      const bumpVolume = (providerId: string) => {
+        if (!providerId) return;
+        listingVolumeByProvider.set(providerId, (listingVolumeByProvider.get(providerId) || 0) + 1);
+      };
+
+      serviceRows.forEach((row) => bumpVolume(row.provider_id));
+      productRows.forEach((row) => bumpVolume(row.provider_id));
+      postRows.forEach((row) => {
+        const ownerId = getListingOwnerIdFromPost(row as unknown as FlexibleRow);
+        bumpVolume(ownerId);
+      });
+      helpRows.forEach((row) => bumpVolume(row.requester_id));
+
+      const viewerPoint = viewerCoordinates || defaultMarketCoordinates();
+
+      const resolveProfileMeta = (providerId: string) => {
+        const profile = profileMap.get(providerId);
+        const presence = presenceMap.get(providerId);
+        const review = reviewStats.get(providerId);
+
+        const profileCompletion = calculateProfileCompletion(profile || {});
+        const averageRating = review?.count ? review.total / review.count : 4.2;
+        const reviewCount = review?.count || 0;
+        const listingsCount = listingVolumeByProvider.get(providerId) || 0;
+        const responseMinutes = estimateResponseMinutes({
+          availability: presence?.availability || profile?.availability,
+          providerId,
+          baseResponseMinutes: presence?.rolling_response_minutes || null,
+        });
+
+        const verificationStatus = calculateVerificationStatus({
+          role: profile?.role,
+          profileCompletion,
+          listingsCount,
+          averageRating,
+          reviewCount,
+        });
+
+        return {
+          profile,
+          profileCompletion,
+          averageRating,
+          reviewCount,
+          responseMinutes,
+          verificationStatus,
+          name: stringFromRow(profile || {}, ["name", "full_name", "display_name"], "Local member"),
+          avatarUrl: resolveProfileAvatarUrl(stringFromRow(profile || {}, ["avatar_url", "avatar", "image_url"], "")) || FALLBACK_AVATAR,
+          locationLabel: stringFromRow(profile || {}, ["location", "city"], "Nearby"),
+          businessSlug: createBusinessSlug(stringFromRow(profile || {}, ["name", "full_name", "display_name"], "Local member"), providerId),
+        };
+      };
+
+      const nextListings: Listing[] = [];
+
+      serviceRows.forEach((serviceRow) => {
+        const row = serviceRow as unknown as FlexibleRow;
+        const providerId = stringFromRow(row, ["provider_id", "user_id", "created_by"], "");
+        if (!providerId) return;
+
+        const profileMeta = resolveProfileMeta(providerId);
+        const locationLabel = stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
+        const coordinates = resolveCoordinates({
+          row,
+          location: locationLabel,
+          seed: `${providerId}:service:${serviceRow.id}`,
+        });
+
+        const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
+        const title = stringFromRow(row, ["title", "name"], "Local service");
+        const description = stringFromRow(row, ["description", "details", "text"], "Service listing");
+        const category = stringFromRow(row, ["category", "service_category", "type"], "Service");
+        const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
+        const price = numberFromRow(row, ["price", "amount", "rate"], 0);
+
+        nextListings.push({
+          id: serviceRow.id,
+          source: "service_listing",
+          helpRequestId: null,
+          providerId,
+          type: "service",
+          title,
+          description,
+          category,
+          price,
+          avatarUrl: profileMeta.avatarUrl,
+          creatorName: profileMeta.name,
+          locationLabel,
+          distanceKm,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          media: [],
+          createdAt,
+          urgent: false,
+          rankScore: calculateLocalRankScore({
+            distanceKm,
+            responseMinutes: profileMeta.responseMinutes,
+            rating: profileMeta.averageRating,
+            profileCompletion: profileMeta.profileCompletion,
+          }),
+          profileCompletion: profileMeta.profileCompletion,
+          responseMinutes: profileMeta.responseMinutes,
+          verificationStatus: profileMeta.verificationStatus,
+          businessSlug: profileMeta.businessSlug,
+          status: stringFromRow(row, ["status", "state"], "open"),
+          acceptedProviderId: null,
+        });
+      });
+
+      productRows.forEach((productRow) => {
+        const row = productRow as unknown as FlexibleRow;
+        const providerId = stringFromRow(row, ["provider_id", "user_id", "created_by"], "");
+        if (!providerId) return;
+
+        const profileMeta = resolveProfileMeta(providerId);
+        const locationLabel = stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
+        const coordinates = resolveCoordinates({
+          row,
+          location: locationLabel,
+          seed: `${providerId}:product:${productRow.id}`,
+        });
+
+        const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
+        const title = stringFromRow(row, ["title", "name"], "Local product");
+        const description = stringFromRow(row, ["description", "details", "text"], "Product listing");
+        const category = stringFromRow(row, ["category", "product_category", "type"], "Product");
+        const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
+        const price = numberFromRow(row, ["price", "amount", "mrp"], 0);
+
+        nextListings.push({
+          id: productRow.id,
+          source: "product_listing",
+          helpRequestId: null,
+          providerId,
+          type: "product",
+          title,
+          description,
+          category,
+          price,
+          avatarUrl: profileMeta.avatarUrl,
+          creatorName: profileMeta.name,
+          locationLabel,
+          distanceKm,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          media: [],
+          createdAt,
+          urgent: false,
+          rankScore: calculateLocalRankScore({
+            distanceKm,
+            responseMinutes: profileMeta.responseMinutes,
+            rating: profileMeta.averageRating,
+            profileCompletion: profileMeta.profileCompletion,
+          }),
+          profileCompletion: profileMeta.profileCompletion,
+          responseMinutes: profileMeta.responseMinutes,
+          verificationStatus: profileMeta.verificationStatus,
+          businessSlug: profileMeta.businessSlug,
+          status: stringFromRow(row, ["status", "state"], "open"),
+          acceptedProviderId: null,
+        });
+      });
+
+      postRows.forEach((postRow) => {
+        const row = postRow as unknown as FlexibleRow;
+        const providerId = getListingOwnerIdFromPost(row);
+        if (!providerId) return;
+
+        const profileMeta = resolveProfileMeta(providerId);
+        const parsedFromText = parsePostText(stringFromRow(row, ["text", "content", "description", "title"], ""));
+        const type = normalizeMarketplacePostKind(stringFromRow(row, ["type", "post_type"], parsedFromText.kind));
+
+        const locationLabel =
+          parsedFromText.location ||
+          stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
+
+        const coordinates = resolveCoordinates({
+          row,
+          location: locationLabel,
+          seed: `${providerId}:post:${postRow.id}`,
+        });
+
+        const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
+        const title =
+          stringFromRow(row, ["title"], "") ||
+          parsedFromText.title ||
+          (type === "demand" ? "Need local support" : "Marketplace update");
+        const description =
+          stringFromRow(row, ["description", "content", "text"], "") ||
+          parsedFromText.description ||
+          title;
+        const category =
+          stringFromRow(row, ["category"], "") ||
+          parsedFromText.category ||
+          (type === "demand" ? "Need" : type === "service" ? "Service" : "Product");
+        const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
+        const status = stringFromRow(row, ["status", "state"], "open");
+        if (isClosedStatus(status)) return;
+
+        const urgent =
+          type === "demand" &&
+          /urgent|asap|immediate|today|quick|critical|emergency/i.test(`${title} ${description} ${status}`);
+
+        const parsedBudget = parsedFromText.budget > 0 ? parsedFromText.budget : 0;
+
+        nextListings.push({
+          id: postRow.id,
+          source: "post",
+          helpRequestId: null,
+          providerId,
+          type,
+          title,
+          description,
+          category,
+          price: parsedBudget,
+          avatarUrl: profileMeta.avatarUrl,
+          creatorName: profileMeta.name,
+          locationLabel,
+          distanceKm,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          media: parsedFromText.media,
+          createdAt,
+          urgent,
+          rankScore: calculateLocalRankScore({
+            distanceKm,
+            responseMinutes: profileMeta.responseMinutes,
+            rating: profileMeta.averageRating,
+            profileCompletion: profileMeta.profileCompletion,
+          }),
+          profileCompletion: profileMeta.profileCompletion,
+          responseMinutes: profileMeta.responseMinutes,
+          verificationStatus: profileMeta.verificationStatus,
+          businessSlug: profileMeta.businessSlug,
+          status,
+          acceptedProviderId: null,
+        });
+      });
+
+      helpRows.forEach((helpRow) => {
+        const row = helpRow as unknown as FlexibleRow;
+        const providerId = stringFromRow(row, ["requester_id", "user_id", "created_by"], "");
+        if (!providerId) return;
+
+        const profileMeta = resolveProfileMeta(providerId);
+        const title = stringFromRow(row, ["title", "name"], "Need local support");
+        const description = stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
+        const category = stringFromRow(row, ["category"], "Need");
+        const budgetMax = numberFromRow(row, ["budget_max"], 0);
+        const budgetMin = numberFromRow(row, ["budget_min", "budget"], 0);
+        const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
+        const status = stringFromRow(row, ["status"], "open");
+
+        if (isClosedStatus(status)) return;
+
+        const locationLabel =
+          stringFromRow(row, ["location_label", "location"], "") ||
+          profileMeta.locationLabel ||
+          "Nearby";
+
+        const coordinates = resolveCoordinates({
+          row,
+          location: locationLabel,
+          seed: `${providerId}:help:${helpRow.id}`,
+        });
+
+        const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
+        const urgency = stringFromRow(row, ["urgency"], "");
+        const urgent = /urgent|asap|immediate|critical|high|emergency/i.test(urgency || `${title} ${description}`);
+        const acceptedProviderId = stringFromRow(row, ["accepted_provider_id"], "") || null;
+
+        nextListings.push({
+          id: helpRow.id,
+          source: "help_request",
+          helpRequestId: helpRow.id,
+          providerId,
+          type: "demand",
+          title,
+          description,
+          category,
+          price: budgetMax > 0 ? budgetMax : budgetMin,
+          avatarUrl: profileMeta.avatarUrl,
+          creatorName: profileMeta.name,
+          locationLabel,
+          distanceKm,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          media: [],
+          createdAt,
+          urgent,
+          rankScore: calculateLocalRankScore({
+            distanceKm,
+            responseMinutes: profileMeta.responseMinutes,
+            rating: profileMeta.averageRating,
+            profileCompletion: profileMeta.profileCompletion,
+          }),
+          profileCompletion: profileMeta.profileCompletion,
+          responseMinutes: profileMeta.responseMinutes,
+          verificationStatus: profileMeta.verificationStatus,
+          businessSlug: profileMeta.businessSlug,
+          status,
+          acceptedProviderId,
+        });
+      });
+
+      const deduped = dedupeListings(nextListings);
+      const sorted = deduped.sort((left, right) => {
+        const leftTaken = Boolean(left.acceptedProviderId);
+        const rightTaken = Boolean(right.acceptedProviderId);
+        if (leftTaken !== rightTaken) {
+          return leftTaken ? 1 : -1;
+        }
+
+        if (left.urgent !== right.urgent) {
+          return left.urgent ? -1 : 1;
+        }
+
+        if (left.rankScore !== right.rankScore) {
+          return right.rankScore - left.rankScore;
+        }
+
+        return parseDateMs(right.createdAt) - parseDateMs(left.createdAt);
+      });
+
+      return sorted;
+    },
+    [viewerCoordinates]
+  );
+
+  const fetchFeed = useCallback(
+    async (hardRefresh = false) => {
+      const now = Date.now();
+      if (!hardRefresh && now - lastSoftRefreshAtRef.current < MIN_SOFT_REFRESH_GAP_MS) {
+        return;
+      }
+
+      lastSoftRefreshAtRef.current = now;
+      setFeedError(null);
+
+      if (hardRefresh) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
+      const controller = new AbortController();
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = controller;
+
+      try {
+        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed", {
+          method: "GET",
+          signal: controller.signal,
+        });
+
+        if (!payload.ok) {
+          throw new Error(payload.message || "Unable to load posts feed.");
+        }
+
+        setViewerId(payload.currentUserId || null);
+
+        const nextFeed = buildListingsFromSnapshot(payload);
+        setFeed(nextFeed.length ? nextFeed : buildDemoFeed());
+      } catch (error) {
+        if (isAbortLikeError(error)) return;
+
+        const message = toErrorMessage(error, "Unable to load posts feed.");
+        setFeedError(message);
+
+        if (isFailedFetchError(error)) {
+          pushToast("error", "Network issue detected. Showing the latest available posts.");
+        }
+
+        setFeed((current) => (current.length ? current : buildDemoFeed()));
+      } finally {
+        if (fetchAbortRef.current === controller) {
+          fetchAbortRef.current = null;
+        }
+
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [buildListingsFromSnapshot, pushToast]
+  );
+
+  useEffect(() => {
+    void fetchFeed(true);
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void fetchFeed(false);
+    }, FEED_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        void fetchFeed(false);
+      }, 360);
+    };
+
+    const channel = supabase
+      .channel("posts-feed-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleRefresh)
+      .subscribe((status) => {
+        setFeedChannelHealth(mapRealtimeHealth(status));
+      });
+
+    return () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchFeed]);
+
+  const isSavedListing = useCallback(
+    (item: Listing | DisplayListing) => {
+      const cardId = buildFeedCardId(item);
+      return savedListingIds.has(cardId) || savedListingIds.has(item.id);
+    },
+    [savedListingIds]
+  );
+
+  const isListingBusy = useCallback((item: Listing | DisplayListing, busyIds: Set<string>) => {
+    const cardId = buildFeedCardId(item);
+    return busyIds.has(cardId) || busyIds.has(item.id);
+  }, []);
+
+  const persistListingShare = useCallback(
+    async (item: DisplayListing, channel: "native" | "clipboard", activeViewerId: string | null) => {
+      if (!activeViewerId) return;
+
+      const { error } = await supabase.from("feed_card_shares").insert({
+        user_id: activeViewerId,
+        card_id: buildFeedCardId(item),
+        focus_id: item.id,
+        card_type: item.type,
+        title: item.displayTitle,
+        channel,
+        metadata: {
+          ...buildSaveMetadata(item),
+          actionPath: buildFeedContextPath(item),
+        },
+      });
+
+      if (error) {
+        if (/relation .* does not exist|table .* does not exist/i.test(error.message || "")) return;
+        console.warn("Unable to persist share analytics:", error.message);
+      }
+    },
+    [buildFeedContextPath, buildSaveMetadata]
+  );
+
+  const toggleSaveListing = useCallback(
+    async (item: DisplayListing) => {
+      const cardId = buildFeedCardId(item);
+      const wasSaved = isSavedListing(item);
+      const shouldSave = !wasSaved;
+
+      setSavingListingIds((current) => new Set(current).add(cardId));
+      setSavedListingIds((current) => {
+        const next = new Set(current);
+        if (shouldSave) {
+          next.add(cardId);
+        } else {
+          next.delete(cardId);
+          next.delete(item.id);
+        }
+        return next;
+      });
+
+      try {
+        const activeViewerId = await ensureViewerId();
+
+        if (shouldSave) {
+          const { error } = await supabase.from("feed_card_saves").upsert(
+            {
+              user_id: activeViewerId,
+              card_id: cardId,
+              focus_id: item.id,
+              card_type: item.type,
+              title: item.displayTitle,
+              subtitle: item.displayDescription,
+              action_path: buildFeedContextPath(item),
+              metadata: buildSaveMetadata(item),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,card_id" }
+          );
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          pushToast("success", "Post saved.");
+          return;
+        }
+
+        const { error } = await supabase
+          .from("feed_card_saves")
+          .delete()
+          .eq("user_id", activeViewerId)
+          .eq("card_id", cardId);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        pushToast("success", "Removed from saved.");
+      } catch (error) {
         setSavedListingIds((current) => {
           const next = new Set(current);
-          if (payload.eventType === "DELETE") {
-            next.delete(cardId);
-          } else {
+          if (wasSaved) {
             next.add(cardId);
+          } else {
+            next.delete(cardId);
           }
           return next;
         });
+
+        pushToast("error", toErrorMessage(error, "Unable to update save state."));
+      } finally {
+        setSavingListingIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(item.id);
+          return next;
+        });
       }
-    )
-    .subscribe();
-
-  return () => {
-    void supabase.removeChannel(channel);
-  };
-}, [connectionViewerId]);
-
-const clearAdvancedFilters = () => {
-  setMaxDistanceKm(0);
-  setVerifiedOnly(false);
-  setUrgentOnly(false);
-  setMediaOnly(false);
-  setFreshOnly(false);
-};
-
-/* ================= BOOK ================= */
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const isUuid = (value: string | null | undefined) => !!value && UUID_PATTERN.test(value);
-
-const getRealtimeOwnerId = (item: Listing) => {
-  const providerId = item.provider_id?.trim() || "";
-  if (!providerId || item.isDemo || providerId.startsWith("demo-") || !isUuid(providerId)) {
-    return null;
-  }
-  return providerId;
-};
-
-const getListingConnectionMeta = (item: Listing) => {
-  const ownerId = getRealtimeOwnerId(item);
-  if (!ownerId) {
-    return {
-      ownerId: null,
-      state: null,
-      busy: false,
-      demoLabel: item.isDemo ? "Preview only" : null,
-    };
-  }
-
-  const state = getConnectionState(ownerId);
-  const busy =
-    busyConnectionTargetId === ownerId ||
-    (state.requestId ? busyConnectionRequestId === state.requestId : false);
-
-  return {
-    ownerId,
-    state,
-    busy,
-    demoLabel: connectionSchemaReady ? null : "Setup required",
-  };
-};
-
-const isSavedListing = (item: Listing) => {
-  const cardId = buildFeedCardId(item);
-  return savedListingIds.has(cardId) || savedListingIds.has(item.id);
-};
-
-const isListingBusy = (item: Listing, busyIds: Set<string>) => {
-  const cardId = buildFeedCardId(item);
-  return busyIds.has(cardId) || busyIds.has(item.id);
-};
-
-const getMessageButtonLabel = (item: Listing) => {
-  const { state } = getListingConnectionMeta(item);
-  if (item.isDemo) return item.type === "demand" ? "Explore People" : "Explore Matches";
-  if (connectionViewerId && item.provider_id === connectionViewerId) {
-    return item.type === "demand" ? "Your post" : "Your listing";
-  }
-  if (!connectionSchemaReady) {
-    return "Connections setup required";
-  }
-  if (state?.kind === "accepted") {
-    return inlineComposerListingId === item.id
-      ? "Close chat"
-      : item.type === "demand"
-      ? "Message owner"
-      : "Message";
-  }
-  if (state?.kind === "incoming_pending") {
-    return "Accept to message";
-  }
-  if (state?.kind === "outgoing_pending") {
-    return "Awaiting connection";
-  }
-  return item.type === "demand" ? "Respond after connect" : "Message after connect";
-};
-
-const canOpenInlineComposer = (item: Listing) => {
-  if (item.isDemo) return true;
-  if (connectionViewerId && item.provider_id === connectionViewerId) return false;
-  if (!connectionSchemaReady) return false;
-  const { state } = getListingConnectionMeta(item);
-  return state?.kind === "accepted";
-};
-
-const ensureViewerId = async () => {
-  if (connectionViewerId) {
-    return connectionViewerId;
-  }
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    throw new Error(error?.message || "Login required");
-  }
-
-  return user.id;
-};
-
-const ensureConnectedOwner = async (item: Listing, viewerIdOverride?: string | null) => {
-  const ownerId = getRealtimeOwnerId(item);
-  if (!ownerId) {
-    if (item.isDemo) {
-      router.push("/dashboard/people");
-      return false;
-    }
-    pushToast("info", "This card does not support realtime messaging yet.");
-    return false;
-  }
-
-  const viewerId = viewerIdOverride || (await ensureViewerId());
-  if (viewerId === ownerId) {
-    pushToast("info", item.type === "demand" ? "This is your own post." : "This is your own listing.");
-    return false;
-  }
-
-  if (!connectionSchemaReady) {
-    pushToast("info", connectionSetupMessage);
-    return false;
-  }
-
-  const connectionState = getConnectionState(ownerId);
-  if (connectionState.kind === "accepted") {
-    return true;
-  }
-
-  if (connectionState.kind === "incoming_pending") {
-    pushToast("info", "Accept the connection request first to start messaging.");
-    return false;
-  }
-
-  if (connectionState.kind === "outgoing_pending") {
-    pushToast("info", "Your request is pending. Messaging unlocks after they accept.");
-    return false;
-  }
-
-  pushToast("info", "Connect first to unlock messaging and connected-only activity.");
-  return false;
-};
-
-const bookNow = async (item: Listing) => {
-  if (item.isDemo) {
-    if (item.type === "demand") {
-      router.push("/dashboard/provider/add-service");
-      return;
-    }
-    router.push("/dashboard/people");
-    return;
-  }
-
-  try {
-    const viewerId = await ensureViewerId();
-    if (viewerId === item.provider_id) {
-      pushToast("info", "This is your own listing.");
-      return;
-    }
-
-    const { error } = await supabase.from("orders").insert({
-      listing_id: item.id,
-      listing_type: item.type,
-      consumer_id: viewerId,
-      provider_id: item.provider_id,
-      price: item.price,
-      status: "new_lead",
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    pushToast("success", "Booking request sent.");
-  } catch (error) {
-    pushToast("error", error instanceof Error ? error.message : "Unable to place booking.");
-  }
-};
-
-const persistListingShare = async (item: DisplayListing, channel: "native" | "clipboard", viewerId: string | null) => {
-  if (!viewerId) return;
-
-  const { error } = await supabase.from("feed_card_shares").insert({
-    user_id: viewerId,
-    card_id: buildFeedCardId(item),
-    focus_id: item.id,
-    card_type: item.type,
-    title: item.displayTitle,
-    channel,
-    metadata: {
-      subtitle: item.displayDescription,
-      actionPath: buildFeedContextPath(item),
-      ownerName: item.displayCreator,
-      ...buildFeedSaveMetadata(item),
     },
-  });
+    [buildFeedContextPath, buildSaveMetadata, ensureViewerId, isSavedListing, pushToast]
+  );
 
-  if (error) {
-    console.warn("Failed to record dashboard feed share:", error.message);
-  }
-};
+  const handleShareListing = useCallback(
+    async (item: DisplayListing) => {
+      const cardId = buildFeedCardId(item);
+      const sharePath = buildFeedContextPath(item);
+      const shareUrl = `${window.location.origin}${sharePath}`;
+      const shareText = `${item.displayTitle} • ${item.displayCreator} • ${item.priceLabel}`;
 
-const toggleSaveListing = async (item: DisplayListing) => {
-  const cardId = buildFeedCardId(item);
-  const wasSaved = isSavedListing(item);
-  const shouldSave = !wasSaved;
+      setSharingListingIds((current) => new Set(current).add(cardId));
 
-  setSavingListingIds((current) => new Set(current).add(cardId));
-  setSavedListingIds((current) => {
-    const next = new Set(current);
-    if (shouldSave) {
-      next.add(cardId);
-    } else {
-      next.delete(cardId);
-      next.delete(item.id);
+      try {
+        let activeViewerId: string | null = null;
+        try {
+          activeViewerId = await ensureViewerId();
+        } catch {
+          activeViewerId = null;
+        }
+
+        if (navigator.share) {
+          await navigator.share({
+            title: item.displayTitle,
+            text: shareText,
+            url: shareUrl,
+          });
+          await persistListingShare(item, "native", activeViewerId);
+          pushToast("success", "Share sent.");
+          return;
+        }
+
+        if (!navigator.clipboard?.writeText) {
+          throw new Error("This browser does not support clipboard sharing.");
+        }
+
+        await navigator.clipboard.writeText(`${item.displayTitle}\n${shareText}\n${shareUrl}`);
+        await persistListingShare(item, "clipboard", activeViewerId);
+        pushToast("success", "Share link copied.");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        pushToast("error", toErrorMessage(error, "Unable to share this post."));
+      } finally {
+        setSharingListingIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    },
+    [buildFeedContextPath, ensureViewerId, persistListingShare, pushToast]
+  );
+
+  const openChatThread = useCallback(
+    async (item: DisplayListing) => {
+      const ownerId = item.providerId?.trim() || "";
+      if (!ownerId || ownerId.startsWith("demo-") || !isUUIDLike(ownerId)) {
+        pushToast("info", "Chat is available only for live accounts.");
+        return;
+      }
+
+      setChatOpeningProviderId(ownerId);
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        if (activeViewerId === ownerId) {
+          pushToast("info", "This is your own post.");
+          return;
+        }
+
+        const conversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, ownerId);
+        router.push(`/dashboard/chat?open=${conversationId}`);
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to open chat."));
+      } finally {
+        setChatOpeningProviderId((current) => (current === ownerId ? null : current));
+      }
+    },
+    [ensureViewerId, pushToast, router]
+  );
+
+  const openAcceptDialog = useCallback(
+    (item: DisplayListing) => {
+      if (!item.helpRequestId) {
+        pushToast("info", "Accept is available for active task requests.");
+        return;
+      }
+
+      if (viewerId && item.providerId === viewerId) {
+        pushToast("info", "You cannot accept your own task.");
+        return;
+      }
+
+      if (item.acceptedProviderId && viewerId && item.acceptedProviderId !== viewerId) {
+        pushToast("info", "This task is already accepted.");
+        return;
+      }
+
+      if (isClosedStatus(item.status)) {
+        pushToast("info", "This task is no longer open.");
+        return;
+      }
+
+      setAcceptTarget(item);
+    },
+    [pushToast, viewerId]
+  );
+
+  const confirmAccept = useCallback(async () => {
+    if (!acceptTarget?.helpRequestId) {
+      setAcceptTarget(null);
+      return;
     }
-    return next;
-  });
 
-  try {
-    const viewerId = await ensureViewerId();
-    if (shouldSave) {
-      const { error } = await supabase.from("feed_card_saves").upsert(
-        {
-          user_id: viewerId,
-          card_id: cardId,
-          focus_id: item.id,
-          card_type: item.type,
-          title: item.displayTitle,
-          subtitle: item.displayDescription,
-          action_path: buildFeedContextPath(item),
-          metadata: {
-            ownerName: item.displayCreator,
-            ...buildFeedSaveMetadata(item),
-          },
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,card_id" }
+    const cardId = buildFeedCardId(acceptTarget);
+    setAcceptingListingIds((current) => new Set(current).add(cardId));
+
+    try {
+      const activeViewerId = await ensureViewerId();
+
+      if (acceptTarget.providerId === activeViewerId) {
+        throw new Error("You cannot accept your own task.");
+      }
+
+      const payload = await fetchAuthedJson<
+        { ok: true; helpRequestId: string; status: string } | { ok: false; message?: string }
+      >(supabase, "/api/needs/accept", {
+        method: "POST",
+        body: JSON.stringify({
+          helpRequestId: acceptTarget.helpRequestId,
+        }),
+      });
+
+      if (!payload.ok) {
+        throw new Error(payload.message || "Unable to accept task.");
+      }
+
+      setFeed((current) =>
+        current.map((item) =>
+          item.helpRequestId === acceptTarget.helpRequestId
+            ? {
+                ...item,
+                acceptedProviderId: activeViewerId,
+                status: payload.status || "accepted",
+              }
+            : item
+        )
       );
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      pushToast("success", "Post saved.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("feed_card_saves")
-      .delete()
-      .eq("user_id", viewerId)
-      .eq("card_id", cardId);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    pushToast("success", "Removed from saved.");
-  } catch (error) {
-    setSavedListingIds((current) => {
-      const next = new Set(current);
-      if (wasSaved) {
-        next.add(cardId);
-      } else {
+      pushToast("success", "Task accepted successfully.");
+      setAcceptTarget(null);
+      void fetchFeed(false);
+    } catch (error) {
+      pushToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+    } finally {
+      setAcceptingListingIds((current) => {
+        const next = new Set(current);
         next.delete(cardId);
-      }
-      return next;
-    });
-    pushToast("error", error instanceof Error ? error.message : "Unable to update saved state.");
-  } finally {
-    setSavingListingIds((current) => {
-      const next = new Set(current);
-      next.delete(cardId);
-      next.delete(item.id);
-      return next;
-    });
-  }
-};
-
-const handleShareListing = async (item: DisplayListing) => {
-  const cardId = buildFeedCardId(item);
-  const focusPath = buildFeedContextPath(item);
-  const shareUrl = `${window.location.origin}${focusPath}`;
-  const shareText = `${item.displayTitle} • ${item.displayCreator} • ${item.price > 0 ? `₹ ${item.price}` : item.category}`;
-
-  setSharingListingIds((current) => new Set(current).add(cardId));
-
-  try {
-    let viewerId: string | null = null;
-    try {
-      viewerId = await ensureViewerId();
-    } catch {
-      viewerId = null;
-    }
-
-    if (navigator.share) {
-      await navigator.share({
-        title: item.displayTitle,
-        text: shareText,
-        url: shareUrl,
+        return next;
       });
-      await persistListingShare(item, "native", viewerId);
-      pushToast("success", "Share sent.");
-      return;
     }
+  }, [acceptTarget, ensureViewerId, fetchFeed, pushToast]);
 
-    if (!navigator.clipboard?.writeText) {
-      pushToast("error", "Sharing is not available in this browser.");
-      return;
-    }
+  const resetFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTER_STATE);
+    setShowAdvancedFilters(false);
+  }, []);
 
-    await navigator.clipboard.writeText(`${item.displayTitle}\n${shareText}\n${shareUrl}`);
-    await persistListingShare(item, "clipboard", viewerId);
-    pushToast("success", "Share link copied.");
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return;
-    }
-    pushToast("error", error instanceof Error ? error.message : "Unable to share this post.");
-  } finally {
-    setSharingListingIds((current) => {
-      const next = new Set(current);
-      next.delete(cardId);
-      next.delete(item.id);
-      return next;
-    });
-  }
-};
+  const postsPromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search by title, details, category, creator, or location",
+      value: filters.query,
+      onValueChange: (nextValue: string) => {
+        setFilters((current) => ({ ...current, query: nextValue }));
+      },
+      onSubmit: () => {
+        // Search is live as user types.
+      },
+      actions: [
+        {
+          id: "create-post",
+          label: "Create Post",
+          icon: Zap,
+          onClick: () => {
+            setOpenPostModal(true);
+          },
+          variant: "primary",
+        },
+        {
+          id: "refresh-posts",
+          label: refreshing ? "Refreshing..." : "Refresh",
+          icon: RefreshCw,
+          onClick: () => {
+            void fetchFeed(true);
+          },
+          busy: refreshing,
+          disabled: refreshing,
+          variant: "secondary",
+        },
+      ],
+    }),
+    [fetchFeed, filters.query, refreshing]
+  );
 
-const handleFeedConnect = async (item: Listing) => {
-  const ownerId = getRealtimeOwnerId(item);
-  if (!ownerId) {
-    if (item.isDemo) {
-      router.push("/dashboard/people");
-      return;
-    }
-    pushToast("info", "This card does not support live connections yet.");
-    return;
-  }
+  useDashboardPrompt(postsPromptConfig);
 
-  if (!connectionSchemaReady) {
-    pushToast("info", connectionSetupMessage);
-    return;
-  }
+  const filteredFeed = useMemo(() => feed.filter((item) => matchesFeedFilters(item, filters)), [feed, filters]);
 
-  try {
-    const viewerId = await ensureViewerId();
-    if (viewerId === ownerId) {
-      pushToast("info", "You cannot connect with yourself.");
-      return;
-    }
-
-    const currentState = getConnectionState(ownerId);
-    if (currentState.kind === "accepted") {
-      pushToast("info", "You are already connected.");
-      return;
-    }
-
-    await sendRequest(ownerId);
-    pushToast(
-      "success",
-      currentState.kind === "rejected" || currentState.kind === "cancelled"
-        ? "Connection request sent again."
-        : "Connection request sent."
-    );
-  } catch (error) {
-    pushToast("error", error instanceof Error ? error.message : "Unable to send connection request.");
-  }
-};
-
-const handleFeedConnectionDecision = async (
-  item: Listing,
-  decision: "accepted" | "rejected" | "cancelled"
-) => {
-  const connectionMeta = getListingConnectionMeta(item);
-  if (!connectionMeta.state?.requestId) return;
-
-  if (!connectionSchemaReady) {
-    pushToast("info", connectionSetupMessage);
-    return;
-  }
-
-  try {
-    await respond(connectionMeta.state.requestId, decision);
-    if (decision === "accepted") {
-      pushToast("success", "Connection accepted. Connected posts now unlock automatically.");
-      return;
-    }
-    if (decision === "cancelled") {
-      pushToast("info", "Connection request cancelled.");
-      return;
-    }
-    pushToast("info", "Connection request declined.");
-  } catch (error) {
-    pushToast("error", error instanceof Error ? error.message : "Unable to update connection request.");
-  }
-};
-
-const openChatThread = async (providerId: string, item?: Listing) => {
-  if (!providerId || providerId.startsWith("demo-")) {
-    router.push("/dashboard/people");
-    return;
-  }
-
-  if (item) {
-    const isConnected = await ensureConnectedOwner(item);
-    if (!isConnected) return;
-  }
-
-  setMessageLoadingId(providerId);
-
-  try {
-    const viewerId = await ensureViewerId();
-    if (viewerId === providerId) {
-      pushToast("info", "This is your own listing.");
-      return;
-    }
-
-    const conversationId =
-      inlineConversationByOwner[providerId] || (await getOrCreateDirectConversationId(supabase, viewerId, providerId));
-
-    setInlineConversationByOwner((previous) => ({ ...previous, [providerId]: conversationId }));
-    router.push(`/dashboard/chat?open=${conversationId}`);
-  } catch (error) {
-    pushToast("error", error instanceof Error ? error.message : "Unable to open chat.");
-  } finally {
-    setMessageLoadingId(null);
-  }
-};
-
-const messageProvider = async (item: Listing) => {
-  if (!item.provider_id || item.provider_id.startsWith("demo-") || item.isDemo) {
-    router.push("/dashboard/people");
-    return;
-  }
-
-  try {
-    const viewerId = await ensureViewerId();
-    const isConnected = await ensureConnectedOwner(item, viewerId);
-    if (!isConnected) return;
-
-    setInlineComposerListingId((current) => (current === item.id ? null : item.id));
-    setInlineMessageDrafts((previous) => {
-      if (previous[item.id]) return previous;
-      const creatorName = item.creatorName || "there";
-      const defaultMessage =
+  const displayFeed = useMemo<DisplayListing[]>(() => {
+    return filteredFeed.map((item) => {
+      const defaultTitle =
         item.type === "demand"
-          ? `Hi ${creatorName}, I saw your post "${item.title}". Is it still open?`
-          : item.type === "product"
-          ? `Hi ${creatorName}, I am interested in "${item.title}". Is it still available?`
-          : `Hi ${creatorName}, I am interested in "${item.title}". Can we connect on the details?`;
+          ? "Need local support"
+          : item.type === "service"
+          ? `${item.category || "Local"} service`
+          : `${item.category || "Local"} product`;
+
+      const defaultDescription =
+        item.type === "demand"
+          ? "Looking for quick nearby support."
+          : "Trusted listing from your local marketplace.";
+
+      const title = toDisplayText(item.title, defaultTitle);
+      const description = toDisplayText(item.description, defaultDescription);
+      const creatorName = toDisplayText(item.creatorName, "Local member");
+
+      const distanceLabel =
+        item.distanceKm > 0
+          ? `${item.distanceKm.toFixed(1)} km away`
+          : item.locationLabel || "Nearby";
+
       return {
-        ...previous,
-        [item.id]: defaultMessage,
+        ...item,
+        displayTitle: title,
+        displayDescription: description,
+        displayCreator: creatorName,
+        timeLabel: formatRelativeAge(item.createdAt),
+        priceLabel: formatPriceLabel(item),
+        distanceLabel,
       };
     });
-    setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-  } catch (error) {
-    pushToast("error", error instanceof Error ? error.message : "Unable to open message composer.");
-  }
-};
+  }, [filteredFeed]);
 
-const sendInlineMessage = async (item: Listing) => {
-  const draft = (inlineMessageDrafts[item.id] || "").trim();
-  if (!draft) {
-    setInlineMessageStatusByListing((previous) => ({
-      ...previous,
-      [item.id]: "Type a message before sending.",
-    }));
-    return;
-  }
-
-  if (!item.provider_id || item.provider_id.startsWith("demo-")) {
-    setInlineMessageStatusByListing((previous) => ({
-      ...previous,
-      [item.id]: "Live messaging is not available for this card yet.",
-    }));
-    return;
-  }
-
-  setInlineSendingListingId(item.id);
-  setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-
-  try {
-    const viewerId = await ensureViewerId();
-    const isConnected = await ensureConnectedOwner(item, viewerId);
-    if (!isConnected) {
-      setInlineMessageStatusByListing((previous) => ({
-        ...previous,
-        [item.id]: "Accept or complete the connection first to message.",
-      }));
+  useEffect(() => {
+    if (!displayFeed.length) {
+      setActiveMapItemId(null);
       return;
     }
 
-    const { conversationId } = await sendDirectMessage(supabase, {
-      viewerId,
-      recipientId: item.provider_id,
-      content: draft,
+    setActiveMapItemId((current) => {
+      if (current && displayFeed.some((item) => item.id === current)) {
+        return current;
+      }
+      return displayFeed[0].id;
     });
+  }, [displayFeed]);
 
-    setInlineConversationByOwner((previous) => ({ ...previous, [item.provider_id]: conversationId }));
-    setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: "" }));
-    setInlineMessageStatusByListing((previous) => ({
-      ...previous,
-      [item.id]: "Message sent. Open the chat tab to continue in realtime.",
-    }));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to send message";
-    setInlineMessageStatusByListing((previous) => ({
-      ...previous,
-      [item.id]: `Unable to send. ${message}`,
-    }));
-  } finally {
-    setInlineSendingListingId(null);
-  }
-};
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>(["all"]);
+    feed.forEach((item) => {
+      const normalized = item.category.trim().toLowerCase();
+      if (normalized) set.add(normalized);
+      set.add(item.type);
+    });
+    return Array.from(set).slice(0, 12);
+  }, [feed]);
 
-const renderInlineComposer = (item: DisplayListing, compact = false) => {
-  if (!item.provider_id || inlineComposerListingId !== item.id) return null;
+  const mapItems = useMemo(
+    () =>
+      displayFeed.slice(0, 60).map((item) => ({
+        id: item.id,
+        title: item.displayTitle,
+        lat: item.lat,
+        lng: item.lng,
+        creatorName: item.displayCreator,
+        locationLabel: item.locationLabel || item.distanceLabel,
+        category: item.category,
+        timeLabel: item.timeLabel,
+        priceLabel: item.priceLabel,
+      })),
+    [displayFeed]
+  );
 
-  const inlineDraft = inlineMessageDrafts[item.id] || "";
-  const inlineStatus = inlineMessageStatusByListing[item.id] || "";
-  const savedConversationId = item.provider_id ? inlineConversationByOwner[item.provider_id] || null : null;
-  const recipientLabel =
-    item.type === "demand" ? "post owner" : item.type === "product" ? "seller" : "provider";
+  const mapCenter = useMemo(() => {
+    if (viewerCoordinates) {
+      return { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude };
+    }
+
+    const defaults = defaultMarketCoordinates();
+    return { lat: defaults.latitude, lng: defaults.longitude };
+  }, [viewerCoordinates]);
+
+  const handleMapSelect = useCallback((itemId: string) => {
+    setActiveMapItemId(itemId);
+    const cardNode = cardRefs.current.get(itemId);
+    if (cardNode) {
+      cardNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, []);
+
+  const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
+
+  const feedStats = useMemo(() => {
+    const total = displayFeed.length;
+    const urgent = displayFeed.filter((item) => item.urgent).length;
+    const demand = displayFeed.filter((item) => item.type === "demand").length;
+    const service = displayFeed.filter((item) => item.type === "service").length;
+    const product = displayFeed.filter((item) => item.type === "product").length;
+
+    return { total, urgent, demand, service, product };
+  }, [displayFeed]);
+
+  const skeletonCards = useMemo(() => Array.from({ length: 6 }, (_, index) => `skeleton-${index}`), []);
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-slate-50 ${compact ? "mt-3 p-3" : "mt-4 p-4"}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Message {recipientLabel}</p>
-      <textarea
-        value={inlineDraft}
-        onChange={(event) => {
-          const nextValue = event.target.value;
-          setInlineMessageDrafts((previous) => ({ ...previous, [item.id]: nextValue }));
-          if (inlineStatus) {
-            setInlineMessageStatusByListing((previous) => ({ ...previous, [item.id]: "" }));
-          }
-        }}
-        rows={compact ? 3 : 4}
-        placeholder={`Write a message to ${item.displayCreator}...`}
-        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-      />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void sendInlineMessage(item)}
-          disabled={inlineSendingListingId === item.id || !inlineDraft.trim()}
-          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {inlineSendingListingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-          {inlineSendingListingId === item.id ? "Sending..." : "Send Message"}
-        </button>
-        {(savedConversationId || messageLoadingId === item.provider_id) && (
-          <button
-            type="button"
-            onClick={() => void openChatThread(item.provider_id, item)}
-            disabled={messageLoadingId === item.provider_id}
-            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-70"
-          >
-            {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
-            <ArrowUpRight size={13} />
-          </button>
-        )}
-      </div>
-      {!!inlineStatus && <p className="mt-2 text-xs text-slate-600">{inlineStatus}</p>}
-    </div>
-  );
-};
+    <div className="min-h-screen bg-[var(--surface-app)] pb-24 pt-5 text-slate-900 sm:pt-6">
+      <RouteObservability route="dashboard" />
 
-const featuredConnectionMeta = featuredListing ? getListingConnectionMeta(featuredListing) : null;
-const featuredSaved = featuredListing ? isSavedListing(featuredListing) : false;
-const featuredSaveBusy = featuredListing ? isListingBusy(featuredListing, savingListingIds) : false;
-const featuredShareBusy = featuredListing ? isListingBusy(featuredListing, sharingListingIds) : false;
-const featuredOwnListing = !!featuredListing && !!connectionViewerId && featuredListing.provider_id === connectionViewerId;
-
-const realtimeStyle = REALTIME_HEALTH_STYLES[feedChannelHealth];
-
-/* ================= UI ================= */
-
-return (
-  <div className="relative min-h-screen bg-slate-50 text-slate-900">
-    <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_15%_18%,rgba(99,102,241,0.16),transparent_44%),radial-gradient(circle_at_88%_0%,rgba(14,165,233,0.11),transparent_36%)]" />
-    <RouteObservability route="dashboard" />
-    <div className="relative mx-auto max-w-[1720px] px-4 pb-24 pt-6 sm:px-6 sm:pt-8">
-      <section className="space-y-4">
-          <div className="relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-indigo-950 via-violet-800 to-fuchsia-700 p-3 shadow-[0_20px_50px_-32px_rgba(76,29,149,0.86)] sm:p-4">
-            <div className="pointer-events-none absolute inset-0">
-              <div
-                className="absolute inset-0 opacity-30"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.14) 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                }}
-              />
-              <motion.div
-                className="absolute -right-6 top-2 h-24 w-24 rounded-full bg-cyan-300/30 blur-3xl"
-                animate={{ x: [0, -10, 0], y: [0, 6, 0] }}
-                transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute left-8 bottom-0 h-20 w-20 rounded-full bg-pink-300/26 blur-2xl"
-                animate={{ x: [0, 9, 0], y: [0, -7, 0] }}
-                transition={{ duration: 7.2, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute right-[10%] bottom-[11%] text-white/45"
-                animate={{ y: [0, -6, 0], opacity: [0.55, 0.95, 0.55] }}
-                transition={{ duration: 2.5, repeat: Infinity }}
-              >
-                <MapPin size={18} />
-              </motion.div>
+      <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
+        <section className="rounded-3xl border border-slate-200/90 bg-white p-3 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.45)] sm:p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Live Nearby Activity</p>
+              <p className="mt-0.5 text-xs text-slate-500">Visual snapshot of posts and providers around you.</p>
             </div>
-
-            <div className="relative space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-white">{MARKETPLACE_HERO_LINES[4]}</p>
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${realtimeStyle.className}`}>
-                  <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
-                  {realtimeStyle.label}
-                </span>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setOpenPostModal(true)}
-                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
-                      <Zap size={14} />
-                    </span>
-                    <p className="text-base font-semibold">Post a Need</p>
-                  </div>
-                  <p className="mt-1 text-xs text-cyan-50/90">Get local responses fast.</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCategory("demand");
-                    setSortBy("best");
-                    setShowAdvancedFilters(true);
-                  }}
-                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
-                      <UsersRound size={14} />
-                    </span>
-                    <p className="text-base font-semibold">Earn Nearby</p>
-                  </div>
-                  <p className="mt-1 text-xs text-cyan-50/90">Find urgent local tasks to earn.</p>
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={`posts-hero-line-${heroLineIndex}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.28 }}
-                    className="rounded-full border border-white/22 bg-white/14 px-2.5 py-1 text-[11px] font-medium text-white/95"
-                  >
-                    {MARKETPLACE_HERO_LINES[heroLineIndex]}
-                  </motion.span>
-                </AnimatePresence>
-                <span className="rounded-full border border-white/22 bg-white/12 px-2.5 py-1 text-[11px] font-medium text-white/95">
-                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 1) % MARKETPLACE_HERO_LINES.length]}
-                </span>
-                <span className="rounded-full border border-white/22 bg-white/12 px-2.5 py-1 text-[11px] font-medium text-white/95">
-                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 2) % MARKETPLACE_HERO_LINES.length]}
-                </span>
-              </div>
+            <div
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${realtimeStyle.className}`}
+              title="Realtime feed status"
+            >
+              <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
+              {realtimeStyle.label}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm sm:p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label className="flex h-12 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
-                <Search size={16} className="text-slate-500" />
-                <input
-                  placeholder="Search posts, services, or help nearby"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
+          <div className="mt-3 h-[15.8rem] overflow-hidden rounded-2xl sm:h-[17rem]">
+            <MarketplaceMap
+              items={mapItems}
+              center={mapCenter}
+              activeItemId={activeMapItemId}
+              onSelectItem={handleMapSelect}
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Total</p>
+              <p className="text-sm font-semibold text-slate-900">{feedStats.total}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Urgent</p>
+              <p className="text-sm font-semibold text-slate-900">{feedStats.urgent}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Needs</p>
+              <p className="text-sm font-semibold text-slate-900">{feedStats.demand}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] text-slate-500">Supply</p>
+              <p className="text-sm font-semibold text-slate-900">{feedStats.service + feedStats.product}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200/90 bg-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.38)] sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <Filter size={15} />
+              Feed Filters
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters((current) => !current)}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
               >
-                <Filter size={15} />
-                Filters
-                {activeFilterCount > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-semibold text-white">
-                    {activeFilterCount}
-                  </span>
-                )}
+                <SlidersHorizontal size={13} />
+                {showAdvancedFilters ? "Hide" : "Show"} filters
               </button>
               <button
                 type="button"
-                onClick={() => void fetchFeed(true)}
-                disabled={syncing}
-                className="inline-flex h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={resetFilters}
+                className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
               >
-                <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-                {syncing ? "Syncing..." : "Refresh"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFeed(demoFeed);
-                  setUsingDemoFeed(true);
-                  setFeedError("Startup demo stream loaded.");
-                  setHiddenListingIds(new Set());
-                }}
-                className="inline-flex h-12 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
-              >
-                Load Demo Stream
+                <RotateCcw size={13} />
+                Reset
               </button>
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setOpenPostModal(true)}
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
-              >
-                Post a Need
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory("demand");
-                  setSortBy("best");
-                }}
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-cyan-700 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-100"
-              >
-                Earn Nearby
-              </button>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                {filteredStats.total} posts
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                {filteredStats.withMedia} with media
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                {filteredStats.urgent} urgent
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 shadow-sm">
-                Avg match {filteredStats.avgMatch}
-              </span>
-              {hiddenListingIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setHiddenListingIds(new Set())}
-                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
-                >
-                  Restore hidden ({hiddenListingIds.size})
-                </button>
-              )}
-            </div>
-
-            {trendingOpportunities.length > 0 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                {trendingOpportunities.map((item) => (
-                  <button
-                    key={`explore-chip-${item.id}`}
-                    type="button"
-                    onClick={() => {
-                      setSearch(item.displayTitle);
-                      setCategory(item.type);
-                      setSortBy("best");
-                    }}
-                    className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                  >
-                    {item.displayTitle}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {showAdvancedFilters && (
-            <div className="rounded-2xl border border-indigo-100 bg-white/95 p-3 shadow-sm sm:p-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="text-xs text-slate-600">
-                  Sort by
-                  <select
-                    value={sortBy}
-                    onChange={(event) =>
-                      setSortBy(
-                        event.target.value === "best"
-                          ? "best"
-                          : event.target.value === "price"
-                          ? "price"
-                          : event.target.value === "latest"
-                          ? "latest"
-                          : "distance"
-                      )
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="best">Best match</option>
-                    <option value="distance">Nearest first</option>
-                    <option value="price">Price low to high</option>
-                    <option value="latest">Latest first</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Listing type
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="all">All posts</option>
-                    <option value="demand">Demand</option>
-                    <option value="service">Services</option>
-                    <option value="product">Products</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Max distance
-                  <select
-                    value={String(maxDistanceKm)}
-                    onChange={(event) => setMaxDistanceKm(Number(event.target.value))}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="0">Any distance</option>
-                    <option value="3">Within 3 km</option>
-                    <option value="8">Within 8 km</option>
-                    <option value="15">Within 15 km</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Verification
-                  <select
-                    value={verifiedOnly ? "verified" : "all"}
-                    onChange={(event) => setVerifiedOnly(event.target.value === "verified")}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="all">All providers</option>
-                    <option value="verified">Verified only</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Urgency
-                  <select
-                    value={urgentOnly ? "urgent" : "all"}
-                    onChange={(event) => setUrgentOnly(event.target.value === "urgent")}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="all">All urgency</option>
-                    <option value="urgent">Urgent only</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Media
-                  <select
-                    value={mediaOnly ? "media" : "all"}
-                    onChange={(event) => setMediaOnly(event.target.value === "media")}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="all">Any media</option>
-                    <option value="media">With media only</option>
-                  </select>
-                </label>
-                <label className="text-xs text-slate-600">
-                  Freshness
-                  <select
-                    value={freshOnly ? "recent" : "all"}
-                    onChange={(event) => setFreshOnly(event.target.value === "recent")}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                  >
-                    <option value="all">All time</option>
-                    <option value="recent">Last 24h</option>
-                  </select>
-                </label>
+            <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+              <div className="flex flex-wrap gap-2">
+                {categoryOptions.map((category) => {
+                  const active = filters.category === category;
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setFilters((current) => ({ ...current, category }))}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        active
+                          ? "bg-slate-900 text-white"
+                          : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                      }`}
+                    >
+                      {category === "all" ? "All" : category}
+                    </button>
+                  );
+                })}
               </div>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAdvancedFilters}
-                  className="mt-3 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  <RotateCcw size={12} />
-                  Reset filters
-                </button>
-              )}
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  <span className="font-semibold text-slate-800">Max distance</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={25}
+                    step={1}
+                    value={filters.maxDistanceKm}
+                    onChange={(event) =>
+                      setFilters((current) => ({ ...current, maxDistanceKm: Number(event.target.value) || 0 }))
+                    }
+                    className="mt-1.5 w-full"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {filters.maxDistanceKm > 0 ? `${filters.maxDistanceKm} km` : "No distance cap"}
+                  </p>
+                </label>
+
+                {[
+                  { key: "urgentOnly", label: "Urgent only" },
+                  { key: "verifiedOnly", label: "Verified only" },
+                  { key: "mediaOnly", label: "With media" },
+                  { key: "freshOnly", label: "Fresh (24h)" },
+                ].map((option) => (
+                  <label
+                    key={option.key}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+                  >
+                    {option.label}
+                    <input
+                      type="checkbox"
+                      checked={Boolean(filters[option.key as keyof FeedFilterState])}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          [option.key]: event.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                  </label>
+                ))}
+              </div>
             </div>
           )}
+        </section>
 
-          {(usingDemoFeed || !!feedError) && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/90 px-3 py-2 text-xs text-indigo-700 shadow-sm">
-              {feedError || "Demo seed feed is active while live listings are syncing."}
-            </div>
-          )}
+        {feedError && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <p className="font-semibold">Could not fully refresh the live feed.</p>
+            <p className="mt-1 text-xs">{feedError}</p>
+          </div>
+        )}
 
-          {!connectionSchemaReady && !!connectionSchemaMessage && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-sm">
-              {connectionSchemaMessage}
-            </div>
-          )}
-
-          {isFeedLoading && feed.length === 0 ? (
-            <div className="space-y-4">
-              {[0, 1].map((index) => (
-                <div
-                  key={`feed-skeleton-${index}`}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 animate-pulse"
-                >
-                  <div className="h-4 w-24 rounded bg-slate-200" />
-                  <div className="mt-4 h-6 w-2/3 rounded bg-slate-200" />
-                  <div className="mt-3 h-4 w-full rounded bg-slate-200" />
-                  <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
+        <section className="space-y-3">
+          {loading ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {skeletonCards.map((key) => (
+                <div key={key} className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 animate-pulse rounded-full bg-slate-200" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-slate-200" />
+                      <div className="h-2.5 w-1/2 animate-pulse rounded bg-slate-100" />
+                    </div>
+                  </div>
+                  <div className="mt-3 h-44 animate-pulse rounded-2xl bg-slate-100" />
+                  <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                  <div className="mt-2 h-3 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="h-9 animate-pulse rounded-xl bg-slate-100" />
+                    <div className="h-9 animate-pulse rounded-xl bg-slate-100" />
+                    <div className="h-9 animate-pulse rounded-xl bg-slate-100" />
+                    <div className="h-9 animate-pulse rounded-xl bg-slate-100" />
+                  </div>
                 </div>
               ))}
             </div>
-          ) : !featuredListing ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8">
-              <h3 className="text-xl font-semibold text-slate-900">No posts match current filters</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Try widening filters or create a new post to activate this lane.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+          ) : !displayFeed.length ? (
+            <div className="rounded-3xl border border-slate-200 bg-white px-5 py-10 text-center shadow-sm">
+              <p className="text-lg font-semibold text-slate-900">No posts match your current filters</p>
+              <p className="mt-1 text-sm text-slate-500">Try a broader search or publish a new need for your area.</p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setCategory("all");
-                    setSortBy("best");
-                    clearAdvancedFilters();
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300"
+                  onClick={resetFilters}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
                 >
+                  <RotateCcw size={14} />
                   Reset filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenPostModal(true)}
+                  className="inline-flex min-h-10 items-center gap-1 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  <Zap size={14} />
+                  Create Post
                 </button>
               </div>
             </div>
           ) : (
-            <>
-              <div className="relative overflow-hidden rounded-[28px] border border-indigo-200/70 bg-gradient-to-br from-indigo-100 via-white to-cyan-100 p-4 shadow-[0_22px_48px_-34px_rgba(30,64,175,0.46)] sm:p-6">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_15%,rgba(99,102,241,0.18),transparent_35%),radial-gradient(circle_at_85%_85%,rgba(56,189,248,0.12),transparent_30%)]" />
-                <article className="relative rounded-[22px] border border-white/70 bg-white/95 p-4 shadow-lg backdrop-blur-sm sm:p-6">
-                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">LIVE</span>
-                        <span className="text-slate-500">{formatRelativeAge(featuredListing.createdAt)}</span>
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${realtimeStyle.className}`}>
-                          <span className={`h-2 w-2 rounded-full ${realtimeStyle.dotClassName}`} />
-                          {realtimeStyle.label}
-                        </span>
-                      </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {displayFeed.map((item, index) => {
+                const saved = isSavedListing(item);
+                const savingBusy = isListingBusy(item, savingListingIds);
+                const sharingBusy = isListingBusy(item, sharingListingIds);
+                const acceptingBusy = isListingBusy(item, acceptingListingIds);
+                const isOwnListing = !!viewerId && item.providerId === viewerId;
+                const acceptedByMe = !!viewerId && item.acceptedProviderId === viewerId;
+                const acceptedByOther = !!item.acceptedProviderId && item.acceptedProviderId !== viewerId;
+                const acceptDisabled =
+                  acceptingBusy ||
+                  isOwnListing ||
+                  !item.helpRequestId ||
+                  acceptedByOther ||
+                  acceptedByMe ||
+                  isClosedStatus(item.status);
 
-                      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl">
-                        {featuredListing.displayTitle}
-                      </h2>
+                const acceptLabel = isOwnListing
+                  ? "Own"
+                  : acceptedByMe
+                  ? "Accepted"
+                  : acceptedByOther
+                  ? "Taken"
+                  : !item.helpRequestId
+                  ? "N/A"
+                  : isClosedStatus(item.status)
+                  ? "Closed"
+                  : "Accept";
 
-                      <div className="mt-3 flex items-center gap-3">
-                        <Image
-                          src={featuredListing.avatar}
-                          alt={featuredListing.displayCreator}
-                          width={44}
-                          height={44}
-                          unoptimized
-                          className="h-11 w-11 rounded-full border border-slate-200 object-cover"
-                        />
-                        <div>
-                          <p className="text-base font-medium text-slate-800">{featuredListing.displayCreator}</p>
-                          <p className="text-sm text-slate-500">{featuredListing.distance} km away</p>
-                        </div>
-                      </div>
+                const chatBusy = chatOpeningProviderId === item.providerId;
+                const statusLabel = normalizeStatusLabel(item.status);
 
-                      <p className="mt-3 text-lg text-slate-700">{featuredListing.displayDescription}</p>
-
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                        {featuredListing.price > 0 && (
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-800">
-                            ₹ {featuredListing.price}
-                          </span>
-                        )}
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-                          Respond within {featuredListing.responseMinutes} mins
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-                          Match {featuredListing.rankScore}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-                          {featuredListing.profileCompletion}% profile
-                        </span>
-                      </div>
-
-                      <div className="mt-5 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            featuredListing.type === "demand"
-                              ? void messageProvider(featuredListing)
-                              : void bookNow(featuredListing)
-                          }
-                          disabled={
-                            featuredOwnListing ||
-                            (featuredListing.type === "demand" && !canOpenInlineComposer(featuredListing))
-                          }
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
-                        >
-                          {featuredListing.type === "demand" ? (
-                            <>
-                              <MessageCircle size={14} />
-                              {getMessageButtonLabel(featuredListing)}
-                            </>
-                          ) : (
-                            <>{featuredOwnListing ? "Your listing" : "Book now"}</>
-                          )}
-                        </button>
-                        {featuredListing.type !== "demand" && (
-                          <button
-                            type="button"
-                            onClick={() => void messageProvider(featuredListing)}
-                            disabled={!canOpenInlineComposer(featuredListing)}
-                            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
-                          >
-                            <MessageCircle size={14} />
-                            {getMessageButtonLabel(featuredListing)}
-                          </button>
-                        )}
-                        {featuredConnectionMeta?.state && (
-                          <ConnectionActionGroup
-                            state={featuredConnectionMeta.state}
-                            busy={featuredConnectionMeta.busy}
-                            busyActionKey={busyActionKey}
-                            onConnect={() => void handleFeedConnect(featuredListing)}
-                            onAccept={() =>
-                              void handleFeedConnectionDecision(featuredListing, "accepted")
-                            }
-                            onReject={() =>
-                              void handleFeedConnectionDecision(featuredListing, "rejected")
-                            }
-                            onCancel={() =>
-                              void handleFeedConnectionDecision(featuredListing, "cancelled")
-                            }
-                            demoLabel={featuredConnectionMeta.demoLabel}
-                          />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void toggleSaveListing(featuredListing)}
-                          disabled={featuredSaveBusy}
-                          className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${
-                            featuredSaved
-                              ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-700"
-                          }`}
-                        >
-                          {featuredSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-                          {featuredSaveBusy ? "Saving..." : featuredSaved ? "Saved" : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleShareListing(featuredListing)}
-                          disabled={featuredShareBusy}
-                          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          <Share2 size={14} />
-                          {featuredShareBusy ? "Sharing..." : "Share"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedProvider(featuredListing.provider_id)}
-                          className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        >
-                          View profile
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            featuredListing.businessSlug
-                              ? router.push(`/business/${featuredListing.businessSlug}`)
-                              : setSelectedProvider(featuredListing.provider_id)
-                          }
-                          className="inline-flex min-h-11 items-center text-sm font-medium text-indigo-700 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        >
-                          View details
-                        </button>
-                        {(inlineConversationByOwner[featuredListing.provider_id] ||
-                          messageLoadingId === featuredListing.provider_id) && (
-                          <button
-                            type="button"
-                            onClick={() => void openChatThread(featuredListing.provider_id, featuredListing)}
-                            disabled={messageLoadingId === featuredListing.provider_id}
-                            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
-                          >
-                            {messageLoadingId === featuredListing.provider_id ? "Opening..." : "Open chat"}
-                            <ArrowUpRight size={14} />
-                          </button>
-                        )}
-                      </div>
-
-                      {renderInlineComposer(featuredListing)}
-                    </div>
-
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-inner">
-                      {featuredListing.media?.[0] ? (
-                        <>
-                          {featuredListing.media[0].mimeType.startsWith("image/") &&
-                          !featuredListing.media[0].mimeType.startsWith("image/svg") ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={featuredListing.media[0].url}
-                              alt={featuredListing.displayTitle}
-                              className="h-full min-h-[340px] w-full object-cover"
-                            />
-                          ) : featuredListing.media[0].mimeType.startsWith("video/") ? (
-                            <video
-                              src={featuredListing.media[0].url}
-                              controls
-                              preload="metadata"
-                              className="h-full min-h-[340px] w-full object-cover"
-                            />
-                          ) : featuredListing.media[0].mimeType.startsWith("audio/") ? (
-                            <div className="grid min-h-[340px] place-items-center p-4">
-                              <div className="w-full">
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Voice Attachment</p>
-                                <audio src={featuredListing.media[0].url} controls className="w-full" preload="metadata" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="grid min-h-[340px] place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-center">
-                              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">Graphics Attachment</p>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="grid min-h-[340px] place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">Graphic Preview</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              </div>
-
-              {secondaryListings.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {secondaryListings.map((item, index) => {
-                    const connectionMeta = getListingConnectionMeta(item);
-                    const saved = isSavedListing(item);
-                    const saveBusy = isListingBusy(item, savingListingIds);
-                    const shareBusy = isListingBusy(item, sharingListingIds);
-                    const ownListing = !!connectionViewerId && item.provider_id === connectionViewerId;
-                    const mediaKinds = getMediaKinds(item.media);
-                    const listingSignals = getListingSignals(item);
-                    const primaryMedia = item.media?.[0] || null;
-                    const enterDelay = Math.min(index * 55, 260);
-
-                    return (
-                      <article
-                        key={item.id}
-                        style={{ "--enter-delay": `${enterDelay}ms` } as CSSProperties}
-                        className="group post-card-enter overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-[0_16px_30px_-24px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_26px_38px_-24px_rgba(37,99,235,0.4)]"
+                return (
+                  <motion.article
+                    key={item.id}
+                    ref={(node) => {
+                      cardRefs.current.set(item.id, node);
+                    }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.18) }}
+                    className={`overflow-hidden rounded-3xl border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:p-3 ${
+                      activeMapItemId === item.id
+                        ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <header className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProvider(item.providerId)}
+                        className="relative shrink-0 rounded-full"
+                        aria-label={`Open ${item.displayCreator} profile panel`}
                       >
-                        <div className="relative">
-                          {primaryMedia ? (
-                            <>
-                              {primaryMedia.mimeType.startsWith("image/") && !primaryMedia.mimeType.startsWith("image/svg") ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={primaryMedia.url}
-                                  alt={item.displayTitle}
-                                  className="h-52 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                                />
-                              ) : primaryMedia.mimeType.startsWith("video/") ? (
-                                <video
-                                  src={primaryMedia.url}
-                                  controls
-                                  preload="metadata"
-                                  className="h-52 w-full object-cover"
-                                />
-                              ) : primaryMedia.mimeType.startsWith("audio/") ? (
-                                <div className="grid h-52 place-items-center bg-slate-100 p-4">
-                                  <audio src={primaryMedia.url} controls className="w-full" preload="metadata" />
-                                </div>
-                              ) : (
-                                <div className="grid h-52 place-items-center bg-gradient-to-br from-indigo-50 via-sky-50 to-slate-100 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
-                                  Graphics
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <div className="grid h-52 place-items-center bg-gradient-to-br from-slate-100 via-white to-indigo-50 p-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
-                              Visual Preview
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => void toggleSaveListing(item)}
-                            disabled={saveBusy}
-                            className="absolute right-2 top-2 rounded-full border border-white/70 bg-white/90 p-1.5 text-slate-600 shadow-sm transition-colors hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                            title="Save post"
-                          >
-                            {saveBusy ? <Loader2 size={15} className="animate-spin" /> : saved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
-                          </button>
-                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.avatarUrl || FALLBACK_AVATAR}
+                          alt={`${item.displayCreator} avatar`}
+                          className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                        />
+                      </button>
 
-                        <div className="p-4">
-                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">{item.type}</span>
-                            {mediaKinds.map((kind) => (
-                              <span key={`${item.id}-${kind}`} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
-                                {kind}
-                              </span>
-                            ))}
-                          </div>
-
-                          <h3 className="line-clamp-1 text-xl font-semibold tracking-tight text-slate-900">{item.displayTitle}</h3>
-                          <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
-
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            {item.price > 0 && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                                ₹ {item.price}
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1">
-                              <MapPin size={12} />
-                              {item.distance} km
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate text-sm font-semibold text-slate-900">{item.displayCreator}</p>
+                          {item.verificationStatus === "verified" && (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                              Verified
                             </span>
-                            <span>{formatRelativeAge(item.createdAt)}</span>
-                            <span className="text-indigo-600">Match {item.rankScore}</span>
-                          </div>
-
-                          {listingSignals.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {listingSignals.slice(0, 2).map((signal) => (
-                                <span
-                                  key={`${item.id}-signal-${signal}`}
-                                  className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700"
-                                >
-                                  {signal}
-                                </span>
-                              ))}
-                            </div>
                           )}
-
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                item.type === "demand" ? void messageProvider(item) : void bookNow(item)
-                              }
-                              disabled={ownListing || (item.type === "demand" && !canOpenInlineComposer(item))}
-                              className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
-                            >
-                              {item.type === "demand" ? (
-                                <>
-                                  <MessageCircle size={12} />
-                                  {getMessageButtonLabel(item)}
-                                </>
-                              ) : (
-                                <>{ownListing ? "Your listing" : "Book now"}</>
-                              )}
-                            </button>
-                            {item.type !== "demand" && (
-                              <button
-                                type="button"
-                                onClick={() => void messageProvider(item)}
-                                disabled={!canOpenInlineComposer(item)}
-                                className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
-                              >
-                                <MessageCircle size={12} />
-                                {getMessageButtonLabel(item)}
-                              </button>
-                            )}
-                            {connectionMeta.state && (
-                              <ConnectionActionGroup
-                                state={connectionMeta.state}
-                                busy={connectionMeta.busy}
-                                busyActionKey={busyActionKey}
-                                onConnect={() => void handleFeedConnect(item)}
-                                onAccept={() => void handleFeedConnectionDecision(item, "accepted")}
-                                onReject={() => void handleFeedConnectionDecision(item, "rejected")}
-                                onCancel={() => void handleFeedConnectionDecision(item, "cancelled")}
-                                size="compact"
-                                demoLabel={connectionMeta.demoLabel}
-                              />
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => void handleShareListing(item)}
-                              disabled={shareBusy}
-                              className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              {shareBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
-                              {shareBusy ? "Sharing..." : "Share"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => item.provider_id && setSelectedProvider(item.provider_id)}
-                              className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                            >
-                              Profile
-                            </button>
-                            {(inlineConversationByOwner[item.provider_id] || messageLoadingId === item.provider_id) && (
-                                <button
-                                  type="button"
-                                  onClick={() => void openChatThread(item.provider_id, item)}
-                                  disabled={messageLoadingId === item.provider_id}
-                                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
-                                >
-                                  {messageLoadingId === item.provider_id ? "Opening..." : "Open Thread"}
-                                  <ArrowUpRight size={12} />
-                                </button>
-                              )}
-                          </div>
-
-                          {renderInlineComposer(item, true)}
+                          {item.urgent && (
+                            <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                              Urgent
+                            </span>
+                          )}
                         </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock3 size={11} />
+                            {item.timeLabel}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin size={11} />
+                            {item.distanceLabel}
+                          </span>
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                            {statusLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </header>
+
+                    <div className="mt-2.5">
+                      <MediaCarousel media={item.media} title={item.displayTitle} />
+                    </div>
+
+                    <div className="mt-2.5">
+                      <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
+                          {item.category}
+                        </span>
+                        <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">
+                          {item.priceLabel}
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-500">
+                          ~{item.responseMinutes} mins response
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-4 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openAcceptDialog(item)}
+                        disabled={acceptDisabled}
+                        className={`inline-flex min-h-8 items-center justify-center gap-1 truncate rounded-xl border px-2 text-[11px] font-semibold transition ${
+                          acceptDisabled
+                            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        }`}
+                      >
+                        {acceptingBusy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                        {acceptLabel}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleShareListing(item)}
+                        disabled={sharingBusy}
+                        className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60"
+                      >
+                        {sharingBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
+                        {sharingBusy ? "Sharing" : "Share"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void toggleSaveListing(item)}
+                        disabled={savingBusy}
+                        className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border px-2 text-[11px] font-semibold transition ${
+                          saved
+                            ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                        } disabled:opacity-60`}
+                      >
+                        {savingBusy ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : saved ? (
+                          <BookmarkCheck size={12} />
+                        ) : (
+                          <Bookmark size={12} />
+                        )}
+                        {savingBusy ? "Saving" : saved ? "Saved" : "Save"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void openChatThread(item)}
+                        disabled={chatBusy || isOwnListing}
+                        className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                      >
+                        {chatBusy ? <Loader2 size={12} className="animate-spin" /> : <MessageCircle size={12} />}
+                        {isOwnListing ? "Own" : chatBusy ? "Opening" : "Chat"}
+                      </button>
+                    </div>
+                  </motion.article>
+                );
+              })}
+            </div>
           )}
-      </section>
-    </div>
-    {selectedProvider && (
-      <ProviderTrustPanel
-        userId={selectedProvider}
-        open
-        onClose={() => setSelectedProvider(null)}
-      />
-    )}
-    {openPostModal && (
-      <CreatePostModal
-        open={openPostModal}
-        onClose={() => setOpenPostModal(false)}
-        onPublished={() => {
-          void fetchFeed(true);
+        </section>
+      </div>
+
+      <AcceptConfirmDialog
+        open={!!acceptTarget}
+        listing={acceptTarget}
+        busy={!!(acceptTarget && isListingBusy(acceptTarget, acceptingListingIds))}
+        onCancel={() => setAcceptTarget(null)}
+        onConfirm={() => {
+          void confirmAccept();
         }}
       />
-    )}
-    <ProfileToastViewport
-      toasts={toasts}
-      onDismiss={(toastId) => {
-        setToasts((current) => current.filter((toast) => toast.id !== toastId));
-      }}
-    />
-  </div>
-);
+
+      {selectedProvider && (
+        <ProviderTrustPanel
+          userId={selectedProvider}
+          open
+          onClose={() => {
+            setSelectedProvider(null);
+          }}
+        />
+      )}
+
+      {openPostModal && (
+        <CreatePostModal
+          open={openPostModal}
+          onClose={() => setOpenPostModal(false)}
+          onPublished={() => {
+            void fetchFeed(true);
+          }}
+        />
+      )}
+
+      <ProfileToastViewport
+        toasts={toasts}
+        onDismiss={(toastId) => {
+          setToasts((current) => current.filter((toast) => toast.id !== toastId));
+          const timeoutId = toastTimersRef.current.get(toastId);
+          if (timeoutId) {
+            window.clearTimeout(timeoutId);
+            toastTimersRef.current.delete(toastId);
+          }
+        }}
+      />
+    </div>
+  );
 }
+

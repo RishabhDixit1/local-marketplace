@@ -235,6 +235,7 @@ const normalizeHelpRequest = (row: FlexibleRow, index: number): CommunityHelpReq
   return {
     id: stringFromRow(row, ["id"], `help-request-${index}`),
     requester_id: requesterId,
+    accepted_provider_id: stringFromRow(row, ["accepted_provider_id"], "") || null,
     title: stringFromRow(row, ["title", "name"], "") || null,
     details: stringFromRow(row, ["details", "description", "text"], "") || null,
     category: stringFromRow(row, ["category"], "Need"),
@@ -361,7 +362,7 @@ export const loadCommunityFeedSnapshot = async (
       selectRowsWithFallback(
         db,
         "help_requests",
-        "id,requester_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at",
+        "id,requester_id,accepted_provider_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at",
         {
           orderBy: { column: "created_at", ascending: false },
           limit: 60,

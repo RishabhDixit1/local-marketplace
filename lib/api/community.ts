@@ -62,6 +62,7 @@ export type CommunityPostRecord = {
 export type CommunityHelpRequestRecord = {
   id: string;
   requester_id?: string | null;
+  accepted_provider_id?: string | null;
   title?: string | null;
   details?: string | null;
   category?: string | null;

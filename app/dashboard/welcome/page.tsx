@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
+import { appName, appTagline } from "@/lib/branding";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
@@ -23,7 +24,6 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
-  MapPin,
   MessageCircle,
   Share2,
   ShieldCheck,
@@ -111,7 +111,6 @@ const MARKETPLACE_HERO_LINES = [
   "Post What You Need. Someone Nearby Will Help.",
   "Local Help Marketplace for Everyday Needs.",
 ] as const;
-const HERO_SHADOW_VIDEO_SRC = "/hero/market-live-loop.mp4";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -1078,99 +1077,71 @@ export default function WelcomePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-linear-to-b from-slate-100 via-indigo-50 to-slate-100 text-slate-900">
-        <div className="w-full max-w-550 mx-auto py-2 sm:py-4 space-y-5 sm:space-y-6">
+      <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
+        <div className="mx-auto w-full max-w-[1480px] py-2 sm:py-4 space-y-5 sm:space-y-6">
           <motion.section
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-[1.3rem] border border-violet-300/40 bg-linear-to-br from-indigo-900 via-violet-700 to-fuchsia-600 p-3 shadow-[0_20px_46px_-30px_rgba(91,33,182,0.9)] sm:p-4"
+            className="relative min-h-[230px] overflow-hidden rounded-[1.3rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
           >
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute inset-0 overflow-hidden">
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  aria-hidden="true"
-                  className="h-full w-full scale-[1.08] object-cover opacity-28 grayscale contrast-125 brightness-[0.5] saturate-0 blur-[0.8px]"
-                >
-                  <source src={HERO_SHADOW_VIDEO_SRC} type="video/mp4" />
-                </video>
-              </div>
-              <div className="absolute inset-0 bg-linear-to-r from-indigo-950/55 via-violet-900/42 to-fuchsia-900/55" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_16%,rgba(14,165,164,0.14),transparent_44%),radial-gradient(circle_at_88%_84%,rgba(14,116,144,0.12),transparent_44%)]" />
               <div
-                className="absolute inset-0 opacity-28"
+                className="absolute inset-0 opacity-50"
                 style={{
                   backgroundImage:
-                    "linear-gradient(to right, rgba(255,255,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.16) 1px, transparent 1px)",
-                  backgroundSize: "30px 30px",
+                    "linear-gradient(to right, rgba(15,23,42,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.04) 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
                 }}
               />
-              <motion.div
-                className="absolute -right-5 top-2 h-24 w-24 rounded-full bg-cyan-300/30 blur-3xl"
-                animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
-                transition={{ duration: 6.6, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute left-6 bottom-0 h-20 w-20 rounded-full bg-pink-300/25 blur-2xl"
-                animate={{ x: [0, 10, 0], y: [0, -6, 0] }}
-                transition={{ duration: 6.9, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute right-[12%] bottom-[12%] text-white/45"
-                animate={{ y: [0, -6, 0], opacity: [0.5, 0.95, 0.5] }}
-                transition={{ duration: 2.4, repeat: Infinity }}
-              >
-                <MapPin size={18} />
-              </motion.div>
             </div>
 
-            <div className="relative space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-white">
-                  {MARKETPLACE_HERO_LINES[4]}
-                </p>
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/14 px-2 py-0.5 text-[11px] font-medium text-cyan-50">
-                  <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${acceptedConnectionCount > 0 ? "bg-emerald-300" : "bg-amber-200"}`} />
+            <div className="relative space-y-4 sm:space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Welcome Command Center</p>
+                  <h2 className="brand-display mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{MARKETPLACE_HERO_LINES[4]}</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{appTagline}</p>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--brand-500)]/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] shadow-sm">
+                  <span className={`h-1.5 w-1.5 rounded-full ${acceptedConnectionCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
                   {liveStatusLabel}
                 </span>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2.5 md:grid-cols-2">
                 <button
                   onClick={() => setOpenPostModal(true)}
-                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                  className="group rounded-xl border border-transparent bg-[var(--brand-900)] px-3 py-2.5 text-left text-white transition hover:bg-[var(--brand-700)]"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20">
                       <Zap size={14} />
                     </span>
                     <p className="text-base font-semibold">Post a Need</p>
                   </div>
-                  <p className="mt-1 text-xs text-cyan-50/90">Get local help quickly.</p>
+                  <p className="mt-1 text-xs text-slate-200">Get local help quickly.</p>
                 </button>
 
                 <button
                   onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
-                  className="group rounded-xl border border-white/35 bg-white/16 px-3 py-2.5 text-left text-white backdrop-blur transition hover:bg-white/24"
+                  className="group rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-slate-900 transition hover:border-[var(--brand-500)]/35 hover:bg-slate-50"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/20 ring-1 ring-white/30">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--brand-500)]/12 ring-1 ring-[var(--brand-500)]/20 text-[var(--brand-700)]">
                       <UsersRound size={14} />
                     </span>
                     <p className="text-base font-semibold">Earn Nearby</p>
                   </div>
-                  <p className="mt-1 text-xs text-cyan-50/90">Respond to nearby tasks and earn.</p>
+                  <p className="mt-1 text-xs text-slate-600">Respond to nearby tasks and earn.</p>
                 </button>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                   {MARKETPLACE_HERO_LINES[heroLineIndex]}
                 </span>
-                <span className="rounded-full border border-white/22 bg-white/12 px-2 py-0.5 text-[11px] font-medium text-white/95">
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                   {MARKETPLACE_HERO_LINES[(heroLineIndex + 1) % MARKETPLACE_HERO_LINES.length]}
                 </span>
               </div>
@@ -1203,21 +1174,21 @@ export default function WelcomePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => router.push(routes.posts)}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                    className="text-xs font-medium text-[var(--brand-700)] hover:text-[var(--brand-900)]"
                   >
                     Open feed
                   </button>
                   <button
                     onClick={() => scrollStories("left")}
                     aria-label="Scroll stories left"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                   >
                     <ChevronLeft size={14} />
                   </button>
                   <button
                     onClick={() => scrollStories("right")}
                     aria-label="Scroll stories right"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                   >
                     <ChevronRight size={14} />
                   </button>
@@ -1228,7 +1199,7 @@ export default function WelcomePage() {
                 <div
                   className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
                     isMixedFeed
-                      ? "border-indigo-200 bg-indigo-50 text-indigo-800"
+                      ? "border-[color:var(--brand-300)] bg-cyan-50 text-[var(--brand-700)]"
                       : "border-amber-200 bg-amber-50 text-amber-800"
                   }`}
                 >
@@ -1273,7 +1244,7 @@ export default function WelcomePage() {
                           <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] shrink-0 sm:w-[186px]">
                             <button
                               onClick={() => router.push(focusPath)}
-                              className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-indigo-300"
+                              className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-[color:var(--brand-500)]"
                             >
                               <div className="relative">
                                 <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
@@ -1298,7 +1269,7 @@ export default function WelcomePage() {
                               <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-emerald-700">
                                 Availability: {story.etaLabel}
                               </p>
-                              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 group-hover:text-indigo-500">
+                              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-700)] group-hover:text-[var(--brand-900)]">
                                 <ArrowRight size={10} />
                               </span>
                             </button>
@@ -1323,7 +1294,7 @@ export default function WelcomePage() {
                     </div>
                     <button
                       onClick={() => router.push(routes.posts)}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                      className="text-xs font-medium text-[var(--brand-700)] hover:text-[var(--brand-900)]"
                     >
                       Explore all
                     </button>
@@ -1358,7 +1329,7 @@ export default function WelcomePage() {
                           <button
                             type="button"
                             onClick={() => router.push(routes.people)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                            className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
                           >
                             <UsersRound size={14} />
                             Open People
@@ -1366,7 +1337,7 @@ export default function WelcomePage() {
                           <button
                             type="button"
                             onClick={() => setOpenPostModal(true)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                           >
                             <Zap size={14} />
                             Post a Need
@@ -1398,7 +1369,7 @@ export default function WelcomePage() {
                                       card.type === "demand"
                                         ? "bg-rose-100 text-rose-700"
                                         : card.type === "service"
-                                        ? "bg-indigo-100 text-indigo-700"
+                                        ? "bg-cyan-100 text-[var(--brand-700)]"
                                         : "bg-emerald-100 text-emerald-700"
                                     }`}
                                   >
@@ -1418,7 +1389,7 @@ export default function WelcomePage() {
                                 <p className="mt-1 text-xs text-slate-600">{card.subtitle}</p>
 
                                 <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
-                                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-semibold text-[var(--brand-700)]">
                                     {card.ownerLabel.slice(0, 2).toUpperCase()}
                                   </span>
                                   <div className="min-w-0">
@@ -1430,7 +1401,7 @@ export default function WelcomePage() {
                                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
                                   <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
-                                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{card.momentumLabel}</span>
+                                  <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-[var(--brand-700)]">{card.momentumLabel}</span>
                                 </div>
 
                                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -1448,7 +1419,7 @@ export default function WelcomePage() {
                                     aria-label={`${card.actionLabel} post ${card.title}`}
                                     title={`${card.actionLabel} this post`}
                                     data-testid="feed-action-primary"
-                                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
+                                    className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-900)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
                                   >
                                     {card.actionLabel}
                                     <ArrowRight size={11} />
@@ -1460,7 +1431,7 @@ export default function WelcomePage() {
                                     aria-label={card.isDemo ? `${card.title} preview only` : `Message about ${card.title}`}
                                     title={card.isDemo ? "Preview cards do not open real chats" : "Open contextual chat"}
                                     data-testid="feed-action-message"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
                                   >
                                     <MessageCircle size={12} />
                                     {card.isDemo ? "Preview only" : messageInFlight ? "Opening..." : "Message"}
@@ -1471,7 +1442,7 @@ export default function WelcomePage() {
                                     aria-label={`${card.networkActionLabel} for ${card.title}`}
                                     title="Open connection or group context"
                                     data-testid="feed-action-network"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                                   >
                                     <UsersRound size={12} />
                                     {card.networkActionLabel}
@@ -1483,7 +1454,7 @@ export default function WelcomePage() {
                                     aria-label={`Share ${card.title}`}
                                     title="Share post"
                                     data-testid="feed-action-share"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-65"
+                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
                                   >
                                     <Share2 size={12} />
                                     {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
@@ -1497,8 +1468,8 @@ export default function WelcomePage() {
                                     data-testid="feed-action-save"
                                     className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
                                       isSaved && !saveInFlight
-                                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                                        : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:text-indigo-600"
+                                        ? "border-[color:var(--brand-300)] bg-cyan-50 text-[var(--brand-700)]"
+                                        : "border-slate-200 bg-white text-slate-700 hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                                     }`}
                                   >
                                     <Bookmark size={12} />
@@ -1513,7 +1484,7 @@ export default function WelcomePage() {
                                 </div>
                               </div>
 
-                              <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-indigo-50/60 p-2.5">
+                              <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-cyan-50/70 p-2.5">
                                 <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
                                   <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
                                   <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -1522,7 +1493,7 @@ export default function WelcomePage() {
                                   <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                                     +{card.mediaCount} photos
                                   </span>
-                                  <span className="absolute left-2 bottom-2 rounded-full bg-indigo-600/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                  <span className="absolute left-2 bottom-2 rounded-full bg-[var(--brand-900)]/90 px-2 py-0.5 text-[10px] font-semibold text-white">
                                     {card.pulse}
                                   </span>
                                 </div>
@@ -1566,10 +1537,10 @@ export default function WelcomePage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="rounded-2xl border border-indigo-100 bg-linear-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-600">About Local Marketplace</p>
+              <div className="rounded-2xl border border-cyan-100 bg-linear-to-br from-cyan-50 via-white to-slate-50 p-4 sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--brand-700)]">About {appName}</p>
                 <h2 className="mt-2 text-lg sm:text-xl font-semibold text-slate-900">
-                  A realtime neighborhood network for needs, services, and products.
+                  {appTagline}
                 </h2>
                 <p className="mt-2 text-sm text-slate-600">
                   We help people post local needs quickly, match with nearby providers, and close tasks with trust, speed, and clarity.
@@ -1593,8 +1564,8 @@ export default function WelcomePage() {
                     className="rounded-xl border border-slate-200 bg-white px-4 py-3.5"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="rounded-lg bg-indigo-100 p-2">
-                        <card.icon className="text-indigo-600" size={16} />
+                      <div className="rounded-lg bg-cyan-100 p-2">
+                        <card.icon className="text-[var(--brand-700)]" size={16} />
                       </div>
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                         {card.metric}
@@ -1624,7 +1595,7 @@ export default function WelcomePage() {
                 ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
                 : toast.kind === "error"
                 ? "border-rose-200 bg-rose-50/95 text-rose-800"
-                : "border-indigo-200 bg-indigo-50/95 text-indigo-800"
+                : "border-cyan-200 bg-cyan-50/95 text-[var(--brand-700)]"
             }`}
           >
             {toast.message}

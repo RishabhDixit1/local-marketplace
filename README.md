@@ -1,10 +1,10 @@
-# Local Marketplace
+# ServiQ
 
-A realtime local marketplace platform connecting consumers and providers for services and products, with live chat, provider discovery, task/order workflow, and in-app notifications.
+Connecting people with Human-Centered Services Near You!
 
 ## Live Deployment
 
-- App: https://local-marketplace-eta.vercel.app
+- App: https://<your-serviq-domain>
 - Repository: https://github.com/RishabhDixit1/local-marketplace
 
 ## Product Scope
@@ -123,18 +123,18 @@ In Supabase Dashboard -> Authentication -> URL Configuration:
 
 - Site URL:
   - local: `http://localhost:3000`
-  - production: `https://local-marketplace-eta.vercel.app`
+  - production: `https://<your-serviq-domain>`
 - Redirect URLs:
   - `http://localhost:3000/auth/callback`
   - `http://127.0.0.1:3000/auth/callback`
-  - `https://local-marketplace-eta.vercel.app/auth/callback`
+  - `https://<your-serviq-domain>/auth/callback`
 
 Important:
 - Production `Site URL` must never be localhost.
 - `POST /api/auth/send-link` now derives the auth callback from the current request origin, so local logins stay on localhost and deployed logins stay on the active site host.
 - `NEXT_PUBLIC_SITE_URL` should still be set per environment for canonical/share URLs and scripts:
   - local `.env.local`: `http://localhost:3000`
-  - Vercel production env: `https://local-marketplace-eta.vercel.app`
+  - Vercel production env: `https://<your-serviq-domain>`
 - If a callback URL is missing from Redirect URLs, Supabase may still fall back to `Site URL`.
 
 ## Scripts
@@ -219,6 +219,6 @@ Optional forwarding env vars:
 
 The project is deployed on Vercel:
 
-- Production URL: https://local-marketplace-eta.vercel.app
+- Production URL: https://<your-serviq-domain>
 
 For preview/production rollouts, use standard Vercel workflows connected to this GitHub repo.
