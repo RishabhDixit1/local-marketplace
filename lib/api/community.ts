@@ -56,6 +56,7 @@ export type CommunityPostRecord = {
   status?: string | null;
   state?: string | null;
   visibility?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 
@@ -73,6 +74,7 @@ export type CommunityHelpRequestRecord = {
   latitude?: number | null;
   longitude?: number | null;
   status?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 

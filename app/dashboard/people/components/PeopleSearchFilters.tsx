@@ -17,8 +17,6 @@ type Props = {
   activeCategory: string;
   onActiveCategoryChange: (value: string) => void;
   categoryOptions: string[];
-  radiusKm: number;
-  onRadiusChange: (value: number) => void;
   sortBy: PeopleSortOption;
   onSortByChange: (value: PeopleSortOption) => void;
   activeFilterCount: number;
@@ -34,15 +32,13 @@ export default function PeopleSearchFilters({
   activeCategory,
   onActiveCategoryChange,
   categoryOptions,
-  radiusKm,
-  onRadiusChange,
   sortBy,
   onSortByChange,
   activeFilterCount,
   resultsCount,
 }: Props) {
   return (
-    <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5">
+    <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,164,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.65),rgba(255,255,255,0.9))]" />
 
       <div className="relative space-y-4">
@@ -58,8 +54,8 @@ export default function PeopleSearchFilters({
           </span>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
-          <label className="flex items-center gap-3 rounded-[1.4rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(180px,220px)_minmax(180px,220px)]">
+          <label className="flex items-center gap-3 rounded-[1.4rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)] md:col-span-2 xl:col-span-1">
             <Search className="h-5 w-5 text-slate-400" />
             <input
               value={search}
@@ -127,31 +123,9 @@ export default function PeopleSearchFilters({
             </button>
           ))}
 
-          <span className="ml-auto text-sm text-slate-500">{resultsCount} profiles visible</span>
-        </div>
-
-        <div className="rounded-[1.4rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,0.96))] px-4 py-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-700">
-            <span>Discovery radius</span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-900">
-              {radiusKm} km
-            </span>
-          </div>
-
-          <input
-            type="range"
-            min={1}
-            max={50}
-            step={1}
-            value={radiusKm}
-            onChange={(event) => onRadiusChange(Number(event.target.value))}
-            className="mt-3 w-full accent-[var(--brand-500)]"
-          />
-
-          <div className="mt-2 flex justify-between text-xs text-slate-500">
-            <span>1 km</span>
-            <span>50 km</span>
-          </div>
+          <span className="w-full text-left text-sm text-slate-500 sm:ml-auto sm:w-auto sm:text-right">
+            {resultsCount} profiles visible
+          </span>
         </div>
       </div>
     </section>

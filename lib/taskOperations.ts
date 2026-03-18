@@ -1,5 +1,8 @@
 import { getOrderStatusLabel, normalizeOrderStatus, toTaskWorkflowStatus } from "./orderWorkflow";
+import { createAvatarFallback } from "./avatarFallback";
 import { resolveProfileAvatarUrl } from "./mediaUrl";
+import { toDisplayText as sanitizeDisplayText } from "./contentQuality";
+import { readMarketplaceComposerMetadata } from "./marketplaceMetadata";
 
 export type TaskType = "posted" | "accepted";
 export type TaskStatus = "active" | "in-progress" | "completed" | "cancelled";
@@ -48,6 +51,8 @@ export type PostRow = {
   text: string | null;
   content: string | null;
   description: string | null;
+  category?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type Task = {
@@ -105,7 +110,7 @@ export type TaskEventFeedItem = {
   createdAtRaw: string | null;
 };
 
-export const fallbackAvatar = "https://i.pravatar.cc/150";
+export const fallbackAvatar = createAvatarFallback({ label: "ServiQ member", seed: "task-fallback" });
 
 export const normalizeTaskStatus = (status: string | null | undefined): TaskStatus => toTaskWorkflowStatus(status);
 
@@ -167,6 +172,30 @@ export const buildTitleFromListingType = (listingType: string) => {
   if (listingType === "demand") return "Demand response";
   if (listingType === "order") return "Live order";
   return "Live order";
+};
+
+const parseComposerStylePostText = (rawText: string) => {
+  const fallback = {
+    title: "",
+    description: "",
+    category: "Demand",
+  };
+
+  if (!rawText.includes(" | ")) return fallback;
+
+  const parts = rawText.split(" | ");
+  if (parts.length < 2) return fallback;
+
+  const title = parts[0]?.trim() || fallback.title;
+  const description = parts[1]?.trim() || fallback.description;
+  const categoryPart = parts.find((item) => item.startsWith("Category:"));
+  const typePart = parts.find((item) => item.startsWith("Type:"));
+  const kind = typePart?.replace("Type:", "").trim().toLowerCase();
+  const category =
+    categoryPart?.replace("Category:", "").trim() ||
+    (kind === "service" ? "Service" : kind === "product" ? "Product" : fallback.category);
+
+  return { title, description, category };
 };
 
 const pickString = (value: unknown) => {
@@ -246,10 +275,23 @@ export const mapOrderToTask = (params: {
     listingCategory = product?.category || listingCategory;
   } else if (listingType === "demand" && listingId) {
     const post = postMap.get(listingId);
-    listingTitle = post?.title || post?.text || post?.content || listingTitle;
-    listingDescription = post?.description || post?.text || post?.content || listingDescription;
-    listingCategory = "Demand";
+    const composerMetadata = readMarketplaceComposerMetadata(post?.metadata);
+    const parsedPost = parseComposerStylePostText(post?.text || post?.content || post?.description || "");
+
+    listingTitle = sanitizeDisplayText(
+      composerMetadata?.title || post?.title || parsedPost.title || post?.text || post?.content || listingTitle,
+      listingTitle
+    );
+    listingDescription = sanitizeDisplayText(
+      composerMetadata?.details || post?.description || parsedPost.description || post?.text || post?.content || listingDescription,
+      listingDescription
+    );
+    listingCategory = sanitizeDisplayText(composerMetadata?.category || post?.category || parsedPost.category || "Demand", "Demand");
   }
+
+  listingTitle = sanitizeDisplayText(listingTitle, buildTitleFromListingType(listingType));
+  listingDescription = sanitizeDisplayText(listingDescription, "Track order activity and coordinate next steps.");
+  listingCategory = sanitizeDisplayText(listingCategory, listingType === "demand" ? "Demand" : listingType);
 
   const normalizedStatus = normalizeTaskStatus(order.status);
 

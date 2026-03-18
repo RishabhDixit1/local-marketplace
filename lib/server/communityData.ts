@@ -70,9 +70,19 @@ const selectRowsWithFallback = async (
     orderBy?: { column: string; ascending?: boolean };
     limit?: number;
     allowMissingRelation?: boolean;
+    inFilter?: { column: string; values: string[] };
+    orFilter?: string;
   } = {}
 ): Promise<FlexibleRow[]> => {
   let primaryQuery = db.from(table).select(primarySelect);
+
+  if (options.inFilter?.column && options.inFilter.values.length > 0) {
+    primaryQuery = primaryQuery.in(options.inFilter.column, options.inFilter.values);
+  }
+
+  if (options.orFilter) {
+    primaryQuery = primaryQuery.or(options.orFilter);
+  }
 
   if (options.orderBy?.column) {
     primaryQuery = primaryQuery.order(options.orderBy.column, { ascending: options.orderBy.ascending ?? false });
@@ -98,6 +108,14 @@ const selectRowsWithFallback = async (
 
   let fallbackQuery = db.from(table).select("*");
 
+  if (options.inFilter?.column && options.inFilter.values.length > 0) {
+    fallbackQuery = fallbackQuery.in(options.inFilter.column, options.inFilter.values);
+  }
+
+  if (options.orFilter) {
+    fallbackQuery = fallbackQuery.or(options.orFilter);
+  }
+
   if (options.orderBy?.column) {
     fallbackQuery = fallbackQuery.order(options.orderBy.column, { ascending: options.orderBy.ascending ?? false });
   }
@@ -116,6 +134,16 @@ const selectRowsWithFallback = async (
   }
 
   return toFlexibleRows(fallbackResult.data);
+};
+
+const CONNECTED_FEED_LIMIT_PER_TYPE = 180;
+
+const buildInOrFilter = (columns: string[], values: string[]) => {
+  const normalizedValues = values.map((value) => trim(value)).filter(Boolean);
+  if (!normalizedValues.length) return "";
+
+  const joinedValues = normalizedValues.join(",");
+  return columns.map((column) => `${column}.in.(${joinedValues})`).join(",");
 };
 
 const selectProfileById = async (db: SupabaseClient, userId: string) => {
@@ -224,6 +252,10 @@ const normalizePost = (row: FlexibleRow, index: number): CommunityPostRecord | n
     status: stringFromRow(row, ["status"], "") || null,
     state: stringFromRow(row, ["state"], "") || null,
     visibility: stringFromRow(row, ["visibility"], "") || null,
+    metadata:
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : null,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -252,6 +284,10 @@ const normalizeHelpRequest = (row: FlexibleRow, index: number): CommunityHelpReq
       return Number.isFinite(value) ? value : null;
     })(),
     status: stringFromRow(row, ["status"], "") || null,
+    metadata:
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : null,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -339,38 +375,64 @@ export const loadCommunityFeedSnapshot = async (
   db: SupabaseClient,
   currentUserId: string
 ): Promise<Extract<CommunityFeedResponse, { ok: true }>> => {
-  const [currentUserProfileRow, serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw, acceptedPeers] =
-    await Promise.all([
-      selectProfileById(db, currentUserId),
-      selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,created_at", {
+  const [currentUserProfileRow, acceptedPeers] = await Promise.all([
+    selectProfileById(db, currentUserId),
+    listAcceptedConnectionPeerIds(db, currentUserId),
+  ]);
+
+  const acceptedPeerIds = Array.from(acceptedPeers);
+  if (!acceptedPeerIds.length) {
+    return {
+      ok: true,
+      currentUserId,
+      acceptedConnectionIds: [],
+      currentUserProfile: currentUserProfileRow ? normalizeProfile(currentUserProfileRow) : null,
+      services: [],
+      products: [],
+      posts: [],
+      helpRequests: [],
+      profiles: [],
+      reviews: [],
+      presence: [],
+    };
+  }
+
+  const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
+    selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,created_at", {
+      orderBy: { column: "created_at", ascending: false },
+      limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+      inFilter: { column: "provider_id", values: acceptedPeerIds },
+    }),
+    selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,created_at", {
+      orderBy: { column: "created_at", ascending: false },
+      limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+      inFilter: { column: "provider_id", values: acceptedPeerIds },
+    }),
+    selectRowsWithFallback(
+      db,
+      "posts",
+      "id,text,content,description,title,user_id,author_id,created_by,requester_id,owner_id,provider_id,type,post_type,category,status,state,visibility,metadata,created_at",
+      {
         orderBy: { column: "created_at", ascending: false },
-        limit: 60,
-      }),
-      selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,created_at", {
+        limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+        orFilter: buildInOrFilter(
+          ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
+          acceptedPeerIds
+        ),
+      }
+    ),
+    selectRowsWithFallback(
+      db,
+      "help_requests",
+      "id,requester_id,accepted_provider_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,metadata,created_at",
+      {
         orderBy: { column: "created_at", ascending: false },
-        limit: 60,
-      }),
-      selectRowsWithFallback(
-        db,
-        "posts",
-        "id,text,content,description,title,user_id,author_id,created_by,requester_id,owner_id,provider_id,type,post_type,category,status,state,visibility,created_at",
-        {
-          orderBy: { column: "created_at", ascending: false },
-          limit: 60,
-        }
-      ),
-      selectRowsWithFallback(
-        db,
-        "help_requests",
-        "id,requester_id,accepted_provider_id,title,details,category,urgency,budget_min,budget_max,location_label,latitude,longitude,status,created_at",
-        {
-          orderBy: { column: "created_at", ascending: false },
-          limit: 60,
-          allowMissingRelation: true,
-        }
-      ),
-      listAcceptedConnectionPeerIds(db, currentUserId),
-    ]);
+        limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+        allowMissingRelation: true,
+        inFilter: { column: "requester_id", values: acceptedPeerIds },
+      }
+    ),
+  ]);
 
   const services = serviceRowsRaw
     .map((row, index) => normalizeService(row, index))
@@ -432,7 +494,7 @@ export const loadCommunityFeedSnapshot = async (
   return {
     ok: true,
     currentUserId,
-    acceptedConnectionIds: Array.from(acceptedPeers),
+    acceptedConnectionIds: acceptedPeerIds,
     currentUserProfile: currentUserProfileRow ? normalizeProfile(currentUserProfileRow) : null,
     services,
     products,

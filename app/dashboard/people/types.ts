@@ -39,7 +39,7 @@ export type ProviderCard = {
   phone: string | null;
   email: string | null;
   distanceKm: number;
-  rating: number;
+  rating: number | null;
   reviews: number;
   verified: boolean;
   online: boolean;
@@ -47,8 +47,8 @@ export type ProviderCard = {
   responseMinutes: number;
   primarySkill: string;
   tags: string[];
-  completedJobs: number;
-  openLeads: number;
+  completedJobs: number | null;
+  openLeads: number | null;
   profileCompletion: number;
   rankScore: number;
   joinedAt: string | null;

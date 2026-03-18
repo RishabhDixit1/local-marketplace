@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublishPayloadBase, UploadedMediaPayload } from "@/lib/api/publish";
+import { buildMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 
 type WriteResult = {
   id?: string;
@@ -114,6 +115,7 @@ export const insertPostRow = async (params: {
   let activeStorageTypeIndex = 0;
 
   const composedText = composeMarketplacePostText(payload, postType);
+  const metadata = buildMarketplaceComposerMetadata(payload, postType);
 
   const postPayload: Record<string, unknown> = {
     user_id: userId,
@@ -131,6 +133,7 @@ export const insertPostRow = async (params: {
     description: composedText,
     title: payload.title,
     name: payload.title,
+    metadata,
   };
 
   const blockedColumns = new Set<string>();
@@ -238,6 +241,7 @@ export const insertHelpRequestRow = async (params: {
   longitude: number | null;
 }): Promise<WriteResult> => {
   const { admin, userId, payload, latitude, longitude } = params;
+  const metadata = buildMarketplaceComposerMetadata(payload, "need");
 
   const numericBudget = Number(payload.budget || 0);
   const budgetValue = Number.isFinite(numericBudget) && numericBudget > 0 ? numericBudget : null;
@@ -265,6 +269,7 @@ export const insertHelpRequestRow = async (params: {
     radius_km: payload.radiusKm,
     status: "open",
     metadata: {
+      ...metadata,
       source: "api_needs_publish",
       mode: payload.mode,
       needed_within: payload.neededWithin,

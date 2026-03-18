@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Bell, ChevronDown, Compass, Loader2, SearchX, Sparkles, Users } from "lucide-react";
+import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -26,6 +26,7 @@ import {
   type Coordinates,
 } from "@/lib/geo";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
+import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
@@ -33,10 +34,6 @@ import { supabase } from "@/lib/supabase";
 import ConnectionsPanel from "./components/ConnectionsPanel";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
 import PeopleMapPanel from "./components/PeopleMapPanel";
-import PeopleSearchFilters, {
-  type PeopleFilterPill,
-  type PeopleSortOption,
-} from "./components/PeopleSearchFilters";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCardSkeleton from "./components/ProviderCardSkeleton";
 import type {
@@ -143,9 +140,7 @@ type FlexibleRow = Record<string, unknown>;
 
 type CommunityPeopleSuccessPayload = Extract<CommunityPeopleResponse, { ok: true }>;
 
-const DEFAULT_RADIUS_KM = 12;
 const PAGE_SIZE = 12;
-const SEARCH_DEBOUNCE_MS = 300;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const MAX_DISCOVERABLE_PROFILES = 140;
 const AUTO_SYNC_INTERVAL_MS = 30000;
@@ -190,17 +185,6 @@ const formatCurrency = (value: number | null) => {
 
 const buildProfileCardId = (providerId: string) => `people:${providerId}`;
 
-const hashNumber = (seed: string, min: number, max: number) => {
-  const safeMin = Math.min(min, max);
-  const safeMax = Math.max(min, max);
-  const spread = safeMax - safeMin + 1;
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) | 0;
-  }
-  return safeMin + (Math.abs(hash) % spread);
-};
-
 const pushTag = (map: Map<string, Set<string>>, providerId: string, tag: string | null | undefined) => {
   const normalized = normalizeText(tag);
   if (!normalized) return;
@@ -239,33 +223,57 @@ const formatRelativeTimestamp = (value: string | null) => {
   return `${Math.floor(diffMinutes / (60 * 24 * 7))}w ago`;
 };
 
-const buildFallbackMemberProfile = (params: {
-  memberId: string;
-  tags: string[];
-  listingCount: number;
-  demandCount: number;
-}): ProfileRow => {
-  const { memberId, tags, listingCount, demandCount } = params;
-  const labelSeed = memberId.replace(/-/g, "").slice(0, 4).toUpperCase();
-  const role =
-    listingCount > 0 ? tags[0] || "Service Provider" : demandCount > 0 ? "Marketplace Member" : "Local Member";
-  const bio =
-    listingCount > 0
-      ? "Trusted nearby provider with active local activity."
-      : demandCount > 0
-      ? "Active marketplace member collaborating with local providers."
-      : "Visible in your neighborhood network for direct connections.";
+const PLACEHOLDER_TEXT_PATTERN =
+  /\b(demo|sample|seed(?:ed)?|placeholder|dummy|fake|mock|test|temp|lorem|ipsum)\b/i;
 
-  return {
-    id: memberId,
-    name: `Local Member ${labelSeed}`,
-    role,
-    bio,
-    location: "Nearby",
-    availability: "available",
-    services: tags.slice(0, 3),
-    avatar_url: `https://i.pravatar.cc/240?u=${encodeURIComponent(memberId)}`,
-  };
+const KEYBOARD_MASH_PATTERN = /(asdf|qwer|zxcv|hjkl|sdfg|dsaf|sdfs|xcad|tmynr|hbtgr|fvcg|gaewg|sdga)/i;
+
+const countVowels = (value: string) => (value.match(/[aeiou]/gi) || []).length;
+
+const looksLikeGarbageToken = (value: string) => {
+  const normalized = normalizeText(value).toLowerCase();
+  if (!normalized) return false;
+  if (PLACEHOLDER_TEXT_PATTERN.test(normalized) || KEYBOARD_MASH_PATTERN.test(normalized)) return true;
+  if (normalized.length < 5 || normalized.includes(" ")) return false;
+
+  const vowelRatio = countVowels(normalized) / normalized.length;
+  return vowelRatio < 0.2;
+};
+
+const looksLikePlaceholderText = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return false;
+  if (PLACEHOLDER_TEXT_PATTERN.test(normalized) || KEYBOARD_MASH_PATTERN.test(normalized)) return true;
+
+  const tokens = normalized.toLowerCase().match(/[a-z]+/g) || [];
+  if (!tokens.length) return false;
+
+  const suspiciousTokens = tokens.filter(looksLikeGarbageToken).length;
+  return suspiciousTokens >= Math.max(2, Math.ceil(tokens.length * 0.6));
+};
+
+const sanitizeProfileServices = (services: string[] | null | undefined) =>
+  (services || [])
+    .map((service) => normalizeText(service))
+    .filter((service) => service.length > 0 && !looksLikePlaceholderText(service));
+
+const isProviderFacingRole = (value: string | null | undefined) => {
+  const normalized = normalizeText(value).toLowerCase();
+  if (!normalized) return false;
+
+  return [
+    "provider",
+    "business",
+    "vendor",
+    "seller",
+    "merchant",
+    "professional",
+    "partner",
+    "agency",
+    "studio",
+    "team",
+    "service",
+  ].some((keyword) => normalized.includes(keyword));
 };
 
 const selectOptionalRows = async <TRow extends FlexibleRow>(
@@ -568,34 +576,9 @@ const createProviderCards = (params: {
     pushTag(combinedTagMap, providerId, offering.category);
   });
 
-  const activeMemberIds = Array.from(
-    new Set([
-      ...serviceRows.map((row) => normalizeText(row.provider_id)),
-      ...productRows.map((row) => normalizeText(row.provider_id)),
-      ...serviceDetails.map((row) => normalizeText(typeof row.provider_id === "string" ? row.provider_id : null)),
-      ...productDetails.map((row) => normalizeText(typeof row.provider_id === "string" ? row.provider_id : null)),
-      ...postRows.map((row) => normalizeText(row.user_id || row.author_id || row.created_by || row.provider_id)),
-      ...helpRequestRows.map((row) => normalizeText(row.requester_id)),
-    ].filter(Boolean))
-  );
-
   const profileRows = ((payload.profiles || []).slice(0, MAX_DISCOVERABLE_PROFILES) as ProfileRow[]).filter(
     (profile) => !!profile.id
   );
-
-  const existingProfileIds = new Set(profileRows.map((profile) => profile.id));
-  const fallbackProfiles = activeMemberIds
-    .filter((memberId) => memberId !== viewerId && !existingProfileIds.has(memberId))
-    .map((memberId) =>
-      buildFallbackMemberProfile({
-        memberId,
-        tags: Array.from(combinedTagMap.get(memberId) || []),
-        listingCount: (serviceCountMap.get(memberId) || 0) + (productCountMap.get(memberId) || 0),
-        demandCount: demandCountMap.get(memberId) || 0,
-      })
-    );
-
-  const allProfiles = [...profileRows, ...fallbackProfiles];
 
   const presenceMap = new Map<string, ProviderPresenceRow>();
   presenceRows.forEach((row) => {
@@ -611,15 +594,25 @@ const createProviderCards = (params: {
     openLeadsMap.set(row.provider_id, Number(row.open_leads || 0));
   });
 
-  const cards = allProfiles
+  const cards = profileRows
     .filter((profile) => profile.id !== viewerId)
-    .map((profile): ProviderCardModel => {
+    .map((profile): ProviderCardModel | null => {
+      const sanitizedServices = sanitizeProfileServices(profile.services);
       const servicesCount = serviceCountMap.get(profile.id) || 0;
       const productsCount = productCountMap.get(profile.id) || 0;
       const demandCount = demandCountMap.get(profile.id) || 0;
+      const profileServiceCount = sanitizedServices.length;
+      const hasProviderSignals = servicesCount + productsCount + profileServiceCount > 0;
+      const hasProviderRole = isProviderFacingRole(profile.role);
+      const hasPlaceholderName = looksLikePlaceholderText(profile.name);
+
+      if (hasPlaceholderName || (!hasProviderSignals && !hasProviderRole)) {
+        return null;
+      }
+
       const ratingAgg = ratingMap.get(profile.id);
       const reviewsCount = ratingAgg?.count || 0;
-      const rating = reviewsCount > 0 ? Number((ratingAgg!.sum / reviewsCount).toFixed(1)) : 4.5;
+      const rating = reviewsCount > 0 ? Number((ratingAgg!.sum / reviewsCount).toFixed(1)) : null;
       const presence = presenceMap.get(profile.id) || null;
       const availability = normalizeText(presence?.availability || profile.availability || "available").toLowerCase();
       const responseMinutesFromPresence = Number(
@@ -636,7 +629,7 @@ const createProviderCards = (params: {
         name: profile.name,
         location: profile.location,
         bio: profile.bio,
-        services: profile.services,
+        services: sanitizedServices,
         email: profile.email,
         phone: profile.phone,
         website: profile.website,
@@ -646,7 +639,7 @@ const createProviderCards = (params: {
         role: profile.role,
         profileCompletion,
         listingsCount: servicesCount + productsCount,
-        averageRating: rating,
+        averageRating: rating ?? 0,
         reviewCount: reviewsCount,
       });
 
@@ -662,41 +655,65 @@ const createProviderCards = (params: {
       const rankBase = calculateLocalRankScore({
         distanceKm,
         responseMinutes,
-        rating,
+        rating: rating ?? 0,
         profileCompletion,
       });
       const rankScore = Math.max(1, Math.min(100, Math.round(rankBase + (online ? 4 : 0))));
 
+      const rawRoleLabel = normalizeText(profile.role);
       const roleLabel =
-        normalizeText(profile.role) ||
-        (servicesCount + productsCount > 0 ? "Service Provider" : "Marketplace Member");
+        (rawRoleLabel && !looksLikePlaceholderText(rawRoleLabel) ? rawRoleLabel : "") ||
+        (servicesCount + productsCount > 0 ? "Service provider" : demandCount > 0 ? "Community member" : "ServiQ member");
       const serviceTags = Array.from(serviceTagMap.get(profile.id) || []);
       const productTags = Array.from(productTagMap.get(profile.id) || []);
       const demandTags = Array.from(demandTagMap.get(profile.id) || []);
       const resolvedTags = Array.from(
         new Set([
           ...Array.from(combinedTagMap.get(profile.id) || []),
-          ...(profile.services || []),
+          ...sanitizedServices,
           ...serviceTags,
           ...productTags,
           ...demandTags,
           roleLabel,
         ])
       )
-        .filter(Boolean)
-        .slice(0, 8);
+        .map((value) => normalizeText(value))
+        .filter((value) => value.length > 0 && !looksLikePlaceholderText(value))
+        .slice(0, 6);
 
       const primarySkill = resolvedTags[0] || roleLabel;
+      const normalizedBio = normalizeText(profile.bio);
       const bio =
-        normalizeText(profile.bio) ||
+        (normalizedBio && !looksLikePlaceholderText(normalizedBio) ? normalizedBio : "") ||
         (servicesCount + productsCount > 0
-          ? "Trusted neighborhood provider available for nearby requests and realtime chat."
-          : "Active local member collaborating with nearby providers.");
+          ? "Local provider profile with published marketplace activity."
+          : "Published member profile on ServiQ.");
 
       const offerings = [
         ...(serviceOfferingMap.get(profile.id) || []),
         ...(productOfferingMap.get(profile.id) || []),
       ]
+        .map((offering) => {
+          const title = normalizeText(offering.title);
+          const category = normalizeText(offering.category);
+          if (!title || !category || looksLikePlaceholderText(`${title} ${category}`)) {
+            return null;
+          }
+
+          const description = normalizeText(offering.description);
+          return {
+            ...offering,
+            title,
+            category,
+            description:
+              description && !looksLikePlaceholderText(description)
+                ? description
+                : offering.kind === "product"
+                ? "Published product on ServiQ."
+                : "Published service on ServiQ.",
+          };
+        })
+        .filter((offering): offering is ProviderOffering => Boolean(offering))
         .sort((left, right) => {
           if (left.kind !== right.kind) {
             return left.kind === "service" ? -1 : 1;
@@ -704,30 +721,11 @@ const createProviderCards = (params: {
           return (right.createdAt || "").localeCompare(left.createdAt || "");
         })
         .slice(0, 6);
-
-      const fallbackOfferings =
-        offerings.length === 0
-          ? (profile.services || []).slice(0, 4).map((serviceName, index) => ({
-              id: `profile-service-${profile.id}-${index}`,
-              kind: "service" as const,
-              title: serviceName,
-              description: "Listed directly on the ServiQ business profile.",
-              category: serviceName,
-              price: null,
-              priceLabel: null,
-              availability: profile.availability || null,
-              imageUrl: null,
-              deliveryMethod: null,
-              createdAt: profile.updated_at || profile.created_at || null,
-            }))
-          : [];
-
-      const finalOfferings = offerings.length > 0 ? offerings : fallbackOfferings;
+      const finalOfferings = offerings;
 
       const priceValues = providerPriceMap.get(profile.id) || [];
       const minPrice = priceValues.length ? Math.min(...priceValues) : null;
       const minPriceLabel = formatCurrency(minPrice);
-      const fallbackOpenLeads = hashNumber(`open-${profile.id}`, 0, 8);
       const lastSeenLabel = normalizeText(presence?.last_seen);
       const recentActivityLabel = online
         ? "Active in the network right now"
@@ -742,11 +740,13 @@ const createProviderCards = (params: {
       const trustBlurb =
         verificationStatus === "verified"
           ? "Verified profile with live marketplace signals, trust metadata, and local discovery strength."
-          : reviewsCount >= 3
+          : reviewsCount >= 3 && rating !== null
           ? `${reviewsCount} real reviews with a ${rating.toFixed(1)} average and active nearby visibility.`
           : profileCompletion >= 80
           ? "Strong profile completeness and consistent local discovery signals."
-          : "Growing profile with enough identity and activity to start a confident conversation.";
+          : servicesCount + productsCount > 0
+          ? "Published profile with live marketplace listings and clear business identity."
+          : "Published profile with enough identity to start a confident conversation.";
 
       const media = (mediaMap.get(profile.id) || []).slice(0, 6);
       const searchDocument = [
@@ -763,16 +763,22 @@ const createProviderCards = (params: {
 
       return {
         id: profile.id,
-        name: normalizeText(profile.name) || "Local Member",
+        name: normalizeText(profile.name) || "ServiQ member",
         businessSlug: createBusinessSlug(profile.name, profile.id),
         fullProfilePath: `/business/${createBusinessSlug(profile.name, profile.id)}`,
         publicProfilePath: buildPublicProfilePath(profile) || "",
         avatar:
           resolveProfileAvatarUrl(profile.avatar_url) ||
-          `https://i.pravatar.cc/240?u=${encodeURIComponent(profile.id)}`,
+          createAvatarFallback({
+            label: normalizeText(profile.name) || roleLabel || "ServiQ member",
+            seed: profile.id,
+          }),
         role: roleLabel,
         bio,
-        location: normalizeText(profile.location) || "Nearby",
+        location:
+          normalizeText(profile.location) && !looksLikePlaceholderText(profile.location)
+            ? normalizeText(profile.location)
+            : "Nearby",
         website: normalizeText(profile.website) || null,
         phone: normalizeText(profile.phone) || null,
         email: normalizeText(profile.email) || null,
@@ -785,8 +791,8 @@ const createProviderCards = (params: {
         responseMinutes,
         primarySkill,
         tags: resolvedTags,
-        completedJobs: completedJobsMap.get(profile.id) ?? hashNumber(`done-${profile.id}`, 6, 180),
-        openLeads: openLeadsMap.get(profile.id) ?? fallbackOpenLeads,
+        completedJobs: completedJobsMap.has(profile.id) ? completedJobsMap.get(profile.id) ?? 0 : null,
+        openLeads: openLeadsMap.has(profile.id) ? openLeadsMap.get(profile.id) ?? 0 : null,
         profileCompletion,
         rankScore,
         joinedAt: profile.created_at || null,
@@ -804,7 +810,8 @@ const createProviderCards = (params: {
         trustBlurb,
         searchDocument,
       };
-    });
+    })
+    .filter((card): card is ProviderCardModel => Boolean(card));
 
   cards.sort((left, right) => right.rankScore - left.rankScore || left.distanceKm - right.distanceKm);
   return cards;
@@ -826,13 +833,6 @@ export default function PeoplePage() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [viewerCenter, setViewerCenter] = useState<{ lat: number; lng: number } | null>(null);
 
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activePill, setActivePill] = useState<PeopleFilterPill>("All");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [sortBy, setSortBy] = useState<PeopleSortOption>("Most relevant");
-  const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
-
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [mobileConnectionsOpen, setMobileConnectionsOpen] = useState(false);
@@ -846,14 +846,13 @@ export default function PeoplePage() {
   const [savingCardIds, setSavingCardIds] = useState<Set<string>>(new Set());
   const [sharingCardIds, setSharingCardIds] = useState<Set<string>>(new Set());
 
-  const [deepLinkContext] = useState<{ providerId: string | null; query: string }>(() => {
+  const [deepLinkContext] = useState<{ providerId: string | null }>(() => {
     if (typeof window === "undefined") {
-      return { providerId: null, query: "" };
+      return { providerId: null };
     }
     const params = new URLSearchParams(window.location.search);
     return {
       providerId: params.get("provider"),
-      query: params.get("q") || params.get("context_audience") || params.get("context_title") || "",
     };
   });
 
@@ -871,21 +870,9 @@ export default function PeoplePage() {
   } = useConnectionRequests();
 
   useEffect(() => {
-    if (!deepLinkContext.query) return;
-    setSearchInput(deepLinkContext.query);
-  }, [deepLinkContext.query]);
-
-  useEffect(() => {
     if (!connectionViewerId) return;
     setCurrentUserId((previous) => previous || connectionViewerId);
   }, [connectionViewerId]);
-
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
-    }, SEARCH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timerId);
-  }, [searchInput]);
 
   useEffect(() => {
     if (!noticeBanner) return;
@@ -1351,79 +1338,30 @@ export default function PeoplePage() {
     [onlineUserIds]
   );
 
-  const categoryOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          providers
-            .flatMap((provider) => provider.offerings.map((offering) => offering.category))
-            .concat(providers.flatMap((provider) => provider.tags))
-            .filter(Boolean)
-        )
-      )
-        .map((value) => normalizeText(value))
-        .filter(Boolean)
-        .sort((left, right) => left.localeCompare(right)),
-    [providers]
-  );
-
-  const filteredProviders = useMemo(() => {
-    const query = debouncedSearch.toLowerCase();
+  const discoveryProviders = useMemo(() => {
     const presenceWeight = (tone: PresenceTone) => (tone === "online" ? 2 : tone === "away" ? 1 : 0);
 
-    const filtered = providers
-      .filter((provider) => provider.distanceKm <= radiusKm)
-      .filter((provider) => (activeCategory === "All" ? true : provider.searchDocument.includes(activeCategory.toLowerCase())))
-      .filter((provider) => {
-        if (!query) return true;
-        return provider.searchDocument.includes(query);
-      })
-      .filter((provider) => {
-        if (activePill === "All") return true;
-        if (activePill === "Nearby") return provider.distanceKm <= Math.min(5, radiusKm);
-        if (activePill === "Available Now") return getPresenceTone(provider) === "online";
-        if (activePill === "Verified") return provider.verified;
-        if (activePill === "Top Rated") return provider.rating >= 4.7 && provider.reviews >= 2;
-        return isNewProvider(provider.joinedAt);
-      });
-
-    if (sortBy === "Distance") {
-      filtered.sort((left, right) => left.distanceKm - right.distanceKm || right.rankScore - left.rankScore);
-    } else if (sortBy === "Rating") {
-      filtered.sort((left, right) => right.rating - left.rating || right.reviews - left.reviews);
-    } else if (sortBy === "Newest") {
-      filtered.sort((left, right) => (right.joinedAt || "").localeCompare(left.joinedAt || ""));
-    } else if (sortBy === "Online first") {
-      filtered.sort((left, right) => {
-        const leftPresence = presenceWeight(getPresenceTone(left));
-        const rightPresence = presenceWeight(getPresenceTone(right));
-        return rightPresence - leftPresence || left.responseMinutes - right.responseMinutes;
-      });
-    } else {
-      filtered.sort((left, right) => {
-        const leftPresence = presenceWeight(getPresenceTone(left));
-        const rightPresence = presenceWeight(getPresenceTone(right));
-        return right.rankScore - left.rankScore || rightPresence - leftPresence || left.distanceKm - right.distanceKm;
-      });
-    }
-
-    return filtered;
-  }, [activeCategory, activePill, debouncedSearch, getPresenceTone, providers, radiusKm, sortBy]);
+    return [...providers].sort((left, right) => {
+      const leftPresence = presenceWeight(getPresenceTone(left));
+      const rightPresence = presenceWeight(getPresenceTone(right));
+      return right.rankScore - left.rankScore || rightPresence - leftPresence || left.distanceKm - right.distanceKm;
+    });
+  }, [getPresenceTone, providers]);
 
   const visibleProviders = useMemo(
-    () => filteredProviders.slice(0, Math.max(PAGE_SIZE, visibleCount)),
-    [filteredProviders, visibleCount]
+    () => discoveryProviders.slice(0, Math.max(PAGE_SIZE, visibleCount)),
+    [discoveryProviders, visibleCount]
   );
-  const hasMoreProviders = visibleCount < filteredProviders.length;
+  const hasMoreProviders = visibleCount < discoveryProviders.length;
 
   useEffect(() => {
     if (loadMoreTimerRef.current) {
       window.clearTimeout(loadMoreTimerRef.current);
       loadMoreTimerRef.current = null;
     }
-    setVisibleCount(Math.min(PAGE_SIZE, filteredProviders.length));
+    setVisibleCount(Math.min(PAGE_SIZE, discoveryProviders.length));
     setLoadingMore(false);
-  }, [filteredProviders.length]);
+  }, [discoveryProviders.length]);
 
   useEffect(() => {
     return () => {
@@ -1448,7 +1386,7 @@ export default function PeoplePage() {
         }
 
         loadMoreTimerRef.current = window.setTimeout(() => {
-          setVisibleCount((previous) => Math.min(previous + PAGE_SIZE, filteredProviders.length));
+          setVisibleCount((previous) => Math.min(previous + PAGE_SIZE, discoveryProviders.length));
           setLoadingMore(false);
           loadMoreTimerRef.current = null;
         }, 220);
@@ -1458,7 +1396,7 @@ export default function PeoplePage() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [filteredProviders.length, hasMoreProviders, loading, loadingMore]);
+  }, [discoveryProviders.length, hasMoreProviders, loading, loadingMore]);
 
   useEffect(() => {
     if (!visibleProviders.length) {
@@ -1535,7 +1473,10 @@ export default function PeoplePage() {
         role: provider.role,
         presenceTone: getPresenceTone(provider),
         distanceLabel: `${provider.distanceKm.toFixed(1)} km away`,
-        ratingLabel: `${provider.rating.toFixed(1)} • ${provider.reviews} reviews`,
+        ratingLabel:
+          provider.rating !== null && provider.reviews > 0
+            ? `${provider.rating.toFixed(1)} | ${provider.reviews} reviews`
+            : "No reviews yet",
         tagline: provider.trustBlurb,
       });
     });
@@ -1686,8 +1627,8 @@ export default function PeoplePage() {
     [getPresenceTone, providers]
   );
   const nearbyCount = useMemo(
-    () => providers.filter((provider) => provider.distanceKm <= radiusKm).length,
-    [providers, radiusKm]
+    () => providers.filter((provider) => provider.distanceKm <= 5).length,
+    [providers]
   );
   const coveragePercent = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
 
@@ -1710,19 +1651,20 @@ export default function PeoplePage() {
       })),
     [visibleProviders]
   );
-
-  const activeFilterCount =
-    Number(searchInput.trim().length > 0) +
-    Number(activePill !== "All") +
-    Number(activeCategory !== "All") +
-    Number(sortBy !== "Most relevant") +
-    Number(radiusKm !== DEFAULT_RADIUS_KM);
-
-  const hasSearchOrFilterIntent =
-    Boolean(searchInput.trim()) ||
-    activePill !== "All" ||
-    activeCategory !== "All" ||
-    radiusKm !== DEFAULT_RADIUS_KM;
+  const pendingConnectionsCount = connectionBuckets.incoming.length;
+  const connectionsPanelProps = {
+    incoming: connectionBuckets.incoming,
+    outgoing: connectionBuckets.outgoing,
+    accepted: connectionBuckets.accepted,
+    providerPreviewMap,
+    busyRequestId: busyConnectionRequestId,
+    busyActionKey,
+    onAccept: (requestId: string) => void handleConnectionDecision(requestId, "accepted"),
+    onDecline: (requestId: string) => void handleConnectionDecision(requestId, "rejected"),
+    onCancel: (requestId: string) => void handleConnectionDecision(requestId, "cancelled"),
+    onChat: (userId: string) => void openChatThread(userId),
+    chatBusyUserId,
+  };
   return (
     <div
       className="mx-auto w-full max-w-[1540px] space-y-5 pb-10"
@@ -1778,22 +1720,45 @@ export default function PeoplePage() {
         </div>
       )}
 
-      <PeopleSearchFilters
-        search={searchInput}
-        onSearchChange={setSearchInput}
-        onClearSearch={() => setSearchInput("")}
-        activePill={activePill}
-        onActivePillChange={setActivePill}
-        activeCategory={activeCategory}
-        onActiveCategoryChange={setActiveCategory}
-        categoryOptions={categoryOptions}
-        radiusKm={radiusKm}
-        onRadiusChange={setRadiusKm}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        activeFilterCount={activeFilterCount}
-        resultsCount={filteredProviders.length}
-      />
+      <div className="2xl:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileConnectionsOpen((previous) => !previous)}
+          className="inline-flex w-full items-center justify-between rounded-[1.7rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 shadow-sm"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Bell className="h-4 w-4 text-slate-600" />
+            Connections
+            {pendingConnectionsCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                {pendingConnectionsCount}
+              </span>
+            )}
+          </span>
+          <ChevronDown className={`h-4 w-4 transition ${mobileConnectionsOpen ? "rotate-180" : ""}`} />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {mobileConnectionsOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3"
+            >
+              <ConnectionsPanel {...connectionsPanelProps} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="hidden 2xl:flex 2xl:justify-end">
+        <div className="w-full max-w-[380px]">
+          <ConnectionsPanel {...connectionsPanelProps} />
+        </div>
+      </div>
 
       <PeopleMapPanel
         items={mapItems}
@@ -1805,7 +1770,7 @@ export default function PeoplePage() {
         onOpenTrustPanel={setTrustPanelProviderId}
       />
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-5">
         <main className="space-y-6">
           {loading ? (
             <ProviderCardSkeleton count={3} />
@@ -1828,33 +1793,21 @@ export default function PeoplePage() {
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>
-          ) : !filteredProviders.length ? (
+          ) : !discoveryProviders.length ? (
             <div className="rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-sm">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(14,165,164,0.12),rgba(103,232,249,0.18))] text-[var(--brand-700)]">
-                {hasSearchOrFilterIntent ? <SearchX className="h-7 w-7" /> : <Compass className="h-7 w-7" />}
+                <Compass className="h-7 w-7" />
               </div>
-              <p className="mt-4 text-xl font-semibold text-slate-900">
-                {hasSearchOrFilterIntent ? "No profiles match this search yet" : "No nearby providers inside this radius"}
-              </p>
+              <p className="mt-4 text-xl font-semibold text-slate-900">No providers found yet</p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                {hasSearchOrFilterIntent
-                  ? "Try a broader search, switch categories, or relax one of the discovery filters."
-                  : "Expand your radius to surface more local professionals and business profiles."}
+                Published people and business profiles will appear here as they become available.
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  if (hasSearchOrFilterIntent) {
-                    setSearchInput("");
-                    setActivePill("All");
-                    setActiveCategory("All");
-                    setSortBy("Most relevant");
-                  }
-                  setRadiusKm((previous) => Math.min(50, previous + 10));
-                }}
+                onClick={() => void loadProviders(false)}
                 className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
               >
-                {hasSearchOrFilterIntent ? "Clear filters and widen radius" : "Expand your radius"}
+                Refresh people
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>
@@ -1936,70 +1889,7 @@ export default function PeoplePage() {
               )}
             </>
           )}
-
-          <div className="2xl:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileConnectionsOpen((previous) => !previous)}
-              className="inline-flex w-full items-center justify-between rounded-[1.7rem] border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 shadow-sm"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Bell className="h-4 w-4 text-slate-600" />
-                Connections
-                {connectionBuckets.incoming.length > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-                    {connectionBuckets.incoming.length}
-                  </span>
-                )}
-              </span>
-              <ChevronDown className={`h-4 w-4 transition ${mobileConnectionsOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            <AnimatePresence initial={false}>
-              {mobileConnectionsOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18 }}
-                  className="mt-3"
-                >
-                  <ConnectionsPanel
-                    incoming={connectionBuckets.incoming}
-                    outgoing={connectionBuckets.outgoing}
-                    accepted={connectionBuckets.accepted}
-                    providerPreviewMap={providerPreviewMap}
-                    busyRequestId={busyConnectionRequestId}
-                    busyActionKey={busyActionKey}
-                    onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
-                    onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
-                    onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
-                    onChat={(userId) => void openChatThread(userId)}
-                    chatBusyUserId={chatBusyUserId}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </main>
-
-        <aside className="hidden 2xl:block">
-          <ConnectionsPanel
-            incoming={connectionBuckets.incoming}
-            outgoing={connectionBuckets.outgoing}
-            accepted={connectionBuckets.accepted}
-            providerPreviewMap={providerPreviewMap}
-            busyRequestId={busyConnectionRequestId}
-            busyActionKey={busyActionKey}
-            onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
-            onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
-            onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
-            onChat={(userId) => void openChatThread(userId)}
-            chatBusyUserId={chatBusyUserId}
-            className="sticky top-3"
-          />
-        </aside>
       </div>
 
       <AnimatePresence>

@@ -56,7 +56,7 @@ export default function PeopleMapPanel({
 }: Props) {
   return (
     <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 p-4 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_340px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(0,1.15fr)_340px]">
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -125,12 +125,18 @@ export default function PeopleMapPanel({
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Trust</p>
                   <p className="mt-2 inline-flex items-center gap-2 font-semibold text-slate-900">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    {activeProvider.rating.toFixed(1)} ({activeProvider.reviews})
+                    <Star
+                      className={`h-4 w-4 ${
+                        activeProvider.rating !== null ? "fill-amber-400 text-amber-400" : "text-amber-500"
+                      }`}
+                    />
+                    {activeProvider.rating !== null && activeProvider.reviews > 0
+                      ? `${activeProvider.rating.toFixed(1)} (${activeProvider.reviews})`
+                      : "No reviews yet"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
@@ -144,7 +150,7 @@ export default function PeopleMapPanel({
                 <p className="mt-1 text-sm text-slate-500">{activeProvider.recentActivityLabel}</p>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => onJumpToProvider(activeProvider.id)}

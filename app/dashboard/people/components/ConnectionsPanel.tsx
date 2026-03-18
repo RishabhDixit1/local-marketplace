@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Check, Clock3, MessageCircle, UserCheck, UserPlus, X } from "lucide-react";
 import type { ConnectionActionKey, ConnectionBucketEntry } from "@/lib/connectionState";
+import { createAvatarFallback } from "@/lib/avatarFallback";
 import type { ProviderPreview } from "../types";
 
 type PanelTab = "incoming" | "outgoing" | "accepted";
@@ -38,12 +39,12 @@ const formatWhen = (value: string | null) => {
 
 const fallbackPreview = (userId: string): ProviderPreview => ({
   id: userId,
-  name: `Member ${userId.slice(0, 4).toUpperCase()}`,
-  avatar: `https://i.pravatar.cc/120?u=${encodeURIComponent(userId)}`,
-  role: "Local member",
+  name: "ServiQ member",
+  avatar: createAvatarFallback({ label: "ServiQ member", seed: userId }),
+  role: "Community member",
   presenceTone: "offline",
   distanceLabel: "Nearby",
-  ratingLabel: "New connection",
+  ratingLabel: "Profile preview unavailable",
   tagline: "Visible in your ServiQ network.",
 });
 
@@ -130,7 +131,7 @@ export default function ConnectionsPanel({
         <div className="mt-4 rounded-[1.6rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-7 text-center">
           <p className="text-base font-semibold text-slate-700">No connections yet</p>
           <p className="mt-1 text-xs text-slate-500">
-            You haven&apos;t connected with anyone yet - start by messaging a nearby provider.
+            You haven&apos;t connected with anyone yet. Start with a nearby profile you trust.
           </p>
         </div>
       ) : !currentRows.length ? (
