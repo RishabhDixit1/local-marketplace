@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
   Filter,
   Loader2,
   MapPin,
@@ -19,6 +20,8 @@ import {
   RotateCcw,
   Share2,
   SlidersHorizontal,
+  UserCheck,
+  UserPlus,
   X,
   Zap,
 } from "lucide-react";
@@ -28,6 +31,7 @@ import RouteObservability from "@/app/components/RouteObservability";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import { supabase } from "@/lib/supabase";
 import type { CommunityFeedResponse } from "@/lib/api/community";
+import type { ConnectionState } from "@/lib/connectionState";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
@@ -38,7 +42,11 @@ import {
   estimateResponseMinutes,
 } from "@/lib/business";
 import { defaultMarketCoordinates, distanceBetweenCoordinatesKm, getBrowserCoordinates, resolveCoordinates } from "@/lib/geo";
+import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { createAvatarFallback } from "@/lib/avatarFallback";
+import { looksLikePlaceholderText, toDisplayText as cleanDisplayText } from "@/lib/contentQuality";
+import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 
 const ProviderTrustPanel = dynamic(
@@ -63,7 +71,7 @@ const MIN_SOFT_REFRESH_GAP_MS = 5000;
 const FILTER_STORAGE_KEY = "serviq-posts-filters-v2";
 
 type ListingType = "service" | "product" | "demand";
-type ListingSource = "service_listing" | "product_listing" | "post" | "help_request" | "demo";
+type ListingSource = "service_listing" | "product_listing" | "post" | "help_request";
 
 type FeedMedia = {
   mimeType: string;
@@ -96,7 +104,6 @@ type Listing = {
   businessSlug?: string;
   status: string;
   acceptedProviderId: string | null;
-  isDemo?: boolean;
 };
 
 type DisplayListing = Listing & {
@@ -156,6 +163,7 @@ type PostRow = {
   category: string;
   status: string;
   state: string;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -173,6 +181,7 @@ type HelpRequestRow = {
   latitude: number | null;
   longitude: number | null;
   status: string;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -288,6 +297,23 @@ const parsePostText = (rawText: string) => {
   return { title, description, budget, category, location, kind, media };
 };
 
+const mediaFromComposerMetadata = (value: unknown): FeedMedia[] => {
+  const metadata = readMarketplaceComposerMetadata(value);
+  if (!metadata) return [];
+
+  return metadata.media
+    .map((entry) => {
+      const resolvedUrl = resolvePostMediaUrl(entry.url);
+      if (!resolvedUrl) return null;
+
+      return {
+        mimeType: entry.type,
+        url: resolvedUrl,
+      } satisfies FeedMedia;
+    })
+    .filter((entry): entry is FeedMedia => !!entry);
+};
+
 const formatRelativeAge = (value?: string) => {
   const createdAtMs = parseDateMs(value);
   if (!createdAtMs) return "Recently posted";
@@ -302,13 +328,28 @@ const formatRelativeAge = (value?: string) => {
   return `${days}d ago`;
 };
 
-const toDisplayText = (value: string | undefined, fallback: string) => {
-  const normalized = (value || "").replace(/\s+/g, " ").trim();
-  if (!normalized) return fallback;
-  if (/^[a-z0-9]{10,}$/i.test(normalized)) return fallback;
-  if (/^(.)\1{4,}$/i.test(normalized)) return fallback;
-  return normalized;
-};
+const toDisplayText = (value: string | undefined, fallback: string) => cleanDisplayText(value, fallback);
+
+const humanizeHandle = (value: string) =>
+  value
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const fallbackCreatorLabel = (type: ListingType) =>
+  type === "demand" ? "Nearby requester" : type === "product" ? "Local seller" : "Local provider";
+
+const resolveCreatorDisplayName = (value: string | undefined, type: ListingType) =>
+  toDisplayText(value, fallbackCreatorLabel(type));
+
+const isGeneratedAvatar = (value: string | undefined) => (value || "").startsWith("data:image/svg+xml");
+
+const isWeakListingContent = (title: string | undefined, description: string | undefined) =>
+  looksLikePlaceholderText(title) && (!description || looksLikePlaceholderText(description));
 
 const listingFingerprint = (item: Listing) => {
   const normalizedTitle = (item.title || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim().slice(0, 56);
@@ -330,7 +371,6 @@ const sourcePriority: Record<ListingSource, number> = {
   post: 4,
   service_listing: 3,
   product_listing: 3,
-  demo: 1,
 };
 
 const pickPreferredListing = (current: Listing, incoming: Listing) => {
@@ -405,222 +445,6 @@ const formatPriceLabel = (item: Pick<Listing, "price" | "type">) => {
   if (item.price > 0) return `INR ${Math.round(item.price).toLocaleString("en-IN")}`;
   if (item.type === "demand") return "Budget shared in chat";
   return "Price on request";
-};
-
-const buildDemoFeed = (): Listing[] => {
-  const now = Date.now();
-  const baseLat = 28.6139;
-  const baseLng = 77.209;
-  const demoRows: Array<Omit<Listing, "id" | "lat" | "lng" | "rankScore">> = [
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-requester-1",
-      type: "demand",
-      title: "Need urgent electrician for switchboard issue",
-      description: "Frequent sparks in kitchen switchboard. Need support today.",
-      category: "Electrical",
-      price: 1800,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-1",
-      creatorName: "Amit P",
-      locationLabel: "Indiranagar",
-      distanceKm: 1.8,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=1200&q=80" }],
-      createdAt: new Date(now - 30 * 60 * 1000).toISOString(),
-      urgent: true,
-      profileCompletion: 78,
-      responseMinutes: 8,
-      verificationStatus: "pending",
-      businessSlug: createBusinessSlug("Amit P", "demo-requester-1"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-requester-2",
-      type: "demand",
-      title: "Looking for same-day laptop repair",
-      description: "Laptop charging port stopped working. Need doorstep repair.",
-      category: "Repair",
-      price: 2400,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-2",
-      creatorName: "Ria M",
-      locationLabel: "Koramangala",
-      distanceKm: 2.9,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=80" }],
-      createdAt: new Date(now - 70 * 60 * 1000).toISOString(),
-      urgent: true,
-      profileCompletion: 82,
-      responseMinutes: 11,
-      verificationStatus: "pending",
-      businessSlug: createBusinessSlug("Ria M", "demo-requester-2"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-provider-1",
-      type: "service",
-      title: "Verified AC servicing package",
-      description: "Filter cleaning, gas top-up, and coil care with 30-day support.",
-      category: "HVAC",
-      price: 1499,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-provider-1",
-      creatorName: "ChillTech Services",
-      locationLabel: "HSR Layout",
-      distanceKm: 3.3,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80" }],
-      createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
-      urgent: false,
-      profileCompletion: 91,
-      responseMinutes: 14,
-      verificationStatus: "verified",
-      businessSlug: createBusinessSlug("ChillTech Services", "demo-provider-1"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-seller-1",
-      type: "product",
-      title: "Power tools combo set",
-      description: "Drill, precision bits, safety gloves, and carrying case.",
-      category: "Tools",
-      price: 3299,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-seller-1",
-      creatorName: "ToolHub Local",
-      locationLabel: "Whitefield",
-      distanceKm: 6.4,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1200&q=80" }],
-      createdAt: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
-      urgent: false,
-      profileCompletion: 88,
-      responseMinutes: 20,
-      verificationStatus: "verified",
-      businessSlug: createBusinessSlug("ToolHub Local", "demo-seller-1"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-requester-3",
-      type: "demand",
-      title: "Need quick home deep-clean support",
-      description: "1BHK deep clean before guests arrive this evening.",
-      category: "Cleaning",
-      price: 2200,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-3",
-      creatorName: "Megha S",
-      locationLabel: "BTM Layout",
-      distanceKm: 4.1,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1200&q=80" }],
-      createdAt: new Date(now - 110 * 60 * 1000).toISOString(),
-      urgent: true,
-      profileCompletion: 72,
-      responseMinutes: 10,
-      verificationStatus: "unclaimed",
-      businessSlug: createBusinessSlug("Megha S", "demo-requester-3"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-provider-2",
-      type: "service",
-      title: "Doorstep car wash express",
-      description: "Interior and exterior wash within 45 minutes.",
-      category: "Car Care",
-      price: 799,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-provider-2",
-      creatorName: "SparkleWash",
-      locationLabel: "Jayanagar",
-      distanceKm: 5.2,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200&q=80" }],
-      createdAt: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
-      urgent: false,
-      profileCompletion: 85,
-      responseMinutes: 16,
-      verificationStatus: "verified",
-      businessSlug: createBusinessSlug("SparkleWash", "demo-provider-2"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-requester-4",
-      type: "demand",
-      title: "Need photographer for cafe launch",
-      description: "Candid plus short-form reels coverage for opening day.",
-      category: "Photography",
-      price: 12000,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-requester-4",
-      creatorName: "Cafe Bloom",
-      locationLabel: "MG Road",
-      distanceKm: 2.3,
-      media: [
-        { mimeType: "video/mp4", url: "/hero/market-live-loop.mp4" },
-        { mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=1200&q=80" },
-      ],
-      createdAt: new Date(now - 12 * 60 * 60 * 1000).toISOString(),
-      urgent: true,
-      profileCompletion: 81,
-      responseMinutes: 13,
-      verificationStatus: "pending",
-      businessSlug: createBusinessSlug("Cafe Bloom", "demo-requester-4"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-    {
-      source: "demo",
-      helpRequestId: null,
-      providerId: "demo-seller-2",
-      type: "product",
-      title: "Fresh farm produce bundle",
-      description: "Weekly produce basket with early-morning delivery.",
-      category: "Groceries",
-      price: 499,
-      avatarUrl: "https://i.pravatar.cc/150?u=demo-seller-2",
-      creatorName: "FarmCart Local",
-      locationLabel: "Sarjapur",
-      distanceKm: 7.1,
-      media: [{ mimeType: "image/jpeg", url: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&q=80" }],
-      createdAt: new Date(now - 14 * 60 * 60 * 1000).toISOString(),
-      urgent: false,
-      profileCompletion: 84,
-      responseMinutes: 24,
-      verificationStatus: "verified",
-      businessSlug: createBusinessSlug("FarmCart Local", "demo-seller-2"),
-      status: "open",
-      acceptedProviderId: null,
-      isDemo: true,
-    },
-  ];
-
-  return demoRows.map((row, index) => ({
-    ...row,
-    id: `demo-${index + 1}`,
-    lat: baseLat + index * 0.013,
-    lng: baseLng + index * 0.011,
-    rankScore: calculateLocalRankScore({
-      distanceKm: row.distanceKm,
-      responseMinutes: row.responseMinutes,
-      rating: row.verificationStatus === "verified" ? 4.8 : 4.4,
-      profileCompletion: row.profileCompletion,
-    }),
-  }));
 };
 
 const buildFeedCardId = (item: Listing | DisplayListing) => `dashboard:${item.source}:${item.type}:${item.id}`;
@@ -832,7 +656,7 @@ const CLOSED_STATUSES = new Set([
 
 const isClosedStatus = (status?: string | null) => CLOSED_STATUSES.has((status || "").trim().toLowerCase());
 
-const FALLBACK_AVATAR = "https://i.pravatar.cc/150?u=serviq-default";
+const FALLBACK_AVATAR = createAvatarFallback({ label: "ServiQ", seed: "serviq-dashboard" });
 
 const getListingOwnerIdFromPost = (row: FlexibleRow) =>
   stringFromRow(row, ["user_id", "provider_id", "created_by", "author_id", "requester_id", "owner_id"], "");
@@ -876,6 +700,18 @@ export default function MarketplacePage() {
   const [acceptTarget, setAcceptTarget] = useState<DisplayListing | null>(null);
 
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
+
+  const {
+    viewerId: connectionViewerId,
+    busyTargetId: busyConnectionTargetId,
+    busyRequestId: busyConnectionRequestId,
+    busyActionKey,
+    schemaReady: connectionSchemaReady,
+    schemaMessage: connectionSchemaMessage,
+    getConnectionState,
+    sendRequest,
+    respond,
+  } = useConnectionRequests();
 
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const toastTimersRef = useRef<Map<string, number>>(new Map());
@@ -956,6 +792,10 @@ export default function MarketplacePage() {
 
   const ensureViewerId = useCallback(async () => {
     if (viewerId) return viewerId;
+    if (connectionViewerId) {
+      setViewerId(connectionViewerId);
+      return connectionViewerId;
+    }
 
     const {
       data: { user },
@@ -968,7 +808,7 @@ export default function MarketplacePage() {
 
     setViewerId(user.id);
     return user.id;
-  }, [viewerId]);
+  }, [connectionViewerId, viewerId]);
 
   const buildFeedContextPath = useCallback((item: DisplayListing) => {
     const params = new URLSearchParams({
@@ -1180,6 +1020,15 @@ export default function MarketplacePage() {
           reviewCount,
         });
 
+        const explicitProfileName = toDisplayText(
+          stringFromRow(profile || {}, ["name", "full_name", "display_name"], ""),
+          ""
+        );
+        const emailPrefix = humanizeHandle((stringFromRow(profile || {}, ["email"], "").split("@")[0] || "").trim());
+        const fallbackProfileName = toDisplayText(emailPrefix, "");
+        const resolvedProfileName = explicitProfileName || fallbackProfileName;
+        const avatarLabel = resolvedProfileName || stringFromRow(profile || {}, ["role"], "") || "ServiQ";
+
         return {
           profile,
           profileCompletion,
@@ -1187,10 +1036,15 @@ export default function MarketplacePage() {
           reviewCount,
           responseMinutes,
           verificationStatus,
-          name: stringFromRow(profile || {}, ["name", "full_name", "display_name"], "Local member"),
-          avatarUrl: resolveProfileAvatarUrl(stringFromRow(profile || {}, ["avatar_url", "avatar", "image_url"], "")) || FALLBACK_AVATAR,
+          name: resolvedProfileName,
+          avatarUrl:
+            resolveProfileAvatarUrl(stringFromRow(profile || {}, ["avatar_url", "avatar", "image_url"], "")) ||
+            createAvatarFallback({
+              label: avatarLabel,
+              seed: providerId,
+            }),
           locationLabel: stringFromRow(profile || {}, ["location", "city"], "Nearby"),
-          businessSlug: createBusinessSlug(stringFromRow(profile || {}, ["name", "full_name", "display_name"], "Local member"), providerId),
+          businessSlug: createBusinessSlug(resolvedProfileName || avatarLabel || "ServiQ member", providerId),
         };
       };
 
@@ -1215,6 +1069,8 @@ export default function MarketplacePage() {
         const category = stringFromRow(row, ["category", "service_category", "type"], "Service");
         const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
         const price = numberFromRow(row, ["price", "amount", "rate"], 0);
+
+        if (isWeakListingContent(title, description)) return;
 
         nextListings.push({
           id: serviceRow.id,
@@ -1270,6 +1126,8 @@ export default function MarketplacePage() {
         const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
         const price = numberFromRow(row, ["price", "amount", "mrp"], 0);
 
+        if (isWeakListingContent(title, description)) return;
+
         nextListings.push({
           id: productRow.id,
           source: "product_listing",
@@ -1310,10 +1168,14 @@ export default function MarketplacePage() {
         if (!providerId) return;
 
         const profileMeta = resolveProfileMeta(providerId);
+        const composerMetadata = readMarketplaceComposerMetadata(postRow.metadata);
         const parsedFromText = parsePostText(stringFromRow(row, ["text", "content", "description", "title"], ""));
-        const type = normalizeMarketplacePostKind(stringFromRow(row, ["type", "post_type"], parsedFromText.kind));
+        const type = normalizeMarketplacePostKind(
+          stringFromRow(row, ["type", "post_type"], composerMetadata?.postType || parsedFromText.kind)
+        );
 
         const locationLabel =
+          composerMetadata?.locationLabel ||
           parsedFromText.location ||
           stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
 
@@ -1325,26 +1187,33 @@ export default function MarketplacePage() {
 
         const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
         const title =
+          composerMetadata?.title ||
           stringFromRow(row, ["title"], "") ||
           parsedFromText.title ||
           (type === "demand" ? "Need local support" : "Marketplace update");
         const description =
-          stringFromRow(row, ["description", "content", "text"], "") ||
+          composerMetadata?.details ||
           parsedFromText.description ||
+          stringFromRow(row, ["description", "content"], "") ||
           title;
         const category =
+          composerMetadata?.category ||
           stringFromRow(row, ["category"], "") ||
           parsedFromText.category ||
           (type === "demand" ? "Need" : type === "service" ? "Service" : "Product");
         const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
         const status = stringFromRow(row, ["status", "state"], "open");
         if (isClosedStatus(status)) return;
+        if (isWeakListingContent(title, description)) return;
 
         const urgent =
           type === "demand" &&
           /urgent|asap|immediate|today|quick|critical|emergency/i.test(`${title} ${description} ${status}`);
 
-        const parsedBudget = parsedFromText.budget > 0 ? parsedFromText.budget : 0;
+        const parsedBudget =
+          (composerMetadata?.budget && composerMetadata.budget > 0 ? composerMetadata.budget : null) ??
+          (parsedFromText.budget > 0 ? parsedFromText.budget : 0);
+        const metadataMedia = mediaFromComposerMetadata(postRow.metadata);
 
         nextListings.push({
           id: postRow.id,
@@ -1362,7 +1231,7 @@ export default function MarketplacePage() {
           distanceKm,
           lat: coordinates.latitude,
           lng: coordinates.longitude,
-          media: parsedFromText.media,
+          media: metadataMedia.length ? metadataMedia : parsedFromText.media,
           createdAt,
           urgent,
           rankScore: calculateLocalRankScore({
@@ -1386,18 +1255,22 @@ export default function MarketplacePage() {
         if (!providerId) return;
 
         const profileMeta = resolveProfileMeta(providerId);
-        const title = stringFromRow(row, ["title", "name"], "Need local support");
-        const description = stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
-        const category = stringFromRow(row, ["category"], "Need");
+        const composerMetadata = readMarketplaceComposerMetadata(helpRow.metadata);
+        const title = composerMetadata?.title || stringFromRow(row, ["title", "name"], "Need local support");
+        const description =
+          composerMetadata?.details || stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
+        const category = composerMetadata?.category || stringFromRow(row, ["category"], "Need");
         const budgetMax = numberFromRow(row, ["budget_max"], 0);
         const budgetMin = numberFromRow(row, ["budget_min", "budget"], 0);
         const createdAt = stringFromRow(row, ["created_at"], new Date().toISOString());
         const status = stringFromRow(row, ["status"], "open");
 
         if (isClosedStatus(status)) return;
+        if (isWeakListingContent(title, description)) return;
 
         const locationLabel =
           stringFromRow(row, ["location_label", "location"], "") ||
+          composerMetadata?.locationLabel ||
           profileMeta.locationLabel ||
           "Nearby";
 
@@ -1411,6 +1284,7 @@ export default function MarketplacePage() {
         const urgency = stringFromRow(row, ["urgency"], "");
         const urgent = /urgent|asap|immediate|critical|high|emergency/i.test(urgency || `${title} ${description}`);
         const acceptedProviderId = stringFromRow(row, ["accepted_provider_id"], "") || null;
+        const metadataMedia = mediaFromComposerMetadata(helpRow.metadata);
 
         nextListings.push({
           id: helpRow.id,
@@ -1428,7 +1302,7 @@ export default function MarketplacePage() {
           distanceKm,
           lat: coordinates.latitude,
           lng: coordinates.longitude,
-          media: [],
+          media: metadataMedia,
           createdAt,
           urgent,
           rankScore: calculateLocalRankScore({
@@ -1503,7 +1377,7 @@ export default function MarketplacePage() {
         setViewerId(payload.currentUserId || null);
 
         const nextFeed = buildListingsFromSnapshot(payload);
-        setFeed(nextFeed.length ? nextFeed : buildDemoFeed());
+        setFeed(nextFeed);
       } catch (error) {
         if (isAbortLikeError(error)) return;
 
@@ -1514,7 +1388,7 @@ export default function MarketplacePage() {
           pushToast("error", "Network issue detected. Showing the latest available posts.");
         }
 
-        setFeed((current) => (current.length ? current : buildDemoFeed()));
+        setFeed((current) => current);
       } finally {
         if (fetchAbortRef.current === controller) {
           fetchAbortRef.current = null;
@@ -1744,14 +1618,19 @@ export default function MarketplacePage() {
   const openChatThread = useCallback(
     async (item: DisplayListing) => {
       const ownerId = item.providerId?.trim() || "";
-      if (!ownerId || ownerId.startsWith("demo-") || !isUUIDLike(ownerId)) {
+      if (!ownerId || !isUUIDLike(ownerId)) {
         pushToast("info", "Chat is available only for live accounts.");
         return;
       }
 
-      setChatOpeningProviderId(ownerId);
-
       try {
+        const state = getConnectionState(ownerId);
+        if (state.kind !== "accepted") {
+          pushToast("info", "Connect with this member first to start a chat.");
+          return;
+        }
+
+        setChatOpeningProviderId(ownerId);
         const activeViewerId = await ensureViewerId();
         if (activeViewerId === ownerId) {
           pushToast("info", "This is your own post.");
@@ -1766,7 +1645,64 @@ export default function MarketplacePage() {
         setChatOpeningProviderId((current) => (current === ownerId ? null : current));
       }
     },
-    [ensureViewerId, pushToast, router]
+    [ensureViewerId, getConnectionState, pushToast, router]
+  );
+
+  const handleListingConnectionAction = useCallback(
+    async (item: DisplayListing) => {
+      const ownerId = item.providerId?.trim() || "";
+      if (!ownerId || !isUUIDLike(ownerId)) {
+        pushToast("info", "Connection actions are available only for live member profiles.");
+        return;
+      }
+
+      try {
+        if (!connectionSchemaReady) {
+          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
+        }
+
+        const activeViewerId = await ensureViewerId();
+        if (activeViewerId === ownerId) {
+          pushToast("info", "This is your own post.");
+          return;
+        }
+
+        const state = getConnectionState(ownerId);
+        if (state.kind === "incoming_pending" && state.requestId) {
+          await respond(state.requestId, "accepted");
+          pushToast("success", "Connection accepted.");
+          return;
+        }
+
+        if (state.kind === "outgoing_pending") {
+          pushToast("info", "Connection request already sent.");
+          return;
+        }
+
+        if (state.kind === "accepted") {
+          pushToast("info", "You are already connected.");
+          return;
+        }
+
+        await sendRequest(ownerId);
+        pushToast("success", "Connection request sent.");
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to update connection state."));
+      }
+    },
+    [connectionSchemaMessage, connectionSchemaReady, ensureViewerId, getConnectionState, pushToast, respond, sendRequest]
+  );
+
+  const openListingProfile = useCallback(
+    (item: DisplayListing) => {
+      if (!item.businessSlug) {
+        pushToast("info", "This profile does not have a public page yet.");
+        return;
+      }
+
+      router.push(`/business/${item.businessSlug}`);
+    },
+    [pushToast, router]
   );
 
   const openAcceptDialog = useCallback(
@@ -1912,7 +1848,14 @@ export default function MarketplacePage() {
 
       const title = toDisplayText(item.title, defaultTitle);
       const description = toDisplayText(item.description, defaultDescription);
-      const creatorName = toDisplayText(item.creatorName, "Local member");
+      const creatorName = resolveCreatorDisplayName(item.creatorName, item.type);
+      const avatarUrl =
+        item.avatarUrl && !isGeneratedAvatar(item.avatarUrl)
+          ? item.avatarUrl
+          : createAvatarFallback({
+              label: creatorName,
+              seed: `${item.providerId || item.id}:${item.type}`,
+            });
 
       const distanceLabel =
         item.distanceKm > 0
@@ -1921,6 +1864,7 @@ export default function MarketplacePage() {
 
       return {
         ...item,
+        avatarUrl,
         displayTitle: title,
         displayDescription: description,
         displayCreator: creatorName,
@@ -2057,7 +2001,7 @@ export default function MarketplacePage() {
               <Filter size={15} />
               Feed Filters
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters((current) => !current)}
@@ -2099,7 +2043,7 @@ export default function MarketplacePage() {
                 })}
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <label className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                   <span className="font-semibold text-slate-800">Max distance</span>
                   <input
@@ -2180,16 +2124,33 @@ export default function MarketplacePage() {
             </div>
           ) : !displayFeed.length ? (
             <div className="rounded-3xl border border-slate-200 bg-white px-5 py-10 text-center shadow-sm">
-              <p className="text-lg font-semibold text-slate-900">No posts match your current filters</p>
-              <p className="mt-1 text-sm text-slate-500">Try a broader search or publish a new need for your area.</p>
+              <p className="text-lg font-semibold text-slate-900">
+                {feed.length === 0
+                  ? feedError
+                    ? "Unable to load live posts right now"
+                    : "No live posts nearby yet"
+                  : "No posts match your current filters"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {feed.length === 0
+                  ? feedError
+                    ? "Check your connection and retry. ServiQ will show live marketplace activity as soon as Supabase responds."
+                    : "Create the first service, product, or help request to start the local marketplace feed."
+                  : "Try a broader search or publish a new need for your area."}
+              </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={resetFilters}
+                  onClick={() => {
+                    resetFilters();
+                    if (feed.length === 0) {
+                      void fetchFeed(true);
+                    }
+                  }}
                   className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
                 >
                   <RotateCcw size={14} />
-                  Reset filters
+                  {feed.length === 0 ? "Refresh feed" : "Reset filters"}
                 </button>
                 <button
                   type="button"
@@ -2211,6 +2172,12 @@ export default function MarketplacePage() {
                 const isOwnListing = !!viewerId && item.providerId === viewerId;
                 const acceptedByMe = !!viewerId && item.acceptedProviderId === viewerId;
                 const acceptedByOther = !!item.acceptedProviderId && item.acceptedProviderId !== viewerId;
+                const connectionState: ConnectionState | null =
+                  !isOwnListing && isUUIDLike(item.providerId) ? getConnectionState(item.providerId) : null;
+                const connectionBusy =
+                  !!connectionState &&
+                  (busyConnectionTargetId === item.providerId ||
+                    (connectionState.requestId ? busyConnectionRequestId === connectionState.requestId : false));
                 const acceptDisabled =
                   acceptingBusy ||
                   isOwnListing ||
@@ -2232,7 +2199,19 @@ export default function MarketplacePage() {
                   : "Accept";
 
                 const chatBusy = chatOpeningProviderId === item.providerId;
+                const canOpenChat = isOwnListing || connectionState?.kind === "accepted";
                 const statusLabel = normalizeStatusLabel(item.status);
+                const connectionActionLabel =
+                  connectionState?.kind === "incoming_pending"
+                    ? "Accept"
+                    : connectionState?.kind === "outgoing_pending"
+                    ? "Request sent"
+                    : connectionState?.kind === "accepted"
+                    ? "Connected"
+                    : connectionState?.kind === "rejected" || connectionState?.kind === "cancelled"
+                    ? "Connect again"
+                    : "Connect";
+                const showConnectionAction = !isOwnListing && !item.helpRequestId;
 
                 return (
                   <motion.article
@@ -2316,60 +2295,114 @@ export default function MarketplacePage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-4 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => openAcceptDialog(item)}
-                        disabled={acceptDisabled}
-                        className={`inline-flex min-h-8 items-center justify-center gap-1 truncate rounded-xl border px-2 text-[11px] font-semibold transition ${
-                          acceptDisabled
-                            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        }`}
-                      >
-                        {acceptingBusy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                        {acceptLabel}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleShareListing(item)}
-                        disabled={sharingBusy}
-                        className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60"
-                      >
-                        {sharingBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
-                        {sharingBusy ? "Sharing" : "Share"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void toggleSaveListing(item)}
-                        disabled={savingBusy}
-                        className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border px-2 text-[11px] font-semibold transition ${
-                          saved
-                            ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
-                        } disabled:opacity-60`}
-                      >
-                        {savingBusy ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : saved ? (
-                          <BookmarkCheck size={12} />
+                    <div className="mt-3 space-y-2.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {item.helpRequestId ? (
+                          <button
+                            type="button"
+                            onClick={() => openAcceptDialog(item)}
+                            disabled={acceptDisabled}
+                            className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border px-3 text-[11px] font-semibold transition ${
+                              acceptDisabled
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                                : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {acceptingBusy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                            {acceptLabel}
+                          </button>
+                        ) : showConnectionAction ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleListingConnectionAction(item)}
+                            disabled={
+                              connectionBusy ||
+                              connectionState?.kind === "outgoing_pending" ||
+                              connectionState?.kind === "accepted"
+                            }
+                            className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border px-3 text-[11px] font-semibold transition ${
+                              connectionState?.kind === "accepted"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : connectionState?.kind === "outgoing_pending"
+                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                : "border-cyan-200 bg-cyan-50 text-[var(--brand-700)] hover:border-cyan-300 hover:bg-cyan-100"
+                            } disabled:cursor-not-allowed disabled:opacity-70`}
+                          >
+                            {connectionBusy ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : connectionState?.kind === "accepted" || connectionState?.kind === "incoming_pending" ? (
+                              <UserCheck size={12} />
+                            ) : (
+                              <UserPlus size={12} />
+                            )}
+                            {connectionBusy && busyActionKey === "connect"
+                              ? "Connecting"
+                              : connectionBusy && busyActionKey === "accept"
+                              ? "Accepting"
+                              : connectionActionLabel}
+                          </button>
                         ) : (
-                          <Bookmark size={12} />
+                          <button
+                            type="button"
+                            onClick={() => openListingProfile(item)}
+                            className="inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                          >
+                            <ExternalLink size={12} />
+                            Details
+                          </button>
                         )}
-                        {savingBusy ? "Saving" : saved ? "Saved" : "Save"}
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => void openChatThread(item)}
-                        disabled={chatBusy || isOwnListing}
-                        className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                      >
-                        {chatBusy ? <Loader2 size={12} className="animate-spin" /> : <MessageCircle size={12} />}
-                        {isOwnListing ? "Own" : chatBusy ? "Opening" : "Chat"}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => void openChatThread(item)}
+                          disabled={chatBusy || !canOpenChat}
+                          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                        >
+                          {chatBusy ? <Loader2 size={12} className="animate-spin" /> : <MessageCircle size={12} />}
+                          {isOwnListing ? "Your chat" : chatBusy ? "Opening" : canOpenChat ? "Chat" : "Connect first"}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void toggleSaveListing(item)}
+                          disabled={savingBusy}
+                          className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border px-2 text-[11px] font-semibold transition ${
+                            saved
+                              ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                          } disabled:opacity-60`}
+                        >
+                          {savingBusy ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : saved ? (
+                            <BookmarkCheck size={12} />
+                          ) : (
+                            <Bookmark size={12} />
+                          )}
+                          {savingBusy ? "Saving" : saved ? "Saved" : "Save"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => void handleShareListing(item)}
+                          disabled={sharingBusy}
+                          className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60"
+                        >
+                          {sharingBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
+                          {sharingBusy ? "Sharing" : "Share"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openListingProfile(item)}
+                          className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                        >
+                          <ExternalLink size={12} />
+                          Profile
+                        </button>
+                      </div>
                     </div>
                   </motion.article>
                 );
@@ -2403,7 +2436,17 @@ export default function MarketplacePage() {
         <CreatePostModal
           open={openPostModal}
           onClose={() => setOpenPostModal(false)}
-          onPublished={() => {
+          onPublished={(result) => {
+            if (result?.postType === "need") {
+              pushToast(
+                "success",
+                result.matchedCount && result.matchedCount > 0
+                  ? `Request published. ${result.matchedCount} provider matches are ready.`
+                  : "Request published. Matching is in progress."
+              );
+            } else {
+              pushToast("success", "Post published successfully.");
+            }
             void fetchFeed(true);
           }}
         />

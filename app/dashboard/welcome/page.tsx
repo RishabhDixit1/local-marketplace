@@ -5,51 +5,29 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
-import { appName, appTagline } from "@/lib/branding";
+import { appTagline } from "@/lib/branding";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
-import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
-import {
-  blendWelcomeFeedCards,
-  buildWelcomeDemoFeedCards,
-  buildWelcomeFeedCards,
-  type WelcomeFeedCard,
-} from "@/lib/welcomeFeed";
+import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
-  Activity,
   ArrowRight,
   Bookmark,
-  ChevronLeft,
-  ChevronRight,
+  Loader2,
   MessageCircle,
   Share2,
-  ShieldCheck,
   UsersRound,
   Zap,
 } from "lucide-react";
-
-type WelcomeStats = {
-  nearbyPosts: number;
-  activeTasks: number;
-  unreadMessages: number;
-  trustScore: number;
-};
 
 type NearbyCard = WelcomeFeedCard;
 
 type EnrichedNearbyCard = NearbyCard & {
   badge: string;
-  pulse: string;
   ownerLabel: string;
   postedAgo: string;
-  responseLabel: string;
-  proofLabel: string;
-  mediaLabel: string;
-  mediaCount: number;
-  mediaGallery: [string, string, string];
   audienceLabel: string;
   audienceName: string;
   audienceMeta: string;
@@ -57,16 +35,8 @@ type EnrichedNearbyCard = NearbyCard & {
   networkActionPath: string;
   engagementLabel: string;
   tags: [string, string];
-};
-
-type ConversationUnreadRow = {
-  conversation_id: string;
-  last_read_at: string | null;
-};
-
-type MessageUnreadRow = {
-  conversation_id: string;
-  created_at: string;
+  saves: number;
+  shares: number;
 };
 
 type FeedCardSaveRow = {
@@ -103,6 +73,7 @@ const routes = {
 } as const;
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
+const FEED_PAGE_SIZE = 8;
 
 const MARKETPLACE_HERO_LINES = [
   "Post a Need. Get Local Help. Let Others Earn.",
@@ -112,14 +83,30 @@ const MARKETPLACE_HERO_LINES = [
   "Local Help Marketplace for Everyday Needs.",
 ] as const;
 
+const formatTimeAgo = (value: string | null | undefined) => {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) return "Just now";
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return "Just now";
+
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / (1000 * 60)));
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return parsed.toLocaleDateString([], { month: "short", day: "numeric" });
+};
+
 export default function WelcomePage() {
   const router = useRouter();
-  const storiesScrollRef = useRef<HTMLDivElement | null>(null);
-  const storiesDragRef = useRef({
-    isDragging: false,
-    startX: 0,
-    startScrollLeft: 0,
-  });
+  const feedSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreTimerRef = useRef<number | null>(null);
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [heroLineIndex, setHeroLineIndex] = useState(0);
@@ -136,13 +123,9 @@ export default function WelcomePage() {
   const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [isProvider, setIsProvider] = useState(false);
-  const [stats, setStats] = useState<WelcomeStats>({
-    nearbyPosts: 0,
-    activeTasks: 0,
-    unreadMessages: 0,
-    trustScore: 4.7,
-  });
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
+  const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
+  const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
   const activeRef = useRef(true);
 
   const pushFeedToast = (kind: FeedToast["kind"], message: string) => {
@@ -274,7 +257,7 @@ export default function WelcomePage() {
         setIsProvider(providerRoles.has(nextRole));
 
         const buildResult = buildWelcomeFeedCards(payload);
-        const nextCards = buildResult.cards.slice(0, 12);
+        const nextCards = buildResult.cards;
         const nextMetrics = nextCards.length
           ? await fetchFeedCardMetrics(
               nextCards.map((card) => card.id),
@@ -290,10 +273,6 @@ export default function WelcomePage() {
         setFeedEmptyReason(buildResult.emptyReason);
         setNearbyCards(nextCards);
         setCardMetricsById(nextMetrics);
-        setStats((current) => ({
-          ...current,
-          nearbyPosts: buildResult.cards.length,
-        }));
 
         return buildResult;
       } catch (error) {
@@ -326,218 +305,58 @@ export default function WelcomePage() {
     [fetchFeedCardMetrics]
   );
 
-  const demoNearbyCards = useMemo(() => buildWelcomeDemoFeedCards(), []);
-
-  const displayCards = useMemo(
-    () =>
-      blendWelcomeFeedCards(nearbyCards, {
-        minimumCardCount: 6,
-        demoCards: demoNearbyCards,
-      }),
-    [demoNearbyCards, nearbyCards]
-  );
-
-  const hasLiveCards = nearbyCards.length > 0;
-  const hasDemoCards = displayCards.some((card) => card.isDemo);
-  const isDemoOnlyFeed = hasDemoCards && !hasLiveCards;
-  const isMixedFeed = hasDemoCards && hasLiveCards;
-
   const enrichedCards = useMemo<EnrichedNearbyCard[]>(() => {
-    const demoMetricsSeed = Object.fromEntries(
-      demoNearbyCards.map((card, index) => [
-        card.id,
-        {
-          saves: 12 + index * 3,
-          shares: 4 + index * 2,
-        },
-      ])
-    ) as Record<string, CardMetrics>;
-    const demandAltMedia = [
-      "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1200&q=80",
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80",
-      "https://images.unsplash.com/photo-1486946255434-2466348c2166?w=1200&q=80",
-      "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200&q=80",
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&q=80",
-    ];
-    const serviceAltMedia = [
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
-      "https://images.unsplash.com/photo-1616046229478-9901c5536a45?w=1200&q=80",
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1200&q=80",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
-      "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80",
-    ];
-    const productAltMedia = [
-      "https://images.unsplash.com/photo-1517649763962-0c623066013b?w=1200&q=80",
-      "https://images.unsplash.com/photo-1526178613552-2b45c6c302f0?w=1200&q=80",
-      "https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=1200&q=80",
-      "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=1200&q=80",
-      "https://images.unsplash.com/photo-1503602642458-232111445657?w=1200&q=80",
-    ];
-    const demandOwners = ["Ananya R.", "Kunal S.", "Priya N.", "Rohit J.", "Megha D."];
-    const serviceOwners = ["UrbanFix Crew", "SparkClean Pro", "HandyNest", "QuickCare Team", "FixRight Local"];
-    const productOwners = ["ToolKart Local", "FreshStreet Market", "CityMart Seller", "HomePro Supply", "DailyBasket Hub"];
-    const audiences = [
-      {
-        label: "Connections",
-        name: "Tower A Circle",
-        meta: "18 nearby contacts in this thread",
-        actionLabel: "View circle",
-        actionPath: routes.people,
-      },
-      {
-        label: "Group",
-        name: "Sunrise Residency Group",
-        meta: "42 members active right now",
-        actionLabel: "Open group",
-        actionPath: `${routes.posts}?view=groups`,
-      },
-      {
-        label: "Connections",
-        name: "Trusted Providers List",
-        meta: "11 known providers are tracking this",
-        actionLabel: "View network",
-        actionPath: routes.people,
-      },
-      {
-        label: "Group",
-        name: "Neighborhood Buy/Sell",
-        meta: "37 local buyers online",
-        actionLabel: "Open group",
-        actionPath: `${routes.posts}?view=groups`,
-      },
-    ] as const;
-    const demandTagPool: [string, string][] = [
-      ["Urgent fix", "Apartment cluster"],
-      ["Budget confirmed", "Evening slot"],
-      ["Needs today", "Near your block"],
-    ];
-    const serviceTagPool: [string, string][] = [
-      ["Verified provider", "Fast response"],
-      ["Repeat bookings", "Background checked"],
-      ["High rating", "Local team"],
-    ];
-    const productTagPool: [string, string][] = [
-      ["Price negotiable", "Pickup nearby"],
-      ["Trusted seller", "Condition verified"],
-      ["Same-day pickup", "Repeat buyers"],
-    ];
+    return nearbyCards.map((card) => {
+      const metrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
+      const ownerLabel = card.ownerName?.trim() || "Connected user";
+      const engagementParts = [];
 
-    return displayCards.map((card, index) => {
-      const liveMetrics = cardMetricsById[card.id] || demoMetricsSeed[card.id] || { saves: 0, shares: 0 };
-      const totalEngagement = liveMetrics.saves + liveMetrics.shares;
-      const mediaPool = card.type === "demand" ? demandAltMedia : card.type === "service" ? serviceAltMedia : productAltMedia;
-      const ownerPool = card.type === "demand" ? demandOwners : card.type === "service" ? serviceOwners : productOwners;
-      const audience = audiences[index % audiences.length];
-      const tags =
-        card.type === "demand"
-          ? demandTagPool[index % demandTagPool.length]
-          : card.type === "service"
-          ? serviceTagPool[index % serviceTagPool.length]
-          : productTagPool[index % productTagPool.length];
-      const mediaGallery: [string, string, string] = [
-        card.image,
-        mediaPool[(index + 1) % mediaPool.length],
-        mediaPool[(index + 3) % mediaPool.length],
-      ];
+      if (metrics.saves > 0) engagementParts.push(`${metrics.saves} saves`);
+      if (metrics.shares > 0) engagementParts.push(`${metrics.shares} shares`);
+      if (!engagementParts.length) engagementParts.push("Fresh in your connected feed");
 
       return {
         ...card,
         badge: card.type === "demand" ? "Need" : card.type === "service" ? "Service" : "Product",
-        pulse: card.type === "demand" ? "Urgent" : card.type === "service" ? "Trusted" : "Fast deal",
-        ownerLabel: card.ownerName || ownerPool[index % ownerPool.length],
-        postedAgo: `${2 + index * 3}m ago`,
-        responseLabel:
-          card.type === "demand"
-            ? "Replies in ~4 min"
-            : card.type === "service"
-            ? "Provider replies in ~6 min"
-            : "Seller replies in ~5 min",
-        proofLabel:
-          card.type === "demand"
-            ? `${totalEngagement} live interactions`
-            : card.type === "service"
-            ? `${liveMetrics.saves} saves by local buyers`
-            : `${liveMetrics.shares} shares in nearby groups`,
-        mediaLabel: card.type === "demand" ? "Issue photos" : card.type === "service" ? "Before/after media" : "Product gallery",
-        mediaCount: 3 + (index % 5),
-        mediaGallery,
-        audienceLabel: audience.label,
-        audienceName: audience.name,
-        audienceMeta: audience.meta,
-        networkActionLabel: audience.actionLabel,
-        networkActionPath: audience.actionPath,
-        engagementLabel:
-          `${liveMetrics.saves} saves • ${liveMetrics.shares} shares • ${card.momentumLabel}`,
-        tags,
+        ownerLabel,
+        postedAgo: formatTimeAgo(card.createdAt),
+        audienceLabel: "Connected feed",
+        audienceName: ownerLabel,
+        audienceMeta: `${ownerLabel} is in your accepted network`,
+        networkActionLabel: "Open profile",
+        networkActionPath: routes.people,
+        engagementLabel: `${engagementParts.join(" | ")} | ${card.momentumLabel}`,
+        tags: [card.signalLabel, card.etaLabel],
+        saves: metrics.saves,
+        shares: metrics.shares,
       };
     });
-  }, [cardMetricsById, demoNearbyCards, displayCards]);
+  }, [cardMetricsById, nearbyCards]);
 
-  const storyBaseItems = useMemo(() => {
-    if (!enrichedCards.length) return [];
+  const resolvedVisibleFeedCount =
+    enrichedCards.length > 0 ? Math.min(enrichedCards.length, Math.max(FEED_PAGE_SIZE, visibleFeedCount)) : 0;
 
-    const targetCount = 10;
-    return Array.from({ length: targetCount }, (_, index) => enrichedCards[index % enrichedCards.length]);
-  }, [enrichedCards]);
+  const visibleCards = useMemo(
+    () => enrichedCards.slice(0, resolvedVisibleFeedCount),
+    [enrichedCards, resolvedVisibleFeedCount]
+  );
 
-  const storyItems = useMemo(() => storyBaseItems, [storyBaseItems]);
+  const hasMoreFeedCards = visibleCards.length < enrichedCards.length;
 
-  const formatStoryPriceLine = (story: EnrichedNearbyCard) => {
-    if (story.type === "demand") {
-      return /^budget/i.test(story.priceLabel) ? story.priceLabel : `Budget ${story.priceLabel}`;
-    }
-    return /^price/i.test(story.priceLabel) ? story.priceLabel : `Price ${story.priceLabel}`;
-  };
-
-  const scrollStories = (direction: "left" | "right") => {
-    const container = storiesScrollRef.current;
-    if (!container) return;
-
-    const delta = Math.round(container.clientWidth * 0.55);
-    container.scrollBy({
-      left: direction === "left" ? -delta : delta,
-      behavior: "smooth",
-    });
-  };
-
-  const handleStoriesWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    if (!storiesScrollRef.current) return;
-
-    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-      event.preventDefault();
-      storiesScrollRef.current.scrollBy({
-        left: event.deltaY,
-      });
-    }
-  };
-
-  const handleStoriesPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const container = storiesScrollRef.current;
-    if (!container) return;
-
-    storiesDragRef.current.isDragging = true;
-    storiesDragRef.current.startX = event.clientX;
-    storiesDragRef.current.startScrollLeft = container.scrollLeft;
-    container.setPointerCapture(event.pointerId);
-  };
-
-  const handleStoriesPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const container = storiesScrollRef.current;
-    if (!container || !storiesDragRef.current.isDragging) return;
-
-    const dragDelta = event.clientX - storiesDragRef.current.startX;
-    container.scrollLeft = storiesDragRef.current.startScrollLeft - dragDelta;
-  };
-
-  const handleStoriesPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    const container = storiesScrollRef.current;
-    if (!container) return;
-
-    storiesDragRef.current.isDragging = false;
-    if (container.hasPointerCapture(event.pointerId)) {
-      container.releasePointerCapture(event.pointerId);
-    }
-  };
+  const feedCounts = useMemo(
+    () =>
+      nearbyCards.reduce(
+        (acc, card) => {
+          acc.total += 1;
+          if (card.type === "demand") acc.demand += 1;
+          if (card.type === "service") acc.service += 1;
+          if (card.type === "product") acc.product += 1;
+          return acc;
+        },
+        { total: 0, demand: 0, service: 0, product: 0 }
+      ),
+    [nearbyCards]
+  );
 
   const markCardShared = (cardId: string) => {
     setSharedCardId(cardId);
@@ -569,7 +388,7 @@ export default function WelcomePage() {
             audienceName: card.audienceName,
             tags: card.tags,
             image: card.image,
-            mediaGallery: card.mediaGallery,
+            signalLabel: card.signalLabel,
           },
           updated_at: new Date().toISOString(),
         },
@@ -624,7 +443,6 @@ export default function WelcomePage() {
       console.warn("Failed to store feed card share:", error.message);
     }
   };
-
   const toggleCardSave = async (card: EnrichedNearbyCard) => {
     const wasSaved = savedCardIds.includes(card.id);
     const shouldSave = !wasSaved;
@@ -698,22 +516,11 @@ export default function WelcomePage() {
     });
 
   const buildNetworkActionPath = (card: EnrichedNearbyCard) => {
-    if (card.networkActionPath.startsWith(routes.people)) {
-      return appendCardContextQuery(card.networkActionPath, card, {
-        intent: "connections",
-        tab: "Nearby",
-        q: card.audienceName,
-        provider: card.ownerId || undefined,
-      });
-    }
-
     return appendCardContextQuery(card.networkActionPath, card, {
-      view: "groups",
-      group: card.audienceName,
-      focus: card.focusId,
-      type: card.type,
-      category: card.type,
-      q: card.audienceName,
+      intent: "connections",
+      tab: "Nearby",
+      q: card.ownerLabel,
+      provider: card.ownerId || undefined,
     });
   };
 
@@ -756,7 +563,7 @@ export default function WelcomePage() {
   const handleShareCard = async (card: EnrichedNearbyCard) => {
     const focusPath = buildFeedFocusPath(card);
     const shareUrl = `${window.location.origin}${focusPath}`;
-    const shareText = `${card.title} • ${card.priceLabel} • ${card.etaLabel} • ${card.audienceName}`;
+    const shareText = `${card.title} | ${card.priceLabel} | ${card.etaLabel} | ${card.ownerLabel}`;
     setSharingCardIds((current) => (current.includes(card.id) ? current : [...current, card.id]));
 
     try {
@@ -799,43 +606,10 @@ export default function WelcomePage() {
     }
   };
 
-  const demandCards = useMemo(
-    () => nearbyCards.filter((card) => card.type === "demand"),
-    [nearbyCards]
-  );
-
-  const aboutCards = useMemo(
-    () => [
-      {
-        title: "Realtime Matching Engine",
-        desc: "Every post is routed by urgency, category, and local radius so nearby providers can respond fast.",
-        metric: `${demandCards.length} live needs`,
-        icon: Zap,
-      },
-      {
-        title: "Trust Layer Built In",
-        desc: "Profiles, reviews, and fulfillment history help customers choose reliable local providers quickly.",
-        metric: `${stats.trustScore.toFixed(1)} trust index`,
-        icon: ShieldCheck,
-      },
-      {
-        title: "Conversation to Completion",
-        desc: "From first message to final delivery, chat and task updates stay in one execution thread.",
-        metric: `${stats.unreadMessages + 12} active threads`,
-        icon: MessageCircle,
-      },
-      {
-        title: "Neighborhood Supply Grid",
-        desc: "Services and products from nearby sellers reduce wait time and increase successful local outcomes.",
-        metric: `${stats.activeTasks} tasks in motion`,
-        icon: Activity,
-      },
-    ],
-    [demandCards.length, stats.activeTasks, stats.trustScore, stats.unreadMessages]
-  );
-
   const liveStatusLabel = isFeedLoading
     ? "Syncing feed"
+    : nearbyCards.length > 0
+    ? `${nearbyCards.length} connected posts live`
     : acceptedConnectionCount > 0
     ? `${acceptedConnectionCount} connections live`
     : "Connect to unlock";
@@ -881,70 +655,25 @@ export default function WelcomePage() {
 
         setViewerId(currentUser.id);
 
-        const [
-          communityResult,
-          { data: myOrders },
-          { data: myConversations },
-          { data: reviewsData },
-          { data: savedCardRows, error: savedCardError },
-        ] =
-          await Promise.all([
-            loadConnectedFeed(currentUser.id),
-            supabase
-              .from("orders")
-              .select("status")
-              .or(`consumer_id.eq.${currentUser.id},provider_id.eq.${currentUser.id}`),
-            supabase
-              .from("conversation_participants")
-              .select("conversation_id,last_read_at")
-              .eq("user_id", currentUser.id),
-            supabase.from("reviews").select("rating").eq("provider_id", currentUser.id),
-            supabase.from("feed_card_saves").select("card_id").eq("user_id", currentUser.id),
-          ]);
+        const [communityResult, { data: savedCardRows, error: savedCardError }] = await Promise.all([
+          loadConnectedFeed(currentUser.id),
+          supabase.from("feed_card_saves").select("card_id").eq("user_id", currentUser.id),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
 
         if (savedCardError) {
           console.warn("Failed to load saved feed cards:", savedCardError.message);
-        } else if (isActive) {
+        } else {
           const nextSavedIds = ((savedCardRows as FeedCardSaveRow[] | null) || []).map((row) => row.card_id);
           setSavedCardIds(nextSavedIds);
         }
 
-        const activeTasks =
-          myOrders?.filter((order) => !isFinalOrderStatus(order.status)).length || 0;
-
-        const conversationRows = (myConversations as ConversationUnreadRow[] | null) || [];
-        const conversationIds = conversationRows.map((row) => row.conversation_id);
-        const lastReadAtByConversation = new Map(conversationRows.map((row) => [row.conversation_id, row.last_read_at]));
-        let unreadMessages = 0;
-
-        if (conversationIds.length > 0) {
-          const { data: unreadMessageRows } = await supabase
-            .from("messages")
-            .select("conversation_id,created_at")
-            .in("conversation_id", conversationIds)
-            .neq("sender_id", currentUser.id)
-            .order("created_at", { ascending: false })
-            .limit(2000);
-
-          unreadMessages = ((unreadMessageRows as MessageUnreadRow[] | null) || []).reduce((count, message) => {
-            const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
-            if (!lastReadAt) return count + 1;
-            return message.created_at > lastReadAt ? count + 1 : count;
-          }, 0);
+        if (!communityResult) {
+          setIsFeedLoading(false);
         }
-
-        let trustScore = 4.7;
-        if (reviewsData && reviewsData.length > 0) {
-          const avg = reviewsData.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviewsData.length;
-          trustScore = Number(avg.toFixed(1));
-        }
-
-        setStats({
-          nearbyPosts: communityResult?.cards.length || 0,
-          activeTasks,
-          unreadMessages,
-          trustScore,
-        });
       } catch (error) {
         if (isAbortLikeError(error)) {
           return;
@@ -956,6 +685,7 @@ export default function WelcomePage() {
         console.warn("Welcome load failed:", message);
         if (isActive) {
           setLoadError(message);
+          setIsFeedLoading(false);
         }
       }
     };
@@ -1075,6 +805,53 @@ export default function WelcomePage() {
     };
   }, [fetchFeedCardMetrics, nearbyCards, viewerId]);
 
+  useEffect(() => {
+    setVisibleFeedCount((current) => {
+      if (enrichedCards.length === 0) {
+        return FEED_PAGE_SIZE;
+      }
+
+      return Math.min(Math.max(current, FEED_PAGE_SIZE), enrichedCards.length);
+    });
+  }, [enrichedCards.length]);
+
+  useEffect(() => {
+    if (isFeedLoading || !hasMoreFeedCards) {
+      setLoadingMoreFeed(false);
+      return;
+    }
+
+    const sentinel = feedSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting || loadMoreTimerRef.current) {
+          return;
+        }
+
+        setLoadingMoreFeed(true);
+        loadMoreTimerRef.current = window.setTimeout(() => {
+          setVisibleFeedCount((current) => Math.min(current + FEED_PAGE_SIZE, enrichedCards.length));
+          setLoadingMoreFeed(false);
+          loadMoreTimerRef.current = null;
+        }, 180);
+      },
+      { rootMargin: "220px 0px" }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+      if (loadMoreTimerRef.current) {
+        window.clearTimeout(loadMoreTimerRef.current);
+        loadMoreTimerRef.current = null;
+      }
+    };
+  }, [enrichedCards.length, hasMoreFeedCards, isFeedLoading]);
+
   return (
     <>
       <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
@@ -1154,428 +931,314 @@ export default function WelcomePage() {
             </div>
           )}
 
-          <div className="grid min-w-0 grid-cols-1 gap-4">
-            <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div
-                  className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                    isDemoOnlyFeed
-                      ? "bg-amber-50 text-amber-700"
-                      : "bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      isDemoOnlyFeed ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
-                    }`}
-                  />
-                  Live Stories
+          <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Connected Local Live Feed
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => router.push(routes.posts)}
-                    className="text-xs font-medium text-[var(--brand-700)] hover:text-[var(--brand-900)]"
-                  >
-                    Open feed
-                  </button>
-                  <button
-                    onClick={() => scrollStories("left")}
-                    aria-label="Scroll stories left"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <button
-                    onClick={() => scrollStories("right")}
-                    aria-label="Scroll stories right"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 sm:text-xl">Realtime posts from accepted connections only</h3>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                    This stream stays limited to people you are already connected with. New needs, service offers, and product
+                    posts sync in automatically and keep loading as you scroll.
+                  </p>
                 </div>
               </div>
 
-              {hasDemoCards && (
-                <div
-                  className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
-                    isMixedFeed
-                      ? "border-[color:var(--brand-300)] bg-cyan-50 text-[var(--brand-700)]"
-                      : "border-amber-200 bg-amber-50 text-amber-800"
-                  }`}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push(routes.people)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                 >
-                  {isMixedFeed
-                    ? `${nearbyCards.length} live cards are shown first. Preview stories stay in rotation so the Welcome rail and feed remain visually full while more real local posts arrive.`
-                    : feedEmptyReason === "no_connections"
-                    ? "Preview stories are active for visualization while you build your first connections. Accepted connections and their local posts will replace these cards automatically."
-                    : "Connected users are live, but they have not published yet. Preview stories are filling the rail until real local posts arrive."}
-                </div>
-              )}
+                  <UsersRound size={14} />
+                  Manage connections
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenPostModal(true)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                >
+                  <Zap size={14} />
+                  Post to network
+                </button>
+              </div>
+            </div>
 
-              <div className="mt-4">
-                <div
-                  ref={storiesScrollRef}
-                  onWheel={handleStoriesWheel}
-                  onPointerDown={handleStoriesPointerDown}
-                  onPointerMove={handleStoriesPointerMove}
-                  onPointerUp={handleStoriesPointerUp}
-                  onPointerCancel={handleStoriesPointerUp}
-                  className="w-full max-w-full cursor-grab active:cursor-grabbing select-none overflow-x-auto overflow-y-hidden pb-1 overscroll-x-contain touch-pan-x [scrollbar-width:thin]"
-                >
-                  {isFeedLoading && storyItems.length === 0 ? (
-                    <div className="flex w-max gap-3 sm:gap-3.5">
-                      {[0, 1, 2, 3].map((index) => (
-                        <div
-                          key={`story-skeleton-${index}`}
-                          className="h-[168px] w-[170px] shrink-0 animate-pulse rounded-xl border border-slate-200 bg-white p-2.5 sm:w-[186px]"
-                        >
-                          <div className="h-20 rounded-lg bg-slate-200" />
-                          <div className="mt-3 h-3 w-4/5 rounded bg-slate-200" />
-                          <div className="mt-2 h-3 w-3/5 rounded bg-slate-200" />
-                          <div className="mt-2 h-3 w-2/5 rounded bg-slate-200" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Connected posts</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.total}</p>
+                <p className="mt-1 text-xs text-slate-500">Visible only from accepted connections.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Needs</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.demand}</p>
+                <p className="mt-1 text-xs text-slate-500">Active requests inside your local network.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Services</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.service}</p>
+                <p className="mt-1 text-xs text-slate-500">Service offers from connected providers.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Products</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.product}</p>
+                <p className="mt-1 text-xs text-slate-500">Listings shared by trusted local sellers.</p>
+              </div>
+            </div>
+
+            <div data-testid="welcome-live-feed" className="mt-5 space-y-3">
+              {isFeedLoading && enrichedCards.length === 0 ? (
+                <>
+                  {[0, 1, 2].map((index) => (
+                    <div key={`welcome-feed-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_290px]">
+                        <div>
+                          <div className="h-3 w-24 rounded bg-slate-200" />
+                          <div className="mt-3 h-6 w-3/5 rounded bg-slate-200" />
+                          <div className="mt-2 h-4 w-full rounded bg-slate-200" />
+                          <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
+                          <div className="mt-4 flex gap-2">
+                            <div className="h-8 w-24 rounded bg-slate-200" />
+                            <div className="h-8 w-20 rounded bg-slate-200" />
+                            <div className="h-8 w-20 rounded bg-slate-200" />
+                          </div>
                         </div>
-                      ))}
+                        <div className="h-48 rounded-2xl bg-slate-200" />
+                      </div>
                     </div>
-                  ) : storyItems.length > 0 ? (
-                    <div className="flex w-max gap-3 sm:gap-3.5">
-                      {storyItems.map((story, storyIndex) => {
-                        const focusPath = buildFeedFocusPath(story);
-
-                        return (
-                          <article key={`story-${story.id}-${storyIndex}`} className="w-[170px] shrink-0 sm:w-[186px]">
-                            <button
-                              onClick={() => router.push(focusPath)}
-                              className="group w-full rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-colors hover:border-[color:var(--brand-500)]"
-                            >
-                              <div className="relative">
-                                <div className="relative h-20 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                                  <Image src={story.image} alt={story.title} fill sizes="180px" className="object-cover" />
-                                </div>
-                                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500 animate-pulse" />
-                                <span className="absolute left-1.5 top-1.5 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold text-white">
-                                  {story.badge}
-                                </span>
-                                {story.isDemo && (
-                                  <span className="absolute bottom-1.5 right-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
-                                    Preview
-                                  </span>
-                                )}
-                              </div>
-
-                              <p className="mt-2 line-clamp-1 text-[11px] text-slate-600">{story.subtitle}</p>
-                              <p className="mt-1 line-clamp-1 text-[12px] font-semibold text-slate-900">
-                                {formatStoryPriceLine(story)}
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-slate-500">Radius {story.distanceKm} km</p>
-                              <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-emerald-700">
-                                Availability: {story.etaLabel}
-                              </p>
-                              <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-700)] group-hover:text-[var(--brand-900)]">
-                                <ArrowRight size={10} />
-                              </span>
-                            </button>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-                      {feedEmptyReason === "no_connections"
-                        ? "Accept a connection request in People to unlock connected local stories here."
-                        : "Your connections are active, but no one has shared local posts yet."}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 border-t border-slate-200 pt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900">Live Local Feed</h3>
-                      <p className="text-xs text-slate-500">Realtime list, scroll vertically for more.</p>
-                    </div>
+                  ))}
+                </>
+              ) : enrichedCards.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                  <h4 className="text-base font-semibold text-slate-900">
+                    {feedEmptyReason === "no_connections"
+                      ? "Your connected live feed unlocks after your first accepted connection"
+                      : "Your connections are live, but nothing has been posted yet"}
+                  </h4>
+                  <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    {feedEmptyReason === "no_connections"
+                      ? "Send or accept connection requests in People. Once a connection is accepted, their local posts will begin appearing here automatically in realtime."
+                      : "As soon as someone in your accepted network shares a need, service, or product, it will show up here without needing a manual refresh."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                     <button
-                      onClick={() => router.push(routes.posts)}
-                      className="text-xs font-medium text-[var(--brand-700)] hover:text-[var(--brand-900)]"
+                      type="button"
+                      onClick={() => router.push(routes.people)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
                     >
-                      Explore all
+                      <UsersRound size={14} />
+                      Open People
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOpenPostModal(true)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
+                    >
+                      <Zap size={14} />
+                      Create a post
                     </button>
                   </div>
+                </div>
+              ) : (
+                <>
+                  {visibleCards.map((card, cardIndex) => {
+                    const focusPath = buildFeedFocusPath(card);
+                    const networkPath = buildNetworkActionPath(card);
+                    const isSaved = savedCardIds.includes(card.id);
+                    const messageInFlight = messageCardId === card.id;
+                    const saveInFlight = savingCardIds.includes(card.id);
+                    const shareInFlight = sharingCardIds.includes(card.id);
 
-                  <div data-testid="welcome-live-feed" className="mt-3 min-h-[280px] max-h-[56vh] space-y-3 overflow-y-auto pr-1">
-                    {isFeedLoading && enrichedCards.length === 0 ? (
-                      <>
-                        {[0, 1, 2].map((index) => (
-                          <div key={`welcome-feed-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="h-3 w-20 rounded bg-slate-200" />
-                            <div className="mt-3 h-5 w-3/5 rounded bg-slate-200" />
-                            <div className="mt-2 h-4 w-full rounded bg-slate-200" />
-                            <div className="mt-2 h-4 w-4/5 rounded bg-slate-200" />
-                            <div className="mt-4 h-32 rounded-xl bg-slate-200" />
-                          </div>
-                        ))}
-                      </>
-                    ) : enrichedCards.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
-                        <h4 className="text-base font-semibold text-slate-900">
-                          {feedEmptyReason === "no_connections"
-                            ? "Connect with someone to unlock your local live feed"
-                            : "Your connections have not posted yet"}
-                        </h4>
-                        <p className="mt-2 text-sm text-slate-600">
-                          {feedEmptyReason === "no_connections"
-                            ? "Use the People tab to send or accept a connection request. Accepted connections will start appearing here automatically."
-                            : "As soon as a connected user posts a need, service, or product, it will appear here without a manual refresh."}
-                        </p>
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => router.push(routes.people)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
-                          >
-                            <UsersRound size={14} />
-                            Open People
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOpenPostModal(true)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                          >
-                            <Zap size={14} />
-                            Post a Need
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      enrichedCards.map((card, cardIndex) => {
-                        const focusPath = buildFeedFocusPath(card);
-                        const networkPath = buildNetworkActionPath(card);
-                        const isSaved = savedCardIds.includes(card.id);
-                        const messageInFlight = messageCardId === card.id;
-                        const saveInFlight = savingCardIds.includes(card.id);
-                        const shareInFlight = sharingCardIds.includes(card.id);
-
-                        return (
-                          <article
-                            key={`feed-inline-${card.id}`}
-                            data-testid="welcome-feed-card"
-                            data-card-id={card.id}
-                            className="post-card-enter rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4"
-                            style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
-                          >
-                            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-                              <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                                      card.type === "demand"
-                                        ? "bg-rose-100 text-rose-700"
-                                        : card.type === "service"
-                                        ? "bg-cyan-100 text-[var(--brand-700)]"
-                                        : "bg-emerald-100 text-emerald-700"
-                                    }`}
-                                  >
-                                    {card.type}
-                                  </span>
-                                  {card.isDemo && (
-                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
-                                      Preview
-                                    </span>
-                                  )}
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{card.audienceLabel}</span>
-                                  <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
-                                  <span className="text-[11px] text-slate-500">{card.distanceKm} km</span>
-                                </div>
-
-                                <h3 className="mt-2 text-[16px] font-semibold text-slate-900">{card.title}</h3>
-                                <p className="mt-1 text-xs text-slate-600">{card.subtitle}</p>
-
-                                <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
-                                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-semibold text-[var(--brand-700)]">
-                                    {card.ownerLabel.slice(0, 2).toUpperCase()}
-                                  </span>
-                                  <div className="min-w-0">
-                                    <p className="line-clamp-1 text-[12px] font-semibold text-slate-800">{card.ownerLabel}</p>
-                                    <p className="line-clamp-1 text-[11px] text-slate-500">{card.audienceName}</p>
-                                  </div>
-                                </div>
-
-                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">{card.priceLabel}</span>
-                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{card.etaLabel}</span>
-                                  <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-medium text-[var(--brand-700)]">{card.momentumLabel}</span>
-                                </div>
-
-                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                  {card.tags.map((tag) => (
-                                    <span key={`${card.id}-${tag}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                                      {tag}
-                                    </span>
-                                  ))}
-                                </div>
-
-                                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => router.push(focusPath)}
-                                    aria-label={`${card.actionLabel} post ${card.title}`}
-                                    title={`${card.actionLabel} this post`}
-                                    data-testid="feed-action-primary"
-                                    className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-900)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
-                                  >
-                                    {card.actionLabel}
-                                    <ArrowRight size={11} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleMessageCard(card)}
-                                    disabled={messageInFlight || !!card.isDemo}
-                                    aria-label={card.isDemo ? `${card.title} preview only` : `Message about ${card.title}`}
-                                    title={card.isDemo ? "Preview cards do not open real chats" : "Open contextual chat"}
-                                    data-testid="feed-action-message"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
-                                  >
-                                    <MessageCircle size={12} />
-                                    {card.isDemo ? "Preview only" : messageInFlight ? "Opening..." : "Message"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => router.push(networkPath)}
-                                    aria-label={`${card.networkActionLabel} for ${card.title}`}
-                                    title="Open connection or group context"
-                                    data-testid="feed-action-network"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                                  >
-                                    <UsersRound size={12} />
-                                    {card.networkActionLabel}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleShareCard(card)}
-                                    disabled={shareInFlight}
-                                    aria-label={`Share ${card.title}`}
-                                    title="Share post"
-                                    data-testid="feed-action-share"
-                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
-                                  >
-                                    <Share2 size={12} />
-                                    {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void toggleCardSave(card)}
-                                    disabled={saveInFlight}
-                                    aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
-                                    title={isSaved ? "Remove from saved" : "Save post"}
-                                    data-testid="feed-action-save"
-                                    className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
-                                      isSaved && !saveInFlight
-                                        ? "border-[color:var(--brand-300)] bg-cyan-50 text-[var(--brand-700)]"
-                                        : "border-slate-200 bg-white text-slate-700 hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                                    }`}
-                                  >
-                                    <Bookmark size={12} />
-                                    {saveInFlight ? "Saving..." : isSaved ? "Saved" : "Save"}
-                                  </button>
-                                </div>
-
-                                <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                                  <span>{card.audienceMeta}</span>
-                                  <span className="h-1 w-1 rounded-full bg-slate-300" />
-                                  <span>{card.engagementLabel}</span>
-                                </div>
-                              </div>
-
-                              <aside className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-cyan-50/70 p-2.5">
-                                <div data-testid="feed-card-main-image" className="relative h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100 sm:h-40">
-                                  <Image src={card.mediaGallery[0]} alt={`${card.title} main visual`} fill sizes="330px" className="object-cover" />
-                                  <span className="absolute left-2 top-2 rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                    {card.ownerLabel}
-                                  </span>
-                                  <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                                    +{card.mediaCount} photos
-                                  </span>
-                                  <span className="absolute left-2 bottom-2 rounded-full bg-[var(--brand-900)]/90 px-2 py-0.5 text-[10px] font-semibold text-white">
-                                    {card.pulse}
-                                  </span>
-                                </div>
-
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                  {card.mediaGallery.slice(1).map((mediaItem, mediaIndex) => (
-                                    <div key={`${card.id}-media-${mediaIndex}`} className="relative h-20 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                      <Image
-                                        src={mediaItem}
-                                        alt={`${card.title} gallery ${mediaIndex + 2}`}
-                                        fill
-                                        sizes="150px"
-                                        className="object-cover"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-
-                                <div className="mt-2 grid gap-2 text-[11px]">
-                                  <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                                    <p className="text-slate-500">{card.mediaLabel}</p>
-                                    <p className="line-clamp-1 font-semibold text-slate-800">{card.proofLabel}</p>
-                                  </div>
-                                  <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                                    <p className="text-slate-500">{card.signalLabel}</p>
-                                    <p className="line-clamp-1 font-semibold text-slate-800">{card.responseLabel}</p>
-                                  </div>
-                                </div>
-                              </aside>
+                    return (
+                      <article
+                        key={`welcome-feed-${card.id}`}
+                        data-testid="welcome-feed-card"
+                        data-card-id={card.id}
+                        className="post-card-enter overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                        style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
+                      >
+                        <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_290px] lg:p-5">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                  card.type === "demand"
+                                    ? "bg-rose-100 text-rose-700"
+                                    : card.type === "service"
+                                    ? "bg-cyan-100 text-[var(--brand-700)]"
+                                    : "bg-emerald-100 text-emerald-700"
+                                }`}
+                              >
+                                {card.badge}
+                              </span>
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                {card.audienceLabel}
+                              </span>
+                              <span className="text-[11px] text-slate-500">{card.postedAgo}</span>
+                              <span className="text-[11px] text-slate-500">{card.distanceKm} km away</span>
                             </div>
-                          </article>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
 
-          </div>
+                            <h3 className="mt-2 text-lg font-semibold text-slate-900">{card.title}</h3>
+                            <p className="mt-1 text-sm leading-6 text-slate-600">{card.subtitle}</p>
 
-          <section className="rounded-2xl border border-slate-200 bg-white/85 backdrop-blur p-4 sm:p-5 shadow-sm">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div className="rounded-2xl border border-cyan-100 bg-linear-to-br from-cyan-50 via-white to-slate-50 p-4 sm:p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--brand-700)]">About {appName}</p>
-                <h2 className="mt-2 text-lg sm:text-xl font-semibold text-slate-900">
-                  {appTagline}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  We help people post local needs quickly, match with nearby providers, and close tasks with trust, speed, and clarity.
-                </p>
+                            <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-semibold text-[var(--brand-700)]">
+                                {card.ownerLabel.slice(0, 2).toUpperCase()}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="line-clamp-1 text-sm font-semibold text-slate-800">{card.ownerLabel}</p>
+                                <p className="line-clamp-1 text-xs text-slate-500">{card.audienceMeta}</p>
+                              </div>
+                            </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-700">
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Post</span>
-                  <ArrowRight size={12} className="text-slate-400" />
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Match</span>
-                  <ArrowRight size={12} className="text-slate-400" />
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Chat</span>
-                  <ArrowRight size={12} className="text-slate-400" />
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Complete</span>
-                </div>
-              </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{card.priceLabel}</span>
+                              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">{card.etaLabel}</span>
+                              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-[var(--brand-700)]">{card.signalLabel}</span>
+                            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {aboutCards.map((card, index) => (
-                  <article
-                    key={`about-card-${index}`}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3.5"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="rounded-lg bg-cyan-100 p-2">
-                        <card.icon className="text-[var(--brand-700)]" size={16} />
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              {card.tags.map((tag) => (
+                                <span
+                                  key={`${card.id}-${tag}`}
+                                  className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => router.push(focusPath)}
+                                aria-label={`${card.actionLabel} post ${card.title}`}
+                                title={`${card.actionLabel} this post`}
+                                data-testid="feed-action-primary"
+                                className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
+                              >
+                                {card.actionLabel}
+                                <ArrowRight size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleMessageCard(card)}
+                                disabled={messageInFlight}
+                                aria-label={`Message about ${card.title}`}
+                                title="Open contextual chat"
+                                data-testid="feed-action-message"
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
+                              >
+                                <MessageCircle size={12} />
+                                {messageInFlight ? "Opening..." : "Message"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => router.push(networkPath)}
+                                aria-label={`${card.networkActionLabel} for ${card.title}`}
+                                title="Open connection profile"
+                                data-testid="feed-action-network"
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
+                              >
+                                <UsersRound size={12} />
+                                {card.networkActionLabel}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleShareCard(card)}
+                                disabled={shareInFlight}
+                                aria-label={`Share ${card.title}`}
+                                title="Share post"
+                                data-testid="feed-action-share"
+                                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
+                              >
+                                <Share2 size={12} />
+                                {shareInFlight ? "Sharing..." : sharedCardId === card.id ? "Shared" : "Share"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void toggleCardSave(card)}
+                                disabled={saveInFlight}
+                                aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
+                                title={isSaved ? "Remove from saved" : "Save post"}
+                                data-testid="feed-action-save"
+                                className={`inline-flex items-center gap-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
+                                  isSaved && !saveInFlight
+                                    ? "border-[color:var(--brand-300)] bg-cyan-50 text-[var(--brand-700)]"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
+                                }`}
+                              >
+                                <Bookmark size={12} />
+                                {saveInFlight ? "Saving..." : isSaved ? "Saved" : "Save"}
+                              </button>
+                            </div>
+
+                            <div className="mt-3 text-xs text-slate-500">{card.engagementLabel}</div>
+                          </div>
+
+                          <aside className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-cyan-50/70 p-3">
+                            <div
+                              data-testid="feed-card-main-image"
+                              className="relative h-44 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+                            >
+                              <Image
+                                src={card.image}
+                                alt={`${card.title} main visual`}
+                                fill
+                                sizes="(min-width: 1024px) 290px, 100vw"
+                                className="object-cover"
+                              />
+                              <span className="absolute left-2 top-2 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                {card.ownerLabel}
+                              </span>
+                              <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                {card.badge}
+                              </span>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                                <p className="text-[11px] text-slate-500">Saves</p>
+                                <p className="mt-1 font-semibold text-slate-900">{card.saves}</p>
+                              </div>
+                              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                                <p className="text-[11px] text-slate-500">Shares</p>
+                                <p className="mt-1 font-semibold text-slate-900">{card.shares}</p>
+                              </div>
+                              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                                <p className="text-[11px] text-slate-500">Radius</p>
+                                <p className="mt-1 font-semibold text-slate-900">{card.distanceKm} km</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                              <p className="text-[11px] text-slate-500">Why this is here</p>
+                              <p className="mt-1 text-sm font-medium leading-6 text-slate-800">{card.momentumLabel}</p>
+                            </div>
+                          </aside>
+                        </div>
+                      </article>
+                    );
+                  })}
+
+                  {hasMoreFeedCards && (
+                    <div ref={feedSentinelRef} className="flex justify-center py-3">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+                        {loadingMoreFeed ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4 text-[var(--brand-700)]" />
+                        )}
+                        {loadingMoreFeed ? "Loading more connected posts..." : "Scroll for more connected posts"}
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                        {card.metric}
-                      </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{card.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{card.desc}</p>
-                  </article>
-                ))}
-              </div>
+                  )}
+                </>
+              )}
             </div>
           </section>
         </div>
@@ -1618,3 +1281,4 @@ export default function WelcomePage() {
     </>
   );
 }
+

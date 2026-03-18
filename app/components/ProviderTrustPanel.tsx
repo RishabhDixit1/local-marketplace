@@ -14,6 +14,7 @@ import {
   estimateResponseMinutes,
   verificationLabel,
 } from "@/lib/business";
+import { createAvatarFallback } from "@/lib/avatarFallback";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
@@ -50,113 +51,13 @@ type ProviderOrderStatsRow = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const demoProfileMap: Record<
-  string,
-  Pick<ProfileRow, "name" | "location" | "bio" | "role" | "availability">
-> = {
-  "demo-1": {
-    name: "Test Electrician",
-    location: "Nearby",
-    bio: "Seeded demo profile for local electrician discovery.",
-    role: "provider",
-    availability: "available",
-  },
-  "demo-2": {
-    name: "Test Cleaning Team",
-    location: "West Side",
-    bio: "Seeded demo profile for cleaning and home support.",
-    role: "provider",
-    availability: "available",
-  },
-  "demo-3": {
-    name: "Test Plumbing Pro",
-    location: "East End",
-    bio: "Seeded demo profile for plumbing and emergency fixes.",
-    role: "provider",
-    availability: "available",
-  },
-  "demo-provider-amit": {
-    name: "Amit P",
-    location: "Nearby",
-    bio: "Seeded demo profile.",
-    role: "provider",
-    availability: "available",
-  },
-  "demo-provider-mary": {
-    name: "Mary Electricals",
-    location: "Nearby",
-    bio: "Seeded demo profile.",
-    role: "business",
-    availability: "available",
-  },
-  "demo-provider-sejal": {
-    name: "Sejal CleanCare",
-    location: "Nearby",
-    bio: "Seeded demo profile.",
-    role: "provider",
-    availability: "available",
-  },
-};
-
-const buildDemoProfile = (id: string): ProfileRow => {
-  const mapped = demoProfileMap[id] || {
-    name: "Demo Provider",
-    location: "Nearby",
-    bio: "Seeded demo profile.",
-    role: "provider",
-    availability: "available",
-  };
-
-  return {
-    id,
-    name: mapped.name,
-    location: mapped.location,
-    bio: mapped.bio,
-    role: mapped.role,
-    services: [],
-    availability: mapped.availability,
-    email: null,
-    phone: null,
-    website: null,
-    avatar_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(id)}`,
-  };
-};
-
-const buildLiveFallbackProfile = (
-  id: string,
-  options?: { servicesCount?: number; productsCount?: number; reviewsCount?: number }
-): ProfileRow => {
-  const servicesCount = options?.servicesCount || 0;
-  const productsCount = options?.productsCount || 0;
-  const reviewsCount = options?.reviewsCount || 0;
-  const role =
-    servicesCount + productsCount > 0 ? "provider" : reviewsCount > 0 ? "marketplace_member" : "member";
-
-  return {
-    id,
-    name: `Local Member ${id.slice(0, 4).toUpperCase()}`,
-    location: "Nearby",
-    bio:
-      servicesCount + productsCount > 0
-        ? "This member is active on the marketplace and can be contacted in realtime."
-        : "This member is visible on the marketplace and can be contacted in realtime.",
-    role,
-    services: [],
-    availability: "available",
-    email: null,
-    phone: null,
-    website: null,
-    avatar_url: `https://i.pravatar.cc/150?u=${encodeURIComponent(id)}`,
-  };
-};
-
 export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [openReview, setOpenReview] = useState(false);
   const [servicesCount, setServicesCount] = useState(0);
   const [productsCount, setProductsCount] = useState(0);
-  const [completedJobs, setCompletedJobs] = useState(0);
+  const [completedJobs, setCompletedJobs] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [connectionNotice, setConnectionNotice] = useState<string | null>(null);
@@ -183,10 +84,10 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     setReviews([]);
     setServicesCount(0);
     setProductsCount(0);
-    setCompletedJobs(0);
+    setCompletedJobs(null);
 
     if (!isUuidUserId) {
-      setProfile(buildDemoProfile(userId));
+      setLoadError("This profile is not connected to a live ServiQ member record.");
       setLoading(false);
       return;
     }
@@ -232,24 +133,20 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
         const normalizedServicesCount = (serviceRows || []).length;
         const normalizedProductsCount = (productRows || []).length;
 
-        const normalizedProfile = profileRow
-          ? {
-              ...profileRow,
-              avatar_url: resolveProfileAvatarUrl(profileRow.avatar_url),
-            }
-          : buildLiveFallbackProfile(userId, {
-              servicesCount: normalizedServicesCount,
-              productsCount: normalizedProductsCount,
-              reviewsCount: normalizedReviews.length,
-            });
-
-        setProfile(normalizedProfile);
+        setProfile(
+          profileRow
+            ? {
+                ...profileRow,
+                avatar_url: resolveProfileAvatarUrl(profileRow.avatar_url),
+              }
+            : null
+        );
         setReviews(normalizedReviews);
         setServicesCount(normalizedServicesCount);
         setProductsCount(normalizedProductsCount);
 
         const statsRows = statsError ? [] : (providerOrderStats as ProviderOrderStatsRow[] | null) || [];
-        const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : 0;
+        const doneCount = statsRows.length > 0 ? Number(statsRows[0].completed_jobs || 0) : null;
         setCompletedJobs(doneCount);
       } catch {
         if (!isMounted) return;
@@ -394,24 +291,27 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
           </div>
         ) : !profile ? (
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-sm font-semibold text-slate-900">Provider profile unavailable</p>
-            <p className="mt-1 text-xs text-slate-600">This provider does not have a published trust profile yet.</p>
+            <p className="text-sm font-semibold text-slate-900">Profile unavailable</p>
+            <p className="mt-1 text-xs text-slate-600">This member does not have a published ServiQ trust profile yet.</p>
           </div>
         ) : (
           <>
             <div className="mb-6 text-center">
               <Image
-                src={resolveProfileAvatarUrl(profile?.avatar_url) || "https://i.pravatar.cc/150"}
-                alt={profile?.name || "Provider"}
+                src={
+                  resolveProfileAvatarUrl(profile?.avatar_url) ||
+                  createAvatarFallback({ label: profile?.name || profile?.role || "ServiQ member", seed: profile?.id || userId })
+                }
+                alt={profile?.name || "ServiQ member"}
                 width={96}
                 height={96}
                 unoptimized
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
-              <h2 className="text-xl font-semibold">{profile?.name || "Provider"}</h2>
+              <h2 className="text-xl font-semibold">{profile?.name || "ServiQ member"}</h2>
               <p className="mt-1 flex items-center justify-center gap-1 text-sm text-slate-500">
                 <MapPin size={14} />
-                {profile?.location || "Unknown"}
+                {profile?.location || "Location not shared"}
               </p>
               <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700">
                 <BadgeCheck size={13} />
@@ -420,15 +320,15 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
             </div>
 
             <div className="mb-6 grid grid-cols-2 gap-3">
-              <StatCard label="Rating" value={avgRating || "New"} icon={<Star size={14} />} />
+              <StatCard label="Rating" value={avgRating || "No reviews"} icon={<Star size={14} />} />
               <StatCard label="Reviews" value={reviews.length} icon={<MessageCircle size={14} />} />
-              <StatCard label="Jobs Done" value={completedJobs} icon={<BadgeCheck size={14} />} />
+              <StatCard label="Jobs Done" value={completedJobs ?? "Not available"} icon={<BadgeCheck size={14} />} />
               <StatCard label="Response" value={`${responseMinutes} mins`} icon={<Clock3 size={14} />} />
             </div>
 
             <div className="mb-6">
               <h3 className="mb-2 font-semibold">About</h3>
-              <p className="text-sm text-slate-600">{profile?.bio || "No bio added yet."}</p>
+              <p className="text-sm text-slate-600">{profile?.bio || "No business summary added yet."}</p>
             </div>
 
             <div className="mb-6">
@@ -441,7 +341,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-500">No services listed</span>
+                  <span className="text-xs text-slate-500">No services listed yet.</span>
                 )}
               </div>
             </div>
@@ -452,8 +352,8 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                 {reviews.length === 0 && <p className="text-sm text-slate-500">No reviews yet.</p>}
                 {reviews.map((review, index) => (
                   <div key={`review-${index}`} className="rounded-lg bg-slate-100 p-2">
-                    <div className="text-sm text-yellow-400">{"★".repeat(Math.max(1, Number(review.rating || 0)))}</div>
-                    <p className="text-xs text-slate-600">{review.comment || "Customer left a rating."}</p>
+                    <div className="text-sm text-yellow-500">{Array.from({ length: Math.max(1, Number(review.rating || 0)) }, () => "*").join("")}</div>
+                    <p className="text-xs text-slate-600">{review.comment || "Customer left a rating without a written note."}</p>
                   </div>
                 ))}
               </div>
@@ -505,7 +405,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
               >
                 Write Review
               </button>
-              {!isUuidUserId && <p className="text-xs text-slate-500">Reviews are disabled for demo providers.</p>}
+              {!isUuidUserId && <p className="text-xs text-slate-500">Reviews are available for published member profiles only.</p>}
               {!!businessSlug && isUuidUserId && (
                 <button
                   type="button"

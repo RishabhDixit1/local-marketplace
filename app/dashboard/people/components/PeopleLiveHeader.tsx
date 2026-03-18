@@ -51,16 +51,16 @@ export default function PeopleLiveHeader({
       </div>
 
       <div className="relative mt-4 rounded-[1.4rem] border border-slate-200/80 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="inline-flex items-center gap-2 font-semibold text-slate-800">
             <Users className="h-4 w-4 text-slate-500" />
             Nearby {nearbyCount}
           </span>
-          <span className="text-slate-300">•</span>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
           <span className="font-semibold text-slate-800">Coverage {coveragePercent}%</span>
-          <span className="text-slate-300">•</span>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
           <span className="font-semibold text-slate-800">{connectionCount} connections</span>
-          <span className="text-slate-300">•</span>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
           <span className="inline-flex items-center gap-2 font-semibold text-[var(--brand-700)]">
             <span className="relative flex h-4 w-4 items-center justify-center">
               <span className="absolute h-4 w-4 rounded-full border border-[var(--brand-500)]/45" />
@@ -73,7 +73,7 @@ export default function PeopleLiveHeader({
             </span>
             Auto-syncing every 30s
           </span>
-          <span className="text-slate-300">•</span>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
           <span className="inline-flex items-center gap-2 text-slate-500">
             <Clock3 className="h-4 w-4" />
             Last sync {formatSyncTime(lastSyncedAt)}

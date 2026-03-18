@@ -90,7 +90,7 @@ const transitionMap: Record<CanonicalOrderStatus, Record<OrderActorRole, Canonic
 export const normalizeOrderStatus = (status: string | null | undefined): CanonicalOrderStatus => {
   const normalized = (status || "").toLowerCase();
 
-  if (["new_lead", "lead", "pending", "active"].includes(normalized)) return "new_lead";
+  if (["new_lead", "lead", "pending", "active", "open"].includes(normalized)) return "new_lead";
   if (["quoted", "quote_sent"].includes(normalized)) return "quoted";
   if (["accepted", "booked"].includes(normalized)) return "accepted";
   if (["in_progress", "in-progress", "active_work"].includes(normalized)) return "in_progress";

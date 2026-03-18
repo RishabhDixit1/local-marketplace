@@ -10,6 +10,7 @@ import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
 import { appName } from "@/lib/branding";
+import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
 import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
@@ -64,10 +65,12 @@ function DashboardShell({
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const chatUnreadCount = useUnreadChatCount(authReady);
   const myProfileHref =
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
+  const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
 
   useEffect(() => {
     let active = true;
@@ -289,21 +292,41 @@ function DashboardShell({
             {navigationTabs.map((tab) => {
               const isActive = pathname === tab.path;
               const Icon = tab.icon;
+              const isChatTab = tab.path === "/dashboard/chat";
               return (
                 <Link
                   key={tab.path}
                   href={tab.path}
                   title={desktopNavCollapsed ? tab.name : undefined}
                   className={`flex items-center rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                    desktopNavCollapsed ? "justify-center px-3 py-3" : "justify-between px-4 py-3"
                   } ${
                     isActive
                       ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,0.85)]"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {desktopNavCollapsed ? <span className="sr-only">{tab.name}</span> : tab.name}
+                  <span className={`flex min-w-0 items-center ${desktopNavCollapsed ? "" : "gap-3"}`}>
+                    <span className="relative inline-flex shrink-0">
+                      <Icon className="w-5 h-5 shrink-0" />
+                      {desktopNavCollapsed && isChatTab && chatBadgeLabel ? (
+                        <span className="absolute -right-2 -top-2 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                          {chatBadgeLabel}
+                        </span>
+                      ) : null}
+                    </span>
+                    {desktopNavCollapsed ? <span className="sr-only">{tab.name}</span> : tab.name}
+                  </span>
+                  {!desktopNavCollapsed && isChatTab && chatBadgeLabel ? (
+                    <span
+                      className={`inline-flex min-w-[1.45rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ${
+                        isActive ? "bg-white/18 text-white ring-1 ring-white/20" : "bg-rose-500 text-white"
+                      }`}
+                      aria-label={`${chatUnreadCount} unread chat messages`}
+                    >
+                      {chatBadgeLabel}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -445,6 +468,7 @@ function DashboardShell({
             {navigationTabs.map((tab) => {
               const isActive = pathname === tab.path;
               const Icon = tab.icon;
+              const isChatTab = tab.path === "/dashboard/chat";
               return (
                 <Link
                   key={tab.path}
@@ -457,7 +481,17 @@ function DashboardShell({
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  {tab.name}
+                  <span className="min-w-0 flex-1">{tab.name}</span>
+                  {isChatTab && chatBadgeLabel ? (
+                    <span
+                      className={`inline-flex min-w-[1.45rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ${
+                        isActive ? "bg-white/18 text-white ring-1 ring-white/20" : "bg-rose-500 text-white"
+                      }`}
+                      aria-label={`${chatUnreadCount} unread chat messages`}
+                    >
+                      {chatBadgeLabel}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
