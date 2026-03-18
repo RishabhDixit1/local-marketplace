@@ -149,13 +149,6 @@ const getStatusColor = (status: TaskStatus) => {
   return "bg-red-100 text-red-700";
 };
 
-const getStatusIcon = (status: TaskStatus) => {
-  if (status === "active") return Clock;
-  if (status === "in-progress") return TrendingUp;
-  if (status === "completed") return CheckCircle2;
-  return AlertCircle;
-};
-
 const getStatusTextClass = (status: TaskStatus) => {
   if (status === "active") return "text-sky-700";
   if (status === "in-progress") return "text-violet-700";
@@ -919,61 +912,6 @@ export default function TasksPage() {
     { value: "support", label: "Support / issues", icon: AlertCircle },
   ] satisfies Array<{ value: TaskStatusFilter; label: string; icon: typeof Package }>;
 
-  const overviewTiles = useMemo(
-    () => [
-      {
-        key: "awaiting-action",
-        label: "Awaiting Action",
-        count: statusCounts.awaitingAction,
-        helper: "Quotes, requests, and open leads",
-        status: "active" as TaskStatus,
-      },
-      {
-        key: "active",
-        label: "Active",
-        count: statusCounts.active,
-        helper: "Booked and ready to move",
-        status: "active" as TaskStatus,
-      },
-      {
-        key: "in-progress",
-        label: "In Progress",
-        count: statusCounts.inProgress,
-        helper: "Work underway right now",
-        status: "in-progress" as TaskStatus,
-      },
-      {
-        key: "completed",
-        label: "Completed",
-        count: statusCounts.completed,
-        helper: "Finished and confirmed",
-        status: "completed" as TaskStatus,
-      },
-      {
-        key: "cancelled",
-        label: "Cancelled",
-        count: statusCounts.cancelled,
-        helper: "Requests that were cancelled",
-        status: "cancelled" as TaskStatus,
-      },
-      {
-        key: "rejected",
-        label: "Rejected",
-        count: statusCounts.rejected,
-        helper: "Declined or turned down",
-        status: "cancelled" as TaskStatus,
-      },
-      {
-        key: "support",
-        label: "Support / Issues",
-        count: statusCounts.support,
-        helper: supportBackendReady === false ? "Issue tracking unavailable in backend" : "Escalations and problem tasks",
-        status: statusCounts.support ? "cancelled" as TaskStatus : "active" as TaskStatus,
-      },
-    ],
-    [statusCounts, supportBackendReady]
-  );
-
   const recentActivity = useMemo(() => taskEvents.slice(0, 4), [taskEvents]);
 
   const getTaskStatusLabel = (task: OperationalTask) => {
@@ -1603,8 +1541,6 @@ export default function TasksPage() {
     Number(sortBy !== "updated");
 
   const hasTaskHistory = tasks.some((task) => isHistoryTask(task));
-  const overviewTileBaseClassName =
-    "relative overflow-hidden rounded-[1.55rem] border p-4 text-left shadow-[0_18px_48px_-34px_rgba(15,23,42,0.35)] transition";
   const compactStats = [
     {
       label: "Tracked",
@@ -2098,40 +2034,6 @@ export default function TasksPage() {
           {notice.message}
         </div>
       ) : null}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-        {overviewTiles.map((tile) => {
-          const isSelected = selectedStatus === tile.key;
-          const TileIcon = tile.key === "support" ? AlertCircle : getStatusIcon(tile.status);
-
-          return (
-            <button
-              key={tile.key}
-              type="button"
-              onClick={() => {
-                setSelectedStatus(tile.key as TaskStatusFilter);
-                scrollToSection(liveOrdersSectionRef);
-              }}
-              className={`${overviewTileBaseClassName} ${
-                isSelected
-                  ? "border-[var(--brand-500)]/35 bg-[var(--brand-50)]"
-                  : "border-slate-200 bg-white hover:border-[var(--brand-500)]/25 hover:bg-slate-50/80"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{tile.label}</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-950">{tile.count}</p>
-                </div>
-                <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${tile.key === "support" ? "bg-amber-50 text-amber-700" : `${getStatusColor(tile.status)}`}`}>
-                  <TileIcon className="h-4.5 w-4.5" />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-slate-500">{tile.helper}</p>
-            </button>
-          );
-        })}
-      </section>
 
       <section className="overflow-hidden rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5">
         <div className="space-y-4">
