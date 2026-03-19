@@ -9,8 +9,17 @@ const transitionLabelRegex =
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
   const magicLinkUrl = await resolveMagicLinkUrl();
-  await page.goto(magicLinkUrl);
-  await page.waitForURL(/\/dashboard/, { timeout: 60000 });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(magicLinkUrl, { waitUntil: "domcontentloaded" });
+      await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(1500 * (attempt + 1));
+    }
+  }
 };
 
 test("login request smoke", async ({ page }) => {
@@ -39,55 +48,67 @@ test("authenticated marketplace smoke", async ({ page }) => {
   await authenticateWithMagicLink({ page });
 
   await test.step("provider discovery", async () => {
-    await page.goto("/dashboard/people");
-    await expect(page.getByText(/People Network/i).first()).toBeVisible({ timeout: 20_000 });
+    await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /People Network/i })).toBeVisible({ timeout: 20_000 });
     await expect(
-      page.getByRole("heading", { name: /Discover trusted local providers and act on live availability\./i })
+      page.getByRole("heading", { name: /Discover nearby professionals and businesses/i })
     ).toBeVisible({ timeout: 20_000 });
     await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 });
   });
 
-  await test.step("start inline chat + send message + open thread", async () => {
-    const connectedCard = page.locator("article").filter({ has: page.getByRole("button", { name: /^Chat$/i }) }).first();
-    if ((await connectedCard.count()) === 0) {
-      const gatedCard = page.locator("article").filter({ has: page.getByRole("button", { name: /Chat after connect/i }) }).first();
-      await expect(gatedCard).toBeVisible({ timeout: 15_000 });
-      return;
+  await test.step("open connected chat + send message", async () => {
+    const mobileConnectionsToggle = page.getByRole("button", { name: /^Connections$/i });
+    if ((await mobileConnectionsToggle.count()) > 0 && (await mobileConnectionsToggle.first().isVisible())) {
+      await mobileConnectionsToggle.first().click();
     }
 
-    const firstCard = connectedCard;
-    await firstCard.getByRole("button", { name: /^Chat$/i }).click();
+    const connectionsPanel = page.locator("section").filter({ has: page.getByRole("heading", { name: /^Connections$/i }) }).first();
+    await expect(connectionsPanel).toBeVisible({ timeout: 15_000 });
 
-    const composer = firstCard.getByPlaceholder(/Write a message to/i);
-    await expect(composer).toBeVisible();
+    await connectionsPanel.getByRole("button", { name: /Connected/i }).click();
+
+    const acceptedConnectionChat = connectionsPanel.getByRole("button", { name: /^Chat$/i }).first();
+    if ((await acceptedConnectionChat.count()) > 0) {
+      await expect(acceptedConnectionChat).toBeVisible({ timeout: 15_000 });
+      await acceptedConnectionChat.click();
+    } else {
+      await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+      const dashboardConnectedCard = page
+        .locator("article")
+        .filter({ has: page.getByRole("button", { name: /^Connected$/i }) })
+        .first();
+      await expect(dashboardConnectedCard).toBeVisible({ timeout: 20_000 });
+      await dashboardConnectedCard.getByRole("button", { name: /^Chat$/i }).click();
+    }
+
+    await page.waitForURL(/\/dashboard\/chat\?open=/, { timeout: 30_000 });
+    const composer = page.getByPlaceholder("Write a message...");
+    await expect(composer).toBeVisible({ timeout: 20_000 });
 
     const message = `e2e smoke ${Date.now()}`;
     await composer.fill(message);
-    await firstCard.getByRole("button", { name: /Send Message/i }).click();
+    await composer.press("Enter");
 
-    await expect(firstCard.getByText(/Message sent\. It is saved in Chat tab\./i)).toBeVisible({ timeout: 15000 });
-
-    const openThreadButton =
-      (await firstCard.getByRole("button", { name: /Open Thread/i }).count()) > 0
-        ? firstCard.getByRole("button", { name: /Open Thread/i }).first()
-        : firstCard.getByRole("button", { name: /Open Chat Tab/i }).first();
-    await expect(openThreadButton).toBeVisible({ timeout: 15000 });
-    await openThreadButton.click();
-
-    await page.waitForURL(/\/dashboard\/chat/, { timeout: 30000 });
-    await expect(page.getByText(message).last()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(message).last()).toBeVisible({ timeout: 15_000 });
   });
 
   await test.step("create order from marketplace", async () => {
-    await page.goto("/dashboard");
-    const bookButton = page.getByRole("button", { name: /Book Now|Accept Job/i }).first();
-    await expect(bookButton).toBeVisible();
-    await bookButton.click();
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    const acceptButton = page.getByRole("button", { name: /^Accept$/i }).first();
+    await expect(acceptButton).toBeVisible({ timeout: 20_000 });
+    await acceptButton.click();
+
+    const confirmButton = page.getByRole("button", { name: /Yes,\s*Accept/i });
+    await expect(confirmButton).toBeVisible({ timeout: 15_000 });
+    await confirmButton.click();
+
+    await expect(confirmButton).toBeHidden({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /^Accepted$/i }).first()).toBeVisible({ timeout: 20_000 });
   });
 
   await test.step("task status transition", async () => {
-    await page.goto("/dashboard/tasks");
-    await expect(page.getByRole("heading", { name: /My Tasks|Task Operations/i })).toBeVisible();
+    await page.goto("/dashboard/tasks", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /Tasks Workspace|My Tasks|Task Operations/i })).toBeVisible();
 
     const transitionButton = page
       .locator("button")

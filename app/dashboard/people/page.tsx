@@ -6,9 +6,20 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
+import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { ensureClientProfile } from "@/lib/clientProfile";
+import {
+  clearPendingFeedCardSave,
+  getPendingFeedCardIds,
+  persistFeedCardSave,
+  prunePendingFeedCardSaves,
+  removeFeedCardSave,
+  stagePendingFeedCardSave,
+  syncPendingFeedCardSaves,
+} from "@/lib/feedCardSavesClient";
 import {
   calculateLocalRankScore,
   calculateProfileCompletion,
@@ -28,7 +39,8 @@ import {
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { buildPublicProfilePath } from "@/lib/profile/utils";
+import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
+import { buildPublicProfilePath, normalizeTopics } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import ConnectionsPanel from "./components/ConnectionsPanel";
@@ -818,6 +830,7 @@ const createProviderCards = (params: {
 };
 export default function PeoplePage() {
   const router = useRouter();
+  const { profile: viewerProfile } = useProfileContext();
   const infiniteSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
   const providerPreviewRef = useRef<Map<string, ProviderPreview>>(new Map());
@@ -1024,12 +1037,23 @@ export default function PeoplePage() {
 
       if (error) {
         if (isMissingRelationError(error.message || "")) {
+          const nextSavedIds = new Set(
+            getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId))
+          );
+          setSavedCardIds(nextSavedIds);
           return;
         }
         throw new Error(error.message);
       }
 
-      setSavedCardIds(new Set(((data as SavedCardRow[] | null) || []).map((row) => row.card_id)));
+      const persistedCardIds = ((data as SavedCardRow[] | null) || []).map((row) => row.card_id);
+      prunePendingFeedCardSaves(viewerId, persistedCardIds);
+      const nextSavedIds = new Set([
+        ...persistedCardIds,
+        ...getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId)),
+      ]);
+      setSavedCardIds(nextSavedIds);
+      void syncPendingFeedCardSaves(supabase, viewerId, persistedCardIds);
     },
     []
   );
@@ -1197,52 +1221,68 @@ export default function PeoplePage() {
 
       try {
         const viewerId = await ensureViewerId();
+        const savePayload = {
+          card_id: cardId,
+          focus_id: provider.id,
+          card_type: "service" as const,
+          title: provider.name,
+          subtitle: provider.role,
+          action_path: provider.fullProfilePath,
+          metadata: {
+            kind: "people_profile",
+            image: provider.media[0]?.url || provider.avatar,
+            mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
+            priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
+            audienceName: provider.location,
+            tags: provider.tags.slice(0, 3),
+            role: provider.role,
+            actionPath: provider.fullProfilePath,
+          },
+        };
 
         if (shouldSave) {
-          const { error } = await supabase.from("feed_card_saves").upsert(
-            {
-              user_id: viewerId,
-              card_id: cardId,
-              focus_id: provider.id,
-              card_type: "service",
-              title: provider.name,
-              subtitle: provider.role,
-              action_path: provider.fullProfilePath,
-              metadata: {
-                kind: "people_profile",
-                image: provider.media[0]?.url || provider.avatar,
-                mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
-                priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
-                audienceName: provider.location,
-                tags: provider.tags.slice(0, 3),
-                role: provider.role,
-                actionPath: provider.fullProfilePath,
-              },
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,card_id" }
-          );
-
-          if (error) {
-            throw new Error(error.message);
-          }
+          stagePendingFeedCardSave(viewerId, savePayload);
+          await persistFeedCardSave(supabase, savePayload);
 
           setNoticeBanner({ kind: "success", message: "Profile saved." });
           return;
         }
 
-        const { error } = await supabase
-          .from("feed_card_saves")
-          .delete()
-          .eq("user_id", viewerId)
-          .eq("card_id", cardId);
-
-        if (error) {
-          throw new Error(error.message);
-        }
+        clearPendingFeedCardSave(viewerId, cardId);
+        await removeFeedCardSave(supabase, cardId);
 
         setNoticeBanner({ kind: "info", message: "Removed from saved." });
       } catch (error) {
+        try {
+          const viewerId = await ensureViewerId();
+          const rollbackPayload = {
+            card_id: cardId,
+            focus_id: provider.id,
+            card_type: "service" as const,
+            title: provider.name,
+            subtitle: provider.role,
+            action_path: provider.fullProfilePath,
+            metadata: {
+              kind: "people_profile",
+              image: provider.media[0]?.url || provider.avatar,
+              mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
+              priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
+              audienceName: provider.location,
+              tags: provider.tags.slice(0, 3),
+              role: provider.role,
+              actionPath: provider.fullProfilePath,
+            },
+          };
+
+          if (shouldSave) {
+            clearPendingFeedCardSave(viewerId, cardId);
+          } else {
+            stagePendingFeedCardSave(viewerId, rollbackPayload);
+          }
+        } catch {
+          // Ignore viewer lookup failures during rollback.
+        }
+
         setSavedCardIds((current) => {
           const next = new Set(current);
           if (wasSaved) {
@@ -1531,8 +1571,10 @@ export default function PeoplePage() {
       setSavedCardIds((current) => {
         const next = new Set(current);
         if (payload.eventType === "DELETE") {
+          clearPendingFeedCardSave(currentUserId, cardId);
           next.delete(cardId);
         } else {
+          prunePendingFeedCardSaves(currentUserId, [cardId]);
           next.add(cardId);
         }
         return next;
@@ -1631,6 +1673,30 @@ export default function PeoplePage() {
     [providers]
   );
   const coveragePercent = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
+  const matchingProvidersCount = useMemo(() => {
+    const viewerTags = new Set(
+      normalizeTopics([...(viewerProfile?.interests || []), ...(viewerProfile?.services || [])]).map((tag) =>
+        tag.toLowerCase()
+      )
+    );
+
+    if (viewerTags.size === 0) return 0;
+
+    return providers.filter((provider) => provider.tags.some((tag) => viewerTags.has(tag.toLowerCase()))).length;
+  }, [providers, viewerProfile]);
+  const discoveryReadiness = viewerProfile
+    ? createMarketplaceReadinessSummary({
+        profile: viewerProfile,
+        matchingProvidersCount,
+      })
+    : null;
+  const discoveryStats = discoveryReadiness
+    ? [
+        { label: "Profile", value: `${discoveryReadiness.completionPercent}%` },
+        { label: "Tag matches", value: String(matchingProvidersCount) },
+        { label: "Active now", value: String(activeNow) },
+      ]
+    : [];
 
   const activeProvider =
     visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
@@ -1681,6 +1747,8 @@ export default function PeoplePage() {
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
       />
+
+      {discoveryReadiness ? <MarketplaceReadinessPanel summary={discoveryReadiness} stats={discoveryStats} /> : null}
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

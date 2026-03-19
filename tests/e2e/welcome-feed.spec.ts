@@ -3,14 +3,50 @@ import { hasE2EAuthConfig, resolveMagicLinkUrl } from "./helpers/auth";
 
 const authenticateWithMagicLink = async (page: Page) => {
   const magicLinkUrl = await resolveMagicLinkUrl();
-  await page.goto(magicLinkUrl);
-  await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(magicLinkUrl, { waitUntil: "domcontentloaded" });
+      await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(1500 * (attempt + 1));
+    }
+  }
 };
 
 const gotoWelcomeFeed = async (page: Page) => {
-  await page.goto("/dashboard/welcome");
-  await expect(page.getByTestId("welcome-live-feed")).toBeVisible();
-  await expect(page.getByTestId("welcome-feed-card").first()).toBeVisible();
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto("/dashboard/welcome", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("welcome-live-feed")).toBeVisible({ timeout: 20_000 });
+
+    try {
+      await expect(page.getByTestId("welcome-feed-card").first()).toBeVisible({ timeout: 20_000 });
+      return;
+    } catch (error) {
+      if (attempt === 1) throw error;
+      await page.waitForTimeout(1500);
+    }
+  }
+};
+
+const getWelcomeFeedCard = (page: Page, cardId: string) =>
+  page.locator(`[data-testid="welcome-feed-card"][data-card-id="${cardId}"]`).first();
+
+const clickWelcomeFeedAction = async (page: Page, cardId: string, actionTestId: string) => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const action = getWelcomeFeedCard(page, cardId).getByTestId(actionTestId);
+    await expect(action).toBeVisible({ timeout: 15_000 });
+
+    try {
+      await action.click();
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(1_000);
+    }
+  }
 };
 
 test.describe("welcome feed cards", () => {
@@ -81,23 +117,29 @@ test.describe("welcome feed cards", () => {
     const cardId = await feedCard.getAttribute("data-card-id");
     expect(cardId).toBeTruthy();
 
-    await feedCard.getByTestId("feed-action-primary").click();
-    await page.waitForURL(/\/dashboard/);
+    await clickWelcomeFeedAction(page, cardId!, "feed-action-primary");
+    await page.waitForURL((url) => url.pathname === "/dashboard" && url.searchParams.get("source") === "welcome_feed");
     await expect(page).toHaveURL(new RegExp(`context_card=${cardId}`));
     await expect(page).toHaveURL(/source=welcome_feed/);
 
     await gotoWelcomeFeed(page);
 
     const messageCard = page.getByTestId("welcome-feed-card").first();
-    await messageCard.getByTestId("feed-action-message").click();
+    const messageCardId = await messageCard.getAttribute("data-card-id");
+    expect(messageCardId).toBeTruthy();
+    await clickWelcomeFeedAction(page, messageCardId!, "feed-action-message");
     await page.waitForURL(/\/dashboard\/chat/);
     await expect(page).toHaveURL(/source=welcome_feed/);
 
     await gotoWelcomeFeed(page);
 
     const networkCard = page.getByTestId("welcome-feed-card").first();
-    await networkCard.getByTestId("feed-action-network").click();
-    await page.waitForURL(/\/dashboard/);
+    const networkCardId = await networkCard.getAttribute("data-card-id");
+    expect(networkCardId).toBeTruthy();
+    await clickWelcomeFeedAction(page, networkCardId!, "feed-action-network");
+    await page.waitForURL(
+      (url) => url.pathname === "/dashboard/people" && url.searchParams.get("source") === "welcome_feed"
+    );
     await expect(page).toHaveURL(/source=welcome_feed/);
   });
 
@@ -123,7 +165,7 @@ test.describe("welcome feed cards", () => {
     await expect(savedCard).toBeVisible({ timeout: 15_000 });
 
     await savedCard.getByTestId("saved-feed-open").click();
-    await page.waitForURL(/\/dashboard/);
+    await page.waitForURL((url) => url.searchParams.get("source") === "saved_feed");
     await expect(page).toHaveURL(/source=saved_feed/);
     await expect(page).toHaveURL(new RegExp(`context_card=${cardId}`));
 

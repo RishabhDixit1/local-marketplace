@@ -7,6 +7,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { appTagline } from "@/lib/branding";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import type { FeedCardSavePayload } from "@/lib/feedCardSaves";
+import {
+  clearPendingFeedCardSave,
+  getPendingFeedCardIds,
+  persistFeedCardSave,
+  prunePendingFeedCardSaves,
+  removeFeedCardSave,
+  stagePendingFeedCardSave,
+  syncPendingFeedCardSaves,
+} from "@/lib/feedCardSavesClient";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
@@ -365,52 +375,47 @@ export default function WelcomePage() {
     }, 2200);
   };
 
-  const persistCardSave = async (card: EnrichedNearbyCard, shouldSave: boolean): Promise<boolean> => {
+  const buildCardSavePayload = (card: EnrichedNearbyCard): FeedCardSavePayload => ({
+    card_id: card.id,
+    focus_id: card.focusId,
+    card_type: card.type,
+    title: card.title,
+    subtitle: card.subtitle,
+    action_path: card.actionPath,
+    metadata: {
+      priceLabel: card.priceLabel,
+      etaLabel: card.etaLabel,
+      ownerLabel: card.ownerLabel,
+      audienceLabel: card.audienceLabel,
+      audienceName: card.audienceName,
+      tags: card.tags,
+      image: card.image,
+      signalLabel: card.signalLabel,
+    },
+  });
+
+  const persistCardSave = async (payload: FeedCardSavePayload, shouldSave: boolean): Promise<boolean> => {
     if (!viewerId) {
       return false;
     }
 
     if (shouldSave) {
-      const { error } = await supabase.from("feed_card_saves").upsert(
-        {
-          user_id: viewerId,
-          card_id: card.id,
-          focus_id: card.focusId,
-          card_type: card.type,
-          title: card.title,
-          subtitle: card.subtitle,
-          action_path: card.actionPath,
-          metadata: {
-            priceLabel: card.priceLabel,
-            etaLabel: card.etaLabel,
-            ownerLabel: card.ownerLabel,
-            audienceLabel: card.audienceLabel,
-            audienceName: card.audienceName,
-            tags: card.tags,
-            image: card.image,
-            signalLabel: card.signalLabel,
-          },
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,card_id" }
-      );
-
-      if (error) {
-        console.warn("Failed to save feed card:", error.message);
+      try {
+        await persistFeedCardSave(supabase, payload);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        console.warn("Failed to save feed card:", message);
         return false;
       }
 
       return true;
     }
 
-    const { error } = await supabase
-      .from("feed_card_saves")
-      .delete()
-      .eq("user_id", viewerId)
-      .eq("card_id", card.id);
-
-    if (error) {
-      console.warn("Failed to remove saved feed card:", error.message);
+    try {
+      await removeFeedCardSave(supabase, payload.card_id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.warn("Failed to remove saved feed card:", message);
       return false;
     }
 
@@ -446,6 +451,7 @@ export default function WelcomePage() {
   const toggleCardSave = async (card: EnrichedNearbyCard) => {
     const wasSaved = savedCardIds.includes(card.id);
     const shouldSave = !wasSaved;
+    const savePayload = buildCardSavePayload(card);
     setSavingCardIds((current) => (current.includes(card.id) ? current : [...current, card.id]));
 
     setSavedCardIds((current) => {
@@ -461,7 +467,13 @@ export default function WelcomePage() {
         return;
       }
 
-      const persisted = await persistCardSave(card, shouldSave);
+      if (shouldSave) {
+        stagePendingFeedCardSave(viewerId, savePayload);
+      } else {
+        clearPendingFeedCardSave(viewerId, card.id);
+      }
+
+      const persisted = await persistCardSave(savePayload, shouldSave);
       if (persisted) {
         const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
         adjustCardMetrics(card.id, {
@@ -477,6 +489,11 @@ export default function WelcomePage() {
         }
         return current.filter((id) => id !== card.id);
       });
+      if (shouldSave) {
+        clearPendingFeedCardSave(viewerId, card.id);
+      } else {
+        stagePendingFeedCardSave(viewerId, savePayload);
+      }
       pushFeedToast("error", "Could not update saved state. Try again.");
     } finally {
       setSavingCardIds((current) => current.filter((id) => id !== card.id));
@@ -666,9 +683,13 @@ export default function WelcomePage() {
 
         if (savedCardError) {
           console.warn("Failed to load saved feed cards:", savedCardError.message);
+          setSavedCardIds(getPendingFeedCardIds(currentUser.id));
         } else {
-          const nextSavedIds = ((savedCardRows as FeedCardSaveRow[] | null) || []).map((row) => row.card_id);
+          const persistedSavedIds = ((savedCardRows as FeedCardSaveRow[] | null) || []).map((row) => row.card_id);
+          prunePendingFeedCardSaves(currentUser.id, persistedSavedIds);
+          const nextSavedIds = Array.from(new Set([...persistedSavedIds, ...getPendingFeedCardIds(currentUser.id)]));
           setSavedCardIds(nextSavedIds);
+          void syncPendingFeedCardSaves(supabase, currentUser.id, persistedSavedIds);
         }
 
         if (!communityResult) {
@@ -771,8 +792,10 @@ export default function WelcomePage() {
           }
 
           if (payload.eventType === "DELETE") {
+            clearPendingFeedCardSave(viewerId, changedCardId);
             setSavedCardIds((current) => current.filter((id) => id !== changedCardId));
           } else {
+            prunePendingFeedCardSaves(viewerId, [changedCardId]);
             setSavedCardIds((current) => (current.includes(changedCardId) ? current : [...current, changedCardId]));
           }
 

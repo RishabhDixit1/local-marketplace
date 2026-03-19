@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import RouteObservability from "@/app/components/RouteObservability";
 import { createAvatarFallback } from "@/lib/avatarFallback";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
@@ -243,6 +244,7 @@ const realtimeStateMeta: Record<
 
 const isMissingSupabaseRelation = (message: string) =>
   /does not exist|schema cache|could not find the table/i.test(message);
+const isRecursivePolicyError = (message: string) => /infinite recursion detected in policy/i.test(message);
 
 const isSupportOpen = (status: string) => ["pending", "sent"].includes(status);
 
@@ -428,7 +430,23 @@ export default function TasksPage() {
       const helpRequestError =
         helpRequestsRes.error && !isMissingSupabaseRelation(helpRequestsRes.error.message || "") ? helpRequestsRes.error : null;
       const liveOrders = (ordersRes.data as OrderRow[] | null) || [];
-      const liveHelpRequests = helpRequestError ? [] : ((helpRequestsRes.data as HelpRequestRow[] | null) || []);
+      let liveHelpRequests = helpRequestError ? [] : ((helpRequestsRes.data as HelpRequestRow[] | null) || []);
+
+      if (helpRequestError && isRecursivePolicyError(helpRequestsRes.error?.message || "")) {
+        const payload = await fetchAuthedJson<
+          { ok: true; requests: HelpRequestRow[] } | { ok: false; message?: string }
+        >(supabase, "/api/tasks/help-requests", {
+          method: "GET",
+        });
+
+        if (!payload.ok) {
+          throw new Error(payload.message || "Help request activity unavailable.");
+        }
+
+        liveHelpRequests = payload.requests || [];
+      }
+      const effectiveHelpRequestError =
+        helpRequestError && !isRecursivePolicyError(helpRequestError.message || "") ? helpRequestError : null;
 
       if (liveOrders.length === 0 && liveHelpRequests.length === 0) {
         setTasks([]);
@@ -566,8 +584,8 @@ export default function TasksPage() {
 
       if (eventsRes.error && !isMissingSupabaseRelation(eventsRes.error.message || "")) {
         setErrorMessage(`Task activity feed unavailable: ${eventsRes.error.message}`);
-      } else if (helpRequestError) {
-        setErrorMessage(`Help request activity unavailable: ${helpRequestError.message}`);
+      } else if (effectiveHelpRequestError) {
+        setErrorMessage(`Help request activity unavailable: ${effectiveHelpRequestError.message}`);
       } else if (supportError) {
         setErrorMessage(`Support queue unavailable: ${supportError.message}`);
       }
@@ -987,24 +1005,18 @@ export default function TasksPage() {
           return false;
         }
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const accessToken = session?.access_token || "";
-        if (!accessToken) {
-          setErrorMessage("Please sign in again before updating this request.");
+        const { data, error } = await supabase.rpc("transition_help_request_status", {
+          target_help_request_id: task.helpRequestId,
+          next_status: nextStatus,
+        });
+
+        if (error) {
+          setErrorMessage(error.message || "Failed to update request status.");
           return false;
         }
 
-        const response = await fetch("/api/needs/status", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ helpRequestId: task.helpRequestId, status: nextStatus }),
-        });
-        const payload = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
-
-        if (!response.ok || !payload?.ok) {
-          setErrorMessage(payload?.message || "Failed to update request status.");
+        if (!data) {
+          setErrorMessage("Failed to update request status.");
           return false;
         }
       } else {

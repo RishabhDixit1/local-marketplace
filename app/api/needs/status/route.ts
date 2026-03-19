@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "UNAUTHORIZED", message: authResult.message }, { status: authResult.status });
   }
 
-  const admin = createSupabaseAdminClient();
-  const dbClient = admin || createSupabaseUserServerClient(authResult.auth.accessToken);
+  // Status transitions rely on auth.uid() inside the RPC, so prefer the caller's session client.
+  const dbClient = createSupabaseUserServerClient(authResult.auth.accessToken) || createSupabaseAdminClient();
   if (!dbClient) {
     return NextResponse.json(
       {

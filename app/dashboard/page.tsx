@@ -33,6 +33,15 @@ import { supabase } from "@/lib/supabase";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import type { ConnectionState } from "@/lib/connectionState";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import {
+  clearPendingFeedCardSave,
+  getPendingFeedCardIds,
+  persistFeedCardSave,
+  prunePendingFeedCardSaves,
+  removeFeedCardSave,
+  stagePendingFeedCardSave,
+  syncPendingFeedCardSaves,
+} from "@/lib/feedCardSavesClient";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   calculateLocalRankScore,
@@ -849,18 +858,21 @@ export default function MarketplacePage() {
 
     if (error) {
       if (/relation .* does not exist|table .* does not exist/i.test(error.message || "")) {
+        setSavedListingIds(new Set(getPendingFeedCardIds(viewerId)));
         return;
       }
       console.warn("Unable to load saved cards:", error.message);
+      setSavedListingIds(new Set(getPendingFeedCardIds(viewerId)));
       return;
     }
 
-    const nextSavedIds = new Set(
-      (((data as Array<{ card_id?: string }> | null) || [])
-        .map((row) => row.card_id)
-        .filter((cardId): cardId is string => typeof cardId === "string" && cardId.length > 0))
-    );
+    const persistedCardIds = (((data as Array<{ card_id?: string }> | null) || [])
+      .map((row) => row.card_id)
+      .filter((cardId): cardId is string => typeof cardId === "string" && cardId.length > 0));
+    prunePendingFeedCardSaves(viewerId, persistedCardIds);
+    const nextSavedIds = new Set([...persistedCardIds, ...getPendingFeedCardIds(viewerId)]);
     setSavedListingIds(nextSavedIds);
+    void syncPendingFeedCardSaves(supabase, viewerId, persistedCardIds);
   }, [viewerId]);
 
   useEffect(() => {
@@ -932,8 +944,10 @@ export default function MarketplacePage() {
           setSavedListingIds((current) => {
             const updated = new Set(current);
             if (payload.eventType === "DELETE") {
+              clearPendingFeedCardSave(viewerId, cardId);
               updated.delete(cardId);
             } else {
+              prunePendingFeedCardSaves(viewerId, [cardId]);
               updated.add(cardId);
             }
             return updated;
@@ -1502,43 +1516,50 @@ export default function MarketplacePage() {
 
       try {
         const activeViewerId = await ensureViewerId();
+        const savePayload = {
+          card_id: cardId,
+          focus_id: item.id,
+          card_type: item.type,
+          title: item.displayTitle,
+          subtitle: item.displayDescription,
+          action_path: buildFeedContextPath(item),
+          metadata: buildSaveMetadata(item),
+        };
 
         if (shouldSave) {
-          const { error } = await supabase.from("feed_card_saves").upsert(
-            {
-              user_id: activeViewerId,
-              card_id: cardId,
-              focus_id: item.id,
-              card_type: item.type,
-              title: item.displayTitle,
-              subtitle: item.displayDescription,
-              action_path: buildFeedContextPath(item),
-              metadata: buildSaveMetadata(item),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,card_id" }
-          );
-
-          if (error) {
-            throw new Error(error.message);
-          }
+          stagePendingFeedCardSave(activeViewerId, savePayload);
+          await persistFeedCardSave(supabase, savePayload);
 
           pushToast("success", "Post saved.");
           return;
         }
 
-        const { error } = await supabase
-          .from("feed_card_saves")
-          .delete()
-          .eq("user_id", activeViewerId)
-          .eq("card_id", cardId);
-
-        if (error) {
-          throw new Error(error.message);
-        }
+        clearPendingFeedCardSave(activeViewerId, cardId);
+        await removeFeedCardSave(supabase, cardId);
 
         pushToast("success", "Removed from saved.");
       } catch (error) {
+        try {
+          const activeViewerId = await ensureViewerId();
+          const rollbackPayload = {
+            card_id: cardId,
+            focus_id: item.id,
+            card_type: item.type,
+            title: item.displayTitle,
+            subtitle: item.displayDescription,
+            action_path: buildFeedContextPath(item),
+            metadata: buildSaveMetadata(item),
+          };
+
+          if (shouldSave) {
+            clearPendingFeedCardSave(activeViewerId, cardId);
+          } else {
+            stagePendingFeedCardSave(activeViewerId, rollbackPayload);
+          }
+        } catch {
+          // Ignore viewer lookup failures during rollback.
+        }
+
         setSavedListingIds((current) => {
           const next = new Set(current);
           if (wasSaved) {
@@ -1748,17 +1769,16 @@ export default function MarketplacePage() {
         throw new Error("You cannot accept your own task.");
       }
 
-      const payload = await fetchAuthedJson<
-        { ok: true; helpRequestId: string; status: string } | { ok: false; message?: string }
-      >(supabase, "/api/needs/accept", {
-        method: "POST",
-        body: JSON.stringify({
-          helpRequestId: acceptTarget.helpRequestId,
-        }),
+      const { data, error } = await supabase.rpc("accept_help_request", {
+        target_help_request_id: acceptTarget.helpRequestId,
       });
 
-      if (!payload.ok) {
-        throw new Error(payload.message || "Unable to accept task.");
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data) {
+        throw new Error("Request already accepted or unavailable.");
       }
 
       setFeed((current) =>
@@ -1767,7 +1787,7 @@ export default function MarketplacePage() {
             ? {
                 ...item,
                 acceptedProviderId: activeViewerId,
-                status: payload.status || "accepted",
+                status: "accepted",
               }
             : item
         )

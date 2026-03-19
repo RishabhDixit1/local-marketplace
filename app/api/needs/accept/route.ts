@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "UNAUTHORIZED", message: authResult.message }, { status: authResult.status });
   }
 
-  const admin = createSupabaseAdminClient();
-  const dbClient = admin || createSupabaseUserServerClient(authResult.auth.accessToken);
+  // This RPC depends on auth.uid(), so it must run with the caller's session.
+  const dbClient = createSupabaseUserServerClient(authResult.auth.accessToken) || createSupabaseAdminClient();
   if (!dbClient) {
     return NextResponse.json(
       {
