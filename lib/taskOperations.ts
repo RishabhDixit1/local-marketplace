@@ -258,10 +258,11 @@ export const mapOrderToTask = (params: {
   const consumerProfile = order.consumer_id ? profileMap.get(order.consumer_id) : null;
   const providerProfile = order.provider_id ? profileMap.get(order.provider_id) : null;
   const currentUserAvatar = resolveProfileAvatarUrl(profileMap.get(currentUserId)?.avatar_url);
+  const metadata = order.metadata && typeof order.metadata === "object" ? order.metadata : null;
 
-  let listingTitle = buildTitleFromListingType(listingType);
-  let listingDescription = "Track order activity and coordinate next steps.";
-  let listingCategory = listingType;
+  let listingTitle = pickString(metadata?.task_title) || buildTitleFromListingType(listingType);
+  let listingDescription = pickString(metadata?.task_description) || "Track order activity and coordinate next steps.";
+  let listingCategory = pickString(metadata?.request_category) || pickString(metadata?.category) || listingType;
 
   if (listingType === "service" && listingId) {
     const service = serviceMap.get(listingId);
@@ -287,6 +288,12 @@ export const mapOrderToTask = (params: {
       listingDescription
     );
     listingCategory = sanitizeDisplayText(composerMetadata?.category || post?.category || parsedPost.category || "Demand", "Demand");
+    if (!post) {
+      listingCategory = sanitizeDisplayText(
+        pickString(metadata?.request_category) || pickString(metadata?.category) || listingCategory,
+        "Demand"
+      );
+    }
   }
 
   listingTitle = sanitizeDisplayText(listingTitle, buildTitleFromListingType(listingType));
@@ -305,7 +312,7 @@ export const mapOrderToTask = (params: {
     rawStatus: order.status || "new_lead",
     budget: formatCurrency(order.price),
     timeline: timelineFromStatus(order.status),
-    location: counterpartyProfile?.location || providerProfile?.location || consumerProfile?.location || "Nearby",
+    location: pickString(metadata?.location_label) || counterpartyProfile?.location || providerProfile?.location || consumerProfile?.location || "Nearby",
     postedBy: {
       id: order.consumer_id || "unknown-consumer",
       name: isPostedByMe ? "You" : consumerProfile?.name || "Customer",

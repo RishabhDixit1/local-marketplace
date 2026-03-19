@@ -110,4 +110,54 @@ describe("task operations helpers", () => {
       listingType: "order",
     });
   });
+
+  it("falls back to order metadata when a demand order comes from a help request", () => {
+    const task = mapOrderToTask({
+      order: {
+        id: "order-help-1",
+        listing_type: "demand",
+        help_request_id: "help-1",
+        status: "quoted",
+        price: 3200,
+        consumer_id: "user-1",
+        provider_id: "user-2",
+        created_at: "2026-03-08T12:00:00.000Z",
+        metadata: {
+          task_title: "Office network setup",
+          task_description: "Router setup, cable tidy, and device onboarding.",
+          location_label: "Koramangala",
+          request_category: "IT Support",
+        },
+      },
+      currentUserId: "user-2",
+      profileMap: new Map([
+        [
+          "user-1",
+          {
+            id: "user-1",
+            name: "Customer One",
+            avatar_url: null,
+            location: "HSR Layout",
+          },
+        ],
+        [
+          "user-2",
+          {
+            id: "user-2",
+            name: "Provider Two",
+            avatar_url: null,
+            location: "Indiranagar",
+          },
+        ],
+      ]),
+      serviceMap: new Map(),
+      productMap: new Map(),
+      postMap: new Map(),
+    });
+
+    expect(task.title).toBe("Office network setup");
+    expect(task.description).toContain("Router setup");
+    expect(task.location).toBe("Koramangala");
+    expect(task.tags).toEqual(["IT Support", "Demand", "Open"]);
+  });
 });

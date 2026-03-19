@@ -4,6 +4,10 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
+import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
+import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { appTagline } from "@/lib/branding";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -17,10 +21,13 @@ import {
   stagePendingFeedCardSave,
   syncPendingFeedCardSaves,
 } from "@/lib/feedCardSavesClient";
+import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
+import { getProfileRoleFamily } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
+import { resolveWelcomeCommand } from "@/lib/welcomePrompt";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
   ArrowRight,
@@ -115,10 +122,12 @@ const formatTimeAgo = (value: string | null | undefined) => {
 
 export default function WelcomePage() {
   const router = useRouter();
+  const { profile: viewerProfile } = useProfileContext();
   const feedSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
 
   const [openPostModal, setOpenPostModal] = useState(false);
+  const [welcomePromptValue, setWelcomePromptValue] = useState("");
   const [heroLineIndex, setHeroLineIndex] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [isFeedLoading, setIsFeedLoading] = useState(true);
@@ -133,10 +142,16 @@ export default function WelcomePage() {
   const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [isProvider, setIsProvider] = useState(false);
+  const [providerServicesCount, setProviderServicesCount] = useState(0);
+  const [providerProductsCount, setProviderProductsCount] = useState(0);
+  const [seekerPostsCount, setSeekerPostsCount] = useState(0);
+  const [readinessLoading, setReadinessLoading] = useState(false);
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
   const activeRef = useRef(true);
+  const viewerRoleFamily = getProfileRoleFamily(viewerProfile?.role);
+  const viewerIsProvider = viewerRoleFamily === "provider";
 
   const pushFeedToast = (kind: FeedToast["kind"], message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -367,6 +382,149 @@ export default function WelcomePage() {
       ),
     [nearbyCards]
   );
+
+  useEffect(() => {
+    if (!viewerId || !viewerProfile) {
+      setProviderServicesCount(0);
+      setProviderProductsCount(0);
+      setSeekerPostsCount(0);
+      setReadinessLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    const loadReadinessInsights = async () => {
+      setReadinessLoading(true);
+
+      try {
+        if (viewerRoleFamily === "provider") {
+          const [{ count: servicesCount }, { count: productsCount }] = await Promise.all([
+            supabase.from("service_listings").select("id", { count: "exact", head: true }).eq("provider_id", viewerId),
+            supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("provider_id", viewerId),
+          ]);
+
+          if (!active) return;
+
+          setProviderServicesCount(Number(servicesCount || 0));
+          setProviderProductsCount(Number(productsCount || 0));
+          setSeekerPostsCount(0);
+        } else {
+          const { count: postsCount } = await supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", viewerId);
+          if (!active) return;
+
+          setProviderServicesCount(0);
+          setProviderProductsCount(0);
+          setSeekerPostsCount(Number(postsCount || 0));
+        }
+      } catch {
+        if (!active) return;
+        setProviderServicesCount(0);
+        setProviderProductsCount(0);
+        setSeekerPostsCount(0);
+      } finally {
+        if (active) {
+          setReadinessLoading(false);
+        }
+      }
+    };
+
+    void loadReadinessInsights();
+
+    return () => {
+      active = false;
+    };
+  }, [viewerId, viewerProfile, viewerRoleFamily]);
+
+  const welcomeReadinessSummary = useMemo(
+    () =>
+      viewerProfile
+        ? createMarketplaceReadinessSummary({
+            profile: viewerProfile,
+            providerServicesCount,
+            providerProductsCount,
+            seekerPostsCount,
+          })
+        : null,
+    [providerProductsCount, providerServicesCount, seekerPostsCount, viewerProfile]
+  );
+
+  const welcomeReadinessStats = useMemo(
+    () =>
+      welcomeReadinessSummary
+        ? [
+            { label: "Profile", value: `${welcomeReadinessSummary.completionPercent}%` },
+            { label: "Connections", value: String(acceptedConnectionCount) },
+            { label: "Saved", value: String(savedCardIds.length) },
+          ]
+        : [],
+    [acceptedConnectionCount, savedCardIds.length, welcomeReadinessSummary]
+  );
+
+  const handleWelcomePromptSubmit = useCallback(() => {
+    const defaultHref =
+      welcomeReadinessSummary?.actions[0]?.href || (viewerIsProvider ? "/dashboard/provider/add-service" : "/dashboard?compose=1");
+    const resolution = resolveWelcomeCommand(welcomePromptValue, {
+      defaultHref,
+      providerDefaultHref: "/dashboard/provider/add-service",
+      isProvider: viewerIsProvider,
+    });
+
+    if (resolution.kind === "refresh") {
+      if (viewerId) {
+        void loadConnectedFeed(viewerId, { soft: false });
+      }
+      return;
+    }
+
+    router.push(resolution.href);
+  }, [loadConnectedFeed, router, viewerId, viewerIsProvider, welcomePromptValue, welcomeReadinessSummary]);
+
+  const welcomePromptConfig = useMemo<DashboardPromptConfig>(() => {
+    const defaultHref =
+      welcomeReadinessSummary?.actions[0]?.href || (viewerIsProvider ? "/dashboard/provider/add-service" : "/dashboard?compose=1");
+    const primaryAction = welcomeReadinessSummary?.actions[0];
+
+    return {
+      placeholder: "Ask what to do next in ServiQ",
+      value: welcomePromptValue,
+      onValueChange: setWelcomePromptValue,
+      onSubmit: handleWelcomePromptSubmit,
+      actions: [
+        {
+          id: primaryAction?.id || "next-best-action",
+          label: primaryAction?.ctaLabel || (viewerIsProvider ? "Add service" : "Post need"),
+          onClick: () => {
+            router.push(primaryAction?.href || defaultHref);
+          },
+          variant: "primary",
+        },
+        {
+          id: "refresh-welcome-feed",
+          label: isFeedLoading ? "Refreshing..." : "Refresh",
+          icon: Loader2,
+          onClick: () => {
+            if (!viewerId) return;
+            void loadConnectedFeed(viewerId, { soft: false });
+          },
+          variant: "secondary",
+          disabled: !viewerId || isFeedLoading,
+          busy: isFeedLoading,
+        },
+      ],
+    };
+  }, [
+    handleWelcomePromptSubmit,
+    isFeedLoading,
+    loadConnectedFeed,
+    router,
+    viewerId,
+    viewerIsProvider,
+    welcomePromptValue,
+    welcomeReadinessSummary,
+  ]);
+
+  useDashboardPrompt(welcomePromptConfig);
 
   const markCardShared = (cardId: string) => {
     setSharedCardId(cardId);
@@ -953,6 +1111,14 @@ export default function WelcomePage() {
               {loadError}
             </div>
           )}
+
+          {welcomeReadinessSummary ? (
+            <MarketplaceReadinessPanel
+              summary={welcomeReadinessSummary}
+              stats={welcomeReadinessStats}
+              loading={readinessLoading}
+            />
+          ) : null}
 
           <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

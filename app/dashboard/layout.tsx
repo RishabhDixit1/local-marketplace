@@ -23,6 +23,7 @@ import {
   Menu,
   MessageCircle,
   Newspaper,
+  Sparkles,
   User,
   Users,
   X,
@@ -32,6 +33,7 @@ const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Home },
   { name: "Posts", path: "/dashboard", icon: Newspaper },
   { name: "People", path: "/dashboard/people", icon: Users },
+  { name: "Launchpad", path: "/dashboard/launchpad", icon: Sparkles },
   { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
 ];

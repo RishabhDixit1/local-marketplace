@@ -227,24 +227,31 @@ export default function ListingsPage() {
             </p>
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <button
+                onClick={() => router.push("/dashboard/launchpad")}
+                className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
+              >
+                <p className="font-medium text-slate-900">1. Use Launchpad</p>
+                <p className="text-xs text-slate-500 mt-1">Generate your storefront, listings, and FAQ in one flow.</p>
+              </button>
+              <button
                 onClick={() => router.push("/dashboard/profile")}
                 className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
               >
-                <p className="font-medium text-slate-900">1. Complete Profile</p>
+                <p className="font-medium text-slate-900">2. Complete Profile</p>
                 <p className="text-xs text-slate-500 mt-1">Add bio, location, and services.</p>
               </button>
               <button
                 onClick={() => router.push("/dashboard/provider/add-service")}
                 className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
               >
-                <p className="font-medium text-slate-900">2. Add Service</p>
+                <p className="font-medium text-slate-900">3. Add Service</p>
                 <p className="text-xs text-slate-500 mt-1">Publish what you can do for customers.</p>
               </button>
               <button
                 onClick={() => router.push("/dashboard/provider/add-product")}
                 className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
               >
-                <p className="font-medium text-slate-900">3. Add Product</p>
+                <p className="font-medium text-slate-900">4. Add Product</p>
                 <p className="text-xs text-slate-500 mt-1">List products for nearby buyers.</p>
               </button>
             </div>

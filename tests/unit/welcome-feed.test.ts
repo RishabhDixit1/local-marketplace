@@ -137,6 +137,95 @@ describe("welcome feed builder", () => {
     expect(result.cards.every((card) => card.ownerId === "peer-1")).toBe(true);
   });
 
+  it("prefers uploaded media from live post metadata before seeded fallback visuals", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+          {
+            id: "post-with-media",
+            user_id: "peer-1",
+            text: "Need a photographer | Budget: 3500 | Category: Events | Type: demand",
+            metadata: {
+              source: "serviq_compose",
+              postType: "need",
+              title: "Need a photographer",
+              details: "Birthday event this Saturday",
+              category: "Events",
+              budget: 3500,
+              locationLabel: "Koramangala",
+              radiusKm: 8,
+              mode: "urgent",
+              neededWithin: "today",
+              scheduleDate: "",
+              scheduleTime: "",
+              flexibleTiming: true,
+              attachmentCount: 1,
+              media: [
+                {
+                  name: "birthday.jpg",
+                  url: "https://cdn.example.com/uploads/birthday.jpg",
+                  type: "image/jpeg",
+                },
+              ],
+            },
+            created_at: "2026-03-12T12:30:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.image).toBe("https://cdn.example.com/uploads/birthday.jpg");
+  });
+
+  it("uses a generated live placeholder instead of seeded demo art when no upload exists", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        services: [
+          {
+            id: "service-no-media",
+            provider_id: "peer-1",
+            title: "Quick appliance diagnostics",
+            description: "Live service without an uploaded cover image",
+            price: 999,
+            category: "Repair",
+            created_at: "2026-03-12T12:40:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.image.startsWith("data:image/svg+xml")).toBe(true);
+    expect(result.cards[0]?.image.includes("unsplash.com")).toBe(false);
+  });
+
+  it("ignores persisted seeded image urls on live listings and falls back to the live placeholder", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        products: [
+          {
+            id: "product-seeded-image",
+            provider_id: "peer-1",
+            title: "Neighborhood resale item",
+            description: "Legacy demo image should not surface in welcome feed",
+            price: 1800,
+            category: "Home",
+            image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",
+            created_at: "2026-03-12T12:50:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.image.startsWith("data:image/svg+xml")).toBe(true);
+    expect(result.cards[0]?.image.includes("unsplash.com")).toBe(false);
+  });
+
   it("returns a connected-but-empty state when peers exist without shareable content", () => {
     const result = buildWelcomeFeedCards(
       buildSnapshot({

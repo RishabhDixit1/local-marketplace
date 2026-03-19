@@ -6,6 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   Activity,
@@ -13,6 +14,7 @@ import {
   CheckCheck,
   Loader2,
   MessageCircle,
+  Receipt,
   Search,
   Send,
   Sparkles,
@@ -75,6 +77,12 @@ type FeedMessageContext = {
   itemType: "demand" | "service" | "product";
   title: string;
   audience: string;
+};
+
+type RequestedQuoteContext = {
+  orderId: string | null;
+  helpRequestId: string | null;
+  conversationId: string | null;
 };
 
 const fallbackAvatar = "https://i.pravatar.cc/150";
@@ -210,6 +218,21 @@ export default function ChatPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get("liveTalk") === "1";
   });
+  const [quoteTarget, setQuoteTarget] = useState<RequestedQuoteContext | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("quote") !== "1") return null;
+
+    const orderId = params.get("order");
+    const helpRequestId = params.get("helpRequest");
+    if (!orderId && !helpRequestId) return null;
+
+    return {
+      orderId,
+      helpRequestId,
+      conversationId: params.get("open"),
+    };
+  });
   const [feedContext] = useState<FeedMessageContext | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
@@ -232,6 +255,7 @@ export default function ChatPage() {
     };
   });
   const [feedContextDismissed, setFeedContextDismissed] = useState(false);
+  const [quotePanelDismissed, setQuotePanelDismissed] = useState(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -272,6 +296,9 @@ export default function ChatPage() {
   );
 
   const activeFeedContext = feedContextDismissed ? null : feedContext;
+  const activeQuoteTarget =
+    quoteTarget && (!quoteTarget.conversationId || quoteTarget.conversationId === selectedChat) ? quoteTarget : null;
+  const showQuotePanel = Boolean(activeQuoteTarget) && !quotePanelDismissed;
 
   const feedContextPath = useMemo(() => {
     if (!activeFeedContext) return null;
@@ -287,6 +314,28 @@ export default function ChatPage() {
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (quoteTarget) {
+      params.set("quote", "1");
+      if (quoteTarget.orderId) params.set("order", quoteTarget.orderId);
+      else params.delete("order");
+      if (quoteTarget.helpRequestId) params.set("helpRequest", quoteTarget.helpRequestId);
+      else params.delete("helpRequest");
+      if (quoteTarget.conversationId) params.set("open", quoteTarget.conversationId);
+    } else {
+      params.delete("quote");
+      params.delete("order");
+      params.delete("helpRequest");
+    }
+
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [quoteTarget]);
 
   const sendTypingEvent = useCallback(
     (isTyping: boolean) => {
@@ -1431,6 +1480,16 @@ export default function ChatPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {activeQuoteTarget && (
+                      <button
+                        type="button"
+                        onClick={() => setQuotePanelDismissed((current) => !current)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        {showQuotePanel ? "Hide Quote Flow" : "Show Quote Flow"}
+                      </button>
+                    )}
                     {selectedConversation?.otherUserId && (
                       <button
                         type="button"
@@ -1463,6 +1522,36 @@ export default function ChatPage() {
               </header>
 
               <div className="relative flex-1 overflow-y-auto bg-slate-50/65 px-4 py-5 sm:px-6">
+                {activeQuoteTarget && showQuotePanel && (
+                  <div className="mb-4">
+                    <QuoteDraftEditor
+                      orderId={activeQuoteTarget.orderId}
+                      helpRequestId={activeQuoteTarget.helpRequestId}
+                      conversationId={selectedChat}
+                      surface="chat"
+                      onSaved={() => {
+                        setChatError(null);
+                      }}
+                      onSent={(result) => {
+                        setQuotePanelDismissed(false);
+                        setQuoteTarget((current) =>
+                          current
+                            ? {
+                                ...current,
+                                orderId: result.orderId,
+                                helpRequestId: null,
+                                conversationId: result.conversationId || current.conversationId || selectedChat,
+                              }
+                            : current
+                        );
+                        if (selectedChat) {
+                          void loadMessages(selectedChat);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
                 {liveTalkRequest && (
                   <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50/90 p-4 text-sm text-slate-700 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-3">
