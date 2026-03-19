@@ -39,6 +39,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -360,6 +361,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [chatLoadingOrderId, setChatLoadingOrderId] = useState<string | null>(null);
+  const [quoteEditorTaskId, setQuoteEditorTaskId] = useState<string | null>(null);
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null);
   const [supportBusyTaskId, setSupportBusyTaskId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -447,6 +449,13 @@ export default function TasksPage() {
       }
       const effectiveHelpRequestError =
         helpRequestError && !isRecursivePolicyError(helpRequestError.message || "") ? helpRequestError : null;
+
+      const helpRequestIdsWithOrders = new Set(
+        liveOrders.map((order) => order.help_request_id).filter((id): id is string => Boolean(id))
+      );
+      if (helpRequestIdsWithOrders.size > 0) {
+        liveHelpRequests = liveHelpRequests.filter((request) => !helpRequestIdsWithOrders.has(request.id));
+      }
 
       if (liveOrders.length === 0 && liveHelpRequests.length === 0) {
         setTasks([]);
@@ -937,6 +946,23 @@ export default function TasksPage() {
     return getOrderStatusLabel(task.rawStatus);
   };
 
+  const canManageQuote = (task: OperationalTask) => {
+    if (task.type !== "accepted") return false;
+
+    if (task.source === "help_request") {
+      return normalizeOrderStatus(task.rawStatus) === "accepted";
+    }
+
+    const canonical = normalizeOrderStatus(task.rawStatus);
+    return canonical === "new_lead" || canonical === "quoted";
+  };
+
+  const getQuoteActionLabel = (task: OperationalTask) => {
+    const canonical = normalizeOrderStatus(task.rawStatus);
+    if (canonical === "quoted") return "Review quote";
+    return task.source === "help_request" ? "Create quote" : "Draft quote";
+  };
+
   const getTaskTransitions = (task: OperationalTask): CanonicalOrderStatus[] => {
     if (task.source === "help_request") {
       const normalized = (task.rawStatus || "").toLowerCase();
@@ -951,7 +977,9 @@ export default function TasksPage() {
     }
 
     const actor: OrderActorRole = task.type === "posted" ? "consumer" : "provider";
-    return getAllowedTransitions(task.rawStatus, actor).filter((status) => status !== "closed");
+    return getAllowedTransitions(task.rawStatus, actor).filter(
+      (status) => status !== "closed" && (status !== "quoted" || !canManageQuote(task))
+    );
   };
 
   const getTaskTransitionLabel = (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
@@ -965,7 +993,7 @@ export default function TasksPage() {
     return getTransitionActionLabel({ actor, nextStatus });
   };
 
-  const startChat = async (task: OperationalTask) => {
+  const startChat = async (task: OperationalTask, options?: { quote?: boolean }) => {
     if (!currentUserId || !task.counterpartyId) {
       setErrorMessage("Chat becomes available once another member is attached to this task.");
       return;
@@ -980,7 +1008,20 @@ export default function TasksPage() {
         currentUserId,
         task.counterpartyId
       );
-      router.push(`/dashboard/chat?open=${targetConversationId}`);
+      const params = new URLSearchParams({
+        open: targetConversationId,
+      });
+
+      if (options?.quote) {
+        params.set("quote", "1");
+        if (task.source === "order") {
+          params.set("order", task.orderId);
+        } else if (task.helpRequestId) {
+          params.set("helpRequest", task.helpRequestId);
+        }
+      }
+
+      router.push(`/dashboard/chat?${params.toString()}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start chat.";
       setErrorMessage(`Unable to start chat. ${message}`);
@@ -1072,6 +1113,12 @@ export default function TasksPage() {
       window.clearTimeout(timeoutId);
     };
   }, [notice]);
+
+  useEffect(() => {
+    if (!quoteEditorTaskId) return;
+    if (tasks.some((task) => task.orderId === quoteEditorTaskId)) return;
+    setQuoteEditorTaskId(null);
+  }, [quoteEditorTaskId, tasks]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1446,7 +1493,7 @@ export default function TasksPage() {
   };
 
   const actionButtonClassName =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
   const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
@@ -1460,21 +1507,45 @@ export default function TasksPage() {
     const shareBusy = sharingTaskId === task.orderId;
     const supportBusy = supportBusyTaskId === task.orderId;
     const transitions = getTaskTransitions(task);
+    const canQuote = canManageQuote(task);
     const supportAvailability = getSupportAvailability(task);
     const supportEntries = supportRequestsByTaskId.get(task.orderId) || [];
     const openSupport = supportEntries.find((request) => isSupportOpen(request.status));
     const isExpanded = expandedTaskId === task.orderId;
+    const quoteOpen = quoteEditorTaskId === task.orderId;
 
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="grid w-full gap-2 sm:grid-cols-2 2xl:grid-cols-3">
         <button
           type="button"
-          onClick={() => setExpandedTaskId((current) => (current === task.orderId ? null : task.orderId))}
+          onClick={() => {
+            setExpandedTaskId((current) => {
+              const nextValue = current === task.orderId ? null : task.orderId;
+              if (!nextValue && quoteEditorTaskId === task.orderId) {
+                setQuoteEditorTaskId(null);
+              }
+              return nextValue;
+            });
+          }}
           className={subtleActionClassName}
         >
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           {isExpanded ? "Hide details" : isHistoryTask(task) ? "View details" : "Track"}
         </button>
+
+        {canQuote ? (
+          <button
+            type="button"
+            onClick={() => {
+              setExpandedTaskId(task.orderId);
+              setQuoteEditorTaskId((current) => (current === task.orderId ? null : task.orderId));
+            }}
+            className={progressActionClassName}
+          >
+            <DollarSign className="h-4 w-4" />
+            {quoteOpen ? "Hide quote" : getQuoteActionLabel(task)}
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -1670,11 +1741,11 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className={`group relative overflow-hidden rounded-[1.9rem] border p-5 transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-46px_rgba(15,23,42,0.35)] sm:p-6 ${cardToneClassName}`}
+        className={`group relative flex h-full flex-col overflow-hidden rounded-[1.9rem] border p-5 transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-46px_rgba(15,23,42,0.35)] sm:p-6 ${cardToneClassName}`}
       >
         <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
 
-        <div className="space-y-4">
+        <div className="flex h-full flex-col gap-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -1694,13 +1765,13 @@ export default function TasksPage() {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">{task.title}</h3>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{task.description}</p>
                 </div>
 
-                <div className="w-full rounded-[1.3rem] border border-slate-200 bg-slate-50/80 px-4 py-3 xl:max-w-[320px]">
+                <div className="w-full rounded-[1.3rem] border border-slate-200 bg-slate-50/80 px-4 py-3 2xl:max-w-[320px]">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Next best action</p>
                   <p className="mt-2 text-sm font-semibold text-slate-900">{nextAction.title}</p>
                   <p className="mt-1 text-xs leading-5 text-slate-500">{nextAction.helper}</p>
@@ -1720,7 +1791,7 @@ export default function TasksPage() {
             </span>
           </div>
 
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid flex-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -1776,7 +1847,7 @@ export default function TasksPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex h-full flex-col gap-3">
               <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4">
                 <div className="flex items-center gap-3">
                   <Image
@@ -1814,7 +1885,7 @@ export default function TasksPage() {
                 </div>
               </div>
 
-              <div className={`rounded-[1.35rem] border px-4 py-3 ${supportSummaryClassName}`}>
+              <div className={`mt-auto rounded-[1.35rem] border px-4 py-3 ${supportSummaryClassName}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">Support</p>
@@ -1843,12 +1914,39 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-3">{renderPremiumTaskActions(task)}</div>
+          <div className="mt-auto border-t border-slate-200 pt-3">{renderPremiumTaskActions(task)}</div>
 
           {isExpanded ? (
             <div className="rounded-[1.55rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
               <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="space-y-4">
+                  {canManageQuote(task) && quoteEditorTaskId === task.orderId ? (
+                    <QuoteDraftEditor
+                      orderId={task.source === "order" ? task.orderId : null}
+                      helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
+                      onSent={(result) => {
+                        setQuoteEditorTaskId(result.orderId);
+                        setExpandedTaskId(result.orderId);
+                        setNotice({
+                          kind: "success",
+                          message: `${task.title} quoted successfully. The live order is now synced for both sides.`,
+                        });
+                        startTransition(() => {
+                          void loadTasks(true);
+                        });
+                      }}
+                      onSaved={() => {
+                        setNotice({
+                          kind: "info",
+                          message: `Quote draft saved for ${task.title}.`,
+                        });
+                      }}
+                      onOpenChat={() => {
+                        void startChat(task, { quote: true });
+                      }}
+                    />
+                  ) : null}
+
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Task tracking</p>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -2142,7 +2240,7 @@ export default function TasksPage() {
             </div>
 
             {loading ? (
-              <div className="space-y-3">
+              <div className="grid gap-3 2xl:grid-cols-2">
                 {[0, 1, 2].map((index) => (
                   <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
@@ -2150,13 +2248,13 @@ export default function TasksPage() {
                     <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-slate-100" />
                   </div>
                 ))}
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 2xl:col-span-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading task workspace...
                 </div>
               </div>
             ) : filteredLiveTasks.length > 0 ? (
-              <div className="space-y-4">{filteredLiveTasks.map((task) => renderTaskCardPremium(task))}</div>
+              <div className="grid items-stretch gap-4 2xl:grid-cols-2">{filteredLiveTasks.map((task) => renderTaskCardPremium(task))}</div>
             ) : filteredHistoryTasks.length > 0 ? (
               <div className="rounded-[1.7rem] border border-slate-200 bg-white px-5 py-6 text-sm text-slate-500 shadow-sm">
                 No live tasks match the current view. Task history is still available below.
@@ -2173,8 +2271,9 @@ export default function TasksPage() {
                 </div>
                 <p className="text-sm text-slate-500">{filteredHistoryTasks.length} historical tasks</p>
               </div>
-
-              <div className="space-y-4">{filteredHistoryTasks.map((task) => renderTaskCardPremium(task, { history: true }))}</div>
+              <div className="grid items-stretch gap-4 2xl:grid-cols-2">
+                {filteredHistoryTasks.map((task) => renderTaskCardPremium(task, { history: true }))}
+              </div>
             </section>
           ) : null}
 

@@ -16,6 +16,10 @@ Connecting people with Human-Centered Services Near You!
 - Live notifications sourced from orders, messages, and reviews
 - Marketplace feed with posts, listings, products, map, and trust surfaces
 
+## Roadmap
+
+- AI Launchpad + Quote Flow plan: `docs/ai-launchpad-quote-flow-roadmap.md`
+
 ## Tech Stack
 
 - Next.js 16 (App Router)

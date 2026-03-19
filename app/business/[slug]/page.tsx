@@ -33,6 +33,7 @@ type ProfileRow = {
   phone: string | null;
   website: string | null;
   avatar_url: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 type ServiceRow = {
@@ -62,6 +63,47 @@ type ProviderOrderStatsRow = {
   open_leads: number | string;
 };
 
+type LaunchpadFaq = {
+  question: string;
+  answer: string;
+};
+
+type LaunchpadMeta = {
+  faq: LaunchpadFaq[];
+  hours: string | null;
+  serviceAreas: string[];
+};
+
+const readLaunchpadMeta = (value: unknown): LaunchpadMeta => {
+  const metadata = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const launchpad =
+    metadata.launchpad && typeof metadata.launchpad === "object" && !Array.isArray(metadata.launchpad)
+      ? (metadata.launchpad as Record<string, unknown>)
+      : {};
+  const faq = (Array.isArray(launchpad.faq) ? launchpad.faq : [])
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const record = item as Record<string, unknown>;
+      const question = typeof record.question === "string" ? record.question.trim() : "";
+      const answer = typeof record.answer === "string" ? record.answer.trim() : "";
+      if (!question || !answer) return null;
+      return { question, answer };
+    })
+    .filter((item): item is LaunchpadFaq => !!item)
+    .slice(0, 6);
+  const serviceAreas = (Array.isArray(launchpad.serviceAreas) ? launchpad.serviceAreas : [])
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  return {
+    faq,
+    hours: typeof launchpad.hours === "string" && launchpad.hours.trim() ? launchpad.hours.trim() : null,
+    serviceAreas,
+  };
+};
+
 const loadBusiness = cache(async (slug: string) => {
   const businessId = extractBusinessIdFromSlug(slug);
   if (!businessId) return null;
@@ -71,7 +113,7 @@ const loadBusiness = cache(async (slug: string) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id,name,role,location,bio,services,availability,email,phone,website,avatar_url")
+    .select("id,name,role,location,bio,services,availability,email,phone,website,avatar_url,metadata")
     .eq("id", businessId)
     .maybeSingle<ProfileRow>();
 
@@ -132,6 +174,7 @@ const loadBusiness = cache(async (slug: string) => {
   });
 
   const activeLeads = providerStatsRows.length > 0 ? Number(providerStatsRows[0].open_leads || 0) : 0;
+  const launchpadMeta = readLaunchpadMeta(normalizedProfile.metadata);
 
   return {
     profile: normalizedProfile,
@@ -143,6 +186,7 @@ const loadBusiness = cache(async (slug: string) => {
     responseMinutes,
     verificationStatus,
     activeLeads,
+    launchpadMeta,
     canonicalSlug: createBusinessSlug(normalizedProfile.name, normalizedProfile.id),
   };
 });
@@ -204,6 +248,7 @@ export default async function BusinessProfilePage({ params }: Params) {
     responseMinutes,
     verificationStatus,
     activeLeads,
+    launchpadMeta,
     canonicalSlug,
   } = business;
 
@@ -333,6 +378,36 @@ export default async function BusinessProfilePage({ params }: Params) {
                 ))}
               </div>
             </section>
+
+            {(launchpadMeta.serviceAreas.length > 0 || launchpadMeta.faq.length > 0) && (
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <h2 className="text-lg font-semibold">Business Details</h2>
+
+                {launchpadMeta.serviceAreas.length > 0 ? (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Service Areas</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {launchpadMeta.serviceAreas.map((area) => (
+                        <span key={area} className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs font-semibold text-slate-200">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {launchpadMeta.faq.length > 0 ? (
+                  <div className="mt-5 grid gap-3">
+                    {launchpadMeta.faq.map((item) => (
+                      <div key={item.question} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                        <p className="text-sm font-semibold text-white">{item.question}</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">{item.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            )}
           </div>
 
           <aside className="space-y-6">
@@ -351,6 +426,7 @@ export default async function BusinessProfilePage({ params }: Params) {
                   {profile.phone || "Phone not added"}
                 </p>
                 <p>{profile.email || "Email not added"}</p>
+                <p>{launchpadMeta.hours || "Hours shared on request"}</p>
               </div>
             </section>
 

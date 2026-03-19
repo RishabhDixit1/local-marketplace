@@ -25,6 +25,8 @@ export type CommunityServiceRecord = {
   price: number;
   category: string;
   provider_id: string;
+  image_url?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 
@@ -35,6 +37,8 @@ export type CommunityProductRecord = {
   price: number;
   category: string;
   provider_id: string;
+  image_url?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 

@@ -212,6 +212,11 @@ const normalizeService = (row: FlexibleRow, index: number): CommunityServiceReco
     price: numberFromRow(row, ["price", "amount", "rate"], 0),
     category: stringFromRow(row, ["category", "service_category", "type"], "Service"),
     provider_id: providerId,
+    image_url: stringFromRow(row, ["image_url"], "") || null,
+    metadata:
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : null,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -227,6 +232,11 @@ const normalizeProduct = (row: FlexibleRow, index: number): CommunityProductReco
     price: numberFromRow(row, ["price", "amount", "mrp"], 0),
     category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
     provider_id: providerId,
+    image_url: stringFromRow(row, ["image_url"], "") || null,
+    metadata:
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : null,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -398,12 +408,12 @@ export const loadCommunityFeedSnapshot = async (
   }
 
   const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
-    selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,created_at", {
+    selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
       inFilter: { column: "provider_id", values: acceptedPeerIds },
     }),
-    selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,created_at", {
+    selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
       inFilter: { column: "provider_id", values: acceptedPeerIds },
