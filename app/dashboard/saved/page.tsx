@@ -3,22 +3,17 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { mergeFeedCardSaves, type FeedCardSaveRecord, type FeedCardType } from "@/lib/feedCardSaves";
+import {
+  clearPendingFeedCardSave,
+  getPendingFeedCardSaves,
+  prunePendingFeedCardSaves,
+  removeFeedCardSave,
+  stagePendingFeedCardSave,
+  syncPendingFeedCardSaves,
+} from "@/lib/feedCardSavesClient";
 import { supabase } from "@/lib/supabase";
 import { ArrowRight, Bookmark, Clock3, Loader2, Share2, Trash2 } from "lucide-react";
-
-type FeedCardType = "demand" | "service" | "product";
-
-type FeedCardSaveRow = {
-  id: string;
-  card_id: string;
-  focus_id: string;
-  card_type: FeedCardType;
-  title: string;
-  subtitle: string | null;
-  action_path: string | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-};
 
 type FeedToast = {
   id: number;
@@ -78,7 +73,7 @@ export default function SavedFeedPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [viewerId, setViewerId] = useState<string | null>(null);
-  const [savedCards, setSavedCards] = useState<FeedCardSaveRow[]>([]);
+  const [savedCards, setSavedCards] = useState<FeedCardSaveRecord[]>([]);
   const [loadError, setLoadError] = useState("");
   const [removingCardId, setRemovingCardId] = useState<string | null>(null);
   const [sharingCardId, setSharingCardId] = useState<string | null>(null);
@@ -92,7 +87,7 @@ export default function SavedFeedPage() {
     }, 2600);
   };
 
-  const buildSavedFeedPath = (card: FeedCardSaveRow) => {
+  const buildSavedFeedPath = (card: FeedCardSaveRecord) => {
     const basePath = card.action_path || "/dashboard";
     const [pathname, rawQuery = ""] = basePath.split("?");
     const params = new URLSearchParams(rawQuery);
@@ -114,6 +109,7 @@ export default function SavedFeedPage() {
       setLoading(true);
     }
     setLoadError("");
+    let resolvedUserId = "";
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -135,10 +131,11 @@ export default function SavedFeedPage() {
       }
 
       setViewerId(currentUser.id);
+      resolvedUserId = currentUser.id;
 
       const { data, error } = await supabase
         .from("feed_card_saves")
-        .select("id, card_id, focus_id, card_type, title, subtitle, action_path, metadata, created_at")
+        .select("id, card_id, focus_id, card_type, title, subtitle, action_path, metadata, created_at, updated_at")
         .eq("user_id", currentUser.id)
         .order("created_at", { ascending: false })
         .limit(150);
@@ -147,10 +144,37 @@ export default function SavedFeedPage() {
         throw error;
       }
 
-      setSavedCards(((data as FeedCardSaveRow[] | null) || []).filter((row) => !!row.card_id));
+      const serverRows = ((data as FeedCardSaveRecord[] | null) || []).filter((row) => !!row.card_id);
+      const persistedCardIds = serverRows.map((row) => row.card_id);
+      prunePendingFeedCardSaves(currentUser.id, persistedCardIds);
+
+      const mergedRows = mergeFeedCardSaves(serverRows, getPendingFeedCardSaves(currentUser.id));
+      setSavedCards(mergedRows);
+
+      const syncedCount = await syncPendingFeedCardSaves(supabase, currentUser.id, persistedCardIds);
+      if (syncedCount > 0) {
+        const { data: refreshedData, error: refreshedError } = await supabase
+          .from("feed_card_saves")
+          .select("id, card_id, focus_id, card_type, title, subtitle, action_path, metadata, created_at, updated_at")
+          .eq("user_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(150);
+
+        if (!refreshedError) {
+          const refreshedRows = ((refreshedData as FeedCardSaveRecord[] | null) || []).filter((row) => !!row.card_id);
+          prunePendingFeedCardSaves(
+            currentUser.id,
+            refreshedRows.map((row) => row.card_id)
+          );
+          setSavedCards(mergeFeedCardSaves(refreshedRows, getPendingFeedCardSaves(currentUser.id)));
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load saved feed.";
       console.warn("Failed to load saved feed:", message);
+      if (resolvedUserId) {
+        setSavedCards(getPendingFeedCardSaves(resolvedUserId));
+      }
       setLoadError(message);
     } finally {
       if (showLoader) {
@@ -198,7 +222,7 @@ export default function SavedFeedPage() {
     );
   }, [savedCards]);
 
-  const handleShareCard = async (card: FeedCardSaveRow) => {
+  const handleShareCard = async (card: FeedCardSaveRecord) => {
     const sharePath = buildSavedFeedPath(card);
     const shareUrl = `${window.location.origin}${sharePath}`;
     const shareText = card.subtitle || `Saved ${typeBadgeLabel[card.card_type].toLowerCase()} from your local feed`;
@@ -232,7 +256,7 @@ export default function SavedFeedPage() {
     }
   };
 
-  const handleRemoveCard = async (card: FeedCardSaveRow) => {
+  const handleRemoveCard = async (card: FeedCardSaveRecord) => {
     if (!viewerId) {
       pushFeedToast("info", "Sign in to update saved posts.");
       return;
@@ -241,22 +265,24 @@ export default function SavedFeedPage() {
     setRemovingCardId(card.card_id);
     const previousCards = savedCards;
     setSavedCards((current) => current.filter((entry) => entry.card_id !== card.card_id));
+    clearPendingFeedCardSave(viewerId, card.card_id);
 
     try {
-      const { error } = await supabase
-        .from("feed_card_saves")
-        .delete()
-        .eq("user_id", viewerId)
-        .eq("card_id", card.card_id);
-
-      if (error) {
-        throw error;
-      }
+      await removeFeedCardSave(supabase, card.card_id);
 
       pushFeedToast("success", "Removed from saved feed.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not remove saved post.";
       console.warn("Failed to remove saved card:", message);
+      stagePendingFeedCardSave(viewerId, {
+        card_id: card.card_id,
+        focus_id: card.focus_id,
+        card_type: card.card_type,
+        title: card.title,
+        subtitle: card.subtitle,
+        action_path: card.action_path,
+        metadata: card.metadata,
+      });
       setSavedCards(previousCards);
       pushFeedToast("error", "Could not remove saved post. Try again.");
     } finally {
@@ -360,6 +386,11 @@ export default function SavedFeedPage() {
                         <Clock3 size={11} />
                         {formatSavedAgo(card.created_at)}
                       </span>
+                      {card.sync_state === "pending" && (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">
+                          Syncing
+                        </span>
+                      )}
                       {audienceName && <span>{audienceName}</span>}
                     </div>
 

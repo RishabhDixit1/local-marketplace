@@ -41,7 +41,9 @@ const images: NonNullable<NextConfig["images"]> = {
   ],
 };
 
-export default (phase: string): NextConfig => ({
+const createNextConfig = (phase: string): NextConfig => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   images,
 });
+
+export default createNextConfig;

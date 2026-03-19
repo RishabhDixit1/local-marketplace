@@ -72,7 +72,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run authenticated e2e suite
-        run: npx playwright test tests/e2e/smoke.spec.ts tests/e2e/welcome-feed.spec.ts
+        run: npm run test:e2e:auth
 
       - name: Upload Playwright report
         if: always()

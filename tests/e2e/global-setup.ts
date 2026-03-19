@@ -39,8 +39,16 @@ export default async function globalSetup(config: FullConfig) {
 
   try {
     const magicLinkUrl = await resolveMagicLinkUrl();
-    await page.goto(magicLinkUrl);
-    await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await page.goto(magicLinkUrl, { waitUntil: "domcontentloaded" });
+        await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
+        break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+        await page.waitForTimeout(1500 * (attempt + 1));
+      }
+    }
     await context.storageState({ path: authStatePath });
   } finally {
     await context.close();

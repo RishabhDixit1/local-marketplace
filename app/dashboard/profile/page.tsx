@@ -19,6 +19,7 @@ import ProfileCompletionChecklist from "@/app/components/profile/ProfileCompleti
 import ProfileContactFields from "@/app/components/profile/ProfileContactFields";
 import ProfileHeader from "@/app/components/profile/ProfileHeader";
 import InterestsChipsInput from "@/app/components/profile/InterestsChipsInput";
+import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
 import { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import ProfileToastViewport from "@/app/components/profile/ProfileToastViewport";
 import ProfileRoleToggle from "@/app/components/profile/ProfileRoleToggle";
@@ -27,6 +28,7 @@ import ProfileStickySaveBar from "@/app/components/profile/ProfileStickySaveBar"
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import { calculateVerificationStatus, verificationLabel } from "@/lib/business";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
+import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
 import {
   saveCurrentUserProfile,
   uploadProfileAvatar,
@@ -248,6 +250,24 @@ export default function ProfilePage() {
     reviewCount: providerInsight.reviewCount,
   });
   const checklistCompleteCount = checklist.filter((item) => item.complete).length;
+  const marketplaceReadiness = createMarketplaceReadinessSummary({
+    profile: previewProfile,
+    providerServicesCount: providerInsight.servicesCount,
+    providerProductsCount: providerInsight.productsCount,
+    seekerPostsCount: seekerInsight.postsCount,
+  });
+  const readinessStats =
+    roleFamily === "provider"
+      ? [
+          { label: "Completion", value: `${marketplaceReadiness.completionPercent}%` },
+          { label: "Live listings", value: String(providerInsight.servicesCount + providerInsight.productsCount) },
+          { label: "Active orders", value: String(providerInsight.activeOrders) },
+        ]
+      : [
+          { label: "Completion", value: `${marketplaceReadiness.completionPercent}%` },
+          { label: "Need posts", value: String(seekerInsight.postsCount) },
+          { label: "Active orders", value: String(seekerInsight.activeOrders) },
+        ];
 
   const loadRoleInsights = useEffectEvent(async () => {
     if (!user?.id) return;
@@ -598,6 +618,8 @@ export default function ProfilePage() {
         onboardingComplete={onboardingComplete}
       />
 
+      <MarketplaceReadinessPanel summary={marketplaceReadiness} stats={readinessStats} loading={loadingInsights} />
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px] xl:items-start">
         <div className="space-y-6">
           <ProfileSectionCard
@@ -848,7 +870,7 @@ export default function ProfilePage() {
                             </span>
                           </div>
                           <div className="mt-4 flex items-center justify-between text-sm">
-                            <span className="font-semibold text-slate-950">₹ {listing.price.toLocaleString()}</span>
+                            <span className="font-semibold text-slate-950">INR {listing.price.toLocaleString("en-IN")}</span>
                             <span className="capitalize text-slate-500">{listing.status}</span>
                           </div>
                         </article>
