@@ -31,6 +31,9 @@ Connecting people with Human-Centered Services Near You!
 
 ## Local Development
 
+For a full teammate onboarding walkthrough covering laptop setup, Supabase, Vercel, and CI secrets, see `docs/team-setup.md`.
+Example local env files: `.env.example` and `.env.e2e.example`.
+
 ### 1. Install dependencies
 
 ```bash
