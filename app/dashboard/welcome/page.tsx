@@ -368,21 +368,6 @@ export default function WelcomePage() {
 
   const hasMoreFeedCards = visibleCards.length < enrichedCards.length;
 
-  const feedCounts = useMemo(
-    () =>
-      nearbyCards.reduce(
-        (acc, card) => {
-          acc.total += 1;
-          if (card.type === "demand") acc.demand += 1;
-          if (card.type === "service") acc.service += 1;
-          if (card.type === "product") acc.product += 1;
-          return acc;
-        },
-        { total: 0, demand: 0, service: 0, product: 0 }
-      ),
-    [nearbyCards]
-  );
-
   useEffect(() => {
     if (!viewerId || !viewerProfile) {
       setProviderServicesCount(0);
@@ -1156,29 +1141,6 @@ export default function WelcomePage() {
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Connected posts</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.total}</p>
-                <p className="mt-1 text-xs text-slate-500">Visible only from accepted connections.</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Needs</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.demand}</p>
-                <p className="mt-1 text-xs text-slate-500">Active requests inside your local network.</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Services</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.service}</p>
-                <p className="mt-1 text-xs text-slate-500">Service offers from connected providers.</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Products</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">{feedCounts.product}</p>
-                <p className="mt-1 text-xs text-slate-500">Listings shared by trusted local sellers.</p>
-              </div>
-            </div>
-
             <div data-testid="welcome-live-feed" className="mt-5 space-y-3">
               {isFeedLoading && enrichedCards.length === 0 ? (
                 <>
@@ -1470,4 +1432,3 @@ export default function WelcomePage() {
     </>
   );
 }
-
