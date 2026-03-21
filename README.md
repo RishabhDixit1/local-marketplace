@@ -4,7 +4,7 @@ Connecting people with Human-Centered Services Near You!
 
 ## Live Deployment
 
-- App: https://<your-serviq-domain>
+- App: https://local-marketplace-eta.vercel.app/
 - Repository: https://github.com/RishabhDixit1/local-marketplace
 
 ## Product Scope
@@ -224,7 +224,7 @@ Optional forwarding env vars:
 
 ## Deployment Notes
 
-The project is deployed on Vercel:
+The project is deployed on Vercel:https://local-marketplace-eta.vercel.app/
 
 - Production URL: https://<your-serviq-domain>
 
