@@ -723,10 +723,15 @@ export default function MarketplacePage() {
   } = useConnectionRequests();
 
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
+  const deepLinkHandledRef = useRef(false);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const fetchAbortRef = useRef<AbortController | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
   const lastSoftRefreshAtRef = useRef(0);
+  const [focusItemId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("focus")?.trim() || "";
+  });
 
   const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
     const toastId =
@@ -1645,19 +1650,13 @@ export default function MarketplacePage() {
       }
 
       try {
-        const state = getConnectionState(ownerId);
-        if (state.kind !== "accepted") {
-          pushToast("info", "Connect with this member first to start a chat.");
-          return;
-        }
-
-        setChatOpeningProviderId(ownerId);
         const activeViewerId = await ensureViewerId();
         if (activeViewerId === ownerId) {
           pushToast("info", "This is your own post.");
           return;
         }
 
+        setChatOpeningProviderId(ownerId);
         const conversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, ownerId);
         router.push(`/dashboard/chat?open=${conversationId}`);
       } catch (error) {
@@ -1666,7 +1665,7 @@ export default function MarketplacePage() {
         setChatOpeningProviderId((current) => (current === ownerId ? null : current));
       }
     },
-    [ensureViewerId, getConnectionState, pushToast, router]
+    [ensureViewerId, pushToast, router]
   );
 
   const handleListingConnectionAction = useCallback(
@@ -1908,6 +1907,22 @@ export default function MarketplacePage() {
       return displayFeed[0].id;
     });
   }, [displayFeed]);
+
+  useEffect(() => {
+    if (!focusItemId || deepLinkHandledRef.current) return;
+    if (!displayFeed.some((item) => item.id === focusItemId)) return;
+
+    deepLinkHandledRef.current = true;
+    setActiveMapItemId(focusItemId);
+
+    const frameId = window.requestAnimationFrame(() => {
+      cardRefs.current.get(focusItemId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [displayFeed, focusItemId]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>(["all"]);

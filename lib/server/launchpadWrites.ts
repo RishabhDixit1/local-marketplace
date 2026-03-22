@@ -6,6 +6,7 @@ import type {
   LaunchpadInputSource,
   LaunchpadProductDraft,
   LaunchpadServiceDraft,
+  LaunchpadWorkspaceSummary,
 } from "@/lib/api/launchpad";
 import { createBusinessSlug } from "@/lib/business";
 import { generateLaunchpadDraftOutput } from "@/lib/launchpad/generate";
@@ -65,12 +66,63 @@ type LaunchpadPublishSuccess = {
 };
 
 type IdRow = { id: string };
+type LiveListingRow = {
+  title: string | null;
+  category: string | null;
+  price: number | null;
+  metadata: Record<string, unknown> | null;
+};
 
 const launchpadMissingTablePattern =
   /relation .*business_launchpad_drafts.* does not exist|could not find the table '.*business_launchpad_drafts.*' in the schema cache/i;
 const launchpadPolicyPattern = /row-level security|permission denied|new row violates row-level security/i;
 
 const trim = (value: string | null | undefined) => value?.trim() ?? "";
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+const dedupeStrings = (values: Array<string | null | undefined>, limit = 12) => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = trim(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+};
+const readLaunchpadMetadata = (metadata: unknown) => {
+  const metadataRecord = isRecord(metadata) ? metadata : null;
+  const launchpad = isRecord(metadataRecord?.launchpad) ? metadataRecord.launchpad : null;
+  const serviceAreas = Array.isArray(launchpad?.serviceAreas)
+    ? dedupeStrings(
+        launchpad.serviceAreas.map((item) => (typeof item === "string" ? item : "")),
+        8
+      )
+    : [];
+  const faqCount = Array.isArray(launchpad?.faq) ? launchpad.faq.length : 0;
+  const publishedAt = typeof launchpad?.publishedAt === "string" ? launchpad.publishedAt : null;
+
+  return {
+    serviceAreas,
+    faqCount,
+    publishedAt,
+  };
+};
+const buildCatalogLine = (row: LiveListingRow) => {
+  const title = trim(row.title);
+  if (!title) return "";
+
+  const category = trim(row.category);
+  const price = typeof row.price === "number" && Number.isFinite(row.price) && row.price > 0 ? row.price : null;
+  const detail = [category || null, price ? `INR ${Math.round(row.price as number)}` : null].filter(Boolean).join(" - ");
+  return detail ? `${title} - ${detail}` : title;
+};
 
 const isMissingLaunchpadTableError = (message: string) => launchpadMissingTablePattern.test(message);
 const isDraftRowResult = (
@@ -97,6 +149,88 @@ const toDraftRecord = (row: LaunchpadDraftRow): LaunchpadDraftRecord => ({
   createdAt: row.created_at || null,
   updatedAt: row.updated_at || null,
 });
+
+const loadWorkspaceSummary = async (params: {
+  db: SupabaseClient;
+  userId: string;
+  userEmail: string;
+}): Promise<LaunchpadWorkspaceSummary | LaunchpadMutationError> => {
+  const [profileResult, servicesResult, productsResult] = await Promise.all([
+    params.db.from("profiles").select("*").eq("id", params.userId).maybeSingle(),
+    params.db.from("service_listings").select("title,category,price,metadata").eq("provider_id", params.userId).limit(100),
+    params.db.from("product_catalog").select("title,category,price,metadata").eq("provider_id", params.userId).limit(100),
+  ]);
+
+  if (profileResult.error) {
+    return {
+      ok: false,
+      code: profileResult.error.code,
+      details: profileResult.error.details || null,
+      message: profileResult.error.message || "Unable to load current Launchpad profile state.",
+    };
+  }
+
+  if (servicesResult.error) {
+    return {
+      ok: false,
+      code: servicesResult.error.code,
+      details: servicesResult.error.details || null,
+      message: servicesResult.error.message || "Unable to load current service listings.",
+    };
+  }
+
+  if (productsResult.error) {
+    return {
+      ok: false,
+      code: productsResult.error.code,
+      details: productsResult.error.details || null,
+      message: productsResult.error.message || "Unable to load current product listings.",
+    };
+  }
+
+  const profile = normalizeProfileRecord((profileResult.data as Record<string, unknown> | null) || null, {
+    id: params.userId,
+    email: params.userEmail,
+  });
+  const services = ((servicesResult.data as LiveListingRow[] | null) || []).filter(Boolean);
+  const products = ((productsResult.data as LiveListingRow[] | null) || []).filter(Boolean);
+  const launchpadMeta = readLaunchpadMetadata(profile?.metadata);
+  const totalServices = services.length;
+  const totalProducts = products.length;
+  const launchpadServices = services.filter((row) => trim(String((row.metadata || {}).source || "")) === "launchpad").length;
+  const launchpadProducts = products.filter((row) => trim(String((row.metadata || {}).source || "")) === "launchpad").length;
+  const liveCategories = dedupeStrings(
+    [...services.map((row) => row.category), ...products.map((row) => row.category), ...(profile?.interests || [])],
+    8
+  );
+  const liveOfferings = dedupeStrings(
+    [...services.map((row) => row.title), ...products.map((row) => row.title), ...(profile?.interests || [])],
+    12
+  );
+  const liveCatalogLines = dedupeStrings(
+    [...services.map((row) => buildCatalogLine(row)), ...products.map((row) => buildCatalogLine(row))],
+    16
+  );
+
+  return {
+    profileExists: Boolean(profile),
+    profilePath: buildPublicProfilePath(profile) || null,
+    businessPath: profile
+      ? `/business/${createBusinessSlug(profile.full_name || profile.name, params.userId)}`
+      : null,
+    totalServices,
+    totalProducts,
+    launchpadServices,
+    launchpadProducts,
+    faqCount: launchpadMeta.faqCount,
+    serviceAreaCount: launchpadMeta.serviceAreas.length,
+    lastPublishedAt: launchpadMeta.publishedAt,
+    liveCategories,
+    liveOfferings,
+    liveCatalogLines,
+    liveServiceAreas: launchpadMeta.serviceAreas,
+  };
+};
 
 const buildImportPayload = (answers: LaunchpadAnswers) => ({
   catalogText: answers.catalogText,
@@ -362,6 +496,36 @@ export const loadLatestLaunchpadDraft = async (
   return {
     ok: true,
     draft: latest.row ? toDraftRecord(latest.row) : null,
+  };
+};
+
+export const loadLaunchpadWorkspace = async (params: {
+  db: SupabaseClient;
+  userId: string;
+  userEmail: string;
+}): Promise<{ ok: true; draft: LaunchpadDraftRecord | null; summary: LaunchpadWorkspaceSummary } | LaunchpadMutationError> => {
+  const [latest, summary] = await Promise.all([
+    getLatestLaunchpadDraftRow(params.db, params.userId),
+    loadWorkspaceSummary(params),
+  ]);
+
+  if ("ok" in summary && !summary.ok) return summary;
+  if (!isDraftRowResult(latest)) {
+    if (latest.missingTable) {
+      return {
+        ok: true,
+        draft: null,
+        summary,
+      };
+    }
+
+    return latest;
+  }
+
+  return {
+    ok: true,
+    draft: latest.row ? toDraftRecord(latest.row) : null,
+    summary,
   };
 };
 

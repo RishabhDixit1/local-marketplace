@@ -19,6 +19,30 @@ export type NotificationAction = {
   href: string;
 };
 
+const readMetadataString = (notification: NotificationRow, keys: string[]) => {
+  for (const key of keys) {
+    const value = notification.metadata?.[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
+};
+
+const withQuery = (pathname: string, params: Record<string, string | null | undefined>) => {
+  const search = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (typeof value === "string" && value.trim()) {
+      search.set(key, value.trim());
+    }
+  });
+
+  const query = search.toString();
+  return query ? `${pathname}?${query}` : pathname;
+};
+
 const isoMinutesAgo = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
 
 export const getDemoNotifications = (userId: string): NotificationRow[] => {
@@ -69,19 +93,29 @@ export const getDemoNotifications = (userId: string): NotificationRow[] => {
 
 export const resolveNotificationAction = (notification: NotificationRow): NotificationAction => {
   const entityType = (notification.entity_type || "").toLowerCase();
+  const explicitHref = readMetadataString(notification, ["href", "path", "action_path"]);
+
+  if (explicitHref) {
+    return {
+      ctaLabel: "Open",
+      href: explicitHref,
+    };
+  }
 
   if (entityType === "conversation") {
-    const conversationId = notification.entity_id || (notification.metadata?.conversation_id as string | undefined);
+    const conversationId =
+      notification.entity_id || readMetadataString(notification, ["conversation_id", "conversationId"]);
     return {
       ctaLabel: "Open chat",
-      href: conversationId ? `/dashboard/chat?open=${conversationId}` : "/dashboard/chat",
+      href: withQuery("/dashboard/chat", { open: conversationId }),
     };
   }
 
   if (entityType === "order") {
+    const orderId = notification.entity_id || readMetadataString(notification, ["order_id", "orderId", "task_id"]);
     return {
       ctaLabel: "Open task",
-      href: "/dashboard/tasks",
+      href: withQuery("/dashboard/tasks", { focus: orderId }),
     };
   }
 
@@ -93,28 +127,30 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
   }
 
   if (entityType === "help_request") {
-    const helpRequestId = notification.entity_id || (notification.metadata?.help_request_id as string | undefined);
+    const helpRequestId = notification.entity_id || readMetadataString(notification, ["help_request_id", "helpRequestId"]);
     return {
       ctaLabel: "View matches",
-      href: helpRequestId ? `/dashboard?help_request=${helpRequestId}` : "/dashboard",
+      href: withQuery("/dashboard", {
+        focus: helpRequestId,
+        source: "notification",
+      }),
     };
   }
 
   if (entityType === "connection_request") {
+    const requesterId = readMetadataString(notification, ["requester_id", "requesterId"]);
     return {
       ctaLabel: "Open people",
-      href: "/dashboard/people",
+      href: withQuery("/dashboard/people", { provider: requesterId }),
     };
   }
 
   if (entityType === "live_talk_request") {
-    const conversationId =
-      (notification.metadata?.conversation_id as string | undefined) ||
-      (notification.metadata?.conversationId as string | undefined);
+    const conversationId = readMetadataString(notification, ["conversation_id", "conversationId"]);
 
     return {
       ctaLabel: "Open chat",
-      href: conversationId ? `/dashboard/chat?open=${conversationId}` : "/dashboard/chat",
+      href: withQuery("/dashboard/chat", { open: conversationId }),
     };
   }
 

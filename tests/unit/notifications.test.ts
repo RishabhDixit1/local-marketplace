@@ -60,9 +60,9 @@ describe("notifications", () => {
   });
 
   it("resolves order, review, and help request actions", () => {
-    expect(resolveNotificationAction(baseNotification({ entity_type: "order" }))).toEqual({
+    expect(resolveNotificationAction(baseNotification({ entity_type: "order", entity_id: "order-1" }))).toEqual({
       ctaLabel: "Open task",
-      href: "/dashboard/tasks",
+      href: "/dashboard/tasks?focus=order-1",
     });
 
     expect(resolveNotificationAction(baseNotification({ entity_type: "review" }))).toEqual({
@@ -79,14 +79,21 @@ describe("notifications", () => {
       )
     ).toEqual({
       ctaLabel: "View matches",
-      href: "/dashboard?help_request=help-1",
+      href: "/dashboard?focus=help-1&source=notification",
     });
   });
 
   it("resolves connection request and live talk actions", () => {
-    expect(resolveNotificationAction(baseNotification({ entity_type: "connection_request" }))).toEqual({
+    expect(
+      resolveNotificationAction(
+        baseNotification({
+          entity_type: "connection_request",
+          metadata: { requester_id: "provider-7" },
+        })
+      )
+    ).toEqual({
       ctaLabel: "Open people",
-      href: "/dashboard/people",
+      href: "/dashboard/people?provider=provider-7",
     });
 
     expect(
@@ -106,6 +113,20 @@ describe("notifications", () => {
     expect(resolveNotificationAction(baseNotification({ entity_type: "unknown" }))).toEqual({
       ctaLabel: "View",
       href: "/dashboard/welcome",
+    });
+  });
+
+  it("prefers explicit metadata hrefs when available", () => {
+    expect(
+      resolveNotificationAction(
+        baseNotification({
+          entity_type: "order",
+          metadata: { href: "/dashboard/tasks?focus=task-99&source=notification" },
+        })
+      )
+    ).toEqual({
+      ctaLabel: "Open",
+      href: "/dashboard/tasks?focus=task-99&source=notification",
     });
   });
 

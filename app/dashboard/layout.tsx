@@ -5,7 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
-import { DashboardPromptBar, DashboardPromptProvider } from "@/app/components/prompt/DashboardPromptContext";
+import {
+  DashboardPromptBar,
+  DashboardPromptProvider,
+  useDashboardPromptState,
+} from "@/app/components/prompt/DashboardPromptContext";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -67,6 +71,7 @@ function DashboardShell({
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { showPrompt } = useDashboardPromptState();
   const chatUnreadCount = useUnreadChatCount(authReady);
   const myProfileHref =
     !profileLoading && profile && isProfileOnboardingComplete(profile)
@@ -410,6 +415,11 @@ function DashboardShell({
                 </Link>
               </div>
             </div>
+            {showPrompt ? (
+              <div className="border-t border-slate-200/80 px-4 pb-3 pt-3 md:hidden">
+                <DashboardPromptBar placement="header" />
+              </div>
+            ) : null}
           </header>
 
           <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">

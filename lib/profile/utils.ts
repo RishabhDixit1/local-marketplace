@@ -211,9 +211,8 @@ export const calculateProfileCompletionPercent = (profile: FlexibleProfileShape 
 export const isProfileOnboardingComplete = (profile: FlexibleProfileShape | null | undefined) => {
   const fullName = getProfileDisplayName(profile);
   const location = trim(profile?.location);
-  const bio = trim(profile?.bio);
-  const roleFamily = getProfileRoleFamily(profile?.role);
-  return Boolean(fullName && location && roleFamily && bio.length >= PROFILE_BIO_MIN_LENGTH);
+  const phone = normalizePhone(profile?.phone);
+  return Boolean(fullName && location && phone);
 };
 
 export const createProfileCompletionChecklist = (
@@ -222,7 +221,7 @@ export const createProfileCompletionChecklist = (
   const fullName = getProfileDisplayName(profile);
   const bio = trim(profile?.bio);
   const topics = normalizeTopics([...(profile?.interests || []), ...(profile?.services || [])]);
-  const hasContact = Boolean(trim(profile?.email) || trim(profile?.phone) || trim(profile?.website));
+  const hasPhone = Boolean(normalizePhone(profile?.phone));
 
   return [
     {
@@ -244,14 +243,12 @@ export const createProfileCompletionChecklist = (
       label: "Choose a role",
       complete: Boolean(trim(profile?.role)),
       helper: "Switch between provider and seeker experiences anytime.",
-      requiredForOnboarding: true,
     },
     {
       id: "bio",
       label: "Write a strong profile summary",
       complete: bio.length >= PROFILE_BIO_MIN_LENGTH,
       helper: `Aim for at least ${PROFILE_BIO_MIN_LENGTH} characters with specific context.`,
-      requiredForOnboarding: true,
     },
     {
       id: "interests",
@@ -262,8 +259,9 @@ export const createProfileCompletionChecklist = (
     {
       id: "contact",
       label: "Add contact details",
-      complete: hasContact,
-      helper: "Phone or website improves trust and response rates.",
+      complete: hasPhone,
+      helper: "A phone number keeps replies and coordination fast from day one.",
+      requiredForOnboarding: true,
     },
     {
       id: "avatar",
@@ -416,5 +414,5 @@ export const createProfileSavePayload = (params: {
 
 export const buildOnboardingProfileHref = () => `${PROFILE_ROUTE}?onboarding=1`;
 
-export const resolveAuthenticatedProfilePath = (profile: FlexibleProfileShape | null | undefined, nextPath?: string) =>
-  isProfileOnboardingComplete(profile) ? nextPath || POST_LOGIN_REDIRECT_ROUTE : buildOnboardingProfileHref();
+export const resolveAuthenticatedProfilePath = (_profile: FlexibleProfileShape | null | undefined, nextPath?: string) =>
+  nextPath || POST_LOGIN_REDIRECT_ROUTE;

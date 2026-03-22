@@ -1,13 +1,13 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
-import { useProfileContext } from "@/app/components/profile/ProfileContext";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { ensureClientProfile } from "@/lib/clientProfile";
@@ -39,8 +39,7 @@ import {
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
-import { buildPublicProfilePath, normalizeTopics } from "@/lib/profile/utils";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import ConnectionsPanel from "./components/ConnectionsPanel";
@@ -830,7 +829,6 @@ const createProviderCards = (params: {
 };
 export default function PeoplePage() {
   const router = useRouter();
-  const { profile: viewerProfile } = useProfileContext();
   const infiniteSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
   const providerPreviewRef = useRef<Map<string, ProviderPreview>>(new Map());
@@ -852,6 +850,11 @@ export default function PeoplePage() {
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
   const [trustPanelProviderId, setTrustPanelProviderId] = useState<string | null>(null);
   const [chatBusyUserId, setChatBusyUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("q") || "";
+  });
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [noticeBanner, setNoticeBanner] = useState<PeopleBanner | null>(null);
   const [realtimeToast, setRealtimeToast] = useState<RealtimeToast | null>(null);
@@ -1378,15 +1381,22 @@ export default function PeoplePage() {
     [onlineUserIds]
   );
 
+  const filteredProviders = useMemo(() => {
+    const query = deferredSearchQuery.trim().toLowerCase();
+    if (!query) return providers;
+
+    return providers.filter((provider) => provider.searchDocument.includes(query));
+  }, [deferredSearchQuery, providers]);
+
   const discoveryProviders = useMemo(() => {
     const presenceWeight = (tone: PresenceTone) => (tone === "online" ? 2 : tone === "away" ? 1 : 0);
 
-    return [...providers].sort((left, right) => {
+    return [...filteredProviders].sort((left, right) => {
       const leftPresence = presenceWeight(getPresenceTone(left));
       const rightPresence = presenceWeight(getPresenceTone(right));
       return right.rankScore - left.rankScore || rightPresence - leftPresence || left.distanceKm - right.distanceKm;
     });
-  }, [getPresenceTone, providers]);
+  }, [filteredProviders, getPresenceTone]);
 
   const visibleProviders = useMemo(
     () => discoveryProviders.slice(0, Math.max(PAGE_SIZE, visibleCount)),
@@ -1465,6 +1475,47 @@ export default function PeoplePage() {
     if (!element) return;
     element.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const handlePeoplePromptSubmit = useCallback(() => {
+    const firstMatch = discoveryProviders[0];
+
+    if (firstMatch) {
+      jumpToProviderCard(firstMatch.id);
+      return;
+    }
+
+    if (searchQuery.trim()) {
+      setNoticeBanner({
+        kind: "info",
+        message: `No people matched "${searchQuery.trim()}". Try a broader name, role, or location.`,
+      });
+    }
+  }, [discoveryProviders, jumpToProviderCard, searchQuery]);
+
+  const peoplePromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search people by name, role, location, or expertise",
+      value: searchQuery,
+      onValueChange: setSearchQuery,
+      onSubmit: handlePeoplePromptSubmit,
+      actions: [
+        {
+          id: "refresh-people",
+          label: syncing ? "Refreshing..." : "Refresh",
+          icon: Loader2,
+          onClick: () => {
+            void loadProviders(true);
+          },
+          variant: "secondary",
+          disabled: syncing,
+          busy: syncing,
+        },
+      ],
+    }),
+    [handlePeoplePromptSubmit, loadProviders, searchQuery, syncing]
+  );
+
+  useDashboardPrompt(peoplePromptConfig);
 
   useEffect(() => {
     if (!visibleProviders.length) return;
@@ -1668,36 +1719,6 @@ export default function PeoplePage() {
     () => providers.filter((provider) => getPresenceTone(provider) === "online").length,
     [getPresenceTone, providers]
   );
-  const nearbyCount = useMemo(
-    () => providers.filter((provider) => provider.distanceKm <= 5).length,
-    [providers]
-  );
-  const coveragePercent = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
-  const matchingProvidersCount = useMemo(() => {
-    const viewerTags = new Set(
-      normalizeTopics([...(viewerProfile?.interests || []), ...(viewerProfile?.services || [])]).map((tag) =>
-        tag.toLowerCase()
-      )
-    );
-
-    if (viewerTags.size === 0) return 0;
-
-    return providers.filter((provider) => provider.tags.some((tag) => viewerTags.has(tag.toLowerCase()))).length;
-  }, [providers, viewerProfile]);
-  const discoveryReadiness = viewerProfile
-    ? createMarketplaceReadinessSummary({
-        profile: viewerProfile,
-        matchingProvidersCount,
-      })
-    : null;
-  const discoveryStats = discoveryReadiness
-    ? [
-        { label: "Profile", value: `${discoveryReadiness.completionPercent}%` },
-        { label: "Tag matches", value: String(matchingProvidersCount) },
-        { label: "Active now", value: String(activeNow) },
-      ]
-    : [];
-
   const activeProvider =
     visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
   const activePresenceTone = activeProvider ? getPresenceTone(activeProvider) : "offline";
@@ -1741,14 +1762,10 @@ export default function PeoplePage() {
     >
       <PeopleLiveHeader
         activeNow={activeNow}
-        nearbyCount={nearbyCount}
-        coveragePercent={coveragePercent}
         connectionCount={connectionBuckets.accepted.length}
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
       />
-
-      {discoveryReadiness ? <MarketplaceReadinessPanel summary={discoveryReadiness} stats={discoveryStats} /> : null}
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -1788,6 +1805,16 @@ export default function PeoplePage() {
         </div>
       )}
 
+      <PeopleMapPanel
+        items={mapItems}
+        center={viewerCenter}
+        activeProvider={activeProvider}
+        activePresenceTone={activePresenceTone}
+        onSelectProvider={setActiveProviderId}
+        onJumpToProvider={jumpToProviderCard}
+        onOpenTrustPanel={setTrustPanelProviderId}
+      />
+
       <div className="2xl:hidden">
         <button
           type="button"
@@ -1822,24 +1849,8 @@ export default function PeoplePage() {
         </AnimatePresence>
       </div>
 
-      <div className="hidden 2xl:flex 2xl:justify-end">
-        <div className="w-full max-w-[380px]">
-          <ConnectionsPanel {...connectionsPanelProps} />
-        </div>
-      </div>
-
-      <PeopleMapPanel
-        items={mapItems}
-        center={viewerCenter}
-        activeProvider={activeProvider}
-        activePresenceTone={activePresenceTone}
-        onSelectProvider={setActiveProviderId}
-        onJumpToProvider={jumpToProviderCard}
-        onOpenTrustPanel={setTrustPanelProviderId}
-      />
-
-      <div className="grid gap-5">
-        <main className="space-y-6">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_380px] 2xl:items-start">
+        <main className="min-w-0 space-y-6">
           {loading ? (
             <ProviderCardSkeleton count={3} />
           ) : !providers.length ? (
@@ -1866,16 +1877,26 @@ export default function PeoplePage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(14,165,164,0.12),rgba(103,232,249,0.18))] text-[var(--brand-700)]">
                 <Compass className="h-7 w-7" />
               </div>
-              <p className="mt-4 text-xl font-semibold text-slate-900">No providers found yet</p>
+              <p className="mt-4 text-xl font-semibold text-slate-900">
+                {searchQuery.trim() ? "No people match this search yet" : "No providers found yet"}
+              </p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Published people and business profiles will appear here as they become available.
+                {searchQuery.trim()
+                  ? "Try a different name, role, location, or expertise keyword."
+                  : "Published people and business profiles will appear here as they become available."}
               </p>
               <button
                 type="button"
-                onClick={() => void loadProviders(false)}
+                onClick={() => {
+                  if (searchQuery.trim()) {
+                    setSearchQuery("");
+                    return;
+                  }
+                  void loadProviders(false);
+                }}
                 className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
               >
-                Refresh people
+                {searchQuery.trim() ? "Clear search" : "Refresh people"}
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>
@@ -1958,6 +1979,10 @@ export default function PeoplePage() {
             </>
           )}
         </main>
+
+        <aside className="hidden 2xl:block">
+          <ConnectionsPanel {...connectionsPanelProps} />
+        </aside>
       </div>
 
       <AnimatePresence>

@@ -1,4 +1,4 @@
-import { PROFILE_BIO_MIN_LENGTH, PROFILE_ROUTE, type ProfileRoleFamily } from "@/lib/profile/types";
+import { PROFILE_ROUTE, type ProfileRoleFamily } from "@/lib/profile/types";
 import {
   buildOnboardingProfileHref,
   calculateProfileCompletionPercent,
@@ -60,7 +60,6 @@ export const createMarketplaceReadinessSummary = (params: {
   const listingCount = Math.max(0, params.providerServicesCount || 0) + Math.max(0, params.providerProductsCount || 0);
   const postsCount = Math.max(0, params.seekerPostsCount || 0);
   const matchingProvidersCount = Math.max(0, params.matchingProvidersCount || 0);
-  const bioLength = trim(params.profile?.bio).length;
   const topics = normalizeTopics([...(params.profile?.interests || []), ...(params.profile?.services || [])]);
   const hasContact = Boolean(
     trim(params.profile?.email) || trim(params.profile?.phone) || trim(params.profile?.website)
@@ -73,20 +72,10 @@ export const createMarketplaceReadinessSummary = (params: {
   if (!onboardingComplete) {
     pushAction(actions, {
       id: "essentials",
-      title: "Finish your core profile",
-      description: "Name, location, role, and a strong summary unlock the rest of the marketplace.",
+      title: "Add your core contact details",
+      description: "Name, phone number, and location make it easier for nearby people to trust and reach you.",
       href: buildOnboardingProfileHref(),
-      ctaLabel: "Complete profile",
-    });
-  }
-
-  if (bioLength < PROFILE_BIO_MIN_LENGTH) {
-    pushAction(actions, {
-      id: "bio",
-      title: role === "provider" ? "Write a stronger trust summary" : "Write a clearer request summary",
-      description: `Aim for at least ${PROFILE_BIO_MIN_LENGTH} characters so nearby people know what to expect.`,
-      href: profileHref,
-      ctaLabel: "Edit summary",
+      ctaLabel: "Add essentials",
     });
   }
 
@@ -174,8 +163,8 @@ export const createMarketplaceReadinessSummary = (params: {
 
   if (role === "provider") {
     if (stage === "foundation") {
-      headline = "Build the trust basics people look for first.";
-      description = "Finish the essentials, then publish one offer so discovery has a clear path into conversation.";
+      headline = "Set the basics that make local outreach possible.";
+      description = "Name, phone, and location are enough to start using ServiQ while you fill in the rest over time.";
     } else if (listingCount === 0) {
       headline = "Your profile is live. Turn it into a bookable storefront.";
       description = "The next lift is simple: publish one service or product so nearby buyers can act instead of just browsing.";
@@ -187,8 +176,8 @@ export const createMarketplaceReadinessSummary = (params: {
       description = `${listingCount} live listing${listingCount === 1 ? "" : "s"} give nearby buyers multiple ways to start a conversation.`;
     }
   } else if (stage === "foundation") {
-    headline = "Give providers enough context to respond with confidence.";
-    description = "A clear profile, strong tags, and a short summary help nearby providers understand what you need.";
+    headline = "Share the basics so nearby providers can reach you quickly.";
+    description = "You can start with name, phone, and location, then improve the rest of the profile as you use the app.";
   } else if (postsCount === 0) {
     headline = "Your profile is ready. Post the first need that starts real replies.";
     description =

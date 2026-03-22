@@ -627,7 +627,7 @@ export default function ProfilePage() {
             title="Basic Information"
             description={
               onboardingQuery
-                ? "Finish these core details once to unlock the rest of the marketplace."
+                ? "Start with your name, phone number, and location. Everything else can be updated later."
                 : "Keep the essentials current so discovery, trust, and notifications stay accurate."
             }
           >
@@ -889,7 +889,7 @@ export default function ProfilePage() {
           <ProfileSectionCard
             icon={<NotebookText className="h-5 w-5" />}
             title="About You"
-            description={`This summary is required for onboarding. Aim for at least ${PROFILE_BIO_MIN_LENGTH} characters and make it specific.`}
+            description={`Add a summary whenever you're ready. ${PROFILE_BIO_MIN_LENGTH}+ characters works best for trust and discovery.`}
           >
             <div className="space-y-2">
               <textarea

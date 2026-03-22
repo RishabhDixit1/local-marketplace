@@ -1,9 +1,4 @@
-import {
-  PROFILE_BIO_MIN_LENGTH,
-  PROFILE_TOPIC_LIMIT,
-  type ProfileFormValues,
-  type ProfileValidationErrors,
-} from "@/lib/profile/types";
+import { PROFILE_TOPIC_LIMIT, type ProfileFormValues, type ProfileValidationErrors } from "@/lib/profile/types";
 import { normalizePhone, normalizeTopics, normalizeWebsite } from "@/lib/profile/utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,19 +24,7 @@ export const validateProfileValues = (
     errors.location = "Location is too short.";
   }
 
-  if (shouldRequireOnboardingFields && !values.role) {
-    errors.role = "Choose whether you provide services or are looking for them.";
-  }
-
-  if (shouldRequireOnboardingFields && !values.bio.trim()) {
-    errors.bio = "Write a short description so others know what to expect.";
-  } else if (shouldRequireOnboardingFields && values.bio.trim().length < PROFILE_BIO_MIN_LENGTH) {
-    errors.bio = `Use at least ${PROFILE_BIO_MIN_LENGTH} characters.`;
-  }
-
-  if (shouldRequireOnboardingFields && topics.length === 0) {
-    errors.interests = "Add at least one service, skill, or interest.";
-  } else if (topics.length > PROFILE_TOPIC_LIMIT) {
+  if (topics.length > PROFILE_TOPIC_LIMIT) {
     errors.interests = `Use at most ${PROFILE_TOPIC_LIMIT} tags.`;
   }
 
@@ -55,6 +38,8 @@ export const validateProfileValues = (
     if (digitCount < 7 || digitCount > 15) {
       errors.phone = "Enter a valid phone number.";
     }
+  } else if (shouldRequireOnboardingFields) {
+    errors.phone = "Enter a contact number.";
   }
 
   if (values.website.trim() && !normalizeWebsite(values.website)) {
