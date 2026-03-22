@@ -102,7 +102,7 @@ const surfaceActionClassName = `${actionButtonClassName} border border-slate-200
 const primaryActionClassName = `${actionButtonClassName} bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]`;
 const chatActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
 const savedActionClassName = `${actionButtonClassName} border border-[var(--brand-500)]/30 bg-cyan-50 text-[var(--brand-700)] hover:border-[var(--brand-500)]/40`;
-const compactStatClassName = "rounded-[1.1rem] border border-slate-200 bg-white/95 px-3.5 py-3";
+const compactStatClassName = "rounded-[1rem] border border-slate-200 bg-white/95 px-3 py-2.5 sm:rounded-[1.1rem] sm:px-3.5 sm:py-3";
 
 const ProviderCard = ({
   provider,
@@ -208,7 +208,7 @@ const ProviderCard = ({
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-[1.8rem] border bg-white p-4 shadow-[0_28px_90px_-62px_rgba(15,23,42,0.42)] transition duration-300 sm:p-5 ${
+      className={`group relative overflow-hidden rounded-[1.65rem] border bg-white p-3.5 shadow-[0_22px_75px_-58px_rgba(15,23,42,0.38)] transition duration-300 sm:rounded-[1.8rem] sm:p-5 lg:p-6 ${
         isActive
           ? "border-[var(--brand-500)]/40 shadow-[0_32px_100px_-64px_rgba(14,165,164,0.42)]"
           : "border-slate-200/90 hover:border-[var(--brand-500)]/24 hover:shadow-[0_30px_90px_-64px_rgba(15,23,42,0.36)]"
@@ -219,83 +219,95 @@ const ProviderCard = ({
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.08),transparent_28%),radial-gradient(circle_at_92%_12%,rgba(17,70,106,0.1),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.94),rgba(255,255,255,1))]" />
 
-      <div className="relative space-y-5">
-        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <button type="button" onClick={() => onOpenTrust(provider.id)} className="relative shrink-0">
+      <div className="relative space-y-4 sm:space-y-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => onOpenTrust(provider.id)}
+              className="relative shrink-0 rounded-[1.2rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-500)]"
+            >
               <Image
                 src={provider.avatar}
                 alt={provider.name}
-                width={76}
-                height={76}
+                width={72}
+                height={72}
                 unoptimized
-                className="h-[76px] w-[76px] rounded-[1.35rem] border border-white object-cover shadow-sm"
+                className="h-16 w-16 rounded-[1.2rem] border border-white object-cover shadow-sm sm:h-[72px] sm:w-[72px] lg:h-[76px] lg:w-[76px] lg:rounded-[1.35rem]"
               />
               <span
-                className={`absolute -right-1 -top-1 h-4 w-4 rounded-full border-[3px] border-white ${presenceMeta.ring}`}
+                className={`absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-[3px] border-white sm:h-4 sm:w-4 ${presenceMeta.ring}`}
                 aria-label={`presence-${presenceTone}`}
               />
             </button>
 
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={() => onOpenTrust(provider.id)} className="text-left">
-                  <h3 className="brand-display text-[1.7rem] font-semibold leading-tight text-slate-950 sm:text-[1.95rem]">
+            <div className="min-w-0 flex-1">
+              <div className="min-w-0 space-y-2">
+                <button type="button" onClick={() => onOpenTrust(provider.id)} className="block max-w-full text-left">
+                  <h3 className="brand-display max-w-full text-[1.28rem] font-semibold leading-[1.08] text-slate-950 line-clamp-2 [overflow-wrap:anywhere] sm:text-[1.55rem] xl:text-[1.8rem]">
                     {provider.name}
                   </h3>
                 </button>
 
-                {provider.verified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    <BadgeCheck className="h-3.5 w-3.5" />
-                    Verified
-                  </span>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {provider.verified ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      Verified
+                    </span>
+                  ) : null}
 
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${presenceMeta.pill}`}
-                >
-                  <span className="h-2 w-2 rounded-full bg-current" />
-                  {presenceMeta.label}
-                </span>
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${presenceMeta.pill}`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-current" />
+                    {presenceMeta.label}
+                  </span>
+                </div>
               </div>
 
-              <p className="mt-1.5 text-base font-medium text-slate-700">{provider.role}</p>
+              <p className="mt-2 text-sm font-medium text-slate-700 [overflow-wrap:anywhere] sm:text-base">
+                {provider.role}
+              </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-slate-600 sm:text-sm">
+                <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
                   <MapPin className="h-4 w-4 text-slate-400" />
-                  {provider.location}
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{provider.location}</span>
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
                   <Clock3 className="h-4 w-4 text-slate-400" />
                   {formatResponseLabel(provider.responseMinutes)}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">
+                <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700">
                   <Star
                     className={`h-4 w-4 ${provider.rating !== null ? "fill-amber-400 text-amber-400" : "text-amber-500"}`}
                   />
-                  {formatReviewSignal(provider.rating, provider.reviews)}
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    {formatReviewSignal(provider.rating, provider.reviews)}
+                  </span>
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="grid w-full gap-2 sm:max-w-[320px] sm:grid-cols-2 xl:max-w-[280px]">
+          <div className="grid w-full grid-cols-2 gap-2 xl:max-w-[300px]">
             <div className={compactStatClassName}>
               <p className={sectionLabelClassName}>Distance</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">{formatDistanceLabel(provider.distanceKm)}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900 sm:text-base">
+                {formatDistanceLabel(provider.distanceKm)}
+              </p>
             </div>
             <div className={compactStatClassName}>
               <p className={sectionLabelClassName}>Starting point</p>
-              <p className="mt-2 text-base font-semibold text-slate-900">
+              <p className="mt-2 text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] sm:text-base">
                 {provider.minPriceLabel ? `From ${provider.minPriceLabel}` : "Ask for pricing"}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-6">
           {renderConnectionAction()}
 
           <button
@@ -334,37 +346,39 @@ const ProviderCard = ({
             className={surfaceActionClassName}
           >
             <ExternalLink className="h-4 w-4" />
-            View Full Profile
+            View profile
             <ArrowUpRight className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid gap-3 lg:gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="rounded-[1.25rem] border border-slate-200 bg-white/95 p-3.5 sm:rounded-[1.35rem] sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <p className={sectionLabelClassName}>Business Summary</p>
-                <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{provider.bio}</p>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 sm:line-clamp-3">{provider.bio}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onOpenTrust(provider.id)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)] sm:w-auto"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Trust details
               </button>
             </div>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
               <div className={compactStatClassName}>
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Primary skill</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">{provider.primarySkill}</p>
+                <p className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">
+                  {provider.primarySkill}
+                </p>
               </div>
               <div className={compactStatClassName}>
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Catalog</p>
                 <p className="mt-2 text-sm font-semibold text-slate-900">
-                  {provider.serviceCount} services | {provider.productCount} products
+                  {provider.serviceCount} services / {provider.productCount} products
                 </p>
               </div>
               <div className={compactStatClassName}>
@@ -375,7 +389,7 @@ const ProviderCard = ({
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
                   {provider.completedJobs !== null ? "Completed work" : "Activity"}
                 </p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">
+                <p className="mt-2 line-clamp-2 text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">
                   {provider.completedJobs !== null ? provider.completedJobs : provider.recentActivityLabel}
                 </p>
               </div>
@@ -408,7 +422,9 @@ const ProviderCard = ({
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-3 text-sm font-semibold text-slate-900">{offering.title}</p>
+                    <p className="mt-3 line-clamp-2 text-sm font-semibold text-slate-900 [overflow-wrap:anywhere]">
+                      {offering.title}
+                    </p>
                     <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">{offering.description}</p>
                   </div>
                 ))}
@@ -450,7 +466,7 @@ const ProviderCard = ({
             ) : null}
           </section>
 
-          <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
+          <section className="rounded-[1.25rem] border border-slate-200 bg-white/95 p-3.5 sm:rounded-[1.35rem] sm:p-4">
             <p className={sectionLabelClassName}>Trust Snapshot</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">{provider.trustBlurb}</p>
             <p className="mt-3 text-xs font-medium text-slate-500">{formatJoinedLabel(provider.joinedAt)}</p>
@@ -467,9 +483,9 @@ const ProviderCard = ({
         </div>
 
         {detailsOpen ? (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="grid gap-3 lg:gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <section className="rounded-[1.25rem] border border-slate-200 bg-white/95 p-3.5 sm:rounded-[1.35rem] sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className={sectionLabelClassName}>Published Services</p>
                   <p className="mt-1 text-sm text-slate-500">
@@ -485,7 +501,7 @@ const ProviderCard = ({
             </section>
 
             {activeMedia ? (
-              <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white/95">
+              <section className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white/95 sm:rounded-[1.35rem]">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                   <div>
                     <p className={sectionLabelClassName}>Media Showcase</p>
@@ -528,7 +544,7 @@ const ProviderCard = ({
                     className="object-cover"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/70 via-slate-950/10 to-transparent px-4 py-4 text-white">
-                    <p className="text-sm font-semibold">{activeMedia.title}</p>
+                    <p className="line-clamp-2 text-sm font-semibold [overflow-wrap:anywhere]">{activeMedia.title}</p>
                     <p className="mt-1 text-xs text-white/80">Published from the provider&apos;s ServiQ catalog</p>
                   </div>
                 </div>

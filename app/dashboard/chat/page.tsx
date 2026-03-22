@@ -24,7 +24,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import {
   extractPresenceUserIds,
@@ -210,16 +210,9 @@ const mapLiveTalkRow = (row: Record<string, unknown> | null | undefined): LiveTa
 
 export default function ChatPage() {
   const router = useRouter();
-  const [requestedChatId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("open");
-  });
-  const [requestedLiveTalk] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("liveTalk") === "1";
-  });
+  const searchParams = useSearchParams();
+  const requestedChatId = searchParams.get("open");
+  const requestedLiveTalk = searchParams.get("liveTalk") === "1";
   const [quoteTarget, setQuoteTarget] = useState<RequestedQuoteContext | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
@@ -513,12 +506,13 @@ export default function ChatPage() {
 
       setConversations(nextConversations);
       setSelectedChat((previousChat) => {
-        if (previousChat && nextConversations.some((conversation) => conversation.id === previousChat)) {
-          return previousChat;
-        }
-
+        // Query-driven chat targets should win when a route change asks for a specific conversation.
         if (requestedChatId && nextConversations.some((conversation) => conversation.id === requestedChatId)) {
           return requestedChatId;
+        }
+
+        if (previousChat && nextConversations.some((conversation) => conversation.id === previousChat)) {
+          return previousChat;
         }
 
         return nextConversations[0]?.id || null;
