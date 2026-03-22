@@ -128,6 +128,9 @@ const isMissingLaunchpadTableError = (message: string) => launchpadMissingTableP
 const isDraftRowResult = (
   value: Awaited<ReturnType<typeof getLatestLaunchpadDraftRow>>
 ): value is { row: LaunchpadDraftRow | null } => "row" in value;
+const isWorkspaceSummaryError = (
+  value: LaunchpadWorkspaceSummary | LaunchpadMutationError
+): value is LaunchpadMutationError => "ok" in value && value.ok === false;
 
 const toDraftRecord = (row: LaunchpadDraftRow): LaunchpadDraftRecord => ({
   id: row.id,
@@ -509,7 +512,7 @@ export const loadLaunchpadWorkspace = async (params: {
     loadWorkspaceSummary(params),
   ]);
 
-  if ("ok" in summary && !summary.ok) return summary;
+  if (isWorkspaceSummaryError(summary)) return summary;
   if (!isDraftRowResult(latest)) {
     if (latest.missingTable) {
       return {
