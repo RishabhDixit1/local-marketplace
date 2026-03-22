@@ -55,6 +55,8 @@ export const createMarketplaceReadinessSummary = (params: {
   matchingProvidersCount?: number;
 }): MarketplaceReadinessSummary => {
   const role = getProfileRoleFamily(params.profile?.role);
+  const fullName = trim(params.profile?.full_name) || trim(params.profile?.name);
+  const location = trim(params.profile?.location);
   const completionPercent = calculateProfileCompletionPercent(params.profile);
   const onboardingComplete = isProfileOnboardingComplete(params.profile);
   const listingCount = Math.max(0, params.providerServicesCount || 0) + Math.max(0, params.providerProductsCount || 0);
@@ -65,6 +67,7 @@ export const createMarketplaceReadinessSummary = (params: {
     trim(params.profile?.email) || trim(params.profile?.phone) || trim(params.profile?.website)
   );
   const hasAvatar = Boolean(trim(params.profile?.avatar_url));
+  const missingBasics = !fullName || !location || !hasContact;
   const profileHref = onboardingComplete ? PROFILE_ROUTE : buildOnboardingProfileHref();
 
   const actions: MarketplaceReadinessAction[] = [];
@@ -152,9 +155,9 @@ export const createMarketplaceReadinessSummary = (params: {
   }
 
   const stage =
-    !onboardingComplete || completionPercent < 55
+    missingBasics || completionPercent < 55
       ? "foundation"
-      : !hasContact || !hasAvatar || topics.length === 0 || (role === "provider" ? listingCount === 0 : postsCount === 0) || completionPercent < 85
+      : !hasAvatar || topics.length === 0 || (role === "provider" ? listingCount === 0 : postsCount === 0) || completionPercent < 85
       ? "momentum"
       : "market-ready";
 
