@@ -73,6 +73,23 @@ export type LaunchpadFaqItem = {
   answer: string;
 };
 
+export type LaunchpadWorkspaceSummary = {
+  profileExists: boolean;
+  profilePath: string | null;
+  businessPath: string | null;
+  totalServices: number;
+  totalProducts: number;
+  launchpadServices: number;
+  launchpadProducts: number;
+  faqCount: number;
+  serviceAreaCount: number;
+  lastPublishedAt: string | null;
+  liveCategories: string[];
+  liveOfferings: string[];
+  liveCatalogLines: string[];
+  liveServiceAreas: string[];
+};
+
 export type LaunchpadDraftRecord = {
   id: string;
   ownerId: string;
@@ -94,6 +111,7 @@ export type GetLaunchpadDraftResponse =
   | {
       ok: true;
       draft: LaunchpadDraftRecord | null;
+      summary: LaunchpadWorkspaceSummary;
     }
   | LaunchpadApiError;
 

@@ -8,8 +8,6 @@ import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } fro
 import { useRouter } from "next/navigation";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
-import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { ensureClientProfile } from "@/lib/clientProfile";
@@ -41,8 +39,7 @@ import {
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
-import { buildPublicProfilePath, normalizeTopics } from "@/lib/profile/utils";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import ConnectionsPanel from "./components/ConnectionsPanel";
@@ -832,7 +829,6 @@ const createProviderCards = (params: {
 };
 export default function PeoplePage() {
   const router = useRouter();
-  const { profile: viewerProfile } = useProfileContext();
   const infiniteSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
   const providerPreviewRef = useRef<Map<string, ProviderPreview>>(new Map());
@@ -1723,36 +1719,6 @@ export default function PeoplePage() {
     () => providers.filter((provider) => getPresenceTone(provider) === "online").length,
     [getPresenceTone, providers]
   );
-  const nearbyCount = useMemo(
-    () => providers.filter((provider) => provider.distanceKm <= 5).length,
-    [providers]
-  );
-  const coveragePercent = providers.length ? Math.round((activeNow / providers.length) * 100) : 0;
-  const matchingProvidersCount = useMemo(() => {
-    const viewerTags = new Set(
-      normalizeTopics([...(viewerProfile?.interests || []), ...(viewerProfile?.services || [])]).map((tag) =>
-        tag.toLowerCase()
-      )
-    );
-
-    if (viewerTags.size === 0) return 0;
-
-    return providers.filter((provider) => provider.tags.some((tag) => viewerTags.has(tag.toLowerCase()))).length;
-  }, [providers, viewerProfile]);
-  const discoveryReadiness = viewerProfile
-    ? createMarketplaceReadinessSummary({
-        profile: viewerProfile,
-        matchingProvidersCount,
-      })
-    : null;
-  const discoveryStats = discoveryReadiness
-    ? [
-        { label: "Profile", value: `${discoveryReadiness.completionPercent}%` },
-        { label: "Tag matches", value: String(matchingProvidersCount) },
-        { label: "Active now", value: String(activeNow) },
-      ]
-    : [];
-
   const activeProvider =
     visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
   const activePresenceTone = activeProvider ? getPresenceTone(activeProvider) : "offline";
@@ -1796,14 +1762,10 @@ export default function PeoplePage() {
     >
       <PeopleLiveHeader
         activeNow={activeNow}
-        nearbyCount={nearbyCount}
-        coveragePercent={coveragePercent}
         connectionCount={connectionBuckets.accepted.length}
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
       />
-
-      {discoveryReadiness ? <MarketplaceReadinessPanel summary={discoveryReadiness} stats={discoveryStats} /> : null}
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -1843,6 +1805,16 @@ export default function PeoplePage() {
         </div>
       )}
 
+      <PeopleMapPanel
+        items={mapItems}
+        center={viewerCenter}
+        activeProvider={activeProvider}
+        activePresenceTone={activePresenceTone}
+        onSelectProvider={setActiveProviderId}
+        onJumpToProvider={jumpToProviderCard}
+        onOpenTrustPanel={setTrustPanelProviderId}
+      />
+
       <div className="2xl:hidden">
         <button
           type="button"
@@ -1877,24 +1849,8 @@ export default function PeoplePage() {
         </AnimatePresence>
       </div>
 
-      <div className="hidden 2xl:flex 2xl:justify-end">
-        <div className="w-full max-w-[380px]">
-          <ConnectionsPanel {...connectionsPanelProps} />
-        </div>
-      </div>
-
-      <PeopleMapPanel
-        items={mapItems}
-        center={viewerCenter}
-        activeProvider={activeProvider}
-        activePresenceTone={activePresenceTone}
-        onSelectProvider={setActiveProviderId}
-        onJumpToProvider={jumpToProviderCard}
-        onOpenTrustPanel={setTrustPanelProviderId}
-      />
-
-      <div className="grid gap-5">
-        <main className="space-y-6">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_380px] 2xl:items-start">
+        <main className="min-w-0 space-y-6">
           {loading ? (
             <ProviderCardSkeleton count={3} />
           ) : !providers.length ? (
@@ -2023,6 +1979,10 @@ export default function PeoplePage() {
             </>
           )}
         </main>
+
+        <aside className="hidden 2xl:block">
+          <ConnectionsPanel {...connectionsPanelProps} />
+        </aside>
       </div>
 
       <AnimatePresence>

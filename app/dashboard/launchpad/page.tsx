@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -21,6 +21,7 @@ import type {
   GetLaunchpadDraftResponse,
   LaunchpadAnswers,
   LaunchpadDraftRecord,
+  LaunchpadWorkspaceSummary,
   PublishLaunchpadDraftResponse,
   SaveLaunchpadDraftResponse,
 } from "@/lib/api/launchpad";
@@ -66,19 +67,61 @@ const fieldClassName =
   "w-full rounded-[18px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]";
 
 const serializeAnswers = (answers: LaunchpadAnswers) => JSON.stringify(normalizeLaunchpadAnswers(answers));
+const dedupeStrings = (values: Array<string | null | undefined>, limit = 12) => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = value?.trim() || "";
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+};
+const resolveOfferingTypeFromSummary = (summary: LaunchpadWorkspaceSummary | null | undefined): LaunchpadAnswers["offeringType"] => {
+  const totalServices = summary?.totalServices || 0;
+  const totalProducts = summary?.totalProducts || 0;
+
+  if (totalServices > 0 && totalProducts > 0) return "hybrid";
+  if (totalProducts > 0 && totalServices === 0) return "products";
+  return "services";
+};
+const formatLaunchpadTimestamp = (value: string | null) => {
+  if (!value) return "Not published yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not published yet";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+};
 
 const createPrefilledAnswers = (
-  profile: ReturnType<typeof useProfileContext>["profile"]
+  profile: ReturnType<typeof useProfileContext>["profile"],
+  summary: LaunchpadWorkspaceSummary | null
 ): LaunchpadAnswers =>
   normalizeLaunchpadAnswers({
     ...DEFAULT_LAUNCHPAD_ANSWERS,
+    offeringType: resolveOfferingTypeFromSummary(summary),
     businessName: getProfileDisplayName(profile),
-    businessType: profile?.role === "business" ? "Local business" : profile?.role === "provider" ? "Service business" : "",
-    primaryCategory: profile?.interests?.[0] || "",
-    location: profile?.location || "",
-    serviceArea: profile?.location || "",
+    businessType:
+      profile?.role === "business"
+        ? "Local business"
+        : profile?.role === "provider"
+        ? "Service business"
+        : summary?.totalProducts && !summary.totalServices
+        ? "Product business"
+        : summary?.totalServices
+        ? "Service business"
+        : "",
+    primaryCategory: profile?.interests?.[0] || summary?.liveCategories[0] || "",
+    location: profile?.location || summary?.liveServiceAreas[0] || "",
+    serviceArea: summary?.liveServiceAreas.join(", ") || profile?.location || "",
     shortDescription: profile?.bio || "",
-    coreOfferings: (profile?.interests || []).join(", "),
+    coreOfferings: dedupeStrings([...(summary?.liveOfferings || []), ...(profile?.interests || [])], 12).join(", "),
+    catalogText: (summary?.liveCatalogLines || []).join("\n"),
     phone: profile?.phone || "",
     website: profile?.website || "",
   });
@@ -90,11 +133,10 @@ type PublishResultPaths = {
 
 export default function LaunchpadPage() {
   const { profile, loading: profileLoading } = useProfileContext();
-  const initialLoadRef = useRef(false);
-  const prefilledAnswers = useMemo(() => createPrefilledAnswers(profile), [profile]);
 
   const [formValues, setFormValues] = useState<LaunchpadAnswers>(DEFAULT_LAUNCHPAD_ANSWERS);
   const [draft, setDraft] = useState<LaunchpadDraftRecord | null>(null);
+  const [workspaceSummary, setWorkspaceSummary] = useState<LaunchpadWorkspaceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -102,38 +144,48 @@ export default function LaunchpadPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [publishedPaths, setPublishedPaths] = useState<PublishResultPaths | null>(null);
 
-  useEffect(() => {
-    if (profileLoading || initialLoadRef.current) return;
-    initialLoadRef.current = true;
+  const reloadWorkspace = useCallback(
+    async (active?: { current: boolean }) => {
+      const payload = await fetchAuthedJson<GetLaunchpadDraftResponse>(supabase, "/api/launchpad/draft");
+      if (active && !active.current) return;
+      if (!payload.ok) {
+        throw new Error(payload.message);
+      }
 
-    let active = true;
+      setWorkspaceSummary(payload.summary);
+      if (!payload.draft) {
+        setDraft(null);
+        setFormValues(createPrefilledAnswers(profile, payload.summary));
+        return;
+      }
+
+      setDraft(payload.draft);
+      setFormValues(payload.draft.answers);
+    },
+    [profile]
+  );
+
+  useEffect(() => {
+    if (profileLoading) return;
+
+    const active = { current: true };
     setLoading(true);
 
-    void fetchAuthedJson<GetLaunchpadDraftResponse>(supabase, "/api/launchpad/draft")
-      .then((payload) => {
-        if (!active) return;
-        if (!payload.ok || !payload.draft) {
-          setDraft(null);
-          setFormValues(prefilledAnswers);
-          return;
-        }
-
-        setDraft(payload.draft);
-        setFormValues(payload.draft.answers);
-      })
+    void reloadWorkspace(active)
       .catch((error) => {
-        if (!active) return;
+        if (!active.current) return;
         setErrorMessage(error instanceof Error ? error.message : "Unable to load launchpad draft right now.");
-        setFormValues(prefilledAnswers);
+        setWorkspaceSummary(null);
+        setFormValues(createPrefilledAnswers(profile, null));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active.current) setLoading(false);
       });
 
     return () => {
-      active = false;
+      active.current = false;
     };
-  }, [prefilledAnswers, profileLoading]);
+  }, [profile, profileLoading, reloadWorkspace]);
 
   const preview = draft;
   const isDraftSynced = draft ? serializeAnswers(formValues) === serializeAnswers(draft.answers) : false;
@@ -146,6 +198,15 @@ export default function LaunchpadPage() {
   const serviceAreaCount = preview?.generatedServiceAreas.length || 0;
   const launchStatusLabel = loading ? "Loading" : draft ? draft.status.replace(/_/g, " ") : "Not generated";
   const totalOutputCount = servicePackCount + productPackCount;
+  const liveSurfacePaths =
+    publishedPaths ||
+    (workspaceSummary?.profilePath && workspaceSummary?.businessPath
+      ? {
+          profilePath: workspaceSummary.profilePath,
+          businessPath: workspaceSummary.businessPath,
+        }
+      : null);
+  const hasLaunchpadLiveOutput = Boolean(publishedPaths || workspaceSummary?.lastPublishedAt);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
@@ -216,6 +277,7 @@ export default function LaunchpadPage() {
         profilePath: payload.profilePath,
         businessPath: payload.businessPath,
       });
+      await reloadWorkspace();
       setSuccessMessage(
         `Published ${payload.publishedServices} service pack${payload.publishedServices === 1 ? "" : "s"} and ${payload.publishedProducts} product pack${
           payload.publishedProducts === 1 ? "" : "s"
@@ -261,6 +323,71 @@ export default function LaunchpadPage() {
           {successMessage}
         </div>
       ) : null}
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.45)] sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">What Launchpad Does</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Launchpad is ServiQ&apos;s provider storefront builder.</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              It takes one business brief, turns it into profile copy, listing packs, FAQ answers, and service-area metadata,
+              then publishes that output into the same profile, business page, and marketplace inventory the rest of the app already uses.
+            </p>
+            {profile?.role !== "provider" ? (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-[var(--brand-700)]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Publishing from Launchpad will position this account as a provider storefront.
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[420px]">
+            <LaunchMetricCard
+              icon={<Store className="h-4 w-4" />}
+              label="Live Storefront"
+              value={workspaceSummary?.profileExists ? "Connected" : "Not live yet"}
+              helper={
+                workspaceSummary?.lastPublishedAt
+                  ? `Last launchpad publish ${formatLaunchpadTimestamp(workspaceSummary.lastPublishedAt)}`
+                  : "Generate and publish to create a live provider storefront"
+              }
+            />
+            <LaunchMetricCard
+              icon={<Package className="h-4 w-4" />}
+              label="Current Inventory"
+              value={`${workspaceSummary?.totalServices || 0} services • ${workspaceSummary?.totalProducts || 0} products`}
+              helper="Existing live listings are used to prefill the brief"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          {liveSurfacePaths?.businessPath ? (
+            <Link
+              href={liveSurfacePaths.businessPath}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+            >
+              Open business page
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : null}
+          {liveSurfacePaths?.profilePath ? (
+            <Link
+              href={liveSurfacePaths.profilePath}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+            >
+              Open public profile
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : null}
+          {workspaceSummary?.liveOfferings.length ? (
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+              Prefilled from live inventory: {workspaceSummary.liveOfferings.slice(0, 3).join(", ")}
+              {workspaceSummary.liveOfferings.length > 3 ? "..." : ""}
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <LaunchMetricCard
@@ -483,8 +610,8 @@ export default function LaunchpadPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Go-live surfaces</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Where this launch lands</h2>
             <div className="mt-4 grid gap-3">
-              <SurfaceLine label="Public profile" value={publishedPaths ? "Live" : "Ready to publish"} />
-              <SurfaceLine label="Business mini-site" value={publishedPaths ? "Live" : "Will publish with profile"} />
+              <SurfaceLine label="Public profile" value={liveSurfacePaths ? "Live" : "Ready to publish"} />
+              <SurfaceLine label="Business mini-site" value={liveSurfacePaths ? "Live" : "Will publish with profile"} />
               <SurfaceLine label="Service listings" value={servicePackCount > 0 ? `${servicePackCount} prepared` : "None yet"} />
               <SurfaceLine label="Product listings" value={productPackCount > 0 ? `${productPackCount} prepared` : "None yet"} />
             </div>
@@ -493,16 +620,16 @@ export default function LaunchpadPage() {
             </div>
           </section>
 
-          {publishedPaths ? (
+          {hasLaunchpadLiveOutput && liveSurfacePaths ? (
             <section className="rounded-[30px] border border-emerald-200 bg-emerald-50 p-5 shadow-[0_24px_70px_-52px_rgba(16,185,129,0.35)]">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Published</p>
               <h2 className="mt-2 text-xl font-semibold text-emerald-950">Your launchpad output is now live.</h2>
               <div className="mt-4 grid gap-3">
-                <Link href={publishedPaths.businessPath} className="inline-flex items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-emerald-300">
+                <Link href={liveSurfacePaths.businessPath} className="inline-flex items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-emerald-300">
                   Open business page
                   <ExternalLink className="h-4 w-4" />
                 </Link>
-                <Link href={publishedPaths.profilePath} className="inline-flex items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-emerald-300">
+                <Link href={liveSurfacePaths.profilePath} className="inline-flex items-center justify-between rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-emerald-300">
                   Open public profile
                   <ArrowRight className="h-4 w-4" />
                 </Link>

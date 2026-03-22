@@ -7,7 +7,7 @@ import type {
 } from "@/lib/api/launchpad";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
-import { loadLatestLaunchpadDraft, saveLaunchpadDraft } from "@/lib/server/launchpadWrites";
+import { loadLaunchpadWorkspace, saveLaunchpadDraft } from "@/lib/server/launchpadWrites";
 
 export const runtime = "nodejs";
 
@@ -45,7 +45,11 @@ export async function GET(request: Request) {
     return toErrorResponse(500, "CONFIG", "Supabase server credentials are missing.");
   }
 
-  const result = await loadLatestLaunchpadDraft(dbClient, authResult.auth.userId);
+  const result = await loadLaunchpadWorkspace({
+    db: dbClient,
+    userId: authResult.auth.userId,
+    userEmail: authResult.auth.email,
+  });
   if (!result.ok) {
     return toErrorResponse(
       result.missingTable ? 503 : 500,
@@ -58,6 +62,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     draft: result.draft,
+    summary: result.summary,
   } satisfies GetLaunchpadDraftResponse, {
     headers: {
       "Cache-Control": "no-store",
