@@ -7,6 +7,8 @@ import {
   BadgeCheck,
   Bookmark,
   BookmarkCheck,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   ExternalLink,
   Globe,
@@ -94,13 +96,13 @@ const formatReviewSignal = (rating: number | null, reviews: number) => {
 };
 
 const actionButtonClassName =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-65";
+  "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm leading-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-65";
 
 const surfaceActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
 const primaryActionClassName = `${actionButtonClassName} bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]`;
 const chatActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
 const savedActionClassName = `${actionButtonClassName} border border-[var(--brand-500)]/30 bg-cyan-50 text-[var(--brand-700)] hover:border-[var(--brand-500)]/40`;
-const compactStatClassName = "rounded-[1.25rem] border border-slate-200 bg-white/95 px-4 py-3";
+const compactStatClassName = "rounded-[1.1rem] border border-slate-200 bg-white/95 px-3.5 py-3";
 
 const ProviderCard = ({
   provider,
@@ -125,6 +127,7 @@ const ProviderCard = ({
   onOpenTrust,
 }: Props) => {
   const [mediaIndex, setMediaIndex] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const mediaItems = provider.media;
   const boundedMediaIndex = mediaItems.length ? mediaIndex % mediaItems.length : 0;
   const activeMedia = mediaItems[boundedMediaIndex] || null;
@@ -292,7 +295,7 @@ const ProviderCard = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {renderConnectionAction()}
 
           <button
@@ -336,73 +339,136 @@ const ProviderCard = ({
           </button>
         </div>
 
-        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-4">
-            <section className="rounded-[1.45rem] border border-slate-200 bg-white/95 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className={sectionLabelClassName}>Business Summary</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{provider.bio}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenTrust(provider.id)}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Trust details
-                </button>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className={sectionLabelClassName}>Business Summary</p>
+                <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">{provider.bio}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => onOpenTrust(provider.id)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Trust details
+              </button>
+            </div>
 
-              {provider.tags.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {provider.tags.slice(0, 4).map((tag) => (
-                    <span
-                      key={`${provider.id}-${tag}`}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className={compactStatClassName}>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Primary skill</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{provider.primarySkill}</p>
+              </div>
+              <div className={compactStatClassName}>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Catalog</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {provider.serviceCount} services | {provider.productCount} products
+                </p>
+              </div>
+              <div className={compactStatClassName}>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Profile strength</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{provider.profileCompletion}%</p>
+              </div>
+              <div className={compactStatClassName}>
+                <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                  {provider.completedJobs !== null ? "Completed work" : "Activity"}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {provider.completedJobs !== null ? provider.completedJobs : provider.recentActivityLabel}
+                </p>
+              </div>
+            </div>
 
-              {hasContactActions ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {provider.website ? (
-                    <a
-                      href={provider.website}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                    >
-                      <Globe className="h-3.5 w-3.5" />
-                      Website
-                    </a>
-                  ) : null}
-                  {provider.phone ? (
-                    <a
-                      href={`tel:${provider.phone}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                    >
-                      <Phone className="h-3.5 w-3.5" />
-                      Call
-                    </a>
-                  ) : null}
-                  {provider.email ? (
-                    <a
-                      href={`mailto:${provider.email}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                      Email
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
-            </section>
+            {provider.tags.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {provider.tags.slice(0, 4).map((tag) => (
+                  <span
+                    key={`${provider.id}-${tag}`}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
-            <section className="rounded-[1.45rem] border border-slate-200 bg-white/95 p-4">
+            {visibleOfferings.length > 0 ? (
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {visibleOfferings.map((offering) => (
+                  <div key={offering.id} className="rounded-[1.15rem] border border-slate-200 bg-slate-50/90 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        {offering.kind}
+                      </span>
+                      {offering.priceLabel ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                          {offering.priceLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-slate-900">{offering.title}</p>
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">{offering.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {hasContactActions ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {provider.website ? (
+                  <a
+                    href={provider.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    Website
+                  </a>
+                ) : null}
+                {provider.phone ? (
+                  <a
+                    href={`tel:${provider.phone}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    Call
+                  </a>
+                ) : null}
+                {provider.email ? (
+                  <a
+                    href={`mailto:${provider.email}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
+            <p className={sectionLabelClassName}>Trust Snapshot</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{provider.trustBlurb}</p>
+            <p className="mt-3 text-xs font-medium text-slate-500">{formatJoinedLabel(provider.joinedAt)}</p>
+
+            <button
+              type="button"
+              onClick={() => setDetailsOpen((current) => !current)}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+            >
+              {detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {detailsOpen ? "Hide extra details" : "More details"}
+            </button>
+          </section>
+        </div>
+
+        {detailsOpen ? (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <section className="rounded-[1.35rem] border border-slate-200 bg-white/95 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className={sectionLabelClassName}>Published Services</p>
@@ -416,89 +482,16 @@ const ProviderCard = ({
                   {provider.primarySkill}
                 </span>
               </div>
-
-              {visibleOfferings.length > 0 ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {visibleOfferings.map((offering) => (
-                    <div key={offering.id} className="rounded-[1.2rem] border border-slate-200 bg-slate-50/90 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                              {offering.kind}
-                            </span>
-                            <span className="rounded-full border border-[var(--brand-500)]/20 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)]">
-                              {offering.category}
-                            </span>
-                          </div>
-                          <h4 className="mt-3 text-base font-semibold text-slate-900">{offering.title}</h4>
-                          <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{offering.description}</p>
-                        </div>
-                        {offering.priceLabel ? (
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
-                            {offering.priceLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </section>
-          </div>
-
-          <div className="space-y-4">
-            <section className="rounded-[1.45rem] border border-slate-200 bg-white/95 p-4">
-              <p className={sectionLabelClassName}>Marketplace Snapshot</p>
-              <div className="mt-3 space-y-2.5">
-                <div className={compactStatClassName}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Primary service</p>
-                  <p className="mt-2 text-base font-semibold text-slate-900">{provider.primarySkill}</p>
-                </div>
-                <div className={compactStatClassName}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Catalog coverage</p>
-                  <p className="mt-2 text-base font-semibold text-slate-900">
-                    {provider.serviceCount} services | {provider.productCount} products
-                  </p>
-                </div>
-                <div className={compactStatClassName}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Activity</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-900">{provider.recentActivityLabel}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[1.45rem] border border-slate-200 bg-white/95 p-4">
-              <p className={sectionLabelClassName}>Trust Signals</p>
-              <div className="mt-3 grid gap-2.5 sm:grid-cols-3 2xl:grid-cols-1">
-                {provider.completedJobs !== null ? (
-                  <div className={compactStatClassName}>
-                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Completed work</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">{provider.completedJobs}</p>
-                  </div>
-                ) : null}
-                <div className={compactStatClassName}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Profile strength</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">{provider.profileCompletion}%</p>
-                </div>
-                <div className={compactStatClassName}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Review signal</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-900">
-                    {formatReviewSignal(provider.rating, provider.reviews)}
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-slate-600">{provider.trustBlurb}</p>
-              <p className="mt-2 text-xs font-medium text-slate-500">{formatJoinedLabel(provider.joinedAt)}</p>
             </section>
 
             {activeMedia ? (
-              <section className="overflow-hidden rounded-[1.45rem] border border-slate-200 bg-white/95">
+              <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white/95">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                   <div>
                     <p className={sectionLabelClassName}>Media Showcase</p>
-                    <p className="mt-1 text-sm text-slate-500">{mediaItems.length} published visual{mediaItems.length === 1 ? "" : "s"}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {mediaItems.length} published visual{mediaItems.length === 1 ? "" : "s"}
+                    </p>
                   </div>
                   {mediaItems.length > 1 ? (
                     <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -542,7 +535,7 @@ const ProviderCard = ({
               </section>
             ) : null}
           </div>
-        </div>
+        ) : null}
       </div>
     </article>
   );

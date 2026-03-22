@@ -1,15 +1,12 @@
 "use client";
 
 import { startTransition, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
-import { PROFILE_ROUTE } from "@/lib/profile/types";
-import { buildOnboardingProfileHref, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { loading, user, profile, errorMessage, refreshProfile } = useProfileContext();
 
   useEffect(() => {
@@ -22,12 +19,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
       return;
     }
 
-    if (profile && !isProfileOnboardingComplete(profile) && pathname !== PROFILE_ROUTE) {
-      startTransition(() => {
-        router.replace(buildOnboardingProfileHref());
-      });
-    }
-  }, [loading, pathname, profile, router, user]);
+  }, [loading, router, user]);
 
   if (loading) {
     return (
@@ -37,7 +29,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
             <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
             <div>
               <p className="text-sm font-semibold">Preparing your dashboard</p>
-              <p className="text-xs text-slate-500">Checking your session and profile completion.</p>
+              <p className="text-xs text-slate-500">Checking your session and loading your profile.</p>
             </div>
           </div>
           <div className="mt-6 space-y-3">
@@ -73,16 +65,6 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (profile && !isProfileOnboardingComplete(profile) && pathname !== PROFILE_ROUTE) {
-    return (
-      <div className="grid min-h-[60vh] place-items-center">
-        <div className="rounded-full border border-indigo-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm">
-          Redirecting to profile completion...
         </div>
       </div>
     );

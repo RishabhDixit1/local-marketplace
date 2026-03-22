@@ -6,6 +6,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
@@ -1095,6 +1097,42 @@ export default function ChatPage() {
       return true;
     });
   }, [conversations, inboxFilter, search]);
+
+  const handleChatPromptSubmit = useCallback(() => {
+    if (filteredConversations[0]) {
+      setSelectedChat(filteredConversations[0].id);
+      return;
+    }
+
+    if (search.trim()) {
+      setInboxFilter("all");
+    }
+  }, [filteredConversations, search]);
+
+  const chatPromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search chats by member name or message keyword",
+      value: search,
+      onValueChange: setSearch,
+      onSubmit: handleChatPromptSubmit,
+      actions: [
+        {
+          id: "refresh-chat",
+          label: loadingConversations ? "Refreshing..." : "Refresh",
+          icon: Loader2,
+          onClick: () => {
+            void loadConversations(true);
+          },
+          variant: "secondary",
+          disabled: loadingConversations || !userId,
+          busy: loadingConversations,
+        },
+      ],
+    }),
+    [handleChatPromptSubmit, loadConversations, loadingConversations, search, userId]
+  );
+
+  useDashboardPrompt(chatPromptConfig);
 
   const groupedMessages = useMemo<GroupedMessages[]>(() => {
     const groups: GroupedMessages[] = [];

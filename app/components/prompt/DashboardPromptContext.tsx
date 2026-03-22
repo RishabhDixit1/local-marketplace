@@ -113,6 +113,8 @@ const useDashboardPromptContext = () => {
   return context;
 };
 
+export const useDashboardPromptState = () => useDashboardPromptContext();
+
 export const useDashboardPrompt = (prompt: DashboardPromptConfig | null) => {
   const { setPagePrompt } = useDashboardPromptContext();
 

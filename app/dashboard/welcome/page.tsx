@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { appTagline } from "@/lib/branding";
@@ -145,7 +144,7 @@ export default function WelcomePage() {
   const [providerServicesCount, setProviderServicesCount] = useState(0);
   const [providerProductsCount, setProviderProductsCount] = useState(0);
   const [seekerPostsCount, setSeekerPostsCount] = useState(0);
-  const [readinessLoading, setReadinessLoading] = useState(false);
+  const [, setReadinessLoading] = useState(false);
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
@@ -432,18 +431,6 @@ export default function WelcomePage() {
           })
         : null,
     [providerProductsCount, providerServicesCount, seekerPostsCount, viewerProfile]
-  );
-
-  const welcomeReadinessStats = useMemo(
-    () =>
-      welcomeReadinessSummary
-        ? [
-            { label: "Profile", value: `${welcomeReadinessSummary.completionPercent}%` },
-            { label: "Connections", value: String(acceptedConnectionCount) },
-            { label: "Saved", value: String(savedCardIds.length) },
-          ]
-        : [],
-    [acceptedConnectionCount, savedCardIds.length, welcomeReadinessSummary]
   );
 
   const handleWelcomePromptSubmit = useCallback(() => {
@@ -1096,14 +1083,6 @@ export default function WelcomePage() {
               {loadError}
             </div>
           )}
-
-          {welcomeReadinessSummary ? (
-            <MarketplaceReadinessPanel
-              summary={welcomeReadinessSummary}
-              stats={welcomeReadinessStats}
-              loading={readinessLoading}
-            />
-          ) : null}
 
           <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

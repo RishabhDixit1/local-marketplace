@@ -1,11 +1,13 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import MarketplaceReadinessPanel from "@/app/components/profile/MarketplaceReadinessPanel";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
@@ -852,6 +854,11 @@ export default function PeoplePage() {
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
   const [trustPanelProviderId, setTrustPanelProviderId] = useState<string | null>(null);
   const [chatBusyUserId, setChatBusyUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("q") || "";
+  });
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [noticeBanner, setNoticeBanner] = useState<PeopleBanner | null>(null);
   const [realtimeToast, setRealtimeToast] = useState<RealtimeToast | null>(null);
@@ -1378,15 +1385,22 @@ export default function PeoplePage() {
     [onlineUserIds]
   );
 
+  const filteredProviders = useMemo(() => {
+    const query = deferredSearchQuery.trim().toLowerCase();
+    if (!query) return providers;
+
+    return providers.filter((provider) => provider.searchDocument.includes(query));
+  }, [deferredSearchQuery, providers]);
+
   const discoveryProviders = useMemo(() => {
     const presenceWeight = (tone: PresenceTone) => (tone === "online" ? 2 : tone === "away" ? 1 : 0);
 
-    return [...providers].sort((left, right) => {
+    return [...filteredProviders].sort((left, right) => {
       const leftPresence = presenceWeight(getPresenceTone(left));
       const rightPresence = presenceWeight(getPresenceTone(right));
       return right.rankScore - left.rankScore || rightPresence - leftPresence || left.distanceKm - right.distanceKm;
     });
-  }, [getPresenceTone, providers]);
+  }, [filteredProviders, getPresenceTone]);
 
   const visibleProviders = useMemo(
     () => discoveryProviders.slice(0, Math.max(PAGE_SIZE, visibleCount)),
@@ -1465,6 +1479,47 @@ export default function PeoplePage() {
     if (!element) return;
     element.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const handlePeoplePromptSubmit = useCallback(() => {
+    const firstMatch = discoveryProviders[0];
+
+    if (firstMatch) {
+      jumpToProviderCard(firstMatch.id);
+      return;
+    }
+
+    if (searchQuery.trim()) {
+      setNoticeBanner({
+        kind: "info",
+        message: `No people matched "${searchQuery.trim()}". Try a broader name, role, or location.`,
+      });
+    }
+  }, [discoveryProviders, jumpToProviderCard, searchQuery]);
+
+  const peoplePromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search people by name, role, location, or expertise",
+      value: searchQuery,
+      onValueChange: setSearchQuery,
+      onSubmit: handlePeoplePromptSubmit,
+      actions: [
+        {
+          id: "refresh-people",
+          label: syncing ? "Refreshing..." : "Refresh",
+          icon: Loader2,
+          onClick: () => {
+            void loadProviders(true);
+          },
+          variant: "secondary",
+          disabled: syncing,
+          busy: syncing,
+        },
+      ],
+    }),
+    [handlePeoplePromptSubmit, loadProviders, searchQuery, syncing]
+  );
+
+  useDashboardPrompt(peoplePromptConfig);
 
   useEffect(() => {
     if (!visibleProviders.length) return;
@@ -1866,16 +1921,26 @@ export default function PeoplePage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(14,165,164,0.12),rgba(103,232,249,0.18))] text-[var(--brand-700)]">
                 <Compass className="h-7 w-7" />
               </div>
-              <p className="mt-4 text-xl font-semibold text-slate-900">No providers found yet</p>
+              <p className="mt-4 text-xl font-semibold text-slate-900">
+                {searchQuery.trim() ? "No people match this search yet" : "No providers found yet"}
+              </p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Published people and business profiles will appear here as they become available.
+                {searchQuery.trim()
+                  ? "Try a different name, role, location, or expertise keyword."
+                  : "Published people and business profiles will appear here as they become available."}
               </p>
               <button
                 type="button"
-                onClick={() => void loadProviders(false)}
+                onClick={() => {
+                  if (searchQuery.trim()) {
+                    setSearchQuery("");
+                    return;
+                  }
+                  void loadProviders(false);
+                }}
                 className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
               >
-                Refresh people
+                {searchQuery.trim() ? "Clear search" : "Refresh people"}
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>

@@ -39,6 +39,8 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
 import { createAvatarFallback } from "@/lib/avatarFallback";
@@ -919,6 +921,47 @@ export default function TasksPage() {
     [filteredTasks]
   );
 
+  const handleTaskPromptSubmit = useCallback(() => {
+    const firstMatch = filteredTasks[0];
+
+    if (firstMatch) {
+      setExpandedTaskId(firstMatch.orderId);
+      return;
+    }
+
+    if (searchQuery.trim()) {
+      setNotice({
+        kind: "info",
+        message: `No tasks matched "${searchQuery.trim()}". Try a different title, status, or person.`,
+      });
+    }
+  }, [filteredTasks, searchQuery]);
+
+  const taskPromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search tasks by title, status, category, or owner",
+      value: searchQuery,
+      onValueChange: setSearchQuery,
+      onSubmit: handleTaskPromptSubmit,
+      actions: [
+        {
+          id: "refresh-tasks",
+          label: loading ? "Refreshing..." : "Refresh",
+          icon: Loader2,
+          onClick: () => {
+            void loadTasks(true);
+          },
+          variant: "secondary",
+          disabled: loading,
+          busy: loading,
+        },
+      ],
+    }),
+    [handleTaskPromptSubmit, loadTasks, loading, searchQuery]
+  );
+
+  useDashboardPrompt(taskPromptConfig);
+
   const tabs = useMemo(
     () => [
       { value: "all", label: "All Tasks", count: tasks.length },
@@ -1493,7 +1536,7 @@ export default function TasksPage() {
   };
 
   const actionButtonClassName =
-    "inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex w-full min-h-10 flex-wrap items-center justify-center gap-2 rounded-xl px-3 py-2 text-center text-sm leading-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
   const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
@@ -1741,7 +1784,7 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className={`group relative flex h-full flex-col overflow-hidden rounded-[1.9rem] border p-5 transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-46px_rgba(15,23,42,0.35)] sm:p-6 ${cardToneClassName}`}
+        className={`group relative flex h-full flex-col overflow-hidden rounded-[1.9rem] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-46px_rgba(15,23,42,0.35)] sm:p-6 ${cardToneClassName}`}
       >
         <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
 
@@ -1767,14 +1810,16 @@ export default function TasksPage() {
 
               <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">{task.title}</h3>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{task.description}</p>
+                  <h3 className="break-words text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">{task.title}</h3>
+                  <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-slate-600 line-clamp-3 sm:line-clamp-none">
+                    {task.description}
+                  </p>
                 </div>
 
                 <div className="w-full rounded-[1.3rem] border border-slate-200 bg-slate-50/80 px-4 py-3 2xl:max-w-[320px]">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Next best action</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">{nextAction.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">{nextAction.helper}</p>
+                  <p className="mt-2 break-words text-sm font-semibold text-slate-900">{nextAction.title}</p>
+                  <p className="mt-1 break-words text-xs leading-5 text-slate-500">{nextAction.helper}</p>
                 </div>
               </div>
             </div>
@@ -1825,8 +1870,8 @@ export default function TasksPage() {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">{latestEvent.title}</p>
-                      <p className="mt-1.5 line-clamp-2 text-sm text-slate-700">{latestEvent.description}</p>
+                      <p className="mt-2 break-words text-sm font-semibold text-slate-900">{latestEvent.title}</p>
+                      <p className="mt-1.5 line-clamp-3 break-words text-sm text-slate-700">{latestEvent.description}</p>
                     </div>
                     <span className="shrink-0 text-[11px] font-semibold text-slate-500">
                       {formatAgo(latestEvent.createdAtRaw, clockMs)}
