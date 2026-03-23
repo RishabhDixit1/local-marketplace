@@ -18,6 +18,7 @@ import {
   UserRound,
 } from "lucide-react";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
+import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
 import { appName, withAppName } from "@/lib/branding";
 import { verificationLabel } from "@/lib/business";
@@ -141,6 +142,7 @@ export default async function PublicProfilePage({ params }: Params) {
     services,
     products,
     offerings,
+    posts,
     reviews,
     averageRating,
     reviewCount,
@@ -464,6 +466,30 @@ export default async function PublicProfilePage({ params }: Params) {
                 No public listings yet. This profile still shows the saved summary, contact details, and discovery tags.
               </div>
             ) : null}
+          </section>
+
+          <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-950">Marketplace posts</h2>
+              <p className="mt-1 text-sm text-slate-600">Latest posts this member has published in the marketplace.</p>
+            </div>
+
+            {posts.length > 0 ? (
+              <PublicProfilePostsGrid
+                posts={posts}
+                profileUserId={profile.id}
+                displayName={displayName}
+                avatarUrl={profileAvatarUrl}
+                verificationStatus={verificationStatus}
+                locationLabel={profile.location || "Nearby"}
+                responseMinutes={responseMinutes}
+                publicPath={publicPath}
+              />
+            ) : (
+              <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                No public posts yet. When this member shares marketplace updates, they will appear here.
+              </div>
+            )}
           </section>
 
           {roleFamily === "provider" ? (
