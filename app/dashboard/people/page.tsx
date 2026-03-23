@@ -1767,17 +1767,20 @@ export default function PeoplePage() {
       <ConnectionsPanel {...connectionsPanelProps} />
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {connectionSchemaMessage}
+        <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm sm:px-5">
+          <div className="flex items-start gap-3">
+            <Bell className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">{connectionSchemaMessage}</p>
+          </div>
         </div>
       )}
 
       {errorMessage && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 font-medium">
-              <AlertCircle className="h-4 w-4" />
-              {errorMessage}
+        <div className="rounded-[1.6rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="inline-flex min-w-0 items-start gap-2 font-medium">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="[overflow-wrap:anywhere]">{errorMessage}</span>
             </span>
             <button
               type="button"
@@ -1792,7 +1795,7 @@ export default function PeoplePage() {
 
       {noticeBanner && (
         <div
-          className={`rounded-2xl border px-4 py-3 text-sm ${
+          className={`rounded-[1.6rem] border px-4 py-3 text-sm shadow-sm sm:px-5 ${
             noticeBanner.kind === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : noticeBanner.kind === "error"
@@ -1800,7 +1803,16 @@ export default function PeoplePage() {
               : "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
           }`}
         >
-          {noticeBanner.message}
+          <div className="flex items-start gap-3">
+            {noticeBanner.kind === "success" ? (
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : noticeBanner.kind === "error" ? (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <Bell className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">{noticeBanner.message}</p>
+          </div>
         </div>
       )}
 
@@ -1950,10 +1962,15 @@ export default function PeoplePage() {
             animate={{ opacity: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, y: -8, x: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed right-4 top-4 z-40 max-w-sm rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-lg"
+            className="fixed inset-x-3 top-[5rem] z-40 rounded-[1.4rem] border border-amber-200 bg-white px-4 py-3 shadow-lg sm:left-auto sm:right-4 sm:top-4 sm:max-w-sm"
           >
-            <p className="text-sm font-semibold text-slate-900">Incoming request</p>
-            <p className="mt-1 text-sm text-slate-600">{realtimeToast.message}</p>
+            <div className="flex items-start gap-3">
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">Incoming request</p>
+                <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">{realtimeToast.message}</p>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
