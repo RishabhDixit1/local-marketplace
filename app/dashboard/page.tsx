@@ -47,7 +47,6 @@ import {
   calculateLocalRankScore,
   calculateProfileCompletion,
   calculateVerificationStatus,
-  createBusinessSlug,
   estimateResponseMinutes,
 } from "@/lib/business";
 import { defaultMarketCoordinates, distanceBetweenCoordinatesKm, getBrowserCoordinates, resolveCoordinates } from "@/lib/geo";
@@ -56,12 +55,8 @@ import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { looksLikePlaceholderText, toDisplayText as cleanDisplayText } from "@/lib/contentQuality";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
+import { buildPublicProfilePath, slugifyProfileName } from "@/lib/profile/utils";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
-
-const ProviderTrustPanel = dynamic(
-  () => import("@/app/components/ProviderTrustPanel").then((mod) => mod.default),
-  { ssr: false }
-);
 
 const CreatePostModal = dynamic(
   () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
@@ -99,6 +94,7 @@ type Listing = {
   price: number;
   avatarUrl: string;
   creatorName: string;
+  creatorUsername: string;
   locationLabel: string;
   distanceKm: number;
   lat: number;
@@ -110,7 +106,7 @@ type Listing = {
   profileCompletion: number;
   responseMinutes: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
-  businessSlug?: string;
+  publicProfilePath: string;
   status: string;
   acceptedProviderId: string | null;
 };
@@ -356,6 +352,13 @@ const fallbackCreatorLabel = (type: ListingType) =>
 
 const resolveCreatorDisplayName = (value: string | undefined, type: ListingType) =>
   normalizePersonLabel(value) || fallbackCreatorLabel(type);
+
+const toCreatorUsername = (value: string | undefined) => {
+  const normalized = normalizePersonLabel(value);
+  if (!normalized) return "";
+  const slug = slugifyProfileName(normalized);
+  return slug || "";
+};
 
 const isGeneratedAvatar = (value: string | undefined) => (value || "").startsWith("data:image/svg+xml");
 
@@ -705,7 +708,6 @@ export default function MarketplacePage() {
   const [feedError, setFeedError] = useState<string | null>(null);
   const [feedChannelHealth, setFeedChannelHealth] = useState<RealtimeHealth>("connecting");
 
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [openPostModal, setOpenPostModal] = useState(false);
   const [activeMapItemId, setActiveMapItemId] = useState<string | null>(null);
   const [acceptTarget, setAcceptTarget] = useState<DisplayListing | null>(null);
@@ -1053,6 +1055,17 @@ export default function MarketplacePage() {
         const fallbackProfileName = normalizePersonLabel(emailPrefix);
         const resolvedProfileName = explicitProfileName || fallbackProfileName;
         const avatarLabel = resolvedProfileName || stringFromRow(profile || {}, ["role"], "") || "ServiQ";
+        const usernameSeed =
+          normalizePersonLabel(stringFromRow(profile || {}, ["user_name", "preferred_name", "display_name"], "")) ||
+          resolvedProfileName ||
+          emailPrefix ||
+          "local-member";
+        const publicProfilePath =
+          buildPublicProfilePath({
+            id: providerId,
+            full_name: resolvedProfileName,
+            name: resolvedProfileName,
+          }) || `/profile/${slugifyProfileName(usernameSeed)}-${providerId}`;
 
         return {
           profile,
@@ -1062,6 +1075,7 @@ export default function MarketplacePage() {
           responseMinutes,
           verificationStatus,
           name: resolvedProfileName,
+          username: toCreatorUsername(usernameSeed),
           avatarUrl:
             resolveProfileAvatarUrl(stringFromRow(profile || {}, ["avatar_url", "avatar", "image_url"], "")) ||
             createAvatarFallback({
@@ -1069,7 +1083,7 @@ export default function MarketplacePage() {
               seed: providerId,
             }),
           locationLabel: stringFromRow(profile || {}, ["location", "city"], "Nearby"),
-          businessSlug: createBusinessSlug(resolvedProfileName || avatarLabel || "ServiQ member", providerId),
+          publicProfilePath,
         };
       };
 
@@ -1109,6 +1123,7 @@ export default function MarketplacePage() {
           price,
           avatarUrl: profileMeta.avatarUrl,
           creatorName: profileMeta.name,
+          creatorUsername: profileMeta.username,
           locationLabel,
           distanceKm,
           lat: coordinates.latitude,
@@ -1125,7 +1140,7 @@ export default function MarketplacePage() {
           profileCompletion: profileMeta.profileCompletion,
           responseMinutes: profileMeta.responseMinutes,
           verificationStatus: profileMeta.verificationStatus,
-          businessSlug: profileMeta.businessSlug,
+          publicProfilePath: profileMeta.publicProfilePath,
           status: stringFromRow(row, ["status", "state"], "open"),
           acceptedProviderId: null,
         });
@@ -1165,6 +1180,7 @@ export default function MarketplacePage() {
           price,
           avatarUrl: profileMeta.avatarUrl,
           creatorName: profileMeta.name,
+          creatorUsername: profileMeta.username,
           locationLabel,
           distanceKm,
           lat: coordinates.latitude,
@@ -1181,7 +1197,7 @@ export default function MarketplacePage() {
           profileCompletion: profileMeta.profileCompletion,
           responseMinutes: profileMeta.responseMinutes,
           verificationStatus: profileMeta.verificationStatus,
-          businessSlug: profileMeta.businessSlug,
+          publicProfilePath: profileMeta.publicProfilePath,
           status: stringFromRow(row, ["status", "state"], "open"),
           acceptedProviderId: null,
         });
@@ -1252,6 +1268,7 @@ export default function MarketplacePage() {
           price: parsedBudget,
           avatarUrl: profileMeta.avatarUrl,
           creatorName: profileMeta.name,
+          creatorUsername: profileMeta.username,
           locationLabel,
           distanceKm,
           lat: coordinates.latitude,
@@ -1268,7 +1285,7 @@ export default function MarketplacePage() {
           profileCompletion: profileMeta.profileCompletion,
           responseMinutes: profileMeta.responseMinutes,
           verificationStatus: profileMeta.verificationStatus,
-          businessSlug: profileMeta.businessSlug,
+          publicProfilePath: profileMeta.publicProfilePath,
           status,
           acceptedProviderId: null,
         });
@@ -1323,6 +1340,7 @@ export default function MarketplacePage() {
           price: budgetMax > 0 ? budgetMax : budgetMin,
           avatarUrl: profileMeta.avatarUrl,
           creatorName: profileMeta.name,
+          creatorUsername: profileMeta.username,
           locationLabel,
           distanceKm,
           lat: coordinates.latitude,
@@ -1339,7 +1357,7 @@ export default function MarketplacePage() {
           profileCompletion: profileMeta.profileCompletion,
           responseMinutes: profileMeta.responseMinutes,
           verificationStatus: profileMeta.verificationStatus,
-          businessSlug: profileMeta.businessSlug,
+          publicProfilePath: profileMeta.publicProfilePath,
           status,
           acceptedProviderId,
         });
@@ -1731,12 +1749,12 @@ export default function MarketplacePage() {
 
   const openListingProfile = useCallback(
     (item: DisplayListing) => {
-      if (!item.businessSlug) {
+      if (!item.publicProfilePath) {
         pushToast("info", "This profile does not have a public page yet.");
         return;
       }
 
-      router.push(`/business/${item.businessSlug}`);
+      router.push(item.publicProfilePath);
     },
     [pushToast, router]
   );
@@ -1883,7 +1901,7 @@ export default function MarketplacePage() {
 
       const title = toDisplayText(item.title, defaultTitle);
       const description = toDisplayText(item.description, defaultDescription);
-      const creatorName = resolveCreatorDisplayName(item.creatorName, item.type);
+      const creatorName = resolveCreatorDisplayName(item.creatorUsername || item.creatorName, item.type);
       const avatarUrl =
         item.avatarUrl && !isGeneratedAvatar(item.avatarUrl)
           ? item.avatarUrl
@@ -2284,9 +2302,9 @@ export default function MarketplacePage() {
                     <header className="flex items-start gap-3">
                       <button
                         type="button"
-                        onClick={() => setSelectedProvider(item.providerId)}
+                        onClick={() => openListingProfile(item)}
                         className="relative shrink-0 rounded-full"
-                        aria-label={`Open ${item.displayCreator} profile panel`}
+                        aria-label={`Open ${item.displayCreator} profile`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -2298,7 +2316,14 @@ export default function MarketplacePage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="truncate text-sm font-semibold text-slate-900">{item.displayCreator}</p>
+                          <button
+                            type="button"
+                            onClick={() => openListingProfile(item)}
+                            className="max-w-full truncate text-left text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                            aria-label={`Open ${item.displayCreator} profile`}
+                          >
+                            {item.displayCreator}
+                          </button>
                           {item.verificationStatus === "verified" && (
                             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                               Verified
@@ -2416,7 +2441,7 @@ export default function MarketplacePage() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
                           onClick={() => void toggleSaveListing(item)}
@@ -2446,15 +2471,6 @@ export default function MarketplacePage() {
                           {sharingBusy ? <Loader2 size={12} className="animate-spin" /> : <Share2 size={12} />}
                           {sharingBusy ? "Sharing" : "Share"}
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openListingProfile(item)}
-                          className="inline-flex min-h-8 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-                        >
-                          <ExternalLink size={12} />
-                          Profile
-                        </button>
                       </div>
                     </div>
                   </motion.article>
@@ -2474,16 +2490,6 @@ export default function MarketplacePage() {
           void confirmAccept();
         }}
       />
-
-      {selectedProvider && (
-        <ProviderTrustPanel
-          userId={selectedProvider}
-          open
-          onClose={() => {
-            setSelectedProvider(null);
-          }}
-        />
-      )}
 
       {openPostModal && (
         <CreatePostModal
