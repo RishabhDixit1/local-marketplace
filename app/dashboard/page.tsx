@@ -726,6 +726,7 @@ export default function MarketplacePage() {
   const deepLinkHandledRef = useRef(false);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const fetchAbortRef = useRef<AbortController | null>(null);
+  const activeFeedRequestIdRef = useRef(0);
   const refreshTimeoutRef = useRef<number | null>(null);
   const lastSoftRefreshAtRef = useRef(0);
   const [focusItemId] = useState(() => {
@@ -1379,6 +1380,9 @@ export default function MarketplacePage() {
         setRefreshing(true);
       }
 
+      const requestId = activeFeedRequestIdRef.current + 1;
+      activeFeedRequestIdRef.current = requestId;
+
       const controller = new AbortController();
       fetchAbortRef.current?.abort();
       fetchAbortRef.current = controller;
@@ -1413,8 +1417,10 @@ export default function MarketplacePage() {
           fetchAbortRef.current = null;
         }
 
-        setLoading(false);
-        setRefreshing(false);
+        if (activeFeedRequestIdRef.current === requestId) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [buildListingsFromSnapshot, pushToast]
@@ -1894,6 +1900,8 @@ export default function MarketplacePage() {
     });
   }, [filteredFeed]);
 
+  const showFeedLoading = loading || (refreshing && feed.length === 0);
+
   useEffect(() => {
     if (!displayFeed.length) {
       setActiveMapItemId(null);
@@ -2134,7 +2142,7 @@ export default function MarketplacePage() {
         )}
 
         <section className="space-y-3">
-          {loading ? (
+          {showFeedLoading ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {skeletonCards.map((key) => (
                 <div key={key} className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -2501,4 +2509,3 @@ export default function MarketplacePage() {
     </div>
   );
 }
-
