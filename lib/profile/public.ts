@@ -274,9 +274,9 @@ const matchHelpRequestForPost = (params: {
   let bestMatch: HelpRequestRow | null = null;
   let bestScore = -1;
 
-  helpRequests.forEach((candidate) => {
+  for (const candidate of helpRequests) {
     const candidateId = candidate.id?.trim() || "";
-    if (!candidateId || usedHelpRequestIds.has(candidateId)) return;
+    if (!candidateId || usedHelpRequestIds.has(candidateId)) continue;
 
     const candidateTitle = normalizeComparable(candidate.title);
     const candidateDetails = normalizeComparable(candidate.details);
@@ -319,9 +319,10 @@ const matchHelpRequestForPost = (params: {
       bestScore = score;
       bestMatch = candidate;
     }
-  });
+  }
 
-  if (!bestMatch || bestScore < 5) return null;
+  if (!bestMatch) return null;
+  if (bestScore < 5) return null;
 
   const matchedId = bestMatch.id?.trim() || "";
   if (matchedId) {
