@@ -391,32 +391,18 @@ export const loadCommunityFeedSnapshot = async (
   ]);
 
   const acceptedPeerIds = Array.from(acceptedPeers);
-  if (!acceptedPeerIds.length) {
-    return {
-      ok: true,
-      currentUserId,
-      acceptedConnectionIds: [],
-      currentUserProfile: currentUserProfileRow ? normalizeProfile(currentUserProfileRow) : null,
-      services: [],
-      products: [],
-      posts: [],
-      helpRequests: [],
-      profiles: [],
-      reviews: [],
-      presence: [],
-    };
-  }
+  const feedOwnerIds = Array.from(new Set([currentUserId, ...acceptedPeerIds].filter(Boolean)));
 
   const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
     selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
-      inFilter: { column: "provider_id", values: acceptedPeerIds },
+      inFilter: { column: "provider_id", values: feedOwnerIds },
     }),
     selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
-      inFilter: { column: "provider_id", values: acceptedPeerIds },
+      inFilter: { column: "provider_id", values: feedOwnerIds },
     }),
     selectRowsWithFallback(
       db,
@@ -427,7 +413,7 @@ export const loadCommunityFeedSnapshot = async (
         limit: CONNECTED_FEED_LIMIT_PER_TYPE,
         orFilter: buildInOrFilter(
           ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
-          acceptedPeerIds
+          feedOwnerIds
         ),
       }
     ),
@@ -439,7 +425,7 @@ export const loadCommunityFeedSnapshot = async (
         orderBy: { column: "created_at", ascending: false },
         limit: CONNECTED_FEED_LIMIT_PER_TYPE,
         allowMissingRelation: true,
-        inFilter: { column: "requester_id", values: acceptedPeerIds },
+        inFilter: { column: "requester_id", values: feedOwnerIds },
       }
     ),
   ]);

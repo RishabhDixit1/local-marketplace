@@ -339,6 +339,8 @@ const formatRelativeAge = (value?: string) => {
 
 const toDisplayText = (value: string | undefined, fallback: string) => cleanDisplayText(value, fallback);
 
+const normalizePersonLabel = (value: string | undefined) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
+
 const humanizeHandle = (value: string) =>
   value
     .replace(/[_\-.]+/g, " ")
@@ -353,7 +355,7 @@ const fallbackCreatorLabel = (type: ListingType) =>
   type === "demand" ? "Nearby requester" : type === "product" ? "Local seller" : "Local provider";
 
 const resolveCreatorDisplayName = (value: string | undefined, type: ListingType) =>
-  toDisplayText(value, fallbackCreatorLabel(type));
+  normalizePersonLabel(value) || fallbackCreatorLabel(type);
 
 const isGeneratedAvatar = (value: string | undefined) => (value || "").startsWith("data:image/svg+xml");
 
@@ -970,6 +972,7 @@ export default function MarketplacePage() {
   const buildListingsFromSnapshot = useCallback(
     (payload: Extract<CommunityFeedResponse, { ok: true }>) => {
       const profileRows = (payload.profiles || []) as ProfileRow[];
+      const currentUserProfile = (payload.currentUserProfile || null) as ProfileRow | null;
       const serviceRows = (payload.services || []) as ServiceRow[];
       const productRows = (payload.products || []) as ProductRow[];
       const postRows = (payload.posts || []) as PostRow[];
@@ -983,6 +986,9 @@ export default function MarketplacePage() {
           profileMap.set(profile.id, profile);
         }
       });
+      if (currentUserProfile?.id) {
+        profileMap.set(currentUserProfile.id, currentUserProfile);
+      }
 
       const reviewStats = new Map<string, { total: number; count: number }>();
       reviewRows.forEach((row) => {
@@ -1040,12 +1046,11 @@ export default function MarketplacePage() {
           reviewCount,
         });
 
-        const explicitProfileName = toDisplayText(
-          stringFromRow(profile || {}, ["name", "full_name", "display_name"], ""),
-          ""
+        const explicitProfileName = normalizePersonLabel(
+          stringFromRow(profile || {}, ["name", "full_name", "display_name"], "")
         );
         const emailPrefix = humanizeHandle((stringFromRow(profile || {}, ["email"], "").split("@")[0] || "").trim());
-        const fallbackProfileName = toDisplayText(emailPrefix, "");
+        const fallbackProfileName = normalizePersonLabel(emailPrefix);
         const resolvedProfileName = explicitProfileName || fallbackProfileName;
         const avatarLabel = resolvedProfileName || stringFromRow(profile || {}, ["role"], "") || "ServiQ";
 
