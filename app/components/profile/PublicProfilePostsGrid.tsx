@@ -1,0 +1,727 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  BadgeCheck,
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Share2,
+} from "lucide-react";
+import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
+import { createAvatarFallback } from "@/lib/avatarFallback";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
+import {
+  clearPendingFeedCardSave,
+  getPendingFeedCardIds,
+  persistFeedCardSave,
+  prunePendingFeedCardSaves,
+  removeFeedCardSave,
+  stagePendingFeedCardSave,
+  syncPendingFeedCardSaves,
+} from "@/lib/feedCardSavesClient";
+import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
+import type { PublicProfilePost, PublicProfilePostMedia } from "@/lib/profile/public";
+import { supabase } from "@/lib/supabase";
+
+type Props = {
+  posts: PublicProfilePost[];
+  profileUserId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  verificationStatus: "verified" | "pending" | "unclaimed";
+  locationLabel: string;
+  responseMinutes: number;
+  publicPath: string;
+};
+
+const formatRelativeAge = (value?: string | null) => {
+  if (!value) return "Recently posted";
+
+  const parsed = new Date(value).getTime();
+  if (!Number.isFinite(parsed)) return "Recently posted";
+
+  const diffMs = Math.max(0, Date.now() - parsed);
+  const minutes = Math.floor(diffMs / (60 * 1000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const normalizeStatusLabel = (status?: string | null) => {
+  const normalized = (status || "open").trim().toLowerCase();
+  if (!normalized) return "Open";
+  return normalized
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+};
+
+const formatPriceLabel = (post: Pick<PublicProfilePost, "price" | "type">) => {
+  if (post.price > 0) return `INR ${Math.round(post.price).toLocaleString("en-IN")}`;
+  if (post.type === "demand") return "Budget shared in chat";
+  return "Price on request";
+};
+
+const toErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
+
+const isMissingRelationError = (message: string) =>
+  /relation .* does not exist|table .* does not exist|function .* does not exist|schema cache/i.test(message);
+
+const isClosedStatus = (status?: string | null) =>
+  new Set(["cancelled", "canceled", "closed", "completed", "fulfilled", "archived", "deleted", "hidden"]).has(
+    (status || "").trim().toLowerCase()
+  );
+
+const isUUIDLike = (value?: string | null) =>
+  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; title: string }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  if (!media.length) {
+    return (
+      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-center">
+        <div>
+          <p className="text-xs font-semibold text-slate-600">No media yet</p>
+          <p className="mt-1 text-[11px] text-slate-500">This post does not include image or video attachments.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const safeIndex = Math.min(activeIndex, media.length - 1);
+  const current = media[safeIndex];
+  const canNavigate = media.length > 1;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+      <div className="aspect-[16/9]">
+        {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
+          <img src={current.url} alt={title} className="h-full w-full object-cover" />
+        ) : current.mimeType.startsWith("video/") ? (
+          <video src={current.url} controls preload="metadata" className="h-full w-full object-cover" />
+        ) : current.mimeType.startsWith("audio/") ? (
+          <div className="grid h-full place-items-center bg-slate-900 p-4 text-center">
+            <div className="w-full max-w-xs space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Audio Attachment</p>
+              <audio src={current.url} controls className="w-full" preload="metadata" />
+            </div>
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center bg-gradient-to-br from-indigo-50 via-white to-slate-100 p-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Media Preview</p>
+          </div>
+        )}
+      </div>
+
+      {canNavigate ? (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveIndex((currentIndex) => {
+                const normalized = Math.min(currentIndex, media.length - 1);
+                return (normalized - 1 + media.length) % media.length;
+              });
+            }}
+            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            aria-label="Previous media"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveIndex((currentIndex) => {
+                const normalized = Math.min(currentIndex, media.length - 1);
+                return (normalized + 1) % media.length;
+              });
+            }}
+            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            aria-label="Next media"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </>
+      ) : null}
+
+      <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
+        {Math.min(safeIndex + 1, media.length)} / {media.length}
+      </div>
+    </div>
+  );
+}
+
+export default function PublicProfilePostsGrid({
+  posts,
+  profileUserId,
+  displayName,
+  avatarUrl,
+  verificationStatus,
+  locationLabel,
+  responseMinutes,
+  publicPath,
+}: Props) {
+  const router = useRouter();
+  const toastTimersRef = useRef<Map<string, number>>(new Map());
+  const [items, setItems] = useState(posts);
+  const [toasts, setToasts] = useState<ProfileToast[]>([]);
+  const [savedCardIds, setSavedCardIds] = useState<Set<string>>(new Set());
+  const [savingCardIds, setSavingCardIds] = useState<Set<string>>(new Set());
+  const [sharingCardIds, setSharingCardIds] = useState<Set<string>>(new Set());
+  const [acceptingCardIds, setAcceptingCardIds] = useState<Set<string>>(new Set());
+  const [chatOpening, setChatOpening] = useState(false);
+  const resolvedAvatar = avatarUrl || createAvatarFallback({ label: displayName || "ServiQ member", seed: displayName || "public-profile" });
+
+  const {
+    viewerId,
+    busyTargetId: busyConnectionTargetId,
+    busyRequestId,
+    getConnectionState,
+  } = useConnectionRequests();
+
+  useEffect(() => {
+    setItems(posts);
+  }, [posts]);
+
+  const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
+    const toastId =
+      typeof window !== "undefined" && window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    setToasts((current) => [...current, { id: toastId, kind, message }]);
+
+    const timeoutId = window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== toastId));
+      toastTimersRef.current.delete(toastId);
+    }, 4600);
+
+    toastTimersRef.current.set(toastId, timeoutId);
+  }, []);
+
+  useEffect(() => {
+    const timers = toastTimersRef.current;
+    return () => {
+      timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      timers.clear();
+    };
+  }, []);
+
+  const buildCardId = useCallback((post: PublicProfilePost) => {
+    const sourceId = post.source === "help_request" ? post.helpRequestId || post.id : post.id;
+    return `dashboard:${post.source}:${post.type}:${sourceId}`;
+  }, []);
+
+  const buildActionPath = useCallback((post: PublicProfilePost) => `${publicPath}#profile-post-${post.id}`, [publicPath]);
+
+  const ensureViewerId = useCallback(async () => {
+    if (viewerId) return viewerId;
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      throw new Error(error?.message || "Login required to continue.");
+    }
+
+    return user.id;
+  }, [viewerId]);
+
+  useEffect(() => {
+    if (!viewerId || items.length === 0) {
+      setSavedCardIds(new Set(viewerId ? getPendingFeedCardIds(viewerId) : []));
+      return;
+    }
+
+    let active = true;
+    const cardIds = items.map((item) => buildCardId(item));
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("feed_card_saves")
+          .select("card_id")
+          .eq("user_id", viewerId)
+          .in("card_id", cardIds);
+
+        if (error) {
+          if (isMissingRelationError(error.message || "")) {
+            if (active) {
+              setSavedCardIds(new Set(getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId))));
+            }
+            return;
+          }
+
+          throw error;
+        }
+
+        const persistedCardIds = ((data as { card_id: string }[] | null) || []).map((row) => row.card_id);
+        prunePendingFeedCardSaves(viewerId, persistedCardIds);
+
+        if (!active) return;
+
+        setSavedCardIds(new Set([...persistedCardIds, ...getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId))]));
+        void syncPendingFeedCardSaves(supabase, viewerId, persistedCardIds);
+      } catch {
+        if (active) {
+          setSavedCardIds(new Set(getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId))));
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [buildCardId, items, viewerId]);
+
+  const isOwnListing = Boolean(viewerId && viewerId === profileUserId);
+  const connectionState =
+    !isOwnListing && isUUIDLike(profileUserId) ? getConnectionState(profileUserId) : null;
+  const connectionBusy =
+    !!connectionState &&
+    (busyConnectionTargetId === profileUserId || (connectionState.requestId ? busyRequestId === connectionState.requestId : false));
+  const canOpenChat = isOwnListing || connectionState?.kind === "accepted";
+  const chatLabel = isOwnListing ? "Your chat" : chatOpening ? "Opening" : canOpenChat ? "Chat" : "Connect first";
+
+  const handleAccept = useCallback(
+    async (post: PublicProfilePost) => {
+      if (!post.helpRequestId) {
+        pushToast("info", "Accept is available for active task requests.");
+        return;
+      }
+
+      if (viewerId && profileUserId === viewerId) {
+        pushToast("info", "You cannot accept your own task.");
+        return;
+      }
+
+      if (post.acceptedProviderId && viewerId && post.acceptedProviderId !== viewerId) {
+        pushToast("info", "This task is already accepted.");
+        return;
+      }
+
+      if (isClosedStatus(post.status)) {
+        pushToast("info", "This task is no longer open.");
+        return;
+      }
+
+      const cardId = buildCardId(post);
+      setAcceptingCardIds((current) => new Set(current).add(cardId));
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        if (profileUserId === activeViewerId) {
+          throw new Error("You cannot accept your own task.");
+        }
+
+        const { data, error } = await supabase.rpc("accept_help_request", {
+          target_help_request_id: post.helpRequestId,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!data) {
+          throw new Error("Request already accepted or unavailable.");
+        }
+
+        setItems((current) =>
+          current.map((item) =>
+            item.helpRequestId === post.helpRequestId
+              ? {
+                  ...item,
+                  acceptedProviderId: activeViewerId,
+                  status: "accepted",
+                  source: "help_request",
+                }
+              : item
+          )
+        );
+
+        pushToast("success", "Task accepted successfully.");
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+      } finally {
+        setAcceptingCardIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          return next;
+        });
+      }
+    },
+    [buildCardId, ensureViewerId, profileUserId, pushToast, viewerId]
+  );
+
+  const handleOpenChat = useCallback(async () => {
+    if (!isUUIDLike(profileUserId)) {
+      pushToast("info", "Chat is available only for live accounts.");
+      return;
+    }
+
+    if (!canOpenChat) return;
+
+    try {
+      const activeViewerId = await ensureViewerId();
+
+      if (activeViewerId === profileUserId) {
+        router.push("/dashboard/chat");
+        return;
+      }
+
+      setChatOpening(true);
+      const conversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, profileUserId);
+      router.push(`/dashboard/chat?open=${conversationId}`);
+    } catch (error) {
+      pushToast("error", toErrorMessage(error, "Unable to open chat."));
+    } finally {
+      setChatOpening(false);
+    }
+  }, [canOpenChat, ensureViewerId, profileUserId, pushToast, router]);
+
+  const handleToggleSave = useCallback(
+    async (post: PublicProfilePost) => {
+      const cardId = buildCardId(post);
+      const wasSaved = savedCardIds.has(cardId);
+      const shouldSave = !wasSaved;
+
+      setSavingCardIds((current) => new Set(current).add(cardId));
+      setSavedCardIds((current) => {
+        const next = new Set(current);
+        if (shouldSave) {
+          next.add(cardId);
+        } else {
+          next.delete(cardId);
+          next.delete(post.id);
+        }
+        return next;
+      });
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        const savePayload = {
+          card_id: cardId,
+          focus_id: post.id,
+          card_type: post.type,
+          title: post.title,
+          subtitle: post.description,
+          action_path: buildActionPath(post),
+          metadata: {
+            kind: "public_profile_post",
+            image: post.media[0]?.url || resolvedAvatar,
+            mediaGallery: post.media.map((entry) => entry.url).slice(0, 3),
+            priceLabel: formatPriceLabel(post),
+            audienceName: post.locationLabel || locationLabel,
+            tags: [post.category],
+            actionPath: buildActionPath(post),
+            creatorName: displayName,
+          },
+        };
+
+        if (shouldSave) {
+          stagePendingFeedCardSave(activeViewerId, savePayload);
+          await persistFeedCardSave(supabase, savePayload);
+          pushToast("success", "Post saved.");
+          return;
+        }
+
+        clearPendingFeedCardSave(activeViewerId, cardId);
+        await removeFeedCardSave(supabase, cardId);
+        pushToast("success", "Removed from saved.");
+      } catch (error) {
+        try {
+          const activeViewerId = await ensureViewerId();
+          const rollbackPayload = {
+            card_id: cardId,
+            focus_id: post.id,
+            card_type: post.type,
+            title: post.title,
+            subtitle: post.description,
+            action_path: buildActionPath(post),
+            metadata: {
+              kind: "public_profile_post",
+              image: post.media[0]?.url || resolvedAvatar,
+              mediaGallery: post.media.map((entry) => entry.url).slice(0, 3),
+              priceLabel: formatPriceLabel(post),
+              audienceName: post.locationLabel || locationLabel,
+              tags: [post.category],
+              actionPath: buildActionPath(post),
+              creatorName: displayName,
+            },
+          };
+
+          if (shouldSave) {
+            clearPendingFeedCardSave(activeViewerId, cardId);
+          } else {
+            stagePendingFeedCardSave(activeViewerId, rollbackPayload);
+          }
+        } catch {
+          // Ignore rollback lookup errors.
+        }
+
+        setSavedCardIds((current) => {
+          const next = new Set(current);
+          if (wasSaved) {
+            next.add(cardId);
+          } else {
+            next.delete(cardId);
+          }
+          return next;
+        });
+
+        pushToast("error", toErrorMessage(error, "Unable to update save state."));
+      } finally {
+        setSavingCardIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(post.id);
+          return next;
+        });
+      }
+    },
+    [buildActionPath, buildCardId, displayName, ensureViewerId, locationLabel, pushToast, resolvedAvatar, savedCardIds]
+  );
+
+  const handleShare = useCallback(
+    async (post: PublicProfilePost) => {
+      const cardId = buildCardId(post);
+      const shareUrl = `${window.location.origin}${buildActionPath(post)}`;
+      const shareText = `${post.title} • ${displayName} • ${formatPriceLabel(post)}`;
+
+      setSharingCardIds((current) => new Set(current).add(cardId));
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: post.title,
+            text: shareText,
+            url: shareUrl,
+          });
+          pushToast("success", "Share sent.");
+          return;
+        }
+
+        if (!navigator.clipboard?.writeText) {
+          throw new Error("This browser does not support clipboard sharing.");
+        }
+
+        await navigator.clipboard.writeText(`${post.title}\n${shareText}\n${shareUrl}`);
+        pushToast("success", "Share link copied.");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        pushToast("error", toErrorMessage(error, "Unable to share this post."));
+      } finally {
+        setSharingCardIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(post.id);
+          return next;
+        });
+      }
+    },
+    [buildActionPath, buildCardId, displayName, pushToast]
+  );
+
+  return (
+    <>
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((post) => {
+          const cardId = buildCardId(post);
+          const saved = savedCardIds.has(cardId) || savedCardIds.has(post.id);
+          const savingBusy = savingCardIds.has(cardId) || savingCardIds.has(post.id);
+          const sharingBusy = sharingCardIds.has(cardId) || sharingCardIds.has(post.id);
+          const acceptingBusy = acceptingCardIds.has(cardId) || acceptingCardIds.has(post.id);
+          const acceptedByMe = !!viewerId && post.acceptedProviderId === viewerId;
+          const acceptedByOther = !!post.acceptedProviderId && post.acceptedProviderId !== viewerId;
+
+          const acceptDisabled =
+            acceptingBusy ||
+            isOwnListing ||
+            !post.helpRequestId ||
+            acceptedByOther ||
+            acceptedByMe ||
+            isClosedStatus(post.status);
+
+          const acceptLabel = isOwnListing
+            ? "Own"
+            : acceptedByMe
+            ? "Accepted"
+            : acceptedByOther
+            ? "Taken"
+            : !post.helpRequestId
+            ? "N/A"
+            : isClosedStatus(post.status)
+            ? "Closed"
+            : "Accept";
+
+          return (
+            <article
+              id={`profile-post-${post.id}`}
+              key={post.id}
+              className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)]"
+            >
+              <header className="flex items-start gap-3">
+                <div className="relative shrink-0 rounded-full">
+                  <img
+                    src={resolvedAvatar}
+                    alt={`${displayName} avatar`}
+                    className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="max-w-full truncate text-left text-[1.05rem] font-semibold leading-none text-[var(--brand-700)] sm:text-[1.15rem]">
+                      {displayName}
+                    </span>
+                    {verificationStatus === "verified" ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        <span className="inline-flex items-center gap-1">
+                          <BadgeCheck className="h-3 w-3" />
+                          Verified
+                        </span>
+                      </span>
+                    ) : null}
+                    {post.urgent ? (
+                      <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                        Urgent
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock3 size={11} />
+                      {formatRelativeAge(post.createdAt)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin size={11} />
+                      {post.locationLabel || locationLabel || "Nearby"}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                      {normalizeStatusLabel(post.status)}
+                    </span>
+                  </div>
+                </div>
+              </header>
+
+              <div className="mt-4">
+                <MediaCarousel media={post.media} title={post.title} />
+              </div>
+
+              <div className="mt-4">
+                <h3 className="line-clamp-2 text-[1.95rem] font-semibold leading-[1.02] tracking-tight text-slate-900 sm:text-[2.05rem]">
+                  {post.title}
+                </h3>
+                <p className="mt-2 line-clamp-2 text-base leading-7 text-slate-600">{post.description}</p>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
+                    {post.category}
+                  </span>
+                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">
+                    {formatPriceLabel(post)}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-500">
+                    ~{responseMinutes} mins response
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-auto space-y-2.5 pt-5">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleAccept(post)}
+                    disabled={acceptDisabled}
+                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
+                      acceptDisabled
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    }`}
+                  >
+                    {acceptingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                    {acceptLabel}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleOpenChat()}
+                    disabled={chatOpening || !canOpenChat || connectionBusy}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                  >
+                    {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                    {chatLabel}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleSave(post)}
+                    disabled={savingBusy}
+                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
+                      saved
+                        ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                    } disabled:opacity-60`}
+                  >
+                    {savingBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : saved ? (
+                      <BookmarkCheck className="h-4 w-4" />
+                    ) : (
+                      <Bookmark className="h-4 w-4" />
+                    )}
+                    {savingBusy ? "Saving" : saved ? "Saved" : "Save"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleShare(post)}
+                    disabled={sharingBusy}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60"
+                  >
+                    {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                    {sharingBusy ? "Sharing" : "Share"}
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <ProfileToastViewport
+        toasts={toasts}
+        onDismiss={(toastId) => {
+          setToasts((current) => current.filter((toast) => toast.id !== toastId));
+          const timeoutId = toastTimersRef.current.get(toastId);
+          if (timeoutId) {
+            window.clearTimeout(timeoutId);
+            toastTimersRef.current.delete(toastId);
+          }
+        }}
+      />
+    </>
+  );
+}

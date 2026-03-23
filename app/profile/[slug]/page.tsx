@@ -18,6 +18,7 @@ import {
   UserRound,
 } from "lucide-react";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
+import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
 import { appName, withAppName } from "@/lib/branding";
 import { verificationLabel } from "@/lib/business";
@@ -53,94 +54,12 @@ const formatAvailability = (value: string | null) => {
 const getRoleLabel = (roleFamily: "provider" | "seeker") =>
   roleFamily === "provider" ? "Marketplace provider" : "Looking for services";
 
-const formatPostDate = (value: string | null) => {
-  if (!value) return "Recently posted";
-
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: new Date(value).getFullYear() === new Date().getFullYear() ? undefined : "numeric",
-    }).format(new Date(value));
-  } catch {
-    return "Recently posted";
-  }
-};
-
-const formatPostTypeLabel = (value: "need" | "service" | "product") =>
-  value === "need" ? "Need post" : value === "service" ? "Service post" : "Product post";
-
-const formatPostStatusLabel = (value: string) => {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return "Open";
-  return normalized
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((part) => `${part[0]?.toUpperCase() || ""}${part.slice(1)}`)
-    .join(" ");
-};
-
-const getPostStatusClasses = (value: string) => {
-  const normalized = value.trim().toLowerCase();
-  if (["open", "active", "live"].includes(normalized)) return "bg-emerald-50 text-emerald-700";
-  if (["completed", "closed", "fulfilled"].includes(normalized)) return "bg-slate-100 text-slate-600";
-  if (["cancelled", "canceled"].includes(normalized)) return "bg-rose-50 text-rose-700";
-  return "bg-amber-50 text-amber-700";
-};
-
-const formatPostTiming = (post: {
-  mode: "urgent" | "schedule" | null;
-  neededWithin: string | null;
-  scheduleDate: string | null;
-  scheduleTime: string | null;
-  flexibleTiming: boolean;
-}) => {
-  if (post.mode === "schedule") {
-    if (!post.scheduleDate) {
-      return post.flexibleTiming ? "Scheduled, flexible timing" : "Scheduled";
-    }
-
-    const parts = [post.scheduleDate];
-    if (post.flexibleTiming) {
-      parts.push("Flexible time");
-    } else if (post.scheduleTime) {
-      parts.push(post.scheduleTime);
-    }
-
-    return parts.join(" | ");
+const getAccessLabel = (roleFamily: "provider" | "seeker", hasOfferings: boolean) => {
+  if (roleFamily === "provider") {
+    return hasOfferings ? "Access offerings" : "Access profile";
   }
 
-  return post.neededWithin || null;
-};
-
-const getAccessHref = (params: {
-  roleFamily: "provider" | "seeker";
-  hasOfferings: boolean;
-  hasPosts: boolean;
-}) => {
-  if (params.roleFamily === "provider" && params.hasOfferings) {
-    return "#offerings";
-  }
-
-  if (params.hasPosts) {
-    return "#posts";
-  }
-
-  return "#details";
-};
-
-const getAccessLabel = (params: {
-  roleFamily: "provider" | "seeker";
-  hasOfferings: boolean;
-  hasPosts: boolean;
-}) => {
-  if (params.roleFamily === "provider") {
-    if (params.hasOfferings) return "Access offerings";
-    if (params.hasPosts) return "Access posts";
-    return "Access profile";
-  }
-
-  return params.hasPosts ? "Access posts" : "Access details";
+  return "Access details";
 };
 
 const getHeadline = (params: {
@@ -243,11 +162,7 @@ export default async function PublicProfilePage({ params }: Params) {
     topics,
     bio: profile.bio,
   });
-  const accessHref = getAccessHref({
-    roleFamily,
-    hasOfferings: offerings.length > 0,
-    hasPosts: posts.length > 0,
-  });
+  const accessHref = roleFamily === "provider" && offerings.length > 0 ? "#offerings" : "#details";
   const structuredData =
     roleFamily === "provider"
       ? {
@@ -404,11 +319,7 @@ export default async function PublicProfilePage({ params }: Params) {
                     <PublicProfileActions
                       profileUserId={profile.id}
                       accessHref={accessHref}
-                      accessLabel={getAccessLabel({
-                        roleFamily,
-                        hasOfferings: offerings.length > 0,
-                        hasPosts: posts.length > 0,
-                      })}
+                      accessLabel={getAccessLabel(roleFamily, offerings.length > 0)}
                       contactHref="#contact"
                     />
                   </div>
@@ -557,90 +468,26 @@ export default async function PublicProfilePage({ params }: Params) {
             ) : null}
           </section>
 
-          <section id="posts" className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-950">Public posts</h2>
-                <p className="text-sm text-slate-600">
-                  {roleFamily === "provider"
-                    ? "Every public marketplace post this member has published from their profile."
-                    : "Requests and marketplace posts this member has shared publicly."}
-                </p>
-              </div>
+          <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-950">Marketplace posts</h2>
+              <p className="mt-1 text-sm text-slate-600">Latest posts this member has published in the marketplace.</p>
             </div>
 
             {posts.length > 0 ? (
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                {posts.map((post) => {
-                  const timingLabel = formatPostTiming(post);
-
-                  return (
-                    <article
-                      key={post.id}
-                      className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50 shadow-sm"
-                    >
-                      {post.imageUrl ? (
-                        <div className="relative aspect-[16/9] overflow-hidden bg-slate-100">
-                          <img src={post.imageUrl} alt={post.title} className="h-full w-full object-cover" />
-                        </div>
-                      ) : null}
-
-                      <div className="p-5">
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
-                            {formatPostTypeLabel(post.type)}
-                          </span>
-                          <span className={`rounded-full px-3 py-1 ${getPostStatusClasses(post.status)}`}>
-                            {formatPostStatusLabel(post.status)}
-                          </span>
-                          <span className="text-slate-500">{formatPostDate(post.createdAt)}</span>
-                        </div>
-
-                        <h3 className="mt-4 text-lg font-semibold tracking-tight text-slate-950">{post.title}</h3>
-                        <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-600">{post.details}</p>
-
-                        <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                            {post.category}
-                          </span>
-
-                          {post.budget !== null ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                              {formatPrice(post.budget)}
-                            </span>
-                          ) : null}
-
-                          {post.locationLabel ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                              <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                              {post.locationLabel}
-                            </span>
-                          ) : null}
-
-                          {timingLabel ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                              <Clock3 className="h-3.5 w-3.5 text-slate-500" />
-                              {timingLabel}
-                            </span>
-                          ) : null}
-
-                          {post.attachmentCount > 0 ? (
-                            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                              {post.attachmentCount} attachment{post.attachmentCount === 1 ? "" : "s"}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <PublicProfilePostsGrid
+                posts={posts}
+                profileUserId={profile.id}
+                displayName={displayName}
+                avatarUrl={profileAvatarUrl}
+                verificationStatus={verificationStatus}
+                locationLabel={profile.location || "Nearby"}
+                responseMinutes={responseMinutes}
+                publicPath={publicPath}
+              />
             ) : (
               <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                No public posts yet. When this member publishes marketplace posts, they will appear here automatically.
+                No public posts yet. When this member shares marketplace updates, they will appear here.
               </div>
             )}
           </section>

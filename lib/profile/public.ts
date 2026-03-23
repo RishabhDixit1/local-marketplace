@@ -42,10 +42,22 @@ type OrderRow = {
   status: string | null;
 };
 
+type HelpRequestRow = {
+  id: string | null;
+  accepted_provider_id: string | null;
+  title: string | null;
+  details: string | null;
+  category: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  location_label: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
 type PostRow = {
   id: string | null;
   title: string | null;
-  name: string | null;
   text: string | null;
   content: string | null;
   description: string | null;
@@ -54,15 +66,8 @@ type PostRow = {
   post_type: string | null;
   status: string | null;
   state: string | null;
-  visibility: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string | null;
-  user_id: string | null;
-  author_id: string | null;
-  created_by: string | null;
-  requester_id: string | null;
-  owner_id: string | null;
-  provider_id: string | null;
 };
 
 type PublicProfileListing = {
@@ -82,21 +87,24 @@ export type PublicProfileReview = {
 
 export type PublicProfilePost = {
   id: string;
+  source: "post" | "help_request";
+  type: "service" | "product" | "demand";
   title: string;
-  details: string;
+  description: string;
   category: string;
-  type: "need" | "service" | "product";
+  price: number;
   status: string;
+  locationLabel: string;
+  urgent: boolean;
+  media: PublicProfilePostMedia[];
+  helpRequestId: string | null;
+  acceptedProviderId: string | null;
   createdAt: string | null;
-  locationLabel: string | null;
-  budget: number | null;
-  mode: "urgent" | "schedule" | null;
-  neededWithin: string | null;
-  scheduleDate: string | null;
-  scheduleTime: string | null;
-  flexibleTiming: boolean;
-  imageUrl: string | null;
-  attachmentCount: number;
+};
+
+export type PublicProfilePostMedia = {
+  mimeType: string;
+  url: string;
 };
 
 export type PublicProfileData = {
@@ -122,125 +130,6 @@ export type PublicProfileData = {
 };
 
 const toListingPrice = (value: number | null) => (typeof value === "number" && Number.isFinite(value) ? value : null);
-const trim = (value: string | null | undefined) => value?.trim() ?? "";
-
-const normalizePostType = (value: string | null | undefined): PublicProfilePost["type"] => {
-  const normalized = trim(value).toLowerCase();
-  if (normalized === "service") return "service";
-  if (normalized === "product") return "product";
-  return "need";
-};
-
-const readPostOwnerId = (row: PostRow) =>
-  trim(row.user_id || row.author_id || row.created_by || row.requester_id || row.owner_id || row.provider_id);
-
-const readComposedPostParts = (row: PostRow) => {
-  const raw = trim(row.text) || trim(row.content) || trim(row.description);
-  if (!raw) return [];
-  return raw.split(" | ").map((part) => part.trim()).filter(Boolean);
-};
-
-const readComposedValue = (parts: string[], prefix: string) => {
-  const match = parts.find((part) => part.toLowerCase().startsWith(prefix.toLowerCase()));
-  return match ? match.slice(prefix.length).trim() : "";
-};
-
-const isComposedMetaPart = (value: string) =>
-  /^(type|mode|needed|budget|category|location|timing|media):/i.test(value.trim());
-
-const readBudgetFromText = (value: string) => {
-  const match = value.match(/(\d+(\.\d+)?)/);
-  if (!match) return null;
-  const parsed = Number(match[1]);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const readPostImageUrl = (metadata: Record<string, unknown> | null | undefined) => {
-  const composerMetadata = readMarketplaceComposerMetadata(metadata);
-  if (composerMetadata?.media?.length) {
-    return resolvePostMediaUrl(composerMetadata.media[0]?.url || null);
-  }
-
-  const gallery = Array.isArray(metadata?.media)
-    ? metadata.media
-        .map((entry) => {
-          if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-          const record = entry as Record<string, unknown>;
-          return typeof record.url === "string" ? record.url : null;
-        })
-        .filter((entry): entry is string => Boolean(entry))
-    : [];
-
-  return (
-    resolvePostMediaUrl(typeof metadata?.image === "string" ? metadata.image : null) ||
-    resolvePostMediaUrl(typeof metadata?.image_url === "string" ? metadata.image_url : null) ||
-    resolvePostMediaUrl(gallery[0] || null)
-  );
-};
-
-const isPublicPostVisible = (row: PostRow, profileId: string) => {
-  if (readPostOwnerId(row) !== profileId) return false;
-
-  const visibility = trim(row.visibility).toLowerCase();
-  if (["private", "connections", "network", "contacts"].includes(visibility)) return false;
-
-  const status = trim(row.status || row.state).toLowerCase();
-  if (["draft", "hidden", "deleted", "archived"].includes(status)) return false;
-
-  return true;
-};
-
-const normalizePublicProfilePost = (row: PostRow): PublicProfilePost | null => {
-  if (!row.id) return null;
-
-  const parts = readComposedPostParts(row);
-  const composerMetadata = readMarketplaceComposerMetadata(row.metadata);
-  const title =
-    trim(row.title) ||
-    trim(row.name) ||
-    trim(composerMetadata?.title) ||
-    parts[0] ||
-    "Marketplace post";
-  const detailsFromParts = parts.length > 1 && !isComposedMetaPart(parts[1]) ? parts[1] : "";
-  const details =
-    trim(composerMetadata?.details) ||
-    detailsFromParts ||
-    (parts.length === 1 ? parts[0] : "") ||
-    "This member shared a public marketplace update.";
-  const type = normalizePostType(composerMetadata?.postType || row.post_type || row.type);
-  const category =
-    trim(composerMetadata?.category) ||
-    trim(row.category) ||
-    readComposedValue(parts, "Category:") ||
-    (type === "need" ? "Need" : type === "service" ? "Service" : "Product");
-  const budget = composerMetadata?.budget ?? readBudgetFromText(readComposedValue(parts, "Budget:"));
-  const locationLabel = trim(composerMetadata?.locationLabel) || readComposedValue(parts, "Location:") || null;
-  const rawMode = trim(readComposedValue(parts, "Mode:")).toLowerCase();
-  const mode = composerMetadata?.mode || (rawMode === "urgent" || rawMode === "schedule" ? rawMode : null);
-  const neededWithin = trim(composerMetadata?.neededWithin) || readComposedValue(parts, "Needed:") || null;
-  const imageUrl = readPostImageUrl(row.metadata);
-
-  return {
-    id: row.id,
-    title,
-    details,
-    category,
-    type,
-    status: trim(row.status || row.state).toLowerCase() || "open",
-    createdAt: row.created_at || null,
-    locationLabel,
-    budget,
-    mode,
-    neededWithin,
-    scheduleDate: trim(composerMetadata?.scheduleDate) || null,
-    scheduleTime: trim(composerMetadata?.scheduleTime) || null,
-    flexibleTiming: Boolean(composerMetadata?.flexibleTiming),
-    imageUrl,
-    attachmentCount: Number.isFinite(Number(composerMetadata?.attachmentCount))
-      ? Number(composerMetadata?.attachmentCount)
-      : composerMetadata?.media?.length || 0,
-  };
-};
 
 const normalizeServiceListing = (row: ServiceRow): PublicProfileListing | null => {
   if (!row.id) return null;
@@ -265,6 +154,255 @@ const normalizeProductListing = (row: ProductRow): PublicProfileListing | null =
     category: row.category?.trim() || "Product",
     price: toListingPrice(row.price),
     status: (row.stock || 0) > 0 ? "in stock" : "out of stock",
+  };
+};
+
+const CLOSED_STATUSES = new Set([
+  "cancelled",
+  "canceled",
+  "closed",
+  "completed",
+  "fulfilled",
+  "archived",
+  "deleted",
+  "hidden",
+]);
+
+const isClosedStatus = (status?: string | null) => CLOSED_STATUSES.has((status || "").trim().toLowerCase());
+
+const parseDateMs = (value?: string | null) => {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeComparable = (value?: string | null) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeMarketplacePostKind = (value?: string | null): "service" | "product" | "demand" => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "service" || normalized === "product") return normalized;
+  return "demand";
+};
+
+const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
+
+const parsePostText = (rawText: string) => {
+  const fallback = {
+    title: rawText || "Local post",
+    description: rawText || "Local post",
+    budget: 0,
+    category: "Need",
+    location: "",
+    kind: "demand" as const,
+    media: [] as PublicProfilePostMedia[],
+  };
+
+  if (!rawText.includes(" | ")) return fallback;
+
+  const parts = rawText.split(" | ");
+  if (parts.length < 2) return fallback;
+
+  const title = parts[0]?.trim() || fallback.title;
+  const description = parts[1]?.trim() || fallback.description;
+
+  const budgetPart = parts.find((item) => item.startsWith("Budget:"));
+  const categoryPart = parts.find((item) => item.startsWith("Category:"));
+  const locationPart = parts.find((item) => item.startsWith("Location:"));
+  const typePart = parts.find((item) => item.startsWith("Type:"));
+  const mediaPart = parts.find((item) => item.startsWith("Media:"));
+
+  const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
+  const budget = budgetMatch ? Number(budgetMatch[1]) : 0;
+  const kind = normalizeMarketplacePostKind(typePart?.replace("Type:", "").trim());
+  const category =
+    categoryPart?.replace("Category:", "").trim() ||
+    (kind === "demand" ? "Need" : kind === "service" ? "Service" : "Product");
+  const location = locationPart?.replace("Location:", "").trim() || "";
+
+  const media: PublicProfilePostMedia[] = [];
+  if (mediaPart && !mediaPart.includes("None")) {
+    const payload = mediaPart.replace("Media:", "").trim();
+    for (const match of payload.matchAll(mediaRegex)) {
+      const mediaUrl = resolvePostMediaUrl(match[2].trim());
+      if (!mediaUrl) continue;
+      media.push({
+        mimeType: match[1].trim(),
+        url: mediaUrl,
+      });
+    }
+  }
+
+  return { title, description, budget, category, location, kind, media };
+};
+
+const mediaFromComposerMetadata = (value: unknown): PublicProfilePostMedia[] => {
+  const metadata = readMarketplaceComposerMetadata(value);
+  if (!metadata) return [];
+
+  return metadata.media
+    .map((entry) => {
+      const resolvedUrl = resolvePostMediaUrl(entry.url);
+      if (!resolvedUrl) return null;
+
+      return {
+        mimeType: entry.type,
+        url: resolvedUrl,
+      } satisfies PublicProfilePostMedia;
+    })
+    .filter((entry): entry is PublicProfilePostMedia => !!entry);
+};
+
+const matchHelpRequestForPost = (params: {
+  postRow: PostRow;
+  title: string;
+  description: string;
+  category: string;
+  helpRequests: HelpRequestRow[];
+  usedHelpRequestIds: Set<string>;
+}) => {
+  const { postRow, title, description, category, helpRequests, usedHelpRequestIds } = params;
+  const postTitle = normalizeComparable(title);
+  const postDescription = normalizeComparable(description);
+  const postCategory = normalizeComparable(category);
+  const postCreatedAt = parseDateMs(postRow.created_at);
+
+  let bestMatch: HelpRequestRow | null = null;
+  let bestScore = -1;
+
+  helpRequests.forEach((candidate) => {
+    const candidateId = candidate.id?.trim() || "";
+    if (!candidateId || usedHelpRequestIds.has(candidateId)) return;
+
+    const candidateTitle = normalizeComparable(candidate.title);
+    const candidateDetails = normalizeComparable(candidate.details);
+    const candidateCategory = normalizeComparable(candidate.category);
+    const candidateCreatedAt = parseDateMs(candidate.created_at);
+    let score = 0;
+
+    if (postTitle && candidateTitle && postTitle === candidateTitle) {
+      score += 5;
+    } else if (
+      postTitle &&
+      candidateTitle &&
+      (postTitle.includes(candidateTitle) || candidateTitle.includes(postTitle))
+    ) {
+      score += 3;
+    }
+
+    if (postCategory && candidateCategory && postCategory === candidateCategory) {
+      score += 2;
+    }
+
+    if (
+      postDescription &&
+      candidateDetails &&
+      (postDescription === candidateDetails ||
+        postDescription.includes(candidateDetails) ||
+        candidateDetails.includes(postDescription))
+    ) {
+      score += 1;
+    }
+
+    if (postCreatedAt && candidateCreatedAt) {
+      const diffMs = Math.abs(postCreatedAt - candidateCreatedAt);
+      if (diffMs <= 2 * 60 * 1000) score += 4;
+      else if (diffMs <= 10 * 60 * 1000) score += 2;
+      else if (diffMs <= 60 * 60 * 1000) score += 1;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = candidate;
+    }
+  });
+
+  if (!bestMatch || bestScore < 5) return null;
+
+  const matchedId = bestMatch.id?.trim() || "";
+  if (matchedId) {
+    usedHelpRequestIds.add(matchedId);
+  }
+
+  return bestMatch;
+};
+
+const normalizePublicPost = (params: {
+  row: PostRow;
+  helpRequests: HelpRequestRow[];
+  usedHelpRequestIds: Set<string>;
+}): PublicProfilePost | null => {
+  const { row, helpRequests, usedHelpRequestIds } = params;
+  if (!row.id) return null;
+
+  const composerMetadata = readMarketplaceComposerMetadata(row.metadata);
+  const parsedFromText = parsePostText(row.text?.trim() || row.content?.trim() || row.description?.trim() || row.title?.trim() || "");
+  const type = normalizeMarketplacePostKind(row.type || row.post_type || composerMetadata?.postType || parsedFromText.kind);
+  const title = composerMetadata?.title?.trim() || row.title?.trim() || parsedFromText.title || (type === "demand" ? "Need local support" : "Marketplace update");
+  const description =
+    composerMetadata?.details?.trim() ||
+    parsedFromText.description ||
+    row.description?.trim() ||
+    row.content?.trim() ||
+    row.text?.trim() ||
+    title;
+  const matchingHelpRequest = type === "demand"
+    ? matchHelpRequestForPost({
+        postRow: row,
+        title,
+        description,
+        category:
+          composerMetadata?.category?.trim() ||
+          row.category?.trim() ||
+          parsedFromText.category ||
+          "Need",
+        helpRequests,
+        usedHelpRequestIds,
+      })
+    : null;
+  const status = matchingHelpRequest?.status?.trim() || row.status?.trim() || row.state?.trim() || "open";
+  if (isClosedStatus(status)) return null;
+
+  const category =
+    composerMetadata?.category?.trim() ||
+    matchingHelpRequest?.category?.trim() ||
+    row.category?.trim() ||
+    parsedFromText.category ||
+    (type === "demand" ? "Need" : type === "service" ? "Service" : "Product");
+  const price =
+    (matchingHelpRequest?.budget_max && matchingHelpRequest.budget_max > 0 ? matchingHelpRequest.budget_max : null) ??
+    (matchingHelpRequest?.budget_min && matchingHelpRequest.budget_min > 0 ? matchingHelpRequest.budget_min : null) ??
+    (composerMetadata?.budget && composerMetadata.budget > 0 ? composerMetadata.budget : null) ??
+    (parsedFromText.budget > 0 ? parsedFromText.budget : 0);
+  const locationLabel =
+    matchingHelpRequest?.location_label?.trim() ||
+    composerMetadata?.locationLabel?.trim() ||
+    parsedFromText.location ||
+    "Nearby";
+  const urgent =
+    type === "demand" &&
+    /urgent|asap|immediate|today|quick|critical|emergency/i.test(`${title} ${description} ${status}`);
+  const metadataMedia = mediaFromComposerMetadata(row.metadata);
+
+  return {
+    id: row.id,
+    source: matchingHelpRequest ? "help_request" : "post",
+    type,
+    title,
+    description,
+    category,
+    price,
+    status,
+    locationLabel,
+    urgent,
+    media: metadataMedia.length ? metadataMedia : parsedFromText.media,
+    helpRequestId: matchingHelpRequest?.id?.trim() || null,
+    acceptedProviderId: matchingHelpRequest?.accepted_provider_id?.trim() || null,
+    createdAt: row.created_at || null,
   };
 };
 
@@ -302,6 +440,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     productsResult,
     reviewsResult,
     postsResult,
+    helpRequestsResult,
     ordersResult,
   ] = await Promise.all([
     supabase
@@ -321,14 +460,16 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
       .limit(6),
     supabase
       .from("posts")
-      .select(
-        "id,title,name,text,content,description,category,type,post_type,status,state,visibility,metadata,created_at,user_id,author_id,created_by,requester_id,owner_id,provider_id",
-        { count: "exact" }
-      )
-      .or(
-        `user_id.eq.${profile.id},author_id.eq.${profile.id},created_by.eq.${profile.id},requester_id.eq.${profile.id},owner_id.eq.${profile.id},provider_id.eq.${profile.id}`
-      )
-      .order("created_at", { ascending: false }),
+      .select("id,title,text,content,description,category,type,post_type,status,state,metadata,created_at", { count: "exact" })
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("help_requests")
+      .select("id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,created_at")
+      .eq("requester_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(12),
     supabase
       .from("orders")
       .select("status")
@@ -346,9 +487,10 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     comment: row.comment?.trim() || null,
     createdAt: row.created_at || null,
   }));
-  const posts = (((postsResult.data as PostRow[] | null) || []) as PostRow[])
-    .filter((row) => isPublicPostVisible(row, profile.id))
-    .map((row) => normalizePublicProfilePost(row))
+  const helpRequestRows = (helpRequestsResult.data as HelpRequestRow[] | null) || [];
+  const usedHelpRequestIds = new Set<string>();
+  const postRows = ((postsResult.data as PostRow[] | null) || [])
+    .map((row) => normalizePublicPost({ row, helpRequests: helpRequestRows, usedHelpRequestIds }))
     .filter((row): row is PublicProfilePost => !!row);
   const ratingValues = reviewRows.map((row) => row.rating).filter((rating) => rating > 0);
   const averageRating = ratingValues.length
@@ -358,7 +500,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   const serviceCount = servicesResult.count || 0;
   const productCount = productsResult.count || 0;
   const reviewCount = reviewsResult.count || reviewRows.length;
-  const postsCount = posts.length;
+  const postsCount = postsResult.count || 0;
   const topics = normalizeTopics([...(profile.interests || []), ...(profile.services || [])]);
   const responseMinutes = estimateResponseMinutes({
     availability: profile.availability,
@@ -382,7 +524,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     services,
     products,
     offerings: [...services, ...products],
-    posts,
+    posts: postRows,
     reviews: reviewRows,
     averageRating,
     reviewCount,
