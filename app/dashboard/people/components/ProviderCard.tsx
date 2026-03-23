@@ -139,7 +139,7 @@ const ProviderCard = (props: Props) => {
       onMouseEnter={() => onActivate(provider.id)}
       onFocus={() => onActivate(provider.id)}
       aria-current={isActive}
-      className={`h-full cursor-pointer overflow-hidden rounded-[1.7rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition ${
+      className={`flex h-[25rem] cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition ${
         isActive
           ? "border-[var(--brand-500)]/40 shadow-[0_30px_90px_-60px_rgba(14,165,164,0.36)]"
           : "border-slate-200 hover:border-[var(--brand-500)]/24 hover:shadow-[0_28px_80px_-60px_rgba(15,23,42,0.34)]"
@@ -153,7 +153,7 @@ const ProviderCard = (props: Props) => {
         )}
       </div>
 
-      <div className="relative flex h-[calc(100%-7rem)] flex-col px-5 pb-5 pt-0">
+      <div className="relative flex min-h-0 flex-1 flex-col px-5 pb-5 pt-0">
         <div className="-mt-12 flex justify-center">
           <div className="relative">
             <Image
@@ -183,7 +183,7 @@ const ProviderCard = (props: Props) => {
             <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-500">{subheading}</p>
           ) : null}
 
-          <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">{description}</p>
+          <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-600">{description}</p>
         </div>
 
         <div className="mt-auto pt-5">

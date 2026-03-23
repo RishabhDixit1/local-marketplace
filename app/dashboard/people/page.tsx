@@ -1751,7 +1751,7 @@ export default function PeoplePage() {
   };
   return (
     <div
-      className="mx-auto w-full max-w-[1540px] space-y-5 pb-10"
+      className="mx-auto w-full max-w-[1540px] space-y-5 pb-2"
       style={{
         backgroundImage:
           "radial-gradient(circle at 0% 0%, rgba(14,165,164,0.08), transparent 34%), radial-gradient(circle at 100% 8%, rgba(17,70,106,0.08), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.44), rgba(255,255,255,0))",
@@ -1875,7 +1875,7 @@ export default function PeoplePage() {
                     },
                   },
                 }}
-                className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
               >
                 {visibleProviders.map((provider) => {
                   const connectionState = getConnectionState(provider.id) || EMPTY_CONNECTION_STATE;
@@ -1889,7 +1889,7 @@ export default function PeoplePage() {
                       key={provider.id}
                       ref={(element) => setCardElement(provider.id, element)}
                       data-provider-id={provider.id}
-                      className="scroll-mt-28 h-full"
+                      className="scroll-mt-28"
                       variants={{
                         hidden: { opacity: 0, y: 18 },
                         show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
