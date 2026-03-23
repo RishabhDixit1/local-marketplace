@@ -264,7 +264,7 @@ const matchHelpRequestForPost = (params: {
   category: string;
   helpRequests: HelpRequestRow[];
   usedHelpRequestIds: Set<string>;
-}) => {
+}): HelpRequestRow | null => {
   const { postRow, title, description, category, helpRequests, usedHelpRequestIds } = params;
   const postTitle = normalizeComparable(title);
   const postDescription = normalizeComparable(description);
