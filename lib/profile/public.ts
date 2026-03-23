@@ -274,7 +274,7 @@ const matchHelpRequestForPost = (params: {
   let bestMatch: HelpRequestRow | null = null;
   let bestScore = -1;
 
-  helpRequests.forEach((candidate) => {
+  helpRequests.forEach((candidate: HelpRequestRow) => {
     const candidateId = candidate.id?.trim() || "";
     if (!candidateId || usedHelpRequestIds.has(candidateId)) return;
 
