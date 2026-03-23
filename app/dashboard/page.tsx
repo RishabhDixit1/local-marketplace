@@ -2303,14 +2303,14 @@ export default function MarketplacePage() {
                       <button
                         type="button"
                         onClick={() => openListingProfile(item)}
-                        className="relative shrink-0 rounded-full"
+                        className="relative shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                         aria-label={`Open ${item.displayCreator} profile`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.avatarUrl || FALLBACK_AVATAR}
                           alt={`${item.displayCreator} avatar`}
-                          className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                          className="h-10 w-10 cursor-pointer rounded-full border border-slate-200 object-cover"
                         />
                       </button>
 
@@ -2319,7 +2319,7 @@ export default function MarketplacePage() {
                           <button
                             type="button"
                             onClick={() => openListingProfile(item)}
-                            className="max-w-full truncate text-left text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                            className="max-w-full cursor-pointer truncate text-left text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                             aria-label={`Open ${item.displayCreator} profile`}
                           >
                             {item.displayCreator}
