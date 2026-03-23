@@ -1348,6 +1348,11 @@ export default function MarketplacePage() {
           return leftTaken ? 1 : -1;
         }
 
+        const createdAtDelta = parseDateMs(right.createdAt) - parseDateMs(left.createdAt);
+        if (createdAtDelta !== 0) {
+          return createdAtDelta;
+        }
+
         if (left.urgent !== right.urgent) {
           return left.urgent ? -1 : 1;
         }
@@ -1356,7 +1361,7 @@ export default function MarketplacePage() {
           return right.rankScore - left.rankScore;
         }
 
-        return parseDateMs(right.createdAt) - parseDateMs(left.createdAt);
+        return left.responseMinutes - right.responseMinutes;
       });
 
       return sorted;
