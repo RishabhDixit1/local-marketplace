@@ -39,11 +39,26 @@ const images: NonNullable<NextConfig["images"]> = {
       hostname: "picsum.photos",
     },
   ],
+  minimumCacheTTL: 31536000,
+  formats: ["image/avif", "image/webp"],
+  deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+  imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
 };
 
 const createNextConfig = (phase: string): NextConfig => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   images,
+  compress: true,
+  poweredByHeader: false,
+  productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@supabase/supabase-js",
+      "framer-motion",
+    ],
+  },
+  staticPageGenerationTimeout: 120,
 });
 
 export default createNextConfig;
