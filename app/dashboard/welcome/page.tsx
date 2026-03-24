@@ -52,7 +52,8 @@ type EnrichedNearbyCard = NearbyCard & {
   ownerAvatarUrl: string;
   postedAgo: string;
   distanceLabel: string;
-  statusLabel: string;
+  statusLabel: string | null;
+  networkMetaLabel: string;
   isUrgent: boolean;
   media: MarketplaceFeedMedia[];
   audienceLabel: string;
@@ -61,6 +62,7 @@ type EnrichedNearbyCard = NearbyCard & {
   networkActionLabel: string;
   networkActionPath: string;
   engagementLabel: string;
+  surfaceReason: string;
   tags: [string, string];
   saves: number;
   shares: number;
@@ -123,6 +125,15 @@ const isUrgentWelcomeCard = (card: NearbyCard) => {
   const urgencySource = `${card.signalLabel} ${card.etaLabel}`.toLowerCase();
   return urgencySource.includes("urgent") || urgencySource.includes("today") || urgencySource.includes("evening");
 };
+
+const shouldShowWelcomeSignalChip = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  return !normalized.includes("connected");
+};
+
+const formatWelcomeCountLabel = (count: number, singular: string) =>
+  `${count} ${count === 1 ? singular : `${singular}s`}`;
 
 const formatTimeAgo = (value: string | null | undefined) => {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -360,9 +371,8 @@ export default function WelcomePage() {
       const ownerLabel = card.ownerName?.trim() || "Connected user";
       const engagementParts = [];
 
-      if (metrics.saves > 0) engagementParts.push(`${metrics.saves} saves`);
-      if (metrics.shares > 0) engagementParts.push(`${metrics.shares} shares`);
-      if (!engagementParts.length) engagementParts.push("Fresh in your connected feed");
+      if (metrics.saves > 0) engagementParts.push(formatWelcomeCountLabel(metrics.saves, "save"));
+      if (metrics.shares > 0) engagementParts.push(formatWelcomeCountLabel(metrics.shares, "share"));
 
       return {
         ...card,
@@ -371,7 +381,8 @@ export default function WelcomePage() {
         ownerAvatarUrl: createAvatarFallback({ label: ownerLabel, seed: card.ownerId || card.id }),
         postedAgo: formatTimeAgo(card.createdAt),
         distanceLabel: buildWelcomeDistanceLabel(card.distanceKm),
-        statusLabel: card.isDemo ? "Preview" : "Connected",
+        statusLabel: card.isDemo ? "Preview" : null,
+        networkMetaLabel: card.isDemo ? "Preview in feed" : "In your network",
         isUrgent: isUrgentWelcomeCard(card),
         media: [{ mimeType: "image/jpeg", url: card.image }],
         audienceLabel: "Connected feed",
@@ -379,7 +390,10 @@ export default function WelcomePage() {
         audienceMeta: `${ownerLabel} is in your accepted network`,
         networkActionLabel: "Open profile",
         networkActionPath: routes.people,
-        engagementLabel: `${engagementParts.join(" | ")} | ${card.momentumLabel}`,
+        engagementLabel: engagementParts.length > 0 ? engagementParts.join(" • ") : "New in your live feed",
+        surfaceReason: card.isDemo
+          ? "Preview card while your connected marketplace fills in."
+          : `${ownerLabel} is in your accepted network.`,
         tags: [card.signalLabel, card.etaLabel],
         saves: metrics.saves,
         shares: metrics.shares,
@@ -1232,6 +1246,13 @@ export default function WelcomePage() {
                     const shareInFlight = sharingCardIds.includes(card.id);
                     const primaryActionBusy =
                       messageInFlight && (card.actionLabel === "Respond" || card.actionLabel === "Book");
+                    const detailChips = [card.priceLabel, card.etaLabel];
+                    if (shouldShowWelcomeSignalChip(card.signalLabel)) {
+                      detailChips.push(card.signalLabel);
+                    }
+                    const activityPills = [];
+                    if (card.saves > 0) activityPills.push(formatWelcomeCountLabel(card.saves, "save"));
+                    if (card.shares > 0) activityPills.push(formatWelcomeCountLabel(card.shares, "share"));
 
                     return (
                       <article
@@ -1277,15 +1298,11 @@ export default function WelcomePage() {
                               >
                                 {card.badge}
                               </span>
-                              <span
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                                  card.isDemo
-                                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                }`}
-                              >
-                                {card.statusLabel}
-                              </span>
+                              {card.statusLabel ? (
+                                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                                  {card.statusLabel}
+                                </span>
+                              ) : null}
                               {card.isUrgent ? (
                                 <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
                                   Urgent
@@ -1299,8 +1316,15 @@ export default function WelcomePage() {
                                 <MapPin size={11} />
                                 {card.distanceLabel}
                               </span>
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                                {card.audienceLabel}
+                              <span
+                                className={`inline-flex items-center gap-1 font-medium ${
+                                  card.isDemo ? "text-amber-700" : "text-emerald-700"
+                                }`}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${card.isDemo ? "bg-amber-500" : "bg-emerald-500"}`}
+                                />
+                                {card.networkMetaLabel}
                               </span>
                             </div>
                           </div>
@@ -1313,22 +1337,24 @@ export default function WelcomePage() {
                               <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
 
                               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
-                                  {card.badge}
-                                </span>
-                                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">
-                                  {card.priceLabel}
-                                </span>
-                                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
-                                  {card.etaLabel}
-                                </span>
-                                <span className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-500">
-                                  {card.signalLabel}
-                                </span>
+                                {detailChips.map((chip) => (
+                                  <span
+                                    key={`${card.id}-${chip}`}
+                                    className={`rounded-full border px-2 py-1 font-semibold ${
+                                      chip === card.priceLabel
+                                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                                        : chip === card.etaLabel
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                        : "border-slate-200 bg-white text-slate-500"
+                                    }`}
+                                  >
+                                    {chip}
+                                  </span>
+                                ))}
                               </div>
                             </div>
 
-                            <div className="mt-3 grid grid-cols-3 gap-2">
+                            <div className="mt-3 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
                               <button
                                 type="button"
                                 onClick={() => void handlePrimaryCardAction(card)}
@@ -1336,7 +1362,7 @@ export default function WelcomePage() {
                                 aria-label={`${card.actionLabel} post ${card.title}`}
                                 title={`${card.actionLabel} this post`}
                                 data-testid="feed-action-primary"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-900 bg-slate-900 px-2 text-[12px] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-900 bg-slate-900 px-2 text-[12px] font-semibold text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.9)] transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
                               >
                                 {primaryActionBusy ? (
                                   <Loader2 size={14} className="animate-spin" />
@@ -1356,7 +1382,7 @@ export default function WelcomePage() {
                                 aria-label={`Message about ${card.title}`}
                                 title="Open contextual chat"
                                 data-testid="feed-action-message"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-2 text-[12px] font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
                               >
                                 {messageInFlight ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
                                 <span>{messageInFlight ? "Opening..." : "Message"}</span>
@@ -1368,34 +1394,38 @@ export default function WelcomePage() {
                                 aria-label={`${card.networkActionLabel} for ${card.title}`}
                                 title="Open connection profile"
                                 data-testid="feed-action-network"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-2 text-[12px] font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
                               >
                                 <UsersRound size={14} />
                                 <span>{card.networkActionLabel}</span>
                               </button>
                             </div>
 
-                            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
-                                Saves {card.saves}
-                              </span>
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
-                                Shares {card.shares}
-                              </span>
-                              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-500">
-                                {card.distanceLabel}
-                              </span>
-                            </div>
+                            {activityPills.length > 0 ? (
+                              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                                {activityPills.map((pill) => (
+                                  <span
+                                    key={`${card.id}-${pill}`}
+                                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600"
+                                  >
+                                    {pill}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
 
-                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Why this surfaced</p>
-                              <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-slate-800">{card.momentumLabel}</p>
-                              <p className="mt-1 line-clamp-1 text-xs text-slate-500">{card.engagementLabel}</p>
+                            <div className="mt-3 flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${card.isDemo ? "bg-amber-500" : "bg-emerald-500"}`} />
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Why this surfaced</p>
+                                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-800">{card.surfaceReason}</p>
+                                <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{card.engagementLabel}</p>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="relative lg:justify-self-end lg:w-[280px]" data-testid="feed-card-main-image">
-                            <FeedMediaCarousel media={card.media} title={card.title} />
+                          <div className="relative lg:justify-self-end lg:w-[248px]" data-testid="feed-card-main-image">
+                            <FeedMediaCarousel media={card.media} title={card.title} showCountBadge={card.media.length > 1} />
 
                             <div className="absolute right-3 top-3 flex flex-col gap-2">
                               <button
