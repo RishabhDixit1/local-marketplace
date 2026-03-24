@@ -1751,7 +1751,7 @@ export default function PeoplePage() {
   };
   return (
     <div
-      className="mx-auto w-full max-w-[1540px] space-y-5 pb-2"
+      className="mx-auto w-full max-w-[1540px] space-y-4 overflow-x-clip pb-2 sm:space-y-5"
       style={{
         backgroundImage:
           "radial-gradient(circle at 0% 0%, rgba(14,165,164,0.08), transparent 34%), radial-gradient(circle at 100% 8%, rgba(17,70,106,0.08), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.44), rgba(255,255,255,0))",
@@ -1887,7 +1887,7 @@ export default function PeoplePage() {
                     },
                   },
                 }}
-                className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
               >
                 {visibleProviders.map((provider) => {
                   const connectionState = getConnectionState(provider.id) || EMPTY_CONNECTION_STATE;

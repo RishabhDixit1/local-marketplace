@@ -7,9 +7,10 @@ import type { MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 type FeedMediaCarouselProps = {
   media: MarketplaceFeedMedia[];
   title: string;
+  showCountBadge?: boolean;
 };
 
-export default function FeedMediaCarousel({ media, title }: FeedMediaCarouselProps) {
+export default function FeedMediaCarousel({ media, title, showCountBadge = true }: FeedMediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   if (!media.length) {
@@ -84,9 +85,11 @@ export default function FeedMediaCarousel({ media, title }: FeedMediaCarouselPro
         </>
       ) : null}
 
-      <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
-        {safeIndex + 1} / {media.length}
-      </div>
+      {showCountBadge ? (
+        <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
+          {safeIndex + 1} / {media.length}
+        </div>
+      ) : null}
     </div>
   );
 }
