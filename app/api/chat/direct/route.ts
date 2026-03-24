@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { DirectConversationResponse } from "@/lib/api/chat";
 import { areUsersConnected } from "@/lib/server/chatGuards";
+import { getOrCreateDirectConversationIdForUsers } from "@/lib/server/directConversations";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
@@ -89,18 +90,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const rpcResult = await userClient.rpc("get_or_create_direct_conversation", {
-      target_user_id: recipientId,
-    });
-
-    if (rpcResult.error || typeof rpcResult.data !== "string" || !rpcResult.data) {
-      throw new Error(rpcResult.error?.message || "Unable to open a direct conversation.");
-    }
+    const conversationId = await getOrCreateDirectConversationIdForUsers(
+      userClient,
+      authResult.auth.userId,
+      recipientId
+    );
 
     return NextResponse.json(
       {
         ok: true,
-        conversationId: rpcResult.data,
+        conversationId,
         recipientId,
       } satisfies DirectConversationResponse,
       {

@@ -183,6 +183,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
     if (type === "service") return mode === "schedule" ? "Schedule service" : "Publish service";
     return mode === "schedule" ? "Schedule product" : "Publish product";
   }, [mode, type]);
+  const composerModeLabel = mode === "schedule" ? "Scheduled" : neededWithin;
   const resolvedCategory = category === OTHER_CATEGORY_VALUE ? customCategory.trim() : category.trim();
   const usingCustomCategory = category === OTHER_CATEGORY_VALUE;
 
@@ -505,7 +506,15 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                 ServiQ composer
               </span>
               <h2 className="mt-2.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">Create post</h2>
-              <p className="mt-1 text-sm text-slate-600">Clean, local, and real. Nearby people should understand the post at a glance.</p>
+              <p className="mt-1 text-sm text-slate-600">Keep it clear enough that someone nearby can act on it quickly.</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  {typeLabels[type].title}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                  {composerModeLabel}
+                </span>
+              </div>
             </div>
             <button
               type="button"
@@ -536,6 +545,16 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             </div>
 
             <div className="grid gap-4 rounded-[1.8rem] border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Core details</p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">What are you sharing?</h3>
+                </div>
+                <p className="max-w-md text-xs leading-5 text-slate-500">
+                  Start with the title, details, and category. The next section handles reach and timing.
+                </p>
+              </div>
+
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <label className="text-sm font-semibold text-slate-800">Title</label>
@@ -622,6 +641,18 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                   </div>
                   {errors.budget ? <p className="mt-2 text-xs text-rose-600">{errors.budget}</p> : <p className="mt-2 text-xs text-slate-500">Leave blank if you want replies with quotes.</p>}
                 </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 rounded-[1.8rem] border border-slate-200 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Reach and timing</p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">Where and when should this go live?</h3>
+                </div>
+                <p className="max-w-md text-xs leading-5 text-slate-500">
+                  Keep the radius tight when the request is local and urgent. Switch to schedule only when you already know the slot.
+                </p>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_220px]">
@@ -714,7 +745,9 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                     </div>
                   </div>
                 ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600">Choose a fast response window or schedule a later slot.</div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
+                    Choose the response window that best matches how quickly you need attention.
+                  </div>
                 )}
               </div>
 
@@ -730,7 +763,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Media</p>
-                  <p className="mt-1 text-sm text-slate-500">Upload images, video, or audio that actually helps someone respond.</p>
+                  <p className="mt-1 text-sm text-slate-500">Only add media that helps someone understand or price the work faster.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]">
@@ -772,7 +805,9 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                   ))}
                 </div>
               ) : (
-                <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">No media added yet.</div>
+                <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm text-slate-500">
+                  No media added yet.
+                </div>
               )}
             </div>
 
@@ -784,7 +819,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             ) : null}
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">This keeps the current ServiQ auth, storage bucket, and publish routes intact.</p>
+              <p className="text-xs text-slate-500">Uses the current ServiQ auth, storage, and publish routes.</p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={closeModal} disabled={publishing} className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60">
                   Cancel

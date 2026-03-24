@@ -19,6 +19,19 @@ export type NotificationAction = {
   href: string;
 };
 
+const conversationEntityTypes = new Set([
+  "conversation",
+  "message",
+  "chat",
+  "conversation_message",
+  "direct_message",
+]);
+
+const orderEntityTypes = new Set(["order", "task", "order_update"]);
+const helpRequestEntityTypes = new Set(["help_request", "need", "request"]);
+const connectionEntityTypes = new Set(["connection_request", "connection"]);
+const liveTalkEntityTypes = new Set(["live_talk_request", "live_talk"]);
+
 const readMetadataString = (notification: NotificationRow, keys: string[]) => {
   for (const key of keys) {
     const value = notification.metadata?.[key];
@@ -92,8 +105,12 @@ export const getDemoNotifications = (userId: string): NotificationRow[] => {
 };
 
 export const resolveNotificationAction = (notification: NotificationRow): NotificationAction => {
-  const entityType = (notification.entity_type || "").toLowerCase();
+  const entityType = (notification.entity_type || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   const explicitHref = readMetadataString(notification, ["href", "path", "action_path"]);
+  const conversationId = notification.entity_id || readMetadataString(notification, ["conversation_id", "conversationId"]);
+  const orderId = notification.entity_id || readMetadataString(notification, ["order_id", "orderId", "task_id"]);
+  const helpRequestId = notification.entity_id || readMetadataString(notification, ["help_request_id", "helpRequestId"]);
+  const requesterId = readMetadataString(notification, ["requester_id", "requesterId"]);
 
   if (explicitHref) {
     return {
@@ -102,32 +119,28 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
     };
   }
 
-  if (entityType === "conversation") {
-    const conversationId =
-      notification.entity_id || readMetadataString(notification, ["conversation_id", "conversationId"]);
+  if (conversationEntityTypes.has(entityType) || (notification.kind === "message" && conversationId)) {
     return {
       ctaLabel: "Open chat",
-      href: withQuery("/dashboard/chat", { open: conversationId }),
+      href: withQuery("/dashboard/chat", { open: conversationId, source: "notification" }),
     };
   }
 
-  if (entityType === "order") {
-    const orderId = notification.entity_id || readMetadataString(notification, ["order_id", "orderId", "task_id"]);
+  if (orderEntityTypes.has(entityType) || notification.kind === "order") {
     return {
       ctaLabel: "Open task",
-      href: withQuery("/dashboard/tasks", { focus: orderId }),
+      href: withQuery("/dashboard/tasks", { focus: orderId, source: "notification" }),
     };
   }
 
   if (entityType === "review") {
     return {
       ctaLabel: "View profile",
-      href: "/dashboard/profile",
+      href: withQuery("/dashboard/profile", { source: "notification" }),
     };
   }
 
-  if (entityType === "help_request") {
-    const helpRequestId = notification.entity_id || readMetadataString(notification, ["help_request_id", "helpRequestId"]);
+  if (helpRequestEntityTypes.has(entityType)) {
     return {
       ctaLabel: "View matches",
       href: withQuery("/dashboard", {
@@ -137,20 +150,17 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
     };
   }
 
-  if (entityType === "connection_request") {
-    const requesterId = readMetadataString(notification, ["requester_id", "requesterId"]);
+  if (connectionEntityTypes.has(entityType)) {
     return {
       ctaLabel: "Open people",
-      href: withQuery("/dashboard/people", { provider: requesterId }),
+      href: withQuery("/dashboard/people", { provider: requesterId, source: "notification" }),
     };
   }
 
-  if (entityType === "live_talk_request") {
-    const conversationId = readMetadataString(notification, ["conversation_id", "conversationId"]);
-
+  if (liveTalkEntityTypes.has(entityType)) {
     return {
       ctaLabel: "Open chat",
-      href: withQuery("/dashboard/chat", { open: conversationId }),
+      href: withQuery("/dashboard/chat", { open: conversationId, source: "notification" }),
     };
   }
 

@@ -14,6 +14,7 @@ import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
 import { appName } from "@/lib/branding";
+import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
 import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
@@ -42,6 +43,8 @@ const navigationTabs = [
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
 ];
 
+const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
+
 export default function DashboardLayout({
   children,
 }: {
@@ -67,12 +70,15 @@ function DashboardShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const [shellEnhancementsPrimed, setShellEnhancementsPrimed] = useState(false);
   const [showStartupIssues, setShowStartupIssues] = useState(false);
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { showPrompt } = useDashboardPromptState();
-  const chatUnreadCount = useUnreadChatCount(authReady);
+  const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
+  const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady);
   const myProfileHref =
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
@@ -91,6 +97,7 @@ function DashboardShell({
       if (!active) return;
 
       if (session?.user) {
+        setAccessToken(session.access_token || "");
         setAuthReady(true);
         return;
       }
@@ -104,11 +111,14 @@ function DashboardShell({
 
         if (!active) return;
         if (retrySession?.user) {
+          setAccessToken(retrySession.access_token || "");
           setAuthReady(true);
           return;
         }
 
+        setAccessToken("");
         setAuthReady(false);
+        setShellEnhancementsPrimed(false);
         router.replace("/");
       }, 8000);
     };
@@ -125,12 +135,15 @@ function DashboardShell({
           window.clearTimeout(redirectTimer);
           redirectTimer = null;
         }
+        setAccessToken(session.access_token || "");
         setAuthReady(true);
         return;
       }
 
       if (event === "SIGNED_OUT") {
+        setAccessToken("");
         setAuthReady(false);
+        setShellEnhancementsPrimed(false);
         router.replace("/");
         return;
       }
@@ -146,21 +159,31 @@ function DashboardShell({
   }, [router]);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || shellEnhancementsPrimed) return;
+
+    const cancelIdleTask = scheduleClientIdleTask(() => {
+      setShellEnhancementsPrimed(true);
+    }, 1800);
+
+    return cancelIdleTask;
+  }, [authReady, shellEnhancementsPrimed]);
+
+  useEffect(() => {
+    if (!authReady || !accessToken || !shellEnhancementsReady) return;
     let active = true;
 
     const runStartupCheck = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      if (typeof window !== "undefined" && window.sessionStorage.getItem(STARTUP_CHECK_SESSION_KEY) === "1") {
+        return;
+      }
 
-      if (!active || !session?.access_token) return;
+      if (!active || !accessToken) return;
 
       try {
         const response = await fetch("/api/system/startup-check", {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         });
 
@@ -188,38 +211,34 @@ function DashboardShell({
         setStartupIssues(issues);
         setStartupFixInstructions(fixInstructions);
         setShowStartupIssues(!payload.ok && issues.length > 0);
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(STARTUP_CHECK_SESSION_KEY, "1");
+        }
       } catch {
         // Ignore startup-check transport errors for non-blocking UX.
       }
     };
 
     void runStartupCheck();
-    const intervalId = window.setInterval(() => {
-      void runStartupCheck();
-    }, 3 * 60 * 1000);
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
     };
-  }, [authReady]);
+  }, [accessToken, authReady, shellEnhancementsReady]);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || !accessToken || !shellEnhancementsReady) return;
     let active = true;
 
     const pingPresence = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!active || !session?.access_token) return;
+      if (!active || !accessToken) return;
 
       try {
         await fetch("/api/presence/ping", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -249,7 +268,7 @@ function DashboardShell({
       window.clearInterval(presenceIntervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [authReady]);
+  }, [accessToken, authReady, shellEnhancementsReady]);
 
   if (!authReady) {
     return (
@@ -404,7 +423,7 @@ function DashboardShell({
                   <Bookmark className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Saved</span>
                 </Link>
-                <NotificationCenter />
+                <NotificationCenter enabled={shellEnhancementsReady} />
                 <Link
                   href={myProfileHref}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"

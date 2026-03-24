@@ -44,7 +44,7 @@ describe("notifications", () => {
 
     expect(action).toEqual({
       ctaLabel: "Open chat",
-      href: "/dashboard/chat?open=conv-1",
+      href: "/dashboard/chat?open=conv-1&source=notification",
     });
   });
 
@@ -56,18 +56,18 @@ describe("notifications", () => {
       })
     );
 
-    expect(action.href).toBe("/dashboard/chat?open=conv-2");
+    expect(action.href).toBe("/dashboard/chat?open=conv-2&source=notification");
   });
 
   it("resolves order, review, and help request actions", () => {
     expect(resolveNotificationAction(baseNotification({ entity_type: "order", entity_id: "order-1" }))).toEqual({
       ctaLabel: "Open task",
-      href: "/dashboard/tasks?focus=order-1",
+      href: "/dashboard/tasks?focus=order-1&source=notification",
     });
 
     expect(resolveNotificationAction(baseNotification({ entity_type: "review" }))).toEqual({
       ctaLabel: "View profile",
-      href: "/dashboard/profile",
+      href: "/dashboard/profile?source=notification",
     });
 
     expect(
@@ -93,7 +93,7 @@ describe("notifications", () => {
       )
     ).toEqual({
       ctaLabel: "Open people",
-      href: "/dashboard/people?provider=provider-7",
+      href: "/dashboard/people?provider=provider-7&source=notification",
     });
 
     expect(
@@ -105,7 +105,21 @@ describe("notifications", () => {
       )
     ).toEqual({
       ctaLabel: "Open chat",
-      href: "/dashboard/chat?open=conv-live-1",
+      href: "/dashboard/chat?open=conv-live-1&source=notification",
+    });
+  });
+
+  it("treats message-style entity aliases as chat actions", () => {
+    expect(
+      resolveNotificationAction(
+        baseNotification({
+          entity_type: "message",
+          metadata: { conversation_id: "conv-msg-1" },
+        })
+      )
+    ).toEqual({
+      ctaLabel: "Open chat",
+      href: "/dashboard/chat?open=conv-msg-1&source=notification",
     });
   });
 
