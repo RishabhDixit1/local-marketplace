@@ -78,13 +78,19 @@ export function DashboardPromptProvider({ children }: { children: ReactNode }) {
 
   const setPagePrompt = useCallback(
     (nextPrompt: DashboardPromptConfig | null) => {
-      if (!nextPrompt) {
-        setPagePromptState(null);
-        return;
-      }
-      setPagePromptState({
-        route: pathname,
-        prompt: nextPrompt,
+      setPagePromptState((current) => {
+        if (!nextPrompt) {
+          return current === null ? current : null;
+        }
+
+        if (current?.route === pathname && current.prompt === nextPrompt) {
+          return current;
+        }
+
+        return {
+          route: pathname,
+          prompt: nextPrompt,
+        };
       });
     },
     [pathname]

@@ -13,6 +13,7 @@ import type {
   CommunityReviewRecord,
   CommunityServiceRecord,
 } from "@/lib/api/community";
+import { buildCommunityFeedView } from "@/lib/server/communityFeedView";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { listAcceptedConnectionPeerIds } from "@/lib/server/chatGuards";
 
@@ -176,7 +177,7 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
 
   return {
     id,
-    name: stringFromRow(row, ["name", "full_name", "display_name"], "") || null,
+    name: stringFromRow(row, ["full_name", "display_name", "name"], "") || null,
     avatar_url: avatarUrl,
     role: stringFromRow(row, ["role", "account_type"], "") || null,
     bio: stringFromRow(row, ["bio", "about"], "") || null,
@@ -487,7 +488,7 @@ export const loadCommunityFeedSnapshot = async (
     }
   });
 
-  return {
+  const snapshot: Omit<Extract<CommunityFeedResponse, { ok: true }>, "feedItems" | "feedStats" | "mapCenter"> = {
     ok: true,
     currentUserId,
     acceptedConnectionIds: acceptedPeerIds,
@@ -501,6 +502,11 @@ export const loadCommunityFeedSnapshot = async (
     presence: presenceRowsRaw
       .map((row) => normalizePresence(row))
       .filter((row): row is CommunityPresenceRecord => !!row),
+  };
+
+  return {
+    ...snapshot,
+    ...buildCommunityFeedView(snapshot),
   };
 };
 

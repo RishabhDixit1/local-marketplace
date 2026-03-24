@@ -92,6 +92,91 @@ const typeLabels: Record<PostType, { title: string; copy: string }> = {
   product: { title: "List product", copy: "Add a real catalog item or product." },
 };
 
+const intentContent: Record<
+  PostType,
+  {
+    heading: string;
+    intro: string;
+    coreTitle: string;
+    coreCopy: string;
+    titleLabel: string;
+    titlePlaceholder: string;
+    detailsLabel: string;
+    detailsPlaceholder: string;
+    categoryLabel: string;
+    categoryHint: string;
+    budgetLabel: string;
+    budgetHint: string;
+    locationLabel: string;
+    locationHint: string;
+    timingLabel: string;
+    timingHint: string;
+    mediaTitle: string;
+    mediaCopy: string;
+  }
+> = {
+  need: {
+    heading: "Need local help",
+    intro: "Describe the problem clearly so the right nearby provider can decide fast and respond with confidence.",
+    coreTitle: "What do you need done?",
+    coreCopy: "State the job, the important context, and the category. The next section controls location and timing.",
+    titleLabel: "Need title",
+    titlePlaceholder: "Need a plumber for a kitchen leak",
+    detailsLabel: "What should providers know?",
+    detailsPlaceholder: "Describe the issue, what is urgent, and any constraints before someone visits.",
+    categoryLabel: "Help category",
+    categoryHint: "Pick the closest fit or choose Other.",
+    budgetLabel: "Budget",
+    budgetHint: "Leave blank if you want replies with quotes.",
+    locationLabel: "Where is this needed?",
+    locationHint: "Use the area, neighborhood, or landmark where the work should happen.",
+    timingLabel: "When do you need help?",
+    timingHint: "Keep the radius tight when the request is urgent. Schedule only when you already know the slot.",
+    mediaTitle: "Reference media",
+    mediaCopy: "Add photos, a short video, or a voice note only if it helps someone understand or price the job faster.",
+  },
+  service: {
+    heading: "Offer a service",
+    intro: "Frame the service so customers understand the outcome, trust the scope, and know when you can show up.",
+    coreTitle: "What service are you offering?",
+    coreCopy: "Lead with the service name, explain what is included, and classify it correctly so the feed stays useful.",
+    titleLabel: "Service title",
+    titlePlaceholder: "Home electrical repair visit",
+    detailsLabel: "What is included?",
+    detailsPlaceholder: "Explain the scope, what customers can expect, and any boundaries or assumptions.",
+    categoryLabel: "Service category",
+    categoryHint: "Pick the closest fit or choose Other.",
+    budgetLabel: "Starting price",
+    budgetHint: "Leave blank if you want customers to request a quote first.",
+    locationLabel: "Where do you cover?",
+    locationHint: "Use the main area, neighborhood, or locality where you operate.",
+    timingLabel: "When is this available?",
+    timingHint: "Use schedule if this service starts at a known date or slot. Otherwise choose the availability window that feels true.",
+    mediaTitle: "Trust-building media",
+    mediaCopy: "Add real examples, before-and-after shots, or a quick voice note if it helps people trust the offer faster.",
+  },
+  product: {
+    heading: "List a product",
+    intro: "Keep the listing concrete enough that a buyer can understand the item, the value, and where fulfillment starts.",
+    coreTitle: "What product are you listing?",
+    coreCopy: "Name the item clearly, explain the specifics that matter, and keep the category unambiguous.",
+    titleLabel: "Product name",
+    titlePlaceholder: "Voltage tester and repair kit",
+    detailsLabel: "What should buyers know?",
+    detailsPlaceholder: "Explain the item, condition, pack details, or what makes this listing useful to a local buyer.",
+    categoryLabel: "Product category",
+    categoryHint: "Pick the closest fit or choose Other.",
+    budgetLabel: "Price",
+    budgetHint: "Leave blank if price should be discussed first.",
+    locationLabel: "Where is this available?",
+    locationHint: "Use the pickup, delivery, or fulfillment area buyers should expect.",
+    timingLabel: "When is it available?",
+    timingHint: "Use schedule if availability starts later. Otherwise choose the response window that reflects real readiness.",
+    mediaTitle: "Product media",
+    mediaCopy: "Add only the images, video, or audio that reduce confusion and help a buyer understand the listing quickly.",
+  },
+};
+
 const urgencyWindows = ["Within 1 hour", "Today", "Within 24 hours", "This week", "Flexible"];
 const SCHEDULE_VALUE = "__schedule__";
 const TITLE_MAX = 90;
@@ -186,6 +271,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   const composerModeLabel = mode === "schedule" ? "Scheduled" : neededWithin;
   const resolvedCategory = category === OTHER_CATEGORY_VALUE ? customCategory.trim() : category.trim();
   const usingCustomCategory = category === OTHER_CATEGORY_VALUE;
+  const intentCopy = intentContent[type];
 
   const resetRecorder = () => {
     const recorder = recorderRef.current;
@@ -505,8 +591,8 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                 <Sparkles className="h-3.5 w-3.5" />
                 ServiQ composer
               </span>
-              <h2 className="mt-2.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">Create post</h2>
-              <p className="mt-1 text-sm text-slate-600">Keep it clear enough that someone nearby can act on it quickly.</p>
+              <h2 className="mt-2.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{intentCopy.heading}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-slate-600">{intentCopy.intro}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                   {typeLabels[type].title}
@@ -547,17 +633,17 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             <div className="grid gap-4 rounded-[1.8rem] border border-slate-200 bg-slate-50/60 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Core details</p>
-                  <h3 className="mt-1 text-base font-semibold text-slate-900">What are you sharing?</h3>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Step 1</p>
+                  <h3 className="mt-1 text-base font-semibold text-slate-900">{intentCopy.coreTitle}</h3>
                 </div>
                 <p className="max-w-md text-xs leading-5 text-slate-500">
-                  Start with the title, details, and category. The next section handles reach and timing.
+                  {intentCopy.coreCopy}
                 </p>
               </div>
 
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <label className="text-sm font-semibold text-slate-800">Title</label>
+                  <label className="text-sm font-semibold text-slate-800">{intentCopy.titleLabel}</label>
                   <span className="text-xs text-slate-400">{title.trim().length}/{TITLE_MAX}</span>
                 </div>
                 <input
@@ -566,7 +652,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                     setTitle(event.target.value);
                     setErrors((current) => ({ ...current, title: undefined }));
                   }}
-                  placeholder={type === "need" ? "Need a plumber for a kitchen leak" : type === "service" ? "Home electrical repair visit" : "Voltage tester and repair kit"}
+                  placeholder={intentCopy.titlePlaceholder}
                   className={fieldClass(!!errors.title)}
                 />
                 {errors.title ? <p className="mt-2 text-xs text-rose-600">{errors.title}</p> : null}
@@ -574,7 +660,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
 
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <label className="text-sm font-semibold text-slate-800">Details</label>
+                  <label className="text-sm font-semibold text-slate-800">{intentCopy.detailsLabel}</label>
                   <span className="text-xs text-slate-400">{details.trim().length}/{DETAILS_MAX}</span>
                 </div>
                 <textarea
@@ -584,7 +670,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                     setDetails(event.target.value);
                     setErrors((current) => ({ ...current, details: undefined }));
                   }}
-                  placeholder="Add the important context, scope, or expectations."
+                  placeholder={intentCopy.detailsPlaceholder}
                   className={`${fieldClass(!!errors.details)} min-h-[112px] resize-y`}
                 />
                 {errors.details ? <p className="mt-2 text-xs text-rose-600">{errors.details}</p> : null}
@@ -593,8 +679,8 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="block text-sm font-semibold text-slate-800">Category</label>
-                    <span className="text-[11px] text-slate-500">Pick the closest fit or choose Other.</span>
+                    <label className="block text-sm font-semibold text-slate-800">{intentCopy.categoryLabel}</label>
+                    <span className="text-[11px] text-slate-500">{intentCopy.categoryHint}</span>
                   </div>
                   <select
                     value={category}
@@ -625,7 +711,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-800">Budget or price</label>
+                  <label className="mb-2 block text-sm font-semibold text-slate-800">{intentCopy.budgetLabel}</label>
                   <div className="relative">
                     <Wallet className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -639,7 +725,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                       className={`${fieldClass(!!errors.budget)} pl-11`}
                     />
                   </div>
-                  {errors.budget ? <p className="mt-2 text-xs text-rose-600">{errors.budget}</p> : <p className="mt-2 text-xs text-slate-500">Leave blank if you want replies with quotes.</p>}
+                  {errors.budget ? <p className="mt-2 text-xs text-rose-600">{errors.budget}</p> : <p className="mt-2 text-xs text-slate-500">{intentCopy.budgetHint}</p>}
                 </div>
               </div>
             </div>
@@ -647,17 +733,17 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             <div className="grid gap-4 rounded-[1.8rem] border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Reach and timing</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Step 2</p>
                   <h3 className="mt-1 text-base font-semibold text-slate-900">Where and when should this go live?</h3>
                 </div>
                 <p className="max-w-md text-xs leading-5 text-slate-500">
-                  Keep the radius tight when the request is local and urgent. Switch to schedule only when you already know the slot.
+                  {intentCopy.timingHint}
                 </p>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_220px]">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-800">Location</label>
+                  <label className="mb-2 block text-sm font-semibold text-slate-800">{intentCopy.locationLabel}</label>
                   <div className="relative">
                     <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -670,7 +756,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                       className={`${fieldClass(!!errors.location)} pl-11`}
                     />
                   </div>
-                  {errors.location ? <p className="mt-2 text-xs text-rose-600">{errors.location}</p> : <p className="mt-2 text-xs text-slate-500">We use your saved coordinates when available.</p>}
+                  {errors.location ? <p className="mt-2 text-xs text-rose-600">{errors.location}</p> : <p className="mt-2 text-xs text-slate-500">{intentCopy.locationHint}</p>}
                 </div>
 
                 <div>
@@ -687,7 +773,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-800">Timing</label>
+                  <label className="mb-2 block text-sm font-semibold text-slate-800">{intentCopy.timingLabel}</label>
                   <div className="relative">
                     <Clock3 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <select
@@ -746,7 +832,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
-                    Choose the response window that best matches how quickly you need attention.
+                    Choose the response window that best reflects real availability for this {type === "need" ? "request" : "listing"}.
                   </div>
                 )}
               </div>
@@ -762,8 +848,9 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Media</p>
-                  <p className="mt-1 text-sm text-slate-500">Only add media that helps someone understand or price the work faster.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Step 3</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{intentCopy.mediaTitle}</p>
+                  <p className="mt-1 text-sm text-slate-500">{intentCopy.mediaCopy}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]">
@@ -819,7 +906,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             ) : null}
 
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Uses the current ServiQ auth, storage, and publish routes.</p>
+              <p className="text-xs text-slate-500">Review the details once, then publish. The marketplace feed refreshes automatically after success.</p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={closeModal} disabled={publishing} className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60">
                   Cancel
