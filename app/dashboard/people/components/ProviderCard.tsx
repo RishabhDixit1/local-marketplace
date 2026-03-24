@@ -139,22 +139,29 @@ const ProviderCard = (props: Props) => {
       onMouseEnter={() => onActivate(provider.id)}
       onFocus={() => onActivate(provider.id)}
       aria-current={isActive}
-      className={`flex h-[25rem] cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition ${
+      className={`flex min-h-[21.5rem] cursor-pointer flex-col overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition sm:min-h-[25rem] sm:rounded-[1.7rem] ${
         isActive
           ? "border-[var(--brand-500)]/40 shadow-[0_30px_90px_-60px_rgba(14,165,164,0.36)]"
           : "border-slate-200 hover:border-[var(--brand-500)]/24 hover:shadow-[0_28px_80px_-60px_rgba(15,23,42,0.34)]"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2`}
     >
-      <div className="relative h-28 overflow-hidden bg-[linear-gradient(135deg,#0f6da1_0%,#0ea5a4_48%,#0f172a_100%)]">
+      <div className="relative h-24 overflow-hidden bg-[linear-gradient(135deg,#0f6da1_0%,#0ea5a4_48%,#0f172a_100%)] sm:h-28">
         {coverImage ? (
-          <Image src={coverImage} alt={`${provider.name} cover`} fill unoptimized className="object-cover" sizes="(max-width: 1280px) 50vw, 25vw" />
+          <Image
+            src={coverImage}
+            alt={`${provider.name} cover`}
+            fill
+            unoptimized
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+          />
         ) : (
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.28),transparent_20%),radial-gradient(circle_at_80%_18%,rgba(255,255,255,0.2),transparent_16%)]" />
         )}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col px-5 pb-5 pt-0">
-        <div className="-mt-12 flex justify-center">
+      <div className="relative flex min-h-0 flex-1 flex-col px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+        <div className="-mt-10 flex justify-center sm:-mt-12">
           <div className="relative">
             <Image
               src={provider.avatar}
@@ -162,31 +169,31 @@ const ProviderCard = (props: Props) => {
               width={108}
               height={108}
               unoptimized
-              className="h-[108px] w-[108px] rounded-full border-4 border-white object-cover shadow-[0_18px_30px_-24px_rgba(15,23,42,0.45)]"
+              className="h-[88px] w-[88px] rounded-full border-4 border-white object-cover shadow-[0_18px_30px_-24px_rgba(15,23,42,0.45)] sm:h-[108px] sm:w-[108px]"
             />
             <span
-              className={`absolute right-2 top-2 h-4 w-4 rounded-full border-[3px] border-white ${presenceClasses[presenceTone]}`}
+              className={`absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-full border-[3px] border-white sm:right-2 sm:top-2 sm:h-4 sm:w-4 ${presenceClasses[presenceTone]}`}
               aria-label={`presence-${presenceTone}`}
             />
           </div>
         </div>
 
-        <div className="mt-4 min-w-0 text-center">
+        <div className="mt-3 min-w-0 text-center sm:mt-4">
           <div className="flex items-center justify-center gap-2">
-            <h3 className="truncate text-[1.05rem] font-semibold leading-tight text-slate-950 sm:text-[1.15rem]">
+            <h3 className="truncate text-base font-semibold leading-tight text-slate-950 sm:text-[1.15rem]">
               {provider.name}
             </h3>
             {provider.verified ? <BadgeCheck className="h-4.5 w-4.5 shrink-0 text-slate-600" /> : null}
           </div>
 
           {subheading ? (
-            <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-500">{subheading}</p>
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-slate-500 sm:mt-2 sm:text-sm">{subheading}</p>
           ) : null}
 
-          <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-600">{description}</p>
+          <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-slate-600 sm:line-clamp-2 sm:text-sm">{description}</p>
         </div>
 
-        <div className="mt-auto pt-5">
+        <div className="mt-auto pt-4 sm:pt-5">
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
         </div>
       </div>

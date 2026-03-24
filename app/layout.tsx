@@ -1,6 +1,6 @@
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { appName, appTagline } from "@/lib/branding";
 
@@ -22,6 +22,12 @@ export const metadata: Metadata = {
     title: appName,
     description: appTagline,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
