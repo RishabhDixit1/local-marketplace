@@ -51,20 +51,12 @@ const createNextConfig = (phase: string): NextConfig => ({
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
-  swcMinify: true,
   experimental: {
     optimizePackageImports: [
       "lucide-react",
       "@supabase/supabase-js",
       "framer-motion",
     ],
-    isrMemoryCacheSize: 50 * 1024 * 1024,
-  },
-  webpack: (config: any, { isServer }: { isServer: boolean }) => {
-    if (isServer) {
-      config.optimization.concatenateModules = true;
-    }
-    return config;
   },
   staticPageGenerationTimeout: 120,
 });

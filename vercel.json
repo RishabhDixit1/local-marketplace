@@ -2,16 +2,6 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "functions": {
-    "api/**": {
-      "maxDuration": 30,
-      "memory": 1024
-    },
-    "app/**": {
-      "maxDuration": 10,
-      "memory": 512
-    }
-  },
   "headers": [
     {
       "source": "/api/auth/callback",
