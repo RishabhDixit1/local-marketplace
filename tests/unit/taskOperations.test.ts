@@ -54,7 +54,7 @@ describe("task operations helpers", () => {
     expect(task.title).toBe("Deep Cleaning");
     expect(task.status).toBe("in-progress");
     expect(task.timeline).toBe("In progress");
-    expect(task.postedBy.name).toBe("You");
+    expect(task.postedBy.name).toBe("Customer One");
     expect(task.assignedTo?.name).toBe("Spark Clean Team");
     expect(task.location).toBe("HSR Layout");
     expect(task.tags).toEqual(["Cleaning", "Service", "In Progress"]);
