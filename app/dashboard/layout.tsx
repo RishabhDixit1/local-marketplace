@@ -35,7 +35,7 @@ import {
 
 const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Home },
-  { name: "Posts", path: "/dashboard", icon: Newspaper },
+  { name: "Explore", path: "/dashboard", icon: Newspaper },
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
@@ -295,9 +295,9 @@ function DashboardShell({
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 {desktopNavCollapsed ? (
-                  <ServiQLogo compact markOnly />
+                  <ServiQLogo compact markOnly href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
                 ) : (
-                  <ServiQLogo className="max-w-[220px]" />
+                  <ServiQLogo className="max-w-[220px]" href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
                 )}
               </div>
               <button
@@ -403,7 +403,12 @@ function DashboardShell({
                   <Menu className="w-5 h-5" />
                 </button>
                 <div className="lg:hidden min-w-0">
-                  <ServiQLogo compact className="max-w-[180px]" />
+                  <ServiQLogo
+                    compact
+                    className="max-w-[180px]"
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
                 </div>
               </div>
 
@@ -482,7 +487,13 @@ function DashboardShell({
         >
           <div className="flex items-center justify-between border-b border-slate-200 pb-4">
             <div className="min-w-0">
-              <ServiQLogo compact className="max-w-[190px]" />
+              <ServiQLogo
+                compact
+                className="max-w-[190px]"
+                href="/dashboard/welcome"
+                ariaLabel="Open Welcome dashboard"
+                onClick={() => setMenuOpen(false)}
+              />
             </div>
             <button
               className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
