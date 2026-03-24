@@ -14,6 +14,18 @@ const buildSnapshot = (overrides: Partial<Extract<CommunityFeedResponse, { ok: t
       longitude: 77.5946,
       role: "customer",
     },
+    feedItems: [],
+    feedStats: {
+      total: 0,
+      urgent: 0,
+      demand: 0,
+      service: 0,
+      product: 0,
+    },
+    mapCenter: {
+      lat: 12.9716,
+      lng: 77.5946,
+    },
     services: [],
     products: [],
     posts: [],

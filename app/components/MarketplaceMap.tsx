@@ -108,19 +108,19 @@ export default function MarketplaceMap({ items, center, activeItemId = null, onS
   const defaultIcon = useMemo(() => createPulseIcon(false), []);
 
   return (
-    <div className="relative isolate z-0 h-full min-h-[14rem] w-full overflow-hidden rounded-2xl border border-slate-200/80">
+    <div className="relative isolate z-0 h-full min-h-[12rem] w-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-900/70">
       <MapContainer
         className="h-full w-full"
         center={[center?.lat || 12.9716, center?.lng || 77.5946]}
         zoom={12}
         scrollWheelZoom={false}
-        style={{ height: "100%", width: "100%", zIndex: 0, background: "#eef2ff" }}
+        style={{ height: "100%", width: "100%", zIndex: 0, background: "#dbeafe" }}
       >
         <MapResizeHandler />
         <MapViewportController items={items} center={center} />
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         />
 
         {items.map((item) => (
@@ -174,7 +174,9 @@ export default function MarketplaceMap({ items, center, activeItemId = null, onS
           </Marker>
         ))}
       </MapContainer>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-slate-900/6 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-slate-950/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/35 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,164,0.16),_transparent_36%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.16),_transparent_30%)]" />
     </div>
   );
 }

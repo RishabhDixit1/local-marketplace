@@ -1,3 +1,9 @@
+import type {
+  MarketplaceFeedItem,
+  MarketplaceFeedStats,
+  MarketplaceMapCenter,
+} from "@/lib/marketplaceFeed";
+
 export type CommunityProfileRecord = {
   id: string;
   name?: string | null;
@@ -114,6 +120,9 @@ export type CommunityFeedResponse =
       currentUserId: string;
       acceptedConnectionIds: string[];
       currentUserProfile: CommunityProfileRecord | null;
+      feedItems: MarketplaceFeedItem[];
+      feedStats: MarketplaceFeedStats;
+      mapCenter: MarketplaceMapCenter;
       services: CommunityServiceRecord[];
       products: CommunityProductRecord[];
       posts: CommunityPostRecord[];
