@@ -81,6 +81,7 @@ import {
   type TaskStatus,
 } from "@/lib/taskOperations";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { inferProfileNameFromUser } from "@/lib/profile/utils";
 
 type TaskTab = "all" | "posted" | "accepted";
 type RealtimeState = "connecting" | "live" | "offline";
@@ -216,14 +217,20 @@ const getToneClassNames = (tone: TaskEventTone) => {
   };
 };
 
-const getCounterpartyLabel = (task: Task) =>
-  task.type === "posted" ? task.assignedTo?.name || "Awaiting provider" : task.postedBy.name || "Requester";
-
-const getCounterpartyAvatar = (task: Task) =>
-  task.type === "posted" ? task.assignedTo?.image || fallbackAvatar : task.postedBy.image || fallbackAvatar;
-
-const getCounterpartyMetaLabel = (task: Task) =>
-  task.type === "posted" ? (task.assignedTo ? "Provider" : "Status") : "Requester";
+const getTaskCreatorName = (task: Task) => task.postedBy.name || "Requester";
+const getTaskCreatorAvatar = (task: Task) => task.postedBy.image || fallbackAvatar;
+const getTaskCreatorSummary = (task: Task) => (task.type === "posted" ? "Created by you" : "Accepted by you");
+const isTaskPersonPlaceholder = (value: string | null | undefined) =>
+  !value ||
+  ["you", "provider", "requester", "customer", "user", "member", "serviq member", "local member"].includes(
+    value.trim().toLowerCase()
+  );
+const getTaskParticipantCopy = (task: Task) =>
+  task.type === "posted"
+    ? task.assignedTo?.name && !isTaskPersonPlaceholder(task.assignedTo.name)
+      ? `Assigned provider: ${task.assignedTo.name}`
+      : "Assigned provider pending"
+    : `Assigned to you`;
 
 const realtimeStateMeta: Record<
   RealtimeState,
@@ -249,6 +256,8 @@ const realtimeStateMeta: Record<
 const isMissingSupabaseRelation = (message: string) =>
   /does not exist|schema cache|could not find the table/i.test(message);
 const isRecursivePolicyError = (message: string) => /infinite recursion detected in policy/i.test(message);
+const isMissingColumnError = (message: string, column: string) =>
+  new RegExp(`column\\s+[^\\s]+\\.${column}\\s+does not exist`, "i").test(message);
 
 const isSupportOpen = (status: string) => ["pending", "sent"].includes(status);
 
@@ -271,6 +280,8 @@ const mapHelpRequestToTask = (params: {
   const { request, currentUserId, profileMap } = params;
   const requesterProfile = request.requester_id ? profileMap.get(request.requester_id) : null;
   const providerProfile = request.accepted_provider_id ? profileMap.get(request.accepted_provider_id) : null;
+  const currentUserProfile = profileMap.get(currentUserId);
+  const currentUserName = getPreferredProfileName(currentUserProfile, "You");
   const isPostedByMe = request.requester_id === currentUserId;
   const counterpartyId = isPostedByMe ? request.accepted_provider_id : request.requester_id;
 
@@ -289,7 +300,7 @@ const mapHelpRequestToTask = (params: {
     location: request.location_label?.trim() || requesterProfile?.location || providerProfile?.location || "Nearby",
     postedBy: {
       id: request.requester_id || "unknown-requester",
-      name: isPostedByMe ? "You" : getPreferredProfileName(requesterProfile, "Requester"),
+      name: isPostedByMe ? currentUserName : getPreferredProfileName(requesterProfile, "Requester"),
       image: isPostedByMe
         ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
         : buildTaskAvatar(requesterProfile, "Requester", request.requester_id || request.id),
@@ -297,7 +308,7 @@ const mapHelpRequestToTask = (params: {
     assignedTo: request.accepted_provider_id
       ? {
           id: request.accepted_provider_id,
-          name: !isPostedByMe ? "You" : getPreferredProfileName(providerProfile, "Provider"),
+          name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Provider"),
           image: !isPostedByMe
             ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
             : buildTaskAvatar(providerProfile, "Provider", request.accepted_provider_id),
@@ -336,6 +347,26 @@ const mapSupportRequest = (row: SupportRequestRow): SupportRequest => ({
   createdAtRaw: row.created_at,
   updatedAtRaw: row.updated_at,
 });
+
+const loadTaskProfiles = async (profileIds: string[]) => {
+  if (!profileIds.length) {
+    return { data: [] as ProfileRow[], error: null };
+  }
+
+  const nextSchemaResult = await supabase
+    .from("profiles")
+    .select("id,full_name,display_name,name,metadata,avatar_url,location")
+    .in("id", profileIds);
+
+  if (!nextSchemaResult.error || !isMissingColumnError(nextSchemaResult.error.message || "", "display_name")) {
+    return nextSchemaResult;
+  }
+
+  return supabase
+    .from("profiles")
+    .select("id,full_name,name,metadata,avatar_url,location")
+    .in("id", profileIds);
+};
 
 const getCanonicalTaskStatus = (task: OperationalTask) => {
   if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "open") {
@@ -510,9 +541,7 @@ export default function TasksPage() {
       );
 
       const [profilesRes, servicesRes, productsRes, postsRes, eventsRes, supportRes] = await Promise.all([
-        profileIds.length
-          ? supabase.from("profiles").select("id,full_name,display_name,name,avatar_url,location").in("id", profileIds)
-          : Promise.resolve({ data: [] as ProfileRow[], error: null }),
+        loadTaskProfiles(profileIds),
         serviceIds.length
           ? supabase.from("service_listings").select("id,title,description,category").in("id", serviceIds)
           : Promise.resolve({ data: [] as ServiceRow[], error: null }),
@@ -538,7 +567,32 @@ export default function TasksPage() {
           .limit(80),
       ]);
 
+      if (profilesRes.error) {
+        setTasks([]);
+        setTaskEvents([]);
+        setRealtimeState("offline");
+        setLoading(false);
+        setErrorMessage(`Could not load task profiles: ${profilesRes.error.message}`);
+        return;
+      }
+
       const profileMap = new Map<string, ProfileRow>(((profilesRes.data as ProfileRow[] | null) || []).map((row) => [row.id, row]));
+      const currentProfile = profileMap.get(user.id);
+      const inferredCurrentUserName = inferProfileNameFromUser(user);
+      const resolvedCurrentUserName = getPreferredProfileName(currentProfile, "");
+
+      if (inferredCurrentUserName && !resolvedCurrentUserName) {
+        profileMap.set(user.id, {
+          id: user.id,
+          full_name: inferredCurrentUserName,
+          display_name: inferredCurrentUserName,
+          name: inferredCurrentUserName,
+          metadata: currentProfile?.metadata || null,
+          avatar_url: currentProfile?.avatar_url || null,
+          location: currentProfile?.location || null,
+        });
+      }
+
       const serviceMap = new Map<string, ServiceRow>(((servicesRes.data as ServiceRow[] | null) || []).map((row) => [row.id, row]));
       const productMap = new Map<string, ProductRow>(((productsRes.data as ProductRow[] | null) || []).map((row) => [row.id, row]));
       const postMap = new Map<string, PostRow>(((postsRes.data as PostRow[] | null) || []).map((row) => [row.id, row]));
@@ -1523,7 +1577,7 @@ export default function TasksPage() {
   };
 
   const actionButtonClassName =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full px-3.5 py-2 text-center text-[13px] leading-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60";
   const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
@@ -1750,8 +1804,6 @@ export default function TasksPage() {
     const openSupport = supportEntries.find((request) => isSupportOpen(request.status));
     const progress = statusProgressMap[task.status];
     const nextAction = getPremiumTaskNextAction(task);
-    const counterpartyLabel = getCounterpartyLabel(task);
-    const counterpartyAvatar = getCounterpartyAvatar(task);
     const isExpanded = expandedTaskId === task.orderId;
     const supportAvailability = getSupportAvailability(task);
     const supportSummaryClassName = openSupport
@@ -1764,7 +1816,10 @@ export default function TasksPage() {
     const cardToneClassName = options?.history
       ? "border-slate-200/90 bg-white"
       : "border-slate-200 bg-white shadow-[0_22px_60px_-42px_rgba(15,23,42,0.3)]";
-    const ownershipLabel = task.type === "posted" ? "Posted by you" : "Accepted by you";
+    const creatorName = getTaskCreatorName(task);
+    const creatorAvatar = getTaskCreatorAvatar(task);
+    const creatorSummary = getTaskCreatorSummary(task);
+    const participantCopy = getTaskParticipantCopy(task);
     const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
     const supportHeadline = openSupport
       ? formatSupportRequestStatus(openSupport.status)
@@ -1797,7 +1852,7 @@ export default function TasksPage() {
       { icon: Clock, value: task.timeline || "Open" },
       { icon: Calendar, value: latestUpdateAt },
     ] as const;
-    const visibleFlowLabels = flowLabels.slice(0, 3);
+    const visibleFlowLabels = flowLabels.slice(0, 2);
 
     return (
       <article
@@ -1805,11 +1860,11 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className={`group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.4rem] border p-4 transition hover:border-slate-300 hover:shadow-[0_20px_45px_-38px_rgba(15,23,42,0.28)] ${cardToneClassName}`}
+        className={`group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.25rem] border p-3 transition hover:border-slate-300 hover:shadow-[0_20px_45px_-38px_rgba(15,23,42,0.28)] sm:p-4 ${cardToneClassName}`}
       >
         <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
 
-        <div className="flex h-full flex-col gap-3">
+        <div className="flex h-full flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
@@ -1840,38 +1895,46 @@ export default function TasksPage() {
             </span>
           </div>
 
-          <div className="grid min-w-0 gap-3 lg:grid-cols-[64px_minmax(0,1fr)_220px] lg:items-start">
-            <div className="flex items-start justify-start lg:justify-center">
-              <Image
-                src={counterpartyAvatar}
-                alt={counterpartyLabel}
-                width={56}
-                height={56}
-                unoptimized
-                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
-              />
-            </div>
-
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
             <div className="min-w-0 space-y-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <span className="font-semibold uppercase tracking-[0.16em] text-slate-500">{getCounterpartyMetaLabel(task)}</span>
-                <span>{ownershipLabel}</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">#{task.orderId.slice(0, 8)}</span>
+              <div className="flex min-w-0 items-start gap-3">
+                <Image
+                  src={creatorAvatar}
+                  alt={creatorName}
+                  width={52}
+                  height={52}
+                  unoptimized
+                  className="h-12 w-12 shrink-0 rounded-2xl border border-slate-200 object-cover sm:h-14 sm:w-14"
+                />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <span className="font-semibold uppercase tracking-[0.16em] text-slate-500">Creator</span>
+                    <span>{creatorSummary}</span>
+                  </div>
+                  <p className="mt-1 truncate text-base font-semibold text-slate-900">{creatorName}</p>
+                  <p className="mt-1 truncate text-sm text-slate-500">{participantCopy}</p>
+                  <h3 className="mt-1 break-words text-[1.05rem] font-semibold leading-tight text-slate-950 sm:text-[1.14rem]">
+                    {task.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-2 break-words text-sm leading-6 text-slate-600">{task.description}</p>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-900">{counterpartyLabel}</p>
-                <h3 className="mt-1 break-words text-[1.12rem] font-semibold leading-tight text-slate-950 sm:text-[1.2rem]">{task.title}</h3>
-                <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">{task.description}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
+              <div className="flex flex-wrap gap-2">
                 {summaryItems.map((item, index) => (
-                  <span key={`${task.orderId}-${index}`} className="inline-flex min-w-0 items-center gap-1.5">
+                  <span
+                    key={`${task.orderId}-${index}`}
+                    className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
+                  >
                     <item.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                     <span className="truncate">{item.value}</span>
                   </span>
                 ))}
+                <span className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${nextActionTone.card}`}>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{nextAction.title}</span>
+                </span>
               </div>
 
               {latestEvent ? (
@@ -1907,30 +1970,19 @@ export default function TasksPage() {
               ) : null}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              <div className={`rounded-[1rem] border px-3 py-2.5 ${nextActionTone.card}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                    Next
-                  </span>
-                  <span className="text-[11px] font-semibold text-slate-500">{progress}%</span>
-                </div>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{nextAction.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-600">{nextAction.helper}</p>
-              </div>
-
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
               <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     <Activity className="h-3.5 w-3.5 shrink-0" />
                     Progress
                   </span>
-                  <span className={`text-xs font-semibold ${getStatusTextClass(task.status)}`}>{latestUpdateAt}</span>
+                  <span className={`text-xs font-semibold ${getStatusTextClass(task.status)}`}>{progress}%</span>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
                   <div className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`} style={{ width: `${progress}%` }} />
                 </div>
+                <p className="mt-2 text-xs text-slate-500">Updated {latestUpdateAt}</p>
               </div>
 
               <div className={`rounded-[1rem] border px-3 py-2.5 ${supportSummaryClassName}`}>

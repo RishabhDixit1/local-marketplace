@@ -1,7 +1,7 @@
 import { getOrderStatusLabel, normalizeOrderStatus, toTaskWorkflowStatus } from "./orderWorkflow";
 import { createAvatarFallback } from "./avatarFallback";
 import { resolveProfileAvatarUrl } from "./mediaUrl";
-import { toDisplayText as sanitizeDisplayText } from "./contentQuality";
+import { looksLikePlaceholderText, toDisplayText as sanitizeDisplayText } from "./contentQuality";
 import { readMarketplaceComposerMetadata } from "./marketplaceMetadata";
 
 export type TaskType = "posted" | "accepted";
@@ -29,6 +29,7 @@ export type ProfileRow = {
   full_name?: string | null;
   display_name?: string | null;
   name: string | null;
+  metadata?: Record<string, unknown> | null;
   avatar_url: string | null;
   location: string | null;
 };
@@ -116,8 +117,50 @@ export const fallbackAvatar = createAvatarFallback({ label: "ServiQ member", see
 
 export const normalizeTaskStatus = (status: string | null | undefined): TaskStatus => toTaskWorkflowStatus(status);
 
+const GENERIC_PROFILE_LABELS = new Set([
+  "you",
+  "provider",
+  "requester",
+  "customer",
+  "user",
+  "member",
+  "serviq member",
+  "local member",
+  "accepted provider",
+  "provider pending",
+  "awaiting provider",
+]);
+
+const sanitizeProfileNameCandidate = (value: string | null | undefined) => {
+  const normalized = value?.trim() || "";
+  if (!normalized) return "";
+  if (looksLikePlaceholderText(normalized)) return "";
+  if (GENERIC_PROFILE_LABELS.has(normalized.toLowerCase())) return "";
+  return normalized;
+};
+
+const readProfileMetadataName = (profile: ProfileRow | null | undefined) => {
+  const metadata = profile?.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
+
+  for (const key of ["full_name", "display_name", "preferred_name", "name", "user_name"]) {
+    const value = metadata[key];
+    const normalized = typeof value === "string" ? sanitizeProfileNameCandidate(value) : "";
+    if (normalized) return normalized;
+  }
+
+  return "";
+};
+
 export const getPreferredProfileName = (profile: ProfileRow | null | undefined, fallback: string) =>
-  sanitizeDisplayText(profile?.full_name || profile?.display_name || profile?.name || fallback, fallback);
+  sanitizeDisplayText(
+    sanitizeProfileNameCandidate(profile?.full_name) ||
+      sanitizeProfileNameCandidate(profile?.display_name) ||
+      readProfileMetadataName(profile) ||
+      sanitizeProfileNameCandidate(profile?.name) ||
+      fallback,
+    fallback
+  );
 
 export const timelineFromStatus = (status: string | null | undefined) => {
   const normalized = normalizeTaskStatus(status);
@@ -262,6 +305,8 @@ export const mapOrderToTask = (params: {
   const counterpartyProfile = counterpartyId ? profileMap.get(counterpartyId) : null;
   const consumerProfile = order.consumer_id ? profileMap.get(order.consumer_id) : null;
   const providerProfile = order.provider_id ? profileMap.get(order.provider_id) : null;
+  const currentUserProfile = profileMap.get(currentUserId);
+  const currentUserName = getPreferredProfileName(currentUserProfile, "You");
   const currentUserAvatar = resolveProfileAvatarUrl(profileMap.get(currentUserId)?.avatar_url);
   const metadata = order.metadata && typeof order.metadata === "object" ? order.metadata : null;
 
@@ -320,12 +365,12 @@ export const mapOrderToTask = (params: {
     location: pickString(metadata?.location_label) || counterpartyProfile?.location || providerProfile?.location || consumerProfile?.location || "Nearby",
     postedBy: {
       id: order.consumer_id || "unknown-consumer",
-      name: isPostedByMe ? "You" : getPreferredProfileName(consumerProfile, "Customer"),
+      name: isPostedByMe ? currentUserName : getPreferredProfileName(consumerProfile, "Customer"),
       image: (isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(consumerProfile?.avatar_url)) || fallbackAvatar,
     },
     assignedTo: {
       id: order.provider_id || "unknown-provider",
-      name: !isPostedByMe ? "You" : getPreferredProfileName(providerProfile, "Provider"),
+      name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Provider"),
       image: (!isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(providerProfile?.avatar_url)) || fallbackAvatar,
     },
     tags: [

@@ -16,7 +16,10 @@ import {
 type FlexibleProfileShape = {
   id?: string | null;
   full_name?: string | null;
+  display_name?: string | null;
   name?: string | null;
+  preferred_name?: string | null;
+  user_name?: string | null;
   location?: string | null;
   role?: string | null;
   bio?: string | null;
@@ -31,6 +34,7 @@ type FlexibleProfileShape = {
   profile_completion_percent?: number | null;
   latitude?: number | null;
   longitude?: number | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 const providerRoles = new Set(["provider", "service_provider", "seller", "business"]);
@@ -38,6 +42,12 @@ const availabilityValues = new Set<ProfileAvailability>(["available", "busy", "o
 const profileIdPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const trim = (value: string | null | undefined) => value?.trim() ?? "";
+const readProfileMetadataName = (profile: FlexibleProfileShape | null | undefined, key: string) => {
+  const metadata = profile?.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
+  const value = metadata[key];
+  return typeof value === "string" ? trim(value) : "";
+};
 
 export const normalizeStoredProfileRole = (value: string | null | undefined): StoredProfileRole => {
   const normalized = trim(value).toLowerCase();
@@ -55,7 +65,17 @@ export const normalizeAvailability = (value: string | null | undefined): Profile
 };
 
 export const getProfileDisplayName = (profile: FlexibleProfileShape | null | undefined) =>
-  trim(profile?.full_name) || trim(profile?.name) || "";
+  trim(profile?.full_name) ||
+  trim(profile?.display_name) ||
+  trim(profile?.name) ||
+  trim(profile?.preferred_name) ||
+  trim(profile?.user_name) ||
+  readProfileMetadataName(profile, "full_name") ||
+  readProfileMetadataName(profile, "display_name") ||
+  readProfileMetadataName(profile, "preferred_name") ||
+  readProfileMetadataName(profile, "name") ||
+  readProfileMetadataName(profile, "user_name") ||
+  "";
 
 export const toNullableString = (value: string | null | undefined) => {
   const normalized = trim(value);

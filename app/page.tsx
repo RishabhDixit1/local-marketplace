@@ -276,7 +276,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[var(--surface-app)] px-4 py-5 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-6xl startup-fade">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <ServiQLogo compact />
+          <ServiQLogo compact href="/" ariaLabel="Open homepage" />
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
             Human-centered service network
           </span>
@@ -291,6 +291,8 @@ export default function LoginPage() {
 
               <div className="relative">
                 <ServiQLogo
+                  href="/"
+                  ariaLabel="Open homepage"
                   showTagline
                   wordmarkClassName="text-white"
                   taglineClassName="text-white/70"
