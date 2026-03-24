@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import { isAbortLikeError, isFailedFetchError } from "@/lib/runtimeErrors";
 import {
   getNotificationKind,
@@ -35,6 +36,7 @@ type DecoratedNotification = NotificationRow & {
 };
 
 const CLOCK_REFRESH_MS = 30000;
+const NOTIFICATION_REFRESH_MS = 60000;
 
 const kindStyles: Record<
   NotificationKind,
@@ -88,13 +90,17 @@ const isMissingNotificationsTable = (message: string) =>
     message
   );
 
-export default function NotificationCenter() {
+type NotificationCenterContentProps = {
+  enabled?: boolean;
+};
+
+export default function NotificationCenter({ enabled = true }: NotificationCenterContentProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
   const [useMobileSheet, setUseMobileSheet] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [userId, setUserId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -174,6 +180,8 @@ export default function NotificationCenter() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
+
     const bootstrap = async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -220,17 +228,18 @@ export default function NotificationCenter() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!userId || demoMode) return;
+    if (!enabled || !userId || demoMode) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadNotifications();
-  }, [demoMode, loadNotifications, userId]);
+    return scheduleClientIdleTask(() => {
+      void loadNotifications(true);
+    }, 2200);
+  }, [demoMode, enabled, loadNotifications, userId]);
 
   useEffect(() => {
-    if (!userId || demoMode) return;
+    if (!enabled || !userId || demoMode) return;
 
     const channel = supabase
       .channel(`notifications-live-${userId}`)
@@ -251,7 +260,20 @@ export default function NotificationCenter() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [demoMode, loadNotifications, userId]);
+  }, [demoMode, enabled, loadNotifications, userId]);
+
+  useEffect(() => {
+    if (!enabled || !userId || demoMode) return;
+
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void loadNotifications(true);
+    }, NOTIFICATION_REFRESH_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [demoMode, enabled, loadNotifications, userId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -436,9 +458,18 @@ export default function NotificationCenter() {
 
   const openNotification = async (item: DecoratedNotification) => {
     const action = resolveNotificationAction(item);
-    await markAsRead(item.id);
+    void markAsRead(item.id);
     setIsOpen(false);
     router.push(action.href);
+  };
+
+  const togglePanel = () => {
+    if (!enabled) return;
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (nextOpen && userId) {
+      void loadNotifications(notifications.length > 0);
+    }
   };
 
   const panelContent = (
@@ -610,8 +641,9 @@ export default function NotificationCenter() {
     <div className="relative z-[1400]">
       <button
         ref={triggerRef}
-        onClick={() => setIsOpen((open) => !open)}
-        className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors"
+        onClick={togglePanel}
+        disabled={!enabled}
+        className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors disabled:cursor-wait disabled:opacity-70"
         aria-label="Open notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"

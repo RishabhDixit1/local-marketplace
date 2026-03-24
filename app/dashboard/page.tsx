@@ -735,7 +735,12 @@ export default function MarketplacePage() {
   const lastSoftRefreshAtRef = useRef(0);
   const [focusItemId] = useState(() => {
     if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("focus")?.trim() || "";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("focus")?.trim() || params.get("help_request")?.trim() || "";
+  });
+  const [openComposerOnLoad] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("compose") === "1";
   });
 
   const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
@@ -792,7 +797,7 @@ export default function MarketplacePage() {
 
       const params = new URLSearchParams(window.location.search);
       const queryParam = params.get("q") || "";
-      const focusParam = params.get("focus") || "";
+      const focusParam = params.get("focus") || params.get("help_request") || "";
       if (queryParam.trim()) {
         setFilters((current) => ({ ...current, query: queryParam.trim() }));
       }
@@ -803,6 +808,18 @@ export default function MarketplacePage() {
       // Local storage hydration is best effort.
     }
   }, []);
+
+  useEffect(() => {
+    if (!openComposerOnLoad) return;
+
+    setOpenPostModal(true);
+
+    const params = new URLSearchParams(window.location.search);
+    params.delete("compose");
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [openComposerOnLoad]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -94,12 +94,12 @@ export default function ConnectionsPanel({
 
   return (
     <section
-      className={`rounded-[2rem] border border-white/70 bg-white/92 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5 ${className || ""}`}
+      className={`rounded-[1.45rem] border border-white/70 bg-white/92 p-3 shadow-[0_18px_48px_-40px_rgba(15,23,42,0.38)] backdrop-blur sm:rounded-[1.85rem] sm:p-4 ${className || ""}`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Human Network</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">Connections</h2>
+      <div className="flex flex-wrap items-start justify-between gap-2.5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)] sm:text-[11px]">Human Network</p>
+          <h2 className="mt-1 text-base font-semibold text-slate-950 sm:text-lg">Connections</h2>
         </div>
         {incoming.length > 0 && (
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
@@ -109,13 +109,16 @@ export default function ConnectionsPanel({
         )}
       </div>
 
-      <p className="mt-2 text-sm text-slate-500">Accept requests, keep warm leads moving, and jump straight into chat.</p>
+      <p className="mt-1.5 text-[12px] leading-5 text-slate-500 sm:mt-2 sm:text-[13px] sm:leading-6">
+        Accept requests, keep warm leads moving, and jump straight into chat.
+      </p>
 
-      <div className="mt-4 rounded-[1.7rem] border border-amber-200/70 bg-amber-50/60 p-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">Incoming Requests</p>
-            <h3 className="mt-1 text-sm font-semibold text-slate-950">Requests waiting for your response</h3>
+      <div className="mt-3 grid gap-3 xl:items-start xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+      <div className="self-start rounded-[1.2rem] border border-amber-200/70 bg-amber-50/60 p-2.5 sm:rounded-[1.45rem] sm:p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700 sm:text-[11px]">Incoming Requests</p>
+            <h3 className="mt-1 text-[13px] font-semibold text-slate-950 sm:text-sm">Requests waiting for your response</h3>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-700">
             <span className={`h-2 w-2 rounded-full ${incoming.length > 0 ? "animate-pulse bg-amber-500" : "bg-slate-300"}`} />
@@ -124,18 +127,18 @@ export default function ConnectionsPanel({
         </div>
 
         {!incoming.length ? (
-          <div className="mt-3 rounded-[1.25rem] border border-dashed border-amber-200 bg-white/80 px-4 py-5 text-center">
-            <p className="text-sm font-semibold text-slate-700">No incoming requests right now</p>
-            <p className="mt-1 text-xs text-slate-500">New requests will appear here first so you can respond quickly.</p>
+          <div className="mt-2.5 rounded-[1rem] border border-dashed border-amber-200 bg-white/85 px-3 py-3 text-center sm:rounded-[1.1rem] sm:px-3.5 sm:py-3.5">
+            <p className="text-[12px] font-semibold text-slate-700 sm:text-[13px]">No incoming requests right now</p>
+            <p className="mt-1 text-[10px] leading-5 text-slate-500 sm:text-[11px]">New requests will appear here first so you can respond quickly.</p>
           </div>
         ) : (
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 space-y-2.5 sm:space-y-3">
             {incoming.map((entry) => {
               const preview = providerPreviewMap.get(entry.userId) || fallbackPreview(entry.userId);
               const isBusy = busyRequestId === entry.requestId;
 
               return (
-                <article key={entry.requestId} className="rounded-[1.5rem] border border-slate-200 bg-white p-3.5">
+                <article key={entry.requestId} className="rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:rounded-[1.2rem] sm:p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-start gap-2">
                       <span className="relative inline-flex">
@@ -159,7 +162,7 @@ export default function ConnectionsPanel({
                     </div>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => onAccept(entry.requestId)}
@@ -186,18 +189,18 @@ export default function ConnectionsPanel({
         )}
       </div>
 
-      <div className="mt-4 rounded-[1.7rem] border border-slate-200 bg-slate-50/70 p-3.5">
+      <div className="self-start rounded-[1.2rem] border border-slate-200 bg-slate-50/70 p-2.5 sm:rounded-[1.45rem] sm:p-3">
         <button
           type="button"
           onClick={() => setConnectionsExpanded((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 text-left"
+          className="flex w-full flex-wrap items-start justify-between gap-2.5 text-left"
           aria-expanded={connectionsExpanded}
         >
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Connections</p>
-            <h3 className="mt-1 text-sm font-semibold text-slate-950">Sent and connected requests</h3>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)] sm:text-[11px]">Connections</p>
+            <h3 className="mt-1 text-[13px] font-semibold text-slate-950 sm:text-sm">Sent and connected requests</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 self-center">
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
               <Clock3 className="h-3.5 w-3.5 text-slate-500" />
               {outgoing.length}
@@ -212,7 +215,7 @@ export default function ConnectionsPanel({
 
         {connectionsExpanded ? (
           <>
-            <div className="mt-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-white/80 p-1.5">
+            <div className="mt-3 grid grid-cols-2 gap-1 rounded-[1.1rem] border border-slate-200 bg-white/80 p-1.5 sm:rounded-2xl">
               {(Object.keys(tabMeta) as PanelTab[]).map((tab) => {
                 const TabIcon = tabMeta[tab].icon;
                 const count = tabRows[tab].length;
@@ -241,16 +244,16 @@ export default function ConnectionsPanel({
             </div>
 
             {!connectionCount ? (
-              <div className="mt-3 rounded-[1.25rem] border border-dashed border-slate-200 bg-white/80 px-4 py-5 text-center">
-                <p className="text-sm font-semibold text-slate-700">No sent or connected requests yet</p>
-                <p className="mt-1 text-xs text-slate-500">Once you start connecting, your sent and connected profiles will live here.</p>
+              <div className="mt-2.5 rounded-[1rem] border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-center sm:rounded-[1.1rem] sm:px-3.5 sm:py-3.5">
+                <p className="text-[12px] font-semibold text-slate-700 sm:text-[13px]">No sent or connected requests yet</p>
+                <p className="mt-1 text-[10px] leading-5 text-slate-500 sm:text-[11px]">Once you start connecting, your sent and connected profiles will live here.</p>
               </div>
             ) : !currentRows.length ? (
-              <div className="mt-3 rounded-[1.25rem] border border-slate-200 bg-white/80 px-4 py-5 text-center text-xs text-slate-500">
+              <div className="mt-2.5 rounded-[1rem] border border-slate-200 bg-white/80 px-3 py-3 text-center text-[10px] text-slate-500 sm:rounded-[1.1rem] sm:px-3.5 sm:py-3.5 sm:text-[11px]">
                 Nothing here right now.
               </div>
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 space-y-2.5 overflow-y-auto pr-1 sm:space-y-3 xl:max-h-[18rem]">
                 {currentRows.map((entry) => {
                   const preview = providerPreviewMap.get(entry.userId) || fallbackPreview(entry.userId);
                   const isBusy = busyRequestId === entry.requestId;
@@ -258,7 +261,7 @@ export default function ConnectionsPanel({
                   const isOutgoingTab = activeTab === "outgoing";
 
                   return (
-                    <article key={entry.requestId} className="rounded-[1.5rem] border border-slate-200 bg-white p-3.5">
+                    <article key={entry.requestId} className="rounded-[1rem] border border-slate-200 bg-white p-2.5 sm:rounded-[1.2rem] sm:p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 items-start gap-2">
                           <span className="relative inline-flex">
@@ -312,8 +315,9 @@ export default function ConnectionsPanel({
             )}
           </>
         ) : (
-          <p className="mt-3 text-xs text-slate-500">Tap to view your sent requests and connected profiles.</p>
+          <p className="mt-3 text-[11px] leading-5 text-slate-500 sm:text-xs">Tap to view your sent requests and connected profiles.</p>
         )}
+      </div>
       </div>
     </section>
   );

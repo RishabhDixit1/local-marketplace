@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import { supabase } from "@/lib/supabase";
 
 type ParticipantRow = {
@@ -131,9 +132,9 @@ export default function useUnreadChatCount(enabled = true) {
       return;
     }
 
-    const initialLoadTimer = window.setTimeout(() => {
+    const cancelIdleTask = scheduleClientIdleTask(() => {
       void loadUnreadCount();
-    }, 0);
+    }, 2200);
 
     const participantsChannel = supabase
       .channel(`dashboard-chat-unread-participants-${userId}`)
@@ -173,7 +174,7 @@ export default function useUnreadChatCount(enabled = true) {
       .subscribe();
 
     return () => {
-      window.clearTimeout(initialLoadTimer);
+      cancelIdleTask();
       void supabase.removeChannel(participantsChannel);
       void supabase.removeChannel(messagesChannel);
     };

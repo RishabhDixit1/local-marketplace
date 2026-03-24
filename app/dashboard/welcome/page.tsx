@@ -707,6 +707,25 @@ export default function WelcomePage() {
     router.push(targetPath);
   };
 
+  const handlePrimaryCardAction = async (card: EnrichedNearbyCard) => {
+    if (card.isDemo) {
+      router.push(buildFeedFocusPath(card));
+      return;
+    }
+
+    if (card.actionLabel === "Respond" || card.actionLabel === "Book") {
+      await handleMessageCard(card);
+      return;
+    }
+
+    if (card.actionLabel === "Connect") {
+      router.push(buildNetworkActionPath(card));
+      return;
+    }
+
+    router.push(buildFeedFocusPath(card));
+  };
+
   const handleShareCard = async (card: EnrichedNearbyCard) => {
     const focusPath = buildFeedFocusPath(card);
     const shareUrl = `${window.location.origin}${focusPath}`;
@@ -1176,12 +1195,13 @@ export default function WelcomePage() {
               ) : (
                 <>
                   {visibleCards.map((card, cardIndex) => {
-                    const focusPath = buildFeedFocusPath(card);
                     const networkPath = buildNetworkActionPath(card);
                     const isSaved = savedCardIds.includes(card.id);
                     const messageInFlight = messageCardId === card.id;
                     const saveInFlight = savingCardIds.includes(card.id);
                     const shareInFlight = sharingCardIds.includes(card.id);
+                    const primaryActionBusy =
+                      messageInFlight && (card.actionLabel === "Respond" || card.actionLabel === "Book");
 
                     return (
                       <article
@@ -1245,13 +1265,14 @@ export default function WelcomePage() {
                             <div className="mt-4 flex flex-wrap items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => router.push(focusPath)}
+                                onClick={() => void handlePrimaryCardAction(card)}
+                                disabled={primaryActionBusy}
                                 aria-label={`${card.actionLabel} post ${card.title}`}
                                 title={`${card.actionLabel} this post`}
                                 data-testid="feed-action-primary"
-                                className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-700)]"
+                                className="inline-flex items-center gap-1 rounded-md bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-65"
                               >
-                                {card.actionLabel}
+                                {primaryActionBusy ? "Opening..." : card.actionLabel}
                                 <ArrowRight size={12} />
                               </button>
                               <button
@@ -1402,7 +1423,7 @@ export default function WelcomePage() {
         onPublished={(result) => {
           setOpenPostModal(false);
           if (result?.helpRequestId) {
-            router.push(`/dashboard?help_request=${encodeURIComponent(result.helpRequestId)}`);
+            router.push(`/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`);
             return;
           }
           router.push("/dashboard");
