@@ -256,6 +256,8 @@ const realtimeStateMeta: Record<
 const isMissingSupabaseRelation = (message: string) =>
   /does not exist|schema cache|could not find the table/i.test(message);
 const isRecursivePolicyError = (message: string) => /infinite recursion detected in policy/i.test(message);
+const isMissingColumnError = (message: string, column: string) =>
+  new RegExp(`column\\s+[^\\s]+\\.${column}\\s+does not exist`, "i").test(message);
 
 const isSupportOpen = (status: string) => ["pending", "sent"].includes(status);
 
@@ -345,6 +347,26 @@ const mapSupportRequest = (row: SupportRequestRow): SupportRequest => ({
   createdAtRaw: row.created_at,
   updatedAtRaw: row.updated_at,
 });
+
+const loadTaskProfiles = async (profileIds: string[]) => {
+  if (!profileIds.length) {
+    return { data: [] as ProfileRow[], error: null };
+  }
+
+  const nextSchemaResult = await supabase
+    .from("profiles")
+    .select("id,full_name,display_name,name,metadata,avatar_url,location")
+    .in("id", profileIds);
+
+  if (!nextSchemaResult.error || !isMissingColumnError(nextSchemaResult.error.message || "", "display_name")) {
+    return nextSchemaResult;
+  }
+
+  return supabase
+    .from("profiles")
+    .select("id,full_name,name,metadata,avatar_url,location")
+    .in("id", profileIds);
+};
 
 const getCanonicalTaskStatus = (task: OperationalTask) => {
   if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "open") {
@@ -519,9 +541,7 @@ export default function TasksPage() {
       );
 
       const [profilesRes, servicesRes, productsRes, postsRes, eventsRes, supportRes] = await Promise.all([
-        profileIds.length
-          ? supabase.from("profiles").select("id,full_name,display_name,name,metadata,avatar_url,location").in("id", profileIds)
-          : Promise.resolve({ data: [] as ProfileRow[], error: null }),
+        loadTaskProfiles(profileIds),
         serviceIds.length
           ? supabase.from("service_listings").select("id,title,description,category").in("id", serviceIds)
           : Promise.resolve({ data: [] as ServiceRow[], error: null }),
@@ -546,6 +566,15 @@ export default function TasksPage() {
           .order("created_at", { ascending: false })
           .limit(80),
       ]);
+
+      if (profilesRes.error) {
+        setTasks([]);
+        setTaskEvents([]);
+        setRealtimeState("offline");
+        setLoading(false);
+        setErrorMessage(`Could not load task profiles: ${profilesRes.error.message}`);
+        return;
+      }
 
       const profileMap = new Map<string, ProfileRow>(((profilesRes.data as ProfileRow[] | null) || []).map((row) => [row.id, row]));
       const currentProfile = profileMap.get(user.id);
