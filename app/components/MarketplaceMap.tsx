@@ -1,182 +1,48 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
-import L from "leaflet";
-
-type MapItem = {
-  id: string;
-  title: string;
-  lat: number;
-  lng: number;
-  creatorName?: string;
-  locationLabel?: string;
-  category?: string;
-  timeLabel?: string;
-  priceLabel?: string;
-};
+import { useMemo } from "react";
+import MapCanvas from "@/app/components/maps/MapCanvas";
+import type { MarketplaceMapItem } from "@/app/components/maps/types";
 
 type Props = {
-  items: MapItem[];
+  items: MarketplaceMapItem[];
   center?: {
     lat: number;
     lng: number;
   } | null;
   activeItemId?: string | null;
+  selectedItemId?: string | null;
   onSelectItem?: (itemId: string) => void;
 };
 
-function MapResizeHandler() {
-  const map = useMap();
-
-  useEffect(() => {
-    const refresh = () => map.invalidateSize();
-    const raf = window.requestAnimationFrame(refresh);
-
-    window.addEventListener("resize", refresh);
-    window.addEventListener("orientationchange", refresh);
-
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", refresh);
-      window.removeEventListener("orientationchange", refresh);
-    };
-  }, [map]);
-
-  return null;
-}
-
-function MapViewportController({
+export default function MarketplaceMap({
   items,
   center,
-}: {
-  items: MapItem[];
-  center?: { lat: number; lng: number } | null;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (items.length > 1) {
-      const bounds = L.latLngBounds(items.map((item) => [item.lat, item.lng] as [number, number]));
-      map.fitBounds(bounds.pad(0.25), {
-        animate: true,
-        duration: 0.8,
-      });
-      return;
-    }
-
-    if (items.length === 1) {
-      map.setView([items[0].lat, items[0].lng], 13, {
-        animate: true,
-        duration: 0.8,
-      });
-      return;
-    }
-
-    map.setView([center?.lat || 12.9716, center?.lng || 77.5946], 11, {
-      animate: true,
-      duration: 0.8,
-    });
-  }, [center?.lat, center?.lng, items, map]);
-
-  return null;
-}
-
-type LeafletIconDefaultPrototype = typeof L.Icon.Default.prototype & {
-  _getIconUrl?: string;
-};
-
-delete (L.Icon.Default.prototype as LeafletIconDefaultPrototype)._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-});
-
-const createPulseIcon = (isActive: boolean) =>
-  L.divIcon({
-    html: `<span class="market-map-marker${isActive ? " is-active" : ""}"></span>`,
-    className: "market-map-marker-shell",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -14],
-  });
-
-export default function MarketplaceMap({ items, center, activeItemId = null, onSelectItem }: Props) {
-  const activeIcon = useMemo(() => createPulseIcon(true), []);
-  const defaultIcon = useMemo(() => createPulseIcon(false), []);
+  activeItemId = null,
+  selectedItemId = null,
+  onSelectItem,
+}: Props) {
+  const normalizedItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        urgent: item.urgent ?? /urgent|asap|today/i.test(`${item.title} ${item.timeLabel} ${item.priceLabel}`),
+      })),
+    [items]
+  );
 
   return (
-    <div className="relative isolate z-0 h-full min-h-[12rem] w-full overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-900/70">
-      <MapContainer
-        className="h-full w-full"
-        center={[center?.lat || 12.9716, center?.lng || 77.5946]}
-        zoom={12}
-        scrollWheelZoom={false}
-        style={{ height: "100%", width: "100%", zIndex: 0, background: "#dbeafe" }}
-      >
-        <MapResizeHandler />
-        <MapViewportController items={items} center={center} />
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-        />
-
-        {items.map((item) => (
-          <Marker
-            key={item.id}
-            position={[item.lat, item.lng]}
-            icon={item.id === activeItemId ? activeIcon : defaultIcon}
-            eventHandlers={{
-              click: () => {
-                onSelectItem?.(item.id);
-              },
-            }}
-          >
-            <Tooltip direction="top" offset={[0, -12]} opacity={0.95}>
-              <div className="text-xs font-semibold text-slate-800">{item.title}</div>
-            </Tooltip>
-            <Popup>
-              <div className="min-w-[180px] space-y-1.5">
-                <p className="line-clamp-2 text-sm font-semibold text-slate-900">{item.title}</p>
-                {item.creatorName && <p className="text-xs text-slate-600">{item.creatorName}</p>}
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-                  {item.category && (
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
-                      {item.category}
-                    </span>
-                  )}
-                  {item.locationLabel && (
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
-                      {item.locationLabel}
-                    </span>
-                  )}
-                  {item.priceLabel && (
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">
-                      {item.priceLabel}
-                    </span>
-                  )}
-                  {item.timeLabel && <span>{item.timeLabel}</span>}
-                </div>
-              </div>
-            </Popup>
-            <Circle
-              center={[item.lat, item.lng]}
-              radius={item.id === activeItemId ? 220 : 120}
-              pathOptions={{
-                color: item.id === activeItemId ? "#2563eb" : "#60a5fa",
-                weight: 1,
-                fillColor: item.id === activeItemId ? "#60a5fa" : "#93c5fd",
-                fillOpacity: item.id === activeItemId ? 0.18 : 0.1,
-              }}
-            />
-          </Marker>
-        ))}
-      </MapContainer>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-slate-950/30 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/35 to-transparent" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,164,0.16),_transparent_36%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.16),_transparent_30%)]" />
+    <div className="relative isolate z-0 h-full min-h-[12rem] w-full overflow-hidden rounded-[1.5rem] border border-slate-800/90 bg-[#020617] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+      <MapCanvas
+        items={normalizedItems}
+        center={center}
+        activeItemId={activeItemId}
+        selectedItemId={selectedItemId}
+        onSelectItem={onSelectItem}
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-slate-950/24 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/48 via-slate-950/12 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,_rgba(56,189,248,0.14),_transparent_24%),radial-gradient(circle_at_14%_86%,_rgba(37,99,235,0.16),_transparent_28%)]" />
     </div>
   );
 }

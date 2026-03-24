@@ -123,28 +123,28 @@ export const MARKETPLACE_REALTIME_HEALTH_STYLES: Record<
 > = {
   connected: {
     label: "Live",
-    className: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    className: "border-emerald-400/35 bg-emerald-500/16 text-emerald-100",
     dotClassName: "bg-emerald-500",
   },
   connecting: {
     label: "Connecting",
-    className: "border-amber-300 bg-amber-50 text-amber-700",
+    className: "border-cyan-400/30 bg-cyan-500/14 text-cyan-100",
     dotClassName: "bg-amber-500",
   },
   reconnecting: {
     label: "Reconnecting",
-    className: "border-orange-300 bg-orange-50 text-orange-700",
+    className: "border-sky-400/30 bg-sky-500/14 text-sky-100",
     dotClassName: "bg-orange-500",
   },
   error: {
     label: "Error",
-    className: "border-rose-300 bg-rose-50 text-rose-700",
+    className: "border-rose-400/35 bg-rose-500/16 text-rose-100",
     dotClassName: "bg-rose-500",
   },
   idle: {
     label: "Idle",
-    className: "border-slate-300 bg-slate-100 text-slate-600",
-    dotClassName: "bg-slate-400",
+    className: "border-slate-400/25 bg-slate-500/12 text-slate-200",
+    dotClassName: "bg-slate-300",
   },
 };
 

@@ -70,6 +70,14 @@ const formatError = (value) => {
   return String(value);
 };
 
+const isSeededE2EProfile = (profile) => {
+  const metadata =
+    profile?.metadata && typeof profile.metadata === "object" && !Array.isArray(profile.metadata)
+      ? profile.metadata
+      : null;
+  return metadata?.seed === "e2e";
+};
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isTransientNetworkError = (message) =>
@@ -159,6 +167,22 @@ const upsertProfile = async (adminClient, profile) => {
   }
 };
 
+const loadExistingProfile = async (adminClient, userId) => {
+  const { data, error } = await withRetry("load existing profile", async () => {
+    const result = await adminClient.from("profiles").select("id,metadata").eq("id", userId).maybeSingle();
+    if (result.error && isTransientNetworkError(result.error.message)) {
+      throw new Error(result.error.message);
+    }
+    return result;
+  });
+
+  if (error) {
+    throw new Error(`Failed to load existing profile ${userId}: ${error.message}`);
+  }
+
+  return data || null;
+};
+
 const ensureAcceptedConnection = async (adminClient, viewerUserId, peerUserId) => {
   const { data, error } = await withRetry("load E2E connection", async () => {
     const result = await adminClient
@@ -235,6 +259,14 @@ const ensureAcceptedConnection = async (adminClient, viewerUserId, peerUserId) =
 };
 
 const seedConnectedMarketplace = async (adminClient, viewerUserId, viewerEmail) => {
+  const existingViewerProfile = await loadExistingProfile(adminClient, viewerUserId);
+  if (existingViewerProfile && !isSeededE2EProfile(existingViewerProfile)) {
+    console.warn(
+      `[generate_e2e_magic_link] preserving existing marketplace graph for ${viewerEmail}; skipping seeded provider fixtures`
+    );
+    return;
+  }
+
   const peerUserId = await ensureAuthUser(adminClient, {
     email: E2E_PEER_EMAIL,
     userMetadata: {

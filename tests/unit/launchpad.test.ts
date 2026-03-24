@@ -24,7 +24,7 @@ describe("launchpad validation", () => {
 
     expect(normalized.businessName).toBe("Nisha Studio");
     expect(normalized.serviceRadiusKm).toBe(18);
-    expect(normalized.phone).toBe("+19999999999");
+    expect(normalized.phone).toBe("9999999999");
     expect(normalized.website).toBe("https://nishastudio.example");
   });
 

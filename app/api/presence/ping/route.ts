@@ -43,6 +43,8 @@ export async function POST(request: Request) {
       ? Number(body.responseSlaMinutes)
       : 15;
 
+  const timestamp = new Date().toISOString();
+
   const { error } = await dbClient.rpc("upsert_provider_presence", {
     p_is_online: isOnline,
     p_availability: availability || "available",
@@ -50,16 +52,31 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    const message = error.message || "Failed to update presence.";
-    const missingSchema = /upsert_provider_presence|does not exist|schema cache/i.test(message);
-    return NextResponse.json(
-      {
-        ok: false,
-        code: missingSchema ? "NOT_FOUND" : "DB",
-        message,
-      },
-      { status: missingSchema ? 503 : 500 }
-    );
+    const fallbackUpsert = await dbClient
+      .from("provider_presence")
+      .upsert(
+        {
+          provider_id: authResult.auth.userId,
+          is_online: isOnline,
+          availability: availability || "available",
+          response_sla_minutes: responseSlaMinutes,
+          last_seen: timestamp,
+        },
+        { onConflict: "provider_id" }
+      );
+
+    if (fallbackUpsert.error) {
+      const message = fallbackUpsert.error.message || error.message || "Failed to update presence.";
+      const missingSchema = /upsert_provider_presence|provider_presence|does not exist|schema cache/i.test(message);
+      return NextResponse.json(
+        {
+          ok: false,
+          code: missingSchema ? "NOT_FOUND" : "DB",
+          message,
+        },
+        { status: missingSchema ? 503 : 500 }
+      );
+    }
   }
 
   return NextResponse.json({
@@ -68,6 +85,6 @@ export async function POST(request: Request) {
     isOnline,
     availability: availability || "available",
     responseSlaMinutes,
-    timestamp: new Date().toISOString(),
+    timestamp,
   });
 }

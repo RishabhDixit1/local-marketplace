@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCoordinates } from "@/lib/geo";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
@@ -7,6 +8,9 @@ import { loadCommunityFeedSnapshot } from "@/lib/server/communityData";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const requestUrl = new URL(request.url);
+  const viewerCoordinates = getCoordinates(requestUrl.searchParams.get("lat"), requestUrl.searchParams.get("lng"));
+
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -34,7 +38,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const snapshot = await loadCommunityFeedSnapshot(dbClient, authResult.auth.userId);
+    const snapshot = await loadCommunityFeedSnapshot(dbClient, authResult.auth.userId, {
+      viewerOverride: viewerCoordinates ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude } : null,
+    });
     return NextResponse.json(snapshot satisfies CommunityFeedResponse, {
       headers: {
         "Cache-Control": "no-store",

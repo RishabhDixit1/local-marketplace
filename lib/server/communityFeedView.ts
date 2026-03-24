@@ -90,7 +90,8 @@ const resolveViewerPoint = (profile: CommunityProfileRecord | null): Marketplace
 };
 
 export const buildCommunityFeedView = (
-  snapshot: CommunityFeedSnapshotInput
+  snapshot: CommunityFeedSnapshotInput,
+  viewerOverride?: MarketplaceMapCenter | null
 ): Pick<Extract<CommunityFeedResponse, { ok: true }>, "feedItems" | "feedStats" | "mapCenter"> => {
   const profileMap = new Map<string, CommunityProfileRecord>();
   snapshot.profiles.forEach((profile) => {
@@ -130,7 +131,7 @@ export const buildCommunityFeedView = (
   snapshot.posts.forEach((row) => bumpVolume(getListingOwnerIdFromPost(row as unknown as FlexibleRow)));
   snapshot.helpRequests.forEach((row) => bumpVolume(row.requester_id || ""));
 
-  const mapCenter = resolveViewerPoint(snapshot.currentUserProfile);
+  const mapCenter = viewerOverride || resolveViewerPoint(snapshot.currentUserProfile);
 
   const resolveProfileMeta = (providerId: string) => {
     const profile = profileMap.get(providerId);

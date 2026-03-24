@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { distanceBetweenCoordinatesKm, watchBrowserCoordinates, type BrowserCoordinateStatus, type Coordinates } from "@/lib/geo";
 import {
   buildMarketplaceDisplayItem,
   DEFAULT_MARKETPLACE_FEED_FILTER_STATE,
@@ -52,6 +53,8 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const [focusItemId, setFocusItemId] = useState("");
   const [composeRequested, setComposeRequested] = useState(false);
   const [mapCenter, setMapCenter] = useState<MarketplaceMapCenter>({ lat: 12.9716, lng: 77.5946 });
+  const [browserLocation, setBrowserLocation] = useState<Coordinates | null>(null);
+  const [locationStatus, setLocationStatus] = useState<BrowserCoordinateStatus>("idle");
   const [feedStats, setFeedStats] = useState<MarketplaceFeedStats>({
     total: 0,
     urgent: 0,
@@ -64,6 +67,8 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const activeFeedRequestIdRef = useRef(0);
   const refreshTimeoutRef = useRef<number | null>(null);
   const lastSoftRefreshAtRef = useRef(0);
+  const lastLocationRefreshRef = useRef<string>("");
+  const browserLocationRef = useRef<Coordinates | null>(null);
 
   useEffect(() => {
     return () => {
@@ -118,6 +123,30 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
     window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
   }, [filters]);
 
+  useEffect(() => {
+    browserLocationRef.current = browserLocation;
+  }, [browserLocation]);
+
+  useEffect(() => {
+    const stopWatching = watchBrowserCoordinates(
+      (coordinates) => {
+        setBrowserLocation((current) => {
+          if (!current) {
+            return coordinates;
+          }
+
+          const movedDistanceKm = distanceBetweenCoordinatesKm(current, coordinates);
+          return movedDistanceKm >= 0.12 ? coordinates : current;
+        });
+      },
+      setLocationStatus
+    );
+
+    return () => {
+      stopWatching();
+    };
+  }, []);
+
   const fetchFeed = useCallback(
     async (hardRefresh = false) => {
       const now = Date.now();
@@ -140,9 +169,20 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
       const controller = new AbortController();
       fetchAbortRef.current?.abort();
       fetchAbortRef.current = controller;
+      const requestPath = (() => {
+        if (!browserLocationRef.current) {
+          return "/api/community/feed";
+        }
+
+        const params = new URLSearchParams({
+          lat: browserLocationRef.current.latitude.toFixed(6),
+          lng: browserLocationRef.current.longitude.toFixed(6),
+        });
+        return `/api/community/feed?${params.toString()}`;
+      })();
 
       try {
-        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed", {
+        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, requestPath, {
           method: "GET",
           signal: controller.signal,
         });
@@ -195,6 +235,20 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   }, [fetchFeed]);
 
   useEffect(() => {
+    if (!browserLocation) {
+      return;
+    }
+
+    const nextSignature = `${browserLocation.latitude.toFixed(3)}:${browserLocation.longitude.toFixed(3)}`;
+    if (nextSignature === lastLocationRefreshRef.current) {
+      return;
+    }
+
+    lastLocationRefreshRef.current = nextSignature;
+    void fetchFeed(false);
+  }, [browserLocation, fetchFeed]);
+
+  useEffect(() => {
     const scheduleRefresh = () => {
       if (refreshTimeoutRef.current) {
         window.clearTimeout(refreshTimeoutRef.current);
@@ -240,9 +294,14 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
       if (current && displayFeed.some((item) => item.id === current)) {
         return current;
       }
-      return displayFeed[0].id;
+
+      if (focusItemId && displayFeed.some((item) => item.id === focusItemId)) {
+        return focusItemId;
+      }
+
+      return null;
     });
-  }, [displayFeed]);
+  }, [displayFeed, focusItemId]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>(["all"]);
@@ -256,7 +315,7 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
 
   const mapItems = useMemo<MarketplaceMapItem[]>(
     () =>
-      displayFeed.slice(0, 60).map((item) => ({
+      displayFeed.map((item) => ({
         id: item.id,
         title: item.displayTitle,
         lat: item.lat,
@@ -266,6 +325,7 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
         category: item.category,
         timeLabel: item.timeLabel,
         priceLabel: item.priceLabel,
+        urgent: item.urgent,
       })),
     [displayFeed]
   );
@@ -301,7 +361,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
     feedChannelHealth,
     realtimeStyle: MARKETPLACE_REALTIME_HEALTH_STYLES[feedChannelHealth],
     feedStats,
-    mapCenter,
+    mapCenter: browserLocation ? { lat: browserLocation.latitude, lng: browserLocation.longitude } : mapCenter,
+    browserLocation,
+    locationStatus,
     mapItems,
     categoryOptions,
     displayFeed,

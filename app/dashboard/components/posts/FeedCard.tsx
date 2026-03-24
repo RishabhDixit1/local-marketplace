@@ -33,6 +33,7 @@ type FeedCardProps = {
   onPrimaryAction: (action: MarketplacePrimaryActionKind) => void | Promise<void>;
   onSecondaryAction: (action: MarketplaceSecondaryActionKind) => void | Promise<void>;
   onFocus: () => void;
+  onHoverChange: (hovered: boolean) => void;
 };
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
@@ -89,6 +90,7 @@ export default function FeedCard({
   onPrimaryAction,
   onSecondaryAction,
   onFocus,
+  onHoverChange,
 }: FeedCardProps) {
   return (
     <motion.article
@@ -100,7 +102,9 @@ export default function FeedCard({
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
           : "border-slate-200"
       }`}
-      onMouseEnter={onFocus}
+      onClickCapture={onFocus}
+      onMouseEnter={() => onHoverChange(true)}
+      onMouseLeave={() => onHoverChange(false)}
     >
       <header className="flex items-start gap-3">
         <button

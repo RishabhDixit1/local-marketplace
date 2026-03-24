@@ -3,6 +3,8 @@ export type Coordinates = {
   longitude: number;
 };
 
+export type BrowserCoordinateStatus = "idle" | "locating" | "ready" | "denied" | "unsupported" | "error";
+
 const EARTH_RADIUS_KM = 6371;
 const DEFAULT_MARKET_COORDINATES: Coordinates = {
   latitude: 12.9716,
@@ -142,6 +144,44 @@ export const getBrowserCoordinates = (timeoutMs = 6000): Promise<Coordinates | n
       }
     );
   });
+};
+
+export const watchBrowserCoordinates = (
+  onChange: (coordinates: Coordinates) => void,
+  onStatusChange?: (status: BrowserCoordinateStatus) => void
+) => {
+  if (typeof window === "undefined" || typeof navigator === "undefined" || !navigator.geolocation) {
+    onStatusChange?.("unsupported");
+    return () => {};
+  }
+
+  onStatusChange?.("locating");
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const coordinates = getCoordinates(position.coords.latitude, position.coords.longitude);
+      if (!coordinates) return;
+      onStatusChange?.("ready");
+      onChange(coordinates);
+    },
+    (error) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        onStatusChange?.("denied");
+        return;
+      }
+
+      onStatusChange?.("error");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 15000,
+    }
+  );
+
+  return () => {
+    navigator.geolocation.clearWatch(watchId);
+  };
 };
 
 export const defaultMarketCoordinates = () => DEFAULT_MARKET_COORDINATES;
