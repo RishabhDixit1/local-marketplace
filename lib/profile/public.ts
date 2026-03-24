@@ -2,8 +2,9 @@ import "server-only";
 
 import { unstable_noStore as noStore } from "next/cache";
 import { calculateVerificationStatus, estimateResponseMinutes, type VerificationStatus } from "@/lib/business";
+import { isMissingConnectionSchemaError } from "@/lib/connectionErrors";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
-import { resolvePostMediaUrl } from "@/lib/mediaUrl";
+import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import type { ProfileRecord, ProfileRoleFamily } from "@/lib/profile/types";
 import {
@@ -70,6 +71,11 @@ type PostRow = {
   created_at: string | null;
 };
 
+type ConnectionRow = {
+  requester_id: string | null;
+  recipient_id: string | null;
+};
+
 type PublicProfileListing = {
   id: string;
   type: "service" | "product";
@@ -107,10 +113,20 @@ export type PublicProfilePostMedia = {
   url: string;
 };
 
+export type PublicProfileConnection = {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  location: string | null;
+  publicPath: string;
+};
+
 export type PublicProfileData = {
   profile: ProfileRecord;
   displayName: string;
   roleFamily: ProfileRoleFamily;
+  acceptedConnectionCount: number;
+  acceptedConnections: PublicProfileConnection[];
   topics: string[];
   services: PublicProfileListing[];
   products: PublicProfileListing[];
@@ -443,6 +459,8 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     postsResult,
     helpRequestsResult,
     ordersResult,
+    connectionsResult,
+    acceptedConnectionsResult,
   ] = await Promise.all([
     supabase
       .from("service_listings")
@@ -475,6 +493,16 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
       .from("orders")
       .select("status")
       .eq(roleFamily === "provider" ? "provider_id" : "consumer_id", profile.id),
+    supabase
+      .from("connection_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${profile.id},recipient_id.eq.${profile.id}`),
+    supabase
+      .from("connection_requests")
+      .select("requester_id,recipient_id")
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${profile.id},recipient_id.eq.${profile.id}`),
   ]);
 
   const services = ((servicesResult.data as ServiceRow[] | null) || [])
@@ -507,6 +535,32 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     availability: profile.availability,
     providerId: profile.id,
   });
+  const acceptedConnectionCount =
+    connectionsResult.error && !isMissingConnectionSchemaError(connectionsResult.error.message || "")
+      ? 0
+      : connectionsResult.count || 0;
+  const acceptedConnectionIds = Array.from(
+    new Set(
+      ((acceptedConnectionsResult.data as ConnectionRow[] | null) || [])
+        .flatMap((row) => [row.requester_id, row.recipient_id])
+        .filter((id): id is string => typeof id === "string" && id.length > 0 && id !== profile.id)
+    )
+  );
+  const acceptedProfilesResult =
+    acceptedConnectionIds.length > 0
+      ? await supabase.from("profiles").select("id,full_name,name,avatar_url,location").in("id", acceptedConnectionIds)
+      : { data: [], error: null };
+  const acceptedConnections = (((acceptedProfilesResult.data as Record<string, unknown>[] | null) || [])
+    .map((row) => normalizeProfileRecord(row, null))
+    .filter((row): row is ProfileRecord => !!row)
+    .map((row) => ({
+      id: row.id,
+      displayName: getProfileDisplayName(row) || "Local member",
+      avatarUrl: resolveProfileAvatarUrl(row.avatar_url),
+      location: row.location,
+      publicPath: buildPublicProfilePath(row),
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName)));
   const verificationStatus = calculateVerificationStatus({
     role: profile.role,
     profileCompletion: profile.profile_completion_percent,
@@ -521,6 +575,8 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     profile,
     displayName,
     roleFamily,
+    acceptedConnectionCount,
+    acceptedConnections,
     topics,
     services,
     products,

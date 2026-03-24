@@ -85,15 +85,12 @@ export const normalizePhone = (value: string | null | undefined) => {
   const raw = trim(value);
   if (!raw) return "";
 
-  const compact = raw.replace(/[^\d+()\-\s]/g, "").replace(/\s+/g, " ").trim();
-  if (compact.startsWith("+")) {
-    const normalizedPlus = `+${compact.slice(1).replace(/[^\d]/g, "")}`;
-    return normalizedPlus;
-  }
-
-  const digits = compact.replace(/\D/g, "");
+  const digits = raw.replace(/\D/g, "");
   if (!digits) return "";
-  return digits.length === 10 ? `+1${digits}` : digits;
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return digits.slice(1);
+  }
+  return digits;
 };
 
 export const normalizeWebsite = (value: string | null | undefined) => {
@@ -279,7 +276,7 @@ export const toProfileFormValues = (profile: ProfileRecord | null | undefined): 
   bio: trim(profile?.bio),
   interests: normalizeTopics(profile?.interests?.length ? profile.interests : profile?.services),
   email: trim(profile?.email),
-  phone: trim(profile?.phone),
+  phone: normalizePhone(profile?.phone),
   website: trim(profile?.website),
   avatarUrl: trim(profile?.avatar_url),
   availability: normalizeAvailability(profile?.availability),

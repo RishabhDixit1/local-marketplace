@@ -1,5 +1,5 @@
 import { PROFILE_TOPIC_LIMIT, type ProfileFormValues, type ProfileValidationErrors } from "@/lib/profile/types";
-import { normalizePhone, normalizeTopics, normalizeWebsite } from "@/lib/profile/utils";
+import { normalizeTopics, normalizeWebsite } from "@/lib/profile/utils";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,13 +33,12 @@ export const validateProfileValues = (
   }
 
   if (values.phone.trim()) {
-    const normalizedPhone = normalizePhone(values.phone);
-    const digitCount = normalizedPhone.replace(/\D/g, "").length;
-    if (digitCount < 7 || digitCount > 15) {
-      errors.phone = "Enter a valid phone number.";
+    const digitCount = values.phone.replace(/\D/g, "").length;
+    if (digitCount !== 10) {
+      errors.phone = "Enter a 10-digit mobile number.";
     }
   } else if (shouldRequireOnboardingFields) {
-    errors.phone = "Enter a contact number.";
+    errors.phone = "Enter a 10-digit mobile number.";
   }
 
   if (values.website.trim() && !normalizeWebsite(values.website)) {

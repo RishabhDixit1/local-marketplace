@@ -2,28 +2,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import type { ReactNode } from "react";
-import {
-  BadgeCheck,
-  BriefcaseBusiness,
-  Clock3,
-  Globe,
-  LayoutDashboard,
-  Mail,
-  MapPin,
-  Phone,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  UserRound,
-} from "lucide-react";
+import { BadgeCheck, LayoutDashboard } from "lucide-react";
+import PublicProfileAvatarEdit from "@/app/components/profile/PublicProfileAvatarEdit";
+import PublicProfileAbout from "@/app/components/profile/PublicProfileAbout";
+import PublicConnectionsTrigger from "@/app/components/profile/PublicConnectionsTrigger";
+import PublicContactInfoTrigger from "@/app/components/profile/PublicContactInfoTrigger";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
 import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
-import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
 import { appName, withAppName } from "@/lib/branding";
-import { verificationLabel } from "@/lib/business";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
+import { toProfileFormValues } from "@/lib/profile/utils";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 
 type Params = {
@@ -31,8 +20,6 @@ type Params = {
 };
 
 export const dynamic = "force-dynamic";
-
-const formatPrice = (value: number | null) => (typeof value === "number" ? `₹ ${value.toLocaleString()}` : "Custom quote");
 
 const formatJoinedDate = (value: string | null) => {
   if (!value) return "New member";
@@ -44,23 +31,14 @@ const formatJoinedDate = (value: string | null) => {
   }
 };
 
-const formatAvailability = (value: string | null) => {
-  const normalized = (value || "").toLowerCase();
-  if (normalized === "busy") return "Busy but reachable";
-  if (normalized === "offline") return "Offline right now";
-  return "Available now";
+const formatConnectionsCount = (value: number) => {
+  if (value >= 500) return "500+ connections";
+  if (value > 0) return `${value.toLocaleString("en-IN")} connection${value === 1 ? "" : "s"}`;
+  return "Open to new connections";
 };
 
 const getRoleLabel = (roleFamily: "provider" | "seeker") =>
   roleFamily === "provider" ? "Marketplace provider" : "Looking for services";
-
-const getAccessLabel = (roleFamily: "provider" | "seeker", hasOfferings: boolean) => {
-  if (roleFamily === "provider") {
-    return hasOfferings ? "Access offerings" : "Access profile";
-  }
-
-  return "Access details";
-};
 
 const getHeadline = (params: {
   roleFamily: "provider" | "seeker";
@@ -138,19 +116,10 @@ export default async function PublicProfilePage({ params }: Params) {
     profile,
     displayName,
     roleFamily,
+    acceptedConnectionCount,
+    acceptedConnections,
     topics,
-    services,
-    products,
-    offerings,
     posts,
-    reviews,
-    averageRating,
-    reviewCount,
-    serviceCount,
-    productCount,
-    postsCount,
-    activeOrders,
-    responseMinutes,
     verificationStatus,
     publicPath,
   } = publicProfile;
@@ -162,7 +131,6 @@ export default async function PublicProfilePage({ params }: Params) {
     topics,
     bio: profile.bio,
   });
-  const accessHref = roleFamily === "provider" && offerings.length > 0 ? "#offerings" : "#details";
   const structuredData =
     roleFamily === "provider"
       ? {
@@ -184,20 +152,6 @@ export default async function PublicProfilePage({ params }: Params) {
           url: profileUrl,
           email: profile.email || undefined,
         };
-  const heroMetrics =
-    roleFamily === "provider"
-      ? [
-          { label: "Services", value: serviceCount },
-          { label: "Products", value: productCount },
-          { label: "Rating", value: averageRating ? `${averageRating}★` : "New" },
-          { label: "Response", value: `~${responseMinutes} min` },
-        ]
-      : [
-          { label: "Interests", value: topics.length },
-          { label: "Need posts", value: postsCount },
-          { label: "Active orders", value: activeOrders },
-          { label: "Profile score", value: `${profile.profile_completion_percent}%` },
-        ];
   const avatarFallback = displayName
     .split(" ")
     .map((part) => part[0] || "")
@@ -205,272 +159,98 @@ export default async function PublicProfilePage({ params }: Params) {
     .slice(0, 2)
     .toUpperCase();
   const profileAvatarUrl = resolveProfileAvatarUrl(profile.avatar_url);
+  const initialProfileValues = toProfileFormValues(profile);
+  const connectionLabel = formatConnectionsCount(acceptedConnectionCount);
+  const joinedShortLabel = formatJoinedDate(profile.created_at).replace(/^Joined\s+/, "");
+  const summaryText = headline;
+  const sectionCardClassName =
+    "rounded-[22px] border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6";
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#eef2ff_0%,#f8fafc_32%,#f8fafc_100%)] text-slate-950">
+    <div className="min-h-screen bg-[#f4f2ee] text-slate-950">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="overflow-hidden rounded-[36px] border border-slate-200 bg-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.35)]">
-          <div className="relative h-48 bg-[linear-gradient(120deg,#0f172a_0%,#1d4ed8_38%,#7c3aed_68%,#ec4899_100%)] sm:h-52 lg:h-56">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.28),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.14),transparent_42%)]" />
-            <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/90 sm:left-8 sm:top-7">
-              <Sparkles className="h-3.5 w-3.5" />
-              Public profile
-            </div>
-            <div className="absolute right-5 top-5 sm:right-8 sm:top-7">
-              <Link
-                href="/dashboard/welcome"
-                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold text-white/90 transition hover:bg-white/15"
-              >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                Dashboard
-              </Link>
-            </div>
+      <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-[24px] border border-slate-300/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]">
+          <div className="relative h-[180px] bg-[linear-gradient(90deg,#9fb2b6_0%,#aec0c5_52%,#bed0d5_100%)] sm:h-[220px]">
+            <div className="absolute left-[12%] top-[-70%] h-[420px] w-[420px] rounded-full border-[84px] border-white/28" />
+            <div className="absolute right-[32%] top-0 h-full w-10 bg-white/30 sm:w-16" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]" />
+            <Link
+              href="/dashboard/welcome"
+              className="absolute right-5 top-5 inline-flex items-center gap-2 rounded-full bg-white/92 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.45)] transition hover:bg-white sm:right-6 sm:top-6"
+            >
+              <LayoutDashboard className="h-4 w-4 text-[#0a66c2]" />
+              Dashboard
+            </Link>
           </div>
 
-          <div className="relative px-5 pb-8 sm:px-8">
-            <div className="-mt-16 grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_360px] xl:items-start">
-              <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-                  <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-[28px] border-[6px] border-white bg-slate-950 text-3xl font-semibold text-white shadow-lg shadow-slate-950/15">
-                    {profileAvatarUrl ? (
-                      <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
-                    ) : (
-                      <span>{avatarFallback}</span>
-                    )}
-                  </div>
+          <div className="relative px-5 pb-7 sm:px-8 lg:px-10">
+            <div className="-mt-24 min-w-0">
+              <div className="relative w-fit">
+                <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-[7px] border-white bg-slate-950 text-4xl font-semibold text-white shadow-[0_22px_40px_-26px_rgba(15,23,42,0.48)] sm:h-40 sm:w-40">
+                  {profileAvatarUrl ? (
+                    <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    <span>{avatarFallback}</span>
+                  )}
+                </div>
+                <PublicProfileAvatarEdit
+                  profileUserId={profile.id}
+                  displayName={displayName}
+                  avatarUrl={profileAvatarUrl || ""}
+                  initialValues={initialProfileValues}
+                />
+              </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        {getRoleLabel(roleFamily)}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                          verificationStatus === "verified"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : verificationStatus === "pending"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        <BadgeCheck className="h-3.5 w-3.5" />
-                        {verificationLabel(verificationStatus)}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        {formatJoinedDate(profile.created_at)}
-                      </span>
-                    </div>
-
-                    <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-[2.75rem]">{displayName}</h1>
-                    <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{headline}</p>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2">
-                        <MapPin className="h-4 w-4 text-slate-500" />
-                        {profile.location || "Location not added"}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2">
-                        <Clock3 className="h-4 w-4 text-slate-500" />
-                        {formatAvailability(profile.availability)}
-                      </span>
-                      {roleFamily === "provider" ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2">
-                          <Star className="h-4 w-4 text-amber-500" />
-                          {averageRating ? `${averageRating} from ${reviewCount} reviews` : "New provider profile"}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
+              <div className="mt-6 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-[clamp(2.25rem,5vw,3.45rem)] font-bold tracking-tight text-slate-950">{displayName}</h1>
+                  {verificationStatus === "verified" ? <BadgeCheck className="h-8 w-8 text-[#4b5563]" /> : null}
                 </div>
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {heroMetrics.map((metric) => (
-                    <div key={metric.label} className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{metric.label}</p>
-                      <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</p>
-                    </div>
-                  ))}
+                <p className="mt-2 text-xl text-slate-600 sm:text-[1.7rem]">
+                  {getRoleLabel(roleFamily)} <span className="px-1.5 text-slate-400">•</span> {joinedShortLabel}
+                </p>
+
+                <p className="mt-3 text-[clamp(1.35rem,2.6vw,1.7rem)] leading-[1.28] text-slate-900">{summaryText}</p>
+
+                <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-lg text-slate-500">
+                  <span>{profile.location || "Location not added"}</span>
+                  <span className="text-slate-400" aria-hidden="true">
+                    •
+                  </span>
+                  <PublicContactInfoTrigger
+                    displayName={displayName}
+                    email={profile.email}
+                    phone={profile.phone}
+                    website={profile.website}
+                    location={profile.location}
+                  />
                 </div>
-              </section>
 
-              <aside className="space-y-6">
-                <section className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Profile actions</p>
-                      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Connect, message, and explore</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        Everything important is reachable from here without leaving the profile.
-                      </p>
-                    </div>
-                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Public
-                    </span>
-                  </div>
+                <PublicConnectionsTrigger
+                  profileUserId={profile.id}
+                  label={connectionLabel}
+                  connections={acceptedConnections}
+                />
 
-                  <div className="mt-4">
-                    <PublicProfileRealtime profileId={profile.id} roleFamily={roleFamily} />
-                  </div>
-
-                  <div className="mt-5">
-                    <PublicProfileActions
-                      profileUserId={profile.id}
-                      accessHref={accessHref}
-                      accessLabel={getAccessLabel(roleFamily, offerings.length > 0)}
-                      contactHref="#contact"
-                    />
-                  </div>
-                </section>
-              </aside>
+                <div className="mt-6">
+                  <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <div className="mt-8 space-y-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <section id="details" className="flex h-full flex-col rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                  <UserRound className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">About</h2>
-                  <p className="text-sm text-slate-600">Public summary taken directly from the saved profile.</p>
-                </div>
-              </div>
-
-              <p className="mt-6 text-base leading-8 text-slate-700">
-                {profile.bio || "This member has not added a longer public summary yet."}
-              </p>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <MetaCard label="Profile mode" value={getRoleLabel(roleFamily)} />
-                <MetaCard label="Member since" value={formatJoinedDate(profile.created_at)} />
-                <MetaCard
-                  label={roleFamily === "provider" ? "Discovery topics" : "Active interests"}
-                  value={topics.length ? `${topics.length} tags live` : "Tags coming soon"}
-                />
-                <MetaCard label="Current status" value={formatAvailability(profile.availability)} />
-              </div>
-            </section>
-
-            <section id="contact" className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                  <Mail className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">Contact & access</h2>
-                  <p className="text-sm text-slate-600">Everything this member has chosen to show publicly right now.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-4 text-sm">
-                <ContactRow
-                  icon={<Mail className="h-4 w-4" />}
-                  label="Email"
-                  value={profile.email || "Email not added"}
-                  href={profile.email ? `mailto:${profile.email}` : undefined}
-                />
-                <ContactRow
-                  icon={<Phone className="h-4 w-4" />}
-                  label="Phone"
-                  value={profile.phone || "Phone not added"}
-                  href={profile.phone ? `tel:${profile.phone}` : undefined}
-                />
-                <ContactRow
-                  icon={<Globe className="h-4 w-4" />}
-                  label="Website"
-                  value={profile.website || "Website not added"}
-                  href={profile.website || undefined}
-                />
-                <ContactRow
-                  icon={<MapPin className="h-4 w-4" />}
-                  label="Location"
-                  value={profile.location || "Location not added"}
-                />
-              </div>
-            </section>
-          </div>
-
-          <section id="offerings" className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                {roleFamily === "provider" ? <BriefcaseBusiness className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                  {roleFamily === "provider" ? "Services & offerings" : "Needs & interests"}
-                </h2>
-                <p className="text-sm text-slate-600">
-                  {roleFamily === "provider"
-                    ? "These are the topics and listings this member is using for local discovery."
-                    : "These are the interests and service categories this member wants others to notice."}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2.5">
-              {topics.length > 0 ? (
-                topics.map((topic) => (
-                  <span
-                    key={topic}
-                    className="rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-2 text-sm font-medium text-indigo-700"
-                  >
-                    {topic}
-                  </span>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500">No tags added yet.</p>
-              )}
-            </div>
-
-            {roleFamily === "provider" ? (
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {[...services, ...products].slice(0, 6).map((item) => (
-                  <article key={`${item.type}-${item.id}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-950">{item.title}</p>
-                        <p className="mt-1 text-sm text-slate-600">{item.category}</p>
-                      </div>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 shadow-sm">
-                        {item.type}
-                      </span>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-semibold text-slate-950">{formatPrice(item.price)}</span>
-                      <span className="capitalize text-slate-500">{item.status}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <InfoCard label="Need posts" value={postsCount} helper="Signals posted in the marketplace" className="h-full" />
-                <InfoCard label="Active orders" value={activeOrders} helper="Currently being coordinated" className="h-full" />
-                <InfoCard
-                  label="Profile score"
-                  value={`${profile.profile_completion_percent}%`}
-                  helper="How complete and discoverable this profile is right now."
-                  className="h-full"
-                />
-              </div>
-            )}
-
-            {roleFamily === "provider" && offerings.length === 0 ? (
-              <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                No public listings yet. This profile still shows the saved summary, contact details, and discovery tags.
-              </div>
-            ) : null}
+        <div className="mt-4 space-y-4">
+          <section id="details" className={sectionCardClassName}>
+            <PublicProfileAbout bio={profile.bio} />
           </section>
 
-          <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+          <section className="space-y-3">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-slate-950">Marketplace posts</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Marketplace posts</h2>
               <p className="mt-1 text-sm text-slate-600">Latest posts this member has published in the marketplace.</p>
             </div>
 
@@ -482,126 +262,17 @@ export default async function PublicProfilePage({ params }: Params) {
                 avatarUrl={profileAvatarUrl}
                 verificationStatus={verificationStatus}
                 locationLabel={profile.location || "Nearby"}
-                responseMinutes={responseMinutes}
+                responseMinutes={publicProfile.responseMinutes}
                 publicPath={publicPath}
               />
             ) : (
-              <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+              <div className="mt-6 rounded-[20px] border border-dashed border-slate-200 bg-[#f8fafc] p-4 text-sm text-slate-500">
                 No public posts yet. When this member shares marketplace updates, they will appear here.
               </div>
             )}
           </section>
-
-          {roleFamily === "provider" ? (
-            <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white">
-                  <Star className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950">Recent reviews</h2>
-                  <p className="text-sm text-slate-600">Visible trust signals from marketplace activity.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                {reviews.length > 0 ? (
-                  reviews.map((review, index) => (
-                    <article key={`${review.createdAt || "review"}-${index}`} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold text-amber-500">
-                        {"★".repeat(Math.max(1, Math.min(5, Math.round(review.rating || 0))))}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
-                        {review.comment || "A customer left a rating for this profile."}
-                      </p>
-                    </article>
-                  ))
-                ) : (
-                  <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    No public reviews yet. Connect or message to start working together.
-                  </div>
-                )}
-              </div>
-            </section>
-          ) : null}
         </div>
       </div>
-    </div>
-  );
-}
-
-function ContactRow({
-  icon,
-  label,
-  value,
-  href,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  href?: string;
-}) {
-  const content = (
-    <div className="flex items-start gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="mt-0.5 text-slate-500">{icon}</div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-        <p className="mt-1 break-all text-sm leading-6 text-slate-700">{value}</p>
-      </div>
-    </div>
-  );
-
-  if (!href) {
-    return content;
-  }
-
-  const external = href.startsWith("http");
-
-  return (
-    <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} className="block">
-      {content}
-    </a>
-  );
-}
-
-function InfoCard({
-  label,
-  value,
-  helper,
-  className = "",
-}: {
-  label: string;
-  value: string | number;
-  helper: string;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 ${className}`.trim()}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{helper}</p>
-    </div>
-  );
-}
-
-function MetaCard({
-  label,
-  value,
-  helper,
-  className = "",
-  valueClassName = "text-sm font-semibold leading-6 text-slate-950",
-}: {
-  label: string;
-  value: string;
-  helper?: string;
-  className?: string;
-  valueClassName?: string;
-}) {
-  return (
-    <div className={`rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 ${className}`.trim()}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-2 ${valueClassName}`.trim()}>{value}</p>
-      {helper ? <p className="mt-2 text-sm leading-6 text-slate-600">{helper}</p> : null}
     </div>
   );
 }

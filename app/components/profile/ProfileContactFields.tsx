@@ -52,18 +52,20 @@ export default function ProfileContactFields({
       <div className="space-y-2">
         <label className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <Phone className="h-4 w-4 text-slate-500" />
-          Phone
+          Mobile number
         </label>
         <input
           type="tel"
           value={phone}
           disabled={disabled}
-          onChange={(event) => onChange("phone", event.target.value)}
-          placeholder="+1 555 123 4567"
+          inputMode="numeric"
+          maxLength={10}
+          onChange={(event) => onChange("phone", event.target.value.replace(/\D/g, "").slice(0, 10))}
+          placeholder="9876543210"
           className={fieldStyles(Boolean(errors.phone))}
         />
         <p className={`text-sm ${errors.phone ? "text-rose-600" : "text-slate-500"}`}>
-          {errors.phone || "Optional, but useful for urgent local coordination."}
+          {errors.phone || "Use a 10-digit mobile number."}
         </p>
       </div>
 
