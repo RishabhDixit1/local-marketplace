@@ -70,6 +70,14 @@ const formatError = (value) => {
   return String(value);
 };
 
+const isSeededE2EProfile = (profile) => {
+  const metadata =
+    profile?.metadata && typeof profile.metadata === "object" && !Array.isArray(profile.metadata)
+      ? profile.metadata
+      : null;
+  return metadata?.seed === "e2e";
+};
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isTransientNetworkError = (message) =>
@@ -157,6 +165,22 @@ const upsertProfile = async (adminClient, profile) => {
   if (error) {
     throw new Error(`Failed to seed profile ${profile.id}: ${error.message}`);
   }
+};
+
+const loadExistingProfile = async (adminClient, userId) => {
+  const { data, error } = await withRetry("load existing profile", async () => {
+    const result = await adminClient.from("profiles").select("id,metadata").eq("id", userId).maybeSingle();
+    if (result.error && isTransientNetworkError(result.error.message)) {
+      throw new Error(result.error.message);
+    }
+    return result;
+  });
+
+  if (error) {
+    throw new Error(`Failed to load existing profile ${userId}: ${error.message}`);
+  }
+
+  return data || null;
 };
 
 const ensureAcceptedConnection = async (adminClient, viewerUserId, peerUserId) => {
@@ -247,23 +271,30 @@ const seedConnectedMarketplace = async (adminClient, viewerUserId, viewerEmail) 
     throw new Error("Failed to resolve E2E peer user id.");
   }
 
-  await upsertProfile(adminClient, {
-    id: viewerUserId,
-    full_name: "ServiQ E2E User",
-    name: "ServiQ E2E User",
-    location: "Bengaluru",
-    role: "seeker",
-    bio: "E2E account ready for marketplace discovery, welcome feed flows, chat, and task regression coverage.",
-    interests: ["Local services", "Home help", "Food delivery"],
-    services: ["Local services", "Home help", "Food delivery"],
-    email: viewerEmail,
-    availability: "available",
-    onboarding_completed: true,
-    profile_completion_percent: 100,
-    metadata: {
-      seed: "e2e",
-    },
-  });
+  const existingViewerProfile = await loadExistingProfile(adminClient, viewerUserId);
+  if (!existingViewerProfile || isSeededE2EProfile(existingViewerProfile)) {
+    await upsertProfile(adminClient, {
+      id: viewerUserId,
+      full_name: "ServiQ E2E User",
+      name: "ServiQ E2E User",
+      location: "Bengaluru",
+      role: "seeker",
+      bio: "E2E account ready for marketplace discovery, welcome feed flows, chat, and task regression coverage.",
+      interests: ["Local services", "Home help", "Food delivery"],
+      services: ["Local services", "Home help", "Food delivery"],
+      email: viewerEmail,
+      availability: "available",
+      onboarding_completed: true,
+      profile_completion_percent: 100,
+      metadata: {
+        seed: "e2e",
+      },
+    });
+  } else {
+    console.warn(
+      `[generate_e2e_magic_link] preserving existing profile for ${viewerEmail}; skipping viewer profile seed`
+    );
+  }
 
   await upsertProfile(adminClient, {
     id: peerUserId,

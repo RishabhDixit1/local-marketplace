@@ -30,6 +30,11 @@ const isTransientNetworkError = (message: string) =>
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+type ExistingProfileRow = {
+  id: string;
+  metadata?: Record<string, unknown> | null;
+};
+
 const withRetry = async <T>(fn: () => Promise<T>, attempts = 4) => {
   let lastError: unknown;
 
@@ -74,9 +79,45 @@ const resolveUserId = async (email: string) => {
   return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase())?.id || null;
 };
 
+const loadExistingProfile = async (userId: string): Promise<ExistingProfileRow | null> => {
+  const adminClient = getAdminClient();
+  if (!adminClient) return null;
+
+  const { data, error } = await withRetry(async () => {
+    const result = await adminClient.from("profiles").select("id,metadata").eq("id", userId).maybeSingle();
+
+    if (result.error && isTransientNetworkError(result.error.message)) {
+      throw new Error(result.error.message);
+    }
+
+    return result;
+  });
+
+  if (error) {
+    throw new Error(`Failed to load existing profile: ${error.message}`);
+  }
+
+  return (data as ExistingProfileRow | null) || null;
+};
+
+const isSeededE2EProfile = (profile: ExistingProfileRow | null) => {
+  const metadata =
+    profile?.metadata && typeof profile.metadata === "object" && !Array.isArray(profile.metadata)
+      ? profile.metadata
+      : null;
+  return metadata?.seed === "e2e";
+};
+
 const seedE2EProfile = async (userId: string, email: string) => {
   const adminClient = getAdminClient();
   if (!adminClient) return;
+  const existingProfile = await loadExistingProfile(userId);
+
+  // Preserve real user profiles when the E2E login email points at a non-seeded account.
+  if (existingProfile && !isSeededE2EProfile(existingProfile)) {
+    console.warn(`[e2e auth] preserving existing profile for ${email}; skipping viewer profile seed.`);
+    return;
+  }
 
   const { error } = await withRetry(async () => {
     const result = await adminClient.from("profiles").upsert(
