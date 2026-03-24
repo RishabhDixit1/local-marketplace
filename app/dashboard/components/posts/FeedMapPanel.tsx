@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { LocateFixed } from "lucide-react";
 import type { MarketplaceFeedStats } from "@/lib/marketplaceFeed";
 
 const MarketplaceMap = dynamic(() => import("@/app/components/MarketplaceMap").then((mod) => mod.default), {
@@ -26,7 +27,9 @@ type FeedMapPanelProps = {
     className: string;
     dotClassName: string;
   };
+  locationStatus: "idle" | "locating" | "ready" | "denied" | "unsupported" | "error";
   activeItemId: string | null;
+  selectedItemId: string | null;
   onSelectItem: (itemId: string) => void;
 };
 
@@ -35,56 +38,68 @@ export default function FeedMapPanel({
   center,
   stats,
   realtime,
+  locationStatus,
   activeItemId,
+  selectedItemId,
   onSelectItem,
 }: FeedMapPanelProps) {
-  return (
-    <section className="rounded-[2rem] border border-slate-200/90 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
-      <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-slate-950">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
-          <div className="max-w-xs rounded-2xl border border-white/12 bg-slate-950/45 px-3 py-2.5 backdrop-blur-md">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Live market map</p>
-            <p className="mt-1 text-xs font-medium text-white/90 sm:text-sm">Tap a pin to focus the matching post card below.</p>
-          </div>
+  const locationMeta =
+    locationStatus === "ready"
+      ? { label: "Near you", className: "border-sky-400/35 bg-sky-500/16 text-sky-100" }
+      : locationStatus === "locating"
+        ? { label: "Locating", className: "border-cyan-400/30 bg-cyan-500/14 text-cyan-100" }
+        : locationStatus === "denied"
+          ? { label: "Location off", className: "border-amber-400/30 bg-amber-500/14 text-amber-100" }
+          : locationStatus === "unsupported"
+            ? { label: "No GPS", className: "border-slate-400/25 bg-slate-500/12 text-slate-200" }
+            : locationStatus === "error"
+              ? { label: "Signal weak", className: "border-amber-400/30 bg-amber-500/14 text-amber-100" }
+              : { label: "Location standby", className: "border-slate-400/25 bg-slate-500/12 text-slate-200" };
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+  return (
+    <section className="rounded-[2rem] border border-slate-200/80 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
+      <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-800/90 bg-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-5">
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium shadow-sm backdrop-blur-[16px] ${locationMeta.className}`}
+          >
+            <LocateFixed className="h-3.5 w-3.5" />
+            {locationMeta.label}
+          </span>
+
+          <div className="flex max-w-[70%] flex-wrap items-center justify-end gap-1.5 sm:max-w-none sm:gap-2">
             <span
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold backdrop-blur-sm ${realtime.className}`}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur-[16px] ${realtime.className}`}
             >
               <span className={`h-2 w-2 rounded-full ${realtime.dotClassName}`} />
               {realtime.label}
             </span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
+            <span className="rounded-full border border-white/10 bg-slate-950/58 px-3 py-1.5 text-[11px] font-semibold text-white/88 shadow-sm backdrop-blur-[16px]">
               {items.length} mapped pins
             </span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
+            <span className="hidden rounded-full border border-white/10 bg-slate-950/58 px-3 py-1.5 text-[11px] font-semibold text-white/88 shadow-sm backdrop-blur-[16px] sm:inline-flex">
               {stats.urgent} urgent
             </span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/85 backdrop-blur-sm">
+            <span className="hidden rounded-full border border-white/10 bg-slate-950/58 px-3 py-1.5 text-[11px] font-semibold text-white/88 shadow-sm backdrop-blur-[16px] sm:inline-flex">
               {stats.total} live cards
             </span>
           </div>
         </div>
 
-        <div className="h-[12.5rem] sm:h-[14.5rem] lg:h-[16rem] xl:h-[17.5rem]">
-          {items.length > 0 ? (
-            <MarketplaceMap items={items} center={center} activeItemId={activeItemId} onSelectItem={onSelectItem} />
-          ) : (
-            <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_top,_rgba(14,165,164,0.24),_transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(15,23,42,0.84))] text-center">
-              <div className="max-w-md px-6">
-                <p className="text-base font-semibold text-white">The live map will appear as soon as the feed has location data.</p>
-                <p className="mt-2 text-sm leading-6 text-white/70">
-                  Once posts load, the map adapts to every screen size and keeps nearby activity visible while you work
-                  through the feed.
-                </p>
-              </div>
-            </div>
-          )}
+        <div className="h-[16.5rem] sm:h-[18rem] lg:h-[20.5rem] xl:h-[21rem]">
+          <MarketplaceMap
+            items={items}
+            center={center}
+            activeItemId={activeItemId}
+            selectedItemId={selectedItemId}
+            onSelectItem={onSelectItem}
+          />
         </div>
 
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-transparent via-cyan-300/16 to-transparent [animation:marketScanSweep_7.8s_linear_infinite]" />
-        <div className="pointer-events-none absolute -bottom-8 right-4 h-24 w-24 rounded-full bg-cyan-400/16 blur-3xl [animation:marketOrbFloat_6.2s_ease-in-out_infinite]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/80 via-slate-950/15 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-950/26 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-slate-950/26 to-transparent" />
+        <div className="pointer-events-none absolute -bottom-12 right-8 h-28 w-28 rounded-full bg-sky-400/14 blur-3xl [animation:marketOrbFloat_7.2s_ease-in-out_infinite]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/56 via-slate-950/14 to-transparent" />
       </div>
     </section>
   );

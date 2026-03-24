@@ -57,6 +57,7 @@ export default function PeopleMapPanel({
             items={items}
             center={center}
             activeItemId={activeProvider?.id || null}
+            selectedItemId={activeProvider?.id || null}
             onSelectItem={onSelectProvider}
           />
         </div>

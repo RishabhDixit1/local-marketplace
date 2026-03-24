@@ -259,6 +259,14 @@ const ensureAcceptedConnection = async (adminClient, viewerUserId, peerUserId) =
 };
 
 const seedConnectedMarketplace = async (adminClient, viewerUserId, viewerEmail) => {
+  const existingViewerProfile = await loadExistingProfile(adminClient, viewerUserId);
+  if (existingViewerProfile && !isSeededE2EProfile(existingViewerProfile)) {
+    console.warn(
+      `[generate_e2e_magic_link] preserving existing marketplace graph for ${viewerEmail}; skipping seeded provider fixtures`
+    );
+    return;
+  }
+
   const peerUserId = await ensureAuthUser(adminClient, {
     email: E2E_PEER_EMAIL,
     userMetadata: {
@@ -271,30 +279,23 @@ const seedConnectedMarketplace = async (adminClient, viewerUserId, viewerEmail) 
     throw new Error("Failed to resolve E2E peer user id.");
   }
 
-  const existingViewerProfile = await loadExistingProfile(adminClient, viewerUserId);
-  if (!existingViewerProfile || isSeededE2EProfile(existingViewerProfile)) {
-    await upsertProfile(adminClient, {
-      id: viewerUserId,
-      full_name: "ServiQ E2E User",
-      name: "ServiQ E2E User",
-      location: "Bengaluru",
-      role: "seeker",
-      bio: "E2E account ready for marketplace discovery, welcome feed flows, chat, and task regression coverage.",
-      interests: ["Local services", "Home help", "Food delivery"],
-      services: ["Local services", "Home help", "Food delivery"],
-      email: viewerEmail,
-      availability: "available",
-      onboarding_completed: true,
-      profile_completion_percent: 100,
-      metadata: {
-        seed: "e2e",
-      },
-    });
-  } else {
-    console.warn(
-      `[generate_e2e_magic_link] preserving existing profile for ${viewerEmail}; skipping viewer profile seed`
-    );
-  }
+  await upsertProfile(adminClient, {
+    id: viewerUserId,
+    full_name: "ServiQ E2E User",
+    name: "ServiQ E2E User",
+    location: "Bengaluru",
+    role: "seeker",
+    bio: "E2E account ready for marketplace discovery, welcome feed flows, chat, and task regression coverage.",
+    interests: ["Local services", "Home help", "Food delivery"],
+    services: ["Local services", "Home help", "Food delivery"],
+    email: viewerEmail,
+    availability: "available",
+    onboarding_completed: true,
+    profile_completion_percent: 100,
+    metadata: {
+      seed: "e2e",
+    },
+  });
 
   await upsertProfile(adminClient, {
     id: peerUserId,

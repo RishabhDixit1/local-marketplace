@@ -24,6 +24,7 @@ const CreatePostModal = dynamic(
 
 export default function MarketplacePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
+  const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
 
@@ -66,6 +67,7 @@ export default function MarketplacePage() {
     realtimeStyle,
     feedStats,
     mapCenter,
+    locationStatus,
     mapItems,
     categoryOptions,
     displayFeed,
@@ -143,8 +145,17 @@ export default function MarketplacePage() {
   const handleMapSelect = useCallback(
     (itemId: string) => {
       setActiveMapItemId(itemId);
+      window.requestAnimationFrame(() => {
+        const cardNode = document.querySelector(`[data-feed-card-id="${itemId}"]`) as HTMLElement | null;
+        cardNode?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
     },
     [setActiveMapItemId]
+  );
+
+  const resolvedHoveredMapItemId = useMemo(
+    () => (hoveredMapItemId && displayFeed.some((item) => item.id === hoveredMapItemId) ? hoveredMapItemId : null),
+    [displayFeed, hoveredMapItemId]
   );
 
   const handleResetOrRefresh = useCallback(() => {
@@ -209,7 +220,9 @@ export default function MarketplacePage() {
           center={mapCenter}
           stats={feedStats}
           realtime={realtimeStyle}
-          activeItemId={activeMapItemId}
+          locationStatus={locationStatus}
+          activeItemId={resolvedHoveredMapItemId ?? activeMapItemId}
+          selectedItemId={activeMapItemId}
           onSelectItem={handleMapSelect}
         />
 
@@ -236,7 +249,9 @@ export default function MarketplacePage() {
           feedError={feedError}
           focusItemId={focusItemId}
           activeItemId={activeMapItemId}
+          hoveredItemId={resolvedHoveredMapItemId}
           onActiveItemChange={setActiveMapItemId}
+          onHoverItemChange={setHoveredMapItemId}
           onResetOrRefresh={handleResetOrRefresh}
           onOpenComposer={() => setOpenPostModal(true)}
           resolveActionModel={resolveActionModel}

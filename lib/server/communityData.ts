@@ -384,7 +384,10 @@ const shouldIncludeDiscoverableProfile = (
 
 export const loadCommunityFeedSnapshot = async (
   db: SupabaseClient,
-  currentUserId: string
+  currentUserId: string,
+  options: {
+    viewerOverride?: { lat: number; lng: number } | null;
+  } = {}
 ): Promise<Extract<CommunityFeedResponse, { ok: true }>> => {
   const [currentUserProfileRow, acceptedPeers] = await Promise.all([
     selectProfileById(db, currentUserId),
@@ -506,7 +509,7 @@ export const loadCommunityFeedSnapshot = async (
 
   return {
     ...snapshot,
-    ...buildCommunityFeedView(snapshot),
+    ...buildCommunityFeedView(snapshot, options.viewerOverride || null),
   };
 };
 

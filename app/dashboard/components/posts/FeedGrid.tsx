@@ -17,7 +17,9 @@ type FeedGridProps = {
   feedError: string | null;
   focusItemId: string;
   activeItemId: string | null;
+  hoveredItemId: string | null;
   onActiveItemChange: (itemId: string) => void;
+  onHoverItemChange: (itemId: string | null) => void;
   onResetOrRefresh: () => void;
   onOpenComposer: () => void;
   resolveActionModel: (item: MarketplaceDisplayFeedItem) => MarketplaceCardActionModel;
@@ -36,7 +38,9 @@ export default function FeedGrid({
   feedError,
   focusItemId,
   activeItemId,
+  hoveredItemId,
   onActiveItemChange,
+  onHoverItemChange,
   onResetOrRefresh,
   onOpenComposer,
   resolveActionModel,
@@ -112,6 +116,7 @@ export default function FeedGrid({
         return (
           <div
             key={item.id}
+            data-feed-card-id={item.id}
             ref={(node) => {
               cardRefs.current.set(item.id, node);
             }}
@@ -119,7 +124,7 @@ export default function FeedGrid({
             <FeedCard
               item={item}
               index={index}
-              active={activeItemId === item.id}
+              active={activeItemId === item.id || hoveredItemId === item.id}
               saved={isSavedListing(item)}
               buttons={actionModel.buttons}
               iconActions={actionModel.icons}
@@ -133,6 +138,7 @@ export default function FeedGrid({
               onPrimaryAction={(action) => onPrimaryAction(item, action)}
               onSecondaryAction={(action) => onSecondaryAction(item, action)}
               onFocus={() => onActiveItemChange(item.id)}
+              onHoverChange={(hovered) => onHoverItemChange(hovered ? item.id : null)}
             />
           </div>
         );

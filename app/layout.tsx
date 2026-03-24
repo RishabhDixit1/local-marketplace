@@ -1,5 +1,5 @@
 import "./globals.css";
-import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { appName, appTagline } from "@/lib/branding";
