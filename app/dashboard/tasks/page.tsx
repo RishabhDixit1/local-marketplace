@@ -62,6 +62,7 @@ import {
   fallbackAvatar,
   formatAgo,
   formatCompactCurrency,
+  getPreferredProfileName,
   getListingTypeLabel,
   mapOrderToTask,
   mapTaskEventToFeedItem,
@@ -259,7 +260,8 @@ const formatTaskBudget = (min: number | null, max: number | null) => {
 };
 
 const buildTaskAvatar = (profile: ProfileRow | null | undefined, fallbackLabel: string, seed: string) =>
-  resolveProfileAvatarUrl(profile?.avatar_url) || createAvatarFallback({ label: profile?.name || fallbackLabel, seed });
+  resolveProfileAvatarUrl(profile?.avatar_url) ||
+  createAvatarFallback({ label: getPreferredProfileName(profile, fallbackLabel), seed });
 
 const mapHelpRequestToTask = (params: {
   request: HelpRequestRow;
@@ -287,7 +289,7 @@ const mapHelpRequestToTask = (params: {
     location: request.location_label?.trim() || requesterProfile?.location || providerProfile?.location || "Nearby",
     postedBy: {
       id: request.requester_id || "unknown-requester",
-      name: isPostedByMe ? "You" : requesterProfile?.name || "Requester",
+      name: isPostedByMe ? "You" : getPreferredProfileName(requesterProfile, "Requester"),
       image: isPostedByMe
         ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
         : buildTaskAvatar(requesterProfile, "Requester", request.requester_id || request.id),
@@ -295,7 +297,7 @@ const mapHelpRequestToTask = (params: {
     assignedTo: request.accepted_provider_id
       ? {
           id: request.accepted_provider_id,
-          name: !isPostedByMe ? "You" : providerProfile?.name || "Provider",
+          name: !isPostedByMe ? "You" : getPreferredProfileName(providerProfile, "Provider"),
           image: !isPostedByMe
             ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
             : buildTaskAvatar(providerProfile, "Provider", request.accepted_provider_id),
@@ -376,7 +378,6 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [realtimeState, setRealtimeState] = useState<RealtimeState>("connecting");
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
-  const [liveUpdateCount, setLiveUpdateCount] = useState(0);
   const [clockMs, setClockMs] = useState(demoNow);
   const [supportBackendReady, setSupportBackendReady] = useState<boolean | null>(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -510,7 +511,7 @@ export default function TasksPage() {
 
       const [profilesRes, servicesRes, productsRes, postsRes, eventsRes, supportRes] = await Promise.all([
         profileIds.length
-          ? supabase.from("profiles").select("id,name,avatar_url,location").in("id", profileIds)
+          ? supabase.from("profiles").select("id,full_name,display_name,name,avatar_url,location").in("id", profileIds)
           : Promise.resolve({ data: [] as ProfileRow[], error: null }),
         serviceIds.length
           ? supabase.from("service_listings").select("id,title,description,category").in("id", serviceIds)
@@ -634,8 +635,6 @@ export default function TasksPage() {
   }, []);
 
   const queueRealtimeRefresh = useEffectEvent(() => {
-    setLiveUpdateCount((current) => current + 1);
-
     if (refreshTimerRef.current) return;
 
     refreshTimerRef.current = setTimeout(() => {
@@ -981,8 +980,6 @@ export default function TasksPage() {
     { value: "rejected", label: "Rejected", icon: AlertCircle },
     { value: "support", label: "Support / issues", icon: AlertCircle },
   ] satisfies Array<{ value: TaskStatusFilter; label: string; icon: typeof Package }>;
-
-  const recentActivity = useMemo(() => taskEvents.slice(0, 4), [taskEvents]);
 
   const getTaskStatusLabel = (task: OperationalTask) => {
     if (task.source === "help_request" && (!task.rawStatus || task.rawStatus === "open")) return "Open";
@@ -1335,16 +1332,6 @@ export default function TasksPage() {
     setSearchQuery("");
   }, []);
 
-  const revealTask = useCallback(
-    (taskId: string) => {
-      setSelectedTab("all");
-      setSelectedStatus("all");
-      setExpandedTaskId(taskId);
-      scrollToSection(liveOrdersSectionRef);
-    },
-    [scrollToSection]
-  );
-
   const confirmAndRefreshTaskStatus = async (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
     let confirmationMessage = "";
 
@@ -1536,7 +1523,7 @@ export default function TasksPage() {
   };
 
   const actionButtonClassName =
-    "inline-flex w-full min-h-10 flex-wrap items-center justify-center gap-2 rounded-xl px-3 py-2 text-center text-sm leading-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-full px-3.5 py-2 text-center text-[13px] leading-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
   const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
@@ -1558,7 +1545,7 @@ export default function TasksPage() {
     const quoteOpen = quoteEditorTaskId === task.orderId;
 
     return (
-      <div className="grid w-full gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => {
@@ -1777,6 +1764,40 @@ export default function TasksPage() {
     const cardToneClassName = options?.history
       ? "border-slate-200/90 bg-white"
       : "border-slate-200 bg-white shadow-[0_22px_60px_-42px_rgba(15,23,42,0.3)]";
+    const ownershipLabel = task.type === "posted" ? "Posted by you" : "Accepted by you";
+    const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
+    const supportHeadline = openSupport
+      ? formatSupportRequestStatus(openSupport.status)
+      : supportEntries.length > 0
+        ? `${supportEntries.length} support item${supportEntries.length === 1 ? "" : "s"}`
+        : supportAvailability.allowed
+          ? "No issues raised"
+          : "Support unavailable";
+    const supportCopy = openSupport
+      ? `Opened ${formatAgo(openSupport.updatedAtRaw || openSupport.createdAtRaw, clockMs)}`
+      : supportEntries.length > 0
+        ? "Support history is linked to this task."
+        : supportAvailability.allowed
+          ? "Raise an issue if this workflow needs intervention."
+          : supportAvailability.reason;
+    const nextActionTone = getToneClassNames(
+      openSupport
+        ? "amber"
+        : task.status === "in-progress"
+          ? "violet"
+          : task.status === "completed"
+            ? "emerald"
+            : task.status === "cancelled"
+              ? "rose"
+              : "sky"
+    );
+    const summaryItems = [
+      { icon: DollarSign, value: task.budget || "Price on request" },
+      { icon: MapPin, value: task.location },
+      { icon: Clock, value: task.timeline || "Open" },
+      { icon: Calendar, value: latestUpdateAt },
+    ] as const;
+    const visibleFlowLabels = flowLabels.slice(0, 3);
 
     return (
       <article
@@ -1784,44 +1805,27 @@ export default function TasksPage() {
         ref={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className={`group relative flex h-full flex-col overflow-hidden rounded-[1.9rem] border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_28px_70px_-46px_rgba(15,23,42,0.35)] sm:p-6 ${cardToneClassName}`}
+        className={`group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.4rem] border p-4 transition hover:border-slate-300 hover:shadow-[0_20px_45px_-38px_rgba(15,23,42,0.28)] ${cardToneClassName}`}
       >
         <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
 
-        <div className="flex h-full flex-col gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                  {getListingTypeLabel(task.listingType)}
+        <div className="flex h-full flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                {getListingTypeLabel(task.listingType)}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
+                {getTaskStatusLabel(task)}
+              </span>
+              {openSupport ? (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                  Support open
                 </span>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
-                  {getTaskStatusLabel(task)}
-                </span>
-                {openSupport ? (
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                    Support open
-                  </span>
-                ) : null}
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                  #{task.orderId.slice(0, 8)}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
-                <div className="min-w-0 flex-1">
-                  <h3 className="break-words text-lg font-semibold tracking-tight text-slate-950 sm:text-[1.35rem]">{task.title}</h3>
-                  <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-slate-600 line-clamp-3 sm:line-clamp-none">
-                    {task.description}
-                  </p>
-                </div>
-
-                <div className="w-full rounded-[1.3rem] border border-slate-200 bg-slate-50/80 px-4 py-3 2xl:max-w-[320px]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Next best action</p>
-                  <p className="mt-2 break-words text-sm font-semibold text-slate-900">{nextAction.title}</p>
-                  <p className="mt-1 break-words text-xs leading-5 text-slate-500">{nextAction.helper}</p>
-                </div>
-              </div>
+              ) : null}
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                #{task.orderId.slice(0, 8)}
+              </span>
             </div>
 
             <span
@@ -1836,134 +1840,115 @@ export default function TasksPage() {
             </span>
           </div>
 
-          <div className="grid flex-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                  <DollarSign className="h-3.5 w-3.5 text-slate-500" />
-                  {task.budget || "Price on request"}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                  {task.location}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                  <Clock className="h-3.5 w-3.5 text-slate-500" />
-                  {task.timeline || "Open"}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                  <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                  {formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs)}
-                </span>
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[64px_minmax(0,1fr)_220px] lg:items-start">
+            <div className="flex items-start justify-start lg:justify-center">
+              <Image
+                src={counterpartyAvatar}
+                alt={counterpartyLabel}
+                width={56}
+                height={56}
+                unoptimized
+                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
+              />
+            </div>
+
+            <div className="min-w-0 space-y-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span className="font-semibold uppercase tracking-[0.16em] text-slate-500">{getCounterpartyMetaLabel(task)}</span>
+                <span>{ownershipLabel}</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">#{task.orderId.slice(0, 8)}</span>
               </div>
 
-              {latestEvent ? (
-                <div className={`rounded-[1.35rem] border px-4 py-3 ${getToneClassNames(latestEvent.tone).card}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`h-2.5 w-2.5 rounded-full ${getToneClassNames(latestEvent.tone).dot}`} />
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Latest update</p>
-                        {latestEvent.statusLabel ? (
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getToneClassNames(latestEvent.tone).pill}`}>
-                            {latestEvent.statusLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 break-words text-sm font-semibold text-slate-900">{latestEvent.title}</p>
-                      <p className="mt-1.5 line-clamp-3 break-words text-sm text-slate-700">{latestEvent.description}</p>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-semibold text-slate-500">
-                      {formatAgo(latestEvent.createdAtRaw, clockMs)}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-slate-900">{counterpartyLabel}</p>
+                <h3 className="mt-1 break-words text-[1.12rem] font-semibold leading-tight text-slate-950 sm:text-[1.2rem]">{task.title}</h3>
+                <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">{task.description}</p>
+              </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {flowLabels.map((label) => (
-                  <span
-                    key={`${task.orderId}-${label}`}
-                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700"
-                  >
-                    {label}
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
+                {summaryItems.map((item, index) => (
+                  <span key={`${task.orderId}-${index}`} className="inline-flex min-w-0 items-center gap-1.5">
+                    <item.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate">{item.value}</span>
                   </span>
                 ))}
               </div>
+
+              {latestEvent ? (
+                <div className={`rounded-[1rem] border px-3 py-2.5 ${getToneClassNames(latestEvent.tone).card}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${getToneClassNames(latestEvent.tone).dot}`} />
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Latest update</p>
+                      {latestEvent.statusLabel ? (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getToneClassNames(latestEvent.tone).pill}`}>
+                          {latestEvent.statusLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-500">{formatAgo(latestEvent.createdAtRaw, clockMs)}</span>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{latestEvent.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-slate-700">{latestEvent.description}</p>
+                </div>
+              ) : null}
+
+              {visibleFlowLabels.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {visibleFlowLabels.map((label) => (
+                    <span
+                      key={`${task.orderId}-${label}`}
+                      className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <div className="flex h-full flex-col gap-3">
-              <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50/80 p-4">
-                <div className="flex items-center gap-3">
-                  <Image
-                    src={counterpartyAvatar}
-                    alt={counterpartyLabel}
-                    width={48}
-                    height={48}
-                    unoptimized
-                    className="h-12 w-12 rounded-2xl border border-slate-200 object-cover"
-                  />
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {getCounterpartyMetaLabel(task)}
-                    </div>
-                    <div className="truncate text-sm font-semibold text-slate-900">{counterpartyLabel}</div>
-                    <div className="mt-0.5 text-xs text-slate-500">{task.type === "posted" ? "Posted by you" : "Accepted by you"}</div>
-                  </div>
+            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              <div className={`rounded-[1rem] border px-3 py-2.5 ${nextActionTone.card}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                    Next
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500">{progress}%</span>
                 </div>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{nextAction.title}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-600">{nextAction.helper}</p>
+              </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-2 2xl:grid-cols-2">
-                  <div className="rounded-xl bg-white px-3 py-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Progress</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">{progress}%</div>
-                  </div>
-                  <div className="rounded-xl bg-white px-3 py-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Updated</div>
-                    <div className={`mt-1 text-sm font-semibold ${getStatusTextClass(task.status)}`}>
-                      {formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs)}
-                    </div>
-                  </div>
+              <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <Activity className="h-3.5 w-3.5 shrink-0" />
+                    Progress
+                  </span>
+                  <span className={`text-xs font-semibold ${getStatusTextClass(task.status)}`}>{latestUpdateAt}</span>
                 </div>
-
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
                   <div className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`} style={{ width: `${progress}%` }} />
                 </div>
               </div>
 
-              <div className={`mt-auto rounded-[1.35rem] border px-4 py-3 ${supportSummaryClassName}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">Support</p>
-                    <p className="mt-1 text-sm font-semibold">
-                      {openSupport
-                        ? formatSupportRequestStatus(openSupport.status)
-                        : supportEntries.length > 0
-                          ? `${supportEntries.length} support item${supportEntries.length === 1 ? "" : "s"}`
-                          : supportAvailability.allowed
-                            ? "No issues raised"
-                            : "Support unavailable"}
-                    </p>
-                    <p className="mt-1 text-xs leading-5">
-                      {openSupport
-                        ? `Opened ${formatAgo(openSupport.updatedAtRaw || openSupport.createdAtRaw, clockMs)}`
-                        : supportEntries.length > 0
-                          ? "This task has support history linked to it."
-                          : supportAvailability.allowed
-                            ? "Raise an issue if the workflow breaks or needs intervention."
-                            : supportAvailability.reason}
-                    </p>
-                  </div>
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className={`rounded-[1rem] border px-3 py-2.5 ${supportSummaryClassName}`}>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  Support
                 </div>
+                <p className="mt-1 text-sm font-semibold">{supportHeadline}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs leading-5">{supportCopy}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-auto border-t border-slate-200 pt-3">{renderPremiumTaskActions(task)}</div>
+          <div className="border-t border-slate-200 pt-3">{renderPremiumTaskActions(task)}</div>
 
           {isExpanded ? (
             <div className="rounded-[1.55rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
-              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_280px]">
                 <div className="space-y-4">
                   {canManageQuote(task) && quoteEditorTaskId === task.orderId ? (
                     <QuoteDraftEditor
@@ -2095,40 +2080,39 @@ export default function TasksPage() {
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="market-hero-surface relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 p-4 shadow-[0_30px_90px_-56px_rgba(15,23,42,0.48)] backdrop-blur sm:p-5"
+        className="market-hero-surface relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/88 p-4 shadow-[0_24px_70px_-54px_rgba(15,23,42,0.38)] backdrop-blur"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(17,70,106,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.96))]" />
 
-        <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] xl:items-start">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[var(--brand-500)]/20 bg-[var(--brand-50)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">
-                ServiQ Operations
-              </span>
-              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${realtimeMeta.className}`}>
-                <RealtimeIcon className={`h-3.5 w-3.5 ${loading || realtimeState === "connecting" ? "animate-spin" : ""}`} />
-                {loading ? "Syncing tasks..." : realtimeMeta.label}
-              </span>
-            </div>
+        <div className="relative space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-[var(--brand-500)]/20 bg-[var(--brand-50)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">
+                  ServiQ Operations
+                </span>
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${realtimeMeta.className}`}>
+                  <RealtimeIcon className={`h-3.5 w-3.5 ${loading || realtimeState === "connecting" ? "animate-spin" : ""}`} />
+                  {loading ? "Syncing tasks..." : realtimeMeta.label}
+                </span>
+              </div>
 
-            <div>
-              <h1 className="brand-display text-[2rem] font-semibold leading-tight text-slate-950 sm:text-[2.4rem]">Tasks Workspace</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-[15px]">
-                Track posted requests, accepted work, support follow-up, and completed history from one calm operational surface.
-              </p>
-            </div>
+              <div>
+                <h1 className="brand-display text-[1.55rem] font-semibold leading-tight text-slate-950 sm:text-[1.8rem]">Tasks Workspace</h1>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                  Order-history style tracking for posted requests, accepted work, support follow-up, and completed history.
+                </p>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">{tasks.length} tracked</span>
-              <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                {actionRequiredCount} need attention
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                Last sync {lastSyncAt ? formatAgo(lastSyncAt, clockMs) : "waiting"}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                {supportBackendReady === false ? "Support backend missing" : "Support queue available"}
-              </span>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">{tasks.length} tracked</span>
+                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  {actionRequiredCount} need attention
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  Last sync {lastSyncAt ? formatAgo(lastSyncAt, clockMs) : "waiting"}
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -2155,19 +2139,19 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {compactStats.map((stat) => (
-              <div key={stat.label} className="rounded-[1.45rem] border border-slate-200 bg-white/88 p-4 shadow-[0_20px_50px_-42px_rgba(15,23,42,0.35)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+              <div key={stat.label} className="rounded-[1.1rem] border border-slate-200 bg-white/92 px-3.5 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{stat.label}</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">{stat.value}</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-950">{stat.value}</p>
                   </div>
-                  <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${stat.tone}`}>
-                    <stat.icon className="h-4.5 w-4.5" />
+                  <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${stat.tone}`}>
+                    <stat.icon className="h-4 w-4" />
                   </span>
                 </div>
-                <p className="mt-2 text-sm leading-5 text-slate-500">{stat.helper}</p>
+                <p className="mt-1.5 text-sm text-slate-500">{stat.helper}</p>
               </div>
             ))}
           </div>
@@ -2271,8 +2255,7 @@ export default function TasksPage() {
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-5">
+      <div className="space-y-5">
           <section ref={liveOrdersSectionRef} className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -2285,7 +2268,7 @@ export default function TasksPage() {
             </div>
 
             {loading ? (
-              <div className="grid gap-3 2xl:grid-cols-2">
+              <div className="space-y-3">
                 {[0, 1, 2].map((index) => (
                   <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
                     <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
@@ -2293,13 +2276,13 @@ export default function TasksPage() {
                     <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-slate-100" />
                   </div>
                 ))}
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 2xl:col-span-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading task workspace...
                 </div>
               </div>
             ) : filteredLiveTasks.length > 0 ? (
-              <div className="grid items-stretch gap-4 2xl:grid-cols-2">{filteredLiveTasks.map((task) => renderTaskCardPremium(task))}</div>
+              <div className="space-y-3">{filteredLiveTasks.map((task) => renderTaskCardPremium(task))}</div>
             ) : filteredHistoryTasks.length > 0 ? (
               <div className="rounded-[1.7rem] border border-slate-200 bg-white px-5 py-6 text-sm text-slate-500 shadow-sm">
                 No live tasks match the current view. Task history is still available below.
@@ -2316,7 +2299,7 @@ export default function TasksPage() {
                 </div>
                 <p className="text-sm text-slate-500">{filteredHistoryTasks.length} historical tasks</p>
               </div>
-              <div className="grid items-stretch gap-4 2xl:grid-cols-2">
+              <div className="space-y-3">
                 {filteredHistoryTasks.map((task) => renderTaskCardPremium(task, { history: true }))}
               </div>
             </section>
@@ -2333,95 +2316,7 @@ export default function TasksPage() {
               </button>
             </div>
           ) : null}
-        </div>
-
-        <aside className="space-y-4">
-          <section className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-[0_22px_55px_-44px_rgba(15,23,42,0.34)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Board health</p>
-                <h2 className="mt-1 text-lg font-semibold text-slate-950">Realtime status</h2>
-              </div>
-              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${realtimeMeta.className}`}>
-                <RealtimeIcon className={`h-3.5 w-3.5 ${realtimeState === "connecting" ? "animate-spin" : ""}`} />
-                {realtimeMeta.label}
-              </span>
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-              <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Feed</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{taskEvents.length}</p>
-                <p className="text-xs text-slate-500">Recent task events</p>
-              </div>
-              <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Live hits</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{liveUpdateCount}</p>
-                <p className="text-xs text-slate-500">Realtime refreshes</p>
-              </div>
-              <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Support</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{statusCounts.support}</p>
-                <p className="text-xs text-slate-500">{supportBackendReady === false ? "Backend missing" : "Support-linked tasks"}</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-[0_22px_55px_-44px_rgba(15,23,42,0.34)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Recent activity</p>
-                <h2 className="mt-1 text-lg font-semibold text-slate-950">Latest task updates</h2>
-              </div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">{recentActivity.length}</span>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {recentActivity.length > 0 ? (
-                recentActivity.map((event) => {
-                  const toneClasses = getToneClassNames(event.tone);
-
-                  return (
-                    <button
-                      key={event.id}
-                      type="button"
-                      onClick={() => revealTask(event.orderId)}
-                      className={`w-full rounded-[1.3rem] border px-4 py-3 text-left transition hover:-translate-y-0.5 ${toneClasses.card}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`h-2.5 w-2.5 rounded-full ${toneClasses.dot}`} />
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClasses.pill}`}>
-                              {event.statusLabel || event.eventType.replace(/_/g, " ")}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm font-semibold text-slate-900">{event.title}</p>
-                          <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-700">{event.description}</p>
-                        </div>
-                        <span className="shrink-0 text-[11px] font-semibold text-slate-500">{formatAgo(event.createdAtRaw, clockMs)}</span>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="rounded-[1.3rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                  Activity will appear here once orders or task updates begin to flow in.
-                </div>
-              )}
-            </div>
-          </section>
-        </aside>
       </div>
-
-      {!loading && tasks.length > 0 ? (
-        <div className="rounded-[1.2rem] border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          <div className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Live sync is active. Orders, accepted requests, support state, and task history are still connected to the existing Supabase workflow.</span>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

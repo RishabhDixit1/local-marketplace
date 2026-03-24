@@ -26,6 +26,8 @@ export type OrderRow = {
 
 export type ProfileRow = {
   id: string;
+  full_name?: string | null;
+  display_name?: string | null;
   name: string | null;
   avatar_url: string | null;
   location: string | null;
@@ -113,6 +115,9 @@ export type TaskEventFeedItem = {
 export const fallbackAvatar = createAvatarFallback({ label: "ServiQ member", seed: "task-fallback" });
 
 export const normalizeTaskStatus = (status: string | null | undefined): TaskStatus => toTaskWorkflowStatus(status);
+
+export const getPreferredProfileName = (profile: ProfileRow | null | undefined, fallback: string) =>
+  sanitizeDisplayText(profile?.full_name || profile?.display_name || profile?.name || fallback, fallback);
 
 export const timelineFromStatus = (status: string | null | undefined) => {
   const normalized = normalizeTaskStatus(status);
@@ -315,12 +320,12 @@ export const mapOrderToTask = (params: {
     location: pickString(metadata?.location_label) || counterpartyProfile?.location || providerProfile?.location || consumerProfile?.location || "Nearby",
     postedBy: {
       id: order.consumer_id || "unknown-consumer",
-      name: isPostedByMe ? "You" : consumerProfile?.name || "Customer",
+      name: isPostedByMe ? "You" : getPreferredProfileName(consumerProfile, "Customer"),
       image: (isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(consumerProfile?.avatar_url)) || fallbackAvatar,
     },
     assignedTo: {
       id: order.provider_id || "unknown-provider",
-      name: !isPostedByMe ? "You" : providerProfile?.name || "Provider",
+      name: !isPostedByMe ? "You" : getPreferredProfileName(providerProfile, "Provider"),
       image: (!isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(providerProfile?.avatar_url)) || fallbackAvatar,
     },
     tags: [
