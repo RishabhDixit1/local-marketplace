@@ -103,6 +103,19 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 const FEED_PAGE_SIZE = 8;
+const POST_OWNER_FIELD_VARIANTS: ReadonlyArray<ReadonlyArray<string>> = [
+  ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
+  ["user_id", "author_id", "created_by", "requester_id", "owner_id"],
+  ["user_id", "author_id", "created_by", "requester_id"],
+  ["user_id", "author_id", "created_by"],
+  ["user_id", "author_id"],
+  ["user_id"],
+  ["author_id"],
+  ["created_by"],
+  ["requester_id"],
+  ["owner_id"],
+  ["provider_id"],
+];
 
 const MARKETPLACE_HERO_LINES = [
   "Post a Need. Get Local Help. Let Others Earn.",
@@ -153,6 +166,22 @@ const formatTimeAgo = (value: string | null | undefined) => {
   if (diffDays < 7) return `${diffDays}d ago`;
 
   return parsed.toLocaleDateString([], { month: "short", day: "numeric" });
+};
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
+
+const buildPostOwnerFilter = (userId: string, fields: readonly string[]) =>
+  fields.map((field) => `${field}.eq.${userId}`).join(",");
+
+const countOwnedPosts = async (userId: string) => {
+  for (const ownerFields of POST_OWNER_FIELD_VARIANTS) {
+    const result = await supabase.from("posts").select("id", { count: "exact", head: true }).or(buildPostOwnerFilter(userId, ownerFields));
+    if (!result.error) return Number(result.count || 0);
+    if (isMissingColumnError(result.error.message || "")) continue;
+    return 0;
+  }
+  return 0;
 };
 
 export default function WelcomePage() {
@@ -438,7 +467,7 @@ export default function WelcomePage() {
           setProviderProductsCount(Number(productsCount || 0));
           setSeekerPostsCount(0);
         } else {
-          const { count: postsCount } = await supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", viewerId);
+          const postsCount = await countOwnedPosts(viewerId);
           if (!active) return;
 
           setProviderServicesCount(0);

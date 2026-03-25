@@ -83,7 +83,7 @@ export default function AuthCallbackPage() {
         const message =
           error instanceof Error && error.message
             ? error.message
-            : "Unable to complete sign-in. Please request a new login link.";
+            : "Unable to complete sign-in. Please request a new OTP or magic link.";
         setMessage(message);
       }
     };

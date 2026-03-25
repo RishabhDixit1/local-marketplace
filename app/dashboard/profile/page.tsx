@@ -101,6 +101,36 @@ type SeekerInsight = {
   activeOrders: number;
 };
 
+const POST_OWNER_FIELD_VARIANTS: ReadonlyArray<ReadonlyArray<string>> = [
+  ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
+  ["user_id", "author_id", "created_by", "requester_id", "owner_id"],
+  ["user_id", "author_id", "created_by", "requester_id"],
+  ["user_id", "author_id", "created_by"],
+  ["user_id", "author_id"],
+  ["user_id"],
+  ["author_id"],
+  ["created_by"],
+  ["requester_id"],
+  ["owner_id"],
+  ["provider_id"],
+];
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
+
+const buildPostOwnerFilter = (userId: string, fields: readonly string[]) =>
+  fields.map((field) => `${field}.eq.${userId}`).join(",");
+
+const countOwnedPosts = async (userId: string) => {
+  for (const ownerFields of POST_OWNER_FIELD_VARIANTS) {
+    const result = await supabase.from("posts").select("id", { count: "exact", head: true }).or(buildPostOwnerFilter(userId, ownerFields));
+    if (!result.error) return Number(result.count || 0);
+    if (isMissingColumnError(result.error.message || "")) continue;
+    return 0;
+  }
+  return 0;
+};
+
 const emptyProfileForm: ProfileFormValues = {
   fullName: "",
   location: "",
@@ -329,7 +359,7 @@ export default function ProfilePage() {
       }
 
       const [{ count: postsCount }, { data: orders }] = await Promise.all([
-        supabase.from("posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+        countOwnedPosts(user.id).then((value) => ({ count: value })),
         supabase.from("orders").select("status").eq("consumer_id", user.id),
       ]);
 
@@ -397,6 +427,68 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user?.id) return;
     void loadRoleInsights();
+  }, [roleFamily, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let refreshTimerId: number | null = null;
+    const queueInsightRefresh = () => {
+      if (refreshTimerId) {
+        window.clearTimeout(refreshTimerId);
+      }
+
+      refreshTimerId = window.setTimeout(() => {
+        void loadRoleInsights();
+      }, 180);
+    };
+
+    let channel = supabase.channel(`profile-insights-live-${user.id}`);
+
+    if (roleFamily === "provider") {
+      channel = channel
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "service_listings", filter: `provider_id=eq.${user.id}` },
+          queueInsightRefresh
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "product_catalog", filter: `provider_id=eq.${user.id}` },
+          queueInsightRefresh
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "reviews", filter: `provider_id=eq.${user.id}` },
+          queueInsightRefresh
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders", filter: `provider_id=eq.${user.id}` },
+          queueInsightRefresh
+        );
+    } else {
+      channel = channel
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders", filter: `consumer_id=eq.${user.id}` },
+          queueInsightRefresh
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "posts", filter: `user_id=eq.${user.id}` },
+          queueInsightRefresh
+        );
+    }
+
+    channel.subscribe();
+
+    return () => {
+      if (refreshTimerId) {
+        window.clearTimeout(refreshTimerId);
+      }
+      void supabase.removeChannel(channel);
+    };
   }, [roleFamily, user?.id]);
 
   useEffect(() => {

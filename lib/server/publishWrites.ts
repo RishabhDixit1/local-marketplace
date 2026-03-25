@@ -10,6 +10,14 @@ type WriteResult = {
   missingTable?: boolean;
 };
 
+type ListingWriteResult = {
+  id?: string;
+  errorMessage?: string;
+  errorCode?: string | null;
+  details?: string | null;
+  missingTable?: boolean;
+};
+
 const isMissingTableError = (message: string, table: string): boolean => {
   const escaped = table.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`relation .*${escaped}.* does not exist|could not find the table '.*${escaped}.*' in the schema cache`, "i").test(
@@ -43,6 +51,9 @@ const getForeignKeyColumn = (message: string, details?: string | null): string |
   const genericMatch = constraintName.match(/^[a-z0-9]+_(.+)_fkey$/i);
   return genericMatch?.[1] || null;
 };
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const toPostMediaLine = (media: UploadedMediaPayload[]): string => {
   if (!media.length) return "Media: None";
@@ -103,6 +114,164 @@ const ensureProfileReference = async (admin: SupabaseClient, userId: string, ema
   return false;
 };
 
+const toListingPrice = (value: number | null | undefined) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const insertMirroredListing = async (params: {
+  admin: SupabaseClient;
+  userId: string;
+  email: string;
+  postId: string;
+  postType: "service" | "product";
+  payload: PublishPayloadBase;
+  metadata: Record<string, unknown>;
+}): Promise<ListingWriteResult> => {
+  const { admin, userId, email, postId, postType, payload, metadata } = params;
+  const tableName = postType === "service" ? "service_listings" : "product_catalog";
+  const listingMetadata: Record<string, unknown> = {
+    ...metadata,
+    source: "composer_listing_sync",
+    linked_post_id: postId,
+  };
+  const listingPrice = toListingPrice(payload.budget);
+
+  const listingPayload: Record<string, unknown> =
+    postType === "service"
+      ? {
+          provider_id: userId,
+          title: payload.title,
+          description: payload.details || payload.title,
+          category: payload.category,
+          price: listingPrice,
+          availability: "available",
+          pricing_type: "fixed",
+          metadata: listingMetadata,
+        }
+      : {
+          provider_id: userId,
+          title: payload.title,
+          description: payload.details || payload.title,
+          category: payload.category,
+          price: listingPrice,
+          stock: 1,
+          delivery_method: "pickup",
+          image_url: payload.media.find((item) => item.type.startsWith("image/"))?.url || null,
+          metadata: listingMetadata,
+        };
+
+  const blockedColumns = new Set<string>();
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const result = await admin.from(tableName).insert(listingPayload).select("id").single();
+    if (!result.error) {
+      return {
+        id: (result.data as { id?: string } | null)?.id,
+      };
+    }
+
+    const message = result.error.message || "Listing insert failed.";
+    const details = result.error.details || null;
+
+    if (isMissingTableError(message, tableName)) {
+      return {
+        missingTable: true,
+        errorMessage: message,
+        errorCode: result.error.code,
+        details,
+      };
+    }
+
+    const missingColumn = getMissingColumn(message, tableName);
+    if (missingColumn && Object.prototype.hasOwnProperty.call(listingPayload, missingColumn)) {
+      delete listingPayload[missingColumn];
+      blockedColumns.add(missingColumn);
+      continue;
+    }
+
+    const requiredColumn = getRequiredNullColumn(message);
+    if (requiredColumn && !blockedColumns.has(requiredColumn)) {
+      if (["provider_id", "user_id", "owner_id", "created_by", "author_id"].includes(requiredColumn)) {
+        listingPayload[requiredColumn] = userId;
+        continue;
+      }
+      if (["title", "name", "subject"].includes(requiredColumn)) {
+        listingPayload[requiredColumn] = payload.title;
+        continue;
+      }
+      if (["description", "details", "content", "text", "body"].includes(requiredColumn)) {
+        listingPayload[requiredColumn] = payload.details || payload.title;
+        continue;
+      }
+      if (requiredColumn === "category") {
+        listingPayload[requiredColumn] = payload.category || (postType === "service" ? "Service" : "Product");
+        continue;
+      }
+      if (["price", "amount", "rate"].includes(requiredColumn)) {
+        listingPayload[requiredColumn] = listingPrice ?? 0;
+        continue;
+      }
+      if (["availability", "status", "state"].includes(requiredColumn)) {
+        listingPayload[requiredColumn] = "available";
+        continue;
+      }
+      if (requiredColumn === "pricing_type") {
+        listingPayload[requiredColumn] = "fixed";
+        continue;
+      }
+      if (requiredColumn === "stock") {
+        listingPayload[requiredColumn] = 1;
+        continue;
+      }
+      if (requiredColumn === "delivery_method") {
+        listingPayload[requiredColumn] = "pickup";
+        continue;
+      }
+      if (requiredColumn === "metadata") {
+        listingPayload[requiredColumn] = {};
+        continue;
+      }
+    }
+
+    const foreignKeyColumn = getForeignKeyColumn(message, details);
+    if (foreignKeyColumn) {
+      const ensured = await ensureProfileReference(admin, userId, email);
+      if (ensured) {
+        if (!Object.prototype.hasOwnProperty.call(listingPayload, foreignKeyColumn)) {
+          listingPayload[foreignKeyColumn] = userId;
+        }
+        continue;
+      }
+    }
+
+    if ((result.error.code || "") === "42501" || /row-level security policy/i.test(message)) {
+      return {
+        errorMessage:
+          `Publishing "${postType}" is blocked by Supabase permissions on "${tableName}".` +
+          " Update RLS policies or use SUPABASE_SERVICE_ROLE_KEY on the server.",
+        errorCode: result.error.code,
+        details,
+      };
+    }
+
+    if (isMissingColumnError(message)) {
+      continue;
+    }
+
+    return {
+      errorMessage: message,
+      errorCode: result.error.code,
+      details,
+    };
+  }
+
+  return {
+    errorMessage: "Listing insert retries exhausted.",
+    errorCode: "RETRY_EXHAUSTED",
+  };
+};
+
 export const insertPostRow = async (params: {
   admin: SupabaseClient;
   userId: string;
@@ -125,6 +294,7 @@ export const insertPostRow = async (params: {
     author_id: userId,
     type: storageTypeVariants[activeStorageTypeIndex],
     post_type: storageTypeVariants[activeStorageTypeIndex],
+    visibility: "public",
     status: "open",
     state: "open",
     category: payload.category,
@@ -141,8 +311,40 @@ export const insertPostRow = async (params: {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const result = await admin.from("posts").insert(postPayload).select("id").single();
     if (!result.error) {
+      const postId = (result.data as { id?: string } | null)?.id;
+      if (!postId) {
+        return {
+          errorMessage: "Post insert succeeded but returned no id.",
+          errorCode: "MISSING_POST_ID",
+        };
+      }
+
+      if (postType === "service" || postType === "product") {
+        const listingWrite = await insertMirroredListing({
+          admin,
+          userId,
+          email,
+          postId,
+          postType,
+          payload,
+          metadata,
+        });
+
+        if (!listingWrite.id) {
+          await admin.from("posts").delete().eq("id", postId);
+          return {
+            errorMessage:
+              listingWrite.errorMessage ||
+              `Post publish was rolled back because the "${postType}" inventory entry could not be created.`,
+            errorCode: listingWrite.errorCode,
+            details: listingWrite.details,
+            missingTable: listingWrite.missingTable,
+          };
+        }
+      }
+
       return {
-        id: (result.data as { id?: string } | null)?.id,
+        id: postId,
       };
     }
 

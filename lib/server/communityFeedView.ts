@@ -78,6 +78,10 @@ const getListingOwnerIdFromPost = (row: FlexibleRow) =>
   stringFromRow(row, ["user_id", "provider_id", "created_by", "author_id", "requester_id", "owner_id"], "");
 
 const isUrgentDemand = (value: string) => /urgent|asap|immediate|today|quick|critical|emergency|high/i.test(value);
+const readMetadataSource = (value: unknown) =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? stringFromRow(value as FlexibleRow, ["source"], "").toLowerCase()
+    : "";
 
 const resolveViewerPoint = (profile: CommunityProfileRecord | null): MarketplaceMapCenter => {
   const explicit = getCoordinates(profile?.latitude, profile?.longitude);
@@ -202,8 +206,10 @@ export const buildCommunityFeedView = (
     });
     const title = stringFromRow(row, ["title", "name"], "Local service");
     const description = stringFromRow(row, ["description", "details", "text"], "Service listing");
+    const metadataSource = readMetadataSource(row.metadata);
+    const isComposerSyncedListing = metadataSource === "composer_listing_sync";
 
-    if (isWeakMarketplaceContent(title, description)) return;
+    if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
     nextItems.push({
       id: serviceRow.id,
@@ -254,8 +260,10 @@ export const buildCommunityFeedView = (
     });
     const title = stringFromRow(row, ["title", "name"], "Local product");
     const description = stringFromRow(row, ["description", "details", "text"], "Product listing");
+    const metadataSource = readMetadataSource(row.metadata);
+    const isComposerSyncedListing = metadataSource === "composer_listing_sync";
 
-    if (isWeakMarketplaceContent(title, description)) return;
+    if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
     nextItems.push({
       id: productRow.id,
@@ -327,7 +335,7 @@ export const buildCommunityFeedView = (
     const status = stringFromRow(row, ["status", "state"], "open");
 
     if (isClosedMarketplaceStatus(status)) return;
-    if (isWeakMarketplaceContent(title, description)) return;
+    if (!composerMetadata && isWeakMarketplaceContent(title, description)) return;
 
     const metadataMedia = mediaFromMarketplaceComposerMetadata(postRow.metadata);
     const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
@@ -387,7 +395,7 @@ export const buildCommunityFeedView = (
     const status = stringFromRow(row, ["status"], "open");
 
     if (isClosedMarketplaceStatus(status)) return;
-    if (isWeakMarketplaceContent(title, description)) return;
+    if (!composerMetadata && isWeakMarketplaceContent(title, description)) return;
 
     const locationLabel =
       stringFromRow(row, ["location_label", "location"], "") ||

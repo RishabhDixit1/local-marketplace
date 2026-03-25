@@ -12,6 +12,7 @@ type PublicProfileRealtimeProps = {
 };
 
 type LiveState = "connecting" | "live" | "syncing";
+const POST_OWNER_FIELDS = ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"] as const;
 
 export default function PublicProfileRealtime({ profileId, roleFamily }: PublicProfileRealtimeProps) {
   const router = useRouter();
@@ -31,6 +32,23 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
         router.refresh();
         setLiveState("live");
       }, 250);
+    };
+
+    const schedulePostRefreshIfOwnedByProfile = (payload: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
+      const record =
+        payload?.new && typeof payload.new === "object"
+          ? payload.new
+          : payload?.old && typeof payload.old === "object"
+          ? payload.old
+          : null;
+      if (!record) return;
+
+      const ownerId =
+        POST_OWNER_FIELDS.map((field) => record[field]).find((value) => typeof value === "string" && value.length > 0) ||
+        "";
+      if (ownerId === profileId) {
+        scheduleRefresh();
+      }
     };
 
     const channel = supabase
@@ -57,7 +75,7 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
         },
         scheduleRefresh
       )
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `user_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, schedulePostRefreshIfOwnedByProfile)
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setLiveState("live");
