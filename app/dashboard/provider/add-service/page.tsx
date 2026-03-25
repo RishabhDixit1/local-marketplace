@@ -2,19 +2,22 @@
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { PlusCircle, Loader2 } from "lucide-react";
+import type { ProfileAvailability } from "@/lib/profile/types";
+import { createProviderListing } from "@/lib/provider/client";
+import {
+  PROVIDER_SERVICE_CATEGORIES,
+  SERVICE_PRICING_TYPES,
+  type ServicePricingType,
+} from "@/lib/provider/listings";
 
-const serviceCategories = ["Electrician", "Plumber", "Cleaning", "Delivery", "Tutor", "Repair"];
+const pricingOptions = SERVICE_PRICING_TYPES.map((value) => ({
+  value,
+  label: `${value[0]?.toUpperCase() || ""}${value.slice(1)}`,
+}));
 
-const pricingOptions = [
-  { value: "fixed", label: "Fixed" },
-  { value: "hourly", label: "Hourly" },
-  { value: "negotiable", label: "Negotiable" },
-];
-
-const availabilityOptions = [
+const availabilityOptions: Array<{ value: ProfileAvailability; label: string }> = [
   { value: "available", label: "Available" },
   { value: "busy", label: "Busy" },
   { value: "offline", label: "Offline" },
@@ -22,68 +25,54 @@ const availabilityOptions = [
 
 export default function AddServicePage() {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [form, setForm] = useState({
     title: "",
     category: "",
-    pricing_type: "fixed",
+    pricingType: "fixed" as ServicePricingType,
     price: "",
-    availability: "available",
+    availability: "available" as ProfileAvailability,
     description: "",
   });
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
   };
 
-  // 🔐 Get logged in provider
-  const getUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    return user;
-  };
-
-  // 🚀 Submit Service
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage("");
     setLoading(true);
 
-    const user = await getUser();
-
-    if (!user) {
-      alert("You must be logged in");
+    const parsedPrice = Number(form.price);
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setErrorMessage("Price must be a valid non-negative number.");
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.from("service_listings").insert([
-      {
-        provider_id: user.id,
-        title: form.title,
-        category: form.category,
-        pricing_type: form.pricing_type,
-        price: Number(form.price),
-        availability: form.availability,
-        description: form.description,
-      },
-    ]);
+    try {
+      await createProviderListing({
+        listingType: "service",
+        values: {
+          title: form.title,
+          category: form.category,
+          pricingType: form.pricingType,
+          price: parsedPrice,
+          availability: form.availability,
+          description: form.description,
+        },
+      });
 
-    setLoading(false);
-
-    if (error) {
-      alert("Error adding service");
-      console.log(error);
-      return;
+      router.push("/dashboard/provider/listings");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to add service right now.");
+    } finally {
+      setLoading(false);
     }
-
-    alert("Service added successfully.");
-
-    router.push("/dashboard/provider/listings");
   };
 
   const fieldClassName =
@@ -127,6 +116,7 @@ export default function AddServicePage() {
             <input
               name="title"
               required
+              value={form.title}
               onChange={handleChange}
               className={fieldClassName}
               placeholder="Electrician for home wiring"
@@ -135,9 +125,9 @@ export default function AddServicePage() {
 
           <div>
             <label className="text-sm font-medium text-slate-700">Category</label>
-            <select name="category" required onChange={handleChange} className={fieldClassName}>
+            <select name="category" required value={form.category} onChange={handleChange} className={fieldClassName}>
               <option value="">Select category</option>
-              {serviceCategories.map((item) => (
+              {PROVIDER_SERVICE_CATEGORIES.map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>
@@ -147,7 +137,7 @@ export default function AddServicePage() {
 
           <div>
             <label className="text-sm font-medium text-slate-700">Pricing Type</label>
-            <select name="pricing_type" onChange={handleChange} className={fieldClassName}>
+            <select name="pricingType" value={form.pricingType} onChange={handleChange} className={fieldClassName}>
               {pricingOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -162,6 +152,7 @@ export default function AddServicePage() {
               name="price"
               required
               type="number"
+              value={form.price}
               onChange={handleChange}
               className={fieldClassName}
               placeholder="500"
@@ -170,7 +161,7 @@ export default function AddServicePage() {
 
           <div>
             <label className="text-sm font-medium text-slate-700">Availability</label>
-            <select name="availability" onChange={handleChange} className={fieldClassName}>
+            <select name="availability" value={form.availability} onChange={handleChange} className={fieldClassName}>
               {availabilityOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -184,6 +175,7 @@ export default function AddServicePage() {
           <label className="text-sm font-medium text-slate-700">Description</label>
           <textarea
             name="description"
+            value={form.description}
             onChange={handleChange}
             rows={4}
             className={fieldClassName}
@@ -194,6 +186,12 @@ export default function AddServicePage() {
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           Tip: specific titles and clear pricing improve match quality and response speed.
         </div>
+
+        {errorMessage ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {errorMessage}
+          </div>
+        ) : null}
 
         <button
           disabled={loading}

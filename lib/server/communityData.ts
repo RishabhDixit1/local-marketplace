@@ -139,14 +139,6 @@ const selectRowsWithFallback = async (
 
 const CONNECTED_FEED_LIMIT_PER_TYPE = 180;
 
-const buildInOrFilter = (columns: string[], values: string[]) => {
-  const normalizedValues = values.map((value) => trim(value)).filter(Boolean);
-  if (!normalizedValues.length) return "";
-
-  const joinedValues = normalizedValues.join(",");
-  return columns.map((column) => `${column}.in.(${joinedValues})`).join(",");
-};
-
 const selectProfileById = async (db: SupabaseClient, userId: string) => {
   if (!userId) return null;
 
@@ -357,13 +349,20 @@ const isPostVisibleToViewer = (post: CommunityPostRecord, viewerId: string, acce
   const ownerId =
     post.user_id || post.author_id || post.created_by || post.requester_id || post.owner_id || post.provider_id || "";
   const visibility = trim(post.visibility).toLowerCase() || "public";
+  const postKind = trim(post.post_type || post.type).toLowerCase();
+  const metadataSource =
+    post.metadata && typeof post.metadata === "object" && !Array.isArray(post.metadata)
+      ? trim((post.metadata as Record<string, unknown>).source).toLowerCase()
+      : "";
+  const isComposerOfferPost =
+    metadataSource === "serviq_compose" && (postKind === "service" || postKind === "product");
 
   if (!ownerId) return false;
   if (ownerId === viewerId) return true;
   if (!isVisibleStatus(post.status || post.state || "open")) return false;
   if (visibility === "private") return false;
   if (["connections", "network", "contacts"].includes(visibility)) {
-    return acceptedPeers.has(ownerId);
+    return isComposerOfferPost ? true : acceptedPeers.has(ownerId);
   }
 
   return true;
@@ -395,18 +394,15 @@ export const loadCommunityFeedSnapshot = async (
   ]);
 
   const acceptedPeerIds = Array.from(acceptedPeers);
-  const feedOwnerIds = Array.from(new Set([currentUserId, ...acceptedPeerIds].filter(Boolean)));
 
   const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
     selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
-      inFilter: { column: "provider_id", values: feedOwnerIds },
     }),
     selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
-      inFilter: { column: "provider_id", values: feedOwnerIds },
     }),
     selectRowsWithFallback(
       db,
@@ -415,10 +411,6 @@ export const loadCommunityFeedSnapshot = async (
       {
         orderBy: { column: "created_at", ascending: false },
         limit: CONNECTED_FEED_LIMIT_PER_TYPE,
-        orFilter: buildInOrFilter(
-          ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
-          feedOwnerIds
-        ),
       }
     ),
     selectRowsWithFallback(
@@ -429,7 +421,6 @@ export const loadCommunityFeedSnapshot = async (
         orderBy: { column: "created_at", ascending: false },
         limit: CONNECTED_FEED_LIMIT_PER_TYPE,
         allowMissingRelation: true,
-        inFilter: { column: "requester_id", values: feedOwnerIds },
       }
     ),
   ]);

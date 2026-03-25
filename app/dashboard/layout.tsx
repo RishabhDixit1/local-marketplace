@@ -100,7 +100,7 @@ function DashboardShell({
         return;
       }
 
-      // Give magic-link callbacks a short window to hydrate session before redirecting.
+      // Give auth callbacks a short window to hydrate session before redirecting.
       redirectTimer = window.setTimeout(async () => {
         if (!active) return;
         const {
@@ -572,7 +572,7 @@ function DashboardShell({
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold text-slate-900">Log out of {appName}?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  You can always sign back in with a magic link, but any unsaved local changes on open pages will be lost.
+                  You can always sign back in with your phone number and password, use OTP recovery if you forget it, or open an email magic link. Any unsaved local changes on open pages will be lost.
                 </p>
               </div>
             </div>

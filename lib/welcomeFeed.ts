@@ -477,15 +477,7 @@ export const blendWelcomeFeedCards = (
 
 export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeFeedBuildResult => {
   const acceptedConnectionIds = snapshot.acceptedConnectionIds || [];
-  if (!acceptedConnectionIds.length) {
-    return {
-      cards: [],
-      acceptedConnectionIds,
-      emptyReason: "no_connections",
-    };
-  }
-
-  const connectedPeerSet = new Set(acceptedConnectionIds);
+  const connectedPeerSet = new Set([snapshot.currentUserId, ...acceptedConnectionIds].filter(Boolean));
   const profileMap = new Map(snapshot.profiles.map((profile) => [profile.id, profile]));
   const viewerProfile = snapshot.currentUserProfile;
 
@@ -656,6 +648,11 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
   return {
     cards: uniqueCards,
     acceptedConnectionIds,
-    emptyReason: uniqueCards.length === 0 ? "no_connected_content" : null,
+    emptyReason:
+      uniqueCards.length === 0
+        ? acceptedConnectionIds.length === 0
+          ? "no_connections"
+          : "no_connected_content"
+        : null,
   };
 };

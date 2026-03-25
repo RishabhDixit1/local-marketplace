@@ -8,6 +8,7 @@ import PublicProfileContentTabs from "@/app/components/profile/PublicProfileCont
 import PublicConnectionsTrigger from "@/app/components/profile/PublicConnectionsTrigger";
 import PublicContactInfoTrigger from "@/app/components/profile/PublicContactInfoTrigger";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
+import PublicProfileRealtime from "@/app/components/profile/PublicProfileRealtime";
 import { appName, withAppName } from "@/lib/branding";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
@@ -237,6 +238,9 @@ export default async function PublicProfilePage({ params }: Params) {
                   <div className="mt-3 sm:mt-4">
                     <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
                   </div>
+                </div>
+                <div className="mt-3">
+                  <PublicProfileRealtime profileId={profile.id} roleFamily={roleFamily} />
                 </div>
               </div>
             </div>

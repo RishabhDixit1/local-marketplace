@@ -2,19 +2,23 @@
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { Package, Loader2 } from "lucide-react";
+import { createProviderListing } from "@/lib/provider/client";
+import {
+  PRODUCT_DELIVERY_METHODS,
+  type ProductDeliveryMethod,
+} from "@/lib/provider/listings";
 
-const deliveryOptions = [
-  { value: "pickup", label: "Store Pickup" },
-  { value: "delivery", label: "Home Delivery" },
-  { value: "both", label: "Both" },
-];
+const deliveryOptions = PRODUCT_DELIVERY_METHODS.map((value) => ({
+  value,
+  label: value === "pickup" ? "Store Pickup" : value === "delivery" ? "Home Delivery" : "Both",
+}));
 
 export default function AddProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -22,50 +26,55 @@ export default function AddProductPage() {
     price: "",
     stock: "",
     category: "",
-    delivery_method: "pickup",
-    image_url: "",
+    deliveryMethod: "pickup" as ProductDeliveryMethod,
+    imageUrl: "",
   });
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setLoading(true);
+    setErrorMessage("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const parsedPrice = Number(form.price);
+    const parsedStock = Number(form.stock || 0);
 
-    if (!user) {
-      alert("User not logged in");
+    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+      setErrorMessage("Price must be a valid non-negative number.");
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.from("product_catalog").insert([
-      {
-        provider_id: user.id,
-        title: form.title,
-        description: form.description,
-        price: Number(form.price),
-        stock: Number(form.stock),
-        category: form.category,
-        delivery_method: form.delivery_method,
-        image_url: form.image_url,
-      },
-    ]);
-
-    setLoading(false);
-
-    if (error) {
-      alert(error.message);
+    if (!Number.isFinite(parsedStock) || parsedStock < 0) {
+      setErrorMessage("Stock must be a valid non-negative number.");
+      setLoading(false);
       return;
     }
 
-    alert("Product listed successfully.");
-    router.push("/dashboard/provider/listings");
+    try {
+      await createProviderListing({
+        listingType: "product",
+        values: {
+          title: form.title,
+          description: form.description,
+          price: parsedPrice,
+          stock: Math.round(parsedStock),
+          category: form.category,
+          deliveryMethod: form.deliveryMethod,
+          imageUrl: form.imageUrl,
+        },
+      });
+
+      router.push("/dashboard/provider/listings");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to add product right now.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fieldClassName =
@@ -110,6 +119,7 @@ export default function AddProductPage() {
               name="title"
               placeholder="Cordless Drill Kit"
               required
+              value={form.title}
               onChange={handleChange}
               className={fieldClassName}
             />
@@ -120,6 +130,7 @@ export default function AddProductPage() {
             <input
               name="category"
               placeholder="Tools"
+              value={form.category}
               onChange={handleChange}
               className={fieldClassName}
             />
@@ -132,6 +143,7 @@ export default function AddProductPage() {
               type="number"
               placeholder="1499"
               required
+              value={form.price}
               onChange={handleChange}
               className={fieldClassName}
             />
@@ -143,6 +155,7 @@ export default function AddProductPage() {
               name="stock"
               type="number"
               placeholder="10"
+              value={form.stock}
               onChange={handleChange}
               className={fieldClassName}
             />
@@ -150,7 +163,12 @@ export default function AddProductPage() {
 
           <div>
             <label className="text-sm font-medium text-slate-700">Delivery Method</label>
-            <select name="delivery_method" onChange={handleChange} className={fieldClassName}>
+            <select
+              name="deliveryMethod"
+              value={form.deliveryMethod}
+              onChange={handleChange}
+              className={fieldClassName}
+            >
               {deliveryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -162,8 +180,9 @@ export default function AddProductPage() {
           <div>
             <label className="text-sm font-medium text-slate-700">Product Image URL</label>
             <input
-              name="image_url"
+              name="imageUrl"
               placeholder="https://..."
+              value={form.imageUrl}
               onChange={handleChange}
               className={fieldClassName}
             />
@@ -176,6 +195,7 @@ export default function AddProductPage() {
             name="description"
             rows={4}
             placeholder="Describe features, condition, warranty, and what is included."
+            value={form.description}
             onChange={handleChange}
             className={fieldClassName}
           />
@@ -184,6 +204,12 @@ export default function AddProductPage() {
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           Tip: include clear product titles and real photos to improve conversion.
         </div>
+
+        {errorMessage ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {errorMessage}
+          </div>
+        ) : null}
 
         <button
           type="submit"

@@ -4,8 +4,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, SquarePen, Upload, X } from "lucide-react";
-import { saveCurrentUserProfile, uploadProfileAvatar } from "@/lib/profile/client";
+import { fetchProfileByUserId, saveCurrentUserProfile, uploadProfileAvatar } from "@/lib/profile/client";
 import type { ProfileFormValues } from "@/lib/profile/types";
+import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 
 type PublicProfileAvatarEditProps = {
@@ -123,12 +124,14 @@ export default function PublicProfileAvatarEdit({
       }
 
       const publicUrl = await uploadProfileAvatar({ userId: profileUserId, file: selectedFile });
+      const latestProfile = await fetchProfileByUserId(viewerId, { id: viewerId, email: viewerEmail || "" }).catch(() => null);
+      const baseValues = latestProfile ? toProfileFormValues(latestProfile) : initialValues;
       await saveCurrentUserProfile({
         user: { id: viewerId, email: viewerEmail || "" },
         values: {
-          ...initialValues,
+          ...baseValues,
           avatarUrl: publicUrl,
-          email: viewerEmail || initialValues.email,
+          email: viewerEmail || baseValues.email,
         },
       });
       resetDialogState();

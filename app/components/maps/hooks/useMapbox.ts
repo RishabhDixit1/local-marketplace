@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import maplibregl, { type FillExtrusionLayerSpecification, type StyleSpecification } from "maplibre-gl";
+import maplibregl, { type LayerSpecification, type StyleSpecification } from "maplibre-gl";
 
 const BASE_SOURCE_ID = "command-center-base";
 const VECTOR_SOURCE_ID = "command-center-vector";
@@ -61,7 +61,7 @@ const COMMAND_CENTER_STYLE: StyleSpecification = {
   ],
 };
 
-const buildingLayer: FillExtrusionLayerSpecification = {
+const buildingLayer: LayerSpecification = {
   id: BUILDINGS_LAYER_ID,
   type: "fill-extrusion",
   source: VECTOR_SOURCE_ID,

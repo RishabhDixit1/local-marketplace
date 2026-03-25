@@ -59,6 +59,7 @@ type HelpRequestRow = {
 type PostRow = {
   id: string | null;
   title: string | null;
+  name: string | null;
   text: string | null;
   content: string | null;
   description: string | null;
@@ -67,6 +68,12 @@ type PostRow = {
   post_type: string | null;
   status: string | null;
   state: string | null;
+  user_id: string | null;
+  author_id: string | null;
+  created_by: string | null;
+  requester_id: string | null;
+  owner_id: string | null;
+  provider_id: string | null;
   metadata: Record<string, unknown> | null;
   created_at: string | null;
 };
@@ -211,6 +218,74 @@ const normalizeMarketplacePostKind = (value?: string | null): "service" | "produ
   const normalized = (value || "").trim().toLowerCase();
   if (normalized === "service" || normalized === "product") return normalized;
   return "demand";
+};
+
+const POST_OWNER_FIELDS = ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"] as const;
+
+const isMissingColumnError = (message: string) =>
+  /column .* does not exist|could not find the '.*' column/i.test(message);
+
+const isMissingRelationError = (message: string) =>
+  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(message);
+
+const buildPostOwnerFilter = (profileId: string, fields: readonly string[]) =>
+  fields.map((field) => `${field}.eq.${profileId}`).join(",");
+
+const postOwnerFieldVariants: ReadonlyArray<ReadonlyArray<string>> = [
+  POST_OWNER_FIELDS,
+  ["user_id", "author_id", "created_by", "requester_id", "owner_id"],
+  ["user_id", "author_id", "created_by", "requester_id"],
+  ["user_id", "author_id", "created_by"],
+  ["user_id", "author_id"],
+  ["user_id"],
+  ["author_id"],
+  ["created_by"],
+  ["requester_id"],
+  ["owner_id"],
+  ["provider_id"],
+];
+
+type PostQueryResult = {
+  data: PostRow[];
+  count: number;
+};
+
+const loadProfilePosts = async (
+  supabase: NonNullable<ReturnType<typeof getServerSupabase>>,
+  profileId: string
+): Promise<PostQueryResult> => {
+  for (const ownerFields of postOwnerFieldVariants) {
+    const result = await supabase
+      .from("posts")
+      .select("*", { count: "exact" })
+      .or(buildPostOwnerFilter(profileId, ownerFields))
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (!result.error) {
+      return {
+        data: ((result.data as PostRow[] | null) || []).filter((row) => {
+          const ownerId =
+            row.user_id || row.author_id || row.created_by || row.requester_id || row.owner_id || row.provider_id || "";
+          return ownerId === profileId;
+        }),
+        count: result.count || 0,
+      };
+    }
+
+    const errorMessage = result.error.message || "";
+    if (isMissingColumnError(errorMessage)) {
+      continue;
+    }
+
+    if (isMissingRelationError(errorMessage)) {
+      return { data: [], count: 0 };
+    }
+
+    return { data: [], count: 0 };
+  }
+
+  return { data: [], count: 0 };
 };
 
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
@@ -485,12 +560,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
       .select("rating,comment,created_at", { count: "exact" })
       .eq("provider_id", profile.id)
       .limit(6),
-    supabase
-      .from("posts")
-      .select("id,title,text,content,description,category,type,post_type,status,state,metadata,created_at", { count: "exact" })
-      .eq("user_id", profile.id)
-      .order("created_at", { ascending: false })
-      .limit(6),
+    loadProfilePosts(supabase, profile.id),
     supabase
       .from("help_requests")
       .select("id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,created_at")
@@ -526,7 +596,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   }));
   const helpRequestRows = (helpRequestsResult.data as HelpRequestRow[] | null) || [];
   const usedHelpRequestIds = new Set<string>();
-  const postRows = ((postsResult.data as PostRow[] | null) || [])
+  const postRows = (postsResult.data || [])
     .map((row) => normalizePublicPost({ row, helpRequests: helpRequestRows, usedHelpRequestIds }))
     .filter((row): row is PublicProfilePost => !!row);
   const ratingValues = reviewRows.map((row) => row.rating).filter((rating) => rating > 0);

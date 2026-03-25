@@ -22,7 +22,7 @@ import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runt
 
 const FEED_POLL_INTERVAL_MS = 120000;
 const MIN_SOFT_REFRESH_GAP_MS = 5000;
-const FILTER_STORAGE_KEY = "serviq-posts-filters-v2";
+const FILTER_STORAGE_KEY_PREFIX = "serviq-posts-filters-v3";
 
 type MarketplaceMapItem = {
   id: string;
@@ -39,6 +39,26 @@ type MarketplaceMapItem = {
 type UseMarketplaceFeedParams = {
   pushToast: (kind: "success" | "error" | "info", message: string) => void;
 };
+
+const getFilterStorageKey = (viewerId: string | null) => `${FILTER_STORAGE_KEY_PREFIX}:${viewerId || "anon"}`;
+
+const applyStoredFilters = (
+  current: MarketplaceFeedFilterState,
+  parsed: Partial<MarketplaceFeedFilterState>
+): MarketplaceFeedFilterState => ({
+  ...current,
+  ...parsed,
+  query: typeof parsed.query === "string" ? parsed.query : current.query,
+  category: typeof parsed.category === "string" ? parsed.category : current.category,
+  maxDistanceKm:
+    typeof parsed.maxDistanceKm === "number" && Number.isFinite(parsed.maxDistanceKm)
+      ? Math.max(0, parsed.maxDistanceKm)
+      : current.maxDistanceKm,
+  urgentOnly: typeof parsed.urgentOnly === "boolean" ? parsed.urgentOnly : current.urgentOnly,
+  mediaOnly: typeof parsed.mediaOnly === "boolean" ? parsed.mediaOnly : current.mediaOnly,
+  verifiedOnly: typeof parsed.verifiedOnly === "boolean" ? parsed.verifiedOnly : current.verifiedOnly,
+  freshOnly: typeof parsed.freshOnly === "boolean" ? parsed.freshOnly : current.freshOnly,
+});
 
 export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -69,6 +89,7 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const lastSoftRefreshAtRef = useRef(0);
   const lastLocationRefreshRef = useRef<string>("");
   const browserLocationRef = useRef<Coordinates | null>(null);
+  const hydratedFilterKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -83,24 +104,13 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
     if (typeof window === "undefined") return;
 
     try {
-      const rawFilters = window.localStorage.getItem(FILTER_STORAGE_KEY);
+      const storageKey = getFilterStorageKey(null);
+      const rawFilters = window.localStorage.getItem(storageKey);
       if (rawFilters) {
         const parsed = JSON.parse(rawFilters) as Partial<MarketplaceFeedFilterState>;
-        setFilters((current) => ({
-          ...current,
-          ...parsed,
-          query: typeof parsed.query === "string" ? parsed.query : current.query,
-          category: typeof parsed.category === "string" ? parsed.category : current.category,
-          maxDistanceKm:
-            typeof parsed.maxDistanceKm === "number" && Number.isFinite(parsed.maxDistanceKm)
-              ? Math.max(0, parsed.maxDistanceKm)
-              : current.maxDistanceKm,
-          urgentOnly: typeof parsed.urgentOnly === "boolean" ? parsed.urgentOnly : current.urgentOnly,
-          mediaOnly: typeof parsed.mediaOnly === "boolean" ? parsed.mediaOnly : current.mediaOnly,
-          verifiedOnly: typeof parsed.verifiedOnly === "boolean" ? parsed.verifiedOnly : current.verifiedOnly,
-          freshOnly: typeof parsed.freshOnly === "boolean" ? parsed.freshOnly : current.freshOnly,
-        }));
+        setFilters((current) => applyStoredFilters(current, parsed));
       }
+      hydratedFilterKeyRef.current = storageKey;
 
       const params = new URLSearchParams(window.location.search);
       const queryParam = params.get("q") || "";
@@ -120,8 +130,30 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
-  }, [filters]);
+    if (!viewerId) return;
+
+    const storageKey = getFilterStorageKey(viewerId);
+    if (hydratedFilterKeyRef.current === storageKey) return;
+
+    try {
+      const rawFilters = window.localStorage.getItem(storageKey);
+      if (!rawFilters) {
+        hydratedFilterKeyRef.current = storageKey;
+        return;
+      }
+
+      const parsed = JSON.parse(rawFilters) as Partial<MarketplaceFeedFilterState>;
+      setFilters((current) => applyStoredFilters(current, parsed));
+      hydratedFilterKeyRef.current = storageKey;
+    } catch {
+      hydratedFilterKeyRef.current = storageKey;
+    }
+  }, [viewerId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(getFilterStorageKey(viewerId), JSON.stringify(filters));
+  }, [filters, viewerId]);
 
   useEffect(() => {
     browserLocationRef.current = browserLocation;
