@@ -333,17 +333,17 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
     <>
       <div className="w-full">
         <div className="flex flex-wrap items-center gap-3">
+          {connectButton}
+
           <button
             type="button"
             disabled={messageBusy}
             onClick={() => void handleMessage()}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#0a66c2] px-7 py-3 text-base font-semibold text-white transition hover:bg-[#004182] disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-            {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to message" : "Message"}
+            {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to chat" : "Chat"}
           </button>
-
-          {connectButton}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">

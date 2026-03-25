@@ -4,11 +4,10 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BadgeCheck, LayoutDashboard } from "lucide-react";
 import PublicProfileAvatarEdit from "@/app/components/profile/PublicProfileAvatarEdit";
-import PublicProfileAbout from "@/app/components/profile/PublicProfileAbout";
+import PublicProfileContentTabs from "@/app/components/profile/PublicProfileContentTabs";
 import PublicConnectionsTrigger from "@/app/components/profile/PublicConnectionsTrigger";
 import PublicContactInfoTrigger from "@/app/components/profile/PublicContactInfoTrigger";
 import PublicProfileActions from "@/app/components/profile/PublicProfileActions";
-import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import { appName, withAppName } from "@/lib/branding";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
@@ -163,9 +162,6 @@ export default async function PublicProfilePage({ params }: Params) {
   const connectionLabel = formatConnectionsCount(acceptedConnectionCount);
   const joinedShortLabel = formatJoinedDate(profile.created_at).replace(/^Joined\s+/, "");
   const summaryText = headline;
-  const sectionCardClassName =
-    "rounded-[22px] border border-slate-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6";
-
   return (
     <div className="min-h-screen bg-[#f4f2ee] text-slate-950">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
@@ -243,34 +239,21 @@ export default async function PublicProfilePage({ params }: Params) {
           </div>
         </section>
 
-        <div className="mt-4 space-y-4">
-          <section id="details" className={sectionCardClassName}>
-            <PublicProfileAbout bio={profile.bio} />
-          </section>
-
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Marketplace posts</h2>
-              <p className="mt-1 text-sm text-slate-600">Latest posts this member has published in the marketplace.</p>
-            </div>
-
-            {posts.length > 0 ? (
-              <PublicProfilePostsGrid
-                posts={posts}
-                profileUserId={profile.id}
-                displayName={displayName}
-                avatarUrl={profileAvatarUrl}
-                verificationStatus={verificationStatus}
-                locationLabel={profile.location || "Nearby"}
-                responseMinutes={publicProfile.responseMinutes}
-                publicPath={publicPath}
-              />
-            ) : (
-              <div className="mt-6 rounded-[20px] border border-dashed border-slate-200 bg-[#f8fafc] p-4 text-sm text-slate-500">
-                No public posts yet. When this member shares marketplace updates, they will appear here.
-              </div>
-            )}
-          </section>
+        <div className="mt-4">
+          <PublicProfileContentTabs
+            bio={profile.bio}
+            reviews={publicProfile.reviews}
+            averageRating={publicProfile.averageRating}
+            reviewCount={publicProfile.reviewCount}
+            posts={posts}
+            profileUserId={profile.id}
+            displayName={displayName}
+            avatarUrl={profileAvatarUrl}
+            verificationStatus={verificationStatus}
+            locationLabel={profile.location || "Nearby"}
+            responseMinutes={publicProfile.responseMinutes}
+            publicPath={publicPath}
+          />
         </div>
       </div>
     </div>

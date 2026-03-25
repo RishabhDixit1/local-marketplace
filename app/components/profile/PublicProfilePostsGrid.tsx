@@ -543,8 +543,9 @@ export default function PublicProfilePostsGrid({
 
   return (
     <>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {items.map((post) => {
+      <div className="mt-6 space-y-5">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((post) => {
           const cardId = buildCardId(post);
           const saved = savedCardIds.has(cardId) || savedCardIds.has(post.id);
           const savingBusy = savingCardIds.has(cardId) || savingCardIds.has(post.id);
@@ -708,7 +709,8 @@ export default function PublicProfilePostsGrid({
               </div>
             </article>
           );
-        })}
+          })}
+        </div>
       </div>
 
       <ProfileToastViewport
