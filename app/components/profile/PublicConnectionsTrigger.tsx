@@ -72,7 +72,7 @@ export default function PublicConnectionsTrigger({
   const closeDialog = () => setOpen(false);
 
   if (!canViewConnections) {
-    return <p className="mt-3 text-[1.05rem] font-semibold text-slate-700">{label}</p>;
+    return <p className="mt-2 text-sm font-semibold text-slate-700 sm:mt-3 sm:text-base">{label}</p>;
   }
 
   return (
@@ -80,7 +80,7 @@ export default function PublicConnectionsTrigger({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 text-[1.05rem] font-semibold text-slate-700 transition hover:text-[#0a66c2]"
+        className="mt-2 text-sm font-semibold text-slate-700 transition hover:text-[#0a66c2] sm:mt-3 sm:text-base"
       >
         {label}
       </button>

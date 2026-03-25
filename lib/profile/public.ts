@@ -121,6 +121,13 @@ export type PublicProfileConnection = {
   publicPath: string;
 };
 
+export type PublicProfileManualOffering = {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string | null;
+};
+
 export type PublicProfileData = {
   profile: ProfileRecord;
   displayName: string;
@@ -128,6 +135,7 @@ export type PublicProfileData = {
   acceptedConnectionCount: number;
   acceptedConnections: PublicProfileConnection[];
   topics: string[];
+  manualOfferings: PublicProfileManualOffering[];
   services: PublicProfileListing[];
   products: PublicProfileListing[];
   offerings: PublicProfileListing[];
@@ -531,6 +539,29 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   const reviewCount = reviewsResult.count || reviewRows.length;
   const postsCount = postsResult.count || 0;
   const topics = normalizeTopics([...(profile.interests || []), ...(profile.services || [])]);
+  const manualOfferings = (() => {
+    const raw = (profile.metadata || ({} as Record<string, unknown>)).offerings;
+    if (!Array.isArray(raw)) return [] as PublicProfileManualOffering[];
+
+    return raw
+      .map((entry, index) => {
+        if (!entry || typeof entry !== "object") return null;
+        const row = entry as Record<string, unknown>;
+        const title = typeof row.title === "string" ? row.title.trim() : "";
+        if (!title) return null;
+        const description = typeof row.description === "string" ? row.description.trim() : "";
+        const thumbnailUrl = typeof row.thumbnailUrl === "string" && row.thumbnailUrl.trim().length > 0 ? row.thumbnailUrl.trim() : null;
+        const id = typeof row.id === "string" && row.id.trim().length > 0 ? row.id.trim() : `offering-${index}`;
+        return {
+          id,
+          title,
+          description,
+          thumbnailUrl,
+        } satisfies PublicProfileManualOffering;
+      })
+      .filter((value): value is PublicProfileManualOffering => !!value)
+      .slice(0, 18);
+  })();
   const responseMinutes = estimateResponseMinutes({
     availability: profile.availability,
     providerId: profile.id,
@@ -578,6 +609,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     acceptedConnectionCount,
     acceptedConnections,
     topics,
+    manualOfferings,
     services,
     products,
     offerings: [...services, ...products],
