@@ -1173,18 +1173,9 @@ export default function PeoplePage() {
           throw new Error("This profile does not support direct chat yet.");
         }
 
-        if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
-        }
-
         const viewerId = await ensureViewerId();
         if (viewerId === providerId) {
           throw new Error("This is your own profile.");
-        }
-
-        const state = getConnectionState(providerId);
-        if (state.kind !== "accepted") {
-          throw new Error("Connect with this provider first to open chat.");
         }
 
         const conversationId = await getOrCreateDirectConversationId(supabase, viewerId, providerId);
@@ -1198,7 +1189,7 @@ export default function PeoplePage() {
         setChatBusyUserId(null);
       }
     },
-    [connectionSchemaMessage, connectionSchemaReady, ensureViewerId, getConnectionState, router]
+    [ensureViewerId, router]
   );
 
   const handleToggleSave = useCallback(
@@ -1887,7 +1878,7 @@ export default function PeoplePage() {
                     },
                   },
                 }}
-                className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                className="grid grid-cols-2 items-start gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4"
               >
                 {visibleProviders.map((provider) => {
                   const connectionState = getConnectionState(provider.id) || EMPTY_CONNECTION_STATE;

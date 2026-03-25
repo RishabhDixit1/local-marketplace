@@ -168,71 +168,75 @@ export default async function PublicProfilePage({ params }: Params) {
 
       <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 lg:px-8">
         <section className="overflow-hidden rounded-[24px] border border-slate-300/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.08)]">
-          <div className="relative h-[180px] bg-[linear-gradient(90deg,#9fb2b6_0%,#aec0c5_52%,#bed0d5_100%)] sm:h-[220px]">
-            <div className="absolute left-[12%] top-[-70%] h-[420px] w-[420px] rounded-full border-[84px] border-white/28" />
-            <div className="absolute right-[32%] top-0 h-full w-10 bg-white/30 sm:w-16" />
+          <div className="relative h-[88px] bg-[linear-gradient(90deg,#9fb2b6_0%,#aec0c5_52%,#bed0d5_100%)] sm:h-[132px] lg:h-[156px]">
+            <div className="absolute left-[10%] top-[-135%] h-[250px] w-[250px] rounded-full border-[48px] border-white/28 sm:top-[-120%] sm:h-[320px] sm:w-[320px] sm:border-[60px]" />
+            <div className="absolute right-[24%] top-0 h-full w-8 bg-white/30 sm:w-12" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]" />
             <Link
               href="/dashboard/welcome"
-              className="absolute right-5 top-5 inline-flex items-center gap-2 rounded-full bg-white/92 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.45)] transition hover:bg-white sm:right-6 sm:top-6"
+              className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-full bg-white/92 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.45)] transition hover:bg-white sm:right-5 sm:top-4 sm:px-4 sm:py-2 sm:text-sm"
             >
-              <LayoutDashboard className="h-4 w-4 text-[#0a66c2]" />
+              <LayoutDashboard className="h-3.5 w-3.5 text-[#0a66c2] sm:h-4 sm:w-4" />
               Dashboard
             </Link>
           </div>
 
-          <div className="relative px-5 pb-7 sm:px-8 lg:px-10">
-            <div className="-mt-24 min-w-0">
-              <div className="relative w-fit">
-                <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-[7px] border-white bg-slate-950 text-4xl font-semibold text-white shadow-[0_22px_40px_-26px_rgba(15,23,42,0.48)] sm:h-40 sm:w-40">
-                  {profileAvatarUrl ? (
-                    <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
-                  ) : (
-                    <span>{avatarFallback}</span>
-                  )}
-                </div>
-                <PublicProfileAvatarEdit
-                  profileUserId={profile.id}
-                  displayName={displayName}
-                  avatarUrl={profileAvatarUrl || ""}
-                  initialValues={initialProfileValues}
-                />
-              </div>
-
-              <div className="mt-6 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-[clamp(2.25rem,5vw,3.45rem)] font-bold tracking-tight text-slate-950">{displayName}</h1>
-                  {verificationStatus === "verified" ? <BadgeCheck className="h-8 w-8 text-[#4b5563]" /> : null}
-                </div>
-
-                <p className="mt-2 text-xl text-slate-600 sm:text-[1.7rem]">
-                  {getRoleLabel(roleFamily)} <span className="px-1.5 text-slate-400">•</span> {joinedShortLabel}
-                </p>
-
-                <p className="mt-3 text-[clamp(1.35rem,2.6vw,1.7rem)] leading-[1.28] text-slate-900">{summaryText}</p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-lg text-slate-500">
-                  <span>{profile.location || "Location not added"}</span>
-                  <span className="text-slate-400" aria-hidden="true">
-                    •
-                  </span>
-                  <PublicContactInfoTrigger
+          <div className="relative px-4 pb-4 sm:px-6 sm:pb-5 lg:px-8 lg:pb-6">
+            <div className="-mt-12 min-w-0 sm:-mt-14 lg:-mt-16">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-5">
+                <div className="relative w-fit shrink-0">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-[5px] border-white bg-slate-950 text-2xl font-semibold text-white shadow-[0_20px_32px_-24px_rgba(15,23,42,0.48)] sm:h-24 sm:w-24 sm:text-3xl lg:h-28 lg:w-28">
+                    {profileAvatarUrl ? (
+                      <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span>{avatarFallback}</span>
+                    )}
+                  </div>
+                  <PublicProfileAvatarEdit
+                    profileUserId={profile.id}
                     displayName={displayName}
-                    email={profile.email}
-                    phone={profile.phone}
-                    website={profile.website}
-                    location={profile.location}
+                    avatarUrl={profileAvatarUrl || ""}
+                    initialValues={initialProfileValues}
                   />
                 </div>
 
-                <PublicConnectionsTrigger
-                  profileUserId={profile.id}
-                  label={connectionLabel}
-                  connections={acceptedConnections}
-                />
+                <div className="min-w-0 flex-1 pt-0.5 sm:pt-4 lg:pt-6">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h1 className="text-[clamp(1.5rem,5.4vw,2.8rem)] font-bold tracking-tight text-slate-950">{displayName}</h1>
+                    {verificationStatus === "verified" ? <BadgeCheck className="h-5 w-5 text-[#4b5563] sm:h-6 sm:w-6" /> : null}
+                  </div>
 
-                <div className="mt-6">
-                  <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
+                  <p className="mt-1 text-sm text-slate-600 sm:text-base lg:text-[1.2rem]">
+                    {getRoleLabel(roleFamily)} <span className="px-1 text-slate-400">•</span> {joinedShortLabel}
+                  </p>
+
+                  <p className="mt-1.5 line-clamp-1 text-[0.95rem] leading-[1.3] text-slate-900 sm:mt-2 sm:text-[1.05rem] lg:text-[1.2rem]">
+                    {summaryText}
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 sm:text-base">
+                    <span>{profile.location || "Location not added"}</span>
+                    <span className="text-slate-400" aria-hidden="true">
+                      •
+                    </span>
+                    <PublicContactInfoTrigger
+                      displayName={displayName}
+                      email={profile.email}
+                      phone={profile.phone}
+                      website={profile.website}
+                      location={profile.location}
+                    />
+                  </div>
+
+                  <PublicConnectionsTrigger
+                    profileUserId={profile.id}
+                    label={connectionLabel}
+                    connections={acceptedConnections}
+                  />
+
+                  <div className="mt-3 sm:mt-4">
+                    <PublicProfileActions profileUserId={profile.id} displayName={displayName} initialValues={initialProfileValues} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -246,6 +250,7 @@ export default async function PublicProfilePage({ params }: Params) {
             averageRating={publicProfile.averageRating}
             reviewCount={publicProfile.reviewCount}
             posts={posts}
+            manualOfferings={publicProfile.manualOfferings}
             profileUserId={profile.id}
             displayName={displayName}
             avatarUrl={profileAvatarUrl}

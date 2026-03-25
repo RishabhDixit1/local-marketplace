@@ -42,6 +42,7 @@ type Props = {
   locationLabel: string;
   responseMinutes: number;
   publicPath: string;
+  horizontal?: boolean;
 };
 
 const formatRelativeAge = (value?: string | null) => {
@@ -174,6 +175,7 @@ export default function PublicProfilePostsGrid({
   locationLabel,
   responseMinutes,
   publicPath,
+  horizontal = false,
 }: Props) {
   const router = useRouter();
   const toastTimersRef = useRef<Map<string, number>>(new Map());
@@ -186,12 +188,7 @@ export default function PublicProfilePostsGrid({
   const [chatOpening, setChatOpening] = useState(false);
   const resolvedAvatar = avatarUrl || createAvatarFallback({ label: displayName || "ServiQ member", seed: displayName || "public-profile" });
 
-  const {
-    viewerId,
-    busyTargetId: busyConnectionTargetId,
-    busyRequestId,
-    getConnectionState,
-  } = useConnectionRequests();
+  const { viewerId } = useConnectionRequests();
 
   useEffect(() => {
     setItems(posts);
@@ -291,13 +288,8 @@ export default function PublicProfilePostsGrid({
   }, [buildCardId, items, viewerId]);
 
   const isOwnListing = Boolean(viewerId && viewerId === profileUserId);
-  const connectionState =
-    !isOwnListing && isUUIDLike(profileUserId) ? getConnectionState(profileUserId) : null;
-  const connectionBusy =
-    !!connectionState &&
-    (busyConnectionTargetId === profileUserId || (connectionState.requestId ? busyRequestId === connectionState.requestId : false));
-  const canOpenChat = isOwnListing || connectionState?.kind === "accepted";
-  const chatLabel = isOwnListing ? "Your chat" : chatOpening ? "Opening" : canOpenChat ? "Chat" : "Connect first";
+  const canOpenChat = isOwnListing || isUUIDLike(profileUserId);
+  const chatLabel = isOwnListing ? "Your chat" : chatOpening ? "Opening" : "Chat";
 
   const handleAccept = useCallback(
     async (post: PublicProfilePost) => {
@@ -375,8 +367,6 @@ export default function PublicProfilePostsGrid({
       return;
     }
 
-    if (!canOpenChat) return;
-
     try {
       const activeViewerId = await ensureViewerId();
 
@@ -393,7 +383,7 @@ export default function PublicProfilePostsGrid({
     } finally {
       setChatOpening(false);
     }
-  }, [canOpenChat, ensureViewerId, profileUserId, pushToast, router]);
+  }, [ensureViewerId, profileUserId, pushToast, router]);
 
   const handleToggleSave = useCallback(
     async (post: PublicProfilePost) => {
@@ -544,7 +534,13 @@ export default function PublicProfilePostsGrid({
   return (
     <>
       <div className="mt-6 space-y-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={
+            horizontal
+              ? "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+              : "grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          }
+        >
           {items.map((post) => {
           const cardId = buildCardId(post);
           const saved = savedCardIds.has(cardId) || savedCardIds.has(post.id);
@@ -578,20 +574,24 @@ export default function PublicProfilePostsGrid({
             <article
               id={`profile-post-${post.id}`}
               key={post.id}
-              className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)]"
+              className={`flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] sm:p-4 ${
+                horizontal
+                  ? "w-[calc(100vw-3.5rem)] min-w-[240px] max-w-[340px] shrink-0 snap-start sm:w-[calc(50vw-2.75rem)] sm:min-w-[260px] sm:max-w-[360px] lg:w-[calc(33vw-2.5rem)] lg:min-w-[280px] lg:max-w-[380px] xl:w-[calc(30vw-2.5rem)]"
+                  : ""
+              }`}
             >
               <header className="flex items-start gap-3">
                 <div className="relative shrink-0 rounded-full">
                   <img
                     src={resolvedAvatar}
                     alt={`${displayName} avatar`}
-                    className="h-12 w-12 rounded-full border border-slate-200 object-cover"
+                    className="h-10 w-10 rounded-full border border-slate-200 object-cover"
                   />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="max-w-full truncate text-left text-[1.05rem] font-semibold leading-none text-[var(--brand-700)] sm:text-[1.15rem]">
+                    <span className="max-w-full truncate text-left text-sm font-semibold text-[var(--brand-700)]">
                       {displayName}
                     </span>
                     {verificationStatus === "verified" ? (
@@ -625,17 +625,49 @@ export default function PublicProfilePostsGrid({
                 </div>
               </header>
 
-              <div className="mt-4">
+              <div className="relative mt-3">
                 <MediaCarousel media={post.media} title={post.title} />
+
+                <div className="absolute right-3 top-3 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleSave(post)}
+                    disabled={savingBusy}
+                    aria-label={saved ? "Saved post" : "Save post"}
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                      saved
+                        ? "border-slate-900/10 bg-slate-900 text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
+                        : "border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] hover:bg-white"
+                    }`}
+                  >
+                    {savingBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : saved ? (
+                      <BookmarkCheck className="h-4 w-4" />
+                    ) : (
+                      <Bookmark className="h-4 w-4" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleShare(post)}
+                    disabled={sharingBusy}
+                    aria-label="Share post"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] backdrop-blur-md transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4">
-                <h3 className="line-clamp-2 text-[1.95rem] font-semibold leading-[1.02] tracking-tight text-slate-900 sm:text-[2.05rem]">
+              <div className="mt-3">
+                <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">
                   {post.title}
                 </h3>
-                <p className="mt-2 line-clamp-2 text-base leading-7 text-slate-600">{post.description}</p>
+                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{post.description}</p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
                     {post.category}
                   </span>
@@ -648,13 +680,13 @@ export default function PublicProfilePostsGrid({
                 </div>
               </div>
 
-              <div className="mt-auto space-y-2.5 pt-5">
+              <div className="mt-auto space-y-2 pt-4">
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => void handleAccept(post)}
                     disabled={acceptDisabled}
-                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 text-[12px] font-semibold transition ${
                       acceptDisabled
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
                         : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -667,43 +699,11 @@ export default function PublicProfilePostsGrid({
                   <button
                     type="button"
                     onClick={() => void handleOpenChat()}
-                    disabled={chatOpening || !canOpenChat || connectionBusy}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                    disabled={chatOpening || !canOpenChat}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                   >
                     {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                     {chatLabel}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleToggleSave(post)}
-                    disabled={savingBusy}
-                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition ${
-                      saved
-                        ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
-                    } disabled:opacity-60`}
-                  >
-                    {savingBusy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : saved ? (
-                      <BookmarkCheck className="h-4 w-4" />
-                    ) : (
-                      <Bookmark className="h-4 w-4" />
-                    )}
-                    {savingBusy ? "Saving" : saved ? "Saved" : "Save"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleShare(post)}
-                    disabled={sharingBusy}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60"
-                  >
-                    {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                    {sharingBusy ? "Sharing" : "Share"}
                   </button>
                 </div>
               </div>

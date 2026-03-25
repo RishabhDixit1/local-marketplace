@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { DirectConversationResponse } from "@/lib/api/chat";
-import { areUsersConnected } from "@/lib/server/chatGuards";
 import { getOrCreateDirectConversationIdForUsers } from "@/lib/server/directConversations";
-import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
@@ -25,8 +24,6 @@ export async function POST(request: Request) {
   }
 
   const userClient = createSupabaseUserServerClient(authResult.auth.accessToken);
-  const admin = createSupabaseAdminClient();
-
   if (!userClient) {
     return NextResponse.json(
       {
@@ -76,20 +73,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const dbForChecks = admin || userClient;
-    const connected = await areUsersConnected(dbForChecks, authResult.auth.userId, recipientId);
-
-    if (!connected) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "FORBIDDEN",
-          message: "Connect with this member first to start a chat.",
-        } satisfies DirectConversationResponse,
-        { status: 403 }
-      );
-    }
-
     const conversationId = await getOrCreateDirectConversationIdForUsers(
       userClient,
       authResult.auth.userId,

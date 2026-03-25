@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MapPin, MessageCircle, SquarePen, UserCheck, UserPlus, X, XCircle, Zap } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, SquarePen, UserCheck, UserPlus, X, XCircle } from "lucide-react";
 import ProfileContactFields from "@/app/components/profile/ProfileContactFields";
 import {
   deriveConnectionState,
@@ -47,7 +47,6 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
     () => deriveConnectionState(viewerId, profileUserId, connectionRows),
     [connectionRows, profileUserId, viewerId]
   );
-  const canMessage = isSelf || connectionState.kind === "accepted";
 
   const refreshConnections = useCallback(async (currentViewerId: string) => {
     const rows = await listCurrentUserConnectionRows(currentViewerId);
@@ -191,11 +190,6 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
       return;
     }
 
-    if (connectionState.kind !== "accepted") {
-      setNotice("Connect with this member first to start a direct chat.");
-      return;
-    }
-
     setMessageBusy(true);
 
     try {
@@ -206,37 +200,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
     } finally {
       setMessageBusy(false);
     }
-  }, [connectionState.kind, isSelf, profileUserId, redirectToSignIn, router, viewerId]);
-
-  const handleLiveTalk = useCallback(async () => {
-    setNotice(null);
-
-    if (isSelf) {
-      router.push("/dashboard/chat");
-      return;
-    }
-
-    if (!viewerId) {
-      redirectToSignIn();
-      return;
-    }
-
-    if (connectionState.kind !== "accepted") {
-      setNotice("Connect with this member first to start Live Talk.");
-      return;
-    }
-
-    setMessageBusy(true);
-
-    try {
-      const conversationId = await getOrCreateDirectConversationId(supabase, viewerId, profileUserId);
-      router.push(`/dashboard/chat?open=${conversationId}&liveTalk=1`);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Unable to start Live Talk right now.");
-    } finally {
-      setMessageBusy(false);
-    }
-  }, [connectionState.kind, isSelf, profileUserId, redirectToSignIn, router, viewerId]);
+  }, [isSelf, profileUserId, redirectToSignIn, router, viewerId]);
 
   const handleEditSave = useCallback(async () => {
     if (!viewerId) return;
@@ -284,7 +248,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             setEditErrors({});
             setEditDialogOpen(true);
           }}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-7 py-3 text-base font-semibold text-white transition hover:bg-slate-800"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:min-h-11 sm:px-6"
         >
           <SquarePen className="h-4 w-4" />
           Edit profile
@@ -294,7 +258,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
     if (connectionState.kind === "accepted") {
       return (
-        <div className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-7 py-3 text-base font-semibold text-emerald-700">
+        <div className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 sm:min-h-11 sm:px-6">
           <UserCheck className="h-4 w-4" />
           Connected
         </div>
@@ -303,7 +267,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
     if (connectionState.kind === "outgoing_pending") {
       return (
-        <div className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-7 py-3 text-base font-semibold text-amber-700">
+        <div className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-700 sm:min-h-11 sm:px-6">
           <Loader2 className={`h-4 w-4 ${connectionBusy ? "animate-spin" : ""}`} />
           Request sent
         </div>
@@ -315,7 +279,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
         type="button"
         disabled={connectionBusy}
         onClick={() => void handleConnect()}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#0a66c2] bg-white px-7 py-3 text-base font-semibold text-[#0a66c2] transition hover:bg-[#edf3f8] disabled:cursor-not-allowed disabled:opacity-70"
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#0a66c2] bg-white px-5 py-2.5 text-sm font-semibold text-[#0a66c2] transition hover:bg-[#edf3f8] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-11 sm:px-6"
       >
         {connectionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
         {!authResolved || viewerId
@@ -332,32 +296,19 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
   return (
     <>
       <div className="w-full">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           {connectButton}
 
           <button
             type="button"
             disabled={messageBusy}
             onClick={() => void handleMessage()}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:min-h-11 sm:px-6"
           >
             {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
             {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to chat" : "Chat"}
           </button>
         </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <button
-            type="button"
-            disabled={messageBusy}
-            onClick={() => void handleLiveTalk()}
-            className="inline-flex items-center gap-2 font-semibold text-cyan-700 transition hover:text-cyan-800 disabled:cursor-not-allowed disabled:text-slate-400"
-          >
-            {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {authResolved && !viewerId ? "Sign in for Live Talk" : canMessage ? "Start Live Talk" : "Live Talk after connect"}
-          </button>
-        </div>
-
         {connectionState.kind === "incoming_pending" && connectionState.requestId ? (
           <div className="mt-3 flex flex-wrap gap-2">
             <button
