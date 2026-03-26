@@ -17,6 +17,7 @@ import { validateProfileValues } from "@/lib/profile/validation";
 import type { ProfileFormValues, ProfileValidationErrors } from "@/lib/profile/types";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { supabase } from "@/lib/supabase";
+import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicProfileActionsProps = {
   profileUserId: string;
@@ -100,11 +101,13 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    setPublicProfileModalOpen(true);
     editDialogRef.current?.focus();
     firstNameInputRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      setPublicProfileModalOpen(false);
     };
   }, [editDialogOpen]);
 
@@ -248,7 +251,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             setEditErrors({});
             setEditDialogOpen(true);
           }}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 sm:min-h-11 sm:px-6"
+          className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
         >
           <SquarePen className="h-4 w-4" />
           Edit profile
@@ -258,8 +261,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
     if (connectionState.kind === "accepted") {
       return (
-        <div className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 sm:min-h-11 sm:px-6">
-          <UserCheck className="h-4 w-4" />
+        <div className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs">
+          <UserCheck className="h-3.5 w-3.5" />
           Connected
         </div>
       );
@@ -267,8 +270,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
     if (connectionState.kind === "outgoing_pending") {
       return (
-        <div className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-700 sm:min-h-11 sm:px-6">
-          <Loader2 className={`h-4 w-4 ${connectionBusy ? "animate-spin" : ""}`} />
+        <div className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs">
+          <Loader2 className={`h-3.5 w-3.5 ${connectionBusy ? "animate-spin" : ""}`} />
           Request sent
         </div>
       );
@@ -279,9 +282,9 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
         type="button"
         disabled={connectionBusy}
         onClick={() => void handleConnect()}
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#0a66c2] bg-white px-5 py-2.5 text-sm font-semibold text-[#0a66c2] transition hover:bg-[#edf3f8] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-11 sm:px-6"
+        className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-[#0a66c2] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#0a66c2] transition hover:bg-[#edf3f8] disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
       >
-        {connectionBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+        {connectionBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
         {!authResolved || viewerId
           ? connectionState.kind === "incoming_pending"
             ? "Accept connection"
@@ -295,17 +298,17 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
 
   return (
     <>
-      <div className="w-full">
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+      <div className={`public-profile-primary-actions w-full transition ${editDialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           {connectButton}
 
           <button
             type="button"
             disabled={messageBusy}
             onClick={() => void handleMessage()}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:min-h-11 sm:px-6"
+            className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
           >
-            {messageBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+            {messageBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
             {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to chat" : "Chat"}
           </button>
         </div>
@@ -347,7 +350,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
       </div>
 
       {!editDialogOpen ? null : (
-        <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm sm:px-6 sm:py-8">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-6 backdrop-blur-md sm:px-6 sm:py-8">
           <div className="absolute inset-0" onClick={closeEditDialog} />
 
           <div
@@ -425,6 +428,24 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                     />
                     {editErrors.location ? <p className="text-sm text-rose-600">{editErrors.location}</p> : null}
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-900">Header background image URL</label>
+                  <input
+                    type="text"
+                    value={editValues.backgroundImageUrl}
+                    disabled={editBusy}
+                    onChange={(event) => setEditValues((current) => ({ ...current, backgroundImageUrl: event.target.value }))}
+                    placeholder="https://example.com/cover.jpg"
+                    className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
+                      editErrors.backgroundImageUrl
+                        ? "border-rose-300 focus:ring-4 focus:ring-rose-100"
+                        : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
+                    }`}
+                  />
+                  <p className="text-xs leading-5 text-slate-500">Use a public image URL for the cover shown at the top of your profile.</p>
+                  {editErrors.backgroundImageUrl ? <p className="text-sm text-rose-600">{editErrors.backgroundImageUrl}</p> : null}
                 </div>
 
                 <div className="space-y-2">

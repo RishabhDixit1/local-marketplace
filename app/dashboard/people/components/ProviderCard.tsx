@@ -36,7 +36,7 @@ const presenceClasses: Record<PresenceTone, string> = {
 };
 
 const actionButtonClassName =
-  "inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-65";
+  "inline-flex w-full min-h-10 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-65 sm:min-h-11 sm:py-2.5";
 
 const primaryActionClassName = `${actionButtonClassName} border border-[#1f6fd1] bg-white text-[#1f6fd1] hover:bg-[#edf5ff]`;
 
@@ -139,13 +139,13 @@ const ProviderCard = (props: Props) => {
       onMouseEnter={() => onActivate(provider.id)}
       onFocus={() => onActivate(provider.id)}
       aria-current={isActive}
-      className={`flex min-h-[21.5rem] cursor-pointer flex-col overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition sm:min-h-[25rem] sm:rounded-[1.7rem] ${
+      className={`flex min-h-[20rem] cursor-pointer flex-col overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition sm:min-h-[25rem] sm:rounded-[1.7rem] ${
         isActive
           ? "border-[var(--brand-500)]/40 shadow-[0_30px_90px_-60px_rgba(14,165,164,0.36)]"
           : "border-slate-200 hover:border-[var(--brand-500)]/24 hover:shadow-[0_28px_80px_-60px_rgba(15,23,42,0.34)]"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2`}
     >
-      <div className="relative h-24 overflow-hidden bg-[linear-gradient(135deg,#0f6da1_0%,#0ea5a4_48%,#0f172a_100%)] sm:h-28">
+      <div className="relative h-16 overflow-hidden bg-[linear-gradient(135deg,#0f6da1_0%,#0ea5a4_48%,#0f172a_100%)] sm:h-28">
         {coverImage ? (
           <Image
             src={coverImage}
@@ -160,8 +160,8 @@ const ProviderCard = (props: Props) => {
         )}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
-        <div className="-mt-10 flex justify-center sm:-mt-12">
+      <div className="relative flex min-h-0 flex-1 flex-col px-4 pb-3 pt-0 sm:px-5 sm:pb-5">
+        <div className="-mt-6 flex justify-center sm:-mt-12">
           <div className="relative">
             <Image
               src={provider.avatar}
@@ -178,7 +178,7 @@ const ProviderCard = (props: Props) => {
           </div>
         </div>
 
-        <div className="mt-3 min-w-0 text-center sm:mt-4">
+        <div className="mt-2.5 min-w-0 text-center sm:mt-4">
           <div className="flex items-center justify-center gap-2">
             <h3 className="truncate text-base font-semibold leading-tight text-slate-950 sm:text-[1.15rem]">
               {provider.name}
@@ -190,10 +190,10 @@ const ProviderCard = (props: Props) => {
             <p className="mt-1.5 line-clamp-2 text-[13px] leading-5 text-slate-500 sm:mt-2 sm:text-sm">{subheading}</p>
           ) : null}
 
-          <p className="mt-2 line-clamp-3 text-[13px] leading-5 text-slate-600 sm:line-clamp-2 sm:text-sm">{description}</p>
+          <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-slate-600 sm:text-sm">{description}</p>
         </div>
 
-        <div className="mt-auto pt-4 sm:pt-5">
+        <div className="mt-auto pt-3 sm:pt-5">
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsG
 import type { VerificationStatus } from "@/lib/business";
 import type { PublicProfileManualOffering, PublicProfilePost, PublicProfileReview } from "@/lib/profile/public";
 import { supabase } from "@/lib/supabase";
+import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicProfileContentTabsProps = {
   bio: string | null;
@@ -84,11 +85,13 @@ export default function PublicProfileContentTabs({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    setPublicProfileModalOpen(true);
     offeringDialogRef.current?.focus();
     offeringTitleInputRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      setPublicProfileModalOpen(false);
     };
   }, [offeringDialogOpen]);
 

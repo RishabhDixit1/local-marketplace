@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { DirectConversationResponse } from "@/lib/api/chat";
 import { getOrCreateDirectConversationIdForUsers } from "@/lib/server/directConversations";
-import { createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  const adminClient = createSupabaseAdminClient();
 
   let body: DirectConversationRequest = {};
   try {
@@ -76,7 +78,8 @@ export async function POST(request: Request) {
     const conversationId = await getOrCreateDirectConversationIdForUsers(
       userClient,
       authResult.auth.userId,
-      recipientId
+      recipientId,
+      adminClient
     );
 
     return NextResponse.json(

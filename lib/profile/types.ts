@@ -42,11 +42,15 @@ export type ProfileFormValues = {
   phone: string;
   website: string;
   avatarUrl: string;
+  backgroundImageUrl: string;
   availability: ProfileAvailability;
 };
 
 export type ProfileValidationErrors = Partial<
-  Record<"fullName" | "location" | "role" | "bio" | "interests" | "email" | "phone" | "website" | "avatarUrl" | "form", string>
+  Record<
+    "fullName" | "location" | "role" | "bio" | "interests" | "email" | "phone" | "website" | "avatarUrl" | "backgroundImageUrl" | "form",
+    string
+  >
 >;
 
 export type ProfileCompletionItem = {

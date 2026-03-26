@@ -60,6 +60,7 @@ export const isProfileSaveRequest = (payload: unknown): payload is SaveProfileRe
     typeof typedValues.phone === "string" &&
     typeof typedValues.website === "string" &&
     typeof typedValues.avatarUrl === "string" &&
+    typeof typedValues.backgroundImageUrl === "string" &&
     (typedValues.availability === "available" || typedValues.availability === "busy" || typedValues.availability === "offline")
   );
 };

@@ -360,6 +360,11 @@ const buildProfileValues = (params: {
     phone: generatedProfile.phone || trim(existingProfile?.phone),
     website: generatedProfile.website || trim(existingProfile?.website),
     avatarUrl: trim(existingProfile?.avatar_url),
+    backgroundImageUrl:
+      trim(typeof existingProfile?.metadata?.coverImageUrl === "string" ? existingProfile.metadata.coverImageUrl : "") ||
+      trim(typeof existingProfile?.metadata?.cover_image === "string" ? existingProfile.metadata.cover_image : "") ||
+      trim(typeof existingProfile?.metadata?.backgroundImageUrl === "string" ? existingProfile.metadata.backgroundImageUrl : "") ||
+      trim(typeof existingProfile?.metadata?.background_image === "string" ? existingProfile.metadata.background_image : ""),
     availability: generatedProfile.availability,
   };
 };

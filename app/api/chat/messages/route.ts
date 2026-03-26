@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SendChatMessageResponse } from "@/lib/api/chat";
-import { areUsersConnected, getConversationContext } from "@/lib/server/chatGuards";
+import { getConversationContext } from "@/lib/server/chatGuards";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
@@ -67,21 +67,7 @@ export async function POST(request: Request) {
 
   try {
     const dbForChecks = admin || userClient;
-    const conversation = await getConversationContext(dbForChecks, conversationId, authResult.auth.userId);
-
-    if (conversation.kind === "direct" && conversation.otherUserId) {
-      const connected = await areUsersConnected(dbForChecks, authResult.auth.userId, conversation.otherUserId);
-      if (!connected) {
-        return NextResponse.json(
-          {
-            ok: false,
-            code: "FORBIDDEN",
-            message: "This direct chat is not active anymore. Reconnect before messaging.",
-          } satisfies SendChatMessageResponse,
-          { status: 403 }
-        );
-      }
-    }
+    await getConversationContext(dbForChecks, conversationId, authResult.auth.userId);
 
     const insertResult = await userClient
       .from("messages")

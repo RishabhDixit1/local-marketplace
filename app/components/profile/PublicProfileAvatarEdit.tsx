@@ -8,12 +8,14 @@ import { fetchProfileByUserId, saveCurrentUserProfile, uploadProfileAvatar } fro
 import type { ProfileFormValues } from "@/lib/profile/types";
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
+import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicProfileAvatarEditProps = {
   profileUserId: string;
   displayName: string;
   avatarUrl: string;
   initialValues: ProfileFormValues;
+  triggerMode?: "icon" | "image";
 };
 
 export default function PublicProfileAvatarEdit({
@@ -21,6 +23,7 @@ export default function PublicProfileAvatarEdit({
   displayName,
   avatarUrl,
   initialValues,
+  triggerMode = "icon",
 }: PublicProfileAvatarEditProps) {
   const router = useRouter();
   const [isSelf, setIsSelf] = useState(false);
@@ -77,11 +80,13 @@ export default function PublicProfileAvatarEdit({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    setPublicProfileModalOpen(true);
     dialogRef.current?.focus();
     uploadButtonRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      setPublicProfileModalOpen(false);
     };
   }, [dialogOpen]);
 
@@ -146,18 +151,37 @@ export default function PublicProfileAvatarEdit({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        className="absolute bottom-2 right-1 inline-flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-slate-900 text-white shadow-[0_16px_28px_-18px_rgba(15,23,42,0.6)] transition hover:bg-slate-800"
-        aria-label="Update profile picture"
-        title="Update profile picture"
-      >
-        <SquarePen className="h-4.5 w-4.5" />
-      </button>
+      {triggerMode === "image" ? (
+        <div className={`public-profile-avatar-trigger group absolute inset-0 z-10 rounded-full transition ${dialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+          <button
+            type="button"
+            onClick={() => setDialogOpen(true)}
+            className="absolute inset-0 rounded-full"
+            aria-label="Update profile picture"
+            title="Update profile picture"
+          />
+          <div className="pointer-events-none absolute inset-0 rounded-full bg-slate-950/0 transition duration-200 group-hover:bg-slate-950/28">
+            <div className="flex h-full items-center justify-center opacity-0 transition duration-200 group-hover:opacity-100">
+              <span className="rounded-full border border-white/25 bg-slate-950/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur">
+                Edit
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          className={`public-profile-avatar-trigger absolute bottom-1.5 right-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-[0_16px_28px_-18px_rgba(15,23,42,0.6)] transition hover:bg-slate-800 ${dialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}
+          aria-label="Update profile picture"
+          title="Update profile picture"
+        >
+          <SquarePen className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       {!dialogOpen ? null : (
-        <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm sm:px-6 sm:py-8">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-6 backdrop-blur-md sm:px-6 sm:py-8">
           <div className="absolute inset-0" onClick={closeDialog} />
 
           <div

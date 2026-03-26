@@ -141,6 +141,7 @@ const emptyProfileForm: ProfileFormValues = {
   phone: "",
   website: "",
   avatarUrl: "",
+  backgroundImageUrl: "",
   availability: "available",
 };
 
@@ -179,6 +180,7 @@ const serializeFormValues = (values: ProfileFormValues) =>
     phone: normalizePhone(values.phone),
     website: normalizeWebsite(values.website),
     avatarUrl: values.avatarUrl.trim(),
+    backgroundImageUrl: values.backgroundImageUrl.trim(),
     availability: values.availability,
   });
 
@@ -212,6 +214,7 @@ export default function ProfilePage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error" | "blocked">("idle");
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [providerInsight, setProviderInsight] = useState<ProviderInsight>({
     servicesCount: 0,
@@ -261,6 +264,10 @@ export default function ProfilePage() {
     phone: normalizePhone(formValues.phone),
     website: normalizeWebsite(formValues.website),
     avatar_url: formValues.avatarUrl,
+    metadata: {
+      ...(profile?.metadata || {}),
+      coverImageUrl: formValues.backgroundImageUrl,
+    },
   };
 
   const profileCompletion = calculateProfileCompletionPercent(previewProfile);
@@ -583,7 +590,7 @@ export default function ProfilePage() {
   }, [enqueueToast, formValues, onboardingQuery, profile, router, setProfile, user]);
 
   useEffect(() => {
-    if (!user || !profile || !dirty || isUploadingAvatar) return;
+    if (!user || !profile || !dirty || isUploadingAvatar || isUploadingBackground) return;
     if (!canAutosaveProfile(formValues)) return;
 
     const timeoutId = window.setTimeout(() => {
@@ -591,7 +598,7 @@ export default function ProfilePage() {
     }, PROFILE_AUTOSAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [dirty, formValues, isUploadingAvatar, performSave, profile, user]);
+  }, [dirty, formValues, isUploadingAvatar, isUploadingBackground, performSave, profile, user]);
 
   const updateField = (field: keyof ProfileFormValues, value: string) => {
     setFormValues((current) => ({
@@ -658,6 +665,29 @@ export default function ProfilePage() {
     }
   };
 
+  const handleBackgroundUpload = async (file: File) => {
+    if (!user?.id) return;
+    if (file.size > 5 * 1024 * 1024) {
+      enqueueToast("error", "Background image must be 5MB or smaller.");
+      return;
+    }
+
+    setIsUploadingBackground(true);
+    try {
+      const publicUrl = await uploadProfileAvatar({ userId: user.id, file });
+      setFormValues((current) => ({
+        ...current,
+        backgroundImageUrl: publicUrl,
+      }));
+      markTouched("backgroundImageUrl");
+      enqueueToast("success", "Header background updated. It will save automatically.");
+    } catch (error) {
+      enqueueToast("error", error instanceof Error ? error.message : "Background image upload failed.");
+    } finally {
+      setIsUploadingBackground(false);
+    }
+  };
+
   const handleCopyPublicProfile = async () => {
     if (!publicProfilePath || typeof window === "undefined") return;
 
@@ -702,12 +732,27 @@ export default function ProfilePage() {
         role={roleFamily}
         storedRole={currentStoredRole}
         fullName={formValues.fullName}
+        bio={formValues.bio}
         location={formValues.location}
         avatarUrl={formValues.avatarUrl}
+        backgroundImageUrl={formValues.backgroundImageUrl}
         progress={profileCompletion}
         checklistCompleteCount={checklistCompleteCount}
         checklistTotalCount={checklist.length}
         onboardingComplete={onboardingComplete}
+        verificationStatus={verificationStatus}
+        memberSince={profile?.created_at || ""}
+        tags={formValues.interests.slice(0, 3)}
+        averageRating={providerInsight.averageRating}
+        reviewCount={providerInsight.reviewCount}
+        taskCount={roleFamily === "provider" ? providerInsight.servicesCount + providerInsight.productsCount : seekerInsight.postsCount}
+        backgroundUploading={isUploadingBackground}
+        onBackgroundUpload={handleBackgroundUpload}
+        onBackgroundClear={() => {
+          setFormValues((current) => ({ ...current, backgroundImageUrl: "" }));
+          markTouched("backgroundImageUrl");
+        }}
+        onGoToDashboard={() => router.push("/dashboard")}
       />
 
       <MarketplaceReadinessPanel summary={marketplaceReadiness} stats={readinessStats} loading={loadingInsights} />
@@ -769,6 +814,24 @@ export default function ProfilePage() {
                   />
                   <p className={`text-sm ${visibleErrors.location ? "text-rose-600" : "text-slate-500"}`}>
                     {visibleErrors.location || "Manual location is used unless autocomplete is added later."}
+                  </p>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-semibold text-slate-900">Header background image</label>
+                  <input
+                    value={formValues.backgroundImageUrl}
+                    onBlur={() => markTouched("backgroundImageUrl")}
+                    onChange={(event) => updateField("backgroundImageUrl", event.target.value)}
+                    placeholder="https://example.com/cover.jpg"
+                    className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 ${
+                      visibleErrors.backgroundImageUrl
+                        ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                        : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                    }`}
+                  />
+                  <p className={`text-sm ${visibleErrors.backgroundImageUrl ? "text-rose-600" : "text-slate-500"}`}>
+                    {visibleErrors.backgroundImageUrl || "Paste a public image URL or upload a new cover directly from the header."}
                   </p>
                 </div>
               </div>
@@ -1077,7 +1140,7 @@ export default function ProfilePage() {
         buttonLabel={
           onboardingQuery && !profile.onboarding_completed && !onboardingReady ? "Complete required fields" : saveButtonLabel
         }
-        saveDisabled={!user || isUploadingAvatar}
+        saveDisabled={!user || isUploadingAvatar || isUploadingBackground}
         onSave={() => {
           setSubmitAttempted(true);
           void performSave("manual");
