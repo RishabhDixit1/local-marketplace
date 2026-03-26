@@ -134,7 +134,8 @@ const ensureConversationParticipants = async (
 export const getOrCreateDirectConversationIdForUsers = async (
   db: SupabaseClient,
   viewerId: string,
-  recipientId: string
+  recipientId: string,
+  adminDb?: SupabaseClient | null
 ) => {
   if (!viewerId || !recipientId) {
     throw new Error("Both viewerId and recipientId are required.");
@@ -144,27 +145,20 @@ export const getOrCreateDirectConversationIdForUsers = async (
     throw new Error("Cannot create a direct conversation with yourself.");
   }
 
-  const rpcResult = await db.rpc("get_or_create_direct_conversation", {
-    target_user_id: recipientId,
-  });
-
-  if (!rpcResult.error && typeof rpcResult.data === "string" && rpcResult.data) {
-    return rpcResult.data;
-  }
-
-  if (rpcResult.error && !isMissingDirectConversationRpcError(rpcResult.error.message || "")) {
-    throw new Error(rpcResult.error.message);
-  }
-
   const existingConversationId = await findExistingDirectConversationId(db, viewerId, recipientId);
   if (existingConversationId) {
-    await ensureConversationParticipants(db, existingConversationId, viewerId, recipientId);
+    await ensureConversationParticipants(adminDb || db, existingConversationId, viewerId, recipientId);
     return existingConversationId;
   }
 
-  const createdConversationId = await createFallbackConversationRow(db, viewerId, recipientId);
-  await ensureConversationParticipants(db, createdConversationId, viewerId, recipientId);
-  return createdConversationId;
+  try {
+    const writeClient = adminDb || db;
+    const createdConversationId = await createFallbackConversationRow(writeClient, viewerId, recipientId);
+    await ensureConversationParticipants(writeClient, createdConversationId, viewerId, recipientId);
+    return createdConversationId;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Unable to open a direct conversation.");
+  }
 };
 
 export const __testUtils = {

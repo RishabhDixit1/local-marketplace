@@ -8,17 +8,20 @@ import { X } from "lucide-react";
 import { deriveConnectionState, listCurrentUserConnectionRows, type ConnectionRequestRow } from "@/lib/connections";
 import type { PublicProfileConnection } from "@/lib/profile/public";
 import { supabase } from "@/lib/supabase";
+import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicConnectionsTriggerProps = {
   profileUserId: string;
   label: string;
   connections: PublicProfileConnection[];
+  className?: string;
 };
 
 export default function PublicConnectionsTrigger({
   profileUserId,
   label,
   connections,
+  className,
 }: PublicConnectionsTriggerProps) {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [connectionRows, setConnectionRows] = useState<ConnectionRequestRow[]>([]);
@@ -56,10 +59,12 @@ export default function PublicConnectionsTrigger({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    setPublicProfileModalOpen(true);
     dialogRef.current?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
+      setPublicProfileModalOpen(false);
     };
   }, [open]);
 
@@ -70,9 +75,10 @@ export default function PublicConnectionsTrigger({
   }, [connectionRows, profileUserId, viewerId]);
 
   const closeDialog = () => setOpen(false);
+  const triggerClassName = className || "mt-2 text-sm font-semibold text-slate-700 transition hover:text-[#0a66c2] sm:mt-3 sm:text-base";
 
   if (!canViewConnections) {
-    return <p className="mt-2 text-sm font-semibold text-slate-700 sm:mt-3 sm:text-base">{label}</p>;
+    return <p className={triggerClassName}>{label}</p>;
   }
 
   return (
@@ -80,13 +86,13 @@ export default function PublicConnectionsTrigger({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-2 text-sm font-semibold text-slate-700 transition hover:text-[#0a66c2] sm:mt-3 sm:text-base"
+        className={triggerClassName}
       >
         {label}
       </button>
 
       {!open ? null : (
-        <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-6 backdrop-blur-md">
           <div className="absolute inset-0" onClick={closeDialog} />
 
           <div

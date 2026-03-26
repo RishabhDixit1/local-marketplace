@@ -576,7 +576,7 @@ export default function PublicProfilePostsGrid({
               key={post.id}
               className={`flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] sm:p-4 ${
                 horizontal
-                  ? "w-[calc(100vw-3.5rem)] min-w-[240px] max-w-[340px] shrink-0 snap-start sm:w-[calc(50vw-2.75rem)] sm:min-w-[260px] sm:max-w-[360px] lg:w-[calc(33vw-2.5rem)] lg:min-w-[280px] lg:max-w-[380px] xl:w-[calc(30vw-2.5rem)]"
+                  ? "w-[min(82vw,320px)] min-w-[240px] max-w-[320px] shrink-0 snap-start sm:w-[calc(50vw-2.75rem)] sm:min-w-[260px] sm:max-w-[360px] lg:w-[calc(33vw-2.5rem)] lg:min-w-[280px] lg:max-w-[380px] xl:w-[calc(30vw-2.5rem)]"
                   : ""
               }`}
             >
@@ -681,12 +681,12 @@ export default function PublicProfilePostsGrid({
               </div>
 
               <div className="mt-auto space-y-2 pt-4">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => void handleAccept(post)}
                     disabled={acceptDisabled}
-                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 text-[12px] font-semibold transition ${
+                    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border px-3 text-[12px] font-semibold transition sm:min-h-11 ${
                       acceptDisabled
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
                         : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -700,7 +700,7 @@ export default function PublicProfilePostsGrid({
                     type="button"
                     onClick={() => void handleOpenChat()}
                     disabled={chatOpening || !canOpenChat}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:min-h-11"
                   >
                     {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                     {chatLabel}

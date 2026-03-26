@@ -49,6 +49,10 @@ export const validateProfileValues = (
     errors.avatarUrl = "Avatar URL must be a valid public URL.";
   }
 
+  if (values.backgroundImageUrl.trim() && !/^https?:\/\//i.test(values.backgroundImageUrl.trim())) {
+    errors.backgroundImageUrl = "Background image URL must be a valid public URL.";
+  }
+
   return errors;
 };
 

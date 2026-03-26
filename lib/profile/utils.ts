@@ -299,6 +299,11 @@ export const toProfileFormValues = (profile: ProfileRecord | null | undefined): 
   phone: normalizePhone(profile?.phone),
   website: trim(profile?.website),
   avatarUrl: trim(profile?.avatar_url),
+  backgroundImageUrl:
+    readProfileMetadataName(profile, "coverImageUrl") ||
+    readProfileMetadataName(profile, "cover_image") ||
+    readProfileMetadataName(profile, "backgroundImageUrl") ||
+    readProfileMetadataName(profile, "background_image"),
   availability: normalizeAvailability(profile?.availability),
 });
 
@@ -405,6 +410,17 @@ export const createProfileSavePayload = (params: {
       : "seeker";
   const normalizedPhone = normalizePhone(params.values.phone);
   const normalizedWebsite = normalizeWebsite(params.values.website);
+  const nextMetadata = {
+    ...(params.existingProfile?.metadata || {}),
+  };
+  const normalizedBackgroundImageUrl = trim(params.values.backgroundImageUrl);
+
+  if (normalizedBackgroundImageUrl) {
+    nextMetadata.coverImageUrl = normalizedBackgroundImageUrl;
+  } else {
+    delete nextMetadata.coverImageUrl;
+  }
+
   const payload: Record<string, unknown> = {
     id: params.user.id,
     full_name: toNullableString(params.values.fullName),
@@ -419,7 +435,7 @@ export const createProfileSavePayload = (params: {
     website: toNullableString(normalizedWebsite),
     avatar_url: toNullableString(params.values.avatarUrl),
     availability: normalizeAvailability(params.values.availability),
-    metadata: params.existingProfile?.metadata || {},
+    metadata: nextMetadata,
   };
 
   return {

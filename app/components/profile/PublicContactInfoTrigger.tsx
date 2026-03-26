@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Globe, Mail, MapPin, Phone, X } from "lucide-react";
+import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
 
 type PublicContactInfoTriggerProps = {
   displayName: string;
@@ -36,6 +37,7 @@ export default function PublicContactInfoTrigger({
   useEffect(() => {
     if (!open) return;
 
+    setPublicProfileModalOpen(true);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
@@ -43,7 +45,10 @@ export default function PublicContactInfoTrigger({
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      setPublicProfileModalOpen(false);
+    };
   }, [open]);
 
   const contactRows = [
@@ -84,7 +89,7 @@ export default function PublicContactInfoTrigger({
       </button>
 
       {!open ? null : (
-        <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-8 backdrop-blur-md">
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
 
           <div
