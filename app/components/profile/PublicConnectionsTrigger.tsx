@@ -92,7 +92,7 @@ export default function PublicConnectionsTrigger({
       </button>
 
       {!open ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-6 backdrop-blur-md">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/42 px-4 py-6 backdrop-blur-xl">
           <div className="absolute inset-0" onClick={closeDialog} />
 
           <div

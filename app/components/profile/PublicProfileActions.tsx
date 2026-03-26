@@ -431,24 +431,6 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Header background image URL</label>
-                  <input
-                    type="text"
-                    value={editValues.backgroundImageUrl}
-                    disabled={editBusy}
-                    onChange={(event) => setEditValues((current) => ({ ...current, backgroundImageUrl: event.target.value }))}
-                    placeholder="https://example.com/cover.jpg"
-                    className={`min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition ${
-                      editErrors.backgroundImageUrl
-                        ? "border-rose-300 focus:ring-4 focus:ring-rose-100"
-                        : "border-slate-200 focus:ring-4 focus:ring-indigo-100"
-                    }`}
-                  />
-                  <p className="text-xs leading-5 text-slate-500">Use a public image URL for the cover shown at the top of your profile.</p>
-                  {editErrors.backgroundImageUrl ? <p className="text-sm text-rose-600">{editErrors.backgroundImageUrl}</p> : null}
-                </div>
-
-                <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-900">About</label>
                   <textarea
                     value={editValues.bio}

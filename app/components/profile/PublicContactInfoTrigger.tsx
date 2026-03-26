@@ -37,6 +37,8 @@ export default function PublicContactInfoTrigger({
   useEffect(() => {
     if (!open) return;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     setPublicProfileModalOpen(true);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -46,6 +48,7 @@ export default function PublicContactInfoTrigger({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       setPublicProfileModalOpen(false);
     };
@@ -89,7 +92,7 @@ export default function PublicContactInfoTrigger({
       </button>
 
       {!open ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/96 px-4 py-8 backdrop-blur-md">
+        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/42 px-4 py-8 backdrop-blur-xl">
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
 
           <div
