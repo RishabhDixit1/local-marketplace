@@ -56,6 +56,69 @@ const trim = (value: string | null | undefined) => value?.trim() ?? "";
 const isRecord = (value: unknown): value is FlexibleRecord => typeof value === "object" && value !== null && !Array.isArray(value);
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
 
+const normalizeWelcomeFingerprintPart = (value: string | null | undefined) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+
+const getWelcomeFingerprintTimeBucket = (value: string | null | undefined) => {
+  const parsed = value ? new Date(value).getTime() : 0;
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.floor(parsed / (2 * 60 * 1000));
+};
+
+const extractWelcomeSubtitleCategory = (subtitle: string) => {
+  const parts = subtitle
+    .split("•")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const category = parts.length ? parts[parts.length - 1] : "";
+
+  return category || "";
+};
+
+const buildWelcomeCardFingerprint = (card: WelcomeFeedCard) =>
+  [
+    normalizeWelcomeFingerprintPart(card.ownerId || "community"),
+    normalizeWelcomeFingerprintPart(card.type),
+    normalizeWelcomeFingerprintPart(card.title),
+    normalizeWelcomeFingerprintPart(extractWelcomeSubtitleCategory(card.subtitle)),
+    getWelcomeFingerprintTimeBucket(card.createdAt),
+  ].join("|");
+
+const getWelcomeSourcePriority = (source?: WelcomeFeedCard["source"]) => {
+  switch (source) {
+    case "help_request":
+      return 4;
+    case "post":
+      return 3;
+    case "service":
+    case "product":
+      return 2;
+    default:
+      return 1;
+  }
+};
+
+const pickPreferredWelcomeCard = (current: WelcomeFeedCard, incoming: WelcomeFeedCard) => {
+  const currentPriority = getWelcomeSourcePriority(current.source);
+  const incomingPriority = getWelcomeSourcePriority(incoming.source);
+  if (incomingPriority !== currentPriority) {
+    return incomingPriority > currentPriority ? incoming : current;
+  }
+
+  const currentCreatedAt = trim(current.createdAt);
+  const incomingCreatedAt = trim(incoming.createdAt);
+  if (incomingCreatedAt !== currentCreatedAt) {
+    return incomingCreatedAt > currentCreatedAt ? incoming : current;
+  }
+
+  return incoming;
+};
+
 const demandImages = [
   "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1200&q=80",
   "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
@@ -655,9 +718,14 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     });
   });
 
-  const uniqueCards = Array.from(new Map(cards.map((card) => [card.id, card])).values()).sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt)
-  );
+  const uniqueByFingerprint = new Map<string, WelcomeFeedCard>();
+  for (const card of cards) {
+    const fingerprint = buildWelcomeCardFingerprint(card);
+    const existing = uniqueByFingerprint.get(fingerprint);
+    uniqueByFingerprint.set(fingerprint, existing ? pickPreferredWelcomeCard(existing, card) : card);
+  }
+
+  const uniqueCards = Array.from(uniqueByFingerprint.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return {
     cards: uniqueCards,

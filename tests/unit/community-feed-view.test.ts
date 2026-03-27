@@ -106,11 +106,11 @@ describe("buildCommunityFeedView", () => {
     });
 
     expect(view.mapCenter).toEqual({ lat: 12.9716, lng: 77.5946 });
-    expect(view.feedItems.map((item) => item.id)).toEqual(["help-open", "post-1", "service-1", "help-taken"]);
+    expect(view.feedItems.map((item) => item.id)).toEqual(["help-open", "post-1", "service-1"]);
     expect(view.feedStats).toEqual({
-      total: 4,
-      urgent: 3,
-      demand: 3,
+      total: 3,
+      urgent: 2,
+      demand: 2,
       service: 1,
       product: 0,
     });
@@ -129,6 +129,69 @@ describe("buildCommunityFeedView", () => {
       creatorName: "Asha Repairs",
       verificationStatus: "pending",
       responseMinutes: 9,
+    });
+  });
+
+  it("collapses mirrored need records into a single community card", () => {
+    const view = buildCommunityFeedView({
+      currentUserId: "viewer-1",
+      acceptedConnectionIds: ["provider-1"],
+      currentUserProfile: {
+        id: "viewer-1",
+        name: "Viewer",
+        latitude: 12.9716,
+        longitude: 77.5946,
+        role: "seeker",
+      },
+      services: [],
+      products: [],
+      posts: [
+        {
+          id: "post-need",
+          user_id: "provider-1",
+          title: "Dryclean",
+          description: "Need a pickup and wash",
+          type: "need",
+          post_type: "need",
+          category: "Laundry",
+          status: "open",
+          created_at: "2026-03-24T09:00:00.000Z",
+        },
+      ],
+      helpRequests: [
+        {
+          id: "help-need",
+          requester_id: "provider-1",
+          title: "Dryclean",
+          details: "Need a same-day dryclean service",
+          category: "Laundry",
+          budget_max: 1200,
+          location_label: "Indiranagar",
+          status: "open",
+          created_at: "2026-03-24T09:00:30.000Z",
+        },
+      ],
+      profiles: [
+        {
+          id: "provider-1",
+          name: "Asha Repairs",
+          role: "business",
+          location: "Indiranagar",
+          latitude: 12.978,
+          longitude: 77.64,
+          profile_completion_percent: 84,
+        },
+      ],
+      reviews: [],
+      presence: [],
+    });
+
+    expect(view.feedItems).toHaveLength(1);
+    expect(view.feedItems[0]).toMatchObject({
+      id: "help-need",
+      source: "help_request",
+      type: "demand",
+      title: "Dryclean",
     });
   });
 });

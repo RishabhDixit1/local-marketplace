@@ -149,6 +149,39 @@ describe("welcome feed builder", () => {
     expect(result.cards.every((card) => card.ownerId === "peer-1")).toBe(true);
   });
 
+  it("collapses mirrored need rows into a single welcome card", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+          {
+            id: "post-mirrored",
+            user_id: "peer-1",
+            title: "Need a dryclean service",
+            text: "Need a dryclean service | Need a pickup and wash | Type: demand | Category: Laundry",
+            description: "Need a dryclean service | Need a pickup and wash | Type: demand | Category: Laundry",
+            created_at: "2026-03-12T12:30:00.000Z",
+          },
+        ],
+        helpRequests: [
+          {
+            id: "help-mirrored",
+            requester_id: "peer-1",
+            title: "Need a dryclean service",
+            details: "Pickup and wash",
+            category: "Laundry",
+            budget_max: 1200,
+            created_at: "2026-03-12T12:30:20.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.source).toBe("help_request");
+    expect(result.cards[0]?.focusId).toBe("help-mirrored");
+  });
+
   it("prefers uploaded media from live post metadata before seeded fallback visuals", () => {
     const result = buildWelcomeFeedCards(
       buildSnapshot({

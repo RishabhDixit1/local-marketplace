@@ -154,6 +154,23 @@ export const parseMarketplaceDateMs = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeMarketplaceFingerprintPart = (value: string | null | undefined) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+
+const getMarketplaceFingerprintTimeBucket = (value?: string) => {
+  const createdAtMs = parseMarketplaceDateMs(value);
+  if (!createdAtMs) return 0;
+
+  // Keep mirrored rows together while still separating truly different posts.
+  const bucketMs = 2 * 60 * 1000;
+  return Math.floor(createdAtMs / bucketMs);
+};
+
 export const normalizeMarketplacePostKind = (value?: string | null): MarketplaceFeedItemType => {
   const normalized = (value || "").trim().toLowerCase();
   if (normalized === "service" || normalized === "product") return normalized;
@@ -352,23 +369,14 @@ export const buildMarketplaceFeedStats = (items: MarketplaceFeedItem[]): Marketp
 });
 
 export const listingFingerprint = (item: MarketplaceFeedItem) => {
-  const normalizedTitle = (item.title || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 56);
-  const normalizedDescription = (item.description || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 96);
-  const normalizedCategory = (item.category || "").toLowerCase().trim();
-  const normalizedOwner = (item.providerId || "community").toLowerCase().trim();
-  const roundedPrice = item.price > 0 ? Math.round(item.price) : 0;
-
-  return [item.type, normalizedOwner, normalizedCategory, normalizedTitle, normalizedDescription, roundedPrice].join("|");
+  return [
+    normalizeMarketplaceFingerprintPart(item.providerId || "community"),
+    normalizeMarketplaceFingerprintPart(item.type),
+    normalizeMarketplaceFingerprintPart(item.category),
+    normalizeMarketplaceFingerprintPart(item.title),
+    normalizeMarketplaceFingerprintPart(item.locationLabel),
+    getMarketplaceFingerprintTimeBucket(item.createdAt),
+  ].join("|");
 };
 
 export const pickPreferredMarketplaceFeedItem = (current: MarketplaceFeedItem, incoming: MarketplaceFeedItem) => {
