@@ -1130,6 +1130,24 @@ export default function TasksPage() {
           return false;
         }
 
+        if (nextStatus === "cancelled" && task.type === "accepted") {
+          const payload = await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "open" }>(
+            supabase,
+            "/api/needs/reopen",
+            {
+              method: "POST",
+              body: JSON.stringify({ helpRequestId: task.helpRequestId }),
+            }
+          );
+
+          if (!payload.ok) {
+            setErrorMessage("Failed to reopen request.");
+            return false;
+          }
+
+          return true;
+        }
+
         if (!["accepted", "in_progress", "completed", "cancelled"].includes(nextStatus)) {
           setErrorMessage("This action is not available for the current request.");
           return false;
@@ -1400,7 +1418,9 @@ export default function TasksPage() {
     setNotice({
       kind: "success",
       message:
-        nextStatus === "cancelled"
+        nextStatus === "cancelled" && task.type === "accepted" && task.source === "help_request"
+          ? `${task.title} was declined and returned to the feed.`
+          : nextStatus === "cancelled"
           ? `${task.title} was declined.`
           : `${task.title} updated to ${getOrderStatusLabel(nextStatus).toLowerCase()}.`,
     });
