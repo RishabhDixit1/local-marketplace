@@ -62,7 +62,7 @@ describe("resolveMarketplaceCardActionModel", () => {
     expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Send Quote", disabled: false, tone: "primary" });
   });
 
-  it("enables quote only when the current viewer is the accepted provider", () => {
+  it("switches accept to decline for the accepted provider", () => {
     const actions = resolveMarketplaceCardActionModel({
       item: {
         ...baseItem,
@@ -76,8 +76,26 @@ describe("resolveMarketplaceCardActionModel", () => {
       viewerId: "viewer-9",
     });
 
-    expect(actions.buttons[0]).toMatchObject({ kind: "accept", disabled: true, tone: "status" });
+    expect(actions.buttons[0]).toMatchObject({ kind: "decline", disabled: false, tone: "destructive" });
     expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", disabled: false, tone: "primary" });
+  });
+
+  it("switches accept to decline for the requester after someone accepts", () => {
+    const actions = resolveMarketplaceCardActionModel({
+      item: {
+        ...baseItem,
+        id: "help-creator",
+        source: "help_request",
+        helpRequestId: "help-creator",
+        type: "demand",
+        acceptedProviderId: "provider-22",
+        status: "accepted",
+      },
+      viewerId: "provider-1",
+    });
+
+    expect(actions.buttons[0]).toMatchObject({ kind: "decline", disabled: false, tone: "destructive" });
+    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Your Listing", disabled: true });
   });
 
   it("marks already taken help requests as unavailable", () => {

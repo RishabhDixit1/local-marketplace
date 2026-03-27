@@ -13,8 +13,12 @@ export type WelcomeFeedCard = {
   id: string;
   focusId: string;
   type: WelcomeFeedCardType;
+  source?: "help_request" | "post" | "service" | "product";
   ownerId?: string;
   ownerName?: string;
+  helpRequestId?: string;
+  acceptedProviderId?: string | null;
+  status?: string | null;
   title: string;
   subtitle: string;
   priceLabel: string;
@@ -486,6 +490,8 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
   sortByCreatedAt(snapshot.helpRequests).forEach((request, index) => {
     const ownerId = trim(request.requester_id);
     if (!connectedPeerSet.has(ownerId)) return;
+    if (trim(request.accepted_provider_id)) return;
+    if (trim(request.status) && ["cancelled", "canceled", "closed", "completed", "fulfilled", "archived"].includes(trim(request.status).toLowerCase())) return;
 
     const ownerProfile = profileMap.get(ownerId);
     const budget = Math.max(Number(request.budget_max || 0), Number(request.budget_min || 0));
@@ -496,8 +502,12 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       id: `welcome-help-${request.id}`,
       focusId: request.id,
       type: "demand",
+      source: "help_request",
       ownerId,
       ownerName: ownerProfile?.name || undefined,
+      helpRequestId: request.id,
+      acceptedProviderId: trim(request.accepted_provider_id) || null,
+      status: trim(request.status) || null,
       title,
       subtitle: `${ownerProfile?.name || "A connection"} shared a local request${request.category ? ` • ${request.category}` : ""}`,
       priceLabel: budget > 0 ? `Budget ₹${budget}` : "Budget shared in chat",
@@ -534,8 +544,10 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       id: `welcome-post-${post.id}`,
       focusId: post.id,
       type: cardType,
+      source: "post",
       ownerId,
       ownerName: ownerProfile?.name || undefined,
+      status: trim(post.status || post.state) || null,
       title,
       subtitle: `${ownerProfile?.name || "A connection"} posted this in your connected feed${parsed.category ? ` • ${parsed.category}` : ""}`,
       priceLabel:
@@ -582,6 +594,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       id: `welcome-service-${service.id}`,
       focusId: service.id,
       type: "service",
+      source: "service",
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
@@ -617,6 +630,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       id: `welcome-product-${product.id}`,
       focusId: product.id,
       type: "product",
+      source: "product",
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,

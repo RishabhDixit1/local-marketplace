@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const viewerCoordinates = getCoordinates(requestUrl.searchParams.get("lat"), requestUrl.searchParams.get("lng"));
+  const scope = requestUrl.searchParams.get("scope") === "connected" ? "connected" : "all";
 
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
   try {
     const snapshot = await loadCommunityFeedSnapshot(dbClient, authResult.auth.userId, {
       viewerOverride: viewerCoordinates ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude } : null,
+      scope,
     });
     return NextResponse.json(snapshot satisfies CommunityFeedResponse, {
       headers: {
