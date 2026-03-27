@@ -16,6 +16,7 @@ export type MarketplaceFeedItem = {
   id: string;
   source: MarketplaceFeedItemSource;
   helpRequestId: string | null;
+  canonicalKey?: string;
   providerId: string;
   type: MarketplaceFeedItemType;
   title: string;
@@ -161,15 +162,6 @@ const normalizeMarketplaceFingerprintPart = (value: string | null | undefined) =
     .trim()
     .replace(/\s+/g, " ")
     .slice(0, 80);
-
-const getMarketplaceFingerprintTimeBucket = (value?: string) => {
-  const createdAtMs = parseMarketplaceDateMs(value);
-  if (!createdAtMs) return 0;
-
-  // Keep mirrored rows together while still separating truly different posts.
-  const bucketMs = 2 * 60 * 1000;
-  return Math.floor(createdAtMs / bucketMs);
-};
 
 export const normalizeMarketplacePostKind = (value?: string | null): MarketplaceFeedItemType => {
   const normalized = (value || "").trim().toLowerCase();
@@ -374,8 +366,6 @@ export const listingFingerprint = (item: MarketplaceFeedItem) => {
     normalizeMarketplaceFingerprintPart(item.type),
     normalizeMarketplaceFingerprintPart(item.category),
     normalizeMarketplaceFingerprintPart(item.title),
-    normalizeMarketplaceFingerprintPart(item.locationLabel),
-    getMarketplaceFingerprintTimeBucket(item.createdAt),
   ].join("|");
 };
 
@@ -406,7 +396,7 @@ export const dedupeMarketplaceFeedItems = (items: MarketplaceFeedItem[]) => {
 
   const byFingerprint = new Map<string, MarketplaceFeedItem>();
   for (const item of byId.values()) {
-    const fingerprint = listingFingerprint(item);
+    const fingerprint = item.canonicalKey || listingFingerprint(item);
     const existing = byFingerprint.get(fingerprint);
     byFingerprint.set(fingerprint, existing ? pickPreferredMarketplaceFeedItem(existing, item) : item);
   }

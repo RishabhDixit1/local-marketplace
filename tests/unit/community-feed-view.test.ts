@@ -133,6 +133,25 @@ describe("buildCommunityFeedView", () => {
   });
 
   it("collapses mirrored need records into a single community card", () => {
+    const mirroredMetadata = {
+      source: "serviq_compose",
+      postType: "need",
+      publishGroupKey: "serviq:demand:dryclean-123",
+      title: "Dryclean",
+      details: "Need a same-day dryclean service",
+      category: "Laundry",
+      budget: 1200,
+      locationLabel: "Indiranagar",
+      radiusKm: 8,
+      mode: "urgent",
+      neededWithin: "today",
+      scheduleDate: "",
+      scheduleTime: "",
+      flexibleTiming: true,
+      attachmentCount: 0,
+      media: [],
+    };
+
     const view = buildCommunityFeedView({
       currentUserId: "viewer-1",
       acceptedConnectionIds: ["provider-1"],
@@ -154,19 +173,24 @@ describe("buildCommunityFeedView", () => {
           type: "need",
           post_type: "need",
           category: "Laundry",
+          metadata: mirroredMetadata,
           status: "open",
-          created_at: "2026-03-24T09:00:00.000Z",
+          created_at: "2026-03-24T15:00:00.000Z",
         },
       ],
       helpRequests: [
         {
           id: "help-need",
           requester_id: "provider-1",
-          title: "Dryclean",
+          title: "Dryclean pickup",
           details: "Need a same-day dryclean service",
           category: "Laundry",
           budget_max: 1200,
           location_label: "Indiranagar",
+          metadata: {
+            ...mirroredMetadata,
+            source: "api_needs_publish",
+          },
           status: "open",
           created_at: "2026-03-24T09:00:30.000Z",
         },
@@ -191,7 +215,7 @@ describe("buildCommunityFeedView", () => {
       id: "help-need",
       source: "help_request",
       type: "demand",
-      title: "Dryclean",
+      title: "Dryclean pickup",
     });
   });
 });

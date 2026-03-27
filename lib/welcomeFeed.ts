@@ -5,7 +5,7 @@ import type {
 } from "@/lib/api/community";
 import { distanceBetweenCoordinatesKm } from "@/lib/geo";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
-import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
+import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 
 export type WelcomeFeedCardType = "demand" | "service" | "product";
 
@@ -14,6 +14,7 @@ export type WelcomeFeedCard = {
   focusId: string;
   type: WelcomeFeedCardType;
   source?: "help_request" | "post" | "service" | "product";
+  canonicalKey?: string;
   ownerId?: string;
   ownerName?: string;
   helpRequestId?: string;
@@ -64,10 +65,31 @@ const normalizeWelcomeFingerprintPart = (value: string | null | undefined) =>
     .replace(/\s+/g, " ")
     .slice(0, 80);
 
-const getWelcomeFingerprintTimeBucket = (value: string | null | undefined) => {
-  const parsed = value ? new Date(value).getTime() : 0;
-  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
-  return Math.floor(parsed / (2 * 60 * 1000));
+const buildWelcomeCanonicalKey = (params: {
+  kind: WelcomeFeedCardType;
+  ownerId: string;
+  title: string;
+  category: string;
+  metadata?: unknown;
+}) => {
+  const publishGroupKey =
+    isRecord(params.metadata) && typeof params.metadata.publishGroupKey === "string"
+      ? trim(params.metadata.publishGroupKey)
+      : isRecord(params.metadata) && typeof params.metadata.publish_group_key === "string"
+        ? trim(params.metadata.publish_group_key)
+        : "";
+  if (publishGroupKey) {
+    return `${normalizeWelcomeFingerprintPart(params.kind)}:${normalizeWelcomeFingerprintPart(params.ownerId)}:${publishGroupKey}`;
+  }
+
+  const metadataSignature = buildMarketplaceComposerSignature(params.metadata);
+  const prefix = `${normalizeWelcomeFingerprintPart(params.kind)}:${normalizeWelcomeFingerprintPart(params.ownerId)}`;
+
+  if (metadataSignature) {
+    return `${prefix}:${metadataSignature}`;
+  }
+
+  return `${prefix}:${normalizeWelcomeFingerprintPart(params.title)}:${normalizeWelcomeFingerprintPart(params.category)}`;
 };
 
 const extractWelcomeSubtitleCategory = (subtitle: string) => {
@@ -86,7 +108,6 @@ const buildWelcomeCardFingerprint = (card: WelcomeFeedCard) =>
     normalizeWelcomeFingerprintPart(card.type),
     normalizeWelcomeFingerprintPart(card.title),
     normalizeWelcomeFingerprintPart(extractWelcomeSubtitleCategory(card.subtitle)),
-    getWelcomeFingerprintTimeBucket(card.createdAt),
   ].join("|");
 
 const getWelcomeSourcePriority = (source?: WelcomeFeedCard["source"]) => {
@@ -560,19 +581,27 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const budget = Math.max(Number(request.budget_max || 0), Number(request.budget_min || 0));
     const urgency = trim(request.urgency).toLowerCase();
     const title = trim(request.title) || trim(request.details) || "Need local support";
+    const category = trim(request.category) || "Need";
 
     cards.push({
       id: `welcome-help-${request.id}`,
       focusId: request.id,
       type: "demand",
       source: "help_request",
+      canonicalKey: buildWelcomeCanonicalKey({
+        kind: "demand",
+        ownerId,
+        title,
+        category,
+        metadata: request.metadata,
+      }),
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       helpRequestId: request.id,
       acceptedProviderId: trim(request.accepted_provider_id) || null,
       status: trim(request.status) || null,
       title,
-      subtitle: `${ownerProfile?.name || "A connection"} shared a local request${request.category ? ` • ${request.category}` : ""}`,
+      subtitle: `${ownerProfile?.name || "A connection"} shared a local request${category ? ` • ${category}` : ""}`,
       priceLabel: budget > 0 ? `Budget ₹${budget}` : "Budget shared in chat",
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index),
       etaLabel: urgency === "urgent" || urgency === "today" ? "Needs help today" : "Open for nearby responses",
@@ -608,6 +637,16 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       focusId: post.id,
       type: cardType,
       source: "post",
+      canonicalKey: buildWelcomeCanonicalKey({
+        kind: cardType,
+        ownerId,
+        title,
+        category:
+          parsed.category ||
+          trim(post.category) ||
+          (cardType === "demand" ? "Need" : cardType === "service" ? "Service" : "Product"),
+        metadata: post.metadata,
+      }),
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       status: trim(post.status || post.state) || null,
@@ -658,6 +697,13 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       focusId: service.id,
       type: "service",
       source: "service",
+      canonicalKey: buildWelcomeCanonicalKey({
+        kind: "service",
+        ownerId,
+        title,
+        category: service.category || "Service",
+        metadata: service.metadata,
+      }),
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
@@ -694,6 +740,13 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       focusId: product.id,
       type: "product",
       source: "product",
+      canonicalKey: buildWelcomeCanonicalKey({
+        kind: "product",
+        ownerId,
+        title,
+        category: product.category || "Product",
+        metadata: product.metadata,
+      }),
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
@@ -720,7 +773,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
 
   const uniqueByFingerprint = new Map<string, WelcomeFeedCard>();
   for (const card of cards) {
-    const fingerprint = buildWelcomeCardFingerprint(card);
+    const fingerprint = card.canonicalKey || buildWelcomeCardFingerprint(card);
     const existing = uniqueByFingerprint.get(fingerprint);
     uniqueByFingerprint.set(fingerprint, existing ? pickPreferredWelcomeCard(existing, card) : card);
   }

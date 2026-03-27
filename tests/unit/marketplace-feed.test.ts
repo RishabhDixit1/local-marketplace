@@ -117,15 +117,19 @@ describe("marketplace feed helpers", () => {
       description: "Need a same-day dryclean service",
       category: "Laundry",
       price: 1200,
-      locationLabel: "Indiranagar",
+      locationLabel: "Koramangala",
       createdAt: "2026-03-24T10:00:00.000Z",
+      canonicalKey: "serviq:demand:dryclean-123",
     };
 
     const helpRequestItem: MarketplaceFeedItem = {
       ...postItem,
       id: "help-1",
       source: "help_request",
+      title: "Dryclean pickup",
       description: "Need a dryclean service",
+      locationLabel: "Indiranagar",
+      createdAt: "2026-03-24T16:00:00.000Z",
     };
 
     const deduped = dedupeMarketplaceFeedItems([postItem, helpRequestItem]);
