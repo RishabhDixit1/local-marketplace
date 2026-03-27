@@ -83,18 +83,9 @@ import {
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { inferProfileNameFromUser } from "@/lib/profile/utils";
 
-type TaskTab = "all" | "posted" | "accepted";
 type RealtimeState = "connecting" | "live" | "offline";
 type TaskSortOption = "updated" | "newest" | "oldest";
-type TaskStatusFilter =
-  | "all"
-  | "awaiting-action"
-  | "active"
-  | "in-progress"
-  | "completed"
-  | "cancelled"
-  | "rejected"
-  | "support";
+type TaskViewTab = "saved" | "in-progress" | "completed";
 type OperationalTask = Task & { source: "order" | "help_request"; helpRequestId: string | null };
 type HelpRequestRow = {
   id: string;
@@ -293,7 +284,7 @@ const mapHelpRequestToTask = (params: {
     title: request.title?.trim() || request.category?.trim() || "Service request",
     description: request.details?.trim() || "Live request posted on ServiQ.",
     type: isPostedByMe ? "posted" : "accepted",
-    status: normalizeTaskStatus(request.status),
+    status: (request.status || "").toLowerCase() === "accepted" ? "in-progress" : normalizeTaskStatus(request.status),
     rawStatus: request.status || "open",
     budget: formatTaskBudget(request.budget_min, request.budget_max),
     timeline: timelineFromStatus(request.status),
@@ -373,6 +364,10 @@ const getCanonicalTaskStatus = (task: OperationalTask) => {
     return "open";
   }
 
+  if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "accepted") {
+    return "in_progress";
+  }
+
   return normalizeOrderStatus(task.rawStatus);
 };
 
@@ -385,10 +380,7 @@ export default function TasksPage() {
   const router = useRouter();
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveOrdersSectionRef = useRef<HTMLDivElement | null>(null);
-  const historySectionRef = useRef<HTMLElement | null>(null);
   const taskCardRefs = useRef(new Map<string, HTMLElement | null>());
-  const [selectedTab, setSelectedTab] = useState<TaskTab>("all");
-  const [selectedStatus, setSelectedStatus] = useState<TaskStatusFilter>("all");
   const [sortBy, setSortBy] = useState<TaskSortOption>("updated");
   const [tasks, setTasks] = useState<OperationalTask[]>([]);
   const [taskEvents, setTaskEvents] = useState<TaskEventFeedItem[]>([]);
@@ -399,6 +391,7 @@ export default function TasksPage() {
   const [quoteEditorTaskId, setQuoteEditorTaskId] = useState<string | null>(null);
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null);
   const [supportBusyTaskId, setSupportBusyTaskId] = useState<string | null>(null);
+  const [selectedTaskView, setSelectedTaskView] = useState<TaskViewTab>("in-progress");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -907,21 +900,6 @@ export default function TasksPage() {
 
     return tasks
       .filter((task) => {
-        const canonical = getCanonicalTaskStatus(task);
-        const hasSupport = supportRequestsByTaskId.has(task.orderId);
-        const matchesTab = selectedTab === "all" || task.type === selectedTab;
-        const matchesStatus =
-          selectedStatus === "all" ||
-          (selectedStatus === "awaiting-action" &&
-            (canonical === "open" || canonical === "new_lead" || canonical === "quoted")) ||
-          (selectedStatus === "active" && canonical === "accepted") ||
-          (selectedStatus === "in-progress" && canonical === "in_progress") ||
-          (selectedStatus === "completed" && (canonical === "completed" || canonical === "closed")) ||
-          (selectedStatus === "cancelled" && canonical === "cancelled") ||
-          (selectedStatus === "rejected" && canonical === "rejected") ||
-          (selectedStatus === "support" && (hasSupport || canonical === "cancelled" || canonical === "rejected"));
-
-        if (!matchesTab || !matchesStatus) return false;
         if (!query) return true;
 
         const latestEvent = latestEventByOrderId.get(task.orderId);
@@ -962,17 +940,58 @@ export default function TasksPage() {
         if (stageDelta !== 0) return stageDelta;
         return bTime - aTime;
       });
-  }, [deferredSearchQuery, latestEventByOrderId, selectedStatus, selectedTab, sortBy, supportRequestsByTaskId, tasks]);
+  }, [deferredSearchQuery, latestEventByOrderId, sortBy, tasks]);
 
-  const filteredLiveTasks = useMemo(
-    () => filteredTasks.filter((task) => !isHistoryTask(task)),
+  const taskTabs = useMemo(
+    () => [
+      {
+        value: "saved" as const,
+        label: "Saved",
+        count: filteredTasks.filter((task) => {
+          const canonical = getCanonicalTaskStatus(task);
+          return canonical === "open" || canonical === "new_lead" || canonical === "quoted";
+        }).length,
+      },
+      {
+        value: "in-progress" as const,
+        label: "In Progress",
+        count: filteredTasks.filter((task) => {
+          const canonical = getCanonicalTaskStatus(task);
+          return canonical === "accepted" || canonical === "in_progress";
+        }).length,
+      },
+      {
+        value: "completed" as const,
+        label: "Completed Requests",
+        count: filteredTasks.filter((task) => {
+          const canonical = getCanonicalTaskStatus(task);
+          return canonical === "completed" || canonical === "closed";
+        }).length,
+      },
+    ],
     [filteredTasks]
   );
 
-  const filteredHistoryTasks = useMemo(
-    () => filteredTasks.filter((task) => isHistoryTask(task)),
-    [filteredTasks]
-  );
+  const visibleTasks = useMemo(() => {
+    if (selectedTaskView === "saved") {
+      return filteredTasks.filter((task) => {
+        const canonical = getCanonicalTaskStatus(task);
+        return canonical === "open" || canonical === "new_lead" || canonical === "quoted";
+      });
+    }
+
+    if (selectedTaskView === "completed") {
+      return filteredTasks.filter((task) => {
+        const canonical = getCanonicalTaskStatus(task);
+        return canonical === "completed" || canonical === "closed";
+      });
+    }
+
+    return filteredTasks.filter((task) => {
+      const canonical = getCanonicalTaskStatus(task);
+      return canonical === "accepted" || canonical === "in_progress";
+    });
+  }, [filteredTasks, selectedTaskView]);
 
   const handleTaskPromptSubmit = useCallback(() => {
     const firstMatch = filteredTasks[0];
@@ -1015,27 +1034,8 @@ export default function TasksPage() {
 
   useDashboardPrompt(taskPromptConfig);
 
-  const tabs = useMemo(
-    () => [
-      { value: "all", label: "All Tasks", count: tasks.length },
-      { value: "posted", label: "Posted by Me", count: tasks.filter((task) => task.type === "posted").length },
-      { value: "accepted", label: "Accepted by Me", count: tasks.filter((task) => task.type === "accepted").length },
-    ],
-    [tasks]
-  );
-
-  const statusFilters = [
-    { value: "all", label: "All tasks", icon: Package },
-    { value: "awaiting-action", label: "Awaiting action", icon: Clock },
-    { value: "active", label: "Active", icon: Activity },
-    { value: "in-progress", label: "In progress", icon: TrendingUp },
-    { value: "completed", label: "Completed", icon: CheckCircle2 },
-    { value: "cancelled", label: "Cancelled", icon: AlertCircle },
-    { value: "rejected", label: "Rejected", icon: AlertCircle },
-    { value: "support", label: "Support / issues", icon: AlertCircle },
-  ] satisfies Array<{ value: TaskStatusFilter; label: string; icon: typeof Package }>;
-
   const getTaskStatusLabel = (task: OperationalTask) => {
+    if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "accepted") return "In Progress";
     if (task.source === "help_request" && (!task.rawStatus || task.rawStatus === "open")) return "Open";
     return getOrderStatusLabel(task.rawStatus);
   };
@@ -1044,7 +1044,8 @@ export default function TasksPage() {
     if (task.type !== "accepted") return false;
 
     if (task.source === "help_request") {
-      return normalizeOrderStatus(task.rawStatus) === "accepted";
+      const normalized = normalizeOrderStatus(task.rawStatus);
+      return normalized === "accepted" || normalized === "in_progress";
     }
 
     const canonical = normalizeOrderStatus(task.rawStatus);
@@ -1060,11 +1061,6 @@ export default function TasksPage() {
   const getTaskTransitions = (task: OperationalTask): CanonicalOrderStatus[] => {
     if (task.source === "help_request") {
       const normalized = (task.rawStatus || "").toLowerCase();
-      if (task.type === "accepted") {
-        if (normalized === "accepted") return ["in_progress", "completed"];
-        if (normalized === "in_progress") return ["completed"];
-        return [];
-      }
       if (normalized === "completed" || normalized === "cancelled") return [];
       if (normalized === "accepted" || normalized === "in_progress") return ["completed", "cancelled"];
       return ["cancelled"];
@@ -1078,9 +1074,8 @@ export default function TasksPage() {
 
   const getTaskTransitionLabel = (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
     if (task.source === "help_request") {
-      if (nextStatus === "in_progress") return "Start work";
       if (nextStatus === "completed") return task.type === "posted" ? "Confirm completion" : "Mark complete";
-      if (nextStatus === "cancelled") return task.type === "posted" ? "Cancel request" : "Cancel";
+      if (nextStatus === "cancelled") return "Decline";
     }
 
     const actor: OrderActorRole = task.type === "posted" ? "consumer" : "provider";
@@ -1133,6 +1128,24 @@ export default function TasksPage() {
         if (!task.helpRequestId) {
           setErrorMessage("This request is missing its live task reference.");
           return false;
+        }
+
+        if (nextStatus === "cancelled" && task.type === "accepted") {
+          const payload = await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "open" }>(
+            supabase,
+            "/api/needs/reopen",
+            {
+              method: "POST",
+              body: JSON.stringify({ helpRequestId: task.helpRequestId }),
+            }
+          );
+
+          if (!payload.ok) {
+            setErrorMessage("Failed to reopen request.");
+            return false;
+          }
+
+          return true;
         }
 
         if (!["accepted", "in_progress", "completed", "cancelled"].includes(nextStatus)) {
@@ -1379,9 +1392,7 @@ export default function TasksPage() {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const clearAllFilters = useCallback(() => {
-    setSelectedTab("all");
-    setSelectedStatus("all");
+  const clearSearch = useCallback(() => {
     setSortBy("updated");
     setSearchQuery("");
   }, []);
@@ -1392,7 +1403,7 @@ export default function TasksPage() {
     if (nextStatus === "completed") {
       confirmationMessage = "Mark this task as completed? This will update the live task status for both sides.";
     } else if (nextStatus === "cancelled") {
-      confirmationMessage = "Cancel this task? Use this only when the work is no longer going ahead.";
+      confirmationMessage = "Decline this task? This will stop the accepted request for both sides.";
     } else if (nextStatus === "rejected") {
       confirmationMessage = "Reject this task? This will keep the task in history and may need follow-up.";
     }
@@ -1406,7 +1417,12 @@ export default function TasksPage() {
 
     setNotice({
       kind: "success",
-      message: `${task.title} updated to ${getOrderStatusLabel(nextStatus).toLowerCase()}.`,
+      message:
+        nextStatus === "cancelled" && task.type === "accepted" && task.source === "help_request"
+          ? `${task.title} was declined and returned to the feed.`
+          : nextStatus === "cancelled"
+          ? `${task.title} was declined.`
+          : `${task.title} updated to ${getOrderStatusLabel(nextStatus).toLowerCase()}.`,
     });
     startTransition(() => {
       void loadTasks(true);
@@ -1491,7 +1507,6 @@ export default function TasksPage() {
     const openSupport = existingSupport.find((request) => isSupportOpen(request.status));
 
     if (openSupport) {
-      setSelectedStatus("support");
       setExpandedTaskId(task.orderId);
       setNotice({
         kind: "info",
@@ -1552,7 +1567,6 @@ export default function TasksPage() {
         setSupportRequests((current) => [mapSupportRequest(data), ...current]);
       }
       setSupportBackendReady(true);
-      setSelectedStatus("support");
       setExpandedTaskId(task.orderId);
       setNotice({
         kind: "success",
@@ -1701,13 +1715,6 @@ export default function TasksPage() {
     );
   };
 
-  const activeFilterCount =
-    Number(Boolean(searchQuery.trim())) +
-    Number(selectedTab !== "all") +
-    Number(selectedStatus !== "all") +
-    Number(sortBy !== "updated");
-
-  const hasTaskHistory = tasks.some((task) => isHistoryTask(task));
   const compactStats = [
     {
       label: "Tracked",
@@ -1758,41 +1765,11 @@ export default function TasksPage() {
       };
     }
 
-    if (selectedStatus === "support") {
-      return {
-        title: supportBackendReady === false ? "Support queue not configured" : "No issues raised",
-        copy:
-          supportBackendReady === false
-            ? "The current environment is missing notification_escalations, so support issues cannot be persisted yet."
-            : "You do not have any open support issues for the current filters.",
-        actionLabel: "Show all tasks",
-        onAction: clearAllFilters,
-      };
-    }
-
-    if (selectedStatus === "completed") {
-      return {
-        title: "No completed tasks yet",
-        copy: "Completed work will move here automatically once it closes out.",
-        actionLabel: "Show all tasks",
-        onAction: clearAllFilters,
-      };
-    }
-
-    if (selectedStatus === "active" || selectedStatus === "in-progress" || selectedStatus === "awaiting-action") {
-      return {
-        title: "No live work in this view",
-        copy: "Your filters are valid, but nothing currently matches this operational slice.",
-        actionLabel: "Reset filters",
-        onAction: clearAllFilters,
-      };
-    }
-
     return {
       title: "No tasks found",
-      copy: "Try a different filter combination or reset the workspace to show everything again.",
-      actionLabel: "Reset filters",
-      onAction: clearAllFilters,
+      copy: "Try a different search or reopen the marketplace to create or accept more work.",
+      actionLabel: "Clear search",
+      onAction: clearSearch,
     };
   })();
 
@@ -2175,18 +2152,12 @@ export default function TasksPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedTab("all");
-                  setSelectedStatus("awaiting-action");
                   scrollToSection(liveOrdersSectionRef);
                 }}
                 className={subtleActionClassName}
               >
                 <TrendingUp className="h-4 w-4" />
                 Focus attention
-              </button>
-              <button type="button" onClick={() => scrollToSection(historySectionRef)} disabled={!hasTaskHistory} className={subtleActionClassName}>
-                <ArrowUpRight className="h-4 w-4" />
-                Review history
               </button>
             </div>
           </div>
@@ -2230,8 +2201,8 @@ export default function TasksPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task filters</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">Search and sort real work in progress</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task workspace</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
             </div>
 
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -2262,13 +2233,13 @@ export default function TasksPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {tabs.map((tab) => (
+            {taskTabs.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
-                onClick={() => setSelectedTab(tab.value as TaskTab)}
+                onClick={() => setSelectedTaskView(tab.value)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  selectedTab === tab.value
+                  selectedTaskView === tab.value
                     ? "bg-[var(--brand-900)] text-white shadow-[0_18px_35px_-26px_rgba(15,23,42,0.8)]"
                     : "border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
                 }`}
@@ -2277,33 +2248,6 @@ export default function TasksPage() {
               </button>
             ))}
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {statusFilters.map((filter) => (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => setSelectedStatus(filter.value)}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  selectedStatus === filter.value
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                }`}
-              >
-                <filter.icon className="h-4 w-4" />
-                {filter.label}
-              </button>
-            ))}
-
-            {activeFilterCount > 0 ? (
-              <button type="button" onClick={clearAllFilters} className="ml-auto inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900">
-                <RefreshCw className="h-4 w-4" />
-                Clear filters
-              </button>
-            ) : (
-              <span className="ml-auto text-sm text-slate-500">{activeFilterCount} active filters</span>
-            )}
-          </div>
         </div>
       </section>
 
@@ -2311,11 +2255,23 @@ export default function TasksPage() {
           <section ref={liveOrdersSectionRef} className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-950">Live tasks</h2>
-                <p className="mt-1 text-sm text-slate-500">Posted requests and accepted work that still need follow-through.</p>
+                <h2 className="text-2xl font-semibold text-slate-950">
+                  {selectedTaskView === "saved"
+                    ? "Saved requests"
+                    : selectedTaskView === "completed"
+                      ? "Completed requests"
+                      : "In progress"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedTaskView === "saved"
+                    ? "Open requests that are still waiting for action."
+                    : selectedTaskView === "completed"
+                      ? "Completed work that has already been closed out."
+                      : "Accepted work that is currently active and needs follow-through."}
+                </p>
               </div>
               <p className="text-sm text-slate-500">
-                {filteredLiveTasks.length} live of {filteredTasks.length} visible
+                {visibleTasks.length} visible
               </p>
             </div>
 
@@ -2333,31 +2289,16 @@ export default function TasksPage() {
                   Loading task workspace...
                 </div>
               </div>
-            ) : filteredLiveTasks.length > 0 ? (
-              <div className="space-y-3">{filteredLiveTasks.map((task) => renderTaskCardPremium(task))}</div>
-            ) : filteredHistoryTasks.length > 0 ? (
-              <div className="rounded-[1.7rem] border border-slate-200 bg-white px-5 py-6 text-sm text-slate-500 shadow-sm">
-                No live tasks match the current view. Task history is still available below.
+            ) : visibleTasks.length > 0 ? (
+              <div className="space-y-3">
+                {visibleTasks.map((task) =>
+                  renderTaskCardPremium(task, { history: selectedTaskView === "completed" })
+                )}
               </div>
             ) : null}
           </section>
 
-          {!loading && filteredHistoryTasks.length > 0 ? (
-            <section ref={historySectionRef} className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-2xl font-semibold text-slate-950">History</h2>
-                  <p className="mt-1 text-sm text-slate-500">Completed, cancelled, rejected, and closed work stays here for follow-up.</p>
-                </div>
-                <p className="text-sm text-slate-500">{filteredHistoryTasks.length} historical tasks</p>
-              </div>
-              <div className="space-y-3">
-                {filteredHistoryTasks.map((task) => renderTaskCardPremium(task, { history: true }))}
-              </div>
-            </section>
-          ) : null}
-
-          {!loading && filteredTasks.length === 0 ? (
+          {!loading && visibleTasks.length === 0 ? (
             <div className="rounded-[1.9rem] border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
               <Package className="mx-auto h-14 w-14 text-slate-400" />
               <h3 className="mt-5 text-xl font-semibold text-slate-950">{emptyState.title}</h3>

@@ -1,10 +1,10 @@
 import type { MarketplaceFeedItem } from "@/lib/marketplaceFeed";
 import { isClosedMarketplaceStatus } from "@/lib/marketplaceFeed";
 
-export type MarketplacePrimaryActionKind = "accept" | "send_quote" | "view_profile";
+export type MarketplacePrimaryActionKind = "accept" | "decline" | "send_quote" | "view_profile";
 export type MarketplaceSecondaryActionKind = "save" | "share";
 
-export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status";
+export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status" | "destructive";
 
 export type MarketplaceCardActionButton<K extends string> = {
   kind: K;
@@ -46,24 +46,29 @@ export const resolveMarketplaceCardActionModel = (
   const acceptedByMe = !!viewerId && item.acceptedProviderId === viewerId;
 
   const acceptButton = (() => {
-    if (!helpRequestItem) return buildButton("accept", "No Task", "status", true);
-    if (isOwnListing) return buildButton("accept", "Your Request", "status", true);
-    if (isClosed) return buildButton("accept", "Closed", "status", true);
-    if (acceptedByMe) return buildButton("accept", "Accepted", "status", true);
-    if (acceptedByOther) return buildButton("accept", "Taken", "status", true);
+    if (!helpRequestItem) return null;
+    if (isOwnListing) return buildButton("accept", "Accept", "status", true);
+    if (isClosed) return buildButton("accept", "Accept", "status", true);
+    if (acceptedByMe) return buildButton("accept", "Accept", "status", true);
+    if (acceptedByOther) return buildButton("accept", "Accept", "status", true);
     return buildButton("accept", "Accept", "success", false);
   })();
 
   const quoteButton = (() => {
-    if (isOwnListing) return buildButton("send_quote", "Your Listing", "status", true);
-    if (isClosed) return buildButton("send_quote", "Closed", "status", true);
-    if (helpRequestItem && acceptedByOther) return buildButton("send_quote", "Send Quote", "primary", false);
-    if (helpRequestItem && acceptedByMe) return buildButton("send_quote", "Send Quote", "primary", false);
-    return buildButton("send_quote", "Send Quote", "primary", false);
+    if (isOwnListing) return buildButton("send_quote", "Show Interest", "status", true);
+    if (isClosed) return buildButton("send_quote", "Show Interest", "status", true);
+    if (helpRequestItem && acceptedByOther) return buildButton("send_quote", "Show Interest", "primary", false);
+    if (helpRequestItem && acceptedByMe) return buildButton("send_quote", "Show Interest", "primary", false);
+    return buildButton("send_quote", "Show Interest", "primary", false);
   })();
 
+  const buttons: MarketplaceCardActionModel["buttons"] = [];
+  if (acceptButton) buttons.push(acceptButton);
+  if (quoteButton) buttons.push(quoteButton);
+  buttons.push(buildButton("view_profile", "View Profile", "secondary", false));
+
   return {
-    buttons: [acceptButton, quoteButton, buildButton("view_profile", "View Profile", "secondary", false)],
+    buttons,
     icons: [buildButton("save", "Save", "secondary"), buildButton("share", "Share", "secondary")],
   };
 };

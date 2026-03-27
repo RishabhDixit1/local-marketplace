@@ -393,8 +393,10 @@ export const buildCommunityFeedView = (
       composerMetadata?.details ||
       stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
     const status = stringFromRow(row, ["status"], "open");
+    const acceptedProviderId = stringFromRow(row, ["accepted_provider_id"], "") || null;
 
     if (isClosedMarketplaceStatus(status)) return;
+    if (acceptedProviderId) return;
     if (!composerMetadata && isWeakMarketplaceContent(title, description)) return;
 
     const locationLabel =
@@ -444,17 +446,11 @@ export const buildCommunityFeedView = (
       verificationStatus: profileMeta.verificationStatus,
       publicProfilePath: profileMeta.publicProfilePath,
       status,
-      acceptedProviderId: stringFromRow(row, ["accepted_provider_id"], "") || null,
+      acceptedProviderId,
     });
   });
 
   const feedItems = dedupeMarketplaceFeedItems(nextItems).sort((left, right) => {
-    const leftTaken = Boolean(left.acceptedProviderId);
-    const rightTaken = Boolean(right.acceptedProviderId);
-    if (leftTaken !== rightTaken) {
-      return leftTaken ? 1 : -1;
-    }
-
     const createdAtDelta = parseMarketplaceDateMs(right.createdAt) - parseMarketplaceDateMs(left.createdAt);
     if (createdAtDelta !== 0) {
       return createdAtDelta;

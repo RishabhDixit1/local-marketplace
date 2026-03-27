@@ -425,20 +425,11 @@ export const useFeedActions = ({
         throw new Error("Request already accepted or unavailable.");
       }
 
-      setFeed((current) =>
-        current.map((item) =>
-          item.helpRequestId === acceptTarget.helpRequestId
-            ? {
-                ...item,
-                acceptedProviderId: activeViewerId,
-                status: "accepted",
-              }
-            : item
-        )
-      );
+      setFeed((current) => current.filter((item) => item.helpRequestId !== acceptTarget.helpRequestId));
 
       pushToast("success", "Task accepted successfully.");
       setAcceptTarget(null);
+      router.push("/dashboard/tasks");
       void refreshFeed(false);
     } catch (error) {
       pushToast("error", toErrorMessage(error, "Unable to accept this task right now."));
@@ -449,7 +440,66 @@ export const useFeedActions = ({
         return next;
       });
     }
-  }, [acceptTarget, ensureViewerId, pushToast, refreshFeed, setFeed]);
+  }, [acceptTarget, ensureViewerId, pushToast, refreshFeed, router, setFeed]);
+
+  const declineListing = useCallback(
+    async (item: MarketplaceDisplayFeedItem) => {
+      if (!item.helpRequestId) {
+        pushToast("info", "Decline is available for accepted task requests.");
+        return;
+      }
+
+      const cardId = buildMarketplaceFeedCardId(item);
+      setAcceptingListingIds((current) => new Set(current).add(cardId));
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        const isCreator = item.providerId === activeViewerId;
+        const isAcceptedProvider = item.acceptedProviderId === activeViewerId;
+
+        if (!isCreator && !isAcceptedProvider) {
+          throw new Error("You can only decline requests you created or accepted.");
+        }
+
+        const { data, error } = await supabase.rpc("transition_help_request_status", {
+          target_help_request_id: item.helpRequestId,
+          next_status: "cancelled",
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!data) {
+          throw new Error("Unable to decline this request right now.");
+        }
+
+        setFeed((current) =>
+          current.map((entry) =>
+            entry.helpRequestId === item.helpRequestId
+              ? {
+                  ...entry,
+                  status: "cancelled",
+                }
+              : entry
+          )
+        );
+
+        pushToast("success", "Request declined.");
+        void refreshFeed(false);
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to decline this task right now."));
+      } finally {
+        setAcceptingListingIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    },
+    [ensureViewerId, pushToast, refreshFeed, setFeed]
+  );
 
   const handlePrimaryAction = useCallback(
     async (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
@@ -463,11 +513,16 @@ export const useFeedActions = ({
         return;
       }
 
+      if (primaryKind === "decline") {
+        await declineListing(item);
+        return;
+      }
+
       if (primaryKind === "accept") {
         openAcceptDialog(item);
       }
     },
-    [openAcceptDialog, openListingProfile, openQuoteThread]
+    [declineListing, openAcceptDialog, openListingProfile, openQuoteThread]
   );
 
   const handleSecondaryAction = useCallback(

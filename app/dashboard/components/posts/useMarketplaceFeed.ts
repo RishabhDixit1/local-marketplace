@@ -203,10 +203,11 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
       fetchAbortRef.current = controller;
       const requestPath = (() => {
         if (!browserLocationRef.current) {
-          return "/api/community/feed";
+          return "/api/community/feed?scope=all";
         }
 
         const params = new URLSearchParams({
+          scope: "all",
           lat: browserLocationRef.current.latitude.toFixed(6),
           lng: browserLocationRef.current.longitude.toFixed(6),
         });

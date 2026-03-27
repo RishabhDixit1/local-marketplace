@@ -386,6 +386,7 @@ export const loadCommunityFeedSnapshot = async (
   currentUserId: string,
   options: {
     viewerOverride?: { lat: number; lng: number } | null;
+    scope?: "connected" | "all";
   } = {}
 ): Promise<Extract<CommunityFeedResponse, { ok: true }>> => {
   const [currentUserProfileRow, acceptedPeers] = await Promise.all([
@@ -394,6 +395,7 @@ export const loadCommunityFeedSnapshot = async (
   ]);
 
   const acceptedPeerIds = Array.from(acceptedPeers);
+  const feedScope = options.scope || "all";
 
   const [serviceRowsRaw, productRowsRaw, postRowsRaw, helpRequestRowsRaw] = await Promise.all([
     selectRowsWithFallback(db, "service_listings", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
@@ -427,18 +429,30 @@ export const loadCommunityFeedSnapshot = async (
 
   const services = serviceRowsRaw
     .map((row, index) => normalizeService(row, index))
-    .filter((row): row is CommunityServiceRecord => !!row);
+    .filter((row): row is CommunityServiceRecord => !!row)
+    .filter((row) => feedScope === "all" || row.provider_id === currentUserId || acceptedPeers.has(row.provider_id));
   const products = productRowsRaw
     .map((row, index) => normalizeProduct(row, index))
-    .filter((row): row is CommunityProductRecord => !!row);
+    .filter((row): row is CommunityProductRecord => !!row)
+    .filter((row) => feedScope === "all" || row.provider_id === currentUserId || acceptedPeers.has(row.provider_id));
   const posts = postRowsRaw
     .map((row, index) => normalizePost(row, index))
     .filter((row): row is CommunityPostRecord => !!row)
-    .filter((post) => isPostVisibleToViewer(post, currentUserId, acceptedPeers));
+    .filter((post) => isPostVisibleToViewer(post, currentUserId, acceptedPeers))
+    .filter((post) => {
+      if (feedScope === "all") return true;
+      const ownerId = post.user_id || post.author_id || post.created_by || post.requester_id || post.owner_id || post.provider_id || "";
+      return ownerId === currentUserId || acceptedPeers.has(ownerId);
+    });
   const helpRequests = helpRequestRowsRaw
     .map((row, index) => normalizeHelpRequest(row, index))
     .filter((row): row is CommunityHelpRequestRecord => !!row)
-    .filter((row) => isVisibleStatus(row.status || "open"));
+    .filter((row) => isVisibleStatus(row.status || "open"))
+    .filter((row) => !row.accepted_provider_id)
+    .filter((row) => {
+      const requesterId = row.requester_id || "";
+      return feedScope === "all" || requesterId === currentUserId || acceptedPeers.has(requesterId);
+    });
 
   const profileIds = Array.from(
     new Set(

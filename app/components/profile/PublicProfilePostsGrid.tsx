@@ -8,14 +8,15 @@ import {
   BadgeCheck,
   Bookmark,
   BookmarkCheck,
-  CheckCircle2,
+  Check,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Loader2,
   MapPin,
-  MessageCircle,
   Share2,
+  Sparkles,
+  X,
 } from "lucide-react";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import { createAvatarFallback } from "@/lib/avatarFallback";
@@ -173,10 +174,11 @@ export default function PublicProfilePostsGrid({
   avatarUrl,
   verificationStatus,
   locationLabel,
-  responseMinutes,
+  responseMinutes: _responseMinutes,
   publicPath,
   horizontal = false,
 }: Props) {
+  void _responseMinutes;
   const router = useRouter();
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const [items, setItems] = useState(posts);
@@ -359,6 +361,58 @@ export default function PublicProfilePostsGrid({
       }
     },
     [buildCardId, ensureViewerId, profileUserId, pushToast, viewerId]
+  );
+
+  const handleDecline = useCallback(
+    async (post: PublicProfilePost) => {
+      if (!post.helpRequestId) {
+        pushToast("info", "Decline is available for accepted task requests.");
+        return;
+      }
+
+      const cardId = buildCardId(post);
+      setAcceptingCardIds((current) => new Set(current).add(cardId));
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        const isCreator = profileUserId === activeViewerId;
+        const isAcceptedProvider = post.acceptedProviderId === activeViewerId;
+
+        if (!isCreator && !isAcceptedProvider) {
+          throw new Error("You can only decline requests you created or accepted.");
+        }
+
+        const { data, error } = await supabase.rpc("transition_help_request_status", {
+          target_help_request_id: post.helpRequestId,
+          next_status: "cancelled",
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error("Unable to decline this request right now.");
+
+        setItems((current) =>
+          current.map((item) =>
+            item.helpRequestId === post.helpRequestId
+              ? {
+                  ...item,
+                  status: "cancelled",
+                }
+              : item
+          )
+        );
+
+        pushToast("success", "Request declined.");
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to decline this task right now."));
+      } finally {
+        setAcceptingCardIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          return next;
+        });
+      }
+    },
+    [buildCardId, ensureViewerId, profileUserId, pushToast]
   );
 
   const handleOpenChat = useCallback(async () => {
@@ -550,15 +604,19 @@ export default function PublicProfilePostsGrid({
           const acceptedByMe = !!viewerId && post.acceptedProviderId === viewerId;
           const acceptedByOther = !!post.acceptedProviderId && post.acceptedProviderId !== viewerId;
 
+          const canDecline = post.helpRequestId && !isClosedStatus(post.status) && (acceptedByMe || (isOwnListing && !!post.acceptedProviderId));
           const acceptDisabled =
             acceptingBusy ||
-            isOwnListing ||
-            !post.helpRequestId ||
-            acceptedByOther ||
-            acceptedByMe ||
-            isClosedStatus(post.status);
+            (!canDecline &&
+              (isOwnListing ||
+                !post.helpRequestId ||
+                acceptedByOther ||
+                acceptedByMe ||
+                isClosedStatus(post.status)));
 
-          const acceptLabel = isOwnListing
+          const acceptLabel = canDecline
+            ? "Decline"
+            : isOwnListing
             ? "Own"
             : acceptedByMe
             ? "Accepted"
@@ -625,19 +683,78 @@ export default function PublicProfilePostsGrid({
                 </div>
               </header>
 
-              <div className="relative mt-3">
+              <div className="mt-2.5">
                 <MediaCarousel media={post.media} title={post.title} />
+              </div>
 
-                <div className="absolute right-3 top-3 flex flex-col gap-2">
+              <div className="mt-2.5">
+                <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">
+                  {post.title}
+                </h3>
+                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{post.description}</p>
+              </div>
+
+              <div className="mt-3 flex items-center gap-1.5">
+                <button
+                  type="button"
+                    onClick={() => void (acceptLabel === "Decline" ? handleDecline(post) : handleAccept(post))}
+                  disabled={acceptDisabled}
+                  aria-label={acceptLabel}
+                  title={acceptLabel}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                    acceptDisabled
+                      ? "border-slate-200 bg-slate-100 text-slate-500"
+                      : acceptLabel === "Accept"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  }`}
+                >
+                  {acceptingBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : acceptLabel === "Decline" ? (
+                    <X className="h-4 w-4" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleOpenChat()}
+                  disabled={chatOpening || !canOpenChat}
+                  aria-label={chatLabel}
+                  title={chatLabel}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                    canOpenChat
+                      ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+                      : "border-slate-200 bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                </button>
+
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void handleShare(post)}
+                    disabled={sharingBusy}
+                    aria-label="Share post"
+                    title="Share post"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => void handleToggleSave(post)}
                     disabled={savingBusy}
                     aria-label={saved ? "Saved post" : "Save post"}
-                    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                    title={saved ? "Saved post" : "Save post"}
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                       saved
-                        ? "border-slate-900/10 bg-slate-900 text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
-                        : "border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] hover:bg-white"
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
                     }`}
                   >
                     {savingBusy ? (
@@ -647,63 +764,6 @@ export default function PublicProfilePostsGrid({
                     ) : (
                       <Bookmark className="h-4 w-4" />
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleShare(post)}
-                    disabled={sharingBusy}
-                    aria-label="Share post"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] backdrop-blur-md transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {sharingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">
-                  {post.title}
-                </h3>
-                <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{post.description}</p>
-
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
-                    {post.category}
-                  </span>
-                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">
-                    {formatPriceLabel(post)}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-500">
-                    ~{responseMinutes} mins response
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-auto space-y-2 pt-4">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleAccept(post)}
-                    disabled={acceptDisabled}
-                    className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border px-3 text-[12px] font-semibold transition sm:min-h-11 ${
-                      acceptDisabled
-                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500"
-                        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    }`}
-                  >
-                    {acceptingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                    {acceptLabel}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleOpenChat()}
-                    disabled={chatOpening || !canOpenChat}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:min-h-11"
-                  >
-                    {chatOpening ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-                    {chatLabel}
                   </button>
                 </div>
               </div>
