@@ -18,6 +18,8 @@ type FlexibleProfileShape = {
   full_name?: string | null;
   display_name?: string | null;
   name?: string | null;
+  username?: string | null;
+  headline?: string | null;
   preferred_name?: string | null;
   user_name?: string | null;
   location?: string | null;
@@ -30,6 +32,11 @@ type FlexibleProfileShape = {
   website?: string | null;
   avatar_url?: string | null;
   availability?: string | null;
+  verification_level?: string | null;
+  on_time_rate?: number | null;
+  response_time_minutes?: number | null;
+  repeat_clients_count?: number | null;
+  trust_score?: number | null;
   onboarding_completed?: boolean | null;
   profile_completion_percent?: number | null;
   latitude?: number | null;
@@ -325,6 +332,8 @@ export const normalizeProfileRecord = (
     id: typeof row?.id === "string" ? row.id : user?.id || "",
     full_name: toNullableString(typeof row?.full_name === "string" ? row.full_name : typeof row?.name === "string" ? row.name : ""),
     name: toNullableString(typeof row?.name === "string" ? row.name : typeof row?.full_name === "string" ? row.full_name : ""),
+    username: toNullableString(typeof row?.username === "string" ? row.username : ""),
+    headline: toNullableString(typeof row?.headline === "string" ? row.headline : ""),
     location: toNullableString(typeof row?.location === "string" ? row.location : ""),
     role,
     bio: toNullableString(typeof row?.bio === "string" ? row.bio : typeof row?.about === "string" ? row.about : ""),
@@ -335,6 +344,31 @@ export const normalizeProfileRecord = (
     website: toNullableString(typeof row?.website === "string" ? row.website : ""),
     avatar_url: toNullableString(resolvedAvatarUrl),
     availability: normalizeAvailability(typeof row?.availability === "string" ? row.availability : ""),
+    verification_level: toNullableString(typeof row?.verification_level === "string" ? row.verification_level : ""),
+    on_time_rate:
+      typeof row?.on_time_rate === "number"
+        ? row.on_time_rate
+        : typeof row?.on_time_rate === "string"
+          ? Number(row.on_time_rate)
+          : null,
+    response_time_minutes:
+      typeof row?.response_time_minutes === "number"
+        ? row.response_time_minutes
+        : typeof row?.response_time_minutes === "string"
+          ? Number(row.response_time_minutes)
+          : null,
+    repeat_clients_count:
+      typeof row?.repeat_clients_count === "number"
+        ? row.repeat_clients_count
+        : typeof row?.repeat_clients_count === "string"
+          ? Number(row.repeat_clients_count)
+          : null,
+    trust_score:
+      typeof row?.trust_score === "number"
+        ? row.trust_score
+        : typeof row?.trust_score === "string"
+          ? Number(row.trust_score)
+          : null,
     onboarding_completed:
       typeof row?.onboarding_completed === "boolean"
         ? row.onboarding_completed
@@ -387,9 +421,12 @@ export const buildBootstrapProfilePatch = (
     patch.name = inferredName;
   }
   if (!trim(existingProfile?.email) && trim(user.email)) patch.email = user.email;
+  if (!trim(existingProfile?.username)) patch.username = slugifyProfileName(inferredName || user.email || user.id);
+  if (!trim(existingProfile?.headline)) patch.headline = inferredName ? `${inferredName} on ServiQ` : "ServiQ member";
   if (!trim(existingProfile?.avatar_url) && inferredAvatar) patch.avatar_url = inferredAvatar;
   if (!trim(existingProfile?.location) && inferredLocation) patch.location = inferredLocation;
   if (!trim(existingProfile?.role)) patch.role = nextRole;
+  if (!trim(existingProfile?.verification_level)) patch.verification_level = "email";
   if (!trim(existingProfile?.availability)) patch.availability = "available";
   if (!existingProfile?.metadata || Object.keys(existingProfile.metadata).length === 0) patch.metadata = {};
 
@@ -402,6 +439,7 @@ export const createProfileSavePayload = (params: {
   existingProfile: ProfileRecord | null;
 }) => {
   const topics = normalizeTopics(params.values.interests);
+  const displayName = toNullableString(params.values.fullName) || toNullableString(params.user.email || "") || params.user.id;
   const storedRole =
     params.values.role === "provider"
       ? params.existingProfile?.role === "business"
@@ -435,6 +473,8 @@ export const createProfileSavePayload = (params: {
     website: toNullableString(normalizedWebsite),
     avatar_url: toNullableString(params.values.avatarUrl),
     availability: normalizeAvailability(params.values.availability),
+    username: toNullableString(params.existingProfile?.username) || slugifyProfileName(displayName),
+    headline: toNullableString(params.existingProfile?.headline) || `${displayName} on ServiQ`,
     metadata: nextMetadata,
   };
 

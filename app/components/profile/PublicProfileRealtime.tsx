@@ -54,6 +54,14 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
     const channel = supabase
       .channel(`public-profile-live-${profileId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "trust_scores", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profile_sections", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "services", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "portfolio", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_history", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "availability", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payment_methods", filter: `profile_id=eq.${profileId}` }, scheduleRefresh)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "service_listings", filter: `provider_id=eq.${profileId}` },

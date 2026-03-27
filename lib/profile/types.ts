@@ -13,6 +13,8 @@ export type ProfileRecord = {
   id: string;
   full_name: string | null;
   name: string | null;
+  username: string | null;
+  headline: string | null;
   location: string | null;
   role: StoredProfileRole;
   bio: string | null;
@@ -23,6 +25,11 @@ export type ProfileRecord = {
   website: string | null;
   avatar_url: string | null;
   availability: ProfileAvailability;
+  verification_level: string | null;
+  on_time_rate: number | null;
+  response_time_minutes: number | null;
+  repeat_clients_count: number | null;
+  trust_score: number | null;
   onboarding_completed: boolean;
   profile_completion_percent: number;
   latitude: number | null;
