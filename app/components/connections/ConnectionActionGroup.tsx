@@ -62,7 +62,7 @@ export default function ConnectionActionGroup({
 
   const sizeClasses =
     size === "compact"
-      ? "min-h-9 rounded-lg px-3 py-1.5 text-xs sm:text-sm"
+      ? "min-h-7 rounded-full px-2 py-1 text-[11px] leading-none"
       : "min-h-10 rounded-lg px-3 py-1.5 text-sm";
 
   const handleAction = (actionKey: ConnectionActionKey) => {
@@ -79,12 +79,12 @@ export default function ConnectionActionGroup({
         const Icon = iconByAction[action.key];
         const isBusyAction = busy && busyActionKey === action.key;
         const label = isBusyAction ? action.pendingLabel : action.label;
-        const commonClasses = `inline-flex items-center gap-1.5 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${sizeClasses}`;
+        const commonClasses = `inline-flex items-center gap-1 font-semibold whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 ${sizeClasses}`;
 
         if (action.key === "connected" || action.key === "sent") {
           return (
             <span key={action.key} className={`${commonClasses} ${toneClasses[action.tone]} cursor-default`}>
-              {isBusyAction ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
+              {isBusyAction ? <Loader2 size={12} className="animate-spin" /> : <Icon size={12} />}
               {label}
             </span>
           );
@@ -98,7 +98,7 @@ export default function ConnectionActionGroup({
             disabled={action.disabled}
             className={`${commonClasses} ${toneClasses[action.tone]}`}
           >
-            {isBusyAction ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
+            {isBusyAction ? <Loader2 size={12} className="animate-spin" /> : <Icon size={12} />}
             {label}
           </button>
         );

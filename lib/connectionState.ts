@@ -254,17 +254,10 @@ export const getConnectionActionDescriptors = (
     return [
       {
         key: "sent",
-        label: "Request sent",
-        pendingLabel: "Request sent",
+        label: "Pending",
+        pendingLabel: "Pending",
         disabled: true,
         tone: "status",
-      },
-      {
-        key: "cancel",
-        label: "Cancel",
-        pendingLabel: "Cancelling...",
-        disabled: busy,
-        tone: "neutral",
       },
     ];
   }

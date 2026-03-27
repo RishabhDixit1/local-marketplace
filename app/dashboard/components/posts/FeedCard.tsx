@@ -1,23 +1,23 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import {
   Bookmark,
   BookmarkCheck,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
+  Check,
   Loader2,
   MapPin,
-  Send,
   Share2,
+  Sparkles,
+  X,
 } from "lucide-react";
 import type {
   MarketplaceCardActionButton,
   MarketplacePrimaryActionKind,
   MarketplaceSecondaryActionKind,
 } from "@/lib/marketplaceCardActions";
-import { normalizeMarketplaceStatusLabel, type MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
+import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
 
 type ActionBusyState = Record<MarketplacePrimaryActionKind | MarketplaceSecondaryActionKind, boolean>;
@@ -28,12 +28,12 @@ type FeedCardProps = {
   active: boolean;
   saved: boolean;
   buttons: MarketplaceCardActionButton<MarketplacePrimaryActionKind>[];
-  iconActions: MarketplaceCardActionButton<MarketplaceSecondaryActionKind>[];
   actionBusyState: ActionBusyState;
   onPrimaryAction: (action: MarketplacePrimaryActionKind) => void | Promise<void>;
   onSecondaryAction: (action: MarketplaceSecondaryActionKind) => void | Promise<void>;
   onFocus: () => void;
   onHoverChange: (hovered: boolean) => void;
+  headerAction?: ReactNode;
 };
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
@@ -41,22 +41,17 @@ const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimar
   secondary: "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900",
   success: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
   status: "border-slate-200 bg-slate-100 text-slate-500",
+  destructive: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
 };
 
 const buttonBusyLabels: Record<MarketplacePrimaryActionKind, string> = {
   accept: "Accepting",
+  decline: "Declining",
   send_quote: "Opening",
   view_profile: "Opening",
 };
 
-const buttonIcon = (kind: MarketplacePrimaryActionKind, busy: boolean) => {
-  if (busy) return <Loader2 size={14} className="animate-spin" />;
-  if (kind === "accept") return <CheckCircle2 size={14} />;
-  if (kind === "send_quote") return <FileText size={14} />;
-  return <ExternalLink size={14} />;
-};
-
-const iconButtonLabel = {
+const secondaryActionMeta = {
   save: {
     idle: "Save post",
     active: "Saved post",
@@ -67,7 +62,7 @@ const iconButtonLabel = {
     idle: "Share post",
     active: "Share post",
     icon: Share2,
-    activeIcon: Send,
+    activeIcon: Share2,
   },
 } satisfies Record<
   MarketplaceSecondaryActionKind,
@@ -85,19 +80,22 @@ export default function FeedCard({
   active,
   saved,
   buttons,
-  iconActions,
   actionBusyState,
   onPrimaryAction,
   onSecondaryAction,
   onFocus,
   onHoverChange,
+  headerAction,
 }: FeedCardProps) {
+  const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
+  const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.18) }}
-      className={`overflow-hidden rounded-3xl border bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all ${
+      className={`overflow-hidden rounded-3xl border bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all ${
         active
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
           : "border-slate-200"
@@ -106,7 +104,7 @@ export default function FeedCard({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
     >
-      <header className="flex items-start gap-3">
+      <header className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
@@ -117,16 +115,16 @@ export default function FeedCard({
           <img
             src={item.avatarUrl}
             alt={`${item.displayCreator} avatar`}
-            className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+            className="h-11 w-11 rounded-full border border-slate-200 object-cover"
           />
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => void onPrimaryAction("view_profile")}
-              className="max-w-full truncate text-left text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+              className="min-w-0 max-w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
               aria-label={`Open ${item.displayCreator} profile`}
             >
               {item.displayCreator}
@@ -136,91 +134,92 @@ export default function FeedCard({
                 Verified
               </span>
             ) : null}
-            {item.urgent ? (
-              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                Urgent
-              </span>
-            ) : null}
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+          <div className="mt-1 flex items-center gap-2 overflow-hidden text-[11px] text-slate-500">
             <span>{item.timeLabel}</span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex min-w-0 items-center gap-1 truncate">
               <MapPin size={11} />
               {item.distanceLabel}
             </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-              {normalizeMarketplaceStatusLabel(item.status)}
-            </span>
+            {item.urgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
           </div>
         </div>
+        {headerAction ? <div className="shrink-0 self-center">{headerAction}</div> : null}
       </header>
 
-      <div className="relative mt-3">
+      <div className="mt-2.5">
         <FeedMediaCarousel media={item.media} title={item.displayTitle} />
+      </div>
 
-        <div className="absolute right-3 top-3 flex flex-col gap-2">
-          {iconActions.map((action) => {
-            const busy = actionBusyState[action.kind];
-            const isActive = action.kind === "save" ? saved : false;
-            const Icon = isActive ? iconButtonLabel[action.kind].activeIcon : iconButtonLabel[action.kind].icon;
+      <div className="mt-2.5">
+        <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
+        <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+      </div>
+
+      <div className="mt-3 flex items-center gap-1.5">
+        {acceptButton ? (
+          <button
+            type="button"
+            onClick={() => void onPrimaryAction(acceptButton.kind)}
+            disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
+            aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
+            title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              buttonToneClassNames[acceptButton.tone]
+            }`}
+          >
+            {actionBusyState[acceptButton.kind] ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : acceptButton.kind === "decline" ? (
+              <X size={16} />
+            ) : (
+              <Check size={16} />
+            )}
+          </button>
+        ) : null}
+
+        {sendQuoteButton ? (
+          <button
+            type="button"
+            onClick={() => void onPrimaryAction("send_quote")}
+            disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
+            aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
+            title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              buttonToneClassNames[sendQuoteButton.tone]
+            }`}
+          >
+            {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          </button>
+        ) : null}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {(["share", "save"] as const).map((actionKind) => {
+            const busy = actionBusyState[actionKind];
+            const isActive = actionKind === "save" ? saved : false;
+            const Icon = isActive ? secondaryActionMeta[actionKind].activeIcon : secondaryActionMeta[actionKind].icon;
+            const label = isActive ? secondaryActionMeta[actionKind].active : secondaryActionMeta[actionKind].idle;
 
             return (
               <button
-                key={action.kind}
+                key={actionKind}
                 type="button"
-                onClick={() => void onSecondaryAction(action.kind)}
+                onClick={() => void onSecondaryAction(actionKind)}
                 disabled={busy}
-                aria-label={isActive ? iconButtonLabel[action.kind].active : iconButtonLabel[action.kind].idle}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur-md transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                aria-label={label}
+                title={label}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                   isActive
-                    ? "border-slate-900/10 bg-slate-900 text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
-                    : "border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] hover:bg-white"
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
                 }`}
               >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />}
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}
               </button>
             );
           })}
         </div>
-      </div>
-
-      <div className="mt-3">
-        <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
-        <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
-
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-semibold text-slate-600">
-            {item.category}
-          </span>
-          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-1 font-semibold text-indigo-700">
-            {item.priceLabel}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-2 py-1 font-semibold text-slate-500">
-            ~{item.responseMinutes} mins response
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {buttons.map((button) => {
-          const busy = actionBusyState[button.kind];
-
-          return (
-            <button
-              key={button.kind}
-              type="button"
-              onClick={() => void onPrimaryAction(button.kind)}
-              disabled={button.disabled || busy}
-              className={`inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border px-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                buttonToneClassNames[button.tone]
-              }`}
-            >
-              {buttonIcon(button.kind, busy)}
-              <span>{busy ? buttonBusyLabels[button.kind] : button.label}</span>
-            </button>
-          );
-        })}
       </div>
     </motion.article>
   );

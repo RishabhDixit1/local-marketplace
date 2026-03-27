@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import type {
   MarketplaceCardActionModel,
@@ -29,6 +30,7 @@ type FeedGridProps = {
   isPrimaryBusy: (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => boolean;
   onPrimaryAction: (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => void | Promise<void>;
   onSecondaryAction: (item: MarketplaceDisplayFeedItem, action: MarketplaceSecondaryActionKind) => void | Promise<void>;
+  renderHeaderAction?: (item: MarketplaceDisplayFeedItem) => ReactNode;
 };
 
 export default function FeedGrid({
@@ -50,6 +52,7 @@ export default function FeedGrid({
   isPrimaryBusy,
   onPrimaryAction,
   onSecondaryAction,
+  renderHeaderAction,
 }: FeedGridProps) {
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const deepLinkHandledRef = useRef(false);
@@ -73,7 +76,7 @@ export default function FeedGrid({
 
   if (loading) {
     return (
-      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         {skeletonCards.map((key) => (
           <div key={key} className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-3">
@@ -109,7 +112,7 @@ export default function FeedGrid({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-2">
       {items.map((item, index) => {
         const actionModel = resolveActionModel(item);
 
@@ -127,9 +130,9 @@ export default function FeedGrid({
               active={activeItemId === item.id || hoveredItemId === item.id}
               saved={isSavedListing(item)}
               buttons={actionModel.buttons}
-              iconActions={actionModel.icons}
               actionBusyState={{
                 accept: isPrimaryBusy(item, "accept"),
+                decline: isPrimaryBusy(item, "decline"),
                 send_quote: isPrimaryBusy(item, "send_quote"),
                 view_profile: false,
                 save: isSaveBusy(item),
@@ -139,6 +142,7 @@ export default function FeedGrid({
               onSecondaryAction={(action) => onSecondaryAction(item, action)}
               onFocus={() => onActiveItemChange(item.id)}
               onHoverChange={(hovered) => onHoverItemChange(hovered ? item.id : null)}
+              headerAction={renderHeaderAction ? renderHeaderAction(item) : null}
             />
           </div>
         );

@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
+import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -25,21 +27,21 @@ import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
 import { getProfileRoleFamily } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
-import type { MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
+import { isClosedMarketplaceStatus, isUUIDLike, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
+import type { ConnectionDecision } from "@/lib/connectionState";
+import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
 import { resolveWelcomeCommand } from "@/lib/welcomePrompt";
 import CreatePostModal from "../../components/CreatePostModal";
 import {
-  ArrowRight,
   Bookmark,
   BookmarkCheck,
-  ExternalLink,
+  Check,
   Loader2,
   MapPin,
-  MessageCircle,
-  Send,
   Share2,
+  Sparkles,
   UsersRound,
   Zap,
 } from "lucide-react";
@@ -126,23 +128,11 @@ const MARKETPLACE_HERO_LINES = [
 ] as const;
 
 const buildWelcomeDistanceLabel = (distanceKm: number) => (distanceKm > 0 ? `${distanceKm.toFixed(1)} km away` : "Nearby");
-
-const resolveWelcomePrimaryIcon = (actionLabel: string) => {
-  if (actionLabel === "Respond" || actionLabel === "Book") return MessageCircle;
-  if (actionLabel === "Connect") return UsersRound;
-  if (actionLabel === "Preview" || actionLabel === "View") return ExternalLink;
-  return ArrowRight;
-};
+const isTaskRequestCard = (card: NearbyCard) => Boolean(card.helpRequestId);
 
 const isUrgentWelcomeCard = (card: NearbyCard) => {
   const urgencySource = `${card.signalLabel} ${card.etaLabel}`.toLowerCase();
   return urgencySource.includes("urgent") || urgencySource.includes("today") || urgencySource.includes("evening");
-};
-
-const shouldShowWelcomeSignalChip = (value: string) => {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return false;
-  return !normalized.includes("connected");
 };
 
 const formatWelcomeCountLabel = (count: number, singular: string) =>
@@ -197,9 +187,10 @@ export default function WelcomePage() {
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedEmptyReason, setFeedEmptyReason] = useState<"no_connections" | "no_connected_content" | null>(null);
   const [acceptedConnectionCount, setAcceptedConnectionCount] = useState(0);
-  const [sharedCardId, setSharedCardId] = useState<string | null>(null);
   const [savedCardIds, setSavedCardIds] = useState<string[]>([]);
   const [messageCardId, setMessageCardId] = useState<string | null>(null);
+  const [acceptingCardId, setAcceptingCardId] = useState<string | null>(null);
+  const [acceptTargetCard, setAcceptTargetCard] = useState<EnrichedNearbyCard | null>(null);
   const [savingCardIds, setSavingCardIds] = useState<string[]>([]);
   const [sharingCardIds, setSharingCardIds] = useState<string[]>([]);
   const [cardMetricsById, setCardMetricsById] = useState<Record<string, CardMetrics>>({});
@@ -213,17 +204,27 @@ export default function WelcomePage() {
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
+  const {
+    schemaReady: connectionSchemaReady,
+    schemaMessage: connectionSchemaMessage,
+    busyTargetId: busyConnectionTargetId,
+    busyRequestId: busyConnectionRequestId,
+    busyActionKey: busyConnectionActionKey,
+    getConnectionState,
+    sendRequest,
+    respond,
+  } = useConnectionRequests();
   const activeRef = useRef(true);
   const viewerRoleFamily = getProfileRoleFamily(viewerProfile?.role);
   const viewerIsProvider = viewerRoleFamily === "provider";
 
-  const pushFeedToast = (kind: FeedToast["kind"], message: string) => {
+  const pushFeedToast = useCallback((kind: FeedToast["kind"], message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
     setFeedToasts((current) => [...current, { id, kind, message }]);
     window.setTimeout(() => {
       setFeedToasts((current) => current.filter((toast) => toast.id !== id));
     }, 2600);
-  };
+  }, []);
 
   useEffect(() => {
     activeRef.current = true;
@@ -333,7 +334,7 @@ export default function WelcomePage() {
       setLoadError("");
 
       try {
-        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed");
+        const payload = await fetchAuthedJson<CommunityFeedResponse>(supabase, "/api/community/feed?scope=connected");
         if (!payload.ok) {
           throw new Error(payload.message || "Unable to load connected feed.");
         }
@@ -571,13 +572,6 @@ export default function WelcomePage() {
 
   useDashboardPrompt(welcomePromptConfig);
 
-  const markCardShared = (cardId: string) => {
-    setSharedCardId(cardId);
-    window.setTimeout(() => {
-      setSharedCardId((current) => (current === cardId ? null : current));
-    }, 2200);
-  };
-
   const buildCardSavePayload = (card: EnrichedNearbyCard): FeedCardSavePayload => ({
     card_id: card.id,
     focus_id: card.focusId,
@@ -751,7 +745,204 @@ export default function WelcomePage() {
       type: card.type,
     });
 
+  const handleConnect = useCallback(
+    async (targetUserId: string) => {
+      try {
+        if (!connectionSchemaReady) {
+          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
+        }
+
+        if (!isUUIDLike(targetUserId)) {
+          throw new Error("This profile cannot accept live connections yet.");
+        }
+
+        if (viewerId === targetUserId) {
+          throw new Error("This is your own profile.");
+        }
+
+        const previousState = getConnectionState(targetUserId);
+        await sendRequest(targetUserId);
+        pushFeedToast(
+          "success",
+          previousState.kind === "incoming_pending" ? "Connection accepted instantly." : "Connection request sent."
+        );
+      } catch (error) {
+        pushFeedToast("error", error instanceof Error ? error.message : "Unable to send connection request.");
+      }
+    },
+    [connectionSchemaMessage, connectionSchemaReady, getConnectionState, pushFeedToast, sendRequest, viewerId]
+  );
+
+  const handleConnectionDecision = useCallback(
+    async (requestId: string, decision: ConnectionDecision) => {
+      try {
+        if (!connectionSchemaReady) {
+          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
+        }
+
+        await respond(requestId, decision);
+        pushFeedToast(
+          "success",
+          decision === "accepted"
+            ? "Connection accepted."
+            : decision === "rejected"
+            ? "Connection request declined."
+            : "Connection request cancelled."
+        );
+      } catch (error) {
+        pushFeedToast("error", error instanceof Error ? error.message : "Unable to update connection request.");
+      }
+    },
+    [connectionSchemaMessage, connectionSchemaReady, pushFeedToast, respond]
+  );
+
+  const acceptHelpRequestCard = useCallback(async (card: EnrichedNearbyCard) => {
+    if (!viewerId) {
+      pushFeedToast("info", "Sign in to accept tasks.");
+      return false;
+    }
+
+    if (!card.helpRequestId) {
+      pushFeedToast("info", "Accept is available for task requests.");
+      return false;
+    }
+
+    if (card.ownerId === viewerId) {
+      pushFeedToast("info", "You cannot accept your own task.");
+      return false;
+    }
+
+    if (card.acceptedProviderId && card.acceptedProviderId !== viewerId) {
+      pushFeedToast("info", "This task is already accepted.");
+      return false;
+    }
+
+    if (isClosedMarketplaceStatus(card.status)) {
+      pushFeedToast("info", "This task is no longer open.");
+      return false;
+    }
+
+    if (card.acceptedProviderId === viewerId) {
+      return true;
+    }
+
+    const { data, error } = await supabase.rpc("accept_help_request", {
+      target_help_request_id: card.helpRequestId,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error("Request already accepted or unavailable.");
+    }
+
+    setNearbyCards((current) => current.filter((item) => item.id !== card.id));
+
+    return true;
+  }, [pushFeedToast, viewerId]);
+
+  const toAcceptDialogListing = useCallback(
+    (card: EnrichedNearbyCard): MarketplaceDisplayFeedItem => ({
+      id: card.id,
+      source: card.helpRequestId ? "help_request" : card.type === "service" ? "service_listing" : card.type === "product" ? "product_listing" : "post",
+      helpRequestId: card.helpRequestId || null,
+      providerId: card.ownerId || "",
+      type: card.type,
+      title: card.title,
+      description: card.subtitle,
+      category: card.badge,
+      price: 0,
+      avatarUrl: card.ownerAvatarUrl,
+      creatorName: card.ownerLabel,
+      creatorUsername: card.ownerLabel,
+      locationLabel: card.distanceLabel,
+      distanceKm: 0,
+      lat: 0,
+      lng: 0,
+      media: card.media,
+      createdAt: card.createdAt,
+      urgent: card.isUrgent,
+      rankScore: 0,
+      profileCompletion: 0,
+      responseMinutes: 0,
+      verificationStatus: "verified",
+      publicProfilePath: "",
+      status: card.status || "",
+      acceptedProviderId: card.acceptedProviderId || null,
+      displayTitle: card.title,
+      displayDescription: card.subtitle,
+      displayCreator: card.ownerLabel,
+      timeLabel: card.postedAgo,
+      priceLabel: card.priceLabel,
+      distanceLabel: card.distanceLabel,
+    }),
+    []
+  );
+
   const handleMessageCard = async (card: EnrichedNearbyCard) => {
+    if (card.ownerId && viewerId && card.ownerId === viewerId) {
+      pushFeedToast("info", "This is your own post.");
+      return;
+    }
+
+    if (card.helpRequestId) {
+      if (!viewerId) {
+        router.push(buildMessagePath(card));
+        return;
+      }
+
+      if (card.ownerId === viewerId) {
+        pushFeedToast("info", "This is your own task request.");
+        return;
+      }
+
+      if (card.acceptedProviderId && card.acceptedProviderId !== viewerId) {
+        pushFeedToast("info", "This task has already been accepted.");
+        return;
+      }
+
+      if (isClosedMarketplaceStatus(card.status)) {
+        pushFeedToast("info", "This task is no longer open.");
+        return;
+      }
+
+      setMessageCardId(card.id);
+
+      try {
+        const accepted = await acceptHelpRequestCard(card);
+        if (!accepted) return;
+
+        const recipientId = card.ownerId || null;
+        const isUuidRecipient =
+          !!recipientId &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recipientId);
+
+        if (!recipientId || !isUuidRecipient) {
+          router.push("/dashboard/tasks");
+          pushFeedToast("success", "Task moved to In Progress.");
+          return;
+        }
+
+        const targetConversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
+        const params = new URLSearchParams({
+          open: targetConversationId,
+          quote: "1",
+          helpRequest: card.helpRequestId,
+        });
+
+        router.push(`/dashboard/chat?${params.toString()}`);
+        pushFeedToast("success", "Quote flow opened.");
+        return;
+      } catch (error) {
+        pushFeedToast("error", toErrorMessage(error, "Unable to start the quote flow."));
+        return;
+      } finally {
+        setMessageCardId((current) => (current === card.id ? null : current));
+      }
+    }
+
     const fallbackChatPath = buildMessagePath(card);
     const recipientId = card.ownerId || null;
     const isUuidRecipient = !!recipientId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recipientId);
@@ -786,6 +977,11 @@ export default function WelcomePage() {
       return;
     }
 
+    if (card.helpRequestId) {
+      setAcceptTargetCard(card);
+      return;
+    }
+
     if (card.actionLabel === "Respond" || card.actionLabel === "Book") {
       await handleMessageCard(card);
       return;
@@ -798,6 +994,23 @@ export default function WelcomePage() {
 
     router.push(buildFeedFocusPath(card));
   };
+
+  const confirmAcceptCard = useCallback(async () => {
+    if (!acceptTargetCard) return;
+
+    setAcceptingCardId(acceptTargetCard.id);
+    try {
+      const accepted = await acceptHelpRequestCard(acceptTargetCard);
+      if (!accepted) return;
+      setAcceptTargetCard(null);
+      pushFeedToast("success", "Task moved to In Progress.");
+      router.push("/dashboard/tasks");
+    } catch (error) {
+      pushFeedToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+    } finally {
+      setAcceptingCardId((current) => (current === acceptTargetCard.id ? null : current));
+    }
+  }, [acceptHelpRequestCard, acceptTargetCard, pushFeedToast, router]);
 
   const handleShareCard = async (card: EnrichedNearbyCard) => {
     const focusPath = buildFeedFocusPath(card);
@@ -812,7 +1025,6 @@ export default function WelcomePage() {
           text: shareText,
           url: shareUrl,
         });
-        markCardShared(card.id);
         const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
         adjustCardMetrics(card.id, {
           shares: existingMetrics.shares + 1,
@@ -828,7 +1040,6 @@ export default function WelcomePage() {
       }
 
       await navigator.clipboard.writeText(`${card.title}\n${shareText}\n${shareUrl}`);
-      markCardShared(card.id);
       const existingMetrics = cardMetricsById[card.id] || { saves: 0, shares: 0 };
       adjustCardMetrics(card.id, {
         shares: existingMetrics.shares + 1,
@@ -1212,9 +1423,9 @@ export default function WelcomePage() {
               </div>
             </div>
 
-            <div data-testid="welcome-live-feed" className="mt-5 space-y-3">
+            <div data-testid="welcome-live-feed" className="mt-5">
               {isFeedLoading && enrichedCards.length === 0 ? (
-                <>
+                <div className="grid gap-3 md:grid-cols-2">
                   {[0, 1, 2].map((index) => (
                     <div key={`welcome-feed-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_290px]">
@@ -1233,7 +1444,7 @@ export default function WelcomePage() {
                       </div>
                     </div>
                   ))}
-                </>
+                </div>
               ) : enrichedCards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
                   <h4 className="text-base font-semibold text-slate-900">
@@ -1266,23 +1477,17 @@ export default function WelcomePage() {
                   </div>
                 </div>
               ) : (
-                <>
+                <div className="grid gap-3 md:grid-cols-2">
                   {visibleCards.map((card, cardIndex) => {
                     const networkPath = buildNetworkActionPath(card);
                     const isSaved = savedCardIds.includes(card.id);
+                    const isTaskRequest = isTaskRequestCard(card);
+                    const isOwnPost = Boolean(viewerId && card.ownerId === viewerId);
                     const messageInFlight = messageCardId === card.id;
+                    const acceptInFlight = acceptingCardId === card.id;
                     const saveInFlight = savingCardIds.includes(card.id);
                     const shareInFlight = sharingCardIds.includes(card.id);
-                    const primaryActionBusy =
-                      messageInFlight && (card.actionLabel === "Respond" || card.actionLabel === "Book");
-                    const detailChips = [card.priceLabel, card.etaLabel];
-                    if (shouldShowWelcomeSignalChip(card.signalLabel)) {
-                      detailChips.push(card.signalLabel);
-                    }
-                    const activityPills = [];
-                    if (card.saves > 0) activityPills.push(formatWelcomeCountLabel(card.saves, "save"));
-                    if (card.shares > 0) activityPills.push(formatWelcomeCountLabel(card.shares, "share"));
-
+                    const primaryActionBusy = acceptInFlight;
                     return (
                       <article
                         key={`welcome-feed-${card.id}`}
@@ -1291,7 +1496,7 @@ export default function WelcomePage() {
                         className="post-card-enter overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all hover:border-[var(--brand-500)]/35 hover:shadow-[0_28px_42px_-28px_rgba(14,165,164,0.3)]"
                         style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
                       >
-                        <header className="flex items-start gap-3">
+                        <header className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => router.push(networkPath)}
@@ -1302,16 +1507,16 @@ export default function WelcomePage() {
                             <img
                               src={card.ownerAvatarUrl}
                               alt={`${card.ownerLabel} avatar`}
-                              className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                              className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                             />
                           </button>
 
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => router.push(networkPath)}
-                                className="max-w-full truncate text-left text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                                className="min-w-0 max-w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                                 aria-label={`Open ${card.ownerLabel} profile`}
                               >
                                 {card.ownerLabel}
@@ -1327,180 +1532,128 @@ export default function WelcomePage() {
                               >
                                 {card.badge}
                               </span>
-                              {card.statusLabel ? (
-                                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                                  {card.statusLabel}
-                                </span>
-                              ) : null}
-                              {card.isUrgent ? (
-                                <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
-                                  Urgent
-                                </span>
-                              ) : null}
                             </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                            <div className="mt-1 flex items-center gap-2 overflow-hidden text-[11px] text-slate-500">
                               <span>{card.postedAgo}</span>
-                              <span className="inline-flex items-center gap-1">
+                              <span className="inline-flex min-w-0 items-center gap-1 truncate">
                                 <MapPin size={11} />
                                 {card.distanceLabel}
                               </span>
-                              <span
-                                className={`inline-flex items-center gap-1 font-medium ${
-                                  card.isDemo ? "text-amber-700" : "text-emerald-700"
-                                }`}
-                              >
-                                <span
-                                  className={`h-1.5 w-1.5 rounded-full ${card.isDemo ? "bg-amber-500" : "bg-emerald-500"}`}
-                                />
-                                {card.networkMetaLabel}
-                              </span>
+                              {card.isUrgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
                             </div>
                           </div>
+                          {card.ownerId && isUUIDLike(card.ownerId) ? (
+                            <div className="shrink-0 self-center">
+                              <ConnectionActionGroup
+                                state={getConnectionState(card.ownerId)}
+                                busy={
+                                  busyConnectionTargetId === card.ownerId ||
+                                  (getConnectionState(card.ownerId).requestId
+                                    ? busyConnectionRequestId === getConnectionState(card.ownerId).requestId
+                                    : false)
+                                }
+                                busyActionKey={busyConnectionActionKey}
+                                onConnect={() => void handleConnect(card.ownerId!)}
+                                onAccept={() =>
+                                  getConnectionState(card.ownerId).requestId
+                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "accepted")
+                                    : undefined
+                                }
+                                onReject={() =>
+                                  getConnectionState(card.ownerId).requestId
+                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "rejected")
+                                    : undefined
+                                }
+                                onCancel={() =>
+                                  getConnectionState(card.ownerId).requestId
+                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "cancelled")
+                                    : undefined
+                                }
+                                size="compact"
+                              />
+                            </div>
+                          ) : null}
                         </header>
 
-                        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-                          <div className="min-w-0">
-                            <div>
-                              <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900">{card.title}</h3>
-                              <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
+                        <div className="mt-2.5" data-testid="feed-card-main-image">
+                          <FeedMediaCarousel media={card.media} title={card.title} showCountBadge={card.media.length > 1} />
+                        </div>
 
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                                {detailChips.map((chip) => (
-                                  <span
-                                    key={`${card.id}-${chip}`}
-                                    className={`rounded-full border px-2 py-1 font-semibold ${
-                                      chip === card.priceLabel
-                                        ? "border-indigo-200 bg-indigo-50 text-indigo-700"
-                                        : chip === card.etaLabel
-                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                        : "border-slate-200 bg-white text-slate-500"
-                                    }`}
-                                  >
-                                    {chip}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
+                        <div className="mt-2.5">
+                          <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900">{card.title}</h3>
+                          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
+                        </div>
 
-                            <div className="mt-3 grid grid-cols-[1.15fr_1fr_1fr] gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void handlePrimaryCardAction(card)}
-                                disabled={primaryActionBusy}
-                                aria-label={`${card.actionLabel} post ${card.title}`}
-                                title={`${card.actionLabel} this post`}
-                                data-testid="feed-action-primary"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-900 bg-slate-900 px-2 text-[12px] font-semibold text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.9)] transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-                              >
-                                {primaryActionBusy ? (
-                                  <Loader2 size={14} className="animate-spin" />
-                                ) : (
-                                  (() => {
-                                    const PrimaryActionIcon = resolveWelcomePrimaryIcon(card.actionLabel);
-                                    return <PrimaryActionIcon size={14} />;
-                                  })()
-                                )}
-                                <span>{primaryActionBusy ? "Opening..." : card.actionLabel}</span>
-                              </button>
+                        <div className="mt-3 flex items-center gap-1.5">
+                          {isTaskRequest ? (
+                            <button
+                              type="button"
+                              onClick={() => void handlePrimaryCardAction(card)}
+                              disabled={primaryActionBusy || isOwnPost}
+                              aria-label={`Accept post ${card.title}`}
+                              title={isOwnPost ? "You cannot accept your own post" : "Accept task"}
+                              data-testid="feed-action-primary"
+                              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                                isOwnPost
+                                  ? "border-slate-200 bg-slate-100 text-slate-500"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {primaryActionBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                            </button>
+                          ) : null}
 
-                              <button
-                                type="button"
-                                onClick={() => void handleMessageCard(card)}
-                                disabled={messageInFlight}
-                                aria-label={`Message about ${card.title}`}
-                                title="Open contextual chat"
-                                data-testid="feed-action-message"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-2 text-[12px] font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
-                              >
-                                {messageInFlight ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
-                                <span>{messageInFlight ? "Opening..." : "Message"}</span>
-                              </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleMessageCard(card)}
+                            disabled={messageInFlight || isOwnPost}
+                            aria-label={`Show interest in ${card.title}`}
+                            title={isOwnPost ? "You cannot show interest in your own post" : "Show interest"}
+                            data-testid="feed-action-message"
+                            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                              isOwnPost
+                                ? "border-slate-200 bg-slate-100 text-slate-500"
+                                : "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+                            }`}
+                          >
+                            {messageInFlight ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                          </button>
 
-                              <button
-                                type="button"
-                                onClick={() => router.push(networkPath)}
-                                aria-label={`${card.networkActionLabel} for ${card.title}`}
-                                title="Open connection profile"
-                                data-testid="feed-action-network"
-                                className="inline-flex min-h-11 items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-2 text-[12px] font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
-                              >
-                                <UsersRound size={14} />
-                                <span>{card.networkActionLabel}</span>
-                              </button>
-                            </div>
+                          <div className="ml-auto flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void handleShareCard(card)}
+                              disabled={shareInFlight}
+                              aria-label={`Share ${card.title}`}
+                              title="Share post"
+                              data-testid="feed-action-share"
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {shareInFlight ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+                            </button>
 
-                            {activityPills.length > 0 ? (
-                              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                                {activityPills.map((pill) => (
-                                  <span
-                                    key={`${card.id}-${pill}`}
-                                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold text-slate-600"
-                                  >
-                                    {pill}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-
-                            <div className="mt-3 flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${card.isDemo ? "bg-amber-500" : "bg-emerald-500"}`} />
-                              <div className="min-w-0">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Why this surfaced</p>
-                                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-800">{card.surfaceReason}</p>
-                                <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{card.engagementLabel}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="relative lg:justify-self-end lg:w-[248px]" data-testid="feed-card-main-image">
-                            <FeedMediaCarousel media={card.media} title={card.title} showCountBadge={card.media.length > 1} />
-
-                            <div className="absolute right-3 top-3 flex flex-col gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void handleShareCard(card)}
-                                disabled={shareInFlight}
-                                aria-label={`Share ${card.title}`}
-                                title="Share post"
-                                data-testid="feed-action-share"
-                                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur-md transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                                  sharedCardId === card.id && !shareInFlight
-                                    ? "border-slate-900/10 bg-slate-900 text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
-                                    : "border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] hover:bg-white"
-                                }`}
-                              >
-                                {shareInFlight ? (
-                                  <Loader2 size={15} className="animate-spin" />
-                                ) : sharedCardId === card.id ? (
-                                  <Send size={15} />
-                                ) : (
-                                  <Share2 size={15} />
-                                )}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => void toggleCardSave(card)}
-                                disabled={saveInFlight}
-                                aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
-                                title={isSaved ? "Remove from saved" : "Save post"}
-                                data-testid="feed-action-save"
-                                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border backdrop-blur-md transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                                  isSaved && !saveInFlight
-                                    ? "border-slate-900/10 bg-slate-900 text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.8)]"
-                                    : "border-white/70 bg-white/90 text-slate-700 shadow-[0_16px_28px_-18px_rgba(15,23,42,0.55)] hover:bg-white"
-                                }`}
-                              >
-                                {saveInFlight ? (
-                                  <Loader2 size={15} className="animate-spin" />
-                                ) : isSaved ? (
-                                  <BookmarkCheck size={15} />
-                                ) : (
-                                  <Bookmark size={15} />
-                                )}
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void toggleCardSave(card)}
+                              disabled={saveInFlight}
+                              aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
+                              title={isSaved ? "Remove from saved" : "Save post"}
+                              data-testid="feed-action-save"
+                              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                                isSaved && !saveInFlight
+                                  ? "border-slate-900 bg-slate-900 text-white"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                              }`}
+                            >
+                              {saveInFlight ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : isSaved ? (
+                                <BookmarkCheck size={16} />
+                              ) : (
+                                <Bookmark size={16} />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </article>
@@ -1508,7 +1661,7 @@ export default function WelcomePage() {
                   })}
 
                   {hasMoreFeedCards && (
-                    <div ref={feedSentinelRef} className="flex justify-center py-3">
+                    <div ref={feedSentinelRef} className="md:col-span-2 flex justify-center py-3">
                       <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
                         {loadingMoreFeed ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1519,7 +1672,7 @@ export default function WelcomePage() {
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           </section>
@@ -1559,6 +1712,16 @@ export default function WelcomePage() {
           }
           router.push("/dashboard");
         }}
+      />
+      <AcceptConfirmDialog
+        open={!!acceptTargetCard}
+        listing={acceptTargetCard ? toAcceptDialogListing(acceptTargetCard) : null}
+        busy={!!(acceptTargetCard && acceptingCardId === acceptTargetCard.id)}
+        onCancel={() => {
+          if (acceptingCardId) return;
+          setAcceptTargetCard(null);
+        }}
+        onConfirm={() => void confirmAcceptCard()}
       />
     </>
   );
