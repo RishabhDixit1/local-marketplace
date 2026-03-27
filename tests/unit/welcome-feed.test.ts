@@ -149,6 +149,64 @@ describe("welcome feed builder", () => {
     expect(result.cards.every((card) => card.ownerId === "peer-1")).toBe(true);
   });
 
+  it("collapses mirrored need rows into a single welcome card", () => {
+    const mirroredMetadata = {
+      source: "serviq_compose",
+      postType: "need",
+      publishGroupKey: "serviq:demand:dryclean-123",
+      title: "Need a dryclean service",
+      details: "Pickup and wash",
+      category: "Laundry",
+      budget: 1200,
+      locationLabel: "Indiranagar",
+      radiusKm: 8,
+      mode: "urgent",
+      neededWithin: "today",
+      scheduleDate: "",
+      scheduleTime: "",
+      flexibleTiming: true,
+      attachmentCount: 0,
+      media: [],
+    };
+
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+        {
+          id: "post-mirrored",
+          user_id: "peer-1",
+          title: "Need a dryclean service",
+          text: "Need a dryclean service | Need a pickup and wash | Type: demand | Category: Laundry",
+            description: "Need a dryclean service | Need a pickup and wash | Type: demand | Category: Laundry",
+            metadata: mirroredMetadata,
+            created_at: "2026-03-12T18:30:00.000Z",
+          },
+        ],
+        helpRequests: [
+        {
+          id: "help-mirrored",
+          requester_id: "peer-1",
+          title: "Dryclean pickup",
+          details: "Pickup and wash",
+          category: "Laundry",
+          budget_max: 1200,
+            metadata: {
+              ...mirroredMetadata,
+              source: "api_needs_publish",
+            },
+            created_at: "2026-03-12T12:30:20.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.source).toBe("help_request");
+    expect(result.cards[0]?.focusId).toBe("help-mirrored");
+    expect(result.cards[0]?.title).toBe("Dryclean pickup");
+  });
+
   it("prefers uploaded media from live post metadata before seeded fallback visuals", () => {
     const result = buildWelcomeFeedCards(
       buildSnapshot({

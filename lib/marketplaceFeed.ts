@@ -16,6 +16,7 @@ export type MarketplaceFeedItem = {
   id: string;
   source: MarketplaceFeedItemSource;
   helpRequestId: string | null;
+  canonicalKey?: string;
   providerId: string;
   type: MarketplaceFeedItemType;
   title: string;
@@ -153,6 +154,14 @@ export const parseMarketplaceDateMs = (value?: string) => {
   const parsed = new Date(value).getTime();
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const normalizeMarketplaceFingerprintPart = (value: string | null | undefined) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
 
 export const normalizeMarketplacePostKind = (value?: string | null): MarketplaceFeedItemType => {
   const normalized = (value || "").trim().toLowerCase();
@@ -352,23 +361,12 @@ export const buildMarketplaceFeedStats = (items: MarketplaceFeedItem[]): Marketp
 });
 
 export const listingFingerprint = (item: MarketplaceFeedItem) => {
-  const normalizedTitle = (item.title || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 56);
-  const normalizedDescription = (item.description || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 96);
-  const normalizedCategory = (item.category || "").toLowerCase().trim();
-  const normalizedOwner = (item.providerId || "community").toLowerCase().trim();
-  const roundedPrice = item.price > 0 ? Math.round(item.price) : 0;
-
-  return [item.type, normalizedOwner, normalizedCategory, normalizedTitle, normalizedDescription, roundedPrice].join("|");
+  return [
+    normalizeMarketplaceFingerprintPart(item.providerId || "community"),
+    normalizeMarketplaceFingerprintPart(item.type),
+    normalizeMarketplaceFingerprintPart(item.category),
+    normalizeMarketplaceFingerprintPart(item.title),
+  ].join("|");
 };
 
 export const pickPreferredMarketplaceFeedItem = (current: MarketplaceFeedItem, incoming: MarketplaceFeedItem) => {
@@ -398,7 +396,7 @@ export const dedupeMarketplaceFeedItems = (items: MarketplaceFeedItem[]) => {
 
   const byFingerprint = new Map<string, MarketplaceFeedItem>();
   for (const item of byId.values()) {
-    const fingerprint = listingFingerprint(item);
+    const fingerprint = item.canonicalKey || listingFingerprint(item);
     const existing = byFingerprint.get(fingerprint);
     byFingerprint.set(fingerprint, existing ? pickPreferredMarketplaceFeedItem(existing, item) : item);
   }

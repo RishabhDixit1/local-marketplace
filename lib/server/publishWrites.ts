@@ -119,6 +119,66 @@ const toListingPrice = (value: number | null | undefined) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const mergeRowMetadata = async (
+  admin: SupabaseClient,
+  tableName: string,
+  rowId: string,
+  metadataPatch: Record<string, unknown>
+) => {
+  const { data, error } = await admin.from(tableName).select("metadata").eq("id", rowId).maybeSingle();
+  if (error) {
+    if (isMissingTableError(error.message || "", tableName) || isMissingColumnError(error.message || "")) {
+      return false;
+    }
+    return false;
+  }
+
+  const currentMetadata =
+    data && typeof (data as { metadata?: unknown }).metadata === "object" && !Array.isArray((data as { metadata?: unknown }).metadata)
+      ? ((data as { metadata?: Record<string, unknown> }).metadata as Record<string, unknown>)
+      : {};
+  const nextMetadata = { ...currentMetadata, ...metadataPatch };
+
+  const { error: updateError } = await admin.from(tableName).update({ metadata: nextMetadata }).eq("id", rowId);
+  if (!updateError) return true;
+  if (isMissingTableError(updateError.message || "", tableName) || isMissingColumnError(updateError.message || "")) {
+    return false;
+  }
+
+  return false;
+};
+
+export const linkNeedPublishRows = async (params: {
+  admin: SupabaseClient;
+  postId: string;
+  helpRequestId: string;
+}) => {
+  const { admin, postId, helpRequestId } = params;
+  await Promise.all([
+    mergeRowMetadata(admin, "posts", postId, {
+      linked_help_request_id: helpRequestId,
+      publish_link_kind: "need",
+    }),
+    mergeRowMetadata(admin, "help_requests", helpRequestId, {
+      linked_post_id: postId,
+      publish_link_kind: "need",
+    }),
+  ]);
+};
+
+export const linkListingPublishRow = async (params: {
+  admin: SupabaseClient;
+  postId: string;
+  listingId: string;
+  postType: "service" | "product";
+}) => {
+  const { admin, postId, listingId, postType } = params;
+  await mergeRowMetadata(admin, "posts", postId, {
+    linked_listing_id: listingId,
+    linked_listing_type: postType,
+  });
+};
+
 const insertMirroredListing = async (params: {
   admin: SupabaseClient;
   userId: string;
@@ -341,6 +401,13 @@ export const insertPostRow = async (params: {
             missingTable: listingWrite.missingTable,
           };
         }
+
+        await linkListingPublishRow({
+          admin,
+          postId,
+          listingId: listingWrite.id,
+          postType,
+        });
       }
 
       return {

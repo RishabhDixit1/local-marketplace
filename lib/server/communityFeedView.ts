@@ -28,7 +28,7 @@ import {
   type MarketplaceFeedItem,
   type MarketplaceMapCenter,
 } from "@/lib/marketplaceFeed";
-import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
+import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import {
@@ -82,6 +82,41 @@ const readMetadataSource = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? stringFromRow(value as FlexibleRow, ["source"], "").toLowerCase()
     : "";
+
+const readPublishGroupKey = (value: unknown) =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? stringFromRow(value as FlexibleRow, ["publishGroupKey", "publish_group_key"], "")
+    : "";
+
+const normalizeCanonicalPart = (value: string | null | undefined) =>
+  (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 96);
+
+const buildMarketplaceCanonicalKey = (params: {
+  kind: string;
+  ownerId: string;
+  title: string;
+  category: string;
+  metadata?: unknown;
+}) => {
+  const publishGroupKey = readPublishGroupKey(params.metadata);
+  if (publishGroupKey) {
+    return `${normalizeCanonicalPart(params.kind)}:${normalizeCanonicalPart(params.ownerId)}:${publishGroupKey}`;
+  }
+
+  const metadataSignature = buildMarketplaceComposerSignature(params.metadata);
+  const prefix = `${normalizeCanonicalPart(params.kind)}:${normalizeCanonicalPart(params.ownerId)}`;
+
+  if (metadataSignature) {
+    return `${prefix}:${metadataSignature}`;
+  }
+
+  return `${prefix}:${normalizeCanonicalPart(params.title)}:${normalizeCanonicalPart(params.category)}`;
+};
 
 const resolveViewerPoint = (profile: CommunityProfileRecord | null): MarketplaceMapCenter => {
   const explicit = getCoordinates(profile?.latitude, profile?.longitude);
@@ -208,6 +243,7 @@ export const buildCommunityFeedView = (
     const description = stringFromRow(row, ["description", "details", "text"], "Service listing");
     const metadataSource = readMetadataSource(row.metadata);
     const isComposerSyncedListing = metadataSource === "composer_listing_sync";
+    const category = stringFromRow(row, ["category", "service_category", "type"], "Service");
 
     if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
@@ -215,11 +251,18 @@ export const buildCommunityFeedView = (
       id: serviceRow.id,
       source: "service_listing",
       helpRequestId: null,
+      canonicalKey: buildMarketplaceCanonicalKey({
+        kind: "service",
+        ownerId: providerId,
+        title,
+        category,
+        metadata: row.metadata,
+      }),
       providerId,
       type: "service",
       title,
       description,
-      category: stringFromRow(row, ["category", "service_category", "type"], "Service"),
+      category,
       price: numberFromRow(row, ["price", "amount", "rate"], 0),
       avatarUrl: profileMeta.avatarUrl,
       creatorName: profileMeta.name,
@@ -262,6 +305,7 @@ export const buildCommunityFeedView = (
     const description = stringFromRow(row, ["description", "details", "text"], "Product listing");
     const metadataSource = readMetadataSource(row.metadata);
     const isComposerSyncedListing = metadataSource === "composer_listing_sync";
+    const category = stringFromRow(row, ["category", "product_category", "type"], "Product");
 
     if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
@@ -269,11 +313,18 @@ export const buildCommunityFeedView = (
       id: productRow.id,
       source: "product_listing",
       helpRequestId: null,
+      canonicalKey: buildMarketplaceCanonicalKey({
+        kind: "product",
+        ownerId: providerId,
+        title,
+        category,
+        metadata: row.metadata,
+      }),
       providerId,
       type: "product",
       title,
       description,
-      category: stringFromRow(row, ["category", "product_category", "type"], "Product"),
+      category,
       price: numberFromRow(row, ["price", "amount", "mrp"], 0),
       avatarUrl: profileMeta.avatarUrl,
       creatorName: profileMeta.name,
@@ -344,6 +395,17 @@ export const buildCommunityFeedView = (
       id: postRow.id,
       source: "post",
       helpRequestId: null,
+      canonicalKey: buildMarketplaceCanonicalKey({
+        kind: type,
+        ownerId: providerId,
+        title,
+        category:
+          composerMetadata?.category ||
+          stringFromRow(row, ["category"], "") ||
+          parsedFromText.category ||
+          (type === "demand" ? "Need" : type === "service" ? "Service" : "Product"),
+        metadata: row.metadata,
+      }),
       providerId,
       type,
       title,
@@ -394,6 +456,7 @@ export const buildCommunityFeedView = (
       stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
     const status = stringFromRow(row, ["status"], "open");
     const acceptedProviderId = stringFromRow(row, ["accepted_provider_id"], "") || null;
+    const category = composerMetadata?.category || stringFromRow(row, ["category"], "Need");
 
     if (isClosedMarketplaceStatus(status)) return;
     if (acceptedProviderId) return;
@@ -419,11 +482,18 @@ export const buildCommunityFeedView = (
       id: helpRow.id,
       source: "help_request",
       helpRequestId: helpRow.id,
+      canonicalKey: buildMarketplaceCanonicalKey({
+        kind: "demand",
+        ownerId: providerId,
+        title,
+        category,
+        metadata: row.metadata,
+      }),
       providerId,
       type: "demand",
       title,
       description,
-      category: composerMetadata?.category || stringFromRow(row, ["category"], "Need"),
+      category,
       price: budgetMax > 0 ? budgetMax : budgetMin,
       avatarUrl: profileMeta.avatarUrl,
       creatorName: profileMeta.name,
