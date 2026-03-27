@@ -14,6 +14,7 @@ import {
   getProfileRoleFamily,
   normalizeProfileRecord,
   normalizeTopics,
+  slugifyProfileName,
 } from "@/lib/profile/utils";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
@@ -508,27 +509,50 @@ const normalizePublicPost = (params: {
 
 export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfileData | null> {
   noStore();
-  const profileId = extractProfileIdFromSlug(slug);
-  if (!profileId) return null;
+  const trimmedSlug = slug.trim();
+  const profileId = extractProfileIdFromSlug(trimmedSlug);
 
   const supabase = getServerSupabase();
   if (!supabase) return null;
 
-  const { data: profileRow, error: profileError } = await supabase
-    .from("profiles")
-    .select(
-      "id,full_name,name,location,role,bio,interests,services,email,phone,website,avatar_url,availability,profile_completion_percent,metadata,created_at,updated_at"
-    )
-    .eq("id", profileId)
-    .maybeSingle();
+  const selectClause =
+    "id,full_name,name,location,role,bio,interests,services,email,phone,website,avatar_url,availability,profile_completion_percent,metadata,created_at,updated_at";
+  const slugCandidates = Array.from(new Set([trimmedSlug, slugifyProfileName(trimmedSlug)])).filter(Boolean);
+  const lookupCandidates: Array<{ column: "id" | "username"; value: string }> = [];
 
-  if (profileError || !profileRow) {
+  if (profileId) {
+    lookupCandidates.push({ column: "id", value: profileId });
+  }
+
+  for (const candidate of slugCandidates) {
+    lookupCandidates.push({ column: "username", value: candidate });
+  }
+
+  let profileRow: Record<string, unknown> | null = null;
+
+  for (const candidate of lookupCandidates) {
+    const { data, error } = await supabase.from("profiles").select(selectClause).eq(candidate.column, candidate.value).maybeSingle();
+
+    if (error) {
+      if (isMissingRelationError(error.message || "")) {
+        return null;
+      }
+      throw error;
+    }
+
+    if (data) {
+      profileRow = data as Record<string, unknown>;
+      break;
+    }
+  }
+
+  if (!profileRow) {
     return null;
   }
 
-  const profile = normalizeProfileRecord(profileRow as Record<string, unknown>, {
-    id: profileId,
-    email: typeof (profileRow as { email?: unknown }).email === "string" ? (profileRow as { email: string }).email : "",
+  const profile = normalizeProfileRecord(profileRow, {
+    id: typeof profileRow.id === "string" && profileRow.id.trim() ? profileRow.id.trim() : profileId || trimmedSlug,
+    email: typeof profileRow.email === "string" ? profileRow.email : "",
   });
 
   if (!profile) return null;
