@@ -1543,37 +1543,31 @@ export default function WelcomePage() {
                               {card.isUrgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
                             </div>
                           </div>
-                          {card.ownerId && isUUIDLike(card.ownerId) ? (
-                            <div className="shrink-0 self-center">
-                              <ConnectionActionGroup
-                                state={getConnectionState(card.ownerId)}
-                                busy={
-                                  busyConnectionTargetId === card.ownerId ||
-                                  (getConnectionState(card.ownerId).requestId
-                                    ? busyConnectionRequestId === getConnectionState(card.ownerId).requestId
-                                    : false)
-                                }
-                                busyActionKey={busyConnectionActionKey}
-                                onConnect={() => void handleConnect(card.ownerId!)}
-                                onAccept={() =>
-                                  getConnectionState(card.ownerId).requestId
-                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "accepted")
-                                    : undefined
-                                }
-                                onReject={() =>
-                                  getConnectionState(card.ownerId).requestId
-                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "rejected")
-                                    : undefined
-                                }
-                                onCancel={() =>
-                                  getConnectionState(card.ownerId).requestId
-                                    ? void handleConnectionDecision(getConnectionState(card.ownerId).requestId!, "cancelled")
-                                    : undefined
-                                }
-                                size="compact"
-                              />
-                            </div>
-                          ) : null}
+                          {(() => {
+                            const ownerId = card.ownerId;
+                            if (!ownerId || !isUUIDLike(ownerId)) return null;
+
+                            const connectionState = getConnectionState(ownerId);
+                            const requestId = connectionState.requestId;
+
+                            return (
+                              <div className="shrink-0 self-center">
+                                <ConnectionActionGroup
+                                  state={connectionState}
+                                  busy={
+                                    busyConnectionTargetId === ownerId ||
+                                    (requestId ? busyConnectionRequestId === requestId : false)
+                                  }
+                                  busyActionKey={busyConnectionActionKey}
+                                  onConnect={() => void handleConnect(ownerId)}
+                                  onAccept={() => (requestId ? void handleConnectionDecision(requestId, "accepted") : undefined)}
+                                  onReject={() => (requestId ? void handleConnectionDecision(requestId, "rejected") : undefined)}
+                                  onCancel={() => (requestId ? void handleConnectionDecision(requestId, "cancelled") : undefined)}
+                                  size="compact"
+                                />
+                              </div>
+                            );
+                          })()}
                         </header>
 
                         <div className="mt-2.5" data-testid="feed-card-main-image">

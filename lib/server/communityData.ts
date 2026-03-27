@@ -449,7 +449,10 @@ export const loadCommunityFeedSnapshot = async (
     .filter((row): row is CommunityHelpRequestRecord => !!row)
     .filter((row) => isVisibleStatus(row.status || "open"))
     .filter((row) => !row.accepted_provider_id)
-    .filter((row) => feedScope === "all" || row.requester_id === currentUserId || acceptedPeers.has(row.requester_id));
+    .filter((row) => {
+      const requesterId = row.requester_id || "";
+      return feedScope === "all" || requesterId === currentUserId || acceptedPeers.has(requesterId);
+    });
 
   const profileIds = Array.from(
     new Set(
