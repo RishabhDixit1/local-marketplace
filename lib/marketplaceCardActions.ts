@@ -62,10 +62,13 @@ export const resolveMarketplaceCardActionModel = (
     return buildButton("send_quote", "Show Interest", "primary", false);
   })();
 
+  const buttons: MarketplaceCardActionModel["buttons"] = [];
+  if (acceptButton) buttons.push(acceptButton);
+  if (quoteButton) buttons.push(quoteButton);
+  buttons.push(buildButton("view_profile", "View Profile", "secondary", false));
+
   return {
-    buttons: [acceptButton, quoteButton, buildButton("view_profile", "View Profile", "secondary", false)].filter(
-      (button): button is MarketplaceCardActionButton<MarketplacePrimaryActionKind> => Boolean(button)
-    ),
+    buttons,
     icons: [buildButton("save", "Save", "secondary"), buildButton("share", "Share", "secondary")],
   };
 };

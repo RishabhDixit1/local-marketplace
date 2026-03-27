@@ -84,6 +84,8 @@ type ConnectionRow = {
   recipient_id: string | null;
 };
 
+const normalizeString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
 type PublicProfileListing = {
   id: string;
   type: "service" | "product";
@@ -551,8 +553,8 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   }
 
   const profile = normalizeProfileRecord(profileRow, {
-    id: typeof profileRow.id === "string" && profileRow.id.trim() ? profileRow.id.trim() : profileId || trimmedSlug,
-    email: typeof profileRow.email === "string" ? profileRow.email : "",
+    id: normalizeString(profileRow.id) || profileId || trimmedSlug,
+    email: normalizeString(profileRow.email),
   });
 
   if (!profile) return null;
