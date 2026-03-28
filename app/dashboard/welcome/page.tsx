@@ -119,12 +119,10 @@ const POST_OWNER_FIELD_VARIANTS: ReadonlyArray<ReadonlyArray<string>> = [
   ["provider_id"],
 ];
 
-const MARKETPLACE_HERO_LINES = [
-  "Post a Need. Get Local Help. Let Others Earn.",
+const HERO_TAGLINES = [
   "Where Neighbours Help and Earn in Real Time.",
   "Small Tasks. Real People. Instant Help.",
   "Post What You Need. Someone Nearby Will Help.",
-  "Local Help Marketplace for Everyday Needs.",
 ] as const;
 
 const buildWelcomeDistanceLabel = (distanceKm: number) => (distanceKm > 0 ? `${distanceKm.toFixed(1)} km away` : "Nearby");
@@ -182,7 +180,7 @@ export default function WelcomePage() {
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [welcomePromptValue, setWelcomePromptValue] = useState("");
-  const [heroLineIndex, setHeroLineIndex] = useState(0);
+  const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedEmptyReason, setFeedEmptyReason] = useState<"no_connections" | "no_connected_content" | null>(null);
@@ -1017,20 +1015,13 @@ export default function WelcomePage() {
     }
   };
 
-  const liveStatusLabel = isFeedLoading
-    ? "Syncing feed"
-    : nearbyCards.length > 0
-    ? `${nearbyCards.length} connected posts live`
-    : acceptedConnectionCount > 0
-    ? `${acceptedConnectionCount} connections live`
-    : "Connect to unlock";
+  const livePostCount = nearbyCards.length;
 
   useEffect(() => {
-    const lineTimer = window.setInterval(() => {
-      setHeroLineIndex((current) => (current + 1) % MARKETPLACE_HERO_LINES.length);
-    }, 3200);
-
-    return () => window.clearInterval(lineTimer);
+    const t = window.setInterval(() => {
+      setHeroTaglineIndex((i) => (i + 1) % HERO_TAGLINES.length);
+    }, 3400);
+    return () => window.clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -1273,118 +1264,81 @@ export default function WelcomePage() {
     <>
       <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
         <div className="mx-auto w-full max-w-[1480px] py-2 sm:py-4 space-y-5 sm:space-y-6">
-          <motion.section
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative min-h-[230px] overflow-hidden rounded-[1.3rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
-          >
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_16%,rgba(14,165,164,0.14),transparent_44%),radial-gradient(circle_at_88%_84%,rgba(14,116,144,0.12),transparent_44%)]" />
-              <div
-                className="absolute inset-0 opacity-50"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to right, rgba(15,23,42,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,23,42,0.04) 1px, transparent 1px)",
-                  backgroundSize: "28px 28px",
-                }}
-              />
-            </div>
-
-            <div className="relative space-y-4 sm:space-y-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Welcome Command Center</p>
-                  <h2 className="brand-display mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">{MARKETPLACE_HERO_LINES[4]}</h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{appTagline}</p>
-                </div>
-                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--brand-500)]/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] shadow-sm">
-                  <span className={`h-1.5 w-1.5 rounded-full ${acceptedConnectionCount > 0 ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                  {liveStatusLabel}
-                </span>
-              </div>
-
-              <div className="grid gap-2.5 md:grid-cols-2">
-                <button
-                  onClick={() => setOpenPostModal(true)}
-                  className="group rounded-xl border border-transparent bg-[var(--brand-900)] px-3 py-2.5 text-left text-white transition hover:bg-[var(--brand-700)]"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20">
-                      <Zap size={14} />
-                    </span>
-                    <p className="text-base font-semibold">Post a Need</p>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-200">Get local help quickly.</p>
-                </button>
-
-                <button
-                  onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
-                  className="group rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-slate-900 transition hover:border-[var(--brand-500)]/35 hover:bg-slate-50"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[var(--brand-500)]/12 ring-1 ring-[var(--brand-500)]/20 text-[var(--brand-700)]">
-                      <UsersRound size={14} />
-                    </span>
-                    <p className="text-base font-semibold">Earn Nearby</p>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600">Respond to nearby tasks and earn.</p>
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  {MARKETPLACE_HERO_LINES[heroLineIndex]}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  {MARKETPLACE_HERO_LINES[(heroLineIndex + 1) % MARKETPLACE_HERO_LINES.length]}
-                </span>
-              </div>
-            </div>
-          </motion.section>
-
           {!!loadError && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {loadError}
             </div>
           )}
 
-          <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Connected Local Live Feed
+          {/* ── Compact startup hero ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+          >
+            {/* subtle gradient mesh */}
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_0%_0%,rgba(14,165,164,0.12),transparent_55%),radial-gradient(ellipse_at_100%_100%,rgba(14,116,144,0.10),transparent_55%)]" />
+
+            <div className="relative flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3.5">
+              {/* left: brand copy */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--brand-700)]">
+                    ServiQ
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border border-[var(--brand-500)]/25 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-700)] shadow-sm backdrop-blur-sm ${
+                      acceptedConnectionCount > 0 ? "" : "opacity-70"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        acceptedConnectionCount > 0 ? "animate-pulse bg-emerald-500" : "bg-amber-400"
+                      }`}
+                    />
+                    {isFeedLoading
+                      ? "Syncing…"
+                      : livePostCount > 0
+                      ? `${livePostCount} posts live`
+                      : acceptedConnectionCount > 0
+                      ? `${acceptedConnectionCount} connected`
+                      : "Connect to unlock"}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 sm:text-xl">Realtime posts from accepted connections only</h3>
-                  <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                    This stream stays limited to people you are already connected with. New needs, service offers, and product
-                    posts sync in automatically and keep loading as you scroll.
-                  </p>
-                </div>
+                <h2 className="mt-0.5 text-[15px] font-semibold leading-snug text-slate-900 sm:text-base">
+                  Local Help Marketplace for Everyday Needs.
+                </h2>
+                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 sm:text-xs">{appTagline}</p>
+                <p className="mt-1 text-[10px] font-medium text-[var(--brand-600)]">
+                  {HERO_TAGLINES[heroTaglineIndex]}
+                </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => router.push(routes.people)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                >
-                  <UsersRound size={14} />
-                  Manage connections
-                </button>
+              {/* right: CTA pair */}
+              <div className="flex shrink-0 gap-2">
                 <button
                   type="button"
                   onClick={() => setOpenPostModal(true)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] active:scale-[.97]"
                 >
-                  <Zap size={14} />
-                  Post to network
+                  <Zap size={13} />
+                  Post a Need
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] active:scale-[.97]"
+                >
+                  <UsersRound size={13} />
+                  Earn Nearby
                 </button>
               </div>
             </div>
+          </motion.div>
 
-            <div data-testid="welcome-live-feed" className="mt-5">
+          {/* ── Live feed ── */}
+          <div data-testid="welcome-live-feed">
               {isFeedLoading && enrichedCards.length === 0 ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {[0, 1, 2].map((index) => (
@@ -1632,8 +1586,7 @@ export default function WelcomePage() {
                   )}
                 </div>
               )}
-            </div>
-          </section>
+          </div>
         </div>
       </div>
 
