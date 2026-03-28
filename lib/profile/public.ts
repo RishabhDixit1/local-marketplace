@@ -18,6 +18,8 @@ import {
 } from "@/lib/profile/utils";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
+const normalizeString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
 type ServiceRow = {
   id: string | null;
   title: string | null;
@@ -83,8 +85,6 @@ type ConnectionRow = {
   requester_id: string | null;
   recipient_id: string | null;
 };
-
-const normalizeString = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 type PublicProfileListing = {
   id: string;
@@ -508,7 +508,6 @@ const normalizePublicPost = (params: {
     createdAt: row.created_at || null,
   };
 };
-
 export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfileData | null> {
   noStore();
   const trimmedSlug = slug.trim();
@@ -554,7 +553,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
 
   const profile = normalizeProfileRecord(profileRow, {
     id: normalizeString(profileRow.id) || profileId || trimmedSlug,
-    email: normalizeString(profileRow.email),
+    email: typeof profileRow.email === "string" ? profileRow.email : "",
   });
 
   if (!profile) return null;

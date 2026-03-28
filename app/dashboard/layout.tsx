@@ -1,10 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import LiveStatusBadge from "@/app/components/LiveStatusBadge";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import {
   DashboardPromptBar,
@@ -29,10 +29,15 @@ import {
   Menu,
   MessageCircle,
   Newspaper,
+  Plus,
   User,
   Users,
   X,
 } from "lucide-react";
+
+const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
+  ssr: false,
+});
 
 const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Home },
@@ -76,6 +81,7 @@ function DashboardShell({
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { showPrompt } = useDashboardPromptState();
+  const [openCreatePost, setOpenCreatePost] = useState(false);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady);
   const myProfileHref =
@@ -445,10 +451,6 @@ function DashboardShell({
             ) : null}
           </header>
 
-          <div className="flex justify-center border-b border-slate-200/80 bg-white/90 px-4 py-2 shadow-sm">
-            <LiveStatusBadge />
-          </div>
-
           <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -474,6 +476,26 @@ function DashboardShell({
           </main>
         </div>
       </div>
+
+      {!pathname.startsWith("/dashboard/chat") && !pathname.startsWith("/dashboard/create_post") && (
+        <button
+          type="button"
+          onClick={() => setOpenCreatePost(true)}
+          aria-label="Create post"
+          className="fixed bottom-6 right-6 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
+      {openCreatePost && (
+        <CreatePostModal
+          open={openCreatePost}
+          onClose={() => setOpenCreatePost(false)}
+          onPublished={() => {
+            setOpenCreatePost(false);
+          }}
+        />
+      )}
 
       <div
         className={`lg:hidden fixed inset-0 z-[1300] transition-opacity duration-200 ${

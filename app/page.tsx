@@ -288,7 +288,6 @@ export default function LoginPage() {
         phone: e164,
         options: {
           shouldCreateUser: authMode !== "reset",
-          channel: "sms",
         },
       });
 
@@ -301,8 +300,8 @@ export default function LoginPage() {
       setOtpCode("");
       setInfoMessage(
         authMode === "reset"
-          ? `Reset code requested for ${e164}. Enter the 6-digit code to continue.`
-          : `OTP requested for ${e164}. Enter the 6-digit code to continue.`
+          ? `Reset code sent to ${e164}. Enter the 6-digit code to continue.`
+          : `OTP sent to ${e164}. Enter the 6-digit code to continue.`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send OTP right now.";
