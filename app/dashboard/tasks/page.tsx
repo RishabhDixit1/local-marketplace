@@ -2629,6 +2629,7 @@ export default function TasksPage() {
     const reviewDraft = taskReviews[task.orderId] || { rating: 0, comment: "", submitted: false };
     const rating = reviewDraft.rating;
     const reviewSubmitted = reviewDraft.submitted;
+    const canReviewTask = Boolean(task.counterpartyId);
     const isReviewExpanded = commentComposerTaskId === task.orderId;
     const commentDraft = reviewDraft.comment;
     const reviewBusy = reviewBusyTaskId === task.orderId;
@@ -2694,7 +2695,7 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="flex items-start justify-between gap-3 lg:min-w-[12rem] lg:self-start lg:justify-end">
+          <div className="shrink-0 flex items-start justify-between gap-3 lg:min-w-[12rem] lg:self-start lg:justify-end">
             {reviewSubmitted ? (
               <div className="flex items-center gap-1">
                 <div className="flex items-center gap-1">
@@ -2713,19 +2714,21 @@ export default function TasksPage() {
                   })}
                 </div>
               </div>
-            ) : (
+            ) : canReviewTask ? (
               <button
                 type="button"
                 onClick={() => setCommentComposerTaskId((current) => (current === task.orderId ? null : task.orderId))}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-800)]"
+                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-800)]"
               >
                 {isReviewExpanded ? "Hide review" : "Add review"}
               </button>
+            ) : (
+              <span className="text-xs font-medium text-slate-400">Review unavailable</span>
             )}
           </div>
         </div>
 
-        {isReviewExpanded && !reviewSubmitted ? (
+        {isReviewExpanded && canReviewTask && !reviewSubmitted ? (
           <div className="mt-4 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }, (_, index) => {
@@ -3003,7 +3006,7 @@ export default function TasksPage() {
                     : selectedTaskView === "completed"
                       ? renderCompletedTaskRow(task)
                     : renderTaskCardPremium(task, {
-                        history: selectedTaskView === "completed" || selectedTaskView === "cancelled",
+                        history: selectedTaskView === "cancelled",
                       })
                 )}
               </div>

@@ -204,6 +204,10 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
 const normalizeService = (row: FlexibleRow, index: number): CommunityServiceRecord | null => {
   const providerId = stringFromRow(row, ["provider_id", "user_id", "created_by", "owner_id"], "");
   if (!providerId) return null;
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : null;
 
   return {
     id: stringFromRow(row, ["id"], `service-${index}`),
