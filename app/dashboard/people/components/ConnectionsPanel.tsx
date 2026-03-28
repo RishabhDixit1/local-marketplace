@@ -38,8 +38,8 @@ const formatWhen = (value: string | null) => {
 
 const fallbackPreview = (userId: string): ProviderPreview => ({
   id: userId,
-  name: "ServiQ member",
-  avatar: createAvatarFallback({ label: "ServiQ member", seed: userId }),
+  name: "Community member",
+  avatar: createAvatarFallback({ label: "Community member", seed: userId }),
   role: "Community member",
   presenceTone: "offline",
   distanceLabel: "Nearby",

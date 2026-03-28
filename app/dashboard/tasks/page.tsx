@@ -899,6 +899,47 @@ export default function TasksPage() {
     };
   }, [currentUserId]);
 
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel(`tasks-notifications-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            title?: string | null;
+            message?: string | null;
+            entity_type?: string | null;
+            kind?: string | null;
+          } | null;
+
+          const entityType = (row?.entity_type || "").toLowerCase();
+          const isTaskRelated =
+            ["order", "task", "order_update", "help_request", "need", "request"].includes(entityType) ||
+            row?.kind === "order";
+
+          if (!isTaskRelated) return;
+
+          setNotice({
+            kind: "info",
+            message: `${row?.title || "Task update"}${row?.message ? `: ${row.message}` : ""}`,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
   const latestEventByOrderId = useMemo(() => {
     const eventMap = new Map<string, TaskEventFeedItem>();
 

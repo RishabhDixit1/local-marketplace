@@ -222,15 +222,14 @@ export const useMapbox = ({ containerRef, center }: UseMapboxParams) => {
     window.addEventListener("resize", resize);
     window.addEventListener("orientationchange", resize);
 
-    let animationFrame = 0;
+    let rotationTimer = 0;
     const rotateCamera = () => {
       if (!liteMode && readyRef.current && !interactingRef.current && !document.hidden) {
         map.rotateTo(map.getBearing() + AUTO_ROTATION_STEP, { duration: 0 });
       }
-      animationFrame = window.requestAnimationFrame(rotateCamera);
     };
 
-    animationFrame = window.requestAnimationFrame(rotateCamera);
+    rotationTimer = window.setInterval(rotateCamera, 240);
 
     return () => {
       readyRef.current = false;
@@ -238,7 +237,7 @@ export const useMapbox = ({ containerRef, center }: UseMapboxParams) => {
       setIsDragging(false);
       interactingRef.current = false;
       window.cancelAnimationFrame(loadFrame);
-      window.cancelAnimationFrame(animationFrame);
+      window.clearInterval(rotationTimer);
       window.removeEventListener("resize", resize);
       window.removeEventListener("orientationchange", resize);
       map.off("load", handleLoad);

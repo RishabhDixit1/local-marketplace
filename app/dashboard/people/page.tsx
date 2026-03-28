@@ -39,7 +39,7 @@ import {
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { buildPublicProfilePath } from "@/lib/profile/utils";
+import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import ConnectionsPanel from "./components/ConnectionsPanel";
@@ -680,11 +680,7 @@ const createProviderCards = (params: {
       const rawRoleLabel = normalizeText(profile.role);
       const roleLabel =
         (rawRoleLabel && !looksLikePlaceholderText(rawRoleLabel) ? rawRoleLabel : "") ||
-        (servicesCount + productsCount > 0
-          ? "Service provider"
-          : hasDiscoverableOnboarding || demandCount > 0
-            ? "Community member"
-            : "ServiQ member");
+        (servicesCount + productsCount > 0 ? "Service provider" : "Community member");
       const serviceTags = Array.from(serviceTagMap.get(profile.id) || []);
       const productTags = Array.from(productTagMap.get(profile.id) || []);
       const demandTags = Array.from(demandTagMap.get(profile.id) || []);
@@ -769,9 +765,10 @@ const createProviderCards = (params: {
           ? "Published profile with live marketplace listings and clear business identity."
           : "Published profile with enough identity to start a confident conversation.";
 
+      const displayName = getProfileDisplayName(profile) || roleLabel || "Community member";
       const media = (mediaMap.get(profile.id) || []).slice(0, 6);
       const searchDocument = [
-        normalizeText(profile.name),
+        displayName,
         roleLabel,
         bio,
         normalizeText(profile.location),
@@ -784,14 +781,14 @@ const createProviderCards = (params: {
 
       return {
         id: profile.id,
-        name: normalizeText(profile.name) || "ServiQ member",
-        businessSlug: createBusinessSlug(profile.name, profile.id),
-        fullProfilePath: `/business/${createBusinessSlug(profile.name, profile.id)}`,
+        name: displayName,
+        businessSlug: createBusinessSlug(displayName, profile.id),
+        fullProfilePath: `/business/${createBusinessSlug(displayName, profile.id)}`,
         publicProfilePath: buildPublicProfilePath(profile) || "",
         avatar:
           resolveProfileAvatarUrl(profile.avatar_url) ||
           createAvatarFallback({
-            label: normalizeText(profile.name) || roleLabel || "ServiQ member",
+            label: displayName,
             seed: profile.id,
           }),
         role: roleLabel,

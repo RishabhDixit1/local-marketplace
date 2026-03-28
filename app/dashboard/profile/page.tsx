@@ -891,7 +891,7 @@ export default function ProfilePage() {
                         onClick={() => router.push("/dashboard/provider/listings")}
                         className="inline-flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:text-indigo-700"
                       >
-                        Manage listings
+                        Manage inventory
                         <ArrowRight className="h-4 w-4" />
                       </button>
                       <button

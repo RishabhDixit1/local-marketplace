@@ -83,6 +83,19 @@ const readMetadataSource = (value: unknown) =>
     ? stringFromRow(value as FlexibleRow, ["source"], "").toLowerCase()
     : "";
 
+const readMetadataString = (value: unknown, keys: string[]) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+
+  for (const key of keys) {
+    const candidate = (value as FlexibleRow)[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+};
+
 const readPublishGroupKey = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? stringFromRow(value as FlexibleRow, ["publishGroupKey", "publish_group_key"], "")
@@ -251,6 +264,11 @@ export const buildCommunityFeedView = (
       id: serviceRow.id,
       source: "service_listing",
       helpRequestId: null,
+      linkedPostId: readMetadataString(row.metadata, ["linked_post_id", "linkedPostId"]) || null,
+      metadata:
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
       canonicalKey: buildMarketplaceCanonicalKey({
         kind: "service",
         ownerId: providerId,
@@ -313,6 +331,11 @@ export const buildCommunityFeedView = (
       id: productRow.id,
       source: "product_listing",
       helpRequestId: null,
+      linkedPostId: readMetadataString(row.metadata, ["linked_post_id", "linkedPostId"]) || null,
+      metadata:
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
       canonicalKey: buildMarketplaceCanonicalKey({
         kind: "product",
         ownerId: providerId,
@@ -395,6 +418,12 @@ export const buildCommunityFeedView = (
       id: postRow.id,
       source: "post",
       helpRequestId: null,
+      linkedListingId: readMetadataString(row.metadata, ["linked_listing_id", "linkedListingId"]) || null,
+      linkedHelpRequestId: readMetadataString(row.metadata, ["linked_help_request_id", "linkedHelpRequestId"]) || null,
+      metadata:
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
       canonicalKey: buildMarketplaceCanonicalKey({
         kind: type,
         ownerId: providerId,
@@ -482,6 +511,11 @@ export const buildCommunityFeedView = (
       id: helpRow.id,
       source: "help_request",
       helpRequestId: helpRow.id,
+      linkedPostId: readMetadataString(row.metadata, ["linked_post_id", "linkedPostId"]) || null,
+      metadata:
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : null,
       canonicalKey: buildMarketplaceCanonicalKey({
         kind: "demand",
         ownerId: providerId,

@@ -92,6 +92,7 @@ export default function MarketplacePage() {
     isListingBusy,
     savingListingIds,
     acceptingListingIds,
+    discardingListingIds,
     chatOpeningProviderId,
     sharingCardId,
   } = useFeedActions({
@@ -188,9 +189,13 @@ export default function MarketplacePage() {
         return isListingBusy(item, acceptingListingIds);
       }
 
+      if (primaryKind === "discard") {
+        return isListingBusy(item, discardingListingIds);
+      }
+
       return false;
     },
-    [acceptingListingIds, chatOpeningProviderId, isListingBusy]
+    [acceptingListingIds, chatOpeningProviderId, discardingListingIds, isListingBusy]
   );
 
   const handlePublished = useCallback(
@@ -263,6 +268,15 @@ export default function MarketplacePage() {
           onSecondaryAction={handleSecondaryAction}
         />
       </div>
+
+      <button
+        type="button"
+        onClick={() => setOpenPostModal(true)}
+        className="fixed bottom-5 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_-16px_rgba(15,23,42,0.45)] transition hover:bg-[var(--brand-700)] sm:hidden"
+      >
+        <Zap className="h-4 w-4" />
+        Post
+      </button>
 
       <AcceptConfirmDialog
         open={!!acceptTarget}

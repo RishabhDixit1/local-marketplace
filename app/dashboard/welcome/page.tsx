@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
@@ -29,8 +30,6 @@ import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
-import { resolveWelcomeCommand } from "@/lib/welcomePrompt";
-import CreatePostModal from "../../components/CreatePostModal";
 import {
   Bookmark,
   BookmarkCheck,
@@ -42,6 +41,10 @@ import {
   UsersRound,
   Zap,
 } from "lucide-react";
+
+const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
+  ssr: false,
+});
 
 type NearbyCard = WelcomeFeedCard;
 
@@ -418,15 +421,44 @@ export default function WelcomePage() {
     });
   }, [cardMetricsById, nearbyCards]);
 
+  const welcomeSearchQuery = welcomePromptValue.trim().toLowerCase();
+
+  const filteredCards = useMemo(() => {
+    if (!welcomeSearchQuery) {
+      return enrichedCards;
+    }
+
+    const queryTokens = welcomeSearchQuery.split(/\s+/).filter(Boolean);
+    return enrichedCards.filter((card) => {
+      const haystack = [
+        card.title,
+        card.subtitle,
+        card.ownerLabel,
+        card.badge,
+        card.audienceLabel,
+        card.audienceMeta,
+        card.surfaceReason,
+        card.engagementLabel,
+        card.distanceLabel,
+        card.tags.join(" "),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return queryTokens.every((token) => haystack.includes(token));
+    });
+  }, [enrichedCards, welcomeSearchQuery]);
+
   const resolvedVisibleFeedCount =
-    enrichedCards.length > 0 ? Math.min(enrichedCards.length, Math.max(FEED_PAGE_SIZE, visibleFeedCount)) : 0;
+    filteredCards.length > 0 ? Math.min(filteredCards.length, Math.max(FEED_PAGE_SIZE, visibleFeedCount)) : 0;
 
   const visibleCards = useMemo(
-    () => enrichedCards.slice(0, resolvedVisibleFeedCount),
-    [enrichedCards, resolvedVisibleFeedCount]
+    () => filteredCards.slice(0, resolvedVisibleFeedCount),
+    [filteredCards, resolvedVisibleFeedCount]
   );
 
-  const hasMoreFeedCards = visibleCards.length < enrichedCards.length;
+  const hasMoreFeedCards = visibleCards.length < filteredCards.length;
+  const isSearchActive = welcomeSearchQuery.length > 0;
 
   useEffect(() => {
     if (!viewerId || !viewerProfile) {
@@ -495,23 +527,16 @@ export default function WelcomePage() {
   );
 
   const handleWelcomePromptSubmit = useCallback(() => {
-    const defaultHref =
-      welcomeReadinessSummary?.actions[0]?.href || (viewerIsProvider ? "/dashboard/provider/add-service" : "/dashboard?compose=1");
-    const resolution = resolveWelcomeCommand(welcomePromptValue, {
-      defaultHref,
-      providerDefaultHref: "/dashboard/provider/add-service",
-      isProvider: viewerIsProvider,
-    });
-
-    if (resolution.kind === "refresh") {
+    const normalizedQuery = welcomePromptValue.trim().toLowerCase();
+    if (/(refresh|reload|sync|update)/.test(normalizedQuery)) {
       if (viewerId) {
         void loadConnectedFeed(viewerId, { soft: false });
       }
       return;
     }
 
-    router.push(resolution.href);
-  }, [loadConnectedFeed, router, viewerId, viewerIsProvider, welcomePromptValue, welcomeReadinessSummary]);
+    setVisibleFeedCount(FEED_PAGE_SIZE);
+  }, [loadConnectedFeed, viewerId, welcomePromptValue]);
 
   const welcomePromptConfig = useMemo<DashboardPromptConfig>(() => {
     const defaultHref =
@@ -519,7 +544,7 @@ export default function WelcomePage() {
     const primaryAction = welcomeReadinessSummary?.actions[0];
 
     return {
-      placeholder: "Ask what to do next in ServiQ",
+      placeholder: "Search the live feed by title, owner, category, or location",
       value: welcomePromptValue,
       onValueChange: setWelcomePromptValue,
       onSubmit: handleWelcomePromptSubmit,
@@ -1199,13 +1224,13 @@ export default function WelcomePage() {
 
   useEffect(() => {
     setVisibleFeedCount((current) => {
-      if (enrichedCards.length === 0) {
+      if (filteredCards.length === 0) {
         return FEED_PAGE_SIZE;
       }
 
-      return Math.min(Math.max(current, FEED_PAGE_SIZE), enrichedCards.length);
+      return Math.min(Math.max(current, FEED_PAGE_SIZE), filteredCards.length);
     });
-  }, [enrichedCards.length]);
+  }, [filteredCards.length]);
 
   useEffect(() => {
     if (isFeedLoading || !hasMoreFeedCards) {
@@ -1225,7 +1250,7 @@ export default function WelcomePage() {
 
         setLoadingMoreFeed(true);
         loadMoreTimerRef.current = window.setTimeout(() => {
-          setVisibleFeedCount((current) => Math.min(current + FEED_PAGE_SIZE, enrichedCards.length));
+          setVisibleFeedCount((current) => Math.min(current + FEED_PAGE_SIZE, filteredCards.length));
           setLoadingMoreFeed(false);
           loadMoreTimerRef.current = null;
         }, 180);
@@ -1242,7 +1267,7 @@ export default function WelcomePage() {
         loadMoreTimerRef.current = null;
       }
     };
-  }, [enrichedCards.length, hasMoreFeedCards, isFeedLoading]);
+  }, [filteredCards.length, hasMoreFeedCards, isFeedLoading]);
 
   return (
     <>
@@ -1381,7 +1406,35 @@ export default function WelcomePage() {
                     </div>
                   ))}
                 </div>
-              ) : enrichedCards.length === 0 ? (
+              ) : isSearchActive && filteredCards.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                  <h4 className="text-base font-semibold text-slate-900">No live cards match your search</h4>
+                  <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Try a different title, category, location, or owner name. The live feed keeps filtering as you type.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWelcomePromptValue("")}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                    >
+                      Clear search
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (viewerId) {
+                          void loadConnectedFeed(viewerId, { soft: false });
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
+                    >
+                      <Loader2 size={14} />
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+              ) : filteredCards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
                   <h4 className="text-base font-semibold text-slate-900">
                     {feedEmptyReason === "no_connections"

@@ -142,8 +142,8 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
 
   if (helpRequestEntityTypes.has(entityType)) {
     return {
-      ctaLabel: "View matches",
-      href: withQuery("/dashboard", {
+      ctaLabel: "Open task",
+      href: withQuery("/dashboard/tasks", {
         focus: helpRequestId,
         source: "notification",
       }),

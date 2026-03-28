@@ -135,6 +135,7 @@ export default function FeedGrid({
                 decline: isPrimaryBusy(item, "decline"),
                 send_quote: isPrimaryBusy(item, "send_quote"),
                 view_profile: false,
+                discard: isPrimaryBusy(item, "discard"),
                 save: isSaveBusy(item),
                 share: isShareBusy(item),
               }}
