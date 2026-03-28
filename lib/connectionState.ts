@@ -259,6 +259,13 @@ export const getConnectionActionDescriptors = (
         disabled: true,
         tone: "status",
       },
+      {
+        key: "cancel",
+        label: "Cancel request",
+        pendingLabel: "Cancelling...",
+        disabled: busy,
+        tone: "danger",
+      },
     ];
   }
 

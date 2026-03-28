@@ -43,34 +43,29 @@ export const resolveMarketplaceCardActionModel = (
   const isClosed = isClosedMarketplaceStatus(item.status);
   const helpRequestItem = !!item.helpRequestId;
   const normalizedStatus = (item.status || "").trim().toLowerCase();
-  const isOpenLike = !normalizedStatus || normalizedStatus === "open" || normalizedStatus === "new_lead";
-  const acceptedByOther = !isOpenLike && !!item.acceptedProviderId && item.acceptedProviderId !== viewerId;
-  const acceptedByMe = !isOpenLike && !!viewerId && item.acceptedProviderId === viewerId;
 
   const acceptButton = (() => {
-    if (!helpRequestItem) return null;
-    if (isOwnListing) return buildButton("accept", "Accept", "status", true);
-    if (isClosed) return buildButton("accept", "Accept", "status", true);
-    if (acceptedByMe) return buildButton("accept", "Accept", "status", true);
-    if (acceptedByOther) return buildButton("accept", "Accept", "status", true);
+    if (!helpRequestItem) return buildButton("accept", "No Task", "status", true);
+    if (normalizedStatus === "accepted") return buildButton("decline", "Decline", "destructive", false);
+    if (isOwnListing) return buildButton("accept", "No Task", "status", true);
+    if (isClosed) return buildButton("accept", "Closed", "status", true);
+    if (item.acceptedProviderId && item.acceptedProviderId !== viewerId) return buildButton("accept", "Taken", "status", true);
     return buildButton("accept", "Accept", "success", false);
   })();
 
   const quoteButton = (() => {
-    if (isOwnListing) return null;
-    if (isClosed) return buildButton("send_quote", "Show Interest", "status", true);
-    if (helpRequestItem && acceptedByOther) return buildButton("send_quote", "Show Interest", "primary", false);
-    if (helpRequestItem && acceptedByMe) return buildButton("send_quote", "Show Interest", "primary", false);
-    return buildButton("send_quote", "Show Interest", "primary", false);
+    if (isOwnListing) return buildButton("send_quote", "Your Listing", "status", true);
+    if (isClosed) return buildButton("send_quote", "Send Quote", "status", true);
+    return buildButton("send_quote", "Send Quote", "primary", false);
   })();
 
-  const discardButton = isOwnListing ? buildButton("discard", "Discard", "destructive", false) : null;
+  const discardButton = helpRequestItem && isOwnListing ? buildButton("discard", "Discard", "destructive", false) : null;
 
   const buttons: MarketplaceCardActionModel["buttons"] = [];
   if (acceptButton) buttons.push(acceptButton);
   if (quoteButton) buttons.push(quoteButton);
-  if (discardButton) buttons.push(discardButton);
   buttons.push(buildButton("view_profile", "View Profile", "secondary", false));
+  if (discardButton) buttons.push(discardButton);
 
   return {
     buttons,

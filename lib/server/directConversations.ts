@@ -21,6 +21,21 @@ const normalizeConversationIds = (rows: ConversationParticipantRow[] | null | un
 
 const buildDirectConversationKey = (userA: string, userB: string) => [userA, userB].sort().join(":");
 
+const tryRpcGetOrCreateDirectConversationId = async (db: SupabaseClient, targetUserId: string) => {
+  const { data, error } = await db.rpc("get_or_create_direct_conversation", {
+    target_user_id: targetUserId,
+  });
+
+  if (error) {
+    if (isMissingDirectConversationRpcError(error.message || "")) {
+      return null;
+    }
+    throw new Error(error.message);
+  }
+
+  return typeof data === "string" && data.trim().length > 0 ? data.trim() : null;
+};
+
 const findExistingDirectConversationId = async (
   db: SupabaseClient,
   viewerId: string,
@@ -145,7 +160,14 @@ export const getOrCreateDirectConversationIdForUsers = async (
     throw new Error("Cannot create a direct conversation with yourself.");
   }
 
-  const existingConversationId = await findExistingDirectConversationId(db, viewerId, recipientId);
+  const rpcClient = adminDb || db;
+  const rpcConversationId = await tryRpcGetOrCreateDirectConversationId(rpcClient, recipientId);
+  if (rpcConversationId) {
+    return rpcConversationId;
+  }
+
+  const readClient = adminDb || db;
+  const existingConversationId = await findExistingDirectConversationId(readClient, viewerId, recipientId);
   if (existingConversationId) {
     await ensureConversationParticipants(adminDb || db, existingConversationId, viewerId, recipientId);
     return existingConversationId;
