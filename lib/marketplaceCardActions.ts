@@ -42,8 +42,10 @@ export const resolveMarketplaceCardActionModel = (
   const isOwnListing = !!viewerId && item.providerId === viewerId;
   const isClosed = isClosedMarketplaceStatus(item.status);
   const helpRequestItem = !!item.helpRequestId;
-  const acceptedByOther = !!item.acceptedProviderId && item.acceptedProviderId !== viewerId;
-  const acceptedByMe = !!viewerId && item.acceptedProviderId === viewerId;
+  const normalizedStatus = (item.status || "").trim().toLowerCase();
+  const isOpenLike = !normalizedStatus || normalizedStatus === "open" || normalizedStatus === "new_lead";
+  const acceptedByOther = !isOpenLike && !!item.acceptedProviderId && item.acceptedProviderId !== viewerId;
+  const acceptedByMe = !isOpenLike && !!viewerId && item.acceptedProviderId === viewerId;
 
   const acceptButton = (() => {
     if (!helpRequestItem) return null;

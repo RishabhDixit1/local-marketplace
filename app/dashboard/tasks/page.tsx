@@ -30,14 +30,17 @@ import {
   MapPin,
   MessageCircle,
   Package,
+  Phone,
   RefreshCw,
   Repeat2,
   Search,
   Share2,
   Sparkles,
+  Star,
   TrendingUp,
   Wifi,
   WifiOff,
+  X,
 } from "lucide-react";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -81,11 +84,11 @@ import {
   type TaskStatus,
 } from "@/lib/taskOperations";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { inferProfileNameFromUser } from "@/lib/profile/utils";
+import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/utils";
 
 type RealtimeState = "connecting" | "live" | "offline";
 type TaskSortOption = "updated" | "newest" | "oldest";
-type TaskViewTab = "saved" | "in-progress" | "completed";
+type TaskViewTab = "saved" | "in-progress" | "completed" | "cancelled";
 type OperationalTask = Task & { source: "order" | "help_request"; helpRequestId: string | null };
 type HelpRequestRow = {
   id: string;
@@ -98,6 +101,7 @@ type HelpRequestRow = {
   budget_max: number | null;
   location_label: string | null;
   status: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string | null;
 };
 type SupportRequestRow = {
@@ -124,6 +128,11 @@ type TaskNotice = {
   kind: "success" | "info";
   message: string;
 } | null;
+type TaskReviewDraft = {
+  rating: number;
+  comment: string;
+  submitted: boolean;
+};
 
 const stageOrder: TaskStatus[] = ["active", "in-progress", "completed", "cancelled"];
 const statusProgressMap: Record<TaskStatus, number> = {
@@ -208,7 +217,8 @@ const getToneClassNames = (tone: TaskEventTone) => {
   };
 };
 
-const getTaskCreatorName = (task: Task) => task.postedBy.name || "Requester";
+const getTaskCreatorName = (task: Task) =>
+  !isTaskPersonPlaceholder(task.postedBy.name) ? task.postedBy.name : "Local Member";
 const getTaskCreatorAvatar = (task: Task) => task.postedBy.image || fallbackAvatar;
 const getTaskCreatorSummary = (task: Task) => (task.type === "posted" ? "Created by you" : "Accepted by you");
 const isTaskPersonPlaceholder = (value: string | null | undefined) =>
@@ -272,9 +282,25 @@ const mapHelpRequestToTask = (params: {
   const requesterProfile = request.requester_id ? profileMap.get(request.requester_id) : null;
   const providerProfile = request.accepted_provider_id ? profileMap.get(request.accepted_provider_id) : null;
   const currentUserProfile = profileMap.get(currentUserId);
-  const currentUserName = getPreferredProfileName(currentUserProfile, "You");
+  const currentUserName = getPreferredProfileName(currentUserProfile, "Local Member");
   const isPostedByMe = request.requester_id === currentUserId;
   const counterpartyId = isPostedByMe ? request.accepted_provider_id : request.requester_id;
+  const metadata = request.metadata && typeof request.metadata === "object" && !Array.isArray(request.metadata) ? request.metadata : null;
+  const rawProgressStage = typeof metadata?.progress_stage === "string" ? metadata.progress_stage.trim().toLowerCase() : "";
+  const progressStage =
+    rawProgressStage === "pending_acceptance" ||
+    rawProgressStage === "accepted" ||
+    rawProgressStage === "travel_started" ||
+    rawProgressStage === "work_started" ||
+    rawProgressStage === "completed"
+      ? rawProgressStage
+      : (request.status || "").toLowerCase() === "completed"
+        ? "completed"
+        : (request.status || "").toLowerCase() === "in_progress"
+          ? "work_started"
+          : (request.status || "").toLowerCase() === "accepted"
+            ? "pending_acceptance"
+          : null;
 
   return {
     id: request.id,
@@ -291,18 +317,18 @@ const mapHelpRequestToTask = (params: {
     location: request.location_label?.trim() || requesterProfile?.location || providerProfile?.location || "Nearby",
     postedBy: {
       id: request.requester_id || "unknown-requester",
-      name: isPostedByMe ? currentUserName : getPreferredProfileName(requesterProfile, "Requester"),
+      name: isPostedByMe ? currentUserName : getPreferredProfileName(requesterProfile, "Local Member"),
       image: isPostedByMe
         ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
-        : buildTaskAvatar(requesterProfile, "Requester", request.requester_id || request.id),
+        : buildTaskAvatar(requesterProfile, "Local Member", request.requester_id || request.id),
     },
     assignedTo: request.accepted_provider_id
       ? {
           id: request.accepted_provider_id,
-          name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Provider"),
+          name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Local Member"),
           image: !isPostedByMe
             ? buildTaskAvatar(profileMap.get(currentUserId), "You", currentUserId)
-            : buildTaskAvatar(providerProfile, "Provider", request.accepted_provider_id),
+            : buildTaskAvatar(providerProfile, "Local Member", request.accepted_provider_id),
         }
       : undefined,
     tags: [
@@ -319,6 +345,7 @@ const mapHelpRequestToTask = (params: {
           ? Number(request.budget_min)
           : null,
     createdAtRaw: request.created_at,
+    progressStage,
   };
 };
 
@@ -371,6 +398,11 @@ const getCanonicalTaskStatus = (task: OperationalTask) => {
   return normalizeOrderStatus(task.rawStatus);
 };
 
+const getTaskProgressStage = (task: OperationalTask) => {
+  if (task.status === "completed" || getCanonicalTaskStatus(task) === "completed") return "completed";
+  return task.progressStage || "pending_acceptance";
+};
+
 const isHistoryTask = (task: OperationalTask) => {
   const canonical = getCanonicalTaskStatus(task);
   return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
@@ -404,6 +436,9 @@ export default function TasksPage() {
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [clockMs, setClockMs] = useState(demoNow);
   const [supportBackendReady, setSupportBackendReady] = useState<boolean | null>(null);
+  const [taskReviews, setTaskReviews] = useState<Record<string, TaskReviewDraft>>({});
+  const [reviewBusyTaskId, setReviewBusyTaskId] = useState<string | null>(null);
+  const [commentComposerTaskId, setCommentComposerTaskId] = useState<string | null>(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const loadTasks = useCallback(async (soft = false) => {
@@ -441,7 +476,7 @@ export default function TasksPage() {
           .limit(120),
         supabase
           .from("help_requests")
-          .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,created_at")
+          .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at")
           .or(`requester_id.eq.${user.id},accepted_provider_id.eq.${user.id}`)
           .order("created_at", { ascending: false })
           .limit(120),
@@ -680,6 +715,60 @@ export default function TasksPage() {
       window.clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId || tasks.length === 0) return;
+
+    const completedTasks = tasks.filter(
+      (task) => task.status === "completed" && typeof task.counterpartyId === "string" && task.counterpartyId.length > 0
+    );
+    const providerIds = Array.from(new Set(completedTasks.map((task) => task.counterpartyId).filter(Boolean)));
+    if (providerIds.length === 0) return;
+
+    let active = true;
+
+    const loadSubmittedReviews = async () => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("provider_id,rating,comment")
+        .eq("reviewer_id", currentUserId)
+        .in("provider_id", providerIds);
+
+      if (error || !active) return;
+
+      const reviewByProviderId = new Map(
+        (((data as Array<{ provider_id: string | null; rating: number | null; comment: string | null }> | null) || [])
+          .filter((row): row is { provider_id: string; rating: number | null; comment: string | null } => !!row?.provider_id)
+          .map((row) => [
+            row.provider_id,
+            {
+              rating: Math.max(1, Math.min(5, Math.round(Number(row.rating || 0) || 0))),
+              comment: row.comment?.trim() || "",
+              submitted: true,
+            },
+          ])) as Array<[string, TaskReviewDraft]>
+      );
+
+      setTaskReviews((current) => {
+        const next = { ...current };
+
+        completedTasks.forEach((task) => {
+          const existingReview = task.counterpartyId ? reviewByProviderId.get(task.counterpartyId) : null;
+          if (existingReview) {
+            next[task.orderId] = existingReview;
+          }
+        });
+
+        return next;
+      });
+    };
+
+    void loadSubmittedReviews();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserId, tasks]);
 
   const queueRealtimeRefresh = useEffectEvent(() => {
     if (refreshTimerRef.current) return;
@@ -962,10 +1051,18 @@ export default function TasksPage() {
       },
       {
         value: "completed" as const,
-        label: "Completed Requests",
+        label: "Completed",
         count: filteredTasks.filter((task) => {
           const canonical = getCanonicalTaskStatus(task);
           return canonical === "completed" || canonical === "closed";
+        }).length,
+      },
+      {
+        value: "cancelled" as const,
+        label: "Cancelled",
+        count: filteredTasks.filter((task) => {
+          const canonical = getCanonicalTaskStatus(task);
+          return canonical === "cancelled" || canonical === "rejected";
         }).length,
       },
     ],
@@ -984,6 +1081,13 @@ export default function TasksPage() {
       return filteredTasks.filter((task) => {
         const canonical = getCanonicalTaskStatus(task);
         return canonical === "completed" || canonical === "closed";
+      });
+    }
+
+    if (selectedTaskView === "cancelled") {
+      return filteredTasks.filter((task) => {
+        const canonical = getCanonicalTaskStatus(task);
+        return canonical === "cancelled" || canonical === "rejected";
       });
     }
 
@@ -1119,6 +1223,91 @@ export default function TasksPage() {
     }
   };
 
+  const submitTaskReview = useCallback(
+    async (task: OperationalTask, draft: TaskReviewDraft) => {
+      if (!currentUserId) {
+        setErrorMessage("Please sign in again before submitting a review.");
+        return false;
+      }
+
+      const providerId = task.counterpartyId;
+      if (!providerId) {
+        setErrorMessage("This task does not have a review target yet.");
+        return false;
+      }
+
+      const existingDraft = taskReviews[task.orderId];
+      if (existingDraft?.submitted) {
+        setNotice({
+          kind: "info",
+          message: `Review already submitted for ${task.title}.`,
+        });
+        return false;
+      }
+
+      const rating = Math.max(1, Math.min(5, Math.round(draft.rating || 0)));
+      const comment = draft.comment.trim();
+
+      setReviewBusyTaskId(task.orderId);
+      setErrorMessage("");
+
+      try {
+        const { data: existingReview, error: existingReviewError } = await supabase
+          .from("reviews")
+          .select("id")
+          .eq("provider_id", providerId)
+          .eq("reviewer_id", currentUserId)
+          .maybeSingle<{ id: string }>();
+
+        if (existingReviewError) {
+          throw existingReviewError;
+        }
+
+        if (existingReview?.id) {
+          const { error: updateError } = await supabase
+            .from("reviews")
+            .update({
+              rating,
+              comment: comment || null,
+            })
+            .eq("id", existingReview.id);
+
+          if (updateError) {
+            throw updateError;
+          }
+        } else {
+          const { error: insertError } = await supabase.from("reviews").insert({
+            provider_id: providerId,
+            reviewer_id: currentUserId,
+            rating,
+            comment: comment || null,
+          });
+
+          if (insertError) {
+            throw insertError;
+          }
+        }
+
+        setTaskReviews((current) => ({
+          ...current,
+          [task.orderId]: { rating, comment, submitted: true },
+        }));
+        setNotice({
+          kind: "success",
+          message: `Review submitted for ${task.title}. It will now appear in that user's Reviews tab.`,
+        });
+        setCommentComposerTaskId(null);
+        return true;
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to submit the review right now.");
+        return false;
+      } finally {
+        setReviewBusyTaskId(null);
+      }
+    },
+    [currentUserId, taskReviews]
+  );
+
   const updateOrderStatus = async (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
     setErrorMessage("");
     setUpdatingOrderId(task.orderId);
@@ -1131,7 +1320,7 @@ export default function TasksPage() {
         }
 
         if (nextStatus === "cancelled" && task.type === "accepted") {
-          const payload = await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "open" }>(
+          const payload = await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "cancelled" }>(
             supabase,
             "/api/needs/reopen",
             {
@@ -1141,7 +1330,7 @@ export default function TasksPage() {
           );
 
           if (!payload.ok) {
-            setErrorMessage("Failed to reopen request.");
+            setErrorMessage("Failed to decline request.");
             return false;
           }
 
@@ -1196,6 +1385,7 @@ export default function TasksPage() {
                 rawStatus: nextStatus,
                 status: normalizeTaskStatus(nextStatus),
                 timeline: timelineFromStatus(nextStatus),
+                progressStage: nextStatus === "completed" ? "completed" : item.progressStage,
               }
             : item
         )
@@ -1205,6 +1395,78 @@ export default function TasksPage() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update this task right now.");
       return false;
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const updateTaskProgressStage = async (
+    task: OperationalTask,
+    stage: "pending_acceptance" | "accepted" | "travel_started" | "work_started"
+  ) => {
+    setErrorMessage("");
+    setUpdatingOrderId(task.orderId);
+
+    try {
+      await fetchAuthedJson<{
+        ok: true;
+        taskId: string;
+        source: "order" | "help_request";
+        stage: "pending_acceptance" | "accepted" | "travel_started" | "work_started";
+      }>(
+        supabase,
+        "/api/tasks/progress",
+        {
+        method: "POST",
+        body: JSON.stringify({
+          taskId: task.orderId,
+          source: task.source,
+          stage,
+        }),
+      });
+
+      setTasks((current) =>
+        current.map((item) =>
+          item.orderId === task.orderId
+            ? {
+                ...item,
+                progressStage: stage,
+                rawStatus:
+                  stage === "work_started"
+                    ? "in_progress"
+                    : stage === "pending_acceptance" || stage === "accepted" || stage === "travel_started"
+                      ? "accepted"
+                      : item.rawStatus,
+                status:
+                  stage === "work_started"
+                    ? normalizeTaskStatus("in_progress")
+                    : normalizeTaskStatus("accepted"),
+                timeline:
+                  stage === "work_started"
+                    ? timelineFromStatus("in_progress")
+                    : timelineFromStatus("accepted"),
+              }
+            : item
+        )
+      );
+
+      setNotice({
+        kind: "success",
+        message:
+          stage === "accepted"
+            ? "Task accepted. The tracker is ready for travel updates."
+            : stage === "travel_started"
+              ? "Travel started. The seeker can now see this in the task tracker."
+              : stage === "work_started"
+                ? "Work started. Both sides are now synced."
+                : "Task tracker reset back to the accepted state.",
+      });
+
+      startTransition(() => {
+        void loadTasks(true);
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update task progress right now.");
     } finally {
       setUpdatingOrderId(null);
     }
@@ -2099,6 +2361,445 @@ export default function TasksPage() {
     );
   };
 
+  const renderInProgressTaskRow = (task: OperationalTask) => {
+    const creatorName = getTaskCreatorName(task);
+    const creatorAvatar = getTaskCreatorAvatar(task);
+    const creatorProfileId = task.postedBy.id || null;
+    const chatBusy = chatLoadingOrderId === task.orderId;
+    const busy = updatingOrderId === task.orderId;
+    const transitions = getTaskTransitions(task);
+    const latestEvent = latestEventByOrderId.get(task.orderId);
+    const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
+    const canonical = getCanonicalTaskStatus(task);
+    const isExpanded = expandedTaskId === task.orderId;
+    const progressStage = getTaskProgressStage(task);
+    const providerCanDriveStages = task.type === "accepted" && (task.source === "order" || task.source === "help_request");
+    const progressSteps = [
+      {
+        key: "accepted",
+        label: "Task accepted",
+        state:
+          progressStage === "pending_acceptance"
+            ? "active"
+            : progressStage === "accepted" || progressStage === "travel_started" || progressStage === "work_started" || progressStage === "completed"
+              ? "done"
+              : "upcoming",
+      },
+      {
+        key: "travel_started",
+        label: "Travel started",
+        state:
+          progressStage === "accepted"
+            ? "active"
+            : progressStage === "travel_started"
+            ? "done"
+            : progressStage === "work_started" || progressStage === "completed"
+              ? "done"
+              : "upcoming",
+      },
+      {
+        key: "work_started",
+        label: "Work started",
+        state:
+          progressStage === "travel_started"
+            ? "active"
+            : progressStage === "work_started"
+              ? "done"
+              : progressStage === "completed"
+                ? "done"
+                : "upcoming",
+      },
+      {
+        key: "completed",
+        label: "Work completed",
+        state: progressStage === "work_started" ? "active" : progressStage === "completed" ? "done" : "upcoming",
+      },
+    ] as const;
+    const primaryTransitions = transitions.filter((status) => status !== "cancelled" && status !== "rejected");
+    const getStepAction = (stepKey: (typeof progressSteps)[number]["key"]) => {
+      if (busy) return null;
+
+      if (stepKey === "accepted" && providerCanDriveStages && progressStage === "pending_acceptance") {
+        return {
+          label: "Accept task",
+          onClick: () => void updateTaskProgressStage(task, "accepted"),
+        };
+      }
+
+      if (stepKey === "travel_started" && providerCanDriveStages && progressStage === "accepted") {
+        return {
+          label: "Start travel",
+          onClick: () => void updateTaskProgressStage(task, "travel_started"),
+        };
+      }
+
+      if (stepKey === "work_started" && providerCanDriveStages && progressStage === "travel_started") {
+        return {
+          label: "Start work",
+          onClick: () => void updateTaskProgressStage(task, "work_started"),
+        };
+      }
+
+      if (stepKey === "completed" && progressStage === "work_started" && primaryTransitions.includes("completed")) {
+        return {
+          label: "Complete task",
+          onClick: () => void confirmAndRefreshTaskStatus(task, "completed"),
+        };
+      }
+
+      return null;
+    };
+
+    return (
+      <article
+        key={task.id}
+        ref={(node) => {
+          taskCardRefs.current.set(task.orderId, node);
+        }}
+        className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-slate-300"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            {creatorProfileId ? (
+              <button
+                type="button"
+                onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
+                aria-label={`Open ${creatorName} profile`}
+                className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+              >
+                <Image
+                  src={creatorAvatar}
+                  alt={creatorName}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                />
+              </button>
+            ) : (
+              <Image
+                src={creatorAvatar}
+                alt={creatorName}
+                width={56}
+                height={56}
+                unoptimized
+                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
+              />
+            )}
+
+            <div className="min-w-0">
+              {creatorProfileId ? (
+                <button
+                  type="button"
+                  onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
+                  aria-label={`Open ${creatorName} profile`}
+                  className="truncate text-left text-sm font-semibold text-slate-900 transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                >
+                  {creatorName}
+                </button>
+              ) : (
+                <p className="text-sm font-semibold text-slate-900">{creatorName}</p>
+              )}
+              <h3 className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{task.title}</h3>
+              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">
+                {task.description || "No additional details"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-end justify-between gap-3 lg:min-w-[8.5rem] lg:flex-col lg:self-stretch">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void startChat(task)}
+                disabled={chatBusy || !task.counterpartyId}
+                title={task.counterpartyId ? "Chat" : "Chat unavailable"}
+                aria-label={task.counterpartyId ? "Chat" : "Chat unavailable"}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
+                disabled
+                title="Phone number is not available for this task yet."
+                aria-label="Call unavailable"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Phone className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void confirmAndRefreshTaskStatus(task, "cancelled")}
+                disabled={busy || !transitions.includes("cancelled")}
+                title={busy ? "Updating..." : "Decline task"}
+                aria-label={busy ? "Updating task" : "Decline task"}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setExpandedTaskId((current) => (current === task.orderId ? null : task.orderId))}
+              aria-label={isExpanded ? "Collapse task status" : "Expand task status"}
+              title={isExpanded ? "Hide tracking" : "Show tracking"}
+              className="inline-flex items-center justify-center p-0 text-slate-500 transition hover:text-[var(--brand-700)]"
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {isExpanded ? (
+          <div className="mt-4 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
+            <div className="space-y-4 rounded-[1.3rem] border border-slate-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {latestEvent?.title || (canonical === "in_progress" ? "Work is in progress" : "Task accepted")}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {latestEvent?.description || "Open this tracker to follow updates and move the task to the next stage."}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs font-semibold text-slate-500">{latestUpdateAt}</span>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {progressSteps.map((step, index) => {
+                    const isDone = step.state === "done";
+                    const isActiveStep = step.state === "active";
+                    const stepAction = getStepAction(step.key);
+
+                    return (
+                      <div key={`${task.orderId}-${step.key}`} className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold transition ${
+                              isDone
+                                ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                                : isActiveStep
+                                  ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                                  : "border-slate-200 bg-white text-slate-400"
+                            }`}
+                          >
+                            {isDone ? "✓" : ""}
+                          </span>
+                          {index < progressSteps.length - 1 ? (
+                            <span className={`mt-1 h-8 w-px ${isDone || isActiveStep ? "bg-emerald-200" : "bg-slate-200"}`} />
+                          ) : null}
+                        </div>
+
+                        <div className="min-w-0 pt-0.5">
+                          <p className={`text-sm font-semibold ${isActiveStep ? "text-slate-950" : "text-slate-700"}`}>{step.label}</p>
+                        </div>
+                        </div>
+
+                        {stepAction ? (
+                          <button
+                            type="button"
+                            onClick={stepAction.onClick}
+                            className="shrink-0 rounded-full bg-[linear-gradient(135deg,#2d7a63,#6ac48f)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-95"
+                          >
+                            {stepAction.label}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+          </div>
+        ) : null}
+      </article>
+    );
+  };
+
+  const renderCompletedTaskRow = (task: OperationalTask) => {
+    const creatorName = getTaskCreatorName(task);
+    const creatorAvatar = getTaskCreatorAvatar(task);
+    const creatorProfileId = task.postedBy.id || null;
+    const latestEvent = latestEventByOrderId.get(task.orderId);
+    const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
+    const reviewDraft = taskReviews[task.orderId] || { rating: 0, comment: "", submitted: false };
+    const rating = reviewDraft.rating;
+    const reviewSubmitted = reviewDraft.submitted;
+    const isReviewExpanded = commentComposerTaskId === task.orderId;
+    const commentDraft = reviewDraft.comment;
+    const reviewBusy = reviewBusyTaskId === task.orderId;
+
+    return (
+      <article
+        key={task.id}
+        ref={(node) => {
+          taskCardRefs.current.set(task.orderId, node);
+        }}
+        className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_-32px_rgba(15,23,42,0.28)] transition hover:border-slate-300"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            {creatorProfileId ? (
+              <button
+                type="button"
+                onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
+                aria-label={`Open ${creatorName} profile`}
+                className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+              >
+                <Image
+                  src={creatorAvatar}
+                  alt={creatorName}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                />
+              </button>
+            ) : (
+              <Image
+                src={creatorAvatar}
+                alt={creatorName}
+                width={56}
+                height={56}
+                unoptimized
+                className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
+              />
+            )}
+
+            <div className="min-w-0">
+              {creatorProfileId ? (
+                <button
+                  type="button"
+                  onClick={() => router.push(buildPublicProfilePath({ id: creatorProfileId, name: creatorName }))}
+                  aria-label={`Open ${creatorName} profile`}
+                  className="truncate text-left text-sm font-semibold text-slate-900 transition hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+                >
+                  {creatorName}
+                </button>
+              ) : (
+                <p className="text-sm font-semibold text-slate-900">{creatorName}</p>
+              )}
+              <p className="mt-0.5 truncate text-[11px] text-slate-400">{task.location}</p>
+              <h3 className="mt-1 break-words text-lg font-semibold leading-tight text-slate-950">{task.title}</h3>
+              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-slate-600">
+                {task.description || "No additional details"}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span>{latestUpdateAt}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-3 lg:min-w-[12rem] lg:self-start lg:justify-end">
+            {reviewSubmitted ? (
+              <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const starValue = index + 1;
+                    const active = starValue <= rating;
+
+                    return (
+                      <span
+                        key={`${task.orderId}-submitted-rating-${starValue}`}
+                        className={active ? "text-amber-400" : "text-slate-300"}
+                      >
+                        <Star className={`h-5 w-5 ${active ? "fill-current" : ""}`} />
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCommentComposerTaskId((current) => (current === task.orderId ? null : task.orderId))}
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-800)]"
+              >
+                {isReviewExpanded ? "Hide review" : "Add review"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {isReviewExpanded && !reviewSubmitted ? (
+          <div className="mt-4 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }, (_, index) => {
+                const starValue = index + 1;
+                const active = starValue <= rating;
+
+                return (
+                  <button
+                    key={`${task.orderId}-draft-rating-${starValue}`}
+                    type="button"
+                    onClick={() =>
+                      setTaskReviews((current) => ({
+                        ...current,
+                        [task.orderId]: {
+                          rating: starValue,
+                          comment: commentDraft,
+                          submitted: false,
+                        },
+                      }))
+                    }
+                    aria-label={`Choose ${starValue} star${starValue === 1 ? "" : "s"} for ${task.title}`}
+                    title={`${starValue} star${starValue === 1 ? "" : "s"}`}
+                    className={`transition ${active ? "text-amber-400" : "text-slate-300 hover:text-amber-300"}`}
+                  >
+                    <Star className={`h-6 w-6 ${active ? "fill-current" : ""}`} />
+                  </button>
+                );
+              })}
+            </div>
+            <textarea
+              value={commentDraft}
+              onChange={(event) =>
+                setTaskReviews((current) => ({
+                  ...current,
+                  [task.orderId]: {
+                    rating,
+                    comment: event.target.value,
+                    submitted: false,
+                  },
+                }))
+              }
+              rows={3}
+              placeholder="Write a quick comment about the completed task"
+              className="mt-3 w-full resize-none rounded-[1rem] border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--brand-500)]/45"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCommentComposerTaskId(null)}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void submitTaskReview(task, {
+                    rating: Math.max(1, rating || 5),
+                    comment: commentDraft,
+                    submitted: false,
+                  })
+                }
+                disabled={reviewBusy}
+                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {reviewBusy ? "Saving..." : "Submit review"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </article>
+    );
+  };
+
   const realtimeMeta = realtimeStateMeta[realtimeState];
   const RealtimeIcon = realtimeMeta.icon;
 
@@ -2197,67 +2898,70 @@ export default function TasksPage() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task workspace</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
+      <div className="space-y-5">
+          <section
+            ref={liveOrdersSectionRef}
+            className="space-y-5 rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5"
+          >
+            <div className="space-y-4 border-b border-slate-200 pb-4">
+              <div className="flex flex-wrap items-end gap-8">
+                {taskTabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setSelectedTaskView(tab.value)}
+                    className={`inline-flex border-b-[3px] pb-4 text-base font-semibold transition ${
+                      selectedTaskView === tab.value
+                        ? "border-[#0a66c2] text-[#0a66c2]"
+                        : "border-transparent text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task workspace</p>
+                  <h2 className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
+                </div>
+
+                <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  {filteredTasks.length} visible
+                </span>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                <label className="flex items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
+                  <Search className="h-4.5 w-4.5 text-slate-400" />
+                  <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by title, order ID, status, person, category, location, or tags"
+                    className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </label>
+
+                <label className="flex items-center gap-2 rounded-[1.2rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Sort</span>
+                  <select value={sortBy} onChange={(event) => setSortBy(event.target.value as TaskSortOption)} className="w-full bg-transparent text-sm font-medium outline-none">
+                    <option value="updated">Recently updated</option>
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                  </select>
+                </label>
+              </div>
             </div>
 
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
-              <BarChart3 className="h-3.5 w-3.5" />
-              {filteredTasks.length} visible
-            </span>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-            <label className="flex items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
-              <Search className="h-4.5 w-4.5 text-slate-400" />
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by title, order ID, status, person, category, location, or tags"
-                className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 rounded-[1.2rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-              <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Sort</span>
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value as TaskSortOption)} className="w-full bg-transparent text-sm font-medium outline-none">
-                <option value="updated">Recently updated</option>
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {taskTabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setSelectedTaskView(tab.value)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  selectedTaskView === tab.value
-                    ? "bg-[var(--brand-900)] text-white shadow-[0_18px_35px_-26px_rgba(15,23,42,0.8)]"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-                }`}
-              >
-                {tab.label} ({tab.count})
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div className="space-y-5">
-          <section ref={liveOrdersSectionRef} className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-950">
                   {selectedTaskView === "saved"
                     ? "Saved requests"
+                    : selectedTaskView === "cancelled"
+                      ? "Cancelled requests"
                     : selectedTaskView === "completed"
                       ? "Completed requests"
                       : "In progress"}
@@ -2265,6 +2969,8 @@ export default function TasksPage() {
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedTaskView === "saved"
                     ? "Open requests that are still waiting for action."
+                    : selectedTaskView === "cancelled"
+                      ? "Requests that were cancelled or declined and are no longer active."
                     : selectedTaskView === "completed"
                       ? "Completed work that has already been closed out."
                       : "Accepted work that is currently active and needs follow-through."}
@@ -2290,9 +2996,15 @@ export default function TasksPage() {
                 </div>
               </div>
             ) : visibleTasks.length > 0 ? (
-              <div className="space-y-3">
+                <div className="space-y-3">
                 {visibleTasks.map((task) =>
-                  renderTaskCardPremium(task, { history: selectedTaskView === "completed" })
+                  selectedTaskView === "in-progress"
+                    ? renderInProgressTaskRow(task)
+                    : selectedTaskView === "completed"
+                      ? renderCompletedTaskRow(task)
+                    : renderTaskCardPremium(task, {
+                        history: selectedTaskView === "completed" || selectedTaskView === "cancelled",
+                      })
                 )}
               </div>
             ) : null}

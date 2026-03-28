@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { RefreshCw, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
-import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
@@ -15,10 +14,8 @@ import FeedMapPanel from "@/app/dashboard/components/posts/FeedMapPanel";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
-import { buildMarketplaceFeedCardId, isUUIDLike, type MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
+import { buildMarketplaceFeedCardId } from "@/lib/marketplaceFeed";
 import type { MarketplacePrimaryActionKind } from "@/lib/marketplaceCardActions";
-import type { ConnectionDecision } from "@/lib/connectionState";
-import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 
 const CreatePostModal = dynamic(
   () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
@@ -106,106 +103,6 @@ export default function MarketplacePage() {
   });
 
   const composerOpen = openPostModal || composeRequested;
-  const {
-    schemaReady: connectionSchemaReady,
-    schemaMessage: connectionSchemaMessage,
-    busyTargetId: busyConnectionTargetId,
-    busyRequestId: busyConnectionRequestId,
-    busyActionKey: busyConnectionActionKey,
-    getConnectionState,
-    sendRequest,
-    respond,
-  } = useConnectionRequests();
-
-  const handleConnect = useCallback(
-    async (targetUserId: string) => {
-      try {
-        if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
-        }
-
-        if (!isUUIDLike(targetUserId)) {
-          throw new Error("This profile cannot accept live connections yet.");
-        }
-
-        if (viewerId === targetUserId) {
-          throw new Error("This is your own profile.");
-        }
-
-        const previousState = getConnectionState(targetUserId);
-        await sendRequest(targetUserId);
-        pushToast(
-          "success",
-          previousState.kind === "incoming_pending" ? "Connection accepted instantly." : "Connection request sent."
-        );
-      } catch (error) {
-        pushToast("error", error instanceof Error ? error.message : "Unable to send connection request.");
-      }
-    },
-    [connectionSchemaMessage, connectionSchemaReady, getConnectionState, pushToast, sendRequest, viewerId]
-  );
-
-  const handleConnectionDecision = useCallback(
-    async (requestId: string, decision: ConnectionDecision) => {
-      try {
-        if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
-        }
-
-        await respond(requestId, decision);
-        pushToast(
-          "success",
-          decision === "accepted"
-            ? "Connection accepted."
-            : decision === "rejected"
-            ? "Connection request declined."
-            : "Connection request cancelled."
-        );
-      } catch (error) {
-        pushToast("error", error instanceof Error ? error.message : "Unable to update connection request.");
-      }
-    },
-    [connectionSchemaMessage, connectionSchemaReady, pushToast, respond]
-  );
-
-  const renderHeaderAction = useCallback(
-    (item: MarketplaceDisplayFeedItem) => {
-      const targetUserId = item.providerId?.trim() || "";
-      if (!targetUserId || !isUUIDLike(targetUserId)) return null;
-
-      const connectionState = getConnectionState(targetUserId);
-      const busy =
-        busyConnectionTargetId === targetUserId ||
-        (connectionState.requestId ? busyConnectionRequestId === connectionState.requestId : false);
-
-      return (
-        <ConnectionActionGroup
-          state={connectionState}
-          busy={busy}
-          busyActionKey={busyConnectionActionKey}
-          onConnect={() => void handleConnect(targetUserId)}
-          onAccept={() =>
-            connectionState.requestId ? void handleConnectionDecision(connectionState.requestId, "accepted") : undefined
-          }
-          onReject={() =>
-            connectionState.requestId ? void handleConnectionDecision(connectionState.requestId, "rejected") : undefined
-          }
-          onCancel={() =>
-            connectionState.requestId ? void handleConnectionDecision(connectionState.requestId, "cancelled") : undefined
-          }
-          size="compact"
-        />
-      );
-    },
-    [
-      busyConnectionActionKey,
-      busyConnectionRequestId,
-      busyConnectionTargetId,
-      getConnectionState,
-      handleConnect,
-      handleConnectionDecision,
-    ]
-  );
 
   const postsPromptConfig = useMemo<DashboardPromptConfig>(
     () => ({
@@ -364,7 +261,6 @@ export default function MarketplacePage() {
           isPrimaryBusy={isPrimaryBusy}
           onPrimaryAction={handlePrimaryAction}
           onSecondaryAction={handleSecondaryAction}
-          renderHeaderAction={renderHeaderAction}
         />
       </div>
 

@@ -20,6 +20,7 @@ import {
   type MarketplaceFeedItem,
 } from "@/lib/marketplaceFeed";
 import { resolveMarketplaceCardActionModel, type MarketplacePrimaryActionKind, type MarketplaceSecondaryActionKind } from "@/lib/marketplaceCardActions";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { toErrorMessage } from "@/lib/runtimeErrors";
 
@@ -461,25 +462,18 @@ export const useFeedActions = ({
           throw new Error("You can only decline requests you created or accepted.");
         }
 
-        const { data, error } = await supabase.rpc("transition_help_request_status", {
-          target_help_request_id: item.helpRequestId,
-          next_status: "cancelled",
+        await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "cancelled" }>(supabase, "/api/needs/reopen", {
+          method: "POST",
+          body: JSON.stringify({ helpRequestId: item.helpRequestId }),
         });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        if (!data) {
-          throw new Error("Unable to decline this request right now.");
-        }
 
         setFeed((current) =>
           current.map((entry) =>
             entry.helpRequestId === item.helpRequestId
               ? {
                   ...entry,
-                  status: "cancelled",
+                  status: "open",
+                  acceptedProviderId: null,
                 }
               : entry
           )

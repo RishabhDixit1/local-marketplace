@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
-import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -27,9 +26,7 @@ import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
 import { getProfileRoleFamily } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
-import { isClosedMarketplaceStatus, isUUIDLike, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
-import type { ConnectionDecision } from "@/lib/connectionState";
-import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
+import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
 import { resolveWelcomeCommand } from "@/lib/welcomePrompt";
@@ -204,16 +201,6 @@ export default function WelcomePage() {
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
-  const {
-    schemaReady: connectionSchemaReady,
-    schemaMessage: connectionSchemaMessage,
-    busyTargetId: busyConnectionTargetId,
-    busyRequestId: busyConnectionRequestId,
-    busyActionKey: busyConnectionActionKey,
-    getConnectionState,
-    sendRequest,
-    respond,
-  } = useConnectionRequests();
   const activeRef = useRef(true);
   const viewerRoleFamily = getProfileRoleFamily(viewerProfile?.role);
   const viewerIsProvider = viewerRoleFamily === "provider";
@@ -744,57 +731,6 @@ export default function WelcomePage() {
       focus: card.focusId,
       type: card.type,
     });
-
-  const handleConnect = useCallback(
-    async (targetUserId: string) => {
-      try {
-        if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
-        }
-
-        if (!isUUIDLike(targetUserId)) {
-          throw new Error("This profile cannot accept live connections yet.");
-        }
-
-        if (viewerId === targetUserId) {
-          throw new Error("This is your own profile.");
-        }
-
-        const previousState = getConnectionState(targetUserId);
-        await sendRequest(targetUserId);
-        pushFeedToast(
-          "success",
-          previousState.kind === "incoming_pending" ? "Connection accepted instantly." : "Connection request sent."
-        );
-      } catch (error) {
-        pushFeedToast("error", error instanceof Error ? error.message : "Unable to send connection request.");
-      }
-    },
-    [connectionSchemaMessage, connectionSchemaReady, getConnectionState, pushFeedToast, sendRequest, viewerId]
-  );
-
-  const handleConnectionDecision = useCallback(
-    async (requestId: string, decision: ConnectionDecision) => {
-      try {
-        if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
-        }
-
-        await respond(requestId, decision);
-        pushFeedToast(
-          "success",
-          decision === "accepted"
-            ? "Connection accepted."
-            : decision === "rejected"
-            ? "Connection request declined."
-            : "Connection request cancelled."
-        );
-      } catch (error) {
-        pushFeedToast("error", error instanceof Error ? error.message : "Unable to update connection request.");
-      }
-    },
-    [connectionSchemaMessage, connectionSchemaReady, pushFeedToast, respond]
-  );
 
   const acceptHelpRequestCard = useCallback(async (card: EnrichedNearbyCard) => {
     if (!viewerId) {
@@ -1543,31 +1479,6 @@ export default function WelcomePage() {
                               {card.isUrgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
                             </div>
                           </div>
-                          {(() => {
-                            const ownerId = card.ownerId;
-                            if (!ownerId || !isUUIDLike(ownerId)) return null;
-
-                            const connectionState = getConnectionState(ownerId);
-                            const requestId = connectionState.requestId;
-
-                            return (
-                              <div className="shrink-0 self-center">
-                                <ConnectionActionGroup
-                                  state={connectionState}
-                                  busy={
-                                    busyConnectionTargetId === ownerId ||
-                                    (requestId ? busyConnectionRequestId === requestId : false)
-                                  }
-                                  busyActionKey={busyConnectionActionKey}
-                                  onConnect={() => void handleConnect(ownerId)}
-                                  onAccept={() => (requestId ? void handleConnectionDecision(requestId, "accepted") : undefined)}
-                                  onReject={() => (requestId ? void handleConnectionDecision(requestId, "rejected") : undefined)}
-                                  onCancel={() => (requestId ? void handleConnectionDecision(requestId, "cancelled") : undefined)}
-                                  size="compact"
-                                />
-                              </div>
-                            );
-                          })()}
                         </header>
 
                         <div className="mt-2.5" data-testid="feed-card-main-image">

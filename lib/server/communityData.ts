@@ -166,10 +166,17 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
 
   const profileCompletion = numberFromRow(row, ["profile_completion_percent"], Number.NaN);
   const avatarUrl = resolveProfileAvatarUrl(stringFromRow(row, ["avatar_url", "avatar", "image_url"], ""));
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : null;
+  const metadataDisplayName = metadata
+    ? stringFromRow(metadata as FlexibleRow, ["full_name", "display_name", "preferred_name", "name", "username", "user_name"], "")
+    : "";
 
   return {
     id,
-    name: stringFromRow(row, ["full_name", "display_name", "name"], "") || null,
+    name: stringFromRow(row, ["full_name", "display_name", "preferred_name", "name", "username", "user_name"], "") || metadataDisplayName || null,
     avatar_url: avatarUrl,
     role: stringFromRow(row, ["role", "account_type"], "") || null,
     bio: stringFromRow(row, ["bio", "about"], "") || null,
@@ -206,10 +213,7 @@ const normalizeService = (row: FlexibleRow, index: number): CommunityServiceReco
     category: stringFromRow(row, ["category", "service_category", "type"], "Service"),
     provider_id: providerId,
     image_url: stringFromRow(row, ["image_url"], "") || null,
-    metadata:
-      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-        ? (row.metadata as Record<string, unknown>)
-        : null,
+    metadata,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -266,6 +270,15 @@ const normalizePost = (row: FlexibleRow, index: number): CommunityPostRecord | n
 const normalizeHelpRequest = (row: FlexibleRow, index: number): CommunityHelpRequestRecord | null => {
   const requesterId = stringFromRow(row, ["requester_id", "user_id", "created_by"], "");
   if (!requesterId) return null;
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : null;
+  const rawStatus = stringFromRow(row, ["status"], "") || null;
+  const status =
+    rawStatus && ["cancelled", "canceled"].includes(rawStatus.toLowerCase()) && isRelistedHelpRequest(metadata)
+      ? "open"
+      : rawStatus;
 
   return {
     id: stringFromRow(row, ["id"], `help-request-${index}`),
@@ -286,11 +299,8 @@ const normalizeHelpRequest = (row: FlexibleRow, index: number): CommunityHelpReq
       const value = numberFromRow(row, ["longitude", "lng", "long"], Number.NaN);
       return Number.isFinite(value) ? value : null;
     })(),
-    status: stringFromRow(row, ["status"], "") || null,
-    metadata:
-      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-        ? (row.metadata as Record<string, unknown>)
-        : null,
+    status,
+    metadata,
     created_at: stringFromRow(row, ["created_at", "createdAt"], "") || null,
   };
 };
@@ -344,6 +354,9 @@ const isVisibleStatus = (statusValue: string | null | undefined) => {
     status
   );
 };
+
+const isRelistedHelpRequest = (metadata: Record<string, unknown> | null | undefined) =>
+  Boolean(metadata && typeof metadata.relist_after_decline === "boolean" && metadata.relist_after_decline);
 
 const isPostVisibleToViewer = (post: CommunityPostRecord, viewerId: string, acceptedPeers: Set<string>) => {
   const ownerId =
@@ -447,7 +460,7 @@ export const loadCommunityFeedSnapshot = async (
   const helpRequests = helpRequestRowsRaw
     .map((row, index) => normalizeHelpRequest(row, index))
     .filter((row): row is CommunityHelpRequestRecord => !!row)
-    .filter((row) => isVisibleStatus(row.status || "open"))
+    .filter((row) => isVisibleStatus(row.status || "open") || isRelistedHelpRequest(row.metadata))
     .filter((row) => !row.accepted_provider_id)
     .filter((row) => {
       const requesterId = row.requester_id || "";
@@ -573,7 +586,7 @@ export const loadCommunityPeopleSnapshot = async (
   const helpRequests = helpRequestRowsRaw
     .map((row, index) => normalizeHelpRequest(row, index))
     .filter((row): row is CommunityHelpRequestRecord => !!row)
-    .filter((row) => isVisibleStatus(row.status || "open"))
+    .filter((row) => isVisibleStatus(row.status || "open") || isRelistedHelpRequest(row.metadata))
     .map((row) => ({
       requester_id: row.requester_id,
       category: row.category,

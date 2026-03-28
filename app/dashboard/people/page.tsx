@@ -616,8 +616,14 @@ const createProviderCards = (params: {
       const hasProviderSignals = servicesCount + productsCount + profileServiceCount > 0;
       const hasProviderRole = isProviderFacingRole(profile.role);
       const hasPlaceholderName = looksLikePlaceholderText(profile.name);
+      const hasCompletedOnboarding = Boolean(profile.onboarding_completed);
+      const hasProfilePresence =
+        Boolean(normalizeText(profile.bio)) ||
+        Boolean(normalizeText(profile.location)) ||
+        Boolean(normalizeText(profile.avatar_url));
+      const hasDiscoverableOnboarding = hasCompletedOnboarding || (profile.profile_completion_percent || 0) >= 60 || hasProfilePresence;
 
-      if (hasPlaceholderName || (!hasProviderSignals && !hasProviderRole)) {
+      if (hasPlaceholderName || (!hasProviderSignals && !hasProviderRole && !hasDiscoverableOnboarding)) {
         return null;
       }
 
@@ -674,7 +680,11 @@ const createProviderCards = (params: {
       const rawRoleLabel = normalizeText(profile.role);
       const roleLabel =
         (rawRoleLabel && !looksLikePlaceholderText(rawRoleLabel) ? rawRoleLabel : "") ||
-        (servicesCount + productsCount > 0 ? "Service provider" : demandCount > 0 ? "Community member" : "ServiQ member");
+        (servicesCount + productsCount > 0
+          ? "Service provider"
+          : hasDiscoverableOnboarding || demandCount > 0
+            ? "Community member"
+            : "ServiQ member");
       const serviceTags = Array.from(serviceTagMap.get(profile.id) || []);
       const productTags = Array.from(productTagMap.get(profile.id) || []);
       const demandTags = Array.from(demandTagMap.get(profile.id) || []);

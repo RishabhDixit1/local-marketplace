@@ -32,6 +32,7 @@ import {
 } from "@/lib/feedCardSavesClient";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import type { PublicProfilePost, PublicProfilePostMedia } from "@/lib/profile/public";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 
 type Props = {
@@ -382,20 +383,18 @@ export default function PublicProfilePostsGrid({
           throw new Error("You can only decline requests you created or accepted.");
         }
 
-        const { data, error } = await supabase.rpc("transition_help_request_status", {
-          target_help_request_id: post.helpRequestId,
-          next_status: "cancelled",
+        await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "cancelled" }>(supabase, "/api/needs/reopen", {
+          method: "POST",
+          body: JSON.stringify({ helpRequestId: post.helpRequestId }),
         });
-
-        if (error) throw new Error(error.message);
-        if (!data) throw new Error("Unable to decline this request right now.");
 
         setItems((current) =>
           current.map((item) =>
             item.helpRequestId === post.helpRequestId
               ? {
                   ...item,
-                  status: "cancelled",
+                  status: "open",
+                  acceptedProviderId: null,
                 }
               : item
           )
@@ -601,8 +600,10 @@ export default function PublicProfilePostsGrid({
           const savingBusy = savingCardIds.has(cardId) || savingCardIds.has(post.id);
           const sharingBusy = sharingCardIds.has(cardId) || sharingCardIds.has(post.id);
           const acceptingBusy = acceptingCardIds.has(cardId) || acceptingCardIds.has(post.id);
-          const acceptedByMe = !!viewerId && post.acceptedProviderId === viewerId;
-          const acceptedByOther = !!post.acceptedProviderId && post.acceptedProviderId !== viewerId;
+          const normalizedPostStatus = (post.status || "").trim().toLowerCase();
+          const isOpenLike = !normalizedPostStatus || normalizedPostStatus === "open" || normalizedPostStatus === "new_lead";
+          const acceptedByMe = !isOpenLike && !!viewerId && post.acceptedProviderId === viewerId;
+          const acceptedByOther = !isOpenLike && !!post.acceptedProviderId && post.acceptedProviderId !== viewerId;
 
           const canDecline = post.helpRequestId && !isClosedStatus(post.status) && (acceptedByMe || (isOwnListing && !!post.acceptedProviderId));
           const acceptDisabled =
