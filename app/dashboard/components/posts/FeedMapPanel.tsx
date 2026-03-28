@@ -58,7 +58,7 @@ export default function FeedMapPanel({
               : { label: "Location standby", className: "border-slate-400/25 bg-slate-500/12 text-slate-200" };
 
   return (
-    <section className="rounded-[2rem] border border-slate-200/80 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
+    <section className="hidden sm:block rounded-[2rem] border border-slate-200/80 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
       <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-800/90 bg-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-5">
           <span
