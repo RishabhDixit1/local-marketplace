@@ -10,6 +10,7 @@ import {
   MapPin,
   Share2,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import type {
@@ -49,6 +50,7 @@ const buttonBusyLabels: Record<MarketplacePrimaryActionKind, string> = {
   decline: "Declining",
   send_quote: "Opening",
   view_profile: "Opening",
+  discard: "Discarding",
 };
 
 const secondaryActionMeta = {
@@ -89,6 +91,7 @@ export default function FeedCard({
 }: FeedCardProps) {
   const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
+  const discardButton = buttons.find((button) => button.kind === "discard");
 
   return (
     <motion.article
@@ -155,6 +158,23 @@ export default function FeedCard({
       <div className="mt-2.5">
         <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
         <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+            {item.category}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
+            {item.priceLabel}
+          </span>
+          <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+              item.urgent
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {item.urgent ? "Urgent" : "Standard"}
+          </span>
+        </div>
       </div>
 
       <div className="mt-3 flex items-center gap-1.5">
@@ -191,6 +211,21 @@ export default function FeedCard({
             }`}
           >
             {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          </button>
+        ) : null}
+
+        {discardButton ? (
+          <button
+            type="button"
+            onClick={() => void onPrimaryAction("discard")}
+            disabled={discardButton.disabled || actionBusyState.discard}
+            aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
+            title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              buttonToneClassNames[discardButton.tone]
+            }`}
+          >
+            {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
           </button>
         ) : null}
 

@@ -17,6 +17,10 @@ export type MarketplaceFeedItem = {
   source: MarketplaceFeedItemSource;
   helpRequestId: string | null;
   canonicalKey?: string;
+  linkedPostId?: string | null;
+  linkedListingId?: string | null;
+  linkedHelpRequestId?: string | null;
+  metadata?: Record<string, unknown> | null;
   providerId: string;
   type: MarketplaceFeedItemType;
   title: string;

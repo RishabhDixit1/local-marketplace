@@ -88,7 +88,7 @@ export default function ProfileHeader({
   const copy = roleCopy[role];
   const heroTitle = fullName.trim() || "Your Profile";
   const memberSinceLabel = formatMemberSince(memberSince);
-  const visibleTags = tags.filter(Boolean).slice(0, 3);
+  const visibleTags = tags.filter(Boolean).slice(0, 2);
   const showVerifiedBadge = verificationStatus === "verified";
   const hasBackgroundImage = Boolean(backgroundImageUrl.trim());
   const roleIcon =
@@ -218,10 +218,12 @@ export default function ProfileHeader({
                 <Star className="h-3 w-3 text-amber-300" />
                 {reviewCount > 0 ? `${averageRating.toFixed(1)} rating` : `${progress}% profile`}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-white/92 backdrop-blur-md">
-                <BriefcaseBusiness className="h-3 w-3" />
-                {activityLabel}
-              </span>
+              {taskCount > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-white/92 backdrop-blur-md">
+                  <BriefcaseBusiness className="h-3 w-3" />
+                  {activityLabel}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import type { MarketplaceFeedItem } from "@/lib/marketplaceFeed";
 import { isClosedMarketplaceStatus } from "@/lib/marketplaceFeed";
 
-export type MarketplacePrimaryActionKind = "accept" | "decline" | "send_quote" | "view_profile";
+export type MarketplacePrimaryActionKind = "accept" | "decline" | "send_quote" | "view_profile" | "discard";
 export type MarketplaceSecondaryActionKind = "save" | "share";
 
 export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status" | "destructive";
@@ -57,16 +57,19 @@ export const resolveMarketplaceCardActionModel = (
   })();
 
   const quoteButton = (() => {
-    if (isOwnListing) return buildButton("send_quote", "Show Interest", "status", true);
+    if (isOwnListing) return null;
     if (isClosed) return buildButton("send_quote", "Show Interest", "status", true);
     if (helpRequestItem && acceptedByOther) return buildButton("send_quote", "Show Interest", "primary", false);
     if (helpRequestItem && acceptedByMe) return buildButton("send_quote", "Show Interest", "primary", false);
     return buildButton("send_quote", "Show Interest", "primary", false);
   })();
 
+  const discardButton = isOwnListing ? buildButton("discard", "Discard", "destructive", false) : null;
+
   const buttons: MarketplaceCardActionModel["buttons"] = [];
   if (acceptButton) buttons.push(acceptButton);
   if (quoteButton) buttons.push(quoteButton);
+  if (discardButton) buttons.push(discardButton);
   buttons.push(buildButton("view_profile", "View Profile", "secondary", false));
 
   return {

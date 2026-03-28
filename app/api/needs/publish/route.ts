@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { PublishNeedRequest, PublishNeedResponse, PublishApiErrorCode } from "@/lib/api/publish";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
-import { insertHelpRequestRow, insertPostRow, linkNeedPublishRows, runImmediateMatching } from "@/lib/server/publishWrites";
+import { insertHelpRequestRow, insertPostRow, runImmediateMatching } from "@/lib/server/publishWrites";
 
 export const runtime = "nodejs";
 
@@ -107,14 +107,6 @@ export async function POST(request: Request) {
       "Failed to publish request.",
       details
     );
-  }
-
-  if (postId && helpRequestId) {
-    await linkNeedPublishRows({
-      admin: dbClient,
-      postId,
-      helpRequestId,
-    });
   }
 
   let matchedCount = 0;

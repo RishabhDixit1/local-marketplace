@@ -34,6 +34,11 @@ type UseFeedActionsParams = {
   pushToast: (kind: ToastKind, message: string) => void;
 };
 
+type DiscardTarget = {
+  table: "posts" | "help_requests" | "service_listings" | "product_catalog";
+  id: string;
+};
+
 export const useFeedActions = ({
   viewerId,
   setViewerId,
@@ -45,6 +50,7 @@ export const useFeedActions = ({
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
   const [savingListingIds, setSavingListingIds] = useState<Set<string>>(new Set());
   const [acceptingListingIds, setAcceptingListingIds] = useState<Set<string>>(new Set());
+  const [discardingListingIds, setDiscardingListingIds] = useState<Set<string>>(new Set());
   const [chatOpeningProviderId, setChatOpeningProviderId] = useState<string | null>(null);
   const [sharingCardId, setSharingCardId] = useState<string | null>(null);
   const [acceptTarget, setAcceptTarget] = useState<MarketplaceDisplayFeedItem | null>(null);
@@ -87,6 +93,41 @@ export const useFeedActions = ({
       image: gallery[0] || item.avatarUrl || null,
       tags: [item.type, item.category, item.verificationStatus],
     };
+  }, []);
+
+  const buildDiscardTargets = useCallback((item: MarketplaceDisplayFeedItem): DiscardTarget[] => {
+    const targets: DiscardTarget[] = [];
+    const pushUnique = (table: DiscardTarget["table"], id: string | null | undefined) => {
+      const trimmed = typeof id === "string" ? id.trim() : "";
+      if (!trimmed || targets.some((target) => target.table === table && target.id === trimmed)) return;
+      targets.push({ table, id: trimmed });
+    };
+
+    if (item.source === "service_listing") {
+      pushUnique("service_listings", item.id);
+    } else if (item.source === "product_listing") {
+      pushUnique("product_catalog", item.id);
+    } else if (item.source === "help_request") {
+      pushUnique("help_requests", item.id);
+    } else {
+      pushUnique("posts", item.id);
+    }
+
+    pushUnique("posts", item.linkedPostId || null);
+    pushUnique("help_requests", item.linkedHelpRequestId || null);
+
+    if (item.linkedListingId) {
+      pushUnique(item.type === "product" ? "product_catalog" : "service_listings", item.linkedListingId);
+    }
+
+    return targets;
+  }, []);
+
+  const deleteFeedRow = useCallback(async (target: DiscardTarget) => {
+    const { error } = await supabase.from(target.table).delete().eq("id", target.id);
+    if (error) {
+      throw new Error(error.message || `Unable to delete ${target.table}.`);
+    }
   }, []);
 
   const loadSavedListings = useCallback(async () => {
@@ -495,6 +536,38 @@ export const useFeedActions = ({
     [ensureViewerId, pushToast, refreshFeed, setFeed]
   );
 
+  const discardListing = useCallback(
+    async (item: MarketplaceDisplayFeedItem) => {
+      const cardId = buildMarketplaceFeedCardId(item);
+      setDiscardingListingIds((current) => new Set(current).add(cardId));
+
+      try {
+        const activeViewerId = await ensureViewerId();
+        if (item.providerId !== activeViewerId) {
+          throw new Error("You can only delete your own post.");
+        }
+
+        const targets = buildDiscardTargets(item);
+        if (!targets.length) {
+          throw new Error("No linked records were found for this post.");
+        }
+
+        await Promise.all(targets.map((target) => deleteFeedRow(target)));
+        pushToast("success", "Post discarded.");
+        void refreshFeed(true);
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to delete this post right now."));
+      } finally {
+        setDiscardingListingIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          return next;
+        });
+      }
+    },
+    [buildDiscardTargets, deleteFeedRow, ensureViewerId, pushToast, refreshFeed]
+  );
+
   const handlePrimaryAction = useCallback(
     async (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
       if (primaryKind === "view_profile") {
@@ -514,9 +587,17 @@ export const useFeedActions = ({
 
       if (primaryKind === "accept") {
         openAcceptDialog(item);
+        return;
+      }
+
+      if (primaryKind === "discard") {
+        if (typeof window !== "undefined" && !window.confirm("Discard this post and remove it from your marketplace feed?")) {
+          return;
+        }
+        await discardListing(item);
       }
     },
-    [declineListing, openAcceptDialog, openListingProfile, openQuoteThread]
+    [declineListing, discardListing, openAcceptDialog, openListingProfile, openQuoteThread]
   );
 
   const handleSecondaryAction = useCallback(
@@ -551,6 +632,7 @@ export const useFeedActions = ({
     isListingBusy,
     savingListingIds,
     acceptingListingIds,
+    discardingListingIds,
     chatOpeningProviderId,
     sharingCardId,
   };

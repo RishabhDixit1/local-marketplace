@@ -578,20 +578,20 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[3000] overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
-      <div className="flex min-h-full items-start justify-center sm:items-center">
+    <div className="fixed inset-0 z-[3000] overflow-y-auto bg-slate-950/70 p-2 backdrop-blur-sm sm:p-4">
+      <div className="flex min-h-full items-end justify-center sm:items-center">
         <motion.div
           initial={{ opacity: 0, y: 10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="my-auto flex w-full max-w-3xl max-h-[calc(100vh-1.5rem)] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(15,23,42,0.55)] sm:max-h-[calc(100vh-2rem)]"
+          className="my-auto flex w-full max-w-3xl max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-[0_35px_120px_-45px_rgba(15,23,42,0.55)] sm:max-h-[calc(100vh-2rem)] sm:rounded-[2rem]"
         >
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-3.5 sm:px-6">
+          <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm sm:px-6">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-[var(--brand-500)]/20 bg-[var(--brand-50)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">
                 <Sparkles className="h-3.5 w-3.5" />
                 ServiQ composer
               </span>
-              <h2 className="mt-2.5 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{intentCopy.heading}</h2>
+              <h2 className="mt-2.5 text-[1.55rem] font-semibold tracking-tight text-slate-950 sm:text-[1.9rem]">{intentCopy.heading}</h2>
               <p className="mt-1 max-w-2xl text-sm text-slate-600">{intentCopy.intro}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -612,8 +612,8 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+          <div className="space-y-3 sm:space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
               {(["need", "service", "product"] as PostType[]).map((option) => (
                 <button
@@ -905,7 +905,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
               </div>
             ) : null}
 
-            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-slate-200 bg-white/95 pt-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-500">Review the details once, then publish. The marketplace feed refreshes automatically after success.</p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={closeModal} disabled={publishing} className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-60">

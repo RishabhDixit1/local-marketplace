@@ -47,9 +47,16 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
       <div className="aspect-[16/9]">
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={current.url} alt={title} className="h-full w-full object-cover" />
+          <img
+            src={current.url}
+            alt={title}
+            loading={safeIndex === 0 ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={safeIndex === 0 ? "high" : "auto"}
+            className="h-full w-full object-cover"
+          />
         ) : current.mimeType.startsWith("video/") ? (
-          <video src={current.url} controls preload="metadata" className="h-full w-full object-cover" />
+          <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("audio/") ? (
           <div className="grid h-full place-items-center bg-slate-900 p-4 text-center">
             <div className="w-full max-w-xs space-y-2">
