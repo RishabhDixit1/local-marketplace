@@ -14,7 +14,7 @@ import FeedMapPanel from "@/app/dashboard/components/posts/FeedMapPanel";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
-import { buildMarketplaceFeedCardId } from "@/lib/marketplaceFeed";
+import { buildMarketplaceFeedCardId, type MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import type { MarketplacePrimaryActionKind } from "@/lib/marketplaceCardActions";
 
 const CreatePostModal = dynamic(
