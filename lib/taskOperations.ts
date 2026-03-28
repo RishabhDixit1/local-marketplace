@@ -84,6 +84,7 @@ export type Task = {
   counterpartyId: string | null;
   amount: number | null;
   createdAtRaw: string | null;
+  progressStage?: "pending_acceptance" | "accepted" | "travel_started" | "work_started" | "completed" | null;
 };
 
 export type TaskEventRow = {
@@ -306,9 +307,24 @@ export const mapOrderToTask = (params: {
   const consumerProfile = order.consumer_id ? profileMap.get(order.consumer_id) : null;
   const providerProfile = order.provider_id ? profileMap.get(order.provider_id) : null;
   const currentUserProfile = profileMap.get(currentUserId);
-  const currentUserName = getPreferredProfileName(currentUserProfile, "You");
+  const currentUserName = getPreferredProfileName(currentUserProfile, "Local Member");
   const currentUserAvatar = resolveProfileAvatarUrl(profileMap.get(currentUserId)?.avatar_url);
   const metadata = order.metadata && typeof order.metadata === "object" ? order.metadata : null;
+  const rawProgressStage = pickString(metadata?.progress_stage)?.toLowerCase() || null;
+  const progressStage =
+    rawProgressStage === "pending_acceptance" ||
+    rawProgressStage === "accepted" ||
+    rawProgressStage === "travel_started" ||
+    rawProgressStage === "work_started" ||
+    rawProgressStage === "completed"
+      ? rawProgressStage
+      : normalizeOrderStatus(order.status) === "completed"
+        ? "completed"
+        : normalizeOrderStatus(order.status) === "in_progress"
+          ? "work_started"
+          : normalizeOrderStatus(order.status) === "accepted"
+            ? "pending_acceptance"
+          : null;
 
   let listingTitle = pickString(metadata?.task_title) || buildTitleFromListingType(listingType);
   let listingDescription = pickString(metadata?.task_description) || "Track order activity and coordinate next steps.";
@@ -365,12 +381,12 @@ export const mapOrderToTask = (params: {
     location: pickString(metadata?.location_label) || counterpartyProfile?.location || providerProfile?.location || consumerProfile?.location || "Nearby",
     postedBy: {
       id: order.consumer_id || "unknown-consumer",
-      name: isPostedByMe ? currentUserName : getPreferredProfileName(consumerProfile, "Customer"),
+      name: isPostedByMe ? currentUserName : getPreferredProfileName(consumerProfile, "Local Member"),
       image: (isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(consumerProfile?.avatar_url)) || fallbackAvatar,
     },
     assignedTo: {
       id: order.provider_id || "unknown-provider",
-      name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Provider"),
+      name: !isPostedByMe ? currentUserName : getPreferredProfileName(providerProfile, "Local Member"),
       image: (!isPostedByMe ? currentUserAvatar : resolveProfileAvatarUrl(providerProfile?.avatar_url)) || fallbackAvatar,
     },
     tags: [
@@ -388,6 +404,7 @@ export const mapOrderToTask = (params: {
     counterpartyId,
     amount: Number.isFinite(Number(order.price)) ? Number(order.price) : null,
     createdAtRaw: order.created_at,
+    progressStage,
   } satisfies Task;
 };
 

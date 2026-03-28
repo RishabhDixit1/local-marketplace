@@ -15,6 +15,7 @@ type HelpRequestRow = {
   budget_max: number | null;
   location_label: string | null;
   status: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string | null;
 };
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await dbClient
       .from("help_requests")
-      .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,created_at")
+      .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at")
       .or(`requester_id.eq.${authResult.auth.userId},accepted_provider_id.eq.${authResult.auth.userId}`)
       .order("created_at", { ascending: false })
       .limit(120);

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await dbClient
     .from("help_requests")
-    .select("id,requester_id,accepted_provider_id,status,title")
+    .select("id,requester_id,accepted_provider_id,status,title,metadata")
     .eq("id", helpRequestId)
     .maybeSingle();
 
@@ -67,11 +67,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const existingMetadata =
+    existing.metadata && typeof existing.metadata === "object" && !Array.isArray(existing.metadata) ? existing.metadata : {};
+
   const { error: updateError } = await dbClient
     .from("help_requests")
     .update({
-      status: "open",
+      status: "cancelled",
       accepted_provider_id: null,
+      metadata: {
+        ...existingMetadata,
+        relist_after_decline: true,
+        progress_stage: "pending_acceptance",
+        last_declined_at: new Date().toISOString(),
+        last_declined_provider_id: acceptedProviderId || null,
+      },
       updated_at: new Date().toISOString(),
     })
     .eq("id", helpRequestId);
@@ -91,5 +101,5 @@ export async function POST(request: Request) {
       .eq("provider_id", acceptedProviderId);
   }
 
-  return NextResponse.json({ ok: true, helpRequestId, status: "open" });
+  return NextResponse.json({ ok: true, helpRequestId, status: "cancelled" });
 }
