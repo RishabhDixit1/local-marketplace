@@ -423,17 +423,19 @@ const buildTaskReviewMetadata = (task: OperationalTask) => ({
 const getReviewTaskIdFromMetadata = (metadata: unknown) => {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
 
-  const taskId = metadata.task_id;
+  const m = metadata as Record<string, unknown>;
+
+  const taskId = m.task_id;
   if (typeof taskId === "string" && taskId.trim()) {
     return taskId.trim();
   }
 
-  const orderId = metadata.order_id;
+  const orderId = m.order_id;
   if (typeof orderId === "string" && orderId.trim()) {
     return orderId.trim();
   }
 
-  const helpRequestId = metadata.help_request_id;
+  const helpRequestId = m.help_request_id;
   if (typeof helpRequestId === "string" && helpRequestId.trim()) {
     return helpRequestId.trim();
   }
@@ -781,11 +783,11 @@ export default function TasksPage() {
               {
                 rating: Math.max(1, Math.min(5, Math.round(Number(row.rating || 0) || 0))),
                 comment: row.comment?.trim() || "",
-                submitted: true,
+                submitted: true as boolean,
               },
-            ] as const;
+            ] as [string, TaskReviewDraft];
           })
-          .filter((entry): entry is readonly [string, TaskReviewDraft] => Boolean(entry))) as Array<[string, TaskReviewDraft]>
+          .filter((entry): entry is [string, TaskReviewDraft] => Boolean(entry))) as Array<[string, TaskReviewDraft]>
       );
 
       setTaskReviews((current) => {
