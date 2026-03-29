@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Star,
   Truck,
+  UserCheck,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -61,6 +62,11 @@ const kindStyles: Record<
     icon: ShieldCheck,
     iconClassName: "text-emerald-600",
     badgeClassName: "bg-emerald-100 text-emerald-700",
+  },
+  connection: {
+    icon: UserCheck,
+    iconClassName: "text-rose-600",
+    badgeClassName: "bg-rose-100 text-rose-700",
   },
 };
 

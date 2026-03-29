@@ -2959,19 +2959,19 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
             {compactStats.map((stat) => (
-              <div key={stat.label} className="rounded-[1.1rem] border border-slate-200 bg-white/92 px-3.5 py-3">
-                <div className="flex items-center justify-between gap-3">
+              <div key={stat.label} className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{stat.label}</p>
-                    <p className="mt-1 text-lg font-semibold text-slate-950">{stat.value}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">{stat.label}</p>
+                    <p className="mt-0.5 text-base font-bold text-slate-950 leading-tight">{stat.value}</p>
                   </div>
-                  <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${stat.tone}`}>
-                    <stat.icon className="h-4 w-4" />
+                  <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${stat.tone}`}>
+                    <stat.icon className="h-3.5 w-3.5" />
                   </span>
                 </div>
-                <p className="mt-1.5 text-sm text-slate-500">{stat.helper}</p>
+                <p className="mt-1 text-[11px] text-slate-500 leading-tight">{stat.helper}</p>
               </div>
             ))}
           </div>

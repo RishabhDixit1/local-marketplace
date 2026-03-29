@@ -866,14 +866,17 @@ export default function PeoplePage() {
   const [savedCardIds, setSavedCardIds] = useState<Set<string>>(new Set());
   const [savingCardIds, setSavingCardIds] = useState<Set<string>>(new Set());
   const [sharingCardIds, setSharingCardIds] = useState<Set<string>>(new Set());
+  const [viewerCompletionPercent, setViewerCompletionPercent] = useState<number | null>(null);
+  const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
 
-  const [deepLinkContext] = useState<{ providerId: string | null }>(() => {
+  const [deepLinkContext] = useState<{ providerId: string | null; panel: string | null }>(() => {
     if (typeof window === "undefined") {
-      return { providerId: null };
+      return { providerId: null, panel: null };
     }
     const params = new URLSearchParams(window.location.search);
     return {
       providerId: params.get("provider"),
+      panel: params.get("panel"),
     };
   });
 
@@ -954,6 +957,10 @@ export default function PeoplePage() {
         const viewerProfile = ((peoplePayload.profiles || []) as ProfileRow[]).find(
           (profile) => profile.id === viewerId
         );
+        if (viewerProfile) {
+          const pct = viewerProfile.profile_completion_percent ?? calculateProfileCompletion(viewerProfile);
+          setViewerCompletionPercent(pct);
+        }
         const browserCoordinates = await browserCoordinatesPromise;
         const viewerProfileCoordinates = viewerProfile
           ? resolveCoordinates({
@@ -1753,11 +1760,45 @@ export default function PeoplePage() {
         providerPreviewMap={providerPreviewMap}
         busyRequestId={busyConnectionRequestId}
         busyActionKey={busyActionKey}
+        initialPanel={deepLinkContext.panel === "incoming" ? "incoming" : deepLinkContext.panel === "outgoing" ? "outgoing" : deepLinkContext.panel === "connected" ? "connected" : null}
         onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
         onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
         onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
         onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
       />
+
+      {viewerCompletionPercent !== null && viewerCompletionPercent < 70 && !profileBannerDismissed && (
+        <div className="rounded-[1.6rem] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-3 shadow-sm sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-indigo-900">Your profile is {viewerCompletionPercent}% complete</p>
+                <p className="mt-0.5 text-xs text-slate-600">A complete profile gets 3× more connection requests and quote inquiries.</p>
+                <div className="mt-2 h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-indigo-200">
+                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all" style={{ width: `${viewerCompletionPercent}%` }} />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/profile")}
+                className="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
+              >
+                Complete profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfileBannerDismissed(true)}
+                className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm sm:px-5">

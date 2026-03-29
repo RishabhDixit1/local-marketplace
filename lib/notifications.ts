@@ -1,4 +1,4 @@
-export type NotificationKind = "order" | "message" | "review" | "system";
+export type NotificationKind = "order" | "message" | "review" | "system" | "connection";
 
 export type NotificationRow = {
   id: string;
@@ -101,6 +101,19 @@ export const getDemoNotifications = (userId: string): NotificationRow[] => {
       cleared_at: null,
       created_at: isoMinutesAgo(24),
     },
+    {
+      id: "demo-notification-connection",
+      user_id: ownerId,
+      kind: "connection",
+      title: "New connection request",
+      message: "Someone nearby wants to connect. Accept or decline in the People tab.",
+      entity_type: "connection_request",
+      entity_id: null,
+      metadata: { source: "demo" },
+      read_at: null,
+      cleared_at: null,
+      created_at: isoMinutesAgo(15),
+    },
   ];
 };
 
@@ -150,10 +163,10 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
     };
   }
 
-  if (connectionEntityTypes.has(entityType)) {
+  if (connectionEntityTypes.has(entityType) || notification.kind === "connection") {
     return {
-      ctaLabel: "Open people",
-      href: withQuery("/dashboard/people", { provider: requesterId, source: "notification" }),
+      ctaLabel: "View request",
+      href: withQuery("/dashboard/people", { panel: "incoming", source: "notification" }),
     };
   }
 
