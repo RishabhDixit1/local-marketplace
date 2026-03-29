@@ -42,7 +42,6 @@ import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
-import ConnectionsPanel from "./components/ConnectionsPanel";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
 import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
@@ -1734,14 +1733,6 @@ export default function PeoplePage() {
       })),
     [visibleProviders]
   );
-  const connectionsPanelProps = {
-    incoming: connectionBuckets.incoming,
-    providerPreviewMap,
-    busyRequestId: busyConnectionRequestId,
-    busyActionKey,
-    onAccept: (requestId: string) => void handleConnectionDecision(requestId, "accepted"),
-    onDecline: (requestId: string) => void handleConnectionDecision(requestId, "rejected"),
-  };
   return (
     <div
       className="mx-auto w-full max-w-[1540px] space-y-4 overflow-x-clip pb-2 sm:space-y-5"
@@ -1757,8 +1748,6 @@ export default function PeoplePage() {
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
       />
-
-      <ConnectionsPanel {...connectionsPanelProps} />
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm sm:px-5">
