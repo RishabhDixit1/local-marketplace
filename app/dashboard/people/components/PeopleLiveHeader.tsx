@@ -32,6 +32,7 @@ type Props = {
   providerPreviewMap: Map<string, ProviderPreview>;
   busyRequestId: string | null;
   busyActionKey: ConnectionActionKey | null;
+  initialPanel?: ActivePanel;
   onAccept: (requestId: string) => void;
   onDecline: (requestId: string) => void;
   onCancel: (requestId: string) => void;
@@ -173,12 +174,13 @@ export default function PeopleLiveHeader({
   providerPreviewMap,
   busyRequestId,
   busyActionKey,
+  initialPanel = null,
   onAccept,
   onDecline,
   onCancel,
   onDisconnect,
 }: Props) {
-  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(initialPanel);
 
   const toggle = (panel: ActivePanel) =>
     setActivePanel((prev) => (prev === panel ? null : panel));

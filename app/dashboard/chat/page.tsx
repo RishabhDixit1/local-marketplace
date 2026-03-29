@@ -1199,7 +1199,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative h-[calc(100vh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]">
+    <div className="relative h-[calc(100dvh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]">
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1512,16 +1512,21 @@ export default function ChatPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {activeQuoteTarget && (
-                      <button
+                    <button
                         type="button"
-                        onClick={() => setQuotePanelDismissed((current) => !current)}
+                        onClick={() => {
+                          if (activeQuoteTarget) {
+                            setQuotePanelDismissed((current) => !current);
+                          } else {
+                            setQuoteTarget({ orderId: null, helpRequestId: null, conversationId: selectedChat });
+                            setQuotePanelDismissed(false);
+                          }
+                        }}
                         className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
                       >
                         <Receipt className="h-3.5 w-3.5" />
-                        {showQuotePanel ? "Hide Quote Flow" : "Show Quote Flow"}
+                        {showQuotePanel ? "Hide Quote" : "Send Quote"}
                       </button>
-                    )}
                     {selectedConversation?.otherUserId && (
                       <button
                         type="button"
@@ -1710,7 +1715,7 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <footer className="border-t border-slate-200/80 bg-white px-4 py-4 sm:px-6">
+              <footer className="border-t border-slate-200/80 bg-white px-4 pb-[env(safe-area-inset-bottom,0px)] pt-4 sm:px-6">
                 <div className="rounded-2xl border border-slate-300 bg-slate-50 p-2">
                   <div className="flex items-end gap-2">
                     <textarea
