@@ -1747,6 +1747,12 @@ export default function PeoplePage() {
         outgoingCount={connectionBuckets.outgoing.length}
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
+        incoming={connectionBuckets.incoming}
+        providerPreviewMap={providerPreviewMap}
+        busyRequestId={busyConnectionRequestId}
+        busyActionKey={busyActionKey}
+        onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
+        onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
       />
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
