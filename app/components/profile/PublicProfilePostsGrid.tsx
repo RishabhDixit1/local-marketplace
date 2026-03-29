@@ -325,17 +325,10 @@ export default function PublicProfilePostsGrid({
           throw new Error("You cannot accept your own task.");
         }
 
-        const { data, error } = await supabase.rpc("accept_help_request", {
-          target_help_request_id: post.helpRequestId,
+        await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+          method: "POST",
+          body: JSON.stringify({ helpRequestId: post.helpRequestId }),
         });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        if (!data) {
-          throw new Error("Request already accepted or unavailable.");
-        }
 
         setItems((current) =>
           current.map((item) =>

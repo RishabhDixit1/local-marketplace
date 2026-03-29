@@ -785,17 +785,10 @@ export default function WelcomePage() {
       return true;
     }
 
-    const { data, error } = await supabase.rpc("accept_help_request", {
-      target_help_request_id: card.helpRequestId,
+    await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+      method: "POST",
+      body: JSON.stringify({ helpRequestId: card.helpRequestId }),
     });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    if (!data) {
-      throw new Error("Request already accepted or unavailable.");
-    }
 
     setNearbyCards((current) => current.filter((item) => item.id !== card.id));
 

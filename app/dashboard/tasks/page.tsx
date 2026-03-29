@@ -48,6 +48,13 @@ import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import {
+  buildCancelledTrackerSteps,
+  canCancelTrackedTaskAtStage,
+  describeCancelledTrackerStage,
+  normalizeHelpRequestProgressStage,
+  type HelpRequestProgressStage,
+} from "@/lib/helpRequestProgress";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
@@ -256,7 +263,6 @@ const realtimeStateMeta: Record<
 
 const isMissingSupabaseRelation = (message: string) =>
   /does not exist|schema cache|could not find the table/i.test(message);
-const isRecursivePolicyError = (message: string) => /infinite recursion detected in policy/i.test(message);
 const isMissingColumnError = (message: string, column: string) =>
   new RegExp(`column\\s+[^\\s]+\\.${column}\\s+does not exist`, "i").test(message);
 
@@ -286,21 +292,7 @@ const mapHelpRequestToTask = (params: {
   const isPostedByMe = request.requester_id === currentUserId;
   const counterpartyId = isPostedByMe ? request.accepted_provider_id : request.requester_id;
   const metadata = request.metadata && typeof request.metadata === "object" && !Array.isArray(request.metadata) ? request.metadata : null;
-  const rawProgressStage = typeof metadata?.progress_stage === "string" ? metadata.progress_stage.trim().toLowerCase() : "";
-  const progressStage =
-    rawProgressStage === "pending_acceptance" ||
-    rawProgressStage === "accepted" ||
-    rawProgressStage === "travel_started" ||
-    rawProgressStage === "work_started" ||
-    rawProgressStage === "completed"
-      ? rawProgressStage
-      : (request.status || "").toLowerCase() === "completed"
-        ? "completed"
-        : (request.status || "").toLowerCase() === "in_progress"
-          ? "work_started"
-          : (request.status || "").toLowerCase() === "accepted"
-            ? "pending_acceptance"
-          : null;
+  const progressStage = normalizeHelpRequestProgressStage(metadata?.progress_stage, request.status);
 
   return {
     id: request.id,
@@ -398,14 +390,67 @@ const getCanonicalTaskStatus = (task: OperationalTask) => {
   return normalizeOrderStatus(task.rawStatus);
 };
 
-const getTaskProgressStage = (task: OperationalTask) => {
+const getTaskProgressStage = (task: OperationalTask): HelpRequestProgressStage => {
   if (task.status === "completed" || getCanonicalTaskStatus(task) === "completed") return "completed";
-  return task.progressStage || "pending_acceptance";
+  return normalizeHelpRequestProgressStage(task.progressStage, task.rawStatus) || "pending_acceptance";
+};
+
+const canCancelOperationalTask = (task: OperationalTask) => {
+  if (task.source === "help_request") {
+    return canCancelTrackedTaskAtStage(getTaskProgressStage(task));
+  }
+
+  const normalized = normalizeOrderStatus(task.rawStatus);
+  if (normalized === "accepted" || normalized === "in_progress") {
+    return canCancelTrackedTaskAtStage(getTaskProgressStage(task));
+  }
+
+  return true;
+};
+
+const getTaskReviewTargetId = (task: OperationalTask) => {
+  const targetId = typeof task.counterpartyId === "string" ? task.counterpartyId.trim() : "";
+  return targetId || null;
+};
+
+const buildTaskReviewMetadata = (task: OperationalTask) => ({
+  task_id: task.orderId,
+  task_source: task.source,
+  order_id: task.source === "order" ? task.orderId : null,
+  help_request_id: task.source === "help_request" ? task.helpRequestId || task.orderId : task.helpRequestId,
+});
+
+const getReviewTaskIdFromMetadata = (metadata: unknown) => {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "";
+
+  const taskId = metadata.task_id;
+  if (typeof taskId === "string" && taskId.trim()) {
+    return taskId.trim();
+  }
+
+  const orderId = metadata.order_id;
+  if (typeof orderId === "string" && orderId.trim()) {
+    return orderId.trim();
+  }
+
+  const helpRequestId = metadata.help_request_id;
+  if (typeof helpRequestId === "string" && helpRequestId.trim()) {
+    return helpRequestId.trim();
+  }
+
+  return "";
 };
 
 const isHistoryTask = (task: OperationalTask) => {
   const canonical = getCanonicalTaskStatus(task);
   return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
+};
+
+const resolveTaskViewForStatus = (status: CanonicalOrderStatus): TaskViewTab => {
+  if (status === "completed" || status === "closed") return "completed";
+  if (status === "cancelled" || status === "rejected") return "cancelled";
+  if (status === "accepted" || status === "in_progress") return "in-progress";
+  return "saved";
 };
 
 export default function TasksPage() {
@@ -467,19 +512,20 @@ export default function TasksPage() {
 
       setCurrentUserId(user.id);
 
-      const [ordersRes, helpRequestsRes] = await Promise.all([
+      const [ordersRes, helpRequestsPayload] = await Promise.all([
         supabase
           .from("orders")
           .select("*")
           .or(`consumer_id.eq.${user.id},provider_id.eq.${user.id}`)
           .order("created_at", { ascending: false })
           .limit(120),
-        supabase
-          .from("help_requests")
-          .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at")
-          .or(`requester_id.eq.${user.id},accepted_provider_id.eq.${user.id}`)
-          .order("created_at", { ascending: false })
-          .limit(120),
+        fetchAuthedJson<{ ok: true; requests: HelpRequestRow[] } | { ok: false; message?: string }>(
+          supabase,
+          "/api/tasks/help-requests",
+          {
+            method: "GET",
+          }
+        ),
       ]);
 
       if (ordersRes.error) {
@@ -491,26 +537,9 @@ export default function TasksPage() {
         return;
       }
 
-      const helpRequestError =
-        helpRequestsRes.error && !isMissingSupabaseRelation(helpRequestsRes.error.message || "") ? helpRequestsRes.error : null;
       const liveOrders = (ordersRes.data as OrderRow[] | null) || [];
-      let liveHelpRequests = helpRequestError ? [] : ((helpRequestsRes.data as HelpRequestRow[] | null) || []);
-
-      if (helpRequestError && isRecursivePolicyError(helpRequestsRes.error?.message || "")) {
-        const payload = await fetchAuthedJson<
-          { ok: true; requests: HelpRequestRow[] } | { ok: false; message?: string }
-        >(supabase, "/api/tasks/help-requests", {
-          method: "GET",
-        });
-
-        if (!payload.ok) {
-          throw new Error(payload.message || "Help request activity unavailable.");
-        }
-
-        liveHelpRequests = payload.requests || [];
-      }
-      const effectiveHelpRequestError =
-        helpRequestError && !isRecursivePolicyError(helpRequestError.message || "") ? helpRequestError : null;
+      const helpRequestErrorMessage = helpRequestsPayload.ok ? null : helpRequestsPayload.message || "Help request activity unavailable.";
+      let liveHelpRequests = helpRequestsPayload.ok ? helpRequestsPayload.requests || [] : [];
 
       const helpRequestIdsWithOrders = new Set(
         liveOrders.map((order) => order.help_request_id).filter((id): id is string => Boolean(id))
@@ -678,8 +707,8 @@ export default function TasksPage() {
 
       if (eventsRes.error && !isMissingSupabaseRelation(eventsRes.error.message || "")) {
         setErrorMessage(`Task activity feed unavailable: ${eventsRes.error.message}`);
-      } else if (effectiveHelpRequestError) {
-        setErrorMessage(`Help request activity unavailable: ${effectiveHelpRequestError.message}`);
+      } else if (helpRequestErrorMessage) {
+        setErrorMessage(`Help request activity unavailable: ${helpRequestErrorMessage}`);
       } else if (supportError) {
         setErrorMessage(`Support queue unavailable: ${supportError.message}`);
       }
@@ -720,9 +749,9 @@ export default function TasksPage() {
     if (!currentUserId || tasks.length === 0) return;
 
     const completedTasks = tasks.filter(
-      (task) => task.status === "completed" && typeof task.counterpartyId === "string" && task.counterpartyId.length > 0
+      (task) => task.status === "completed" && typeof getTaskReviewTargetId(task) === "string"
     );
-    const providerIds = Array.from(new Set(completedTasks.map((task) => task.counterpartyId).filter(Boolean)));
+    const providerIds = Array.from(new Set(completedTasks.map((task) => getTaskReviewTargetId(task)).filter(Boolean)));
     if (providerIds.length === 0) return;
 
     let active = true;
@@ -730,32 +759,44 @@ export default function TasksPage() {
     const loadSubmittedReviews = async () => {
       const { data, error } = await supabase
         .from("reviews")
-        .select("provider_id,rating,comment")
+        .select("provider_id,rating,comment,metadata")
         .eq("reviewer_id", currentUserId)
         .in("provider_id", providerIds);
 
       if (error || !active) return;
 
-      const reviewByProviderId = new Map(
-        (((data as Array<{ provider_id: string | null; rating: number | null; comment: string | null }> | null) || [])
-          .filter((row): row is { provider_id: string; rating: number | null; comment: string | null } => !!row?.provider_id)
-          .map((row) => [
-            row.provider_id,
-            {
-              rating: Math.max(1, Math.min(5, Math.round(Number(row.rating || 0) || 0))),
-              comment: row.comment?.trim() || "",
-              submitted: true,
-            },
-          ])) as Array<[string, TaskReviewDraft]>
+      const reviewByTaskId = new Map(
+        (((data as Array<{
+          provider_id: string | null;
+          rating: number | null;
+          comment: string | null;
+          metadata: Record<string, unknown> | null;
+        }> | null) || [])
+          .map((row) => {
+            const taskId = getReviewTaskIdFromMetadata(row.metadata);
+            if (!taskId) return null;
+
+            return [
+              taskId,
+              {
+                rating: Math.max(1, Math.min(5, Math.round(Number(row.rating || 0) || 0))),
+                comment: row.comment?.trim() || "",
+                submitted: true,
+              },
+            ] as const;
+          })
+          .filter((entry): entry is readonly [string, TaskReviewDraft] => Boolean(entry))) as Array<[string, TaskReviewDraft]>
       );
 
       setTaskReviews((current) => {
         const next = { ...current };
 
         completedTasks.forEach((task) => {
-          const existingReview = task.counterpartyId ? reviewByProviderId.get(task.counterpartyId) : null;
+          const existingReview = reviewByTaskId.get(task.orderId);
           if (existingReview) {
             next[task.orderId] = existingReview;
+          } else if (next[task.orderId]?.submitted) {
+            delete next[task.orderId];
           }
         });
 
@@ -1206,15 +1247,18 @@ export default function TasksPage() {
   const getTaskTransitions = (task: OperationalTask): CanonicalOrderStatus[] => {
     if (task.source === "help_request") {
       const normalized = (task.rawStatus || "").toLowerCase();
+      const canCancel = canCancelOperationalTask(task);
       if (normalized === "completed" || normalized === "cancelled") return [];
-      if (normalized === "accepted" || normalized === "in_progress") return ["completed", "cancelled"];
+      if (normalized === "accepted" || normalized === "in_progress") {
+        return canCancel ? ["completed", "cancelled"] : ["completed"];
+      }
       return ["cancelled"];
     }
 
     const actor: OrderActorRole = task.type === "posted" ? "consumer" : "provider";
-    return getAllowedTransitions(task.rawStatus, actor).filter(
-      (status) => status !== "closed" && (status !== "quoted" || !canManageQuote(task))
-    );
+    return getAllowedTransitions(task.rawStatus, actor)
+      .filter((status) => status !== "closed" && (status !== "quoted" || !canManageQuote(task)))
+      .filter((status) => status !== "cancelled" || canCancelOperationalTask(task));
   };
 
   const getTaskTransitionLabel = (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
@@ -1271,7 +1315,7 @@ export default function TasksPage() {
         return false;
       }
 
-      const providerId = task.counterpartyId;
+      const providerId = getTaskReviewTargetId(task);
       if (!providerId) {
         setErrorMessage("This task does not have a review target yet.");
         return false;
@@ -1288,6 +1332,7 @@ export default function TasksPage() {
 
       const rating = Math.max(1, Math.min(5, Math.round(draft.rating || 0)));
       const comment = draft.comment.trim();
+      const reviewMetadata = buildTaskReviewMetadata(task);
 
       setReviewBusyTaskId(task.orderId);
       setErrorMessage("");
@@ -1298,6 +1343,7 @@ export default function TasksPage() {
           .select("id")
           .eq("provider_id", providerId)
           .eq("reviewer_id", currentUserId)
+          .contains("metadata", { task_id: task.orderId })
           .maybeSingle<{ id: string }>();
 
         if (existingReviewError) {
@@ -1310,6 +1356,7 @@ export default function TasksPage() {
             .update({
               rating,
               comment: comment || null,
+              metadata: reviewMetadata,
             })
             .eq("id", existingReview.id);
 
@@ -1322,6 +1369,7 @@ export default function TasksPage() {
             reviewer_id: currentUserId,
             rating,
             comment: comment || null,
+            metadata: reviewMetadata,
           });
 
           if (insertError) {
@@ -1374,28 +1422,26 @@ export default function TasksPage() {
             setErrorMessage("Failed to decline request.");
             return false;
           }
+        } else {
+          if (!["accepted", "in_progress", "completed", "cancelled"].includes(nextStatus)) {
+            setErrorMessage("This action is not available for the current request.");
+            return false;
+          }
 
-          return true;
-        }
+          const { data, error } = await supabase.rpc("transition_help_request_status", {
+            target_help_request_id: task.helpRequestId,
+            next_status: nextStatus,
+          });
 
-        if (!["accepted", "in_progress", "completed", "cancelled"].includes(nextStatus)) {
-          setErrorMessage("This action is not available for the current request.");
-          return false;
-        }
+          if (error) {
+            setErrorMessage(error.message || "Failed to update request status.");
+            return false;
+          }
 
-        const { data, error } = await supabase.rpc("transition_help_request_status", {
-          target_help_request_id: task.helpRequestId,
-          next_status: nextStatus,
-        });
-
-        if (error) {
-          setErrorMessage(error.message || "Failed to update request status.");
-          return false;
-        }
-
-        if (!data) {
-          setErrorMessage("Failed to update request status.");
-          return false;
+          if (!data) {
+            setErrorMessage("Failed to update request status.");
+            return false;
+          }
         }
       } else {
         const actor: OrderActorRole = task.type === "posted" ? "consumer" : "provider";
@@ -1700,7 +1746,28 @@ export default function TasksPage() {
     setSearchQuery("");
   }, []);
 
+  const focusTaskInWorkspace = useCallback(
+    (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
+      const nextView = resolveTaskViewForStatus(nextStatus);
+      setSelectedTaskView(nextView);
+      setExpandedTaskId(task.orderId);
+
+      if (nextView === "completed" && getTaskReviewTargetId(task)) {
+        setCommentComposerTaskId(task.orderId);
+        return;
+      }
+
+      setCommentComposerTaskId(null);
+    },
+    []
+  );
+
   const confirmAndRefreshTaskStatus = async (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
+    if (nextStatus === "cancelled" && !canCancelOperationalTask(task)) {
+      setErrorMessage("This task can no longer be cancelled after work has started.");
+      return;
+    }
+
     let confirmationMessage = "";
 
     if (nextStatus === "completed") {
@@ -1718,9 +1785,14 @@ export default function TasksPage() {
     const didUpdate = await updateOrderStatus(task, nextStatus);
     if (!didUpdate) return;
 
+    focusTaskInWorkspace(task, nextStatus);
+
     setNotice({
       kind: "success",
       message:
+        nextStatus === "completed" && getTaskReviewTargetId(task)
+          ? `${task.title} marked completed. You can add a review now.`
+          : 
         nextStatus === "cancelled" && task.type === "accepted" && task.source === "help_request"
           ? `${task.title} was declined and returned to the feed.`
           : nextStatus === "cancelled"
@@ -2280,119 +2352,70 @@ export default function TasksPage() {
 
           {isExpanded ? (
             <div className="rounded-[1.55rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
-              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="space-y-4">
-                  {canManageQuote(task) && quoteEditorTaskId === task.orderId ? (
-                    <QuoteDraftEditor
-                      orderId={task.source === "order" ? task.orderId : null}
-                      helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
-                      onSent={(result) => {
-                        setQuoteEditorTaskId(result.orderId);
-                        setExpandedTaskId(result.orderId);
-                        setNotice({
-                          kind: "success",
-                          message: `${task.title} quoted successfully. The live order is now synced for both sides.`,
-                        });
-                        startTransition(() => {
-                          void loadTasks(true);
-                        });
-                      }}
-                      onSaved={() => {
-                        setNotice({
-                          kind: "info",
-                          message: `Quote draft saved for ${task.title}.`,
-                        });
-                      }}
-                      onOpenChat={() => {
-                        void startChat(task, { quote: true });
-                      }}
-                    />
-                  ) : null}
+              <div className="space-y-4">
+                {canManageQuote(task) && quoteEditorTaskId === task.orderId ? (
+                  <QuoteDraftEditor
+                    orderId={task.source === "order" ? task.orderId : null}
+                    helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
+                    onSent={(result) => {
+                      setQuoteEditorTaskId(result.orderId);
+                      setExpandedTaskId(result.orderId);
+                      setNotice({
+                        kind: "success",
+                        message: `${task.title} quoted successfully. The live order is now synced for both sides.`,
+                      });
+                      startTransition(() => {
+                        void loadTasks(true);
+                      });
+                    }}
+                    onSaved={() => {
+                      setNotice({
+                        kind: "info",
+                        message: `Quote draft saved for ${task.title}.`,
+                      });
+                    }}
+                    onOpenChat={() => {
+                      void startChat(task, { quote: true });
+                    }}
+                  />
+                ) : null}
 
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Task tracking</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {flowLabels.map((label) => (
-                        <span
-                          key={`${task.orderId}-detail-${label}`}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                        >
-                          {label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {taskActivity.map((event) => {
-                      const toneClasses = getToneClassNames(event.tone);
-
-                      return (
-                        <div key={event.id} className={`rounded-[1.3rem] border px-4 py-3 ${toneClasses.card}`}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className={`h-2.5 w-2.5 rounded-full ${toneClasses.dot}`} />
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                                  {event.statusLabel || event.eventType.replace(/_/g, " ")}
-                                </p>
-                              </div>
-                              <p className="mt-2 text-sm font-semibold text-slate-900">{event.title}</p>
-                              <p className="mt-1.5 text-sm leading-6 text-slate-700">{event.description}</p>
-                            </div>
-                            <span className="shrink-0 text-[11px] font-semibold text-slate-500">{formatAgo(event.createdAtRaw, clockMs)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Task tracking</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {flowLabels.map((label) => (
+                      <span
+                        key={`${task.orderId}-detail-${label}`}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                      >
+                        {label}
+                      </span>
+                    ))}
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Details</p>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Task ID</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">#{task.orderId.slice(0, 8)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Category</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{task.tags[0] || "Task"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Ownership</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{task.type === "posted" ? "Posted by you" : "Accepted by you"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Location</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{task.location}</p>
-                      </div>
-                    </div>
-                  </div>
+                  {taskActivity.map((event) => {
+                    const toneClasses = getToneClassNames(event.tone);
 
-                  <div className="rounded-[1.3rem] border border-slate-200 bg-white p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Support queue</p>
-                    {supportEntries.length > 0 ? (
-                      <div className="mt-3 space-y-2.5">
-                        {supportEntries.slice(0, 3).map((request) => (
-                          <div key={request.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-slate-900">{formatSupportRequestStatus(request.status)}</p>
-                              <span className="text-[11px] font-semibold text-slate-500">
-                                {formatAgo(request.updatedAtRaw || request.createdAtRaw, clockMs)}
-                              </span>
+                    return (
+                      <div key={event.id} className={`rounded-[1.3rem] border px-4 py-3 ${toneClasses.card}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`h-2.5 w-2.5 rounded-full ${toneClasses.dot}`} />
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                {event.statusLabel || event.eventType.replace(/_/g, " ")}
+                              </p>
                             </div>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">Target: {request.target}</p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{event.title}</p>
+                            <p className="mt-1.5 text-sm leading-6 text-slate-700">{event.description}</p>
                           </div>
-                        ))}
+                          <span className="shrink-0 text-[11px] font-semibold text-slate-500">{formatAgo(event.createdAtRaw, clockMs)}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                        {supportAvailability.allowed ? "No support issues have been raised for this task." : supportAvailability.reason}
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -2402,7 +2425,8 @@ export default function TasksPage() {
     );
   };
 
-  const renderInProgressTaskRow = (task: OperationalTask) => {
+  const renderTrackedHelpRequestRow = (task: OperationalTask, options?: { cancelledHistory?: boolean }) => {
+    const isCancelledHistory = options?.cancelledHistory ?? false;
     const creatorName = getTaskCreatorName(task);
     const creatorAvatar = getTaskCreatorAvatar(task);
     const creatorProfileId = task.postedBy.id || null;
@@ -2415,50 +2439,55 @@ export default function TasksPage() {
     const isExpanded = expandedTaskId === task.orderId;
     const progressStage = getTaskProgressStage(task);
     const providerCanDriveStages = task.type === "accepted" && (task.source === "order" || task.source === "help_request");
-    const progressSteps = [
-      {
-        key: "accepted",
-        label: "Task accepted",
-        state:
-          progressStage === "pending_acceptance"
-            ? "active"
-            : progressStage === "accepted" || progressStage === "travel_started" || progressStage === "work_started" || progressStage === "completed"
-              ? "done"
-              : "upcoming",
-      },
-      {
-        key: "travel_started",
-        label: "Travel started",
-        state:
-          progressStage === "accepted"
-            ? "active"
-            : progressStage === "travel_started"
-            ? "done"
-            : progressStage === "work_started" || progressStage === "completed"
-              ? "done"
-              : "upcoming",
-      },
-      {
-        key: "work_started",
-        label: "Work started",
-        state:
-          progressStage === "travel_started"
-            ? "active"
-            : progressStage === "work_started"
-              ? "done"
-              : progressStage === "completed"
-                ? "done"
-                : "upcoming",
-      },
-      {
-        key: "completed",
-        label: "Work completed",
-        state: progressStage === "work_started" ? "active" : progressStage === "completed" ? "done" : "upcoming",
-      },
-    ] as const;
+    const progressSteps = isCancelledHistory
+      ? buildCancelledTrackerSteps(progressStage)
+      : ([
+          {
+            key: "accepted",
+            label: "Task accepted",
+            state:
+              progressStage === "pending_acceptance"
+                ? "active"
+                : progressStage === "accepted" ||
+                    progressStage === "travel_started" ||
+                    progressStage === "work_started" ||
+                    progressStage === "completed"
+                  ? "done"
+                  : "upcoming",
+          },
+          {
+            key: "travel_started",
+            label: "Travel started",
+            state:
+              progressStage === "accepted"
+                ? "active"
+                : progressStage === "travel_started"
+                  ? "done"
+                  : progressStage === "work_started" || progressStage === "completed"
+                    ? "done"
+                    : "upcoming",
+          },
+          {
+            key: "work_started",
+            label: "Work started",
+            state:
+              progressStage === "travel_started"
+                ? "active"
+                : progressStage === "work_started"
+                  ? "done"
+                  : progressStage === "completed"
+                    ? "done"
+                    : "upcoming",
+          },
+          {
+            key: "completed",
+            label: "Work completed",
+            state: progressStage === "work_started" ? "active" : progressStage === "completed" ? "done" : "upcoming",
+          },
+        ] as const);
     const primaryTransitions = transitions.filter((status) => status !== "cancelled" && status !== "rejected");
     const getStepAction = (stepKey: (typeof progressSteps)[number]["key"]) => {
-      if (busy) return null;
+      if (busy || isCancelledHistory) return null;
 
       if (stepKey === "accepted" && providerCanDriveStages && progressStage === "pending_acceptance") {
         return {
@@ -2571,16 +2600,18 @@ export default function TasksPage() {
                 <Phone className="h-4 w-4" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => void confirmAndRefreshTaskStatus(task, "cancelled")}
-                disabled={busy || !transitions.includes("cancelled")}
-                title={busy ? "Updating..." : "Decline task"}
-                aria-label={busy ? "Updating task" : "Decline task"}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {!isCancelledHistory ? (
+                <button
+                  type="button"
+                  onClick={() => void confirmAndRefreshTaskStatus(task, "cancelled")}
+                  disabled={busy || !transitions.includes("cancelled")}
+                  title={busy ? "Updating..." : "Decline task"}
+                  aria-label={busy ? "Updating task" : "Decline task"}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
 
             <button
@@ -2596,64 +2627,85 @@ export default function TasksPage() {
         </div>
 
         {isExpanded ? (
-          <div className="mt-4 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-            <div className="space-y-4 rounded-[1.3rem] border border-slate-200 bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {latestEvent?.title || (canonical === "in_progress" ? "Work is in progress" : "Task accepted")}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {latestEvent?.description || "Open this tracker to follow updates and move the task to the next stage."}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-slate-500">{latestUpdateAt}</span>
+          <div className="mt-4 border-t border-slate-200 pt-4">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {latestEvent?.title ||
+                      (isCancelledHistory
+                        ? "Task cancelled"
+                        : canonical === "in_progress"
+                          ? "Work is in progress"
+                          : "Task accepted")}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {latestEvent?.description ||
+                      (isCancelledHistory
+                        ? describeCancelledTrackerStage(progressStage)
+                        : "Open this tracker to follow updates and move the task to the next stage.")}
+                  </p>
                 </div>
+                <span className="shrink-0 text-xs font-semibold text-slate-500">{latestUpdateAt}</span>
+              </div>
 
-                <div className="mt-5 space-y-4">
-                  {progressSteps.map((step, index) => {
-                    const isDone = step.state === "done";
-                    const isActiveStep = step.state === "active";
-                    const stepAction = getStepAction(step.key);
+              <div className="mt-5 space-y-4">
+                {progressSteps.map((step, index) => {
+                  const isDone = step.state === "done";
+                  const isActiveStep = step.state === "active";
+                  const isCancelledStep = step.state === "cancelled";
+                  const stepAction = getStepAction(step.key);
 
-                    return (
-                      <div key={`${task.orderId}-${step.key}`} className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-start gap-3">
+                  return (
+                    <div key={`${task.orderId}-${step.key}`} className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
                         <div className="flex flex-col items-center">
                           <span
                             className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold transition ${
-                              isDone
-                                ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-                                : isActiveStep
-                                  ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                                  : "border-slate-200 bg-white text-slate-400"
+                              isCancelledStep
+                                ? "border-rose-200 bg-rose-100 text-rose-700"
+                                : isDone
+                                  ? "border-emerald-200 bg-emerald-100 text-emerald-700"
+                                  : isActiveStep
+                                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                                    : "border-slate-200 bg-white text-slate-400"
                             }`}
                           >
-                            {isDone ? "✓" : ""}
+                            {isCancelledStep ? <X className="h-3.5 w-3.5" /> : isDone ? "✓" : ""}
                           </span>
                           {index < progressSteps.length - 1 ? (
-                            <span className={`mt-1 h-8 w-px ${isDone || isActiveStep ? "bg-emerald-200" : "bg-slate-200"}`} />
+                            <span
+                              className={`mt-1 h-8 w-px ${
+                                isCancelledStep ? "bg-rose-200" : isDone || isActiveStep ? "bg-emerald-200" : "bg-slate-200"
+                              }`}
+                            />
                           ) : null}
                         </div>
 
                         <div className="min-w-0 pt-0.5">
-                          <p className={`text-sm font-semibold ${isActiveStep ? "text-slate-950" : "text-slate-700"}`}>{step.label}</p>
-                        </div>
-                        </div>
-
-                        {stepAction ? (
-                          <button
-                            type="button"
-                            onClick={stepAction.onClick}
-                            className="shrink-0 rounded-full bg-[linear-gradient(135deg,#2d7a63,#6ac48f)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-95"
+                          <p
+                            className={`text-sm font-semibold ${
+                              isCancelledStep ? "text-rose-700" : isActiveStep ? "text-slate-950" : "text-slate-700"
+                            }`}
                           >
-                            {stepAction.label}
-                          </button>
-                        ) : null}
+                            {step.label}
+                          </p>
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {stepAction ? (
+                        <button
+                          type="button"
+                          onClick={stepAction.onClick}
+                          className="shrink-0 rounded-full bg-[linear-gradient(135deg,#2d7a63,#6ac48f)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-95"
+                        >
+                          {stepAction.label}
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : null}
@@ -2670,7 +2722,7 @@ export default function TasksPage() {
     const reviewDraft = taskReviews[task.orderId] || { rating: 0, comment: "", submitted: false };
     const rating = reviewDraft.rating;
     const reviewSubmitted = reviewDraft.submitted;
-    const canReviewTask = Boolean(task.counterpartyId);
+    const canReviewTask = Boolean(getTaskReviewTargetId(task));
     const isReviewExpanded = commentComposerTaskId === task.orderId;
     const commentDraft = reviewDraft.comment;
     const reviewBusy = reviewBusyTaskId === task.orderId;
@@ -3040,12 +3092,14 @@ export default function TasksPage() {
                 </div>
               </div>
             ) : visibleTasks.length > 0 ? (
-                <div className="space-y-3">
+              <div className="space-y-3">
                 {visibleTasks.map((task) =>
                   selectedTaskView === "in-progress"
-                    ? renderInProgressTaskRow(task)
+                    ? renderTrackedHelpRequestRow(task)
                     : selectedTaskView === "completed"
                       ? renderCompletedTaskRow(task)
+                    : selectedTaskView === "cancelled" && task.source === "help_request"
+                      ? renderTrackedHelpRequestRow(task, { cancelledHistory: true })
                     : renderTaskCardPremium(task, {
                         history: selectedTaskView === "cancelled",
                       })

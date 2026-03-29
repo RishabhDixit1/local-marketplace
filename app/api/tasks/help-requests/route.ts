@@ -23,6 +23,13 @@ type HelpRequestsResponse =
   | { ok: true; requests: HelpRequestRow[] }
   | { ok: false; code: string; message: string };
 
+const sortByCreatedAtDesc = (rows: HelpRequestRow[]) =>
+  rows.sort((left, right) => {
+    const leftTime = left.created_at ? new Date(left.created_at).getTime() : 0;
+    const rightTime = right.created_at ? new Date(right.created_at).getTime() : 0;
+    return rightTime - leftTime;
+  });
+
 export async function GET(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
@@ -50,13 +57,28 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { data, error } = await dbClient
-      .from("help_requests")
-      .select("id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at")
-      .or(`requester_id.eq.${authResult.auth.userId},accepted_provider_id.eq.${authResult.auth.userId}`)
-      .order("created_at", { ascending: false })
-      .limit(120);
+    const selectClause =
+      "id,requester_id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at";
+    const [visibleResult, cancelledHistoryResult] = await Promise.all([
+      dbClient
+        .from("help_requests")
+        .select(selectClause)
+        .or(`requester_id.eq.${authResult.auth.userId},accepted_provider_id.eq.${authResult.auth.userId}`)
+        .order("created_at", { ascending: false })
+        .limit(120),
+      dbClient
+        .from("help_requests")
+        .select(selectClause)
+        .eq("status", "cancelled")
+        .contains("metadata", {
+          relist_after_decline: true,
+          last_declined_provider_id: authResult.auth.userId,
+        })
+        .order("created_at", { ascending: false })
+        .limit(120),
+    ]);
 
+    const error = visibleResult.error || cancelledHistoryResult.error;
     if (error) {
       return NextResponse.json(
         {
@@ -68,10 +90,18 @@ export async function GET(request: Request) {
       );
     }
 
+    const combined = new Map<string, HelpRequestRow>();
+    for (const row of (cancelledHistoryResult.data as HelpRequestRow[] | null) || []) {
+      combined.set(row.id, row);
+    }
+    for (const row of (visibleResult.data as HelpRequestRow[] | null) || []) {
+      combined.set(row.id, row);
+    }
+
     return NextResponse.json(
       {
         ok: true,
-        requests: (data as HelpRequestRow[] | null) || [],
+        requests: sortByCreatedAtDesc(Array.from(combined.values())).slice(0, 120),
       } satisfies HelpRequestsResponse,
       {
         headers: {

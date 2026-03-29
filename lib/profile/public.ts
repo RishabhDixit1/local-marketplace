@@ -3,6 +3,7 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 import { calculateVerificationStatus, estimateResponseMinutes, type VerificationStatus } from "@/lib/business";
 import { isMissingConnectionSchemaError } from "@/lib/connectionErrors";
+import { isRelistedHelpRequest } from "@/lib/helpRequestProgress";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
@@ -56,6 +57,7 @@ type HelpRequestRow = {
   budget_max: number | null;
   location_label: string | null;
   status: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string | null;
 };
 
@@ -467,7 +469,11 @@ const normalizePublicPost = (params: {
         usedHelpRequestIds,
       })
     : null;
-  const status = matchingHelpRequest?.status?.trim() || row.status?.trim() || row.state?.trim() || "open";
+  const rawHelpRequestStatus = matchingHelpRequest?.status?.trim() || "";
+  const status =
+    rawHelpRequestStatus && ["cancelled", "canceled"].includes(rawHelpRequestStatus.toLowerCase()) && isRelistedHelpRequest(matchingHelpRequest?.metadata)
+      ? "open"
+      : rawHelpRequestStatus || row.status?.trim() || row.state?.trim() || "open";
   if (isClosedStatus(status)) return null;
 
   const category =
@@ -588,7 +594,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     loadProfilePosts(supabase, profile.id),
     supabase
       .from("help_requests")
-      .select("id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,created_at")
+      .select("id,accepted_provider_id,title,details,category,budget_min,budget_max,location_label,status,metadata,created_at")
       .eq("requester_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(12),

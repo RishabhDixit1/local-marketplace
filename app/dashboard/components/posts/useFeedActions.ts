@@ -455,17 +455,10 @@ export const useFeedActions = ({
         throw new Error("You cannot accept your own task.");
       }
 
-      const { data, error } = await supabase.rpc("accept_help_request", {
-        target_help_request_id: acceptTarget.helpRequestId,
+      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+        method: "POST",
+        body: JSON.stringify({ helpRequestId: acceptTarget.helpRequestId }),
       });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        throw new Error("Request already accepted or unavailable.");
-      }
 
       setFeed((current) => current.filter((item) => item.helpRequestId !== acceptTarget.helpRequestId));
 
