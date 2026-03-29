@@ -42,7 +42,6 @@ import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/utils";
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
-import ConnectionsPanel from "./components/ConnectionsPanel";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
 import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
@@ -1734,19 +1733,6 @@ export default function PeoplePage() {
       })),
     [visibleProviders]
   );
-  const connectionsPanelProps = {
-    incoming: connectionBuckets.incoming,
-    outgoing: connectionBuckets.outgoing,
-    accepted: connectionBuckets.accepted,
-    providerPreviewMap,
-    busyRequestId: busyConnectionRequestId,
-    busyActionKey,
-    onAccept: (requestId: string) => void handleConnectionDecision(requestId, "accepted"),
-    onDecline: (requestId: string) => void handleConnectionDecision(requestId, "rejected"),
-    onCancel: (requestId: string) => void handleConnectionDecision(requestId, "cancelled"),
-    onChat: (userId: string) => void openChatThread(userId),
-    chatBusyUserId,
-  };
   return (
     <div
       className="mx-auto w-full max-w-[1540px] space-y-4 overflow-x-clip pb-2 sm:space-y-5"
@@ -1758,11 +1744,20 @@ export default function PeoplePage() {
       <PeopleLiveHeader
         activeNow={activeNow}
         connectionCount={connectionBuckets.accepted.length}
+        outgoingCount={connectionBuckets.outgoing.length}
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
+        incoming={connectionBuckets.incoming}
+        outgoing={connectionBuckets.outgoing}
+        accepted={connectionBuckets.accepted}
+        providerPreviewMap={providerPreviewMap}
+        busyRequestId={busyConnectionRequestId}
+        busyActionKey={busyActionKey}
+        onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
+        onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
+        onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
+        onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
       />
-
-      <ConnectionsPanel {...connectionsPanelProps} />
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm sm:px-5">
