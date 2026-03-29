@@ -31,13 +31,6 @@ type Props = {
 };
 
 export default function PeopleMapPanel({ items, center, activeProvider, onSelectProvider }: Props) {
-  const selectedItem = activeProvider || items[0] || null;
-  const firstMapItem = items[0] || null;
-  const selectedTitle = activeProvider?.name || firstMapItem?.title || "Community member";
-  const selectedSubtitle = activeProvider?.location || firstMapItem?.locationLabel || "Nearby";
-  const selectedCategory = activeProvider?.primarySkill || firstMapItem?.category || "Profile";
-  const selectedPriceLabel = activeProvider?.minPriceLabel || `${activeProvider?.listingCount || 0} live listings`;
-  const selectedTimeLabel = activeProvider?.recentActivityLabel || firstMapItem?.timeLabel || "Live";
 
   return (
     <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/88 p-3 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
@@ -64,39 +57,6 @@ export default function PeopleMapPanel({ items, center, activeProvider, onSelect
               selectedItemId={activeProvider?.id || null}
               onSelectItem={onSelectProvider}
             />
-          </div>
-
-          <div className="mt-3 grid gap-2 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            {selectedItem ? (
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Selected profile</p>
-                <h3 className="truncate text-sm font-semibold text-slate-950">{selectedTitle}</h3>
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                  {activeProvider
-                    ? `${activeProvider.role || "Provider"} - ${selectedSubtitle}`
-                    : `${firstMapItem?.creatorName || "Community member"} - ${selectedSubtitle}`}
-                </p>
-              </div>
-            ) : (
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">Selected profile</p>
-                <p className="text-sm font-semibold text-slate-950">Tap a pin to preview the member, location, and activity.</p>
-              </div>
-            )}
-
-            {selectedItem ? (
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                  {selectedCategory}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                  {selectedPriceLabel}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700">
-                  {selectedTimeLabel}
-                </span>
-              </div>
-            ) : null}
           </div>
         </>
       ) : (

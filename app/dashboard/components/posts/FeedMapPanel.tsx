@@ -43,7 +43,6 @@ export default function FeedMapPanel({
   selectedItemId,
   onSelectItem,
 }: FeedMapPanelProps) {
-  const selectedItem = items.find((item) => item.id === selectedItemId || item.id === activeItemId) || items[0] || null;
   const locationMeta =
     locationStatus === "ready"
       ? { label: "Near you", className: "border-sky-400/35 bg-sky-500/16 text-sky-100" }
@@ -95,31 +94,6 @@ export default function FeedMapPanel({
             selectedItemId={selectedItemId}
             onSelectItem={onSelectItem}
           />
-        </div>
-
-        <div className="grid gap-2 border-t border-slate-800/80 bg-slate-950/82 p-3 text-white/92 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-4">
-          {selectedItem ? (
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/80">Selected pin</p>
-              <h3 className="truncate text-sm font-semibold text-white">{selectedItem.title}</h3>
-              <p className="mt-0.5 truncate text-[11px] text-white/65">
-                {selectedItem.creatorName} · {selectedItem.locationLabel}
-              </p>
-            </div>
-          ) : (
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/80">Selected pin</p>
-              <p className="text-sm font-semibold text-white">Tap any pin to surface its details here</p>
-            </div>
-          )}
-
-          {selectedItem ? (
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-              <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-white/88">{selectedItem.category}</span>
-              <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-white/88">{selectedItem.priceLabel}</span>
-              <span className="rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-white/88">{selectedItem.timeLabel}</span>
-            </div>
-          ) : null}
         </div>
 
         <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-slate-950/26 to-transparent" />

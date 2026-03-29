@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { RefreshCw, Zap } from "lucide-react";
+import { RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -117,13 +117,13 @@ export default function MarketplacePage() {
       },
       actions: [
         {
-          id: "create-post",
-          label: "Create Post",
-          icon: Zap,
+          id: "filters",
+          label: showAdvancedFilters ? "Hide Filters" : "Filters",
+          icon: SlidersHorizontal,
           onClick: () => {
-            setOpenPostModal(true);
+            setShowAdvancedFilters((current) => !current);
           },
-          variant: "primary",
+          variant: "secondary",
         },
         {
           id: "refresh-posts",
@@ -138,7 +138,7 @@ export default function MarketplacePage() {
         },
       ],
     }),
-    [fetchFeed, filters.query, refreshing, setFilters]
+    [fetchFeed, filters.query, refreshing, setFilters, showAdvancedFilters, setShowAdvancedFilters]
   );
 
   useDashboardPrompt(postsPromptConfig);
@@ -231,14 +231,16 @@ export default function MarketplacePage() {
           onSelectItem={handleMapSelect}
         />
 
-        <FeedFilters
-          filters={filters}
-          categoryOptions={categoryOptions}
-          showAdvancedFilters={showAdvancedFilters}
-          onToggleAdvanced={() => setShowAdvancedFilters((current) => !current)}
-          onReset={resetFilters}
-          onFiltersChange={setFilters}
-        />
+        {(filters.query.length > 0 || showAdvancedFilters) && (
+          <FeedFilters
+            filters={filters}
+            categoryOptions={categoryOptions}
+            showAdvancedFilters={showAdvancedFilters}
+            onToggleAdvanced={() => setShowAdvancedFilters((current) => !current)}
+            onReset={resetFilters}
+            onFiltersChange={setFilters}
+          />
+        )}
 
         {feedError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
