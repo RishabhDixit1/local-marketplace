@@ -58,9 +58,9 @@ export default function FeedMapPanel({
               : { label: "Location standby", className: "border-slate-400/25 bg-slate-500/12 text-slate-200" };
 
   return (
-    <section className="hidden sm:block rounded-[2rem] border border-slate-200/80 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
-      <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-800/90 bg-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-5">
+    <section className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-3 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.5)] sm:p-4">
+      <div className="relative isolate overflow-hidden rounded-[1.6rem] border border-slate-800/90 bg-slate-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 sm:p-5">
           <span
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium shadow-sm backdrop-blur-[16px] ${locationMeta.className}`}
           >
@@ -87,7 +87,7 @@ export default function FeedMapPanel({
           </div>
         </div>
 
-        <div className="h-[16.5rem] sm:h-[18rem] lg:h-[20.5rem] xl:h-[21rem]">
+        <div className="h-[13rem] sm:h-[18rem] lg:h-[20.5rem] xl:h-[21rem]">
           <MarketplaceMap
             items={items}
             center={center}
