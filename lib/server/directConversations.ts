@@ -11,6 +11,9 @@ const isMissingDirectConversationRpcError = (message: string) =>
     message
   );
 
+const isConnectionGatedDirectConversationRpcError = (message: string) =>
+  /connect before starting a direct chat/i.test(message);
+
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
 
@@ -27,7 +30,10 @@ const tryRpcGetOrCreateDirectConversationId = async (db: SupabaseClient, targetU
   });
 
   if (error) {
-    if (isMissingDirectConversationRpcError(error.message || "")) {
+    if (
+      isMissingDirectConversationRpcError(error.message || "") ||
+      isConnectionGatedDirectConversationRpcError(error.message || "")
+    ) {
       return null;
     }
     throw new Error(error.message);
@@ -160,8 +166,8 @@ export const getOrCreateDirectConversationIdForUsers = async (
     throw new Error("Cannot create a direct conversation with yourself.");
   }
 
-  const rpcClient = adminDb || db;
-  const rpcConversationId = await tryRpcGetOrCreateDirectConversationId(rpcClient, recipientId);
+  // The RPC relies on auth.uid(), so it must run with the user-scoped client.
+  const rpcConversationId = await tryRpcGetOrCreateDirectConversationId(db, recipientId);
   if (rpcConversationId) {
     return rpcConversationId;
   }
