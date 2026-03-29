@@ -1736,16 +1736,11 @@ export default function PeoplePage() {
   );
   const connectionsPanelProps = {
     incoming: connectionBuckets.incoming,
-    outgoing: connectionBuckets.outgoing,
-    accepted: connectionBuckets.accepted,
     providerPreviewMap,
     busyRequestId: busyConnectionRequestId,
     busyActionKey,
     onAccept: (requestId: string) => void handleConnectionDecision(requestId, "accepted"),
     onDecline: (requestId: string) => void handleConnectionDecision(requestId, "rejected"),
-    onCancel: (requestId: string) => void handleConnectionDecision(requestId, "cancelled"),
-    onChat: (userId: string) => void openChatThread(userId),
-    chatBusyUserId,
   };
   return (
     <div
@@ -1758,6 +1753,7 @@ export default function PeoplePage() {
       <PeopleLiveHeader
         activeNow={activeNow}
         connectionCount={connectionBuckets.accepted.length}
+        outgoingCount={connectionBuckets.outgoing.length}
         syncing={syncing}
         lastSyncedAt={lastSyncedAt}
       />

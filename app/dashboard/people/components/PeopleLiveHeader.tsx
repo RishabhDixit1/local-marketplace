@@ -1,10 +1,9 @@
-"use client";
-
-import { Activity, Clock3, Users } from "lucide-react";
+import { Activity, Clock3, UserCheck, Users } from "lucide-react";
 
 type Props = {
   activeNow: number;
   connectionCount: number;
+  outgoingCount: number;
   syncing: boolean;
   lastSyncedAt: string | null;
 };
@@ -20,6 +19,7 @@ const formatSyncLabel = (isoTimestamp: string | null, syncing: boolean) => {
 export default function PeopleLiveHeader({
   activeNow,
   connectionCount,
+  outgoingCount,
   syncing,
   lastSyncedAt,
 }: Props) {
@@ -37,9 +37,15 @@ export default function PeopleLiveHeader({
             {activeNow} active now
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] font-semibold text-slate-700 sm:px-3.5 sm:py-2 sm:text-sm">
-            <Users className="h-4 w-4 text-slate-500" />
-            {connectionCount} connections
+            <UserCheck className="h-4 w-4 text-slate-500" />
+            {connectionCount} connected
           </span>
+          {outgoingCount > 0 && (
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[13px] font-semibold text-amber-700 sm:px-3.5 sm:py-2 sm:text-sm">
+              <Clock3 className="h-4 w-4" />
+              {outgoingCount} pending
+            </span>
+          )}
           <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[13px] font-semibold text-[var(--brand-700)] sm:px-3.5 sm:py-2 sm:text-sm">
             <span className="relative flex h-4 w-4 items-center justify-center">
               <span
