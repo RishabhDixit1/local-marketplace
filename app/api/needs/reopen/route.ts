@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeHelpRequestProgressStage } from "@/lib/helpRequestProgress";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
@@ -69,6 +70,8 @@ export async function POST(request: Request) {
 
   const existingMetadata =
     existing.metadata && typeof existing.metadata === "object" && !Array.isArray(existing.metadata) ? existing.metadata : {};
+  const progressStage = normalizeHelpRequestProgressStage(existingMetadata.progress_stage, existing.status);
+  const now = new Date().toISOString();
 
   const { error: updateError } = await dbClient
     .from("help_requests")
@@ -78,11 +81,14 @@ export async function POST(request: Request) {
       metadata: {
         ...existingMetadata,
         relist_after_decline: true,
-        progress_stage: "pending_acceptance",
-        last_declined_at: new Date().toISOString(),
+        progress_stage: progressStage || "pending_acceptance",
+        cancelled_from_stage: progressStage || "pending_acceptance",
+        last_declined_at: now,
         last_declined_provider_id: acceptedProviderId || null,
+        cancelled_by_user_id: actorId,
+        progress_updated_at: now,
       },
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq("id", helpRequestId);
 
@@ -95,7 +101,7 @@ export async function POST(request: Request) {
       .from("help_request_matches")
       .update({
         status: "cancelled",
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq("help_request_id", helpRequestId)
       .eq("provider_id", acceptedProviderId);
