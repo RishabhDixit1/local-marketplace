@@ -783,11 +783,11 @@ export default function TasksPage() {
               {
                 rating: Math.max(1, Math.min(5, Math.round(Number(row.rating || 0) || 0))),
                 comment: row.comment?.trim() || "",
-                submitted: true,
+                submitted: true as boolean,
               },
-            ] as const;
+            ] as [string, TaskReviewDraft];
           })
-          .filter((entry): entry is readonly [string, TaskReviewDraft] => Boolean(entry))) as Array<[string, TaskReviewDraft]>
+          .filter((entry): entry is [string, TaskReviewDraft] => Boolean(entry))) as Array<[string, TaskReviewDraft]>
       );
 
       setTaskReviews((current) => {
