@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { BadgeCheck, Briefcase, Clock3, Globe, MapPin, Phone, Sparkles, Star } from "lucide-react";
 import { appName, withAppName } from "@/lib/branding";
 import {
@@ -18,6 +19,16 @@ import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 import { getServerSupabase } from "@/lib/supabaseServer";
+import { CartProvider } from "@/app/components/store/CartContext";
+
+const StoreSection = dynamic(
+  () => import("@/app/components/store/StoreSection").then((m) => ({ default: m.StoreSection })),
+  { ssr: false }
+);
+const CartDrawer = dynamic(
+  () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer })),
+  { ssr: false }
+);
 
 type Params = {
   params: Promise<{ slug: string }>;
@@ -530,7 +541,9 @@ export default async function BusinessProfilePage({ params }: Params) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-black text-white">
+    <CartProvider>
+      <CartDrawer />
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-black text-white">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -600,39 +613,13 @@ export default async function BusinessProfilePage({ params }: Params) {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <h2 className="text-lg font-semibold">Services</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {services.length === 0 && <p className="text-sm text-slate-400">No services published yet.</p>}
-                {services.map((service) => (
-                  <div key={service.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                    <p className="font-semibold">{service.title || "Untitled Service"}</p>
-                    <p className="mt-1 text-xs text-slate-400">{service.category || "Service"}</p>
-                    <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="font-semibold text-indigo-300">₹ {Number(service.price || 0).toLocaleString()}</span>
-                      <span className="text-slate-400 capitalize">{service.availability || "available"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <h2 className="text-lg font-semibold">Products</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {products.length === 0 && <p className="text-sm text-slate-400">No products published yet.</p>}
-                {products.map((product) => (
-                  <div key={product.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                    <p className="font-semibold">{product.title || "Untitled Product"}</p>
-                    <p className="mt-1 text-xs text-slate-400">{product.category || "Product"}</p>
-                    <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="font-semibold text-indigo-300">₹ {Number(product.price || 0).toLocaleString()}</span>
-                      <span className="text-slate-400">{(product.stock || 0) > 0 ? "In stock" : "Out of stock"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <StoreSection
+              services={services}
+              products={products}
+              providerId={profile.id}
+              providerName={profile.name || ""}
+              providerAvailability={profile.availability || "available"}
+            />
 
             <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <div className="flex items-center gap-3">
@@ -787,6 +774,7 @@ export default async function BusinessProfilePage({ params }: Params) {
         </div>
       </div>
     </div>
+    </CartProvider>
   );
 }
 
