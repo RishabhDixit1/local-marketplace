@@ -22,12 +22,10 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import { CartProvider } from "@/app/components/store/CartContext";
 
 const StoreSection = dynamic(
-  () => import("@/app/components/store/StoreSection").then((m) => ({ default: m.StoreSection })),
-  { ssr: false }
+  () => import("@/app/components/store/StoreSection").then((m) => ({ default: m.StoreSection }))
 );
 const CartDrawer = dynamic(
-  () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer })),
-  { ssr: false }
+  () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer }))
 );
 
 type Params = {
