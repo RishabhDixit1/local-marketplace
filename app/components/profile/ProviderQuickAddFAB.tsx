@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Plus, Package, Briefcase } from "lucide-react";
 import Link from "next/link";
-import { useProfileContext } from "./ProfileContext";
 
-export function ProviderQuickAddFAB() {
-  const { profile } = useProfileContext();
+type ProviderQuickAddFABProps = {
+  show?: boolean;
+};
+
+export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) {
   const [open, setOpen] = useState(false);
 
-  const isProvider = profile?.role === "provider" || profile?.role === "business";
-  if (!isProvider) return null;
+  if (!show) return null;
 
   return (
     <>

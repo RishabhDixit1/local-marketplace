@@ -25,37 +25,32 @@ export function CartDrawer() {
     setOrderSuccess(false);
 
     try {
-      const results = await Promise.allSettled(
-        items.map((item) =>
-          fetchAuthedJson<{ ok: boolean }>(supabase, "/api/orders", {
-            method: "POST",
-            body: JSON.stringify({
-              providerId: item.providerId,
-              itemType: item.itemType,
-              itemId: item.itemId,
-              price: item.price * item.quantity,
-              quantity: item.quantity,
-              title: item.title,
-            }),
-          })
-        )
-      );
+      const response = await fetchAuthedJson<{ ok: boolean; count: number }>(supabase, "/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            providerId: item.providerId,
+            itemType: item.itemType,
+            itemId: item.itemId,
+            price: item.price * item.quantity,
+            quantity: item.quantity,
+            title: item.title,
+          })),
+        }),
+      });
 
-      const failed = results.filter((r) => r.status === "rejected");
-      if (failed.length > 0) {
-        setOrderError(`${failed.length} of ${items.length} order(s) could not be placed. The rest were sent.`);
+      if (!response.ok || response.count <= 0) {
+        setOrderError("Unable to place orders right now. Please try again.");
+        return;
       }
 
-      const succeeded = results.filter((r) => r.status === "fulfilled");
-      if (succeeded.length > 0) {
-        clearCart();
-        setOrderSuccess(true);
-        setTimeout(() => {
-          closeCart();
-          setOrderSuccess(false);
-          router.push("/dashboard/tasks");
-        }, 1800);
-      }
+      clearCart();
+      setOrderSuccess(true);
+      setTimeout(() => {
+        closeCart();
+        setOrderSuccess(false);
+        router.push("/dashboard/tasks");
+      }, 1500);
     } catch (error) {
       setOrderError(error instanceof Error ? error.message : "Unable to place order right now.");
     } finally {

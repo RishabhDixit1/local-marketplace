@@ -13,6 +13,10 @@ type OrderRequest = {
   title?: string;
 };
 
+type BulkOrderRequest = {
+  items: OrderRequest[];
+};
+
 function isOrderRequest(body: unknown): body is OrderRequest {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
@@ -23,6 +27,13 @@ function isOrderRequest(body: unknown): body is OrderRequest {
     typeof b.price === "number" &&
     b.price >= 0
   );
+}
+
+function isBulkOrderRequest(body: unknown): body is BulkOrderRequest {
+  if (typeof body !== "object" || body === null) return false;
+  const b = body as Record<string, unknown>;
+  if (!Array.isArray(b.items) || b.items.length === 0) return false;
+  return b.items.every((item) => isOrderRequest(item));
 }
 
 export async function POST(request: Request) {
@@ -44,9 +55,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isOrderRequest(body)) {
+  if (!isOrderRequest(body) && !isBulkOrderRequest(body)) {
     return NextResponse.json(
-      { ok: false, code: "BAD_REQUEST", message: "Missing or invalid fields: providerId, itemType, itemId, price." },
+      {
+        ok: false,
+        code: "BAD_REQUEST",
+        message: "Missing or invalid fields. Send either a single order payload or { items: [...] }.",
+      },
       { status: 400 }
     );
   }
@@ -59,34 +74,35 @@ export async function POST(request: Request) {
     );
   }
 
-  const quantity = typeof body.quantity === "number" && body.quantity > 0 ? body.quantity : 1;
+  const requestedItems = isBulkOrderRequest(body) ? body.items : [body];
 
-  const insert: Record<string, unknown> = {
-    consumer_id: authResult.auth.userId,
-    provider_id: body.providerId,
-    listing_type: body.itemType,
-    price: body.price,
-    status: "new_lead",
-    metadata: {
-      source: "cart",
-      quantity,
-      title: body.title || "",
-    },
-  };
+  const rowsToInsert: Record<string, unknown>[] = requestedItems.map((item) => {
+    const quantity = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
+    const insert: Record<string, unknown> = {
+      consumer_id: authResult.auth.userId,
+      provider_id: item.providerId,
+      listing_type: item.itemType,
+      price: item.price,
+      status: "new_lead",
+      metadata: {
+        source: "cart",
+        quantity,
+        title: item.title || "",
+      },
+    };
 
-  if (body.itemType === "service") {
-    insert.service_id = body.itemId;
-    insert.listing_id = body.itemId;
-  } else {
-    insert.product_id = body.itemId;
-    insert.listing_id = body.itemId;
-  }
+    if (item.itemType === "service") {
+      insert.service_id = item.itemId;
+      insert.listing_id = item.itemId;
+    } else {
+      insert.product_id = item.itemId;
+      insert.listing_id = item.itemId;
+    }
 
-  const { data, error } = await admin
-    .from("orders")
-    .insert(insert)
-    .select("id")
-    .single();
+    return insert;
+  });
+
+  const { data, error } = await admin.from("orders").insert(rowsToInsert).select("id");
 
   if (error) {
     console.error("[api/orders] insert error:", error.message);
@@ -96,5 +112,14 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, orderId: (data as { id: string }).id }, { status: 201 });
+  const orderIds = ((data as Array<{ id: string }> | null) || []).map((row) => row.id);
+
+  return NextResponse.json(
+    {
+      ok: true,
+      orderIds,
+      count: orderIds.length,
+    },
+    { status: 201 }
+  );
 }

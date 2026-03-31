@@ -343,7 +343,7 @@ export default async function PublicProfilePage({ params }: Params) {
         </div>
 
         <CartDrawer />
-        <ProviderQuickAddFAB />
+        <ProviderQuickAddFAB show={roleFamily === "provider"} />
       </div>
     </CartProvider>
   );

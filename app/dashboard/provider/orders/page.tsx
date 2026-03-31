@@ -30,6 +30,7 @@ export default function ProviderOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [liveNotice, setLiveNotice] = useState<string | null>(null);
 
   const loadOrders = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -78,7 +79,10 @@ export default function ProviderOrdersPage() {
           table: "orders",
           filter: `provider_id=eq.${providerId}`,
         },
-        () => {
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setLiveNotice("New lead received in realtime.");
+          }
           void loadOrders(providerId);
         }
       )
@@ -88,6 +92,12 @@ export default function ProviderOrdersPage() {
       supabase.removeChannel(channel);
     };
   }, [providerId, loadOrders]);
+
+  useEffect(() => {
+    if (!liveNotice) return;
+    const timer = window.setTimeout(() => setLiveNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [liveNotice]);
 
   const pipelineStats = useMemo(() => {
     const totals = {
@@ -161,6 +171,12 @@ export default function ProviderOrdersPage() {
           <MetricCard label="Active" value={pipelineStats.active} />
           <MetricCard label="Completed" value={pipelineStats.completed} />
         </div>
+        {liveNotice && (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-100">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {liveNotice}
+          </div>
+        )}
       </div>
 
       {loading && (
