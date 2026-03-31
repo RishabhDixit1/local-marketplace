@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
+import { CartProvider } from "@/app/components/store/CartContext";
 import {
   DashboardPromptBar,
   DashboardPromptProvider,
@@ -39,6 +40,16 @@ const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal")
   ssr: false,
 });
 
+const AvailabilityToggle = dynamic(
+  () => import("@/app/components/AvailabilityToggle").then((m) => ({ default: m.AvailabilityToggle })),
+  { ssr: false }
+);
+
+const CartDrawer = dynamic(
+  () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer })),
+  { ssr: false }
+);
+
 const navigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Home },
   { name: "Explore", path: "/dashboard", icon: Newspaper },
@@ -57,7 +68,9 @@ export default function DashboardLayout({
   return (
     <ProfileProvider>
       <DashboardPromptProvider>
-        <DashboardShell>{children}</DashboardShell>
+        <CartProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </CartProvider>
       </DashboardPromptProvider>
     </ProfileProvider>
   );
@@ -433,6 +446,7 @@ function DashboardShell({
                   <Bookmark className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Saved</span>
                 </Link>
+                <AvailabilityToggle />
                 <NotificationCenter enabled={shellEnhancementsReady} />
                 <Link
                   href={myProfileHref}
@@ -496,6 +510,8 @@ function DashboardShell({
           }}
         />
       )}
+
+      <CartDrawer />
 
       <div
         className={`lg:hidden fixed inset-0 z-[1300] transition-opacity duration-200 ${
