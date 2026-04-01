@@ -68,12 +68,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (!existing) return NextResponse.json({ ok: false, message: "Not found." }, { status: 404 });
 
-  const ex = existing as {
+  const ex = existing as unknown as {
     consumer_id: string; provider_id: string | null; status: string; price: number | null;
     metadata: Record<string, unknown>;
     listing_type: string;
-    service_listings?: { title: string | null } | null;
-    product_catalog?: { title: string | null } | null;
+    service_listings?: { title: string | null }[] | null;
+    product_catalog?: { title: string | null }[] | null;
   };
 
   if (ex.consumer_id !== authResult.auth.userId && ex.provider_id !== authResult.auth.userId) {
@@ -89,7 +89,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // Fire-and-forget email notification
   void (async () => {
-    const itemTitle = (ex.listing_type === "service" ? ex.service_listings?.title : ex.product_catalog?.title)
+    const itemTitle = (ex.listing_type === "service" ? ex.service_listings?.[0]?.title : ex.product_catalog?.[0]?.title)
       ?? (ex.metadata?.title as string | undefined) ?? "Order";
 
     const emailType =
