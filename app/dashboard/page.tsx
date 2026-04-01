@@ -11,7 +11,6 @@ import ProfileToastViewport, { type ProfileToast } from "@/app/components/profil
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedFilters from "@/app/dashboard/components/posts/FeedFilters";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
-import FeedMapPanel from "@/app/dashboard/components/posts/FeedMapPanel";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -66,11 +65,6 @@ export default function MarketplacePage() {
     setShowAdvancedFilters,
     refreshing,
     feedError,
-    realtimeStyle,
-    feedStats,
-    mapCenter,
-    locationStatus,
-    mapItems,
     categoryOptions,
     displayFeed,
     showFeedLoading,
@@ -145,17 +139,6 @@ export default function MarketplacePage() {
 
   useDashboardPrompt(postsPromptConfig);
 
-  const handleMapSelect = useCallback(
-    (itemId: string) => {
-      setActiveMapItemId(itemId);
-      window.requestAnimationFrame(() => {
-        const cardNode = document.querySelector(`[data-feed-card-id="${itemId}"]`) as HTMLElement | null;
-        cardNode?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-    },
-    [setActiveMapItemId]
-  );
-
   const resolvedHoveredMapItemId = useMemo(
     () => (hoveredMapItemId && displayFeed.some((item) => item.id === hoveredMapItemId) ? hoveredMapItemId : null),
     [displayFeed, hoveredMapItemId]
@@ -222,17 +205,6 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
-        <FeedMapPanel
-          items={mapItems}
-          center={mapCenter}
-          stats={feedStats}
-          realtime={realtimeStyle}
-          locationStatus={locationStatus}
-          activeItemId={resolvedHoveredMapItemId ?? activeMapItemId}
-          selectedItemId={activeMapItemId}
-          onSelectItem={handleMapSelect}
-        />
-
         {(filters.query.length > 0 || showAdvancedFilters) && (
           <FeedFilters
             filters={filters}
@@ -259,6 +231,7 @@ export default function MarketplacePage() {
           focusItemId={focusItemId}
           activeItemId={activeMapItemId}
           hoveredItemId={resolvedHoveredMapItemId}
+          viewerId={viewerId}
           onActiveItemChange={setActiveMapItemId}
           onHoverItemChange={setHoveredMapItemId}
           onResetOrRefresh={handleResetOrRefresh}
@@ -270,6 +243,7 @@ export default function MarketplacePage() {
           isPrimaryBusy={isPrimaryBusy}
           onPrimaryAction={handlePrimaryAction}
           onSecondaryAction={handleSecondaryAction}
+          onFeedRefresh={() => void fetchFeed(true)}
         />
       </div>
 

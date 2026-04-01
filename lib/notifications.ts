@@ -156,7 +156,8 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
   if (helpRequestEntityTypes.has(entityType)) {
     return {
       ctaLabel: "View matches",
-      href: withQuery("/dashboard", {
+      href: withQuery("/dashboard/tasks", {
+        tab: "inbox",
         focus: helpRequestId,
         source: "notification",
       }),

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublishPayloadBase, UploadedMediaPayload } from "@/lib/api/publish";
 import { buildMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
+import { sendPushToMatchedProviders } from "@/lib/server/pushNotifications";
 
 type WriteResult = {
   id?: string;
@@ -610,7 +611,7 @@ export const runImmediateMatching = async (
   const startedAt = Date.now();
   const { data: existingRequestRow } = await admin
     .from("help_requests")
-    .select("matched_count")
+    .select("matched_count, title, category")
     .eq("id", helpRequestId)
     .maybeSingle();
 
@@ -622,6 +623,11 @@ export const runImmediateMatching = async (
       firstNotificationLatencyMs: Date.now() - startedAt,
     };
   }
+
+  const requestTitle =
+    (existingRequestRow as { title?: string; category?: string } | null)?.title?.trim() ||
+    (existingRequestRow as { title?: string; category?: string } | null)?.category?.trim() ||
+    "Service request";
 
   let matchedCount = 0;
 
@@ -658,6 +664,11 @@ export const runImmediateMatching = async (
 
     notifiedProviders = ((matchRows as { provider_id?: string }[] | null) || []).filter((row) => !!row.provider_id).length;
     matchedCount = notifiedProviders;
+  }
+
+  // Fire web-push to all matched providers (non-blocking, best-effort)
+  if (matchedCount > 0) {
+    void sendPushToMatchedProviders(admin, helpRequestId, requestTitle);
   }
 
   return {

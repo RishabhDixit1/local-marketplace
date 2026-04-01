@@ -67,6 +67,7 @@ describe("marketplace feed helpers", () => {
       matchesMarketplaceFeedFilters(baseItem, {
         query: "electrical wiring",
         category: "all",
+        type: "all",
         maxDistanceKm: 0,
         urgentOnly: false,
         mediaOnly: false,
@@ -79,6 +80,7 @@ describe("marketplace feed helpers", () => {
       matchesMarketplaceFeedFilters(baseItem, {
         query: "",
         category: "product",
+        type: "all",
         maxDistanceKm: 0,
         urgentOnly: false,
         mediaOnly: false,
@@ -97,6 +99,7 @@ describe("marketplace feed helpers", () => {
         {
           query: "",
           category: "all",
+          type: "all",
           maxDistanceKm: 5,
           urgentOnly: true,
           mediaOnly: true,

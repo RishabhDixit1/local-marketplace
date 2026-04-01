@@ -1538,22 +1538,40 @@ export default function ChatPage() {
                         {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
                       </button>
                     )}
-                    {[
-                      { label: "Presence", state: presenceConnection },
-                      { label: "Messages", state: streamConnection },
-                      { label: "Typing", state: typingConnection },
-                    ].map((channel) => {
-                      const style = CHANNEL_HEALTH_STYLES[channel.state];
-                      return (
-                        <span
-                          key={channel.label}
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.badgeClassName}`}
-                        >
-                          <span className={`h-2 w-2 rounded-full ${style.dotClassName}`} />
-                          {channel.label}: {style.label}
-                        </span>
-                      );
-                    })}
+                    <div className="hidden items-center gap-2 sm:flex">
+                      {[
+                        { label: "Presence", state: presenceConnection },
+                        { label: "Messages", state: streamConnection },
+                        { label: "Typing", state: typingConnection },
+                      ].map((channel) => {
+                        const style = CHANNEL_HEALTH_STYLES[channel.state];
+                        return (
+                          <span
+                            key={channel.label}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.badgeClassName}`}
+                          >
+                            <span className={`h-2 w-2 rounded-full ${style.dotClassName}`} />
+                            {channel.label}: {style.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:hidden ${
+                        connectedChannels >= 2
+                          ? CHANNEL_HEALTH_STYLES.connected.badgeClassName
+                          : CHANNEL_HEALTH_STYLES.connecting.badgeClassName
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          connectedChannels >= 2
+                            ? CHANNEL_HEALTH_STYLES.connected.dotClassName
+                            : CHANNEL_HEALTH_STYLES.connecting.dotClassName
+                        }`}
+                      />
+                      {connectedChannels}/3 live
+                    </span>
                   </div>
                 </div>
               </header>

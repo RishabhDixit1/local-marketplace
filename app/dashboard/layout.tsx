@@ -16,6 +16,7 @@ import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import QuickOnboardingSheet from "@/app/components/profile/QuickOnboardingSheet";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
+import { useCart } from "@/app/components/store/CartContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
@@ -28,10 +29,12 @@ import {
   ChevronsRight,
   Home,
   LogOut,
+  Map,
   MessageCircle,
   Newspaper,
   Plus,
   Settings,
+  ShoppingBag,
   User,
   Users,
 } from "lucide-react";
@@ -49,6 +52,11 @@ const AvailabilityToggle = dynamic(
 
 const CartDrawer = dynamic(
   () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer })),
+  { ssr: false }
+);
+
+const GlobalMapView = dynamic(
+  () => import("@/app/dashboard/components/GlobalMapView"),
   { ssr: false }
 );
 
@@ -95,6 +103,8 @@ function DashboardShell({
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
   const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showGlobalMap, setShowGlobalMap] = useState(false);
+  const { totalItems: cartCount, openCart } = useCart();
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
   const [openQuickActions, setOpenQuickActions] = useState(false);
@@ -323,15 +333,26 @@ function DashboardShell({
                   <ServiQLogo className="max-w-[220px]" href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setDesktopNavCollapsed((current) => !current)}
-                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-                aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
-                title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
-              >
-                {desktopNavCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalMap(true)}
+                  aria-label="Open map view"
+                  title="Map view"
+                  className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                >
+                  <Map className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDesktopNavCollapsed((current) => !current)}
+                  className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+                  title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+                >
+                  {desktopNavCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -516,6 +537,31 @@ function DashboardShell({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-2">
+                {/* Map icon — visible on all screen sizes */}
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalMap(true)}
+                  aria-label="Open map view"
+                  title="Map view"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                >
+                  <Map className="w-4 h-4" />
+                </button>
+                {/* Cart button — visible on all screen sizes */}
+                <button
+                  type="button"
+                  onClick={openCart}
+                  aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "Open cart"}
+                  title="Cart"
+                  className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  {cartCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[var(--brand-900)] px-0.5 text-[9px] font-bold leading-none text-white">
+                      {cartCount > 9 ? "9+" : cartCount}
+                    </span>
+                  )}
+                </button>
                 {/* Saved & Profile only visible on md+ — on mobile these live in the bottom nav */}
                 <Link
                   href="/dashboard/saved"
@@ -626,16 +672,6 @@ function DashboardShell({
                   type="button"
                   onClick={() => {
                     setOpenQuickActions(false);
-                    setOpenCreatePost(true);
-                  }}
-                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Post Job
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
                     router.push("/dashboard/launchpad");
                   }}
                   className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -663,6 +699,8 @@ function DashboardShell({
       )}
 
       <CartDrawer />
+
+      <GlobalMapView open={showGlobalMap} onClose={() => setShowGlobalMap(false)} />
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav

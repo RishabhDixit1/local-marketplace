@@ -504,143 +504,165 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
     }
   };
 
+  const unreadItems = decoratedNotifications.filter((n) => n.unread);
+  const readItems = decoratedNotifications.filter((n) => !n.unread);
+
+  const renderItem = (item: DecoratedNotification) => {
+    const style = kindStyles[item.kind];
+    const Icon = style.icon;
+    const action = resolveNotificationAction(item);
+    // Derive matching bg color from the badge class, e.g. "bg-violet-100 …" → "bg-violet-100"
+    const iconBg = style.badgeClassName.split(" ").find((c) => c.startsWith("bg-")) ?? "bg-slate-100";
+
+    return (
+      <li key={item.id} className="border-b border-slate-100 last:border-b-0">
+        <div className="flex items-start gap-2 px-3 py-2.5 hover:bg-slate-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => void openNotification(item)}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left"
+          >
+            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+              <Icon className={`h-4 w-4 ${style.iconClassName}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900 leading-5">{item.title}</p>
+                <span className="shrink-0 text-[11px] text-slate-400">{item.timeLabel}</span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500 leading-4 line-clamp-2">{item.message}</p>
+              <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClassName}`}>
+                {action.ctaLabel}
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void clearNotification(item.id)}
+            className="mt-1 rounded-lg p-1.5 text-slate-300 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            aria-label="Clear notification"
+            title="Clear"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </li>
+    );
+  };
+
   const panelContent = (
     <>
-      <div className="p-4 border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-slate-900">Notifications</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              {unreadCount} unread ·{" "}
-              {demoMode
-                ? "Demo feed (switches to live after SQL setup)"
-                : "Live from orders, messages, reviews, connection updates, and Live Talk"}
-            </p>
-          </div>
-          <div
-            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold ${
-              demoMode
-                ? "border border-amber-200 bg-amber-50 text-amber-700"
-                : "border border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${demoMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`}
-            />
-            {demoMode ? "Demo" : "Live"}
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-slate-600" />
+          <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+          {unreadCount > 0 && (
+            <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </div>
+        <div
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            demoMode
+              ? "bg-amber-100 text-amber-700"
+              : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${demoMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+          {demoMode ? "Demo" : "Live"}
         </div>
       </div>
 
+      {/* Body */}
       {loading ? (
-        <div className="p-4 text-sm text-slate-500 inline-flex items-center gap-2">
+        <div className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading notifications...
+          Loading…
         </div>
       ) : (
-        <ul className="flex-1 min-h-0 overflow-y-auto">
-          {decoratedNotifications.map((item) => {
-            const style = kindStyles[item.kind];
-            const Icon = style.icon;
-            const action = resolveNotificationAction(item);
-
-            return (
-              <li key={item.id} className="border-b border-slate-100 last:border-b-0">
-                <div className={`flex items-start gap-2 px-2 py-2 ${item.unread ? "bg-sky-50/70" : ""}`}>
-                  <button
-                    type="button"
-                    onClick={() => void openNotification(item)}
-                    className="flex min-w-0 flex-1 items-start gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                      <Icon className={`h-4 w-4 ${style.iconClassName}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-900 leading-5">{item.title}</p>
-                        <span className="shrink-0 text-[11px] text-slate-500">{item.timeLabel}</span>
-                      </div>
-                      <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-5">{item.message}</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${style.badgeClassName}`}>
-                          {action.ctaLabel}
-                        </span>
-                        {item.unread && <span className="text-[11px] font-semibold text-sky-700">New</span>}
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void clearNotification(item.id)}
-                    className="mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
-                    aria-label="Clear notification"
-                    title="Clear"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+        <ul className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
+          {/* Unread group */}
+          {unreadItems.length > 0 && (
+            <>
+              <li className="sticky top-0 z-10 flex items-center gap-2 bg-sky-50 px-3 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-600">Unread</span>
               </li>
-            );
-          })}
+              {unreadItems.map(renderItem)}
+            </>
+          )}
 
-          {!decoratedNotifications.length && (
-            <li className="p-4 text-sm text-slate-500">
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="font-medium text-slate-800">No notifications yet</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  New alerts appear automatically when chats, orders, reviews, connection requests, and Live Talk updates happen.
-                </p>
+          {/* Earlier group */}
+          {readItems.length > 0 && (
+            <>
+              <li className="sticky top-0 z-10 flex items-center gap-2 bg-slate-50 px-3 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Earlier</span>
+              </li>
+              {readItems.map(renderItem)}
+            </>
+          )}
+
+          {/* Empty state */}
+          {decoratedNotifications.length === 0 && (
+            <li className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+                <Bell className="h-5 w-5 text-slate-400" />
               </div>
+              <p className="text-sm font-semibold text-slate-700">You're all caught up</p>
+              <p className="text-xs text-slate-400 max-w-[18rem]">
+                New alerts appear here for chats, orders, reviews, connection requests, and Live Talk updates.
+              </p>
             </li>
           )}
         </ul>
       )}
 
+      {/* Error banner */}
       {!!errorMessage && (
         <div
-          className={`border-t px-4 py-2 text-[11px] ${
+          className={`px-3 py-2 text-[11px] leading-5 ${
             demoMode
-              ? "border-amber-200 bg-amber-50 text-amber-700"
-              : "border-rose-200 bg-rose-50 text-rose-700"
+              ? "bg-amber-50 text-amber-700 border-t border-amber-200"
+              : "bg-rose-50 text-rose-700 border-t border-rose-200"
           }`}
         >
           {errorMessage}
         </div>
       )}
 
-      <div
-        className={`grid grid-cols-1 gap-2 p-3 border-t border-slate-200 bg-slate-50 ${
-          demoMode ? "sm:grid-cols-3" : "sm:grid-cols-2"
-        }`}
-      >
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2.5">
         <button
           type="button"
           onClick={() => void markAllAsRead()}
           disabled={unreadCount === 0 || loading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <CheckCheck className="h-4 w-4" />
+          <CheckCheck className="h-3.5 w-3.5" />
           Mark all read
         </button>
-        <button
-          type="button"
-          onClick={() => void clearAll()}
-          disabled={notifications.length === 0 || loading}
-          className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Clear all
-        </button>
-        {demoMode && (
+        <div className="flex items-center gap-2">
+          {demoMode && (
+            <button
+              type="button"
+              onClick={() => void loadNotifications()}
+              disabled={loading}
+              className="rounded-lg bg-amber-500 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-40"
+            >
+              Retry live
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => void loadNotifications()}
-            disabled={loading}
-            className="rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => void clearAll()}
+            disabled={notifications.length === 0 || loading}
+            className="rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Retry live
+            Clear all
           </button>
-        )}
+        </div>
       </div>
     </>
   );

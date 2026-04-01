@@ -25,6 +25,7 @@ import {
   ChevronUp,
   Clock,
   DollarSign,
+  Inbox,
   ListChecks,
   Loader2,
   MapPin,
@@ -95,7 +96,28 @@ import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/
 
 type RealtimeState = "connecting" | "live" | "offline";
 type TaskSortOption = "updated" | "newest" | "oldest";
-type TaskViewTab = "saved" | "in-progress" | "completed" | "cancelled";
+type TaskViewTab = "inbox" | "saved" | "in-progress" | "completed" | "cancelled";
+type InboxHelpRequest = {
+  id: string;
+  title: string | null;
+  category: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  location_label: string | null;
+  status: string | null;
+  requester_id: string | null;
+  created_at: string | null;
+};
+type InboxMatchItem = {
+  id: string;
+  help_request_id: string;
+  score: number | null;
+  distance_km: number | null;
+  reason: string | null;
+  status: string;
+  created_at: string | null;
+  help_requests: InboxHelpRequest;
+};
 type OperationalTask = Task & { source: "order" | "help_request"; helpRequestId: string | null };
 type HelpRequestRow = {
   id: string;
@@ -470,12 +492,30 @@ export default function TasksPage() {
   const [quoteEditorTaskId, setQuoteEditorTaskId] = useState<string | null>(null);
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null);
   const [supportBusyTaskId, setSupportBusyTaskId] = useState<string | null>(null);
-  const [selectedTaskView, setSelectedTaskView] = useState<TaskViewTab>("in-progress");
+  const [selectedTaskView, setSelectedTaskView] = useState<TaskViewTab>(() => {
+    if (typeof window === "undefined") return "in-progress";
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "inbox") return "inbox";
+    return "in-progress";
+  });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("focus");
+    const params = new URLSearchParams(window.location.search);
+    // When landing on inbox tab via deep-link, focus is the match ID, not a task orderId
+    if (params.get("tab") === "inbox") return null;
+    return params.get("focus");
   });
+  const [focusedMatchId, setFocusedMatchId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") !== "inbox") return null;
+    return params.get("focus");
+  });
+  const [inboxMatches, setInboxMatches] = useState<InboxMatchItem[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [acceptingMatchId, setAcceptingMatchId] = useState<string | null>(null);
+  const inboxCardRefs = useRef(new Map<string, HTMLElement | null>());
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState<TaskNotice>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -737,6 +777,35 @@ export default function TasksPage() {
     };
   }, [loadTasks]);
 
+  const loadInboxMatches = useCallback(async () => {
+    if (!currentUserId) return;
+    setInboxLoading(true);
+
+    const { data, error } = await supabase
+      .from("help_request_matches")
+      .select(
+        "id, help_request_id, score, distance_km, reason, status, created_at, help_requests!inner(id, title, category, budget_min, budget_max, location_label, status, requester_id, created_at)"
+      )
+      .eq("provider_id", currentUserId)
+      .eq("status", "open")
+      .order("score", { ascending: false })
+      .limit(30);
+
+    setInboxLoading(false);
+
+    if (error) {
+      console.warn("Failed to load inbox matches:", error.message);
+      return;
+    }
+
+    setInboxMatches((data as unknown as InboxMatchItem[] | null) || []);
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    void loadInboxMatches();
+  }, [currentUserId, loadInboxMatches]);
+
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       setClockMs(Date.now());
@@ -945,6 +1014,30 @@ export default function TasksPage() {
   useEffect(() => {
     if (!currentUserId) return;
 
+    const inboxChannel = supabase
+      .channel(`tasks-inbox-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "help_request_matches",
+          filter: `provider_id=eq.${currentUserId}`,
+        },
+        () => {
+          void loadInboxMatches();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(inboxChannel);
+    };
+  }, [currentUserId, loadInboxMatches]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
     const channel = supabase
       .channel(`tasks-notifications-${currentUserId}`)
       .on(
@@ -1128,6 +1221,11 @@ export default function TasksPage() {
   const taskTabs = useMemo(
     () => [
       {
+        value: "inbox" as const,
+        label: "Inbox",
+        count: inboxMatches.length,
+      },
+      {
         value: "saved" as const,
         label: "Saved",
         count: filteredTasks.filter((task) => {
@@ -1160,10 +1258,15 @@ export default function TasksPage() {
         }).length,
       },
     ],
-    [filteredTasks]
+    [filteredTasks, inboxMatches.length]
   );
 
   const visibleTasks = useMemo(() => {
+    if (selectedTaskView === "inbox") {
+      // Inbox uses the separate inboxMatches state, not filteredTasks
+      return [] as OperationalTask[];
+    }
+
     if (selectedTaskView === "saved") {
       return filteredTasks.filter((task) => {
         const canonical = getCanonicalTaskStatus(task);
@@ -1595,6 +1698,16 @@ export default function TasksPage() {
   }, [quoteEditorTaskId, tasks]);
 
   useEffect(() => {
+    if (!focusedMatchId || selectedTaskView !== "inbox") return;
+    const frameId = window.requestAnimationFrame(() => {
+      inboxCardRefs.current.get(focusedMatchId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [focusedMatchId, selectedTaskView, inboxMatches]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
@@ -1976,6 +2089,40 @@ export default function TasksPage() {
     router.push(`/dashboard?q=${encodeURIComponent(task.title)}`);
   };
 
+  const acceptInboxMatch = async (matchItem: InboxMatchItem) => {
+    setAcceptingMatchId(matchItem.id);
+    setErrorMessage("");
+
+    try {
+      const payload = await fetchAuthedJson<{ ok: boolean; message?: string }>(
+        supabase,
+        "/api/needs/accept",
+        {
+          method: "POST",
+          body: JSON.stringify({ helpRequestId: matchItem.help_request_id }),
+        }
+      );
+
+      if (!payload.ok) {
+        throw new Error((payload as { message?: string }).message || "Failed to accept request.");
+      }
+
+      setInboxMatches((current) => current.filter((item) => item.id !== matchItem.id));
+      setNotice({
+        kind: "success",
+        message: `You accepted "${matchItem.help_requests?.title || "the request"}". It's now in your In Progress tab.`,
+      });
+      setSelectedTaskView("in-progress");
+      startTransition(() => {
+        void loadTasks(true);
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to accept this request right now.");
+    } finally {
+      setAcceptingMatchId(null);
+    }
+  };
+
   const getTransitionIcon = (status: CanonicalOrderStatus) => {
     if (status === "completed") return CheckCircle2;
     if (status === "cancelled" || status === "rejected") return AlertCircle;
@@ -2155,6 +2302,15 @@ export default function TasksPage() {
   ] as const;
 
   const emptyState = (() => {
+    if (selectedTaskView === "inbox") {
+      return {
+        title: "No nearby requests yet",
+        copy: "When someone posts a request that matches your profile and location, it will appear here so you can accept it.",
+        actionLabel: "Open marketplace",
+        onAction: () => router.push("/dashboard"),
+      };
+    }
+
     if (tasks.length === 0) {
       return {
         title: "No live tasks yet",
@@ -3087,7 +3243,9 @@ export default function TasksPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-950">
-                  {selectedTaskView === "saved"
+                  {selectedTaskView === "inbox"
+                    ? "Nearby Requests"
+                    : selectedTaskView === "saved"
                     ? "Saved requests"
                     : selectedTaskView === "cancelled"
                       ? "Cancelled requests"
@@ -3096,7 +3254,9 @@ export default function TasksPage() {
                       : "In progress"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  {selectedTaskView === "saved"
+                  {selectedTaskView === "inbox"
+                    ? "Help requests matched to your profile. Accept one to get started."
+                    : selectedTaskView === "saved"
                     ? "Open requests that are still waiting for action."
                     : selectedTaskView === "cancelled"
                       ? "Requests that were cancelled or declined and are no longer active."
@@ -3106,11 +3266,120 @@ export default function TasksPage() {
                 </p>
               </div>
               <p className="text-sm text-slate-500">
-                {visibleTasks.length} visible
+                {selectedTaskView === "inbox" ? inboxMatches.length : visibleTasks.length} visible
               </p>
             </div>
 
-            {loading ? (
+            {selectedTaskView === "inbox" ? (
+              inboxLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((index) => (
+                    <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+                      <div className="mt-3 h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+                      <div className="mt-4 h-10 animate-pulse rounded-[1.2rem] bg-slate-100" />
+                    </div>
+                  ))}
+                </div>
+              ) : inboxMatches.length > 0 ? (
+                <div className="space-y-3">
+                  {inboxMatches.map((matchItem) => {
+                    const req = matchItem.help_requests;
+                    const isFocused = focusedMatchId === matchItem.id;
+                    const isAccepting = acceptingMatchId === matchItem.id;
+                    const budget = formatTaskBudget(req?.budget_min ?? null, req?.budget_max ?? null);
+                    const timeAgo = formatAgo(matchItem.created_at, clockMs);
+                    const distanceLabel =
+                      matchItem.distance_km != null
+                        ? matchItem.distance_km < 1
+                          ? `${Math.round(matchItem.distance_km * 1000)} m away`
+                          : `${matchItem.distance_km.toFixed(1)} km away`
+                        : null;
+
+                    return (
+                      <article
+                        key={matchItem.id}
+                        ref={(node) => {
+                          inboxCardRefs.current.set(matchItem.id, node);
+                        }}
+                        className={`relative overflow-hidden rounded-[1.25rem] border p-4 transition ${
+                          isFocused
+                            ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_0_0_3px_var(--brand-ring)]"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-[0_8px_32px_-20px_rgba(15,23,42,0.2)]"
+                        }`}
+                      >
+                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[var(--brand-500)] to-[var(--brand-700)]" />
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {req?.category ? (
+                                <span className="inline-flex items-center rounded-full bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)]">
+                                  {req.category}
+                                </span>
+                              ) : null}
+                              {distanceLabel ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                  <MapPin className="h-3 w-3" />
+                                  {distanceLabel}
+                                </span>
+                              ) : null}
+                              {matchItem.score != null ? (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                  {Math.round(matchItem.score * 100)}% match
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <h3 className="break-words text-base font-semibold leading-snug text-slate-950">
+                              {req?.title || req?.category || "Service request"}
+                            </h3>
+
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                              {req?.location_label ? (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 shrink-0" />
+                                  {req.location_label}
+                                </span>
+                              ) : null}
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                {timeAgo}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3 shrink-0" />
+                                {budget}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+                            <button
+                              type="button"
+                              onClick={() => void acceptInboxMatch(matchItem)}
+                              disabled={isAccepting || Boolean(acceptingMatchId)}
+                              className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isAccepting ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Accepting...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Accept
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null
+            ) : loading ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((index) => (
                   <div key={index} className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -3156,9 +3425,13 @@ export default function TasksPage() {
             ) : null}
           </section>
 
-          {!loading && visibleTasks.length === 0 ? (
+          {!loading && (selectedTaskView === "inbox" ? inboxMatches.length === 0 && !inboxLoading : visibleTasks.length === 0) ? (
             <div className="rounded-[1.9rem] border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-              <Package className="mx-auto h-14 w-14 text-slate-400" />
+              {selectedTaskView === "inbox" ? (
+                <Inbox className="mx-auto h-14 w-14 text-slate-400" />
+              ) : (
+                <Package className="mx-auto h-14 w-14 text-slate-400" />
+              )}
               <h3 className="mt-5 text-xl font-semibold text-slate-950">{emptyState.title}</h3>
               <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">{emptyState.copy}</p>
               <button type="button" onClick={emptyState.onAction} className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">

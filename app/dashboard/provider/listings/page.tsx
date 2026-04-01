@@ -1,9 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Package, Pencil, PauseCircle, PlayCircle, Trash2, Wrench } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Archive,
+  ChevronRight,
+  ImagePlus,
+  Loader2,
+  MoreVertical,
+  Package,
+  Pencil,
+  PauseCircle,
+  PlayCircle,
+  Plus,
+  Save,
+  Trash2,
+  Wrench,
+  X,
+} from "lucide-react";
 import { deleteProviderListing, fetchProviderListings, updateProviderListing } from "@/lib/provider/client";
 import { supabase } from "@/lib/supabase";
 import type { ProfileAvailability } from "@/lib/profile/types";
@@ -36,6 +51,112 @@ type EditingProduct = {
   imageUrl: string;
 };
 
+const INPUT = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/25";
+const SELECT = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/25";
+
+// ── Slide-in Edit Sheet ────────────────────────────────────────────────────────
+function EditSheet({ title, onClose, children, footer }: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[2000] bg-slate-950/40 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 340, damping: 32 }}
+        className="fixed inset-y-0 right-0 z-[2001] flex w-full max-w-md flex-col bg-white shadow-2xl"
+        role="dialog"
+        aria-label={title}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="text-base font-bold text-slate-900">{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">{children}</div>
+        <div className="border-t border-slate-100 p-5">{footer}</div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ── 3-dot Listing Menu ────────────────────────────────────────────────────────
+function ListingMenu({ onEdit, onToggle, onDelete, paused, busy }: {
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+  paused: boolean;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        disabled={busy}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+        aria-label="Listing options"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <MoreVertical size={14} />}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onEdit(); }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Pencil size={13} className="text-slate-400" /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onToggle(); }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {paused
+              ? <><PlayCircle size={13} className="text-emerald-500" /> Resume</>
+              : <><PauseCircle size={13} className="text-amber-500" /> Pause</>
+            }
+          </button>
+          <div className="my-1 border-t border-slate-100" />
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onDelete(); }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+          >
+            <Trash2 size={13} /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ListingsPage() {
   const router = useRouter();
   const [providerId, setProviderId] = useState<string | null>(null);
@@ -48,23 +169,17 @@ export default function ListingsPage() {
   const [compatibilityNotice, setCompatibilityNotice] = useState("");
   const [editingService, setEditingService] = useState<EditingService | null>(null);
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
+  const [activeTab, setActiveTab] = useState<"services" | "products">("services");
 
   const activeServices = useMemo(
     () => services.filter((service) => service.availability !== "offline").length,
     [services]
   );
-
   const activeProducts = useMemo(() => products.filter((product) => product.stock > 0).length, [products]);
 
   const loadListings = useCallback(async (options?: { silent?: boolean }) => {
     const silent = Boolean(options?.silent);
-
-    if (!silent) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-
+    if (!silent) setLoading(true); else setRefreshing(true);
     try {
       const payload = await fetchProviderListings();
       setServices(payload.services);
@@ -85,197 +200,113 @@ export default function ListingsPage() {
 
   useEffect(() => {
     let active = true;
-
     const init = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!active) return;
-
-      if (!user) {
-        setProviderId(null);
-        setLoading(false);
-        return;
-      }
-
+      if (!user) { setProviderId(null); setLoading(false); return; }
       setProviderId(user.id);
       await loadListings();
     };
-
     void init();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [loadListings]);
 
   useEffect(() => {
     if (!providerId) return;
-
     let refreshTimerId: number | null = null;
     const queueRefresh = () => {
-      if (refreshTimerId) {
-        window.clearTimeout(refreshTimerId);
-      }
-
-      refreshTimerId = window.setTimeout(() => {
-        void loadListings({ silent: true });
-      }, 180);
+      if (refreshTimerId) window.clearTimeout(refreshTimerId);
+      refreshTimerId = window.setTimeout(() => void loadListings({ silent: true }), 180);
     };
-
     const channel = supabase
       .channel(`provider-listings-live-${providerId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "service_listings", filter: `provider_id=eq.${providerId}` },
-        queueRefresh
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "product_catalog", filter: `provider_id=eq.${providerId}` },
-        queueRefresh
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings", filter: `provider_id=eq.${providerId}` }, queueRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog", filter: `provider_id=eq.${providerId}` }, queueRefresh)
       .subscribe();
-
     return () => {
-      if (refreshTimerId) {
-        window.clearTimeout(refreshTimerId);
-      }
+      if (refreshTimerId) window.clearTimeout(refreshTimerId);
       void supabase.removeChannel(channel);
     };
   }, [loadListings, providerId]);
 
   const removeService = async (id: string) => {
     if (!window.confirm("Delete this service listing?")) return;
-
     setBusyId(id);
     try {
       await deleteProviderListing({ listingType: "service", listingId: id });
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to delete service listing.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const removeProduct = async (id: string) => {
     if (!window.confirm("Delete this product listing?")) return;
-
     setBusyId(id);
     try {
       await deleteProviderListing({ listingType: "product", listingId: id });
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to delete product listing.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const toggleServicePaused = async (service: ProviderServiceListing) => {
     const nextAvailability: ProfileAvailability = service.availability === "offline" ? "available" : "offline";
     setBusyId(service.id);
-
     try {
       await updateProviderListing({
-        listingType: "service",
-        listingId: service.id,
-        values: {
-          title: service.title,
-          price: service.price,
-          category: service.category,
-          description: service.description,
-          availability: nextAvailability,
-          pricingType: service.pricingType,
-        },
+        listingType: "service", listingId: service.id,
+        values: { title: service.title, price: service.price, category: service.category, description: service.description, availability: nextAvailability, pricingType: service.pricingType },
       });
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update service availability.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const toggleProductPaused = async (product: ProviderProductListing) => {
     const nextStock = product.stock > 0 ? 0 : 1;
     setBusyId(product.id);
-
     try {
       await updateProviderListing({
-        listingType: "product",
-        listingId: product.id,
-        values: {
-          title: product.title,
-          price: product.price,
-          category: product.category,
-          description: product.description,
-          stock: nextStock,
-          deliveryMethod: product.deliveryMethod,
-          imageUrl: product.imageUrl,
-        },
+        listingType: "product", listingId: product.id,
+        values: { title: product.title, price: product.price, category: product.category, description: product.description, stock: nextStock, deliveryMethod: product.deliveryMethod, imageUrl: product.imageUrl },
       });
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update product stock.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const saveServiceEdit = async () => {
     if (!editingService) return;
-
     setBusyId(editingService.id);
     try {
       await updateProviderListing({
-        listingType: "service",
-        listingId: editingService.id,
-        values: {
-          title: editingService.title,
-          price: Number(editingService.price),
-          category: editingService.category,
-          description: editingService.description,
-          availability: editingService.availability,
-          pricingType: editingService.pricingType,
-        },
+        listingType: "service", listingId: editingService.id,
+        values: { title: editingService.title, price: Number(editingService.price), category: editingService.category, description: editingService.description, availability: editingService.availability, pricingType: editingService.pricingType },
       });
       setEditingService(null);
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to save service edits.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const saveProductEdit = async () => {
     if (!editingProduct) return;
-
     setBusyId(editingProduct.id);
     try {
       await updateProviderListing({
-        listingType: "product",
-        listingId: editingProduct.id,
-        values: {
-          title: editingProduct.title,
-          price: Number(editingProduct.price),
-          category: editingProduct.category,
-          description: editingProduct.description,
-          stock: Number(editingProduct.stock),
-          deliveryMethod: editingProduct.deliveryMethod,
-          imageUrl: editingProduct.imageUrl,
-        },
+        listingType: "product", listingId: editingProduct.id,
+        values: { title: editingProduct.title, price: Number(editingProduct.price), category: editingProduct.category, description: editingProduct.description, stock: Number(editingProduct.stock), deliveryMethod: editingProduct.deliveryMethod, imageUrl: editingProduct.imageUrl },
       });
       setEditingProduct(null);
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to save product edits.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   const uploadEditProductImage = async (file: File) => {
@@ -284,25 +315,17 @@ export default function ListingsPage() {
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage
-        .from("listing-images")
-        .upload(filePath, file, { contentType: file.type || "image/jpeg", upsert: false });
-
-      if (error) {
-        throw new Error(error.message || "Unable to upload image.");
-      }
-
+      const { error } = await supabase.storage.from("listing-images").upload(filePath, file, { contentType: file.type || "image/jpeg", upsert: false });
+      if (error) throw new Error(error.message || "Unable to upload image.");
       setEditingProduct((current) => (current ? { ...current, imageUrl: filePath } : current));
     } catch (uploadError) {
       setErrorMessage(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
-    } finally {
-      setBusyId(null);
-    }
+    } finally { setBusyId(null); }
   };
 
   if (!providerId && !loading) {
     return (
-      <div className="w-full max-w-[2200px] mx-auto">
+      <div className="w-full max-w-[1200px] mx-auto">
         <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-700">
           Please log in to manage listings.
         </div>
@@ -311,372 +334,339 @@ export default function ListingsPage() {
   }
 
   return (
-    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
+    <div className="w-full max-w-[1200px] mx-auto space-y-5">
+
+      {/* ── Edit Service Sheet ─────────────────────────────────────── */}
+      {editingService && (
+        <EditSheet
+          title="Edit Service"
+          onClose={() => setEditingService(null)}
+          footer={
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => void saveServiceEdit()}
+                disabled={busyId === editingService.id}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
+              >
+                {busyId === editingService.id ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                Save service
+              </button>
+              <button type="button" onClick={() => setEditingService(null)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+            </div>
+          }
+        >
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Title</label>
+            <input value={editingService.title} onChange={(e) => setEditingService({ ...editingService, title: e.target.value })} className={INPUT} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Price (₹)</label>
+              <input type="number" value={editingService.price} onChange={(e) => setEditingService({ ...editingService, price: Number(e.target.value) })} className={INPUT} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Category</label>
+              <input value={editingService.category} onChange={(e) => setEditingService({ ...editingService, category: e.target.value })} className={INPUT} />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Description</label>
+            <textarea rows={4} value={editingService.description} onChange={(e) => setEditingService({ ...editingService, description: e.target.value })} className={INPUT} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Availability</label>
+              <select value={editingService.availability} onChange={(e) => setEditingService({ ...editingService, availability: e.target.value as ProfileAvailability })} className={SELECT}>
+                <option value="available">Available</option>
+                <option value="busy">Busy</option>
+                <option value="offline">Offline (paused)</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Pricing</label>
+              <select value={editingService.pricingType} onChange={(e) => setEditingService({ ...editingService, pricingType: e.target.value as ServicePricingType })} className={SELECT}>
+                <option value="fixed">Fixed</option>
+                <option value="hourly">Hourly</option>
+                <option value="negotiable">Negotiable</option>
+              </select>
+            </div>
+          </div>
+        </EditSheet>
+      )}
+
+      {/* ── Edit Product Sheet ─────────────────────────────────────── */}
+      {editingProduct && (
+        <EditSheet
+          title="Edit Product"
+          onClose={() => setEditingProduct(null)}
+          footer={
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => void saveProductEdit()}
+                disabled={busyId === editingProduct.id}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
+              >
+                {busyId === editingProduct.id ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                Save product
+              </button>
+              <button type="button" onClick={() => setEditingProduct(null)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+            </div>
+          }
+        >
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Title</label>
+            <input value={editingProduct.title} onChange={(e) => setEditingProduct({ ...editingProduct, title: e.target.value })} className={INPUT} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Price (₹)</label>
+              <input type="number" value={editingProduct.price} onChange={(e) => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })} className={INPUT} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Stock</label>
+              <input type="number" min={0} value={editingProduct.stock} onChange={(e) => setEditingProduct({ ...editingProduct, stock: Number(e.target.value) })} className={INPUT} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Category</label>
+              <input value={editingProduct.category} onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })} className={INPUT} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">Delivery</label>
+              <select value={editingProduct.deliveryMethod} onChange={(e) => setEditingProduct({ ...editingProduct, deliveryMethod: e.target.value as ProductDeliveryMethod })} className={SELECT}>
+                <option value="pickup">Pickup only</option>
+                <option value="delivery">Delivery only</option>
+                <option value="both">Pickup & Delivery</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Description</label>
+            <textarea rows={3} value={editingProduct.description} onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })} className={INPUT} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-600">Product image</label>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border-2 border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500 transition hover:border-[var(--brand-500)]/40 hover:text-slate-700">
+              <ImagePlus size={16} className="shrink-0 text-slate-400" />
+              <span>Click to upload image</span>
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadEditProductImage(f); }} />
+            </label>
+            {resolveListingImageUrl(editingProduct.imageUrl) && (
+              <img src={resolveListingImageUrl(editingProduct.imageUrl) || ""} alt="Product preview" className="mt-2 h-20 w-20 rounded-xl border border-slate-200 object-cover" />
+            )}
+          </div>
+        </EditSheet>
+      )}
+
+      {/* ── Empty state onboarding ─────────────────────────────────── */}
       {!loading && services.length + products.length === 0 && (
-        <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-100 to-violet-100 p-4 sm:p-5">
-          <h2 className="text-lg font-semibold text-slate-900">Start your provider profile</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            You have no listings yet. Complete these steps to start receiving local leads.
-          </p>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
-              onClick={() => router.push("/dashboard/profile")}
-              className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
-            >
-              <p className="font-medium text-slate-900">1. Complete Profile</p>
-              <p className="text-xs text-slate-500 mt-1">Add bio, location, and details customers need to trust you.</p>
+        <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-6">
+          <h2 className="text-lg font-bold text-slate-900">Set up your store</h2>
+          <p className="mt-1 text-sm text-slate-600">Add your first listing to start receiving bookings and orders from nearby customers.</p>
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <button onClick={() => router.push("/dashboard/profile")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
+              <div><p className="text-sm font-semibold text-slate-900">1. Complete Profile</p><p className="mt-0.5 text-xs text-slate-500">Build trust with customers</p></div>
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
             </button>
-            <button
-              onClick={() => router.push("/dashboard/provider/add-service")}
-              className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
-            >
-              <p className="font-medium text-slate-900">2. Add Service</p>
-              <p className="text-xs text-slate-500 mt-1">Publish what you can do for customers.</p>
+            <button onClick={() => router.push("/dashboard/provider/add-service")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
+              <div><p className="text-sm font-semibold text-slate-900">2. Add Service</p><p className="mt-0.5 text-xs text-slate-500">Publish what you can do</p></div>
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
             </button>
-            <button
-              onClick={() => router.push("/dashboard/provider/add-product")}
-              className="rounded-xl bg-white border border-slate-200 p-3 text-left hover:border-indigo-400 transition-colors"
-            >
-              <p className="font-medium text-slate-900">3. Add Product</p>
-              <p className="text-xs text-slate-500 mt-1">List products for nearby buyers.</p>
+            <button onClick={() => router.push("/dashboard/provider/add-product")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
+              <div><p className="text-sm font-semibold text-slate-900">3. Add Product</p><p className="mt-0.5 text-xs text-slate-500">List products for buyers</p></div>
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white shadow-lg">
-        <h1 className="text-xl sm:text-2xl font-bold">Manage Your Listings</h1>
-        <p className="text-white/90 mt-1">Keep offerings updated so nearby customers can book with confidence.</p>
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <div className="rounded-xl bg-white/15 border border-white/30 p-3">
-            <p className="text-white/75">Total Services</p>
-            <p className="text-lg font-semibold">{services.length}</p>
-          </div>
-          <div className="rounded-xl bg-white/15 border border-white/30 p-3">
-            <p className="text-white/75">Active Services</p>
-            <p className="text-lg font-semibold">{activeServices}</p>
-          </div>
-          <div className="rounded-xl bg-white/15 border border-white/30 p-3">
-            <p className="text-white/75">Total Products</p>
-            <p className="text-lg font-semibold">{products.length}</p>
-          </div>
-          <div className="rounded-xl bg-white/15 border border-white/30 p-3">
-            <p className="text-white/75">In Stock</p>
-            <p className="text-lg font-semibold">{activeProducts}</p>
-          </div>
+      {/* ── Page header ───────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">My Store</h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {services.length} service{services.length !== 1 ? "s" : ""} · {products.length} product{products.length !== 1 ? "s" : ""}
+            {refreshing ? " · syncing…" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push("/dashboard/provider/add-service")} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]">
+            <Plus size={15} /><Wrench size={14} /> Add Service
+          </button>
+          <button onClick={() => router.push("/dashboard/provider/add-product")} className="inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
+            <Plus size={15} /><Package size={14} /> Add Product
+          </button>
         </div>
       </div>
 
-      {refreshing ? (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
-          Syncing latest listing changes...
-        </div>
-      ) : null}
+      {/* ── Stats row ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Total Services", value: services.length, color: "text-indigo-600" },
+          { label: "Active Services", value: activeServices, color: "text-emerald-600" },
+          { label: "Total Products", value: products.length, color: "text-violet-600" },
+          { label: "In Stock", value: activeProducts, color: "text-cyan-600" },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
+            <p className={`mt-1 text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
 
-      {compatibilityNotice ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          {compatibilityNotice}
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
-      ) : null}
-
-      <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-        <Wrench size={18} /> Services
-      </h2>
-
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-500">Loading listings...</div>
-      ) : services.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-500">No services listed yet.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {services.map((service) => {
-            const paused = service.availability === "offline";
-            const editing = editingService?.id === service.id;
-            return (
-              <motion.div
-                key={service.id}
-                whileHover={{ scale: 1.01 }}
-                className="p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl shadow-sm"
-              >
-                {editing ? (
-                  <div className="space-y-3">
-                    <input
-                      value={editingService.title}
-                      onChange={(event) => setEditingService({ ...editingService, title: event.target.value })}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        value={editingService.price}
-                        onChange={(event) =>
-                          setEditingService({ ...editingService, price: Number(event.target.value) })
-                        }
-                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                      />
-                      <input
-                        value={editingService.category}
-                        onChange={(event) => setEditingService({ ...editingService, category: event.target.value })}
-                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                      />
-                    </div>
-                    <textarea
-                      value={editingService.description}
-                      onChange={(event) => setEditingService({ ...editingService, description: event.target.value })}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <select
-                        value={editingService.availability}
-                        onChange={(event) =>
-                          setEditingService({
-                            ...editingService,
-                            availability: event.target.value as ProfileAvailability,
-                          })
-                        }
-                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                      >
-                        <option value="available">available</option>
-                        <option value="busy">busy</option>
-                        <option value="offline">offline</option>
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={saveServiceEdit}
-                          className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm hover:bg-indigo-500 transition-colors"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingService(null)}
-                          className="flex-1 bg-slate-100 text-slate-700 rounded-lg py-2 text-sm hover:bg-slate-200 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900 text-lg">{service.title}</h3>
-                        <p className="text-xs text-slate-500 mt-1">{service.category || "General"}</p>
-                      </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          paused ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                        }`}
-                      >
-                        {paused ? "Paused" : service.availability || "Active"}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 mt-2 text-sm">{service.description || "No description"}</p>
-                    <p className="text-indigo-600 font-bold mt-3">INR {service.price.toLocaleString("en-IN")}</p>
-
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                      <button
-                        onClick={() =>
-                          setEditingService({
-                            id: service.id,
-                            title: service.title,
-                            price: service.price,
-                            category: service.category || "",
-                            description: service.description || "",
-                            availability: service.availability,
-                            pricingType: service.pricingType,
-                          })
-                        }
-                        className="bg-slate-100 text-slate-700 hover:bg-slate-200 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <Pencil size={14} /> Edit
-                      </button>
-                      <button
-                        disabled={busyId === service.id}
-                        onClick={() => void toggleServicePaused(service)}
-                        className="bg-amber-500 text-white hover:bg-amber-600 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        {paused ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
-                        {paused ? "Resume" : "Pause"}
-                      </button>
-                      <button
-                        disabled={busyId === service.id}
-                        onClick={() => void removeService(service.id)}
-                        className="bg-rose-600 text-white hover:bg-rose-700 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            );
-          })}
+      {(compatibilityNotice || errorMessage) && (
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${errorMessage ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+          {errorMessage || compatibilityNotice}
         </div>
       )}
 
-      <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2 mt-6">
-        <Package size={18} /> Products
-      </h2>
+      {/* ── Tab switcher ──────────────────────────────────────────── */}
+      <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+        {(["services", "products"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+              activeTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tab === "services" ? <Wrench size={14} /> : <Package size={14} />}
+            {tab === "services" ? "Services" : "Products"}
+            <span className={`inline-flex min-w-[1.4rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              activeTab === tab ? "bg-[var(--brand-900)] text-white" : "bg-slate-200 text-slate-600"
+            }`}>
+              {tab === "services" ? services.length : products.length}
+            </span>
+          </button>
+        ))}
+      </div>
 
-      {loading ? null : products.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-500">No products listed yet.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {products.map((product) => {
-            const paused = product.stock <= 0;
-            const editing = editingProduct?.id === product.id;
-            return (
-              <motion.div
-                key={product.id}
-                whileHover={{ scale: 1.01 }}
-                className="p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl shadow-sm"
-              >
-                {editing ? (
-                  <div className="space-y-3">
-                    <input
-                      value={editingProduct.title}
-                      onChange={(event) => setEditingProduct({ ...editingProduct, title: event.target.value })}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        value={editingProduct.price}
-                        onChange={(event) =>
-                          setEditingProduct({ ...editingProduct, price: Number(event.target.value) })
-                        }
-                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                      />
-                      <input
-                        type="number"
-                        value={editingProduct.stock}
-                        onChange={(event) =>
-                          setEditingProduct({ ...editingProduct, stock: Number(event.target.value) })
-                        }
-                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                      />
+      {/* ── Services list ─────────────────────────────────────────── */}
+      {activeTab === "services" && (
+        loading ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[0, 1, 2].map((key) => (
+              <div key={key} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-xl bg-slate-100" />
+                  <div className="flex-1 space-y-2"><div className="h-4 w-2/3 animate-pulse rounded bg-slate-100" /><div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" /></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : services.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center">
+            <Wrench className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">No services yet</p>
+            <p className="mt-1 text-xs text-slate-500">Add a service to start getting booked by nearby customers.</p>
+            <button onClick={() => router.push("/dashboard/provider/add-service")} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
+              <Plus size={14} /> Add your first service
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {services.map((service) => {
+              const paused = service.availability === "offline";
+              return (
+                <motion.div
+                  key={service.id}
+                  layout
+                  className={`group relative rounded-2xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <Wrench size={18} />
                     </div>
-                    <input
-                      value={editingProduct.category}
-                      onChange={(event) => setEditingProduct({ ...editingProduct, category: event.target.value })}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    <textarea
-                      value={editingProduct.description}
-                      onChange={(event) => setEditingProduct({ ...editingProduct, description: event.target.value })}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    <select
-                      value={editingProduct.deliveryMethod}
-                      onChange={(event) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          deliveryMethod: event.target.value as ProductDeliveryMethod,
-                        })
-                      }
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    >
-                      <option value="pickup">pickup</option>
-                      <option value="delivery">delivery</option>
-                      <option value="both">both</option>
-                    </select>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) {
-                          void uploadEditProductImage(file);
-                        }
-                      }}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
-                    />
-                    {resolveListingImageUrl(editingProduct.imageUrl) ? (
-                      <img
-                        src={resolveListingImageUrl(editingProduct.imageUrl) || ""}
-                        alt="Product"
-                        className="h-20 w-20 rounded-lg object-cover"
-                      />
-                    ) : null}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                        onClick={saveProductEdit}
-                        className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm hover:bg-indigo-500 transition-colors"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingProduct(null)}
-                        className="flex-1 bg-slate-100 text-slate-700 rounded-lg py-2 text-sm hover:bg-slate-200 transition-colors"
-                      >
-                        Cancel
-                      </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold text-slate-900">{service.title}</h3>
+                          <p className="mt-0.5 text-xs text-slate-500">{service.category || "General"} · {service.pricingType}</p>
+                        </div>
+                        <ListingMenu
+                          paused={paused}
+                          busy={busyId === service.id}
+                          onEdit={() => setEditingService({ id: service.id, title: service.title, price: service.price, category: service.category || "", description: service.description || "", availability: service.availability, pricingType: service.pricingType })}
+                          onToggle={() => void toggleServicePaused(service)}
+                          onDelete={() => void removeService(service.id)}
+                        />
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm text-slate-600">{service.description || "No description"}</p>
+                      <div className="mt-3 flex items-center justify-between">
+                        <p className="text-base font-bold text-indigo-600">₹{service.price.toLocaleString("en-IN")}</p>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${paused ? "bg-amber-100 text-amber-700" : service.availability === "busy" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          {paused ? "Paused" : service.availability === "busy" ? "Busy" : "Active"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900 text-lg">{product.title}</h3>
-                        <p className="text-xs text-slate-500 mt-1">{product.category || "General"}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        )
+      )}
+
+      {/* ── Products list ─────────────────────────────────────────── */}
+      {activeTab === "products" && (
+        loading ? null : products.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center">
+            <Package className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">No products yet</p>
+            <p className="mt-1 text-xs text-slate-500">Add products to sell to nearby buyers.</p>
+            <button onClick={() => router.push("/dashboard/provider/add-product")} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
+              <Plus size={14} /> Add your first product
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {products.map((product) => {
+              const paused = product.stock <= 0;
+              const imageUrl = resolveListingImageUrl(product.imageUrl);
+              return (
+                <motion.div
+                  key={product.id}
+                  layout
+                  className={`rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
+                >
+                  {imageUrl && (
+                    <div className="h-36 w-full overflow-hidden rounded-t-2xl bg-slate-100">
+                      <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-slate-900">{product.title}</h3>
+                        <p className="mt-0.5 text-xs text-slate-500">{product.category || "General"} · {product.deliveryMethod}</p>
                       </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          paused ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                        }`}
-                      >
-                        {paused ? "Paused" : `Stock ${product.stock}`}
+                      <ListingMenu
+                        paused={paused}
+                        busy={busyId === product.id}
+                        onEdit={() => setEditingProduct({ id: product.id, title: product.title, price: product.price, category: product.category || "", description: product.description || "", stock: product.stock, deliveryMethod: product.deliveryMethod, imageUrl: product.imageUrl })}
+                        onToggle={() => void toggleProductPaused(product)}
+                        onDelete={() => void removeProduct(product.id)}
+                      />
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm text-slate-600">{product.description || "No description"}</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-base font-bold text-emerald-600">₹{product.price.toLocaleString("en-IN")}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${paused ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {paused ? "Out of stock" : `Stock: ${product.stock}`}
                       </span>
                     </div>
-                    <p className="text-slate-600 mt-2 text-sm">{product.description || "No description"}</p>
-                    <p className="text-emerald-600 font-bold mt-3">INR {product.price.toLocaleString("en-IN")}</p>
-
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                      <button
-                        onClick={() =>
-                          setEditingProduct({
-                            id: product.id,
-                            title: product.title,
-                            price: product.price,
-                            category: product.category || "",
-                            description: product.description || "",
-                            stock: product.stock,
-                            deliveryMethod: product.deliveryMethod,
-                            imageUrl: product.imageUrl,
-                          })
-                        }
-                        className="bg-slate-100 text-slate-700 hover:bg-slate-200 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <Pencil size={14} /> Edit
-                      </button>
-                      <button
-                        disabled={busyId === product.id}
-                        onClick={() => void toggleProductPaused(product)}
-                        className="bg-amber-500 text-white hover:bg-amber-600 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        {paused ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
-                        {paused ? "Resume" : "Pause"}
-                      </button>
-                      <button
-                        disabled={busyId === product.id}
-                        onClick={() => void removeProduct(product.id)}
-                        className="bg-rose-600 text-white hover:bg-rose-700 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
-                      >
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );
 }
+
