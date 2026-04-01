@@ -43,7 +43,6 @@ import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/uti
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
-import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCardSkeleton from "./components/ProviderCardSkeleton";
 import type {
@@ -155,7 +154,6 @@ const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const MAX_DISCOVERABLE_PROFILES = 140;
 const AUTO_SYNC_INTERVAL_MS = 30000;
 const NEW_PROVIDER_WINDOW_DAYS = 21;
-const MAP_ITEM_LIMIT = 18;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRICE_FORMATTER = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -1725,21 +1723,6 @@ export default function PeoplePage() {
   const activeProvider =
     visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
 
-  const mapItems = useMemo(
-    () =>
-      visibleProviders.slice(0, MAP_ITEM_LIMIT).map((provider) => ({
-        id: provider.id,
-        title: provider.name,
-        lat: provider.latitude ?? defaultMarketCoordinates().latitude,
-        lng: provider.longitude ?? defaultMarketCoordinates().longitude,
-        creatorName: provider.role,
-        locationLabel: provider.location,
-        category: provider.primarySkill,
-        timeLabel: `Replies ~${provider.responseMinutes} min`,
-        priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : undefined,
-      })),
-    [visibleProviders]
-  );
   return (
     <div
       className="mx-auto w-full max-w-[1540px] space-y-4 overflow-x-clip pb-2 sm:space-y-5"
@@ -1849,13 +1832,6 @@ export default function PeoplePage() {
           </div>
         </div>
       )}
-
-      <PeopleMapPanel
-        items={mapItems}
-        center={viewerCenter}
-        activeProvider={activeProvider}
-        onSelectProvider={setActiveProviderId}
-      />
 
       <div className="min-w-0">
         <main className="space-y-6">

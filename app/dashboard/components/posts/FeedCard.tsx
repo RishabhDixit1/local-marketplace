@@ -2,12 +2,16 @@
 
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Archive,
   Bookmark,
   BookmarkCheck,
   Check,
   Loader2,
   MapPin,
+  MoreVertical,
+  Pencil,
   Share2,
   Sparkles,
   Trash2,
@@ -35,6 +39,11 @@ type FeedCardProps = {
   onFocus: () => void;
   onHoverChange: (hovered: boolean) => void;
   headerAction?: ReactNode;
+  isOwner?: boolean;
+  onOwnerEdit?: () => void;
+  onOwnerArchive?: () => void;
+  onOwnerDelete?: () => void;
+  ownerBusy?: boolean;
 };
 
 const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimaryActionKind>["tone"], string> = {
@@ -88,7 +97,26 @@ export default function FeedCard({
   onFocus,
   onHoverChange,
   headerAction,
+  isOwner,
+  onOwnerEdit,
+  onOwnerArchive,
+  onOwnerDelete,
+  ownerBusy,
 }: FeedCardProps) {
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const ownerMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ownerMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (ownerMenuRef.current && !ownerMenuRef.current.contains(e.target as Node)) {
+        setOwnerMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ownerMenuOpen]);
+
   const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
   const discardButton = buttons.find((button) => button.kind === "discard");
@@ -149,6 +177,48 @@ export default function FeedCard({
           </div>
         </div>
         {headerAction ? <div className="shrink-0 self-center">{headerAction}</div> : null}
+        {isOwner ? (
+          <div ref={ownerMenuRef} className="relative shrink-0 self-center">
+            <button
+              type="button"
+              onClick={() => setOwnerMenuOpen((p) => !p)}
+              disabled={ownerBusy}
+              aria-label="Post options"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+            >
+              {ownerBusy ? <Loader2 size={15} className="animate-spin" /> : <MoreVertical size={15} />}
+            </button>
+            {ownerMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => { setOwnerMenuOpen(false); onOwnerEdit?.(); }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Pencil size={14} className="text-slate-400" />
+                  Edit post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOwnerMenuOpen(false); onOwnerArchive?.(); }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Archive size={14} className="text-amber-400" />
+                  Archive post
+                </button>
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  type="button"
+                  onClick={() => { setOwnerMenuOpen(false); onOwnerDelete?.(); }}
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                >
+                  <Trash2 size={14} />
+                  Delete post
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
       </header>
 
       <div className="mt-2.5">

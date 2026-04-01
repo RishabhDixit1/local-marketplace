@@ -1430,6 +1430,8 @@ export default function WelcomePage() {
                   onPrimaryAction={() => {}}
                   onSecondaryAction={() => {}}
                   renderHeaderAction={() => null}
+                  viewerId={viewerId}
+                  onFeedRefresh={() => { if (viewerId) void loadConnectedFeed(viewerId, { soft: true }); }}
                 />
               ) : isSearchActive && filteredCards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
@@ -1515,6 +1517,8 @@ export default function WelcomePage() {
                     onPrimaryAction={handleWelcomePrimaryAction}
                     onSecondaryAction={handleWelcomeSecondaryAction}
                     renderHeaderAction={renderWelcomeHeaderAction}
+                    viewerId={viewerId}
+                    onFeedRefresh={() => { if (viewerId) void loadConnectedFeed(viewerId, { soft: true }); }}
                   />
 
                   {hasMoreFeedCards && (
