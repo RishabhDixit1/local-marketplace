@@ -1,4 +1,4 @@
-﻿-- ServiQ Migrations Bundle (idempotent) -- 2026-04-01
+﻿-- ServiQ Migrations Bundle -- 2026-04-01 16:20
 
 -- === 20260329145500_allow_direct_chat_without_connection.sql ===
 begin;
@@ -241,7 +241,7 @@ alter table public.orders
 -- upload their own images and everyone can read them publicly).
 
 -- The bucket itself must be created in the Supabase dashboard:
---   Storage â†’ New bucket â†’ Name: listing-images â†’ Public: ON
+--   Storage → New bucket → Name: listing-images → Public: ON
 
 -- RLS: anyone can read listing images
 drop policy if exists "listing_images_public_read" on storage.objects;
@@ -268,4 +268,5 @@ create policy "listing_images_owner_delete"
     bucket_id = 'listing-images'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
 

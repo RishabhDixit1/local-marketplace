@@ -15,12 +15,14 @@ alter table public.orders
 --   Storage → New bucket → Name: listing-images → Public: ON
 
 -- RLS: anyone can read listing images
-create policy if not exists "listing_images_public_read"
+drop policy if exists "listing_images_public_read" on storage.objects;
+create policy "listing_images_public_read"
   on storage.objects for select
   using ( bucket_id = 'listing-images' );
 
 -- RLS: authenticated user can upload to their own folder
-create policy if not exists "listing_images_auth_insert"
+drop policy if exists "listing_images_auth_insert" on storage.objects;
+create policy "listing_images_auth_insert"
   on storage.objects for insert
   to authenticated
   with check (
@@ -29,7 +31,8 @@ create policy if not exists "listing_images_auth_insert"
   );
 
 -- RLS: owner can delete their own images
-create policy if not exists "listing_images_owner_delete"
+drop policy if exists "listing_images_owner_delete" on storage.objects;
+create policy "listing_images_owner_delete"
   on storage.objects for delete
   to authenticated
   using (
