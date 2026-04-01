@@ -3,8 +3,6 @@
 import { useMemo, useState } from "react";
 import { Loader2, MapPin, Phone, UserRound } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
-import { saveCurrentUserProfile } from "@/lib/profile/client";
-import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 
 type RoleChoice = "user" | "provider" | "both";
@@ -33,37 +31,33 @@ export default function QuickOnboardingSheet() {
     setError("");
 
     try {
-      const nextValues = {
-        ...toProfileFormValues(profile),
-        fullName: name,
-        location,
-        phone,
-        role: (roleChoice === "user" ? "seeker" : "provider") as "seeker" | "provider",
-      };
-
-      const nextProfile = await saveCurrentUserProfile({
-        user: { id: user.id, email: user.email || undefined },
-        values: nextValues,
-      });
-
+      const storedRole = roleChoice === "user" ? "seeker" : roleChoice === "both" ? "business" : "provider";
       const metadata = {
-        ...(nextProfile.metadata || {}),
+        ...(profile.metadata || {}),
         onboardingRoleChoice: roleChoice,
       };
 
-      const storedRole = roleChoice === "user" ? "seeker" : roleChoice === "both" ? "business" : "provider";
-
-      const { data, error: metadataError } = await supabase
+      // Use a direct Supabase client update instead of the /api/profile/save route to avoid
+      // fetch AbortErrors on mobile. The DB trigger (sync_profile_derived_fields) will
+      // automatically set onboarding_completed = true once name + location are present.
+      const { data, error: updateError } = await supabase
         .from("profiles")
-        .update({ metadata, role: storedRole })
+        .update({
+          full_name: name.trim() || null,
+          name: name.trim() || null,
+          location: location.trim() || null,
+          phone: phone.trim() || null,
+          role: storedRole,
+          metadata,
+        })
         .eq("id", user.id)
         .select("*")
         .maybeSingle();
 
-      if (!metadataError && data) {
-        setProfile(data as typeof nextProfile);
-      } else {
-        setProfile(nextProfile);
+      if (updateError) throw updateError;
+
+      if (data) {
+        setProfile(data as typeof profile);
       }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save onboarding details.");
