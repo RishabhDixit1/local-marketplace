@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
-import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
+import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -26,21 +26,17 @@ import {
 import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
 import { getProfileRoleFamily } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
-import { getOrCreateDirectConversationId } from "@/lib/directMessages";
+import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
 import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
+import {
+  resolveMarketplaceCardActionModel,
+  type MarketplaceCardActionModel,
+  type MarketplacePrimaryActionKind,
+  type MarketplaceSecondaryActionKind,
+} from "@/lib/marketplaceCardActions";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
-import {
-  Bookmark,
-  BookmarkCheck,
-  Check,
-  Loader2,
-  MapPin,
-  Share2,
-  Sparkles,
-  UsersRound,
-  Zap,
-} from "lucide-react";
+import { Loader2, UsersRound, Zap } from "lucide-react";
 
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
@@ -126,8 +122,6 @@ const HERO_TAGLINES = [
 ] as const;
 
 const buildWelcomeDistanceLabel = (distanceKm: number) => (distanceKm > 0 ? `${distanceKm.toFixed(1)} km away` : "Nearby");
-const isTaskRequestCard = (card: NearbyCard) => Boolean(card.helpRequestId);
-
 const isUrgentWelcomeCard = (card: NearbyCard) => {
   const urgencySource = `${card.signalLabel} ${card.etaLabel}`.toLowerCase();
   return urgencySource.includes("urgent") || urgencySource.includes("today") || urgencySource.includes("evening");
@@ -135,6 +129,15 @@ const isUrgentWelcomeCard = (card: NearbyCard) => {
 
 const formatWelcomeCountLabel = (count: number, singular: string) =>
   `${count} ${count === 1 ? singular : `${singular}s`}`;
+
+const getWelcomeCardCategory = (card: Pick<EnrichedNearbyCard, "badge" | "subtitle">) => {
+  const subtitleParts = card.subtitle
+    .split("•")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return subtitleParts.length > 1 ? subtitleParts[subtitleParts.length - 1] || card.badge : card.badge;
+};
 
 const formatTimeAgo = (value: string | null | undefined) => {
   const normalized = typeof value === "string" ? value.trim() : "";
@@ -202,6 +205,8 @@ export default function WelcomePage() {
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
+  const [activeFeedCardId, setActiveFeedCardId] = useState<string | null>(null);
+  const [hoveredFeedCardId, setHoveredFeedCardId] = useState<string | null>(null);
   const activeRef = useRef(true);
   const viewerRoleFamily = getProfileRoleFamily(viewerProfile?.role);
   const viewerIsProvider = viewerRoleFamily === "provider";
@@ -221,7 +226,7 @@ export default function WelcomePage() {
     };
   }, []);
 
-  const adjustCardMetrics = (cardId: string, updates: Partial<CardMetrics>) => {
+  const adjustCardMetrics = useCallback((cardId: string, updates: Partial<CardMetrics>) => {
     setCardMetricsById((current) => {
       const existing = current[cardId] || { saves: 0, shares: 0 };
       return {
@@ -232,7 +237,7 @@ export default function WelcomePage() {
         },
       };
     });
-  };
+  }, []);
 
   const fetchFeedCardMetrics = useCallback(async (
     cardIds: string[],
@@ -582,26 +587,45 @@ export default function WelcomePage() {
 
   useDashboardPrompt(welcomePromptConfig);
 
-  const buildCardSavePayload = (card: EnrichedNearbyCard): FeedCardSavePayload => ({
-    card_id: card.id,
-    focus_id: card.focusId,
-    card_type: card.type,
-    title: card.title,
-    subtitle: card.subtitle,
-    action_path: card.actionPath,
-    metadata: {
-      priceLabel: card.priceLabel,
-      etaLabel: card.etaLabel,
-      ownerLabel: card.ownerLabel,
-      audienceLabel: card.audienceLabel,
-      audienceName: card.audienceName,
-      tags: card.tags,
-      image: card.image,
-      signalLabel: card.signalLabel,
-    },
-  });
+  const ensureViewerId = useCallback(async () => {
+    if (viewerId) return viewerId;
 
-  const persistCardSave = async (payload: FeedCardSavePayload, shouldSave: boolean): Promise<boolean> => {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      throw new Error(error?.message || "Login required to continue.");
+    }
+
+    setViewerId(user.id);
+    return user.id;
+  }, [viewerId]);
+
+  const buildCardSavePayload = useCallback(
+    (card: EnrichedNearbyCard): FeedCardSavePayload => ({
+      card_id: card.id,
+      focus_id: card.focusId,
+      card_type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      action_path: card.actionPath,
+      metadata: {
+        priceLabel: card.priceLabel,
+        etaLabel: card.etaLabel,
+        ownerLabel: card.ownerLabel,
+        audienceLabel: card.audienceLabel,
+        audienceName: card.audienceName,
+        tags: card.tags,
+        image: card.image,
+        signalLabel: card.signalLabel,
+      },
+    }),
+    []
+  );
+
+  const persistCardSave = useCallback(async (payload: FeedCardSavePayload, shouldSave: boolean): Promise<boolean> => {
     if (!viewerId) {
       return false;
     }
@@ -627,9 +651,9 @@ export default function WelcomePage() {
     }
 
     return true;
-  };
+  }, [viewerId]);
 
-  const persistShareEvent = async (card: EnrichedNearbyCard, channel: FeedShareChannel) => {
+  const persistShareEvent = useCallback(async (card: EnrichedNearbyCard, channel: FeedShareChannel) => {
     if (!viewerId) {
       return;
     }
@@ -654,8 +678,9 @@ export default function WelcomePage() {
     if (error) {
       console.warn("Failed to store feed card share:", error.message);
     }
-  };
-  const toggleCardSave = async (card: EnrichedNearbyCard) => {
+  }, [viewerId]);
+
+  const toggleCardSave = useCallback(async (card: EnrichedNearbyCard) => {
     const wasSaved = savedCardIds.includes(card.id);
     const shouldSave = !wasSaved;
     const savePayload = buildCardSavePayload(card);
@@ -705,9 +730,9 @@ export default function WelcomePage() {
     } finally {
       setSavingCardIds((current) => current.filter((id) => id !== card.id));
     }
-  };
+  }, [adjustCardMetrics, buildCardSavePayload, cardMetricsById, persistCardSave, pushFeedToast, savedCardIds, viewerId]);
 
-  const appendCardContextQuery = (
+  const appendCardContextQuery = useCallback((
     path: string,
     card: EnrichedNearbyCard,
     extras?: Record<string, string | null | undefined>
@@ -731,29 +756,35 @@ export default function WelcomePage() {
 
     const nextQuery = params.toString();
     return nextQuery ? `${pathname}?${nextQuery}` : pathname;
-  };
+  }, []);
 
-  const buildFeedFocusPath = (card: EnrichedNearbyCard) =>
-    appendCardContextQuery(card.actionPath, card, {
-      focus: card.focusId,
-      type: card.type,
-    });
+  const buildFeedFocusPath = useCallback(
+    (card: EnrichedNearbyCard) =>
+      appendCardContextQuery(card.actionPath, card, {
+        focus: card.focusId,
+        type: card.type,
+      }),
+    [appendCardContextQuery]
+  );
 
-  const buildNetworkActionPath = (card: EnrichedNearbyCard) => {
+  const buildNetworkActionPath = useCallback((card: EnrichedNearbyCard) => {
     return appendCardContextQuery(card.networkActionPath, card, {
       intent: "connections",
       tab: "Nearby",
       q: card.ownerLabel,
       provider: card.ownerId || undefined,
     });
-  };
+  }, [appendCardContextQuery]);
 
-  const buildMessagePath = (card: EnrichedNearbyCard, conversationId?: string) =>
-    appendCardContextQuery(routes.chat, card, {
-      open: conversationId,
-      focus: card.focusId,
-      type: card.type,
-    });
+  const buildMessagePath = useCallback(
+    (card: EnrichedNearbyCard, conversationId?: string) =>
+      appendCardContextQuery(routes.chat, card, {
+        open: conversationId,
+        focus: card.focusId,
+        type: card.type,
+      }),
+    [appendCardContextQuery]
+  );
 
   const acceptHelpRequestCard = useCallback(async (card: EnrichedNearbyCard) => {
     if (!viewerId) {
@@ -795,22 +826,38 @@ export default function WelcomePage() {
     return true;
   }, [pushFeedToast, viewerId]);
 
-  const toAcceptDialogListing = useCallback(
+  const toMarketplaceFeedItem = useCallback(
     (card: EnrichedNearbyCard): MarketplaceDisplayFeedItem => ({
       id: card.id,
-      source: card.helpRequestId ? "help_request" : card.type === "service" ? "service_listing" : card.type === "product" ? "product_listing" : "post",
+      source:
+        card.helpRequestId || card.source === "help_request"
+          ? "help_request"
+          : card.type === "service"
+            ? "service_listing"
+            : card.type === "product"
+              ? "product_listing"
+              : "post",
       helpRequestId: card.helpRequestId || null,
+      canonicalKey: card.canonicalKey,
+      linkedPostId: card.source === "post" ? card.focusId : null,
+      linkedListingId: card.source === "service" || card.source === "product" ? card.focusId : null,
+      linkedHelpRequestId: card.helpRequestId || null,
+      metadata: {
+        audience_label: card.audienceLabel,
+        audience_name: card.audienceName,
+        surface_reason: card.surfaceReason,
+      },
       providerId: card.ownerId || "",
       type: card.type,
       title: card.title,
       description: card.subtitle,
-      category: card.badge,
+      category: getWelcomeCardCategory(card),
       price: 0,
       avatarUrl: card.ownerAvatarUrl,
       creatorName: card.ownerLabel,
       creatorUsername: card.ownerLabel,
       locationLabel: card.distanceLabel,
-      distanceKm: 0,
+      distanceKm: card.distanceKm,
       lat: 0,
       lng: 0,
       media: card.media,
@@ -818,10 +865,10 @@ export default function WelcomePage() {
       urgent: card.isUrgent,
       rankScore: 0,
       profileCompletion: 0,
-      responseMinutes: 0,
-      verificationStatus: "verified",
-      publicProfilePath: "",
-      status: card.status || "",
+      responseMinutes: card.isUrgent ? 15 : 45,
+      verificationStatus: "pending",
+      publicProfilePath: buildNetworkActionPath(card),
+      status: card.status || "open",
       acceptedProviderId: card.acceptedProviderId || null,
       displayTitle: card.title,
       displayDescription: card.subtitle,
@@ -830,122 +877,67 @@ export default function WelcomePage() {
       priceLabel: card.priceLabel,
       distanceLabel: card.distanceLabel,
     }),
-    []
+    [buildNetworkActionPath]
   );
 
-  const handleMessageCard = async (card: EnrichedNearbyCard) => {
-    if (card.ownerId && viewerId && card.ownerId === viewerId) {
-      pushFeedToast("info", "This is your own post.");
+  const openWelcomeQuoteThread = useCallback(async (card: EnrichedNearbyCard) => {
+    if (card.isDemo) {
+      router.push(buildFeedFocusPath(card));
       return;
-    }
-
-    if (card.helpRequestId) {
-      if (!viewerId) {
-        router.push(buildMessagePath(card));
-        return;
-      }
-
-      if (card.ownerId === viewerId) {
-        pushFeedToast("info", "This is your own task request.");
-        return;
-      }
-
-      if (card.acceptedProviderId && card.acceptedProviderId !== viewerId) {
-        pushFeedToast("info", "This task has already been accepted.");
-        return;
-      }
-
-      if (isClosedMarketplaceStatus(card.status)) {
-        pushFeedToast("info", "This task is no longer open.");
-        return;
-      }
-
-      setMessageCardId(card.id);
-
-      try {
-        const accepted = await acceptHelpRequestCard(card);
-        if (!accepted) return;
-
-        const recipientId = card.ownerId || null;
-        const isUuidRecipient =
-          !!recipientId &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recipientId);
-
-        if (!recipientId || !isUuidRecipient) {
-          router.push("/dashboard/tasks");
-          pushFeedToast("success", "Task moved to In Progress.");
-          return;
-        }
-
-        const targetConversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
-        const params = new URLSearchParams({
-          open: targetConversationId,
-          quote: "1",
-          helpRequest: card.helpRequestId,
-        });
-
-        router.push(`/dashboard/chat?${params.toString()}`);
-        pushFeedToast("success", "Quote flow opened.");
-        return;
-      } catch (error) {
-        pushFeedToast("error", toErrorMessage(error, "Unable to start the quote flow."));
-        return;
-      } finally {
-        setMessageCardId((current) => (current === card.id ? null : current));
-      }
     }
 
     const fallbackChatPath = buildMessagePath(card);
     const recipientId = card.ownerId || null;
     const isUuidRecipient = !!recipientId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(recipientId);
 
-    if (!viewerId || !recipientId || !isUuidRecipient || recipientId === viewerId || recipientId.startsWith("demo-")) {
+    if (!recipientId || !isUuidRecipient || recipientId.startsWith("demo-")) {
       router.push(fallbackChatPath);
       return;
     }
 
     setMessageCardId(card.id);
-    let targetPath = fallbackChatPath;
 
     try {
-      const targetConversationId = await getOrCreateDirectConversationId(supabase, viewerId, recipientId);
-
-      if (targetConversationId) {
-        targetPath = buildMessagePath(card, targetConversationId);
+      const activeViewerId = await ensureViewerId();
+      if (activeViewerId === recipientId) {
+        pushFeedToast("info", "This is your own post.");
+        return;
       }
+
+      if (isClosedMarketplaceStatus(card.status)) {
+        pushFeedToast(
+          "info",
+          card.helpRequestId ? "This request is closed, so quotes are no longer available." : "This post is no longer open."
+        );
+        return;
+      }
+
+      const targetConversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, recipientId);
+      const interestMessage =
+        card.helpRequestId && card.acceptedProviderId === activeViewerId
+          ? `Hi, I am preparing a quote for "${card.title}" and will share it shortly.`
+          : `Hi, I am interested in "${card.title}" and can help with it.`;
+
+      await insertConversationMessage(supabase, {
+        conversationId: targetConversationId,
+        senderId: activeViewerId,
+        content: interestMessage,
+      });
+
+      const params = new URLSearchParams({ open: targetConversationId });
+      if (card.helpRequestId && card.acceptedProviderId === activeViewerId) {
+        params.set("quote", "1");
+        params.set("helpRequest", card.helpRequestId);
+      }
+
+      router.push(`/dashboard/chat?${params.toString()}`);
+      pushFeedToast("success", "Interest sent to the creator.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "unknown error";
-      console.warn("Failed to prepare contextual chat:", message);
+      pushFeedToast("error", toErrorMessage(error, "Unable to start the quote flow."));
     } finally {
       setMessageCardId((current) => (current === card.id ? null : current));
     }
-
-    router.push(targetPath);
-  };
-
-  const handlePrimaryCardAction = async (card: EnrichedNearbyCard) => {
-    if (card.isDemo) {
-      router.push(buildFeedFocusPath(card));
-      return;
-    }
-
-    if (card.helpRequestId) {
-      setAcceptTargetCard(card);
-      return;
-    }
-
-    if (card.actionLabel === "Respond" || card.actionLabel === "Book") {
-      await handleMessageCard(card);
-      return;
-    }
-
-    if (card.actionLabel === "Connect") {
-      router.push(buildNetworkActionPath(card));
-      return;
-    }
-
-    router.push(buildFeedFocusPath(card));
-  };
+  }, [buildFeedFocusPath, buildMessagePath, ensureViewerId, pushFeedToast, router]);
 
   const confirmAcceptCard = useCallback(async () => {
     if (!acceptTargetCard) return;
@@ -964,7 +956,7 @@ export default function WelcomePage() {
     }
   }, [acceptHelpRequestCard, acceptTargetCard, pushFeedToast, router]);
 
-  const handleShareCard = async (card: EnrichedNearbyCard) => {
+  const handleShareCard = useCallback(async (card: EnrichedNearbyCard) => {
     const focusPath = buildFeedFocusPath(card);
     const shareUrl = `${window.location.origin}${focusPath}`;
     const shareText = `${card.title} | ${card.priceLabel} | ${card.etaLabel} | ${card.ownerLabel}`;
@@ -1006,9 +998,91 @@ export default function WelcomePage() {
     } finally {
       setSharingCardIds((current) => current.filter((id) => id !== card.id));
     }
-  };
+  }, [adjustCardMetrics, buildFeedFocusPath, cardMetricsById, persistShareEvent, pushFeedToast]);
 
   const livePostCount = nearbyCards.length;
+  const cardById = useMemo(() => new Map(enrichedCards.map((card) => [card.id, card])), [enrichedCards]);
+  const visibleFeedItems = useMemo(() => visibleCards.map((card) => toMarketplaceFeedItem(card)), [toMarketplaceFeedItem, visibleCards]);
+
+  const resolveWelcomeActionModel = useCallback(
+    (item: MarketplaceDisplayFeedItem): MarketplaceCardActionModel => {
+      const model = resolveMarketplaceCardActionModel({
+        item,
+        viewerId,
+      });
+
+      return {
+        ...model,
+        buttons: model.buttons.filter((button) => button.kind !== "discard"),
+      };
+    },
+    [viewerId]
+  );
+
+  const handleWelcomePrimaryAction = useCallback(
+    async (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
+      const card = cardById.get(item.id);
+      if (!card) return;
+
+      if (primaryKind === "view_profile") {
+        router.push(buildNetworkActionPath(card));
+        return;
+      }
+
+      if (primaryKind === "accept") {
+        if (card.isDemo) {
+          router.push(buildFeedFocusPath(card));
+          return;
+        }
+
+        setAcceptTargetCard(card);
+        return;
+      }
+
+      if (primaryKind === "send_quote") {
+        await openWelcomeQuoteThread(card);
+      }
+    },
+    [buildFeedFocusPath, buildNetworkActionPath, cardById, openWelcomeQuoteThread, router]
+  );
+
+  const handleWelcomeSecondaryAction = useCallback(
+    async (item: MarketplaceDisplayFeedItem, action: MarketplaceSecondaryActionKind) => {
+      const card = cardById.get(item.id);
+      if (!card) return;
+
+      if (action === "share") {
+        await handleShareCard(card);
+        return;
+      }
+
+      await toggleCardSave(card);
+    },
+    [cardById, handleShareCard, toggleCardSave]
+  );
+
+  const renderWelcomeHeaderAction = useCallback(
+    (item: MarketplaceDisplayFeedItem) => {
+      const card = cardById.get(item.id);
+      if (!card?.statusLabel) return null;
+
+      return (
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+          {card.statusLabel}
+        </span>
+      );
+    },
+    [cardById]
+  );
+
+  const isWelcomePrimaryBusy = useCallback(
+    (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
+      if (primaryKind === "accept") return acceptingCardId === item.id;
+      if (primaryKind === "send_quote") return messageCardId === item.id;
+      return false;
+    },
+    [acceptingCardId, messageCardId]
+  );
 
   useEffect(() => {
     const t = window.setInterval(() => {
@@ -1333,26 +1407,30 @@ export default function WelcomePage() {
           {/* ── Live feed ── */}
           <div data-testid="welcome-live-feed">
               {isFeedLoading && enrichedCards.length === 0 ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {[0, 1, 2].map((index) => (
-                    <div key={`welcome-feed-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_290px]">
-                        <div>
-                          <div className="h-3 w-24 rounded bg-slate-200" />
-                          <div className="mt-3 h-6 w-3/5 rounded bg-slate-200" />
-                          <div className="mt-2 h-4 w-full rounded bg-slate-200" />
-                          <div className="mt-2 h-4 w-5/6 rounded bg-slate-200" />
-                          <div className="mt-4 flex gap-2">
-                            <div className="h-8 w-24 rounded bg-slate-200" />
-                            <div className="h-8 w-20 rounded bg-slate-200" />
-                            <div className="h-8 w-20 rounded bg-slate-200" />
-                          </div>
-                        </div>
-                        <div className="h-48 rounded-2xl bg-slate-200" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <FeedGrid
+                  items={[]}
+                  loading
+                  hasAnyFeed={nearbyCards.length > 0}
+                  feedError={loadError || null}
+                  focusItemId=""
+                  activeItemId={activeFeedCardId}
+                  hoveredItemId={hoveredFeedCardId}
+                  onActiveItemChange={setActiveFeedCardId}
+                  onHoverItemChange={setHoveredFeedCardId}
+                  onResetOrRefresh={() => {
+                    if (!viewerId) return;
+                    void loadConnectedFeed(viewerId, { soft: false });
+                  }}
+                  onOpenComposer={() => setOpenPostModal(true)}
+                  resolveActionModel={resolveWelcomeActionModel}
+                  isSavedListing={() => false}
+                  isSaveBusy={() => false}
+                  isShareBusy={() => false}
+                  isPrimaryBusy={() => false}
+                  onPrimaryAction={() => {}}
+                  onSecondaryAction={() => {}}
+                  renderHeaderAction={() => null}
+                />
               ) : isSearchActive && filteredCards.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
                   <h4 className="text-base font-semibold text-slate-900">No live cards match your search</h4>
@@ -1413,190 +1491,31 @@ export default function WelcomePage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {visibleCards.map((card, cardIndex) => {
-                    const networkPath = buildNetworkActionPath(card);
-                    const isSaved = savedCardIds.includes(card.id);
-                    const isTaskRequest = isTaskRequestCard(card);
-                    const isOwnPost = Boolean(viewerId && card.ownerId === viewerId);
-                    const messageInFlight = messageCardId === card.id;
-                    const acceptInFlight = acceptingCardId === card.id;
-                    const saveInFlight = savingCardIds.includes(card.id);
-                    const shareInFlight = sharingCardIds.includes(card.id);
-                    const primaryActionBusy = acceptInFlight;
-                    return (
-                      <article
-                        key={`welcome-feed-${card.id}`}
-                        data-testid="welcome-feed-card"
-                        data-card-id={card.id}
-                        className="post-card-enter overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all hover:border-[var(--brand-500)]/35 hover:shadow-[0_28px_42px_-28px_rgba(14,165,164,0.3)]"
-                        style={{ "--enter-delay": `${Math.min(cardIndex * 55, 360)}ms` } as CSSProperties}
-                      >
-                        <header className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => router.push(networkPath)}
-                            className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
-                            aria-label={`Open ${card.ownerLabel} profile`}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={card.ownerAvatarUrl}
-                              alt={`${card.ownerLabel} avatar`}
-                              className="h-11 w-11 rounded-full border border-slate-200 object-cover"
-                            />
-                          </button>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => router.push(networkPath)}
-                                className="min-w-0 max-w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
-                                aria-label={`Open ${card.ownerLabel} profile`}
-                              >
-                                {card.ownerLabel}
-                              </button>
-                              <span
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                                  card.type === "demand"
-                                    ? "border-rose-200 bg-rose-50 text-rose-700"
-                                    : card.type === "service"
-                                    ? "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
-                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                }`}
-                              >
-                                {card.badge}
-                              </span>
-                            </div>
-
-                            <div className="mt-1 flex items-center gap-2 overflow-hidden text-[11px] text-slate-500">
-                              <span>{card.postedAgo}</span>
-                              <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                                <MapPin size={11} />
-                                {card.distanceLabel}
-                              </span>
-                              {card.isUrgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
-                            </div>
-                          </div>
-                        </header>
-
-                        <div className="mt-2.5" data-testid="feed-card-main-image">
-                          <FeedMediaCarousel media={card.media} title={card.title} showCountBadge={card.media.length > 1} />
-                        </div>
-
-                        <div className="mt-2.5">
-                          <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900">{card.title}</h3>
-                          <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
-                        </div>
-
-                        {/* Tags row: price · signal · eta */}
-                        <div className="mt-2.5 flex flex-wrap gap-1.5">
-                          {card.priceLabel ? (
-                            <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
-                              {card.priceLabel}
-                            </span>
-                          ) : null}
-                          {card.signalLabel ? (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                              {card.signalLabel}
-                            </span>
-                          ) : null}
-                          {card.etaLabel ? (
-                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                              card.isUrgent
-                                ? "border-rose-200 bg-rose-50 text-rose-700"
-                                : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            }`}>
-                              {card.etaLabel}
-                            </span>
-                          ) : null}
-                          {card.engagementLabel && (card.saves > 0 || card.shares > 0) ? (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500">
-                              {card.engagementLabel}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-1.5">
-                          {isTaskRequest ? (
-                            <button
-                              type="button"
-                              onClick={() => void handlePrimaryCardAction(card)}
-                              disabled={primaryActionBusy || isOwnPost}
-                              aria-label={`Accept post ${card.title}`}
-                              title={isOwnPost ? "You cannot accept your own post" : "Accept task"}
-                              data-testid="feed-action-primary"
-                              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                                isOwnPost
-                                  ? "border-slate-200 bg-slate-100 text-slate-500"
-                                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                              }`}
-                            >
-                              {primaryActionBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                            </button>
-                          ) : null}
-
-                          <button
-                            type="button"
-                            onClick={() => void handleMessageCard(card)}
-                            disabled={messageInFlight || isOwnPost}
-                            aria-label={`Show interest in ${card.title}`}
-                            title={isOwnPost ? "You cannot show interest in your own post" : "Show interest"}
-                            data-testid="feed-action-message"
-                            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                              isOwnPost
-                                ? "border-slate-200 bg-slate-100 text-slate-500"
-                                : "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-                            }`}
-                          >
-                            {messageInFlight ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                          </button>
-
-                          <div className="ml-auto flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => void handleShareCard(card)}
-                              disabled={shareInFlight}
-                              aria-label={`Share ${card.title}`}
-                              title="Share post"
-                              data-testid="feed-action-share"
-                              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              {shareInFlight ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => void toggleCardSave(card)}
-                              disabled={saveInFlight}
-                              aria-label={`${isSaved ? "Unsave" : "Save"} ${card.title}`}
-                              title={isSaved ? "Remove from saved" : "Save post"}
-                              data-testid="feed-action-save"
-                              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                                isSaved && !saveInFlight
-                                  ? "border-slate-900 bg-slate-900 text-white"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
-                              }`}
-                            >
-                              {saveInFlight ? (
-                                <Loader2 size={16} className="animate-spin" />
-                              ) : isSaved ? (
-                                <BookmarkCheck size={16} />
-                              ) : (
-                                <Bookmark size={16} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Network meta footer */}
-                        {card.networkMetaLabel ? (
-                          <p className="mt-2 truncate text-[11px] text-slate-400">{card.networkMetaLabel}</p>
-                        ) : null}
-                      </article>
-                    );
-                  })}
+                <div className="space-y-3">
+                  <FeedGrid
+                    items={visibleFeedItems}
+                    loading={false}
+                    hasAnyFeed={nearbyCards.length > 0}
+                    feedError={loadError || null}
+                    focusItemId=""
+                    activeItemId={activeFeedCardId}
+                    hoveredItemId={hoveredFeedCardId}
+                    onActiveItemChange={setActiveFeedCardId}
+                    onHoverItemChange={setHoveredFeedCardId}
+                    onResetOrRefresh={() => {
+                      if (!viewerId) return;
+                      void loadConnectedFeed(viewerId, { soft: false });
+                    }}
+                    onOpenComposer={() => setOpenPostModal(true)}
+                    resolveActionModel={resolveWelcomeActionModel}
+                    isSavedListing={(item) => savedCardIds.includes(item.id)}
+                    isSaveBusy={(item) => savingCardIds.includes(item.id)}
+                    isShareBusy={(item) => sharingCardIds.includes(item.id)}
+                    isPrimaryBusy={isWelcomePrimaryBusy}
+                    onPrimaryAction={handleWelcomePrimaryAction}
+                    onSecondaryAction={handleWelcomeSecondaryAction}
+                    renderHeaderAction={renderWelcomeHeaderAction}
+                  />
 
                   {hasMoreFeedCards && (
                     <div ref={feedSentinelRef} className="md:col-span-2 flex justify-center py-3">
@@ -1652,7 +1571,7 @@ export default function WelcomePage() {
       />
       <AcceptConfirmDialog
         open={!!acceptTargetCard}
-        listing={acceptTargetCard ? toAcceptDialogListing(acceptTargetCard) : null}
+        listing={acceptTargetCard ? toMarketplaceFeedItem(acceptTargetCard) : null}
         busy={!!(acceptTargetCard && acceptingCardId === acceptTargetCard.id)}
         onCancel={() => {
           if (acceptingCardId) return;
