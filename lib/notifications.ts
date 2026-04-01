@@ -27,7 +27,7 @@ const conversationEntityTypes = new Set([
   "direct_message",
 ]);
 
-const orderEntityTypes = new Set(["order", "task", "order_update"]);
+const orderEntityTypes = new Set(["order", "task", "order_update", "quote", "quote_draft"]);
 const helpRequestEntityTypes = new Set(["help_request", "need", "request"]);
 const connectionEntityTypes = new Set(["connection_request", "connection"]);
 const liveTalkEntityTypes = new Set(["live_talk_request", "live_talk"]);

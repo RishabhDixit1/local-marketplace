@@ -1562,11 +1562,13 @@ export default function WelcomePage() {
         onClose={() => setOpenPostModal(false)}
         onPublished={(result) => {
           setOpenPostModal(false);
-          if (result?.helpRequestId) {
+          if (result?.postType === "service" || result?.postType === "product") {
+            router.push("/dashboard/profile");
+          } else if (result?.helpRequestId) {
             router.push(`/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`);
-            return;
+          } else {
+            router.push("/dashboard");
           }
-          router.push("/dashboard");
         }}
       />
       <AcceptConfirmDialog
