@@ -1487,7 +1487,35 @@ export default function WelcomePage() {
 
                         <div className="mt-2.5">
                           <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900">{card.title}</h3>
-                          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
+                          <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{card.subtitle}</p>
+                        </div>
+
+                        {/* Tags row: price · signal · eta */}
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          {card.priceLabel ? (
+                            <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
+                              {card.priceLabel}
+                            </span>
+                          ) : null}
+                          {card.signalLabel ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                              {card.signalLabel}
+                            </span>
+                          ) : null}
+                          {card.etaLabel ? (
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                              card.isUrgent
+                                ? "border-rose-200 bg-rose-50 text-rose-700"
+                                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            }`}>
+                              {card.etaLabel}
+                            </span>
+                          ) : null}
+                          {card.engagementLabel && (card.saves > 0 || card.shares > 0) ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500">
+                              {card.engagementLabel}
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="mt-3 flex items-center gap-1.5">
@@ -1561,6 +1589,11 @@ export default function WelcomePage() {
                             </button>
                           </div>
                         </div>
+
+                        {/* Network meta footer */}
+                        {card.networkMetaLabel ? (
+                          <p className="mt-2 truncate text-[11px] text-slate-400">{card.networkMetaLabel}</p>
+                        ) : null}
                       </article>
                     );
                   })}

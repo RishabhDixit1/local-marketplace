@@ -2,7 +2,7 @@
 
 import { Filter, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { SetStateAction } from "react";
-import type { MarketplaceFeedFilterState } from "@/lib/marketplaceFeed";
+import type { MarketplaceFeedFilterState, MarketplaceFeedItemTypeFilter } from "@/lib/marketplaceFeed";
 
 type FeedFiltersProps = {
   filters: MarketplaceFeedFilterState;
@@ -12,6 +12,13 @@ type FeedFiltersProps = {
   onReset: () => void;
   onFiltersChange: (nextValue: SetStateAction<MarketplaceFeedFilterState>) => void;
 };
+
+const typeOptions: Array<{ value: MarketplaceFeedItemTypeFilter; label: string; activeClassName: string }> = [
+  { value: "all", label: "All", activeClassName: "bg-slate-900 text-white" },
+  { value: "demand", label: "Needs", activeClassName: "bg-rose-600 text-white" },
+  { value: "service", label: "Services", activeClassName: "bg-violet-600 text-white" },
+  { value: "product", label: "Products", activeClassName: "bg-emerald-600 text-white" },
+];
 
 const toggleOptions: Array<{ key: keyof Pick<MarketplaceFeedFilterState, "urgentOnly" | "verifiedOnly" | "mediaOnly" | "freshOnly">; label: string }> = [
   { key: "urgentOnly", label: "Urgent only" },
@@ -56,6 +63,26 @@ export default function FeedFilters({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
+        {typeOptions.map((opt) => {
+          const active = filters.type === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onFiltersChange((current) => ({ ...current, type: opt.value }))}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                active
+                  ? opt.activeClassName
+                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
         {categoryOptions.map((category) => {
           const active = filters.category === category;
           return (

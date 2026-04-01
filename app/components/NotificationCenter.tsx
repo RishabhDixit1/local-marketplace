@@ -111,9 +111,12 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
   const [userId, setUserId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
   const [demoMode, setDemoMode] = useState(false);
+  const [toast, setToast] = useState<{ title: string; kind: NotificationKind } | null>(null);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const isOpenRef = useRef(isOpen);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadNotifications = useCallback(
     async (soft = false) => {
@@ -182,7 +185,10 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
       setNowMs(Date.now());
     }, CLOCK_REFRESH_MS);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -245,6 +251,10 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
   }, [demoMode, enabled, loadNotifications, userId]);
 
   useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!enabled || !userId || demoMode) return;
 
     const channel = supabase
@@ -257,8 +267,24 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
           table: "notifications",
           filter: `user_id=eq.${userId}`,
         },
-        () => {
+        (payload) => {
           void loadNotifications(true);
+
+          if (
+            payload.eventType === "INSERT" &&
+            !isOpenRef.current &&
+            payload.new &&
+            typeof payload.new === "object"
+          ) {
+            const row = payload.new as Record<string, unknown>;
+            const title = typeof row.title === "string" ? row.title : "New notification";
+            const kind = getNotificationKind(typeof row.kind === "string" ? row.kind : null);
+
+            setToast({ title, kind });
+
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+            toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+          }
         }
       )
       .subscribe();
@@ -674,6 +700,40 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
       )}
 
       {mobilePanel}
+
+      {toast !== null &&
+        canUseDOM &&
+        createPortal(
+          <div
+            role="alert"
+            aria-live="polite"
+            className="fixed bottom-5 right-5 z-[1500] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:w-80"
+          >
+            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}>
+              {(() => {
+                const style = kindStyles[toast.kind];
+                const Icon = style.icon;
+                return <Icon className={`h-4 w-4 ${style.iconClassName}`} />;
+              })()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-500">New notification</p>
+              <p className="mt-0.5 line-clamp-2 text-sm font-medium text-slate-900">{toast.title}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setToast(null);
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+              }}
+              className="mt-0.5 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Dismiss notification toast"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

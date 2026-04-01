@@ -159,6 +159,17 @@ export default function FeedCard({
         <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
         <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+              item.type === "demand"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : item.type === "service"
+                ? "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {item.type === "demand" ? "Need" : item.type === "service" ? "Service" : "Product"}
+          </span>
           <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
             {item.category}
           </span>
@@ -174,6 +185,11 @@ export default function FeedCard({
           >
             {item.urgent ? "Urgent" : "Standard"}
           </span>
+          {item.responseMinutes > 0 ? (
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500">
+              Replies ~{item.responseMinutes} min
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -254,8 +270,24 @@ export default function FeedCard({
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => void onPrimaryAction("view_profile")}
+            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+            aria-label={`View ${item.displayCreator} profile`}
+          >
+            Profile
+          </button>
         </div>
       </div>
+
+      {/* Creator + location footer */}
+      {item.locationLabel ? (
+        <p className="mt-2 truncate text-[11px] text-slate-400">
+          {item.displayCreator}
+          {item.locationLabel ? ` · ${item.locationLabel}` : ""}
+        </p>
+      ) : null}
     </motion.article>
   );
 }

@@ -55,8 +55,11 @@ export type MarketplaceDisplayFeedItem = MarketplaceFeedItem & {
   distanceLabel: string;
 };
 
+export type MarketplaceFeedItemTypeFilter = "all" | MarketplaceFeedItemType;
+
 export type MarketplaceFeedFilterState = {
   query: string;
+  type: MarketplaceFeedItemTypeFilter;
   category: string;
   maxDistanceKm: number;
   urgentOnly: boolean;
@@ -110,6 +113,7 @@ const CLOSED_STATUSES = new Set([
 
 export const DEFAULT_MARKETPLACE_FEED_FILTER_STATE: MarketplaceFeedFilterState = {
   query: "",
+  type: "all",
   category: "all",
   maxDistanceKm: 0,
   urgentOnly: false,
@@ -427,6 +431,8 @@ export const matchesMarketplaceFeedFilters = (item: MarketplaceFeedItem, state: 
   const matchesSearch = queryTokens.every((token) => haystack.includes(token));
 
   const normalizedCategory = state.category.toLowerCase();
+  const matchesType = state.type === "all" || item.type === state.type;
+
   const matchesCategory =
     state.category === "all" ||
     item.type === normalizedCategory ||
@@ -438,5 +444,5 @@ export const matchesMarketplaceFeedFilters = (item: MarketplaceFeedItem, state: 
   const matchesVerified = state.verifiedOnly ? item.verificationStatus === "verified" : true;
   const matchesFresh = state.freshOnly ? isFreshMarketplaceItem(item.createdAt) : true;
 
-  return matchesSearch && matchesCategory && matchesDistance && matchesUrgent && matchesMedia && matchesVerified && matchesFresh;
+  return matchesSearch && matchesType && matchesCategory && matchesDistance && matchesUrgent && matchesMedia && matchesVerified && matchesFresh;
 };
