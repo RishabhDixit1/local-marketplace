@@ -18,21 +18,25 @@ create index if not exists idx_manual_offerings_profile_id
 
 alter table public.manual_offerings enable row level security;
 
+drop policy if exists "Anyone can view manual offerings" on public.manual_offerings;
 create policy "Anyone can view manual offerings"
   on public.manual_offerings
   for select
   using (true);
 
+drop policy if exists "Owners can insert their own offerings" on public.manual_offerings;
 create policy "Owners can insert their own offerings"
   on public.manual_offerings
   for insert
   with check (profile_id = auth.uid());
 
+drop policy if exists "Owners can update their own offerings" on public.manual_offerings;
 create policy "Owners can update their own offerings"
   on public.manual_offerings
   for update
   using (profile_id = auth.uid());
 
+drop policy if exists "Owners can delete their own offerings" on public.manual_offerings;
 create policy "Owners can delete their own offerings"
   on public.manual_offerings
   for delete
