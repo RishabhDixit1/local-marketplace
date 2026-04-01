@@ -28,14 +28,12 @@ import {
   ChevronsRight,
   Home,
   LogOut,
-  Menu,
   MessageCircle,
   Newspaper,
   Plus,
   Settings,
   User,
   Users,
-  X,
 } from "lucide-react";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -88,7 +86,6 @@ function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const { profile, loading: profileLoading } = useProfileContext();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [accessToken, setAccessToken] = useState("");
@@ -431,14 +428,7 @@ function DashboardShell({
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
             <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <button
-                  className="lg:hidden p-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
-                  onClick={() => setMenuOpen(true)}
-                  aria-label="Open navigation menu"
-                >
-                  <Menu className="w-5 h-5" />
-                </button>
-                {/* markOnly on xs to avoid header icon clash on narrow Android screens */}
+                {/* markOnly on xs — compact inline logo for narrow Android/iOS screens */}
                 <div className="sm:hidden">
                   <ServiQLogo
                     markOnly
@@ -475,7 +465,7 @@ function DashboardShell({
                 <NotificationCenter enabled={shellEnhancementsReady} />
                 <Link
                   href={myProfileHref}
-                  className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label="Open profile"
                   title="My profile"
                 >
@@ -645,105 +635,6 @@ function DashboardShell({
         })}
       </nav>
 
-      <div
-        className={`lg:hidden fixed inset-0 z-[1300] transition-opacity duration-200 ${
-          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <button
-          aria-label="Close navigation menu"
-          onClick={() => setMenuOpen(false)}
-          className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
-        />
-        <aside
-          className={`absolute left-0 top-0 h-full w-[86vw] max-w-xs border-r border-slate-200 bg-white p-4 shadow-xl flex flex-col transition-transform duration-200 ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div className="min-w-0">
-              <ServiQLogo
-                compact
-                className="max-w-[190px]"
-                href="/dashboard/welcome"
-                ariaLabel="Open Welcome dashboard"
-                onClick={() => setMenuOpen(false)}
-              />
-            </div>
-            <button
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <nav className="mt-4 space-y-2">
-            {navigationTabs.map((tab) => {
-              const isActive = pathname === tab.path;
-              const Icon = tab.icon;
-              const isChatTab = tab.path === "/dashboard/chat";
-              return (
-                <Link
-                  key={tab.path}
-                  href={tab.path}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "bg-[var(--brand-900)] text-white"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="min-w-0 flex-1">{tab.name}</span>
-                  {isChatTab && chatBadgeLabel ? (
-                    <span
-                      className={`inline-flex min-w-[1.45rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ${
-                        isActive ? "bg-white/18 text-white ring-1 ring-white/20" : "bg-rose-500 text-white"
-                      }`}
-                      aria-label={`${chatUnreadCount} unread chat messages`}
-                    >
-                      {chatBadgeLabel}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
-            <Link
-              href="/dashboard/settings"
-              onClick={() => setMenuOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold transition-colors hover:bg-slate-50"
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </Link>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                router.push(myProfileHref);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800"
-            >
-              <User className="w-4 h-4" />
-              My Profile
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                setShowLogoutConfirm(true);
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white font-semibold transition-colors hover:bg-slate-800"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
-        </aside>
-      </div>
 
       {showLogoutConfirm ? (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
