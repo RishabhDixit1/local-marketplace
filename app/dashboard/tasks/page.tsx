@@ -1066,6 +1066,16 @@ export default function TasksPage() {
     return Math.round((statusCounts.completed / tasks.length) * 100);
   }, [statusCounts.completed, tasks.length]);
 
+  const pendingReviewCount = useMemo(() => {
+    return tasks.filter((task) => {
+      const canonical = getCanonicalTaskStatus(task);
+      if (canonical !== "completed" && canonical !== "closed") return false;
+      if (!getTaskReviewTargetId(task)) return false;
+      const draft = taskReviews[task.orderId];
+      return !draft?.submitted;
+    }).length;
+  }, [taskReviews, tasks]);
+
   const actionRequiredCount = statusCounts.awaitingAction + statusCounts.active + statusCounts.inProgress;
 
   const filteredTasks = useMemo(() => {
@@ -3095,6 +3105,21 @@ export default function TasksPage() {
               </div>
             ) : visibleTasks.length > 0 ? (
               <div className="space-y-3">
+                {selectedTaskView === "completed" && pendingReviewCount > 0 ? (
+                  <div className="flex items-start gap-3 rounded-[1.3rem] border border-amber-200 bg-amber-50/70 px-4 py-3">
+                    <Star className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-amber-900">
+                        {pendingReviewCount === 1
+                          ? "1 completed task awaiting your review"
+                          : `${pendingReviewCount} completed tasks awaiting your reviews`}
+                      </p>
+                      <p className="mt-0.5 text-xs text-amber-700">
+                        Reviews help providers build trust and improve the community. Tap &quot;Add review&quot; on any task below.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
                 {visibleTasks.map((task) =>
                   selectedTaskView === "in-progress"
                     ? renderTrackedHelpRequestRow(task)

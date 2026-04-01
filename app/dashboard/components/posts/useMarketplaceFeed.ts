@@ -42,6 +42,8 @@ type UseMarketplaceFeedParams = {
 
 const getFilterStorageKey = (viewerId: string | null) => `${FILTER_STORAGE_KEY_PREFIX}:${viewerId || "anon"}`;
 
+const VALID_TYPE_FILTERS = new Set(["all", "demand", "service", "product"]);
+
 const applyStoredFilters = (
   current: MarketplaceFeedFilterState,
   parsed: Partial<MarketplaceFeedFilterState>
@@ -49,6 +51,7 @@ const applyStoredFilters = (
   ...current,
   ...parsed,
   query: typeof parsed.query === "string" ? parsed.query : current.query,
+  type: typeof parsed.type === "string" && VALID_TYPE_FILTERS.has(parsed.type) ? (parsed.type as MarketplaceFeedFilterState["type"]) : current.type,
   category: typeof parsed.category === "string" ? parsed.category : current.category,
   maxDistanceKm:
     typeof parsed.maxDistanceKm === "number" && Number.isFinite(parsed.maxDistanceKm)

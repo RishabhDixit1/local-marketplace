@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Compass, MapPin } from "lucide-react";
+import { Compass, MapPin, Navigation } from "lucide-react";
 import type { ProviderCard as ProviderCardModel } from "../types";
 
 const MarketplaceMap = dynamic(() => import("@/app/components/MarketplaceMap").then((mod) => mod.default), {
@@ -31,9 +31,10 @@ type Props = {
 };
 
 export default function PeopleMapPanel({ items, center, activeProvider, onSelectProvider }: Props) {
+  const hasCenter = Boolean(center);
 
   return (
-    <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/88 p-3 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
+    <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/[0.88] p-3 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Local Visibility</p>
@@ -41,14 +42,22 @@ export default function PeopleMapPanel({ items, center, activeProvider, onSelect
             Discover nearby professionals and businesses
           </h2>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 sm:text-xs">
-          <Compass className="h-3.5 w-3.5" />
-          {items.length} mapped profiles
-        </span>
+        <div className="flex items-center gap-2">
+          {hasCenter ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 sm:text-xs">
+              <Navigation className="h-3 w-3" />
+              Location on
+            </span>
+          ) : null}
+          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 sm:text-xs">
+            <Compass className="h-3.5 w-3.5" />
+            {items.length} mapped {items.length === 1 ? "profile" : "profiles"}
+          </span>
+        </div>
       </div>
 
       {items.length > 0 ? (
-        <>
+        <div className="overflow-hidden rounded-[1.3rem] sm:rounded-[1.6rem]">
           <div className="h-[240px] sm:h-[340px]">
             <MarketplaceMap
               items={items}
@@ -58,7 +67,7 @@ export default function PeopleMapPanel({ items, center, activeProvider, onSelect
               onSelectItem={onSelectProvider}
             />
           </div>
-        </>
+        </div>
       ) : (
         <div className="grid h-[240px] place-items-center rounded-[1.3rem] border border-dashed border-slate-200 bg-slate-50 px-5 text-center sm:h-[340px] sm:rounded-[1.6rem] sm:px-6">
           <div className="max-w-sm">

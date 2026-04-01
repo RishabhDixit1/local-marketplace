@@ -251,7 +251,8 @@ export const useMapbox = ({ containerRef, center }: UseMapboxParams) => {
       mapRef.current = null;
       setMap(null);
     };
-  }, [center, containerRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerRef]); // center is intentionally excluded — camera position is managed by the pin/center animation effect below
 
   useEffect(() => {
     if (!map || !readyRef.current) {
