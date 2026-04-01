@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
@@ -23,6 +24,7 @@ const CreatePostModal = dynamic(
 );
 
 export default function MarketplacePage() {
+  const router = useRouter();
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
@@ -207,12 +209,12 @@ export default function MarketplacePage() {
             ? `Request published. ${result.matchedCount} provider matches are ready.`
             : "Request published. Matching is in progress."
         );
+        void fetchFeed(true);
       } else {
-        pushToast("success", "Post published successfully.");
+        router.push("/dashboard/profile");
       }
-      void fetchFeed(true);
     },
-    [fetchFeed, pushToast]
+    [fetchFeed, pushToast, router]
   );
 
   return (

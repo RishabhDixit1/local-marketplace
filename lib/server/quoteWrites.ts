@@ -935,6 +935,34 @@ export const sendQuoteDraft = async (params: {
     taskTitle: contextResult.context.taskTitle,
   });
 
+  // Notify the seeker that a quote has arrived
+  const consumerId = contextResult.context.consumerId;
+  if (consumerId && consumerId !== params.userId) {
+    const taskTitle = contextResult.context.taskTitle || "your request";
+    const totalFormatted =
+      refreshedDraftResult.draft.total > 0
+        ? ` · INR ${refreshedDraftResult.draft.total.toLocaleString("en-IN")}`
+        : "";
+    await params.db
+      .from("notifications")
+      .insert({
+        user_id: consumerId,
+        kind: "order",
+        title: "Quote received",
+        message: `A provider sent you a quote for ${taskTitle}${totalFormatted}. Open Tasks to review and accept.`,
+        entity_type: "order",
+        entity_id: orderId,
+        metadata: {
+          order_id: orderId,
+          quote_draft_id: refreshedDraftResult.draft.id,
+          task_title: taskTitle,
+          total: refreshedDraftResult.draft.total,
+          source: "quote_flow",
+        },
+      });
+    // Non-critical — do not block the response on notification failure
+  }
+
   return {
     ok: true,
     context:

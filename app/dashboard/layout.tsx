@@ -38,6 +38,8 @@ import {
   X,
 } from "lucide-react";
 
+import type { PublishPostResult } from "@/app/components/CreatePostModal";
+
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
 });
@@ -436,7 +438,15 @@ function DashboardShell({
                 >
                   <Menu className="w-5 h-5" />
                 </button>
-                <div className="lg:hidden min-w-0">
+                {/* markOnly on xs to avoid header icon clash on narrow Android screens */}
+                <div className="sm:hidden">
+                  <ServiQLogo
+                    markOnly
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
+                </div>
+                <div className="hidden sm:block lg:hidden min-w-0">
                   <ServiQLogo
                     compact
                     className="max-w-[180px]"
@@ -451,9 +461,10 @@ function DashboardShell({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-2">
+                {/* Saved & Profile only visible on md+ — on mobile these live in the bottom nav */}
                 <Link
                   href="/dashboard/saved"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className="hidden md:inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label="Open saved posts"
                   title="Saved posts"
                 >
@@ -464,7 +475,7 @@ function DashboardShell({
                 <NotificationCenter enabled={shellEnhancementsReady} />
                 <Link
                   href={myProfileHref}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className="hidden md:inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label="Open profile"
                   title="My profile"
                 >
@@ -479,7 +490,7 @@ function DashboardShell({
             ) : null}
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:py-8 lg:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">Startup schema checks need admin action</p>
@@ -512,7 +523,7 @@ function DashboardShell({
             type="button"
             onClick={() => setOpenQuickActions((current) => !current)}
             aria-label="Open quick actions"
-            className="fixed bottom-6 right-6 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+            className="fixed bottom-[5.25rem] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 lg:bottom-6 lg:right-6"
           >
             <Plus className="h-6 w-6" />
           </button>
@@ -525,7 +536,7 @@ function DashboardShell({
                 aria-hidden
                 className="fixed inset-0 z-[1098] bg-slate-950/10"
               />
-              <div className="fixed bottom-24 right-6 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+              <div className="fixed bottom-[8.5rem] right-4 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl lg:bottom-24 lg:right-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -566,6 +577,16 @@ function DashboardShell({
                 >
                   Post Job
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    router.push("/dashboard/launchpad");
+                  }}
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Set Up Business
+                </button>
               </div>
             </>
           ) : null}
@@ -575,13 +596,54 @@ function DashboardShell({
         <CreatePostModal
           open={openCreatePost}
           onClose={() => setOpenCreatePost(false)}
-          onPublished={() => {
+          onPublished={(result?: PublishPostResult) => {
             setOpenCreatePost(false);
+            if (result?.postType === "service" || result?.postType === "product") {
+              router.push("/dashboard/profile");
+            } else if (result?.postType === "need") {
+              router.push("/dashboard");
+            }
           }}
         />
       )}
 
       <CartDrawer />
+
+      {/* ── Mobile bottom navigation bar ───────────────────────────── */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-[1200] flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur-md"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-label="Main navigation"
+      >
+        {navigationTabs.map((tab) => {
+          const isActive = pathname === tab.path;
+          const Icon = tab.icon;
+          const isChatTab = tab.path === "/dashboard/chat";
+          return (
+            <Link
+              key={tab.path}
+              href={tab.path}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${
+                isActive ? "text-[var(--brand-700)]" : "text-slate-500"
+              }`}
+              aria-label={tab.name}
+            >
+              <span className="relative">
+                <Icon className="h-5 w-5" />
+                {isChatTab && chatBadgeLabel ? (
+                  <span className="absolute -right-2 -top-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-0.5 py-px text-[9px] font-bold leading-none text-white ring-1 ring-white">
+                    {chatBadgeLabel}
+                  </span>
+                ) : null}
+              </span>
+              <span>{tab.name}</span>
+              {isActive ? (
+                <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-t-full bg-[var(--brand-700)]" />
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
 
       <div
         className={`lg:hidden fixed inset-0 z-[1300] transition-opacity duration-200 ${

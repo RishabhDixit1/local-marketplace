@@ -1250,6 +1250,12 @@ export default function TasksPage() {
     return canonical === "new_lead" || canonical === "quoted";
   };
 
+  const canViewQuote = (task: OperationalTask) => {
+    if (task.type !== "posted") return false;
+    const canonical = normalizeOrderStatus(task.rawStatus);
+    return canonical === "quoted";
+  };
+
   const getQuoteActionLabel = (task: OperationalTask) => {
     const canonical = normalizeOrderStatus(task.rawStatus);
     if (canonical === "quoted") return "Review quote";
@@ -1993,6 +1999,7 @@ export default function TasksPage() {
     const supportBusy = supportBusyTaskId === task.orderId;
     const transitions = getTaskTransitions(task);
     const canQuote = canManageQuote(task);
+    const canView = canViewQuote(task);
     const supportAvailability = getSupportAvailability(task);
     const supportEntries = supportRequestsByTaskId.get(task.orderId) || [];
     const openSupport = supportEntries.find((request) => isSupportOpen(request.status));
@@ -2029,6 +2036,20 @@ export default function TasksPage() {
           >
             <DollarSign className="h-4 w-4" />
             {quoteOpen ? "Hide quote" : getQuoteActionLabel(task)}
+          </button>
+        ) : null}
+
+        {canView ? (
+          <button
+            type="button"
+            onClick={() => {
+              setExpandedTaskId(task.orderId);
+              setQuoteEditorTaskId((current) => (current === task.orderId ? null : task.orderId));
+            }}
+            className={progressActionClassName}
+          >
+            <DollarSign className="h-4 w-4" />
+            {quoteOpen ? "Hide quote" : "View Quote"}
           </button>
         ) : null}
 
@@ -2365,7 +2386,7 @@ export default function TasksPage() {
           {isExpanded ? (
             <div className="rounded-[1.55rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
               <div className="space-y-4">
-                {canManageQuote(task) && quoteEditorTaskId === task.orderId ? (
+                {(canManageQuote(task) || canViewQuote(task)) && quoteEditorTaskId === task.orderId ? (
                   <QuoteDraftEditor
                     orderId={task.source === "order" ? task.orderId : null}
                     helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
@@ -3012,13 +3033,13 @@ export default function TasksPage() {
             className="space-y-5 rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5"
           >
             <div className="space-y-4 border-b border-slate-200 pb-4">
-              <div className="flex flex-wrap items-end gap-8">
+              <div className="-mx-4 flex items-end gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:gap-8 sm:px-0 sm:[scrollbar-width:auto]">
                 {taskTabs.map((tab) => (
                   <button
                     key={tab.value}
                     type="button"
                     onClick={() => setSelectedTaskView(tab.value)}
-                    className={`inline-flex border-b-[3px] pb-4 text-base font-semibold transition ${
+                    className={`inline-flex shrink-0 border-b-[3px] pb-4 text-base font-semibold transition ${
                       selectedTaskView === tab.value
                         ? "border-[#0a66c2] text-[#0a66c2]"
                         : "border-transparent text-slate-500 hover:text-slate-900"
