@@ -5,14 +5,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   BriefcaseBusiness,
+  CalendarClock,
   Clock3,
   Copy,
+  CreditCard,
   ExternalLink,
+  ImageIcon,
   Loader2,
   Mail,
   NotebookText,
+  Package2,
   Sparkles,
   UserRound,
+  Wrench,
 } from "lucide-react";
 import ProfileAvatarField from "@/app/components/profile/ProfileAvatarField";
 import ProfileCompletionChecklist from "@/app/components/profile/ProfileCompletionChecklist";
@@ -26,6 +31,13 @@ import ProfileRoleToggle from "@/app/components/profile/ProfileRoleToggle";
 import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
 import ProfileStickySaveBar from "@/app/components/profile/ProfileStickySaveBar";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
+import ServicesSection from "@/app/components/profile/ServicesSection";
+import ProductsSection from "@/app/components/profile/ProductsSection";
+import PortfolioSection from "@/app/components/profile/PortfolioSection";
+import WorkHistorySection from "@/app/components/profile/WorkHistorySection";
+import AvailabilitySection from "@/app/components/profile/AvailabilitySection";
+import PaymentMethodsSection from "@/app/components/profile/PaymentMethodsSection";
+import type { MarketplaceServiceRecord, MarketplaceProductRecord, MarketplacePortfolioRecord, MarketplaceWorkHistoryRecord, MarketplaceAvailabilityRecord, MarketplacePaymentMethodRecord } from "@/lib/profile/marketplace";
 import { calculateVerificationStatus, verificationLabel } from "@/lib/business";
 import { isFinalOrderStatus } from "@/lib/orderWorkflow";
 import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
@@ -205,7 +217,7 @@ const buildVisibleErrors = (params: {
 export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, profile, loading, setProfile } = useProfileContext();
+  const { user, profile, loading, setProfile, refreshProfile } = useProfileContext();
 
   const [formValues, setFormValues] = useState<ProfileFormValues>(emptyProfileForm);
   const [tagInput, setTagInput] = useState("");
@@ -230,6 +242,14 @@ export default function ProfilePage() {
   const [featuredListings, setFeaturedListings] = useState<FeaturedListing[]>([]);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
   const [serverVersion, setServerVersion] = useState("");
+
+  // Section data for the structured form sections
+  const [sectionServices, setSectionServices] = useState<MarketplaceServiceRecord[]>([]);
+  const [sectionProducts, setSectionProducts] = useState<MarketplaceProductRecord[]>([]);
+  const [sectionPortfolio, setSectionPortfolio] = useState<MarketplacePortfolioRecord[]>([]);
+  const [sectionWorkHistory, setSectionWorkHistory] = useState<MarketplaceWorkHistoryRecord[]>([]);
+  const [sectionAvailability, setSectionAvailability] = useState<MarketplaceAvailabilityRecord[]>([]);
+  const [sectionPaymentMethods, setSectionPaymentMethods] = useState<MarketplacePaymentMethodRecord[]>([]);
 
   const currentStoredRole: StoredProfileRole =
     formValues.role === "provider"
@@ -399,6 +419,40 @@ export default function ProfilePage() {
     }, 4500);
   }, []);
 
+  const loadProfileSections = useEffectEvent(async () => {
+    if (!user?.id) return;
+    const profileId = user.id;
+
+    const [servicesResult, productsResult, portfolioResult, workHistoryResult, availabilityResult, paymentMethodsResult] =
+      await Promise.allSettled([
+        supabase.from("services").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("products").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("portfolio").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("work_history").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(20),
+        supabase.from("availability").select("*").eq("profile_id", profileId).eq("is_active", true).order("created_at", { ascending: false }).limit(20),
+        supabase.from("payment_methods").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(20),
+      ]);
+
+    if (servicesResult.status === "fulfilled" && !servicesResult.value.error) {
+      setSectionServices((servicesResult.value.data as MarketplaceServiceRecord[] | null) ?? []);
+    }
+    if (productsResult.status === "fulfilled" && !productsResult.value.error) {
+      setSectionProducts((productsResult.value.data as MarketplaceProductRecord[] | null) ?? []);
+    }
+    if (portfolioResult.status === "fulfilled" && !portfolioResult.value.error) {
+      setSectionPortfolio((portfolioResult.value.data as MarketplacePortfolioRecord[] | null) ?? []);
+    }
+    if (workHistoryResult.status === "fulfilled" && !workHistoryResult.value.error) {
+      setSectionWorkHistory((workHistoryResult.value.data as MarketplaceWorkHistoryRecord[] | null) ?? []);
+    }
+    if (availabilityResult.status === "fulfilled" && !availabilityResult.value.error) {
+      setSectionAvailability((availabilityResult.value.data as MarketplaceAvailabilityRecord[] | null) ?? []);
+    }
+    if (paymentMethodsResult.status === "fulfilled" && !paymentMethodsResult.value.error) {
+      setSectionPaymentMethods((paymentMethodsResult.value.data as MarketplacePaymentMethodRecord[] | null) ?? []);
+    }
+  });
+
   const adoptServerProfile = useEffectEvent((shouldNotifyOnConflict: boolean) => {
     if (!profile) return;
 
@@ -506,6 +560,11 @@ export default function ProfilePage() {
   }, [dirty, saveState]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    void loadProfileSections();
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!dirty) return;
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -549,6 +608,7 @@ export default function ProfilePage() {
       }
 
       setProfile(nextProfile);
+      void refreshProfile();
       const nextForm = toProfileFormValues(nextProfile);
       setFormValues(nextForm);
       setLastSavedSnapshot(serializeFormValues(nextForm));
@@ -1127,6 +1187,70 @@ export default function ProfilePage() {
               }}
             />
           </ProfileSectionCard>
+
+          {roleFamily === "provider" && sectionServices.length > 0 ? (
+            <ProfileSectionCard
+              icon={<Wrench className="h-5 w-5" />}
+              title="Services"
+              description="Services listed under your profile. Manage them in full from the Provider Listings page."
+            >
+              <ServicesSection
+                profileId={user.id}
+                displayName={formValues.fullName || "You"}
+                services={sectionServices}
+              />
+            </ProfileSectionCard>
+          ) : null}
+
+          {roleFamily === "provider" && sectionProducts.length > 0 ? (
+            <ProfileSectionCard
+              icon={<Package2 className="h-5 w-5" />}
+              title="Products"
+              description="Products listed in your store. Manage inventory and stock from the Provider Listings page."
+            >
+              <ProductsSection products={sectionProducts} />
+            </ProfileSectionCard>
+          ) : null}
+
+          {sectionPortfolio.length > 0 ? (
+            <ProfileSectionCard
+              icon={<ImageIcon className="h-5 w-5" />}
+              title="Portfolio"
+              description="Your public portfolio items. These are visible on your public profile."
+            >
+              <PortfolioSection portfolio={sectionPortfolio} />
+            </ProfileSectionCard>
+          ) : null}
+
+          {sectionWorkHistory.length > 0 ? (
+            <ProfileSectionCard
+              icon={<CalendarClock className="h-5 w-5" />}
+              title="Work History"
+              description="Career and project entries that build trust with new clients."
+            >
+              <WorkHistorySection workHistory={sectionWorkHistory} />
+            </ProfileSectionCard>
+          ) : null}
+
+          {roleFamily === "provider" && sectionAvailability.length > 0 ? (
+            <ProfileSectionCard
+              icon={<Clock3 className="h-5 w-5" />}
+              title="Availability Windows"
+              description="Your scheduled availability shown to clients on your public profile."
+            >
+              <AvailabilitySection availability={sectionAvailability} />
+            </ProfileSectionCard>
+          ) : null}
+
+          {sectionPaymentMethods.length > 0 ? (
+            <ProfileSectionCard
+              icon={<CreditCard className="h-5 w-5" />}
+              title="Payment Methods"
+              description="Accepted payment methods shown on your profile."
+            >
+              <PaymentMethodsSection paymentMethods={sectionPaymentMethods} />
+            </ProfileSectionCard>
+          ) : null}
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-24">

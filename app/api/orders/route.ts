@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { sendOrderEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -113,6 +114,22 @@ export async function POST(request: Request) {
   }
 
   const orderIds = ((data as Array<{ id: string }> | null) || []).map((row) => row.id);
+
+  // Fire-and-forget: email buyer confirmation
+  void (async () => {
+    const { data: userData } = await admin.auth.admin.getUserById(authResult.auth.userId);
+    const email = userData?.user?.email;
+    if (email && requestedItems[0]) {
+      void sendOrderEmail({
+        type: "placed",
+        to: email,
+        recipientName: (userData.user?.user_metadata?.name as string | undefined) ?? "there",
+        orderId: orderIds[0] ?? "",
+        itemTitle: requestedItems[0].title ?? "your order",
+        price: requestedItems[0].price,
+      });
+    }
+  })();
 
   return NextResponse.json(
     {

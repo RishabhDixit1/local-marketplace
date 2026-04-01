@@ -15,12 +15,8 @@ import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { loadPublicProfileBySlug } from "@/lib/profile/public";
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
-import { getServerSupabase } from "@/lib/supabaseServer";
 import { CartProvider } from "@/app/components/store/CartContext";
 
-const StoreSection = dynamicImport(
-  () => import("@/app/components/store/StoreSection").then((m) => ({ default: m.StoreSection }))
-);
 const ProviderQuickAddFAB = dynamicImport(
   () => import("@/app/components/profile/ProviderQuickAddFAB").then((m) => ({ default: m.ProviderQuickAddFAB }))
 );
@@ -136,30 +132,6 @@ export default async function PublicProfilePage({ params }: Params) {
     verificationStatus,
     publicPath,
   } = publicProfile;
-
-  // Fetch services and products for store section
-  let services: Array<{ id: string; title: string | null; category: string | null; price: number | null; availability: string | null }> = [];
-  let products: Array<{ id: string; title: string | null; category: string | null; price: number | null; stock: number | null }> = [];
-  
-  if (roleFamily === "provider") {
-    const supabase = getServerSupabase();
-    if (supabase) {
-      const [{ data: svcData }, { data: prodData }] = await Promise.all([
-        supabase
-          .from("service_listings")
-          .select("id,title,category,price,availability")
-          .eq("provider_id", profile.id)
-          .limit(8),
-        supabase
-          .from("product_catalog")
-          .select("id,title,category,price,stock")
-          .eq("provider_id", profile.id)
-          .limit(8),
-      ]);
-      services = (svcData as typeof services) || [];
-      products = (prodData as typeof products) || [];
-    }
-  }
 
   const siteUrl = getConfiguredSiteUrl();
   const profileUrl = `${siteUrl}${publicPath}`;
@@ -313,16 +285,6 @@ export default async function PublicProfilePage({ params }: Params) {
         </div>
 
         <div className="mt-4">
-          {roleFamily === "provider" && (services.length > 0 || products.length > 0) && (
-            <StoreSection
-              services={services}
-              products={products}
-              providerId={profile.id}
-              providerName={displayName}
-              providerAvailability={profile.availability || "available"}
-            />
-          )}
-
           <div className="mt-6">
             <PublicProfileContentTabs
               bio={profile.bio}
@@ -330,7 +292,6 @@ export default async function PublicProfilePage({ params }: Params) {
               averageRating={publicProfile.averageRating}
               reviewCount={publicProfile.reviewCount}
               posts={posts}
-              manualOfferings={publicProfile.manualOfferings}
               profileUserId={profile.id}
               displayName={displayName}
               avatarUrl={profileAvatarUrl}
@@ -338,6 +299,8 @@ export default async function PublicProfilePage({ params }: Params) {
               locationLabel={profile.location || "Nearby"}
               responseMinutes={publicProfile.responseMinutes}
               publicPath={publicPath}
+              paymentMethods={publicProfile.paymentMethods}
+              workHistory={publicProfile.workHistory}
             />
           </div>
         </div>

@@ -138,6 +138,24 @@ export type PublicProfileManualOffering = {
   title: string;
   description: string;
   thumbnailUrl: string | null;
+  price: number | null;
+};
+
+export type PublicProfilePaymentMethod = {
+  id: string;
+  method_type: string;
+  provider_name: string | null;
+  account_handle: string | null;
+  is_verified: boolean;
+};
+
+export type PublicProfileWorkHistory = {
+  id: string;
+  role_title: string;
+  company_name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
 };
 
 export type PublicProfileData = {
@@ -163,6 +181,8 @@ export type PublicProfileData = {
   verificationStatus: VerificationStatus;
   canonicalSlug: string;
   publicPath: string;
+  paymentMethods: PublicProfilePaymentMethod[];
+  workHistory: PublicProfileWorkHistory[];
 };
 
 const toListingPrice = (value: number | null) => (typeof value === "number" && Number.isFinite(value) ? value : null);
@@ -575,6 +595,8 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     ordersResult,
     connectionsResult,
     acceptedConnectionsResult,
+    paymentMethodsResult,
+    workHistoryResult,
   ] = await Promise.all([
     supabase
       .from("service_listings")
@@ -612,6 +634,19 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
       .select("requester_id,recipient_id")
       .eq("status", "accepted")
       .or(`requester_id.eq.${profile.id},recipient_id.eq.${profile.id}`),
+    supabase
+      .from("payment_methods")
+      .select("id,method_type,provider_name,account_handle,is_verified")
+      .eq("profile_id", profile.id)
+      .order("is_default", { ascending: false })
+      .limit(10),
+    supabase
+      .from("work_history")
+      .select("id,role_title,company_name,start_date,end_date,is_current")
+      .eq("profile_id", profile.id)
+      .order("is_current", { ascending: false })
+      .order("start_date", { ascending: false })
+      .limit(10),
   ]);
 
   const services = ((servicesResult.data as ServiceRow[] | null) || [])
@@ -640,29 +675,51 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   const reviewCount = reviewsResult.count || reviewRows.length;
   const postsCount = postsResult.count || 0;
   const topics = normalizeTopics([...(profile.interests || []), ...(profile.services || [])]);
-  const manualOfferings = (() => {
-    const raw = (profile.metadata || ({} as Record<string, unknown>)).offerings;
-    if (!Array.isArray(raw)) return [] as PublicProfileManualOffering[];
 
-    return raw
-      .map((entry, index) => {
-        if (!entry || typeof entry !== "object") return null;
-        const row = entry as Record<string, unknown>;
-        const title = typeof row.title === "string" ? row.title.trim() : "";
-        if (!title) return null;
-        const description = typeof row.description === "string" ? row.description.trim() : "";
-        const thumbnailUrl = typeof row.thumbnailUrl === "string" && row.thumbnailUrl.trim().length > 0 ? row.thumbnailUrl.trim() : null;
-        const id = typeof row.id === "string" && row.id.trim().length > 0 ? row.id.trim() : `offering-${index}`;
-        return {
-          id,
-          title,
-          description,
-          thumbnailUrl,
-        } satisfies PublicProfileManualOffering;
-      })
-      .filter((value): value is PublicProfileManualOffering => !!value)
-      .slice(0, 18);
-  })();
+  // Try dedicated manual_offerings table first; fall back to metadata JSONB for older deployments
+  let manualOfferings: PublicProfileManualOffering[] = [];
+  const offeringsTableResult = await supabase
+    .from("manual_offerings")
+    .select("id,title,description,thumbnail_url,price")
+    .eq("profile_id", profile.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(18);
+
+  if (!offeringsTableResult.error && Array.isArray(offeringsTableResult.data) && offeringsTableResult.data.length > 0) {
+    type OfferingRow = { id: string; title: string; description: string | null; thumbnail_url: string | null; price: number | null };
+    manualOfferings = (offeringsTableResult.data as OfferingRow[]).map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description ?? "",
+      thumbnailUrl: row.thumbnail_url,
+      price: row.price,
+    }));
+  } else {
+    // Fallback: read from profiles.metadata.offerings JSONB
+    const raw = (profile.metadata || ({} as Record<string, unknown>)).offerings;
+    if (Array.isArray(raw)) {
+      manualOfferings = raw
+        .map((entry, index) => {
+          if (!entry || typeof entry !== "object") return null;
+          const row = entry as Record<string, unknown>;
+          const title = typeof row.title === "string" ? row.title.trim() : "";
+          if (!title) return null;
+          const description = typeof row.description === "string" ? row.description.trim() : "";
+          const thumbnailUrl = typeof row.thumbnailUrl === "string" && row.thumbnailUrl.trim().length > 0 ? row.thumbnailUrl.trim() : null;
+          const id = typeof row.id === "string" && row.id.trim().length > 0 ? row.id.trim() : `offering-${index}`;
+          return {
+            id,
+            title,
+            description,
+            thumbnailUrl,
+            price: typeof row.price === "number" && Number.isFinite(row.price) ? row.price : null,
+          } satisfies PublicProfileManualOffering;
+        })
+        .filter((value): value is PublicProfileManualOffering => !!value)
+        .slice(0, 18);
+    }
+  }
   const responseMinutes = estimateResponseMinutes({
     availability: profile.availability,
     providerId: profile.id,
@@ -703,6 +760,22 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   const displayName = getProfileDisplayName(profile) || "Local member";
   const publicPath = buildPublicProfilePath(profile);
 
+  const paymentMethods: PublicProfilePaymentMethod[] = ((paymentMethodsResult.data as Array<{ id: string; method_type: string; provider_name: string | null; account_handle: string | null; is_verified: boolean }> | null) || []).map((pm) => ({
+    id: pm.id,
+    method_type: pm.method_type,
+    provider_name: pm.provider_name ?? null,
+    account_handle: pm.account_handle ?? null,
+    is_verified: Boolean(pm.is_verified),
+  }));
+  const workHistory: PublicProfileWorkHistory[] = ((workHistoryResult.data as Array<{ id: string; role_title: string; company_name: string; start_date: string | null; end_date: string | null; is_current: boolean }> | null) || []).map((wh) => ({
+    id: wh.id,
+    role_title: wh.role_title,
+    company_name: wh.company_name,
+    start_date: wh.start_date ?? null,
+    end_date: wh.end_date ?? null,
+    is_current: Boolean(wh.is_current),
+  }));
+
   return {
     profile,
     displayName,
@@ -726,5 +799,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     verificationStatus,
     canonicalSlug: publicPath.split("/").pop() || slug,
     publicPath,
+    paymentMethods,
+    workHistory,
   };
 }

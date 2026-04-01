@@ -7,6 +7,7 @@ import { Package, Pencil, PauseCircle, PlayCircle, Trash2, Wrench } from "lucide
 import { deleteProviderListing, fetchProviderListings, updateProviderListing } from "@/lib/provider/client";
 import { supabase } from "@/lib/supabase";
 import type { ProfileAvailability } from "@/lib/profile/types";
+import { resolveListingImageUrl } from "@/lib/provider/listings";
 import type {
   ProductDeliveryMethod,
   ProviderProductListing,
@@ -272,6 +273,28 @@ export default function ListingsPage() {
       await loadListings({ silent: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to save product edits.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const uploadEditProductImage = async (file: File) => {
+    if (!editingProduct) return;
+    setBusyId(editingProduct.id);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage
+        .from("listing-images")
+        .upload(filePath, file, { contentType: file.type || "image/jpeg", upsert: false });
+
+      if (error) {
+        throw new Error(error.message || "Unable to upload image.");
+      }
+
+      setEditingProduct((current) => (current ? { ...current, imageUrl: filePath } : current));
+    } catch (uploadError) {
+      setErrorMessage(uploadError instanceof Error ? uploadError.message : "Unable to upload image.");
     } finally {
       setBusyId(null);
     }
@@ -562,6 +585,24 @@ export default function ListingsPage() {
                       <option value="delivery">delivery</option>
                       <option value="both">both</option>
                     </select>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) {
+                          void uploadEditProductImage(file);
+                        }
+                      }}
+                      className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-900"
+                    />
+                    {resolveListingImageUrl(editingProduct.imageUrl) ? (
+                      <img
+                        src={resolveListingImageUrl(editingProduct.imageUrl) || ""}
+                        alt="Product"
+                        className="h-20 w-20 rounded-lg object-cover"
+                      />
+                    ) : null}
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={saveProductEdit}

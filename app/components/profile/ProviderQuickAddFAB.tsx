@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Package, Briefcase } from "lucide-react";
+import { Plus, Package, Briefcase, ClipboardList, BadgePlus } from "lucide-react";
 import Link from "next/link";
 
 type ProviderQuickAddFABProps = {
@@ -54,6 +54,22 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
             >
               <Package className="h-4 w-4" />
               Add Product
+            </Link>
+            <Link
+              href="/dashboard/create_post?intent=requirement"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Post Requirement
+            </Link>
+            <Link
+              href="/dashboard/create_post?intent=job"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
+            >
+              <BadgePlus className="h-4 w-4" />
+              Post Job
             </Link>
           </div>
         </>
