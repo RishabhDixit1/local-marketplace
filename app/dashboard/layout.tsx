@@ -14,6 +14,7 @@ import {
 } from "@/app/components/prompt/DashboardPromptContext";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
+import QuickOnboardingSheet from "@/app/components/profile/QuickOnboardingSheet";
 import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
@@ -31,6 +32,7 @@ import {
   MessageCircle,
   Newspaper,
   Plus,
+  Settings,
   User,
   Users,
   X,
@@ -95,6 +97,7 @@ function DashboardShell({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
+  const [openQuickActions, setOpenQuickActions] = useState(false);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady);
   const myProfileHref =
@@ -377,6 +380,17 @@ function DashboardShell({
           </nav>
 
           <div className={`border-t border-slate-200 space-y-2 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
+            <Link
+              href="/dashboard/settings"
+              title={desktopNavCollapsed ? "Settings" : undefined}
+              className={`w-full flex items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[var(--brand-500)]/45 hover:text-slate-900 ${
+                desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+              }`}
+              aria-label="Settings"
+            >
+              <Settings className="w-5 h-5 shrink-0" />
+              {!desktopNavCollapsed && <span className="text-sm font-semibold">Settings</span>}
+            </Link>
             <button
               onClick={() => router.push(myProfileHref)}
               title={desktopNavCollapsed ? "My Profile" : undefined}
@@ -487,19 +501,75 @@ function DashboardShell({
               </div>
             )}
             <OnboardingGuard>{children}</OnboardingGuard>
+            <QuickOnboardingSheet />
           </main>
         </div>
       </div>
 
       {!pathname.startsWith("/dashboard/chat") && !pathname.startsWith("/dashboard/create_post") && (
-        <button
-          type="button"
-          onClick={() => setOpenCreatePost(true)}
-          aria-label="Create post"
-          className="fixed bottom-6 right-6 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => setOpenQuickActions((current) => !current)}
+            aria-label="Open quick actions"
+            className="fixed bottom-6 right-6 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+
+          {openQuickActions ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setOpenQuickActions(false)}
+                aria-hidden
+                className="fixed inset-0 z-[1098] bg-slate-950/10"
+              />
+              <div className="fixed bottom-24 right-6 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    router.push("/dashboard/provider/add-service");
+                  }}
+                  className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Add Service
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    router.push("/dashboard/provider/add-product");
+                  }}
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Add Product
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    setOpenCreatePost(true);
+                  }}
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Post Requirement
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    setOpenCreatePost(true);
+                  }}
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Post Job
+                </button>
+              </div>
+            </>
+          ) : null}
+        </>
       )}
       {openCreatePost && (
         <CreatePostModal
@@ -581,6 +651,14 @@ function DashboardShell({
           </nav>
 
           <div className="mt-auto pt-4 border-t border-slate-200 space-y-2">
+            <Link
+              href="/dashboard/settings"
+              onClick={() => setMenuOpen(false)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold transition-colors hover:bg-slate-50"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </Link>
             <button
               onClick={() => {
                 setMenuOpen(false);

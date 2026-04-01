@@ -42,6 +42,7 @@ type ProfileRow = {
   availability: string | null;
   email: string | null;
   phone: string | null;
+  image_url?: string | null;
   website: string | null;
   avatar_url: string | null;
   metadata: Record<string, unknown> | null;
@@ -381,7 +382,7 @@ const loadBusiness = cache(async (slug: string) => {
         .limit(8),
       supabase
         .from("product_catalog")
-        .select("id,title,category,price,stock")
+        .select("id,title,category,price,stock,image_url")
         .eq("provider_id", businessId)
         .limit(8),
       supabase.from("reviews").select("rating,comment").eq("provider_id", businessId).limit(10),

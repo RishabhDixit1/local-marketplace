@@ -67,6 +67,32 @@ const getMissingColumn = (message: string): string | null => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const extractListingImagePath = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  if (!raw) return "";
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      const marker = "/storage/v1/object/public/listing-images/";
+      const markerIndex = parsed.pathname.indexOf(marker);
+      if (markerIndex >= 0) {
+        return parsed.pathname.slice(markerIndex + marker.length).replace(/^\/+/, "");
+      }
+    } catch {
+      return "";
+    }
+  }
+
+  const cleaned = raw.replace(/^\/+/, "");
+  if (cleaned.startsWith("listing-images/")) {
+    return cleaned.slice("listing-images/".length);
+  }
+
+  return cleaned;
+};
+
 const firstValidationError = (errors: Record<string, string | undefined>) =>
   Object.values(errors).find((message) => typeof message === "string" && message.length > 0) || null;
 
@@ -462,6 +488,25 @@ export const deleteProviderListing = async (params: {
 }): Promise<ProviderListingWriteSuccess<{ id: string }> | ProviderListingWriteError> => {
   const table = params.request.listingType === "service" ? "service_listings" : "product_catalog";
   const listingId = params.request.listingId.trim();
+
+  if (params.request.listingType === "product") {
+    const imageReadResult = await params.db
+      .from("product_catalog")
+      .select("image_path,image_url")
+      .eq("id", listingId)
+      .eq("provider_id", params.userId)
+      .maybeSingle();
+
+    if (!imageReadResult.error && imageReadResult.data && isRecord(imageReadResult.data)) {
+      const imagePath =
+        extractListingImagePath(imageReadResult.data.image_path) ||
+        extractListingImagePath(imageReadResult.data.image_url);
+
+      if (imagePath) {
+        await params.db.storage.from("listing-images").remove([imagePath]);
+      }
+    }
+  }
 
   const result = await params.db
     .from(table)

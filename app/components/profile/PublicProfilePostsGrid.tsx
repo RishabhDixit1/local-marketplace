@@ -15,11 +15,14 @@ import {
   Loader2,
   MapPin,
   Share2,
+  ShoppingBag,
+  ShoppingCart,
   Sparkles,
   X,
 } from "lucide-react";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
 import { createAvatarFallback } from "@/lib/avatarFallback";
+import { useCart } from "@/app/components/store/CartContext";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   clearPendingFeedCardSave,
@@ -189,8 +192,10 @@ export default function PublicProfilePostsGrid({
   const [sharingCardIds, setSharingCardIds] = useState<Set<string>>(new Set());
   const [acceptingCardIds, setAcceptingCardIds] = useState<Set<string>>(new Set());
   const [chatOpening, setChatOpening] = useState(false);
+  const [addedToCart, setAddedToCart] = useState<string | null>(null);
   const resolvedAvatar = avatarUrl || createAvatarFallback({ label: displayName || "ServiQ member", seed: displayName || "public-profile" });
 
+  const cart = useCart();
   const { viewerId } = useConnectionRequests();
 
   useEffect(() => {
@@ -534,6 +539,37 @@ export default function PublicProfilePostsGrid({
     [buildActionPath, buildCardId, displayName, ensureViewerId, locationLabel, pushToast, resolvedAvatar, savedCardIds]
   );
 
+  const handleAddToCart = useCallback(
+    (post: PublicProfilePost) => {
+      cart.addItem({
+        itemType: post.type === "service" ? "service" : "product",
+        itemId: post.id,
+        providerId: profileUserId,
+        providerName: displayName,
+        title: post.title,
+        price: post.price,
+      });
+      setAddedToCart(post.id);
+      setTimeout(() => setAddedToCart(null), 1400);
+    },
+    [cart, displayName, profileUserId]
+  );
+
+  const handleBuyNow = useCallback(
+    (post: PublicProfilePost) => {
+      cart.addItem({
+        itemType: post.type === "service" ? "service" : "product",
+        itemId: post.id,
+        providerId: profileUserId,
+        providerName: displayName,
+        title: post.title,
+        price: post.price,
+      });
+      cart.openCart();
+    },
+    [cart, displayName, profileUserId]
+  );
+
   const handleShare = useCallback(
     async (post: PublicProfilePost) => {
       const cardId = buildCardId(post);
@@ -687,6 +723,29 @@ export default function PublicProfilePostsGrid({
                 </h3>
                 <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{post.description}</p>
               </div>
+
+              {(post.type === "product" || post.type === "service") && !isOwnListing && (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAddToCart(post)}
+                    aria-label={`Add ${post.title} to cart`}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    {addedToCart === post.id ? "Added!" : "Add to Cart"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBuyNow(post)}
+                    aria-label={`Buy ${post.title}`}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    {post.type === "service" ? "Hire Now" : "Buy Now"}
+                  </button>
+                </div>
+              )}
 
               <div className="mt-3 flex items-center gap-1.5">
                 <button

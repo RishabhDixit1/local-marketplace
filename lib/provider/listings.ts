@@ -1,5 +1,6 @@
 import type { ProfileAvailability } from "@/lib/profile/types";
 import { normalizeAvailability } from "@/lib/profile/utils";
+import { resolveSupabasePublicUrl } from "@/lib/mediaUrl";
 
 export const PROVIDER_SERVICE_CATEGORIES = [
   "Electrician",
@@ -102,6 +103,31 @@ const normalizeHttpUrl = (value: unknown) => {
   }
 };
 
+const normalizeListingImagePath = (value: unknown) => {
+  const raw = trim(value);
+  if (!raw) return "";
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      const marker = "/storage/v1/object/public/listing-images/";
+      const markerIndex = parsed.pathname.indexOf(marker);
+      if (markerIndex >= 0) {
+        return parsed.pathname.slice(markerIndex + marker.length).replace(/^\/+/, "");
+      }
+    } catch {
+      return "";
+    }
+  }
+
+  const cleaned = raw.replace(/^\/+/, "");
+  if (cleaned.startsWith("listing-images/")) {
+    return cleaned.slice("listing-images/".length);
+  }
+
+  return cleaned;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
@@ -191,8 +217,8 @@ export const validateProductDraft = (draft: ProviderProductDraft): ProductDraftV
     errors.deliveryMethod = "Invalid delivery method.";
   }
 
-  if (trim(draft.imageUrl) && !normalizeHttpUrl(draft.imageUrl)) {
-    errors.imageUrl = "Image URL must be a valid public URL.";
+  if (trim(draft.imageUrl) && !normalizeListingImagePath(draft.imageUrl)) {
+    errors.imageUrl = "Image is invalid. Upload a file or use a valid listing-images URL/path.";
   }
 
   return errors;
@@ -232,7 +258,7 @@ export const normalizeProductListingRow = (row: FlexibleRow): ProviderProductLis
     price: row.price,
     stock: row.stock,
     deliveryMethod: row.delivery_method,
-    imageUrl: row.image_url,
+    imageUrl: row.image_path || row.image_url,
   } as Partial<ProviderProductDraft>);
 
   return {
@@ -263,8 +289,11 @@ export const buildProductWritePayload = (providerId: string, draft: ProviderProd
   price: draft.price,
   stock: draft.stock,
   delivery_method: draft.deliveryMethod,
-  image_url: normalizeHttpUrl(draft.imageUrl) || null,
+  image_path: normalizeListingImagePath(draft.imageUrl) || null,
 });
+
+export const resolveListingImageUrl = (value: string | null | undefined) =>
+  resolveSupabasePublicUrl(value, { bucket: "listing-images" });
 
 export const calculateProviderListingsStats = (
   services: ProviderServiceListing[],

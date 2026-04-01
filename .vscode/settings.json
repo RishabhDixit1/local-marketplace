@@ -1,3 +1,9 @@
 {
-    "CodeGPT.apiKey": "CodeGPT Plus Beta"
+    "CodeGPT.apiKey": "CodeGPT Plus Beta",
+    "mssql.intelliSense.enableErrorChecking": false,
+    "files.associations": {
+        "*.sql": "plaintext",
+        "supabase/migrations/*.sql": "plaintext",
+        "supabase/*.sql": "plaintext"
+    }
 }

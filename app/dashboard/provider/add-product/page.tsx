@@ -7,8 +7,10 @@ import { Package, Loader2 } from "lucide-react";
 import { createProviderListing } from "@/lib/provider/client";
 import {
   PRODUCT_DELIVERY_METHODS,
+  resolveListingImageUrl,
   type ProductDeliveryMethod,
 } from "@/lib/provider/listings";
+import { supabase } from "@/lib/supabase";
 
 const deliveryOptions = PRODUCT_DELIVERY_METHODS.map((value) => ({
   value,
@@ -18,7 +20,9 @@ const deliveryOptions = PRODUCT_DELIVERY_METHODS.map((value) => ({
 export default function AddProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -56,6 +60,20 @@ export default function AddProductPage() {
     }
 
     try {
+      let imagePath = form.imageUrl;
+      if (imageFile) {
+        setUploadingImage(true);
+        const ext = imageFile.name.split(".").pop() || "jpg";
+        const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("listing-images")
+          .upload(filePath, imageFile, { contentType: imageFile.type || "image/jpeg", upsert: false });
+        if (uploadError) {
+          throw new Error(uploadError.message || "Unable to upload image.");
+        }
+        imagePath = filePath;
+      }
+
       await createProviderListing({
         listingType: "product",
         values: {
@@ -65,7 +83,7 @@ export default function AddProductPage() {
           stock: Math.round(parsedStock),
           category: form.category,
           deliveryMethod: form.deliveryMethod,
-          imageUrl: form.imageUrl,
+          imageUrl: imagePath,
         },
       });
 
@@ -73,6 +91,7 @@ export default function AddProductPage() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to add product right now.");
     } finally {
+      setUploadingImage(false);
       setLoading(false);
     }
   };
@@ -178,14 +197,27 @@ export default function AddProductPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700">Product Image URL</label>
+            <label className="text-sm font-medium text-slate-700">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => setImageFile(event.target.files?.[0] || null)}
+              className={fieldClassName}
+            />
             <input
               name="imageUrl"
-              placeholder="https://..."
+              placeholder="optional existing listing-images path"
               value={form.imageUrl}
               onChange={handleChange}
               className={fieldClassName}
             />
+            {resolveListingImageUrl(form.imageUrl) ? (
+              <img
+                src={resolveListingImageUrl(form.imageUrl) || ""}
+                alt="Product preview"
+                className="mt-2 h-20 w-20 rounded-lg object-cover"
+              />
+            ) : null}
           </div>
         </div>
 
@@ -213,11 +245,11 @@ export default function AddProductPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || uploadingImage}
           className="w-full sm:w-auto min-w-[220px] px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors text-white font-semibold flex justify-center items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading && <Loader2 className="animate-spin" />}
-          List Product
+          {uploadingImage ? "Uploading image..." : "List Product"}
         </button>
       </motion.form>
     </div>

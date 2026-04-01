@@ -1,12 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
-import { supabase } from "@/lib/supabase";
-import { fetchAuthedJson } from "@/lib/clientApi";
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
@@ -14,49 +11,6 @@ const formatPrice = (value: number) =>
 export function CartDrawer() {
   const { items, totalItems, totalPrice, removeItem, updateQuantity, clearCart, isOpen, closeCart } = useCart();
   const router = useRouter();
-  const [placingOrder, setPlacingOrder] = useState(false);
-  const [orderError, setOrderError] = useState("");
-  const [orderSuccess, setOrderSuccess] = useState(false);
-
-  const handleCheckout = useCallback(async () => {
-    if (!items.length) return;
-    setPlacingOrder(true);
-    setOrderError("");
-    setOrderSuccess(false);
-
-    try {
-      const response = await fetchAuthedJson<{ ok: boolean; count: number }>(supabase, "/api/orders", {
-        method: "POST",
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            providerId: item.providerId,
-            itemType: item.itemType,
-            itemId: item.itemId,
-            price: item.price * item.quantity,
-            quantity: item.quantity,
-            title: item.title,
-          })),
-        }),
-      });
-
-      if (!response.ok || response.count <= 0) {
-        setOrderError("Unable to place orders right now. Please try again.");
-        return;
-      }
-
-      clearCart();
-      setOrderSuccess(true);
-      setTimeout(() => {
-        closeCart();
-        setOrderSuccess(false);
-        router.push("/dashboard/tasks");
-      }, 1500);
-    } catch (error) {
-      setOrderError(error instanceof Error ? error.message : "Unable to place order right now.");
-    } finally {
-      setPlacingOrder(false);
-    }
-  }, [clearCart, closeCart, items, router]);
 
   return (
     <AnimatePresence>
@@ -168,33 +122,20 @@ export function CartDrawer() {
             {/* Footer */}
             {items.length > 0 && (
               <div className="border-t border-slate-200 px-5 py-4 space-y-3">
-                {orderError && (
-                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                    {orderError}
-                  </p>
-                )}
-                {orderSuccess && (
-                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                    Orders placed! Redirecting to tasks…
-                  </p>
-                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Total</span>
                   <span className="font-bold text-slate-900 text-base">{formatPrice(totalPrice)}</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => void handleCheckout()}
-                  disabled={placingOrder || orderSuccess}
-                  className="w-full rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60 flex items-center justify-center gap-2"
+                  onClick={() => { closeCart(); router.push("/checkout"); }}
+                  className="w-full rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] flex items-center justify-center gap-2"
                 >
-                  {placingOrder && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {placingOrder ? "Placing orders…" : `Place Order · ${formatPrice(totalPrice)}`}
+                  Checkout · {formatPrice(totalPrice)}
                 </button>
                 <button
                   type="button"
                   onClick={clearCart}
-                  disabled={placingOrder}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50"
                 >
                   Clear cart
