@@ -513,7 +513,7 @@ export default function TasksPage() {
     if (params.get("tab") === "inbox") return null;
     return params.get("focus");
   });
-  const [focusedMatchId, setFocusedMatchId] = useState<string | null>(() => {
+  const [focusedMatchId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
     if (params.get("tab") !== "inbox") return null;
@@ -3081,19 +3081,19 @@ export default function TasksPage() {
   const RealtimeIcon = realtimeMeta.icon;
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-5 px-3 sm:space-y-6 sm:px-5 lg:space-y-7 lg:px-6">
+    <div className="mx-auto w-full max-w-[1480px] space-y-4 px-2 sm:space-y-6 sm:px-5 lg:space-y-7 lg:px-6">
       <RouteObservability route="tasks" />
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="market-hero-surface relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/88 p-4 shadow-[0_24px_70px_-54px_rgba(15,23,42,0.38)] backdrop-blur"
+        className="market-hero-surface relative overflow-hidden rounded-[1.45rem] border border-white/70 bg-white/88 p-3.5 shadow-[0_24px_70px_-54px_rgba(15,23,42,0.38)] backdrop-blur sm:rounded-[1.6rem] sm:p-4"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_32%),radial-gradient(circle_at_top_right,rgba(17,70,106,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.96))]" />
 
-        <div className="relative space-y-4">
+        <div className="relative space-y-3 sm:space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-[var(--brand-500)]/20 bg-[var(--brand-50)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">
                   ServiQ Operations
@@ -3105,8 +3105,11 @@ export default function TasksPage() {
               </div>
 
               <div>
-                <h1 className="brand-display text-[1.55rem] font-semibold leading-tight text-slate-950 sm:text-[1.8rem]">Tasks Workspace</h1>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                <h1 className="brand-display text-[1.35rem] font-semibold leading-tight text-slate-950 sm:text-[1.8rem]">Tasks Workspace</h1>
+                <p className="mt-1 text-sm leading-6 text-slate-600 sm:hidden">
+                  Track requests, accepted work, and the next actions that need your attention.
+                </p>
+                <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-slate-600 sm:block">
                   Order-history style tracking for posted requests, accepted work, support follow-up, and completed history.
                 </p>
               </div>
@@ -3116,7 +3119,7 @@ export default function TasksPage() {
                 <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
                   {actionRequiredCount} need attention
                 </span>
-                <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                <span className="hidden rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 sm:inline-flex">
                   Last sync {lastSyncAt ? formatAgo(lastSyncAt, clockMs) : "waiting"}
                 </span>
               </div>
@@ -3132,7 +3135,7 @@ export default function TasksPage() {
                 onClick={() => {
                   scrollToSection(liveOrdersSectionRef);
                 }}
-                className={subtleActionClassName}
+                className={`hidden sm:inline-flex ${subtleActionClassName}`}
               >
                 <TrendingUp className="h-4 w-4" />
                 Focus attention
@@ -3140,7 +3143,20 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:hidden">
+            <div className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">Tracked</p>
+              <p className="mt-0.5 text-base font-bold leading-tight text-slate-950">{tasks.length}</p>
+              <p className="mt-1 text-[11px] leading-tight text-slate-500">Open task records</p>
+            </div>
+            <div className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">Attention</p>
+              <p className="mt-0.5 text-base font-bold leading-tight text-slate-950">{actionRequiredCount}</p>
+              <p className="mt-1 text-[11px] leading-tight text-slate-500">Actionable work now</p>
+            </div>
+          </div>
+
+          <div className="hidden grid-cols-2 gap-2 sm:grid sm:grid-cols-4">
             {compactStats.map((stat) => (
               <div key={stat.label} className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
@@ -3178,16 +3194,16 @@ export default function TasksPage() {
       <div className="space-y-5">
           <section
             ref={liveOrdersSectionRef}
-            className="space-y-5 rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5"
+            className="space-y-4 rounded-[1.55rem] border border-white/70 bg-white/90 p-3.5 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:space-y-5 sm:rounded-[1.9rem] sm:p-5"
           >
-            <div className="space-y-4 border-b border-slate-200 pb-4">
-              <div className="-mx-4 flex items-end gap-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:gap-6 sm:px-0 sm:[scrollbar-width:auto]">
+            <div className="space-y-3 border-b border-slate-200 pb-3 sm:space-y-4 sm:pb-4">
+              <div className="-mx-3.5 flex items-end gap-4 overflow-x-auto px-3.5 [scrollbar-width:none] sm:mx-0 sm:gap-6 sm:px-0 sm:[scrollbar-width:auto]">
                 {taskTabs.map((tab) => (
                   <button
                     key={tab.value}
                     type="button"
                     onClick={() => setSelectedTaskView(tab.value)}
-                    className={`inline-flex shrink-0 border-b-[3px] pb-3 text-sm font-semibold transition sm:text-base sm:pb-4 ${
+                    className={`inline-flex shrink-0 border-b-[3px] pb-2.5 text-sm font-semibold transition sm:text-base sm:pb-4 ${
                       selectedTaskView === tab.value
                         ? "border-[#0a66c2] text-[#0a66c2]"
                         : "border-transparent text-slate-500 hover:text-slate-900"
@@ -3208,7 +3224,7 @@ export default function TasksPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task workspace</p>
-                  <h2 className="mt-1 text-lg font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
+                  <h2 className="mt-1 text-base font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
                 </div>
 
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -3218,7 +3234,7 @@ export default function TasksPage() {
               </div>
 
               <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_180px]">
-                <label className="flex items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
+                <label className="hidden items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)] sm:flex">
                   <Search className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
                     value={searchQuery}
@@ -3241,7 +3257,7 @@ export default function TasksPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-950">
+                <h2 className="text-[1.75rem] font-semibold leading-tight text-slate-950 sm:text-2xl">
                   {selectedTaskView === "inbox"
                     ? "Nearby Requests"
                     : selectedTaskView === "cancelled"

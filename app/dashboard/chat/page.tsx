@@ -1382,7 +1382,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]" style={{ height: 'calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)' }}>
+    <div className="relative h-[calc(100dvh-7.5rem)] overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:rounded-3xl lg:h-[calc(100dvh-7.5rem)]" style={{ height: 'calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)' }}>
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1395,15 +1395,20 @@ export default function ChatPage() {
             selectedChat ? "hidden md:flex" : "flex"
           } flex-col`}
         >
-          <div className="border-b border-slate-200/80 px-5 pb-5 pt-5">
+          <div className="border-b border-slate-200/80 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">Local Inbox</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-900">Messages</h2>
-                <p className="mt-1 text-xs text-slate-500">Hyperlocal chats with live sync, unread state, and presence.</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 sm:text-xs">Local Inbox</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Messages</h2>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 sm:hidden">
+                    {conversations.length} chats
+                  </span>
+                </div>
+                <p className="mt-1 hidden text-xs text-slate-500 sm:block">Hyperlocal chats with live sync, unread state, and presence.</p>
               </div>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
                   connectedChannels >= 2
                     ? "border-emerald-300/70 bg-emerald-50 text-emerald-700"
                     : "border-amber-300/80 bg-amber-50 text-amber-700"
@@ -1414,7 +1419,19 @@ export default function ChatPage() {
               </span>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5">
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:hidden">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                {totalUnread} unread
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                {onlineContacts} online
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                {connectedChannels}/3 live
+              </span>
+            </div>
+
+            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 sm:flex">
               <Search size={16} className="text-slate-500" />
               <input
                 placeholder="Search people or messages"
@@ -1449,7 +1466,7 @@ export default function ChatPage() {
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 hidden grid-cols-3 gap-2 sm:grid">
               <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
                 <p className="text-[10px] uppercase tracking-wide text-slate-500">Chats</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{conversations.length}</p>
@@ -1466,12 +1483,12 @@ export default function ChatPage() {
           </div>
 
           {chatError && (
-            <div className="mx-4 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="mx-3 mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 sm:mx-4 sm:mt-4">
               {chatError}
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-3">
             {loadingConversations && (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, index) => (
@@ -1518,7 +1535,7 @@ export default function ChatPage() {
                     type="button"
                     key={chat.id}
                     onClick={() => setSelectedChat(chat.id)}
-                    className={`w-full rounded-2xl border px-3 py-3 text-left transition-all duration-200 ${
+                    className={`w-full rounded-[1.15rem] border px-3 py-3 text-left transition-all duration-200 sm:rounded-2xl ${
                       isSelected
                         ? "border-indigo-300 bg-gradient-to-r from-indigo-50 via-sky-50 to-white shadow-sm"
                         : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50"
@@ -1648,7 +1665,7 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <header className="border-b border-slate-200/80 bg-white/90 px-4 py-4 backdrop-blur-xl sm:px-6">
+              <header className="border-b border-slate-200/80 bg-white/90 px-3 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <button
@@ -1705,7 +1722,7 @@ export default function ChatPage() {
                             setQuotePanelDismissed(false);
                           }
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-3 py-1.5 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold text-sky-700 transition hover:bg-sky-100 sm:px-3 sm:text-[11px]"
                       >
                         <Receipt className="h-3.5 w-3.5" />
                         {showQuotePanel ? "Hide Quote" : "Send Quote"}
@@ -1715,7 +1732,7 @@ export default function ChatPage() {
                         type="button"
                         onClick={() => void startLiveTalk()}
                         disabled={liveTalkBusy}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-2.5 py-1.5 text-[10px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:px-3 sm:text-[11px]"
                       >
                         {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                         {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
@@ -1759,7 +1776,13 @@ export default function ChatPage() {
                 </div>
               </header>
 
-              <div className="relative flex-1 overflow-y-auto bg-slate-50/65 px-4 py-5 sm:px-6">
+              <div className="relative flex-1 overflow-y-auto bg-slate-50/65 px-3 py-4 sm:px-6 sm:py-5">
+                {chatError ? (
+                  <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 md:hidden">
+                    {chatError}
+                  </div>
+                ) : null}
+
                 {activeQuoteTarget && showQuotePanel && (
                   <div className="mb-4">
                     <QuoteDraftEditor
@@ -1916,7 +1939,7 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <footer className="border-t border-slate-200/80 bg-white px-4 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-4 sm:px-6">
+              <footer className="border-t border-slate-200/80 bg-white px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-3 sm:px-6 sm:pt-4">
                 <div ref={composerRef} className="relative rounded-2xl border border-slate-300 bg-slate-50 p-2">
                   {showEmoticonPicker && !preferNativeEmojiKeyboard && (
                     <div className="absolute bottom-full left-2 right-2 z-20 mb-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
@@ -2016,7 +2039,7 @@ export default function ChatPage() {
                     )}
                     {lastRealtimeLabel}
                   </p>
-                  <p className="text-slate-400">
+                  <p className="hidden text-slate-400 sm:block">
                     {preferNativeEmojiKeyboard
                       ? "Use your device keyboard for emojis."
                       : "Press Enter to send, Shift + Enter for newline, or use the emoji picker."}

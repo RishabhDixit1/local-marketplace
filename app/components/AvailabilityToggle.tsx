@@ -88,7 +88,7 @@ export function AvailabilityToggle() {
         aria-label="Change availability status"
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white"
+        className="flex min-h-10 items-center gap-1.5 rounded-[1rem] border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white sm:min-h-0 sm:rounded-xl sm:px-3 sm:py-1.5"
       >
         {saving ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
@@ -104,7 +104,7 @@ export function AvailabilityToggle() {
         <div
           role="listbox"
           aria-label="Choose availability"
-          className="absolute right-0 top-full z-50 mt-1.5 min-w-[9rem] rounded-xl border border-slate-700 bg-slate-900 p-1 shadow-xl"
+          className="absolute right-0 top-full z-50 mt-2 min-w-[10rem] rounded-2xl border border-slate-700 bg-slate-900 p-1.5 shadow-xl sm:mt-1.5 sm:min-w-[9rem] sm:rounded-xl sm:p-1"
         >
           {(Object.keys(STATUS_CONFIG) as OnlineStatus[]).map((s) => {
             const c = STATUS_CONFIG[s];
