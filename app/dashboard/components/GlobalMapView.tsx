@@ -14,12 +14,13 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { MarketplaceMapItem } from "@/app/components/maps/types";
 import type { CommunityFeedResponse, CommunityPeopleResponse, CommunityPresenceRecord } from "@/lib/api/community";
 import { estimateResponseMinutes } from "@/lib/business";
 import { resolveCoordinatesWithAccuracy } from "@/lib/geo";
 import { buildMarketplaceDisplayItem, type MarketplaceFeedItem } from "@/lib/marketplaceFeed";
+import { captureUiActionObservability, resolveObservedRouteFromPathname } from "@/lib/observability";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 
 const MarketplaceMap = dynamic(
@@ -220,9 +221,16 @@ const LAYERS: { id: Layer; label: string; Icon: typeof Layers }[] = [
   { id: "people", label: "People", Icon: Users },
 ];
 
+const resolveDefaultLayer = (pathname: string | null | undefined): Layer => {
+  if ((pathname || "").startsWith("/dashboard/people")) return "people";
+  if ((pathname || "") === "/dashboard") return "explore";
+  return "all";
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function GlobalMapView({ open, onClose }: Props) {
+  const pathname = usePathname();
   const router = useRouter();
   const [activeLayer, setActiveLayer] = useState<Layer>("all");
   const [exploreItems, setExploreItems] = useState<MarketplaceMapItem[]>([]);
@@ -233,7 +241,11 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const refreshRequestRef = useRef(0);
+  const openTrackedRef = useRef(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const observedRoute = resolveObservedRouteFromPathname(pathname || "/dashboard");
+  const defaultLayer = resolveDefaultLayer(pathname);
+  const mapTitle = activeLayer === "explore" ? "Explore Map" : activeLayer === "people" ? "People Map" : "Marketplace Map";
 
   const refreshMapData = useCallback(
     async (options?: { viewerCenter?: ViewerCenter | null; preserveSelection?: boolean }) => {
@@ -263,13 +275,28 @@ export default function GlobalMapView({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) {
+      openTrackedRef.current = false;
       setSheetOpen(false);
       setSelectedId(null);
       return;
     }
 
+    setActiveLayer(defaultLayer);
     void refreshMapData();
-  }, [open, refreshMapData]);
+  }, [defaultLayer, open, refreshMapData]);
+
+  useEffect(() => {
+    if (!open || openTrackedRef.current) return;
+    openTrackedRef.current = true;
+    void captureUiActionObservability({
+      route: observedRoute,
+      pathname: pathname || undefined,
+      action: "map_open",
+      context: {
+        layer: activeLayer,
+      },
+    });
+  }, [activeLayer, observedRoute, open, pathname]);
 
   const visibleItems: MarketplaceMapItem[] = (() => {
     if (activeLayer === "explore") return exploreItems;
@@ -303,7 +330,16 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
     setSheetOpen(true);
-  }, []);
+    void captureUiActionObservability({
+      route: observedRoute,
+      pathname: pathname || undefined,
+      action: "pin_select",
+      context: {
+        itemId: id,
+        layer: activeLayer,
+      },
+    });
+  }, [activeLayer, observedRoute, pathname]);
 
   const handleLocate = useCallback(async () => {
     setLocating(true);
@@ -324,9 +360,19 @@ export default function GlobalMapView({ open, onClose }: Props) {
 
   const handleViewDetail = useCallback(() => {
     if (!selectedDetail?.detailPath) return;
+    void captureUiActionObservability({
+      route: observedRoute,
+      pathname: pathname || undefined,
+      action: "deep_link_open",
+      context: {
+        itemId: selectedDetail.id,
+        layer: selectedDetail.layer,
+        detailPath: selectedDetail.detailPath,
+      },
+    });
     router.push(selectedDetail.detailPath);
     onClose();
-  }, [selectedDetail, router, onClose]);
+  }, [observedRoute, onClose, pathname, router, selectedDetail]);
 
   // Close sheet on click outside
   useEffect(() => {
@@ -399,7 +445,7 @@ export default function GlobalMapView({ open, onClose }: Props) {
             <MapPin className="h-4.5 w-4.5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight text-white">Explore Map</p>
+            <p className="text-sm font-bold leading-tight text-white">{mapTitle}</p>
             {!loading && (
               <p className="text-[11px] font-medium text-slate-400">
                 {visibleItems.length} {visibleItems.length === 1 ? "pin" : "pins"}
@@ -414,7 +460,17 @@ export default function GlobalMapView({ open, onClose }: Props) {
             <button
               key={id}
               type="button"
-              onClick={() => setActiveLayer(id)}
+              onClick={() => {
+                setActiveLayer(id);
+                void captureUiActionObservability({
+                  route: observedRoute,
+                  pathname: pathname || undefined,
+                  action: "layer_switch",
+                  context: {
+                    layer: id,
+                  },
+                });
+              }}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all ${
                 activeLayer === id
                   ? "bg-[var(--brand-900)] text-white shadow-md"

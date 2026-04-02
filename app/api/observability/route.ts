@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ObservabilityEventPayload } from "@/lib/observability";
 
-const EVENT_TYPES = new Set(["route_view", "route_perf", "web_vital", "client_error"]);
-const ROUTES = new Set(["dashboard", "chat", "tasks"]);
+const EVENT_TYPES = new Set(["route_view", "route_perf", "web_vital", "client_error", "ui_action"]);
+const ROUTES = new Set(["dashboard", "chat", "tasks", "welcome", "people", "launchpad", "checkout", "profile", "settings"]);
 
 const truncate = (value: unknown, maxLength: number) => {
   if (typeof value !== "string") return null;

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, Phone, UserRound } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
+import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
 import { supabase } from "@/lib/supabase";
 
 type RoleChoice = "user" | "provider" | "both";
@@ -11,6 +12,8 @@ export default function QuickOnboardingSheet() {
   const { user, profile, setProfile } = useProfileContext();
   const [name, setName] = useState(profile?.full_name || profile?.name || "");
   const [location, setLocation] = useState(profile?.location || "");
+  const [latitude, setLatitude] = useState<number | null>(profile?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(profile?.longitude ?? null);
   const [phone, setPhone] = useState(profile?.phone || "");
   const [roleChoice, setRoleChoice] = useState<RoleChoice>(
     profile?.role === "business" ? "both" : profile?.role === "seeker" ? "user" : "provider"
@@ -24,9 +27,22 @@ export default function QuickOnboardingSheet() {
     return !profile.onboarding_completed;
   }, [profile, user]);
 
+  useEffect(() => {
+    setName(profile?.full_name || profile?.name || "");
+    setLocation(profile?.location || "");
+    setLatitude(profile?.latitude ?? null);
+    setLongitude(profile?.longitude ?? null);
+    setPhone(profile?.phone || "");
+  }, [profile]);
+
   if (!shouldShow || !user || !profile) return null;
 
   const submit = async () => {
+    if (!isUsableLocationLabel(location)) {
+      setError("Enter a readable area or city name, not raw GPS coordinates.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -46,6 +62,8 @@ export default function QuickOnboardingSheet() {
           full_name: name.trim() || null,
           name: name.trim() || null,
           location: location.trim() || null,
+          latitude: typeof latitude === "number" && Number.isFinite(latitude) ? latitude : null,
+          longitude: typeof longitude === "number" && Number.isFinite(longitude) ? longitude : null,
           phone: phone.trim() || null,
           role: storedRole,
           metadata,
@@ -121,8 +139,9 @@ export default function QuickOnboardingSheet() {
                   setError("");
                   navigator.geolocation.getCurrentPosition(
                     (position) => {
-                      const { latitude, longitude } = position.coords;
-                      setLocation(`GPS ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+                      const coordinates = getCoordinates(position.coords.latitude, position.coords.longitude);
+                      setLatitude(coordinates?.latitude ?? null);
+                      setLongitude(coordinates?.longitude ?? null);
                       setLocating(false);
                     },
                     () => {
@@ -136,6 +155,14 @@ export default function QuickOnboardingSheet() {
               >
                 {locating ? "Fetching GPS..." : "Use current GPS location"}
               </button>
+              <p className="text-[11px] text-slate-500">
+                Keep this label human-readable for nearby discovery. GPS saves precise coordinates separately.
+              </p>
+              {typeof latitude === "number" && typeof longitude === "number" ? (
+                <p className="text-[11px] font-medium text-emerald-700">
+                  Precise coordinates saved: {formatCoordinatePair({ latitude, longitude }, 4)}
+                </p>
+              ) : null}
             </div>
           </label>
 

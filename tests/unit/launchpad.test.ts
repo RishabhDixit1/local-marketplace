@@ -20,12 +20,16 @@ describe("launchpad validation", () => {
       phone: "99999 99999",
       website: "nishastudio.example",
       brandTone: "premium",
+      latitude: 12.9341,
+      longitude: 77.6113,
     });
 
     expect(normalized.businessName).toBe("Nisha Studio");
     expect(normalized.serviceRadiusKm).toBe(18);
     expect(normalized.phone).toBe("9999999999");
     expect(normalized.website).toBe("https://nishastudio.example");
+    expect(normalized.latitude).toBe(12.9341);
+    expect(normalized.longitude).toBe(77.6113);
   });
 
   it("flags missing required fields", () => {
@@ -44,6 +48,22 @@ describe("launchpad validation", () => {
     expect(errors.businessName).toMatch(/required/i);
     expect(errors.shortDescription).toMatch(/at least 24 characters/i);
     expect(errors.coreOfferings).toMatch(/at least one core offering/i);
+  });
+
+  it("rejects raw GPS coordinates as the visible location label", () => {
+    const errors = validateLaunchpadAnswers(
+      normalizeLaunchpadAnswers({
+        businessName: "Aarav Home Repair",
+        businessType: "Home repair studio",
+        primaryCategory: "Repairs",
+        location: "12.93410, 77.61130",
+        serviceArea: "Koramangala",
+        shortDescription: "Fast, trustworthy repairs for apartments, villas, and small offices.",
+        coreOfferings: "AC repair",
+      })
+    );
+
+    expect(errors.location).toMatch(/readable area or city name/i);
   });
 });
 

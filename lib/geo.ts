@@ -8,6 +8,7 @@ export type CoordinateAccuracy = "precise" | "approximate";
 export type BrowserCoordinateStatus = "idle" | "locating" | "ready" | "denied" | "unsupported" | "error";
 
 const EARTH_RADIUS_KM = 6371;
+const COORDINATE_LABEL_PATTERN = /^-?\d{1,2}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/;
 const DEFAULT_MARKET_COORDINATES: Coordinates = {
   latitude: 12.9716,
   longitude: 77.5946,
@@ -100,6 +101,23 @@ export const resolveCoordinatesWithAccuracy = (params: {
     coordinates: inferCoordinatesFromLocation(params.location, params.seed || ""),
     accuracy: "approximate",
   };
+};
+
+export const normalizeLocationLabel = (value: string | null | undefined) => value?.replace(/\s+/g, " ").trim() || "";
+
+export const isCoordinateOnlyLocationLabel = (value: string | null | undefined) =>
+  COORDINATE_LABEL_PATTERN.test(normalizeLocationLabel(value));
+
+export const isUsableLocationLabel = (value: string | null | undefined) => {
+  const normalized = normalizeLocationLabel(value);
+  if (normalized.length < 3) return false;
+  if (isCoordinateOnlyLocationLabel(normalized)) return false;
+  return /[a-z]/i.test(normalized);
+};
+
+export const formatCoordinatePair = (coordinates: Coordinates | null | undefined, digits = 5) => {
+  if (!coordinates) return "";
+  return `${coordinates.latitude.toFixed(digits)}, ${coordinates.longitude.toFixed(digits)}`;
 };
 
 export const haversineDistanceKm = (from: Coordinates, to: Coordinates) => {

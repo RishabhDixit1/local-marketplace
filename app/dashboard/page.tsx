@@ -11,7 +11,6 @@ import ProfileToastViewport, { type ProfileToast } from "@/app/components/profil
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedFilters from "@/app/dashboard/components/posts/FeedFilters";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
-import FeedMapPanel from "@/app/dashboard/components/posts/FeedMapPanel";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -66,11 +65,6 @@ export default function MarketplacePage() {
     setShowAdvancedFilters,
     refreshing,
     feedError,
-    realtimeStyle,
-    feedStats,
-    mapCenter,
-    locationStatus,
-    mapItems,
     categoryOptions,
     displayFeed,
     showFeedLoading,
@@ -157,18 +151,6 @@ export default function MarketplacePage() {
     }
   }, [feed.length, fetchFeed, resetFilters]);
 
-  const handleSelectMapItem = useCallback(
-    (itemId: string) => {
-      setActiveMapItemId(itemId);
-
-      const escapedId =
-        typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(itemId) : itemId;
-      const card = document.querySelector<HTMLElement>(`[data-feed-card-id="${escapedId}"]`);
-      card?.scrollIntoView({ behavior: "smooth", block: "center" });
-    },
-    [setActiveMapItemId]
-  );
-
   const isSaveBusy = useCallback(
     (item: MarketplaceDisplayFeedItem) => isListingBusy(item, savingListingIds),
     [isListingBusy, savingListingIds]
@@ -239,19 +221,6 @@ export default function MarketplacePage() {
             <p className="font-semibold">Could not fully refresh the live feed.</p>
             <p className="mt-1 text-xs">{feedError}</p>
           </div>
-        ) : null}
-
-        {mapItems.length > 0 ? (
-          <FeedMapPanel
-            items={mapItems}
-            center={mapCenter}
-            stats={feedStats}
-            realtime={realtimeStyle}
-            locationStatus={locationStatus}
-            activeItemId={activeMapItemId}
-            selectedItemId={activeMapItemId}
-            onSelectItem={handleSelectMapItem}
-          />
         ) : null}
 
         <FeedGrid

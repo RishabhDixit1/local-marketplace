@@ -27,6 +27,8 @@ export type LaunchpadAnswers = {
   offeringType: LaunchpadOfferingType;
   primaryCategory: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   serviceArea: string;
   serviceRadiusKm: number;
   shortDescription: string;
@@ -42,6 +44,8 @@ export type LaunchpadAnswers = {
 export type LaunchpadGeneratedProfile = {
   fullName: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   bio: string;
   interests: string[];
   phone: string;

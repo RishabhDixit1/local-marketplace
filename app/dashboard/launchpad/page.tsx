@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, MapPin, Rocket, Sparkles } from "lucide-react";
+import RouteObservability from "@/app/components/RouteObservability";
+import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_LAUNCHPAD_ANSWERS } from "@/lib/launchpad/validation";
 import type { LaunchpadAnswers, LaunchpadBrandTone, LaunchpadOfferingType, SaveLaunchpadDraftResponse } from "@/lib/api/launchpad";
@@ -95,6 +97,8 @@ export default function LaunchpadPage() {
         ...prev,
         businessName: prev.businessName || profile.full_name || "",
         location: prev.location || profile.location || "",
+        latitude: prev.latitude ?? profile.latitude ?? null,
+        longitude: prev.longitude ?? profile.longitude ?? null,
         phone: prev.phone || profile.phone || "",
         website: prev.website || profile.website || "",
       }));
@@ -110,7 +114,9 @@ export default function LaunchpadPage() {
     setError("");
     const coords = await getGps();
     if (coords) {
-      set("location", `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`);
+      const normalized = getCoordinates(coords.latitude, coords.longitude);
+      set("latitude", normalized?.latitude ?? null);
+      set("longitude", normalized?.longitude ?? null);
     } else {
       setError("Could not get GPS location. Type your area manually.");
     }
@@ -122,6 +128,10 @@ export default function LaunchpadPage() {
     if (!answers.businessType) { setError("Select a business type."); return; }
     if (!answers.primaryCategory) { setError("Select a primary category."); return; }
     if (!answers.location.trim()) { setError("Enter your location."); return; }
+    if (!isUsableLocationLabel(answers.location)) {
+      setError("Enter a readable area or city name like \"Indiranagar, Bengaluru\", not raw GPS coordinates.");
+      return;
+    }
     if (!answers.serviceArea.trim()) { setError("Enter your service area."); return; }
     if (!answers.shortDescription.trim() || answers.shortDescription.trim().length < 24) {
       setError("Write a short description (at least 24 characters)."); return;
@@ -160,6 +170,8 @@ export default function LaunchpadPage() {
   // ─── render ───────────────────────────────
   return (
     <div className="mx-auto max-w-2xl">
+      <RouteObservability route="launchpad" />
+
       {/* header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -300,6 +312,15 @@ export default function LaunchpadPage() {
                   GPS
                 </button>
               </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Keep this label human-readable for customers. GPS stores precise coordinates separately.
+              </p>
+              {typeof answers.latitude === "number" && typeof answers.longitude === "number" ? (
+                <p className="mt-2 text-xs font-medium text-emerald-700">
+                  Precise coordinates saved:{" "}
+                  {formatCoordinatePair({ latitude: answers.latitude, longitude: answers.longitude }, 4)}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-service-area">
@@ -483,4 +504,3 @@ export default function LaunchpadPage() {
     </div>
   );
 }
-

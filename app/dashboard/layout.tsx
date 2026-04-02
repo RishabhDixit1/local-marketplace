@@ -23,6 +23,7 @@ import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
 import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
+  Bookmark,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
@@ -470,78 +471,14 @@ function DashboardShell({
           <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
             <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center gap-3">
               <div className="relative flex items-center gap-3 min-w-0">
-                {/* Mobile (xs): S mark as user-menu trigger */}
+                {/* Mobile (xs): logo shortcut to Welcome */}
                 <div className="sm:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowUserMenu((p) => !p)}
-                    aria-label="Open user menu"
-                    aria-expanded={showUserMenu}
-                    className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)]"
-                  >
-                    <ServiQLogo markOnly />
-                  </button>
+                  <ServiQLogo markOnly href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
                 </div>
-                {/* Tablet (sm–lg): compact logo as user-menu trigger */}
+                {/* Tablet (sm-lg): compact logo shortcut to Welcome */}
                 <div className="hidden sm:block lg:hidden min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowUserMenu((p) => !p)}
-                    aria-label="Open user menu"
-                    aria-expanded={showUserMenu}
-                    className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)]"
-                  >
-                    <ServiQLogo compact className="max-w-[180px]" />
-                  </button>
+                  <ServiQLogo compact className="max-w-[180px]" href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
                 </div>
-
-                {/* User menu dropdown */}
-                {showUserMenu && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setShowUserMenu(false)}
-                      className="fixed inset-0 z-[1250]"
-                      aria-hidden
-                    />
-                    <div className="absolute left-0 top-full z-[1251] mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
-                      {/* Profile name header */}
-                      {profile?.full_name ? (
-                        <div className="border-b border-slate-100 px-4 py-3">
-                          <p className="truncate text-sm font-bold text-slate-900">{profile.full_name}</p>
-                          <p className="mt-0.5 truncate text-xs text-slate-500">ServiQ account</p>
-                        </div>
-                      ) : null}
-                      <div className="p-1.5">
-                        <button
-                          type="button"
-                          onClick={() => { setShowUserMenu(false); router.push(myProfileHref); }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <User className="h-4 w-4 shrink-0 text-slate-400" />
-                          My Profile
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setShowUserMenu(false); router.push("/dashboard/settings"); }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <Settings className="h-4 w-4 shrink-0 text-slate-400" />
-                          Settings
-                        </button>
-                        <div className="my-1 border-t border-slate-100" />
-                        <button
-                          type="button"
-                          onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-                        >
-                          <LogOut className="h-4 w-4 shrink-0" />
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
 
               <div className="hidden md:flex min-w-0 flex-1 justify-center px-2">
@@ -576,14 +513,88 @@ function DashboardShell({
                 </button>
                 <AvailabilityToggle />
                 <NotificationCenter enabled={shellEnhancementsReady} />
-                <Link
-                  href={myProfileHref}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-                  aria-label="Open profile"
-                  title="My profile"
-                >
-                  <User className="w-4 h-4" />
-                </Link>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowUserMenu((current) => !current)}
+                    aria-label="Open account menu"
+                    aria-expanded={showUserMenu}
+                    title="Account"
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 ${
+                      showUserMenu
+                        ? "border-[var(--brand-500)]/60 text-[var(--brand-700)]"
+                        : "border-slate-200 hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                  </button>
+
+                  {showUserMenu ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowUserMenu(false)}
+                        className="fixed inset-0 z-[1250]"
+                        aria-hidden
+                      />
+                      <div className="absolute right-0 top-full z-[1251] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
+                        <div className="border-b border-slate-100 px-4 py-3">
+                          <p className="truncate text-sm font-bold text-slate-900">
+                            {profile?.full_name || profile?.name || appName}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">ServiQ account</p>
+                        </div>
+                        <div className="p-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              router.push("/dashboard/saved");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
+                            Saved
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              router.push(myProfileHref);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <User className="h-4 w-4 shrink-0 text-slate-400" />
+                            View Profile
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              router.push("/dashboard/settings");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Settings className="h-4 w-4 shrink-0 text-slate-400" />
+                            Settings
+                          </button>
+                          <div className="my-1 border-t border-slate-100" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              setShowLogoutConfirm(true);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                          >
+                            <LogOut className="h-4 w-4 shrink-0" />
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               </div>
             </div>
             {showPrompt ? (

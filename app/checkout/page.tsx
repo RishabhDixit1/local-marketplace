@@ -13,6 +13,7 @@ import {
   Package,
   ShoppingBag,
 } from "lucide-react";
+import RouteObservability from "@/app/components/RouteObservability";
 import { useCart } from "@/app/components/store/CartContext";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -271,6 +272,8 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f2ee]">
+      <RouteObservability route="checkout" />
+
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">

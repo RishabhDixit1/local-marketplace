@@ -6,6 +6,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
@@ -44,7 +45,6 @@ import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/uti
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
-import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCardSkeleton from "./components/ProviderCardSkeleton";
 import type {
@@ -850,7 +850,6 @@ export default function PeoplePage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [viewerCenter, setViewerCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -972,11 +971,6 @@ export default function PeoplePage() {
             })
           : null;
         const effectiveViewerCoordinates = browserCoordinates || viewerProfileCoordinates || defaultMarketCoordinates();
-        setViewerCenter({
-          lat: effectiveViewerCoordinates.latitude,
-          lng: effectiveViewerCoordinates.longitude,
-        });
-
         const providerIdsForDetails = Array.from(
           new Set(
             [
@@ -1724,35 +1718,6 @@ export default function PeoplePage() {
     () => providers.filter((provider) => getPresenceTone(provider) === "online").length,
     [getPresenceTone, providers]
   );
-  const activeProvider =
-    visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
-  const visibleProviderMapItems = useMemo(
-    () =>
-      visibleProviders
-        .filter(
-          (provider) =>
-            typeof provider.latitude === "number" &&
-            Number.isFinite(provider.latitude) &&
-            typeof provider.longitude === "number" &&
-            Number.isFinite(provider.longitude)
-        )
-        .map((provider) => ({
-          id: provider.id,
-          title: provider.name,
-          lat: provider.latitude as number,
-          lng: provider.longitude as number,
-          creatorName: provider.role || undefined,
-          locationLabel:
-            provider.coordinateAccuracy === "approximate" && provider.location
-              ? `${provider.location} (approximate area)`
-              : provider.location,
-          category: provider.primarySkill || provider.role || undefined,
-          timeLabel: provider.responseMinutes > 0 ? `~${provider.responseMinutes} min reply` : undefined,
-          priceLabel: provider.minPriceLabel || undefined,
-          coordinateAccuracy: provider.coordinateAccuracy,
-        })),
-    [visibleProviders]
-  );
 
   return (
     <div
@@ -1762,6 +1727,8 @@ export default function PeoplePage() {
           "radial-gradient(circle at 0% 0%, rgba(14,165,164,0.08), transparent 34%), radial-gradient(circle at 100% 8%, rgba(17,70,106,0.08), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.44), rgba(255,255,255,0))",
       }}
     >
+      <RouteObservability route="people" />
+
       <PeopleLiveHeader
         activeNow={activeNow}
         connectionCount={connectionBuckets.accepted.length}
@@ -1866,15 +1833,6 @@ export default function PeoplePage() {
 
       <div className="min-w-0">
         <main className="space-y-6">
-          {visibleProviderMapItems.length > 0 ? (
-            <PeopleMapPanel
-              items={visibleProviderMapItems}
-              center={viewerCenter}
-              activeProvider={activeProvider}
-              onSelectProvider={jumpToProviderCard}
-            />
-          ) : null}
-
           {loading ? (
             <ProviderCardSkeleton count={8} />
           ) : !providers.length ? (

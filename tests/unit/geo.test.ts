@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCoordinatesWithAccuracy } from "../../lib/geo";
+import { isCoordinateOnlyLocationLabel, isUsableLocationLabel, resolveCoordinatesWithAccuracy } from "../../lib/geo";
 
 describe("resolveCoordinatesWithAccuracy", () => {
   it("marks explicit latitude and longitude as precise", () => {
@@ -30,5 +30,17 @@ describe("resolveCoordinatesWithAccuracy", () => {
     expect(result.accuracy).toBe("approximate");
     expect(result.coordinates.latitude).toBeTypeOf("number");
     expect(result.coordinates.longitude).toBeTypeOf("number");
+  });
+});
+
+describe("location labels", () => {
+  it("detects raw coordinate strings", () => {
+    expect(isCoordinateOnlyLocationLabel("12.93410, 77.61130")).toBe(true);
+    expect(isCoordinateOnlyLocationLabel("Koramangala, Bengaluru")).toBe(false);
+  });
+
+  it("requires a readable location label", () => {
+    expect(isUsableLocationLabel("Koramangala, Bengaluru")).toBe(true);
+    expect(isUsableLocationLabel("12.93410, 77.61130")).toBe(false);
   });
 });

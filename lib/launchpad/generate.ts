@@ -156,6 +156,8 @@ export const generateLaunchpadProfile = (answers: LaunchpadAnswers): LaunchpadGe
   return {
     fullName: answers.businessName,
     location: answers.location,
+    latitude: answers.latitude ?? null,
+    longitude: answers.longitude ?? null,
     bio: `${answers.businessName} is a local ${answers.businessType.toLowerCase()} business serving ${serviceAreaLabel}. We help with ${offeringSnippet}. ${answers.shortDescription} ${pricingSentence} ${toneSentence}`.replace(
       /\s+/g,
       " "

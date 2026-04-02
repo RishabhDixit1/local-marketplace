@@ -9,6 +9,7 @@ import type {
   LaunchpadProductDraft,
   LaunchpadServiceDraft,
 } from "@/lib/api/launchpad";
+import { isUsableLocationLabel } from "@/lib/geo";
 import { normalizeAvailability, normalizePhone, normalizeTopics, normalizeWebsite } from "@/lib/profile/utils";
 
 const INPUT_SOURCES = new Set<LaunchpadInputSource>(["manual", "catalog", "whatsapp", "website"]);
@@ -35,6 +36,8 @@ export const DEFAULT_LAUNCHPAD_ANSWERS: LaunchpadAnswers = {
   offeringType: "services",
   primaryCategory: "",
   location: "",
+  latitude: null,
+  longitude: null,
   serviceArea: "",
   serviceRadiusKm: 12,
   shortDescription: "",
@@ -67,6 +70,8 @@ export const normalizeLaunchpadAnswers = (value: Partial<LaunchpadAnswers> | nul
   const brandTone = BRAND_TONES.has(source.brandTone as LaunchpadBrandTone)
     ? (source.brandTone as LaunchpadBrandTone)
     : DEFAULT_LAUNCHPAD_ANSWERS.brandTone;
+  const latitude = toFiniteNumber(source.latitude);
+  const longitude = toFiniteNumber(source.longitude);
 
   return {
     businessName: trim(source.businessName),
@@ -74,6 +79,8 @@ export const normalizeLaunchpadAnswers = (value: Partial<LaunchpadAnswers> | nul
     offeringType,
     primaryCategory: trim(source.primaryCategory),
     location: trim(source.location),
+    latitude,
+    longitude,
     serviceArea: trim(source.serviceArea),
     serviceRadiusKm,
     shortDescription: trim(source.shortDescription),
@@ -93,7 +100,11 @@ export const validateLaunchpadAnswers = (answers: LaunchpadAnswers) => {
   if (!answers.businessName) errors.businessName = "Business name is required.";
   if (!answers.businessType) errors.businessType = "Business type is required.";
   if (!answers.primaryCategory) errors.primaryCategory = "Primary category is required.";
-  if (!answers.location) errors.location = "Location is required.";
+  if (!answers.location) {
+    errors.location = "Location is required.";
+  } else if (!isUsableLocationLabel(answers.location)) {
+    errors.location = "Enter a readable area or city name, not raw GPS coordinates.";
+  }
   if (!answers.serviceArea) errors.serviceArea = "Service area is required.";
   if (!answers.shortDescription || answers.shortDescription.length < 24) {
     errors.shortDescription = "Write a short description with at least 24 characters.";
@@ -125,6 +136,8 @@ export const normalizeLaunchpadGeneratedProfile = (value: unknown): LaunchpadGen
   return {
     fullName,
     location,
+    latitude: toFiniteNumber(record.latitude),
+    longitude: toFiniteNumber(record.longitude),
     bio,
     interests: normalizeTopics(toStringArray(record.interests)),
     phone: normalizePhone(typeof record.phone === "string" ? record.phone : ""),
