@@ -22,11 +22,11 @@ function isOrderRequest(body: unknown): body is OrderRequest {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
   return (
-    typeof b.providerId === "string" &&
+    typeof b.providerId === "string" && b.providerId.length > 0 &&
     (b.itemType === "service" || b.itemType === "product") &&
-    typeof b.itemId === "string" &&
+    typeof b.itemId === "string" && b.itemId.length > 0 &&
     typeof b.price === "number" &&
-    b.price >= 0
+    b.price >= 0 && b.price <= 999999
   );
 }
 
@@ -77,6 +77,53 @@ export async function POST(request: Request) {
 
   const requestedItems = isBulkOrderRequest(body) ? body.items : [body];
 
+  // -- Input validation --
+  for (const item of requestedItems) {
+    if (item.price < 0 || item.price > 999999) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid price. Must be between 0 and 999999." }, { status: 400 });
+    }
+    const qty = typeof item.quantity === "number" ? item.quantity : 1;
+    if (qty < 1 || qty > 100) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid quantity. Must be between 1 and 100." }, { status: 400 });
+    }
+    const address = (item as unknown as Record<string, unknown>).address;
+    if (typeof address === "string" && address.trim().length > 500) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Address must be 500 characters or fewer." }, { status: 400 });
+    }
+  }
+
+  // -- Verify providerId exists --
+  const uniqueProviderIds = [...new Set(requestedItems.map((i) => i.providerId))];
+  const { data: providers, error: providerErr } = await admin
+    .from("profiles")
+    .select("id")
+    .in("id", uniqueProviderIds);
+  if (providerErr || !providers || providers.length !== uniqueProviderIds.length) {
+    return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more providers not found." }, { status: 400 });
+  }
+
+  // -- Verify itemIds exist in the correct table --
+  const serviceItems = requestedItems.filter((i) => i.itemType === "service");
+  const productItems = requestedItems.filter((i) => i.itemType === "product");
+  if (serviceItems.length > 0) {
+    const { data: listings } = await admin
+      .from("service_listings")
+      .select("id")
+      .in("id", serviceItems.map((i) => i.itemId));
+    if (!listings || listings.length !== serviceItems.length) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more service listings not found." }, { status: 400 });
+    }
+  }
+  if (productItems.length > 0) {
+    const { data: products } = await admin
+      .from("product_catalog")
+      .select("id")
+      .in("id", productItems.map((i) => i.itemId));
+    if (!products || products.length !== productItems.length) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more products not found." }, { status: 400 });
+    }
+  }
+
   const rowsToInsert: Record<string, unknown>[] = requestedItems.map((item) => {
     const quantity = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
     const insert: Record<string, unknown> = {
@@ -115,19 +162,23 @@ export async function POST(request: Request) {
 
   const orderIds = ((data as Array<{ id: string }> | null) || []).map((row) => row.id);
 
-  // Fire-and-forget: email buyer confirmation
+  // Fire-and-forget: email buyer confirmation (with error capture)
   void (async () => {
-    const { data: userData } = await admin.auth.admin.getUserById(authResult.auth.userId);
-    const email = userData?.user?.email;
-    if (email && requestedItems[0]) {
-      void sendOrderEmail({
-        type: "placed",
-        to: email,
-        recipientName: (userData.user?.user_metadata?.name as string | undefined) ?? "there",
-        orderId: orderIds[0] ?? "",
-        itemTitle: requestedItems[0].title ?? "your order",
-        price: requestedItems[0].price,
-      });
+    try {
+      const { data: userData } = await admin.auth.admin.getUserById(authResult.auth.userId);
+      const email = userData?.user?.email;
+      if (email && requestedItems[0]) {
+        await sendOrderEmail({
+          type: "placed",
+          to: email,
+          recipientName: (userData.user?.user_metadata?.name as string | undefined) ?? "there",
+          orderId: orderIds[0] ?? "",
+          itemTitle: requestedItems[0].title ?? "your order",
+          price: requestedItems[0].price,
+        });
+      }
+    } catch (err) {
+      console.error("[order-email] failed for order", orderIds[0], err);
     }
   })();
 

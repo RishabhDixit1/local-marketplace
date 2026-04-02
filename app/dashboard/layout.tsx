@@ -320,8 +320,8 @@ function DashboardShell({
     <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
-            desktopNavCollapsed ? "lg:w-24" : "lg:w-72"
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] md:transition-[width] md:duration-200 ${
+            desktopNavCollapsed ? "md:w-24" : "lg:w-72 md:w-24"
           }`}
         >
           <div className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}>
@@ -591,7 +591,7 @@ function DashboardShell({
             ) : null}
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:py-8 lg:pb-8">
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:py-8 md:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">Startup schema checks need admin action</p>
@@ -624,7 +624,7 @@ function DashboardShell({
             type="button"
             onClick={() => setOpenQuickActions((current) => !current)}
             aria-label="Open quick actions"
-            className="fixed bottom-[5.25rem] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 lg:bottom-6 lg:right-6"
+            className="fixed bottom-[5.25rem] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6"
           >
             <Plus className="h-6 w-6" />
           </button>
@@ -637,7 +637,7 @@ function DashboardShell({
                 aria-hidden
                 className="fixed inset-0 z-[1098] bg-slate-950/10"
               />
-              <div className="fixed bottom-[8.5rem] right-4 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl lg:bottom-24 lg:right-6">
+              <div className="fixed bottom-[8.5rem] right-4 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl md:bottom-24 md:right-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -704,7 +704,7 @@ function DashboardShell({
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-[1200] flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur-md"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[1200] flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Main navigation"
       >
@@ -720,6 +720,7 @@ function DashboardShell({
                 isActive ? "text-[var(--brand-700)]" : "text-slate-500"
               }`}
               aria-label={tab.name}
+              aria-current={isActive ? "page" : undefined}
             >
               <span className="relative">
                 <Icon className="h-5 w-5" />

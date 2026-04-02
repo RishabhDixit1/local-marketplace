@@ -97,6 +97,8 @@ export default function CheckoutPage() {
 
   const handleCOD = useCallback(async () => {
     if (!address.trim()) { setError("Please enter a delivery address."); return; }
+    if (address.trim().length < 10) { setError("Address is too short. Please enter a complete address."); return; }
+    if (address.trim().length > 500) { setError("Address must be 500 characters or fewer."); return; }
     setBusy(true); setError("");
 
     try {
@@ -113,6 +115,8 @@ export default function CheckoutPage() {
 
   const handleRazorpay = useCallback(async () => {
     if (!address.trim()) { setError("Please enter a delivery address."); return; }
+    if (address.trim().length < 10) { setError("Address is too short. Please enter a complete address."); return; }
+    if (address.trim().length > 500) { setError("Address must be 500 characters or fewer."); return; }
     if (!razorpayAvailable || !window.Razorpay) {
       setError("Payment gateway not loaded. Please refresh and try again."); return;
     }
@@ -204,9 +208,12 @@ export default function CheckoutPage() {
   if (success !== null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-10 shadow-lg max-w-sm w-full text-center">
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <CheckCircle2 className="h-14 w-14 text-emerald-500" />
           <h1 className="text-xl font-bold text-slate-900">Order Placed!</h1>
+          {success && (
+            <p className="text-xs font-mono text-slate-400">Order #{success.slice(0, 8).toUpperCase()}</p>
+          )}
           <p className="text-sm text-slate-500">Redirecting to your order status…</p>
           <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
         </div>
@@ -217,7 +224,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-10 shadow-lg max-w-sm w-full text-center">
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <ShoppingBag className="h-12 w-12 text-slate-300" />
           <p className="font-semibold text-slate-700">Your cart is empty</p>
           <Link href="/" className="text-sm font-medium text-blue-600 hover:underline">Browse marketplace</Link>
@@ -280,10 +287,15 @@ export default function CheckoutPage() {
           <textarea
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
             placeholder="Enter your full address or describe where to meet the provider…"
+            aria-label="Delivery address"
             rows={3}
+            maxLength={500}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
+          <p className={`mt-1 text-right text-[11px] ${address.length > 480 ? "text-amber-500" : "text-slate-400"}`}>
+            {address.length}/500
+          </p>
           <textarea
             className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
             placeholder="Additional notes for the provider (optional)…"
@@ -299,7 +311,7 @@ export default function CheckoutPage() {
             <CreditCard className="h-4 w-4 text-slate-500" />
             Payment Method
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Payment method">
             {[
               { id: "razorpay" as const, label: "Pay Online", desc: "UPI, Cards, NetBanking", icon: "💳", disabled: !razorpayAvailable },
               { id: "cod" as const, label: "Pay on Delivery", desc: "Cash or UPI on arrival", icon: "🏠", disabled: false },
@@ -309,6 +321,8 @@ export default function CheckoutPage() {
                 type="button"
                 disabled={opt.disabled}
                 onClick={() => setPayMethod(opt.id)}
+                role="radio"
+                aria-checked={payMethod === opt.id}
                 className={`flex flex-col items-start gap-1 rounded-2xl border-2 p-4 transition text-left ${
                   payMethod === opt.id
                     ? "border-blue-500 bg-blue-50"
@@ -320,15 +334,34 @@ export default function CheckoutPage() {
                 <span className="text-xl">{opt.icon}</span>
                 <span className="text-sm font-semibold text-slate-900">{opt.label}</span>
                 <span className="text-xs text-slate-500">{opt.desc}</span>
-                {opt.disabled && <span className="text-[10px] text-slate-400">Not configured</span>}
+                {opt.disabled && (
+                  <span className="text-[10px] text-slate-400">Not configured</span>
+                )}
               </button>
             ))}
           </div>
+          {!razorpayAvailable && (
+            <button
+              type="button"
+              onClick={() => {
+                scriptLoadedRef.current = false;
+                setRazorpayAvailable(false);
+                const script = document.createElement("script");
+                script.src = "https://checkout.razorpay.com/v1/checkout.js";
+                script.async = true;
+                script.onload = () => setRazorpayAvailable(true);
+                document.head.appendChild(script);
+              }}
+              className="mt-2 text-xs text-blue-600 hover:underline"
+            >
+              Retry loading payment gateway
+            </button>
+          )}
         </section>
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+          <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>

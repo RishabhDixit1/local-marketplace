@@ -73,16 +73,12 @@ export default function OrderStatusPage() {
   const [actionError, setActionError] = useState("");
 
   const fetchOrder = useCallback(async () => {
-    const { data } = await supabase
-      .from("orders")
-      .select(`
-        id, status, price, listing_type, consumer_id, provider_id, metadata, created_at, updated_at,
-        service_listings ( title, category ),
-        product_catalog ( title, category )
-      `)
-      .eq("id", id)
-      .single();
-    if (data) setOrder(data as unknown as OrderRow);
+    try {
+      const res = await fetchAuthedJson<{ ok: boolean; order: OrderRow }>(supabase, `/api/orders/${id}`, { method: "GET" });
+      if (res.ok && res.order) setOrder(res.order);
+    } catch {
+      // order stays null → shows "not found" UI
+    }
     setLoading(false);
   }, [id]);
 
@@ -286,19 +282,19 @@ export default function OrderStatusPage() {
         {busy && <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
 
         {actionError && (
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
+          <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {actionError}
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <Link href="/dashboard/tasks"
-            className="flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            className="w-full sm:flex-1 rounded-2xl border border-slate-200 bg-white py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50">
             View All Orders
           </Link>
           <Link href="/"
-            className="flex-1 rounded-2xl bg-blue-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">
+            className="w-full sm:flex-1 rounded-2xl bg-blue-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700">
             Continue Shopping
           </Link>
         </div>

@@ -38,10 +38,20 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "serviq_cart_v1";
+const CART_SCHEMA_VERSION = 2; // Bump this to force a cart reset on schema changes
+const STORAGE_VERSION_KEY = "serviq_cart_schema_v";
 
 const readFromStorage = (): CartItem[] => {
   if (typeof window === "undefined") return [];
   try {
+    // Check schema version — if mismatch, clear and reset
+    const storedVersion = window.localStorage.getItem(STORAGE_VERSION_KEY);
+    if (storedVersion !== String(CART_SCHEMA_VERSION)) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.setItem(STORAGE_VERSION_KEY, String(CART_SCHEMA_VERSION));
+      console.info("[cart] schema version mismatch — cart cleared");
+      return [];
+    }
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
@@ -52,9 +62,13 @@ const readFromStorage = (): CartItem[] => {
         typeof item === "object" &&
         typeof (item as CartItem).key === "string" &&
         typeof (item as CartItem).itemId === "string" &&
+        typeof (item as CartItem).providerId === "string" &&
+        typeof (item as CartItem).price === "number" &&
         (item as CartItem).quantity > 0
     );
   } catch {
+    // Shape invalid — clear corrupted data
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     return [];
   }
 };

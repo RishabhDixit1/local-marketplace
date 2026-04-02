@@ -1199,7 +1199,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]">
+    <div className="relative h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-7.5rem)] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)]" style={{ height: 'calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)' }}>
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1733,7 +1733,7 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <footer className="border-t border-slate-200/80 bg-white px-4 pb-[env(safe-area-inset-bottom,0px)] pt-4 sm:px-6">
+              <footer className="border-t border-slate-200/80 bg-white px-4 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-4 sm:px-6">
                 <div className="rounded-2xl border border-slate-300 bg-slate-50 p-2">
                   <div className="flex items-end gap-2">
                     <textarea
