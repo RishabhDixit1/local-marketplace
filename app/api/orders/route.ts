@@ -12,11 +12,29 @@ type OrderRequest = {
   price: number;
   quantity?: number;
   title?: string;
+  address?: string;
+  notes?: string;
+  payment_method?: "cod" | "razorpay";
+  payment_status?: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
 };
 
 type BulkOrderRequest = {
   items: OrderRequest[];
 };
+
+const trimText = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  const normalized = value.trim();
+  if (!normalized) return "";
+  return normalized;
+};
+
+const clampText = (value: unknown, maxLength: number) => trimText(value).slice(0, maxLength);
+
+const isValidPaymentMethod = (value: unknown): value is NonNullable<OrderRequest["payment_method"]> =>
+  value === "cod" || value === "razorpay";
 
 function isOrderRequest(body: unknown): body is OrderRequest {
   if (typeof body !== "object" || body === null) return false;
@@ -86,9 +104,25 @@ export async function POST(request: Request) {
     if (qty < 1 || qty > 100) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid quantity. Must be between 1 and 100." }, { status: 400 });
     }
-    const address = (item as unknown as Record<string, unknown>).address;
-    if (typeof address === "string" && address.trim().length > 500) {
+    const address = trimText(item.address);
+    if (address.length > 500) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Address must be 500 characters or fewer." }, { status: 400 });
+    }
+    const notes = trimText(item.notes);
+    if (notes.length > 1000) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Notes must be 1000 characters or fewer." }, { status: 400 });
+    }
+    if (item.payment_method && !isValidPaymentMethod(item.payment_method)) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid payment method." }, { status: 400 });
+    }
+    const paymentStatus = trimText(item.payment_status);
+    if (paymentStatus.length > 64) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Payment status is too long." }, { status: 400 });
+    }
+    const razorpayOrderId = trimText(item.razorpay_order_id);
+    const razorpayPaymentId = trimText(item.razorpay_payment_id);
+    if (razorpayOrderId.length > 120 || razorpayPaymentId.length > 120) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Payment identifiers are too long." }, { status: 400 });
     }
   }
 
@@ -126,17 +160,32 @@ export async function POST(request: Request) {
 
   const rowsToInsert: Record<string, unknown>[] = requestedItems.map((item) => {
     const quantity = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
+    const metadata: Record<string, unknown> = {
+      source: "cart",
+      quantity,
+      title: clampText(item.title, 160),
+    };
+
+    const address = clampText(item.address, 500);
+    const notes = clampText(item.notes, 1000);
+    const paymentStatus = clampText(item.payment_status, 64);
+    const razorpayOrderId = clampText(item.razorpay_order_id, 120);
+    const razorpayPaymentId = clampText(item.razorpay_payment_id, 120);
+
+    if (address) metadata.address = address;
+    if (notes) metadata.notes = notes;
+    if (item.payment_method) metadata.payment_method = item.payment_method;
+    if (paymentStatus) metadata.payment_status = paymentStatus;
+    if (razorpayOrderId) metadata.razorpay_order_id = razorpayOrderId;
+    if (razorpayPaymentId) metadata.razorpay_payment_id = razorpayPaymentId;
+
     const insert: Record<string, unknown> = {
       consumer_id: authResult.auth.userId,
       provider_id: item.providerId,
       listing_type: item.itemType,
       price: item.price,
       status: "new_lead",
-      metadata: {
-        source: "cart",
-        quantity,
-        title: item.title || "",
-      },
+      metadata,
     };
 
     if (item.itemType === "service") {

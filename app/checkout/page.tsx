@@ -28,6 +28,7 @@ const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
 
 type PaymentMethod = "razorpay" | "cod";
+type OrderCreationMetadata = Record<string, string | null | undefined>;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -51,9 +52,16 @@ export default function CheckoutPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) { router.replace("/auth"); return; }
+      if (!user) { router.replace("/"); return; }
       setUserEmail(user.email ?? "");
       setUserName(user.user_metadata?.name ?? user.email ?? "");
+      setUserPhone(
+        typeof user.phone === "string" && user.phone.trim().length > 0
+          ? user.phone
+          : typeof user.user_metadata?.phone === "string"
+          ? user.user_metadata.phone
+          : ""
+      );
     })();
   }, [router]);
 
@@ -72,7 +80,7 @@ export default function CheckoutPage() {
 
   // Create ServiQ orders in DB
   const createOrders = useCallback(
-    async (paymentMeta: Record<string, string> = {}): Promise<string[]> => {
+    async (paymentMeta: OrderCreationMetadata = {}): Promise<string[]> => {
       const res = await fetchAuthedJson<{ ok: boolean; orderIds: string[] }>(supabase, "/api/orders", {
         method: "POST",
         body: JSON.stringify({
@@ -102,7 +110,10 @@ export default function CheckoutPage() {
     setBusy(true); setError("");
 
     try {
-      const orderIds = await createOrders({ payment_method: "cod" });
+      const orderIds = await createOrders({
+        payment_method: "cod",
+        payment_status: "pending",
+      });
       clearCart();
       setSuccess(orderIds[0] ?? "");
       setTimeout(() => router.push(`/orders/${orderIds[0]}`), 1500);
@@ -159,11 +170,18 @@ export default function CheckoutPage() {
             razorpay_payment_id: string;
             razorpay_signature: string;
           }) => {
+            let checkoutStage: "creating_order" | "verifying_payment" = "creating_order";
             try {
               // 3. Create ServiQ orders
-              const orderIds = await createOrders({ payment_method: "razorpay" });
+              const orderIds = await createOrders({
+                payment_method: "razorpay",
+                payment_status: "processing",
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+              });
 
               // 4. Verify payment
+              checkoutStage = "verifying_payment";
               await fetchAuthedJson(supabase, "/api/payment/verify", {
                 method: "POST",
                 body: JSON.stringify({
@@ -179,7 +197,25 @@ export default function CheckoutPage() {
               setTimeout(() => router.push(`/orders/${orderIds[0]}`), 1500);
               resolve();
             } catch (e) {
-              reject(e);
+              if (e instanceof Error && e.message.trim()) {
+                reject(e);
+                return;
+              }
+
+              if (checkoutStage === "verifying_payment") {
+                reject(
+                  new Error(
+                    `Payment captured and order confirmation is still syncing. Keep payment ID ${response.razorpay_payment_id} handy if you contact support.`
+                  )
+                );
+                return;
+              }
+
+              reject(
+                new Error(
+                  `Payment captured but order creation failed. Keep payment ID ${response.razorpay_payment_id} handy if you contact support.`
+                )
+              );
             } finally {
               setBusy(false);
             }
@@ -300,6 +336,7 @@ export default function CheckoutPage() {
             className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
             placeholder="Additional notes for the provider (optional)…"
             rows={2}
+            maxLength={1000}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
