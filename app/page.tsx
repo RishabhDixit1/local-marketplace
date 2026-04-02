@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -105,7 +105,7 @@ const shouldShowFirstTimeSetup = (user: User, profile: ProfileRecord | null) => 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [authMode, setAuthMode] = useState<AuthMode>("email");
   const [step, setStep] = useState<AuthStep>("phone");
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -467,9 +467,18 @@ export default function LoginPage() {
     }
   };
 
+  const emailLinkSent = authMode === "email" && infoMessage.startsWith("Magic link sent");
+
   return (
-    <div className="min-h-screen bg-[var(--surface-app)] px-4 py-5 sm:px-8 sm:py-10">
-      <div className="mx-auto max-w-6xl startup-fade">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#070e1b]">
+      {/* Ambient background blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute left-0 top-0 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-teal-500/[0.07] blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3 rounded-full bg-cyan-400/[0.05] blur-[100px]" />
+        <div className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/[0.04] blur-[80px]" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
         <div className="mb-4 flex items-center justify-between gap-3">
           <ServiQLogo compact href="/" ariaLabel="Open homepage" />
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
@@ -477,129 +486,272 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_38px_90px_-52px_rgba(15,23,42,0.45)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(20,184,166,0.08),transparent_42%),radial-gradient(circle_at_86%_86%,rgba(14,165,233,0.08),transparent_44%)]" />
+        {/* â•â•â•â•â•â•â• LEFT â€” Hero Panel â•â•â•â•â•â•â• */}
+        <div className="relative flex flex-col overflow-hidden px-8 pb-10 pt-8 text-white lg:w-[54%] lg:min-h-screen lg:justify-between lg:px-14 lg:py-14">
+          {/* Faint grid texture */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden="true"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+              backgroundSize: "52px 52px",
+            }}
+          />
+          {/* Gradient accent */}
+          <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-cyan-400/[0.12] blur-3xl" aria-hidden="true" />
 
-          <div className="relative grid lg:grid-cols-[1.08fr_0.92fr]">
-            <div className="relative overflow-hidden bg-[linear-gradient(158deg,var(--brand-900)_0%,var(--brand-700)_100%)] p-7 text-white sm:p-10">
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:36px_36px]" />
+          {/* Logo */}
+          <div className="relative z-10">
+            <ServiQLogo
+              href="/"
+              ariaLabel="ServiQ home"
+              showTagline
+              wordmarkClassName="text-white"
+              taglineClassName="text-white/50"
+              markClassName="border-white/20 bg-white/10 text-white shadow-black/30"
+              markDotClassName="bg-cyan-400"
+              qClassName="text-cyan-400"
+              qRingClassName="border-cyan-400/50"
+            />
+          </div>
 
-              <div className="relative">
-                <ServiQLogo
-                  href="/"
-                  ariaLabel="Open homepage"
-                  showTagline
-                  wordmarkClassName="text-white"
-                  taglineClassName="text-white/70"
-                  markClassName="border-white/30 bg-white/10 text-white shadow-black/20"
-                  markDotClassName="bg-cyan-300"
-                  qClassName="text-cyan-300"
-                  qRingClassName="border-cyan-300/60"
-                />
+          {/* Hero copy */}
+          <div className="relative z-10 mt-14 lg:mt-0">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em] text-cyan-400">
+              Trusted For Everyday Urgency
+            </p>
+            <h1 className="brand-display mt-4 text-[2.6rem] font-semibold leading-[1.1] tracking-[-0.025em] text-white sm:text-5xl lg:text-[3rem]">
+              Reliable help<br className="hidden lg:block" /> for real life,<br />
+              delivered by<br className="hidden lg:block" /> people nearby.
+            </h1>
+            <p className="mt-5 max-w-sm text-[0.93rem] leading-relaxed text-white/55 sm:text-base">
+              {appTagline}
+            </p>
 
-                <p className="mt-10 text-xs uppercase tracking-[0.22em] text-cyan-100/80">Trusted For Everyday Urgency</p>
-                <h1 className="brand-display mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
-                  Reliable help for real life, delivered by people nearby.
-                </h1>
-                <p className="mt-5 max-w-xl text-base text-slate-100/92 sm:text-lg">{appTagline}</p>
-
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/18 bg-white/10 p-4 backdrop-blur-sm">
-                    <p className="flex items-center gap-2 text-sm font-semibold">
-                      <ShieldCheck size={16} className="text-cyan-200" />
-                      Verified ecosystem
-                    </p>
-                    <p className="mt-2 text-xs text-slate-100/80">Profiles, context, and trust signals before each conversation.</p>
+            {/* How it works */}
+            <div className="mt-8 flex flex-wrap items-start gap-y-4">
+              {[
+                { step: "01", title: "Post your need", desc: "Describe what you need in seconds." },
+                { step: "02", title: "Get matched", desc: "Nearby providers respond fast." },
+                { step: "03", title: "Track & complete", desc: "Real-time workflow in one place." },
+              ].map((item, idx) => (
+                <div key={item.step} className="flex items-start">
+                  <div className="flex flex-col gap-1 pr-5">
+                    <span className="text-[10px] font-bold tracking-widest text-cyan-500/80">{item.step}</span>
+                    <span className="text-xs font-semibold text-white/80">{item.title}</span>
+                    <span className="text-[11px] leading-4 text-white/40">{item.desc}</span>
                   </div>
-                  <div className="rounded-2xl border border-white/18 bg-white/10 p-4 backdrop-blur-sm">
-                    <p className="flex items-center gap-2 text-sm font-semibold">
-                      <Clock3 size={16} className="text-cyan-200" />
-                      Fast turnaround
-                    </p>
-                    <p className="mt-2 text-xs text-slate-100/80">Post needs in seconds and start response threads immediately.</p>
-                  </div>
+                  {idx < 2 && (
+                    <div className="mb-auto mr-5 mt-3 h-px w-6 shrink-0 bg-gradient-to-r from-white/20 to-transparent" />
+                  )}
                 </div>
-              </div>
+              ))}
             </div>
+          </div>
 
-            <div className="p-7 sm:p-10 lg:p-12 startup-fade-delay">
-              <div className="mx-auto w-full max-w-md">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Secure Access</p>
-                <h2 className="brand-display mt-2 text-3xl font-semibold text-slate-900 sm:text-[2rem]">Welcome to {appName}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {authMode === "login"
-                    ? "Returning users sign in with phone and password. Email link access is available too."
-                    : authMode === "signup"
-                      ? "First-time users verify their phone number, then add their full name and password."
-                      : authMode === "reset"
-                        ? "We verify phone ownership first, then let you set a new password."
-                        : "Open the magic link we send to your email. New accounts can access the app without a password."}
-                </p>
+          {/* Feature cards */}
+          <div className="relative z-10 mt-10 grid grid-cols-2 gap-3 lg:mt-0">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
+              <div className="mb-2 flex items-center gap-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
+                <p className="text-[12.5px] font-semibold text-white/90">Verified ecosystem</p>
+              </div>
+              <p className="text-[11px] leading-[1.6] text-white/45">Every profile carries trust signals before any conversation starts.</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
+              <div className="mb-2 flex items-center gap-2">
+                <Clock3 className="h-3.5 w-3.5 text-cyan-400" />
+                <p className="text-[12.5px] font-semibold text-white/90">Fast turnaround</p>
+              </div>
+              <p className="text-[11px] leading-[1.6] text-white/45">Post needs in seconds and get real responses from people nearby.</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
+              <div className="mb-2 flex items-center gap-2">
+                <ArrowRight className="h-3.5 w-3.5 text-cyan-400" />
+                <p className="text-[12.5px] font-semibold text-white/90">No-friction access</p>
+              </div>
+              <p className="text-[11px] leading-[1.6] text-white/45">Sign in with a magic link â€” no password required to get started.</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
+              <div className="mb-2 flex items-center gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400" />
+                <p className="text-[12.5px] font-semibold text-white/90">End-to-end workflow</p>
+              </div>
+              <p className="text-[11px] leading-[1.6] text-white/45">From posting a need to real-time order tracking, all in one place.</p>
+            </div>
+          </div>
+        </div>
 
-                <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4">
-                  <button
-                    type="button"
-                    onClick={() => resetAuthFlow("login")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                      authMode === "login"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <LogIn size={14} />
-                    Login
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => resetAuthFlow("signup")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                      authMode === "signup"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <UserPlus size={14} />
-                    Sign Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => resetAuthFlow("reset")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                      authMode === "reset"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <RefreshCcw size={14} />
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => resetAuthFlow("email")}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                      authMode === "email"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Mail size={14} />
-                    Email Link
-                  </button>
+        {/* â•â•â•â•â•â•â• RIGHT â€” Auth Panel â•â•â•â•â•â•â• */}
+        <div className="flex flex-1 items-center justify-center px-5 py-10 lg:px-12 lg:py-14">
+          <div className="w-full max-w-[420px] startup-fade-delay">
+            {/* Glass card */}
+            <div className="overflow-hidden rounded-[28px] border border-white/[0.1] bg-white/[0.05] shadow-[0_40px_120px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+              <div className="p-7 sm:p-9">
+                {/* Heading */}
+                <div className="mb-6">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">
+                    Secure Access
+                  </p>
+                  <h2 className="brand-display mt-1.5 text-[1.65rem] font-semibold leading-tight text-white">
+                    Welcome to {appName}
+                  </h2>
+                  <p className="mt-1.5 text-[0.8rem] leading-[1.55] text-white/45">
+                    {authMode === "email"
+                      ? "Enter your email to receive a secure magic link. Works for new and existing users."
+                      : authMode === "login"
+                        ? "Sign in with your registered phone number and password."
+                        : authMode === "signup"
+                          ? "Create your account â€” phone verification coming soon."
+                          : "Reset your password via phone verification â€” coming soon."}
+                  </p>
                 </div>
 
-                <div className="mt-6 space-y-4">
+                {/* Tab bar */}
+                <div className="mb-6 grid grid-cols-4 gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1">
+                  {(
+                    [
+                      { mode: "email" as const, label: "Magic Link", icon: Mail },
+                      { mode: "login" as const, label: "Login", icon: LogIn },
+                      { mode: "signup" as const, label: "Sign Up", icon: UserPlus },
+                      { mode: "reset" as const, label: "Reset", icon: RefreshCcw },
+                    ] as const
+                  ).map(({ mode, label, icon: Icon }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => resetAuthFlow(mode)}
+                      className={`relative inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold transition ${
+                        authMode === mode
+                          ? "bg-white text-slate-900 shadow-md"
+                          : "text-white/40 hover:text-white/70"
+                      }`}
+                    >
+                      <Icon size={13} />
+                      <span>{label}</span>
+                      {mode === "email" && authMode !== "email" && (
+                        <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Form area */}
+                <div className="space-y-4">
+
+                  {/* â”€â”€ EMAIL MAGIC LINK â”€â”€ */}
+                  {authMode === "email" ? (
+                    emailLinkSent ? (
+                      <div className="space-y-5 py-2 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
+                          <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-white">Magic link sent!</p>
+                          <p className="mt-1 text-xs leading-5 text-white/45">
+                            We emailed a secure link to<br />
+                            <span className="font-medium text-white/75">{emailAddress}</span>
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <a
+                            href="https://mail.google.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                          >
+                            Open Gmail
+                            <ArrowRight size={13} />
+                          </a>
+                          <a
+                            href="https://outlook.live.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                          >
+                            Open Outlook
+                            <ArrowRight size={13} />
+                          </a>
+                        </div>
+                        <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
+                          <p className="text-[11px] leading-[1.6] text-white/35">
+                            Link valid for 24 hours. Check spam if you don&apos;t see it.{" "}
+                            <button
+                              type="button"
+                              onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
+                              className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300"
+                            >
+                              Use a different email
+                            </button>{" "}
+                            or{" "}
+                            <button
+                              type="button"
+                              onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
+                              className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300"
+                            >
+                              resend
+                            </button>
+                            .
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-white/60">
+                            Email address
+                          </label>
+                          <input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            placeholder="you@example.com"
+                            className="focus-ring w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
+                            value={emailAddress}
+                            onChange={(event) => setEmailAddress(event.target.value)}
+                            onKeyDown={(event) => { if (event.key === "Enter") void sendEmailLink(); }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={sendEmailLink}
+                          disabled={loading}
+                          className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                        >
+                          {loading ? "Sending magic link..." : "Send Magic Link"}
+                          {!loading && <ArrowRight size={15} />}
+                        </button>
+                        <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3.5 py-3">
+                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
+                          <p className="text-[11.5px] leading-[1.55] text-white/40">
+                            Works for new and returning users. No password needed â€” just open the link from your inbox.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => resetAuthFlow("login")}
+                          className="w-full text-center text-xs font-medium text-white/30 transition hover:text-white/60"
+                        >
+                          Have a password? Sign in with phone â†’
+                        </button>
+                      </>
+                    )
+                  ) : null}
+
+                  {/* â”€â”€ PHONE PASSWORD LOGIN â”€â”€ */}
                   {authMode === "login" ? (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Phone number</label>
-                        <div className="grid grid-cols-[12rem_1fr] gap-2">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-white/60">Phone number</label>
+                        <div className="grid grid-cols-[10.5rem_1fr] gap-2">
                           <select
-                            className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900"
+                            className="focus-ring w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-3 py-3 text-sm text-white/80 transition hover:border-white/20"
                             value={countryCode}
                             onChange={(event) => setCountryCode(event.target.value)}
                           >
                             {COUNTRY_CODE_OPTIONS.map((option) => (
-                              <option key={option.code} value={option.dial}>
+                              <option key={option.code} value={option.dial} className="bg-slate-900 text-white">
                                 {option.label}
                               </option>
                             ))}
@@ -608,338 +760,267 @@ export default function LoginPage() {
                             type="tel"
                             inputMode="numeric"
                             placeholder="9876543210"
-                            className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
+                            className="focus-ring w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 transition hover:border-white/20 focus:border-cyan-500/60"
                             value={phoneNumber}
                             onChange={(event) => setPhoneNumber(cleanPhoneDigits(event.target.value).slice(0, 14))}
                           />
                         </div>
-                        <p className="text-xs text-slate-500">Choose country code from the list, then enter mobile number only.</p>
                       </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Password</label>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-white/60">Password</label>
                         <input
                           type="password"
                           placeholder="Your account password"
-                          className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
+                          className="focus-ring w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 transition hover:border-white/20 focus:border-cyan-500/60"
                           value={password}
                           onChange={(event) => setPassword(event.target.value)}
+                          onKeyDown={(event) => { if (event.key === "Enter") void loginWithPassword(); }}
                         />
                       </div>
-
                       <button
+                        type="button"
                         onClick={loginWithPassword}
                         disabled={loading}
-                        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
+                        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
                       >
-                        {loading ? "Signing in..." : "Login"}
-                        {!loading ? <CheckCircle2 size={14} /> : null}
+                        {loading ? "Signing in..." : "Sign In"}
+                        {!loading && <ArrowRight size={15} />}
                       </button>
-
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => resetAuthFlow("reset")}
-                          className="text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+                          className="text-xs text-white/35 transition hover:text-white/65"
                         >
                           Forgot password?
                         </button>
                         <button
                           type="button"
                           onClick={() => resetAuthFlow("signup")}
-                          className="text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-900)]"
+                          className="text-xs font-semibold text-cyan-400 transition hover:text-cyan-300"
                         >
                           New here? Sign up
                         </button>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-white/[0.08]" />
+                        <span className="text-[10.5px] text-white/25">or</span>
+                        <div className="h-px flex-1 bg-white/[0.08]" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => resetAuthFlow("email")}
+                        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-white/55 transition hover:bg-white/[0.08] hover:text-white/80"
+                      >
+                        <Mail size={13} />
+                        Continue with Email Link instead
+                      </button>
                     </>
                   ) : null}
 
-                  {authMode === "email" ? (
+                  {/* â”€â”€ SIGNUP / RESET (OTP-based â€” temporarily unavailable) â”€â”€ */}
+                  {authMode === "signup" || authMode === "reset" ? (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">Email address</label>
-                        <input
-                          type="email"
-                          inputMode="email"
-                          autoComplete="email"
-                          placeholder="you@example.com"
-                          className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                          value={emailAddress}
-                          onChange={(event) => setEmailAddress(event.target.value)}
-                        />
+                      <div className="flex items-start gap-3 rounded-xl border border-amber-400/[0.2] bg-amber-400/[0.07] px-3.5 py-3">
+                        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-400/80" />
+                        <div>
+                          <p className="text-[12px] font-semibold text-amber-300/90">
+                            Phone verification temporarily unavailable
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-[1.5] text-amber-300/55">
+                            Use Email Link to create or access your account instantly â€” no OTP required.
+                          </p>
+                        </div>
                       </div>
-
                       <button
-                        onClick={sendEmailLink}
-                        disabled={loading}
-                        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
+                        type="button"
+                        onClick={() => resetAuthFlow("email")}
+                        className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98]"
                       >
-                        {loading ? "Sending magic link..." : "Send Magic Link"}
-                        {!loading ? <ArrowRight size={14} /> : null}
+                        <Mail size={15} />
+                        Continue with Email Link
                       </button>
-
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Email link access</p>
-                        <p className="mt-1 text-sm text-slate-700">
-                          This works for new and returning users. Open the link from your inbox to continue.
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="h-px flex-1 bg-white/[0.07]" />
+                        <span className="text-[10.5px] text-white/25">or try phone verification</span>
+                        <div className="h-px flex-1 bg-white/[0.07]" />
                       </div>
-
+                      <div className="space-y-3 opacity-60">
+                        {step === "phone" ? (
+                          <>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">Phone number</label>
+                              <div className="grid grid-cols-[10.5rem_1fr] gap-2">
+                                <select
+                                  className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.05] px-3 py-3 text-sm text-white/70"
+                                  value={countryCode}
+                                  onChange={(event) => setCountryCode(event.target.value)}
+                                >
+                                  {COUNTRY_CODE_OPTIONS.map((option) => (
+                                    <option key={option.code} value={option.dial} className="bg-slate-900 text-white">
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="tel"
+                                  inputMode="numeric"
+                                  placeholder="9876543210"
+                                  className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                  value={phoneNumber}
+                                  onChange={(event) => setPhoneNumber(cleanPhoneDigits(event.target.value).slice(0, 14))}
+                                />
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={sendOtp}
+                              disabled={loading}
+                              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/55 transition hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {loading ? "Sending..." : authMode === "reset" ? "Send reset code" : "Send OTP"}
+                              {!loading && <ArrowRight size={14} />}
+                            </button>
+                          </>
+                        ) : null}
+                        {step === "otp" ? (
+                          <>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">OTP code</label>
+                              <input
+                                inputMode="numeric"
+                                maxLength={6}
+                                placeholder="123456"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={otpCode}
+                                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                              />
+                              <p className="text-[11px] text-white/35">Code sent to {resolvedPhone}.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={verifyOtp}
+                              disabled={loading}
+                              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/55 disabled:opacity-50"
+                            >
+                              {loading ? "Verifying..." : "Verify OTP"}
+                              {!loading && <CheckCircle2 size={14} />}
+                            </button>
+                          </>
+                        ) : null}
+                        {step === "profile_setup" ? (
+                          <>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">Full name</label>
+                              <input
+                                type="text"
+                                placeholder="Your full name"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.07] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={fullName}
+                                onChange={(event) => setFullName(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">Set password</label>
+                              <input
+                                type="password"
+                                placeholder="At least 8 characters"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.07] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">Confirm password</label>
+                              <input
+                                type="password"
+                                placeholder="Re-enter password"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.07] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={confirmPassword}
+                                onChange={(event) => setConfirmPassword(event.target.value)}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={finishFirstTimeSetup}
+                              disabled={loading}
+                              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/55 disabled:opacity-50"
+                            >
+                              {loading ? "Finishing setup..." : "Complete Signup"}
+                              {!loading && <KeyRound size={14} />}
+                            </button>
+                          </>
+                        ) : null}
+                        {step === "reset_password" ? (
+                          <>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">New password</label>
+                              <input
+                                type="password"
+                                placeholder="At least 8 characters"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.07] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-white/50">Confirm new password</label>
+                              <input
+                                type="password"
+                                placeholder="Re-enter password"
+                                className="focus-ring w-full rounded-xl border border-white/[0.1] bg-white/[0.07] px-4 py-3 text-sm text-white/80 placeholder:text-white/20"
+                                value={confirmPassword}
+                                onChange={(event) => setConfirmPassword(event.target.value)}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={finishPasswordReset}
+                              disabled={loading}
+                              className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/55 disabled:opacity-50"
+                            >
+                              {loading ? "Updating password..." : "Update password"}
+                              {!loading && <KeyRound size={14} />}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                       <button
                         type="button"
                         onClick={() => resetAuthFlow("login")}
-                        className="text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-900)]"
+                        className="text-xs text-white/30 transition hover:text-white/60"
                       >
-                        Prefer phone login? Switch back
+                        {authMode === "signup" ? "Already have an account? Login â†’" : "Back to login â†’"}
                       </button>
                     </>
                   ) : null}
 
-                  {authMode === "signup" || authMode === "reset" ? (
-                    <>
-                      {step === "phone" ? (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">Phone number</label>
-                            <div className="grid grid-cols-[12rem_1fr] gap-2">
-                              <select
-                                className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900"
-                                value={countryCode}
-                                onChange={(event) => setCountryCode(event.target.value)}
-                              >
-                                {COUNTRY_CODE_OPTIONS.map((option) => (
-                                  <option key={option.code} value={option.dial}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                type="tel"
-                                inputMode="numeric"
-                                placeholder="9876543210"
-                                className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                                value={phoneNumber}
-                                onChange={(event) => setPhoneNumber(cleanPhoneDigits(event.target.value).slice(0, 14))}
-                              />
-                            </div>
-                            <p className="text-xs text-slate-500">Choose country code from the list, then enter mobile number only.</p>
-                          </div>
-
-                          <button
-                            onClick={sendOtp}
-                            disabled={loading}
-                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {loading ? (authMode === "reset" ? "Sending reset code..." : "Sending OTP...") : authMode === "reset" ? "Send reset code" : "Send OTP"}
-                            {!loading ? <ArrowRight size={14} /> : null}
-                          </button>
-                        </>
-                      ) : null}
-
-                      {step === "otp" ? (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">OTP code</label>
-                            <input
-                              inputMode="numeric"
-                              maxLength={6}
-                              placeholder="123456"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={otpCode}
-                              onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                            />
-                            <p className="text-xs text-slate-500">
-                              {authMode === "reset"
-                                ? `Code sent to ${resolvedPhone}. Verify it to reset your password.`
-                                : `Code sent to ${resolvedPhone}. OTP expires quickly.`}
-                            </p>
-                          </div>
-
-                          <button
-                            onClick={verifyOtp}
-                            disabled={loading}
-                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {loading ? "Verifying..." : authMode === "reset" ? "Verify reset code" : "Verify OTP"}
-                            {!loading ? <CheckCircle2 size={14} /> : null}
-                          </button>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={sendOtp}
-                              disabled={loading}
-                              className="focus-ring inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-70"
-                            >
-                              Resend {authMode === "reset" ? "code" : "OTP"}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setStep("phone");
-                                setOtpCode("");
-                                setErrorMessage("");
-                                setInfoMessage("");
-                                setResolvedPhone("");
-                              }}
-                              disabled={loading}
-                              className="focus-ring inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-70"
-                            >
-                              Change phone
-                            </button>
-                          </div>
-                        </>
-                      ) : null}
-
-                      {step === "profile_setup" ? (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">Full name</label>
-                            <input
-                              type="text"
-                              placeholder="Your full name"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={fullName}
-                              onChange={(event) => setFullName(event.target.value)}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">Set password</label>
-                            <input
-                              type="password"
-                              placeholder="At least 8 characters"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={password}
-                              onChange={(event) => setPassword(event.target.value)}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">Confirm password</label>
-                            <input
-                              type="password"
-                              placeholder="Re-enter password"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={confirmPassword}
-                              onChange={(event) => setConfirmPassword(event.target.value)}
-                            />
-                          </div>
-
-                          <button
-                            onClick={finishFirstTimeSetup}
-                            disabled={loading}
-                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {loading ? "Finishing setup..." : "Complete Signup"}
-                            {!loading ? <KeyRound size={14} /> : null}
-                          </button>
-                        </>
-                      ) : null}
-
-                      {step === "reset_password" ? (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">New password</label>
-                            <input
-                              type="password"
-                              placeholder="At least 8 characters"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={password}
-                              onChange={(event) => setPassword(event.target.value)}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">Confirm new password</label>
-                            <input
-                              type="password"
-                              placeholder="Re-enter password"
-                              className="focus-ring w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400"
-                              value={confirmPassword}
-                              onChange={(event) => setConfirmPassword(event.target.value)}
-                            />
-                          </div>
-
-                          <button
-                            onClick={finishPasswordReset}
-                            disabled={loading}
-                            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {loading ? "Updating password..." : "Update password"}
-                            {!loading ? <KeyRound size={14} /> : null}
-                          </button>
-                        </>
-                      ) : null}
-
-                      {authMode === "signup" ? (
-                        <button
-                          type="button"
-                          onClick={() => resetAuthFlow("login")}
-                          className="text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-900)]"
-                        >
-                          Already have an account? Login
-                        </button>
-                      ) : authMode === "reset" ? (
-                        <button
-                          type="button"
-                          onClick={() => resetAuthFlow("login")}
-                          className="text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-900)]"
-                        >
-                          Back to login
-                        </button>
-                      ) : null}
-                    </>
-                  ) : null}
-
-                  {infoMessage ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {/* Status messages */}
+                  {infoMessage && !emailLinkSent ? (
+                    <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">
                       {infoMessage}
                     </div>
                   ) : null}
-
                   {errorMessage ? (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">
                       {errorMessage}
                     </div>
                   ) : null}
-
                   {loading && loadingLabel ? (
-                    <p className="text-xs text-slate-500">{loadingLabel}</p>
+                    <p className="text-[11px] text-white/30">{loadingLabel}</p>
                   ) : null}
-                </div>
-
-                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    <LogIn size={13} />
-                    Password login
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">Returning users sign in with the phone number and password they created.</p>
-                </div>
-
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    <RefreshCcw size={13} />
-                    OTP signup and reset
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">New users verify once, then set name + password. Forgot password uses OTP recovery.</p>
-                </div>
-
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    <Mail size={13} />
-                    Email magic link
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">Send a secure link to the inbox for fast access without a password.</p>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        <p className="mt-4 text-center text-xs text-slate-500">
-          {appName} is built for local communities. Powered by Supabase and Next.js.
-        </p>
+            {/* Footer */}
+            <p className="mt-5 text-center text-[11px] text-white/20">
+              {appName} â€” Built for local communities Â· Powered by Supabase &amp; Next.js
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
