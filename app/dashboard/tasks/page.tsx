@@ -471,7 +471,6 @@ const isHistoryTask = (task: OperationalTask) => {
 };
 
 const isActiveTaskStatus = (status: CanonicalOrderStatus) =>
-  status === "open" ||
   status === "new_lead" ||
   status === "quoted" ||
   status === "accepted" ||
