@@ -5,7 +5,7 @@ import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 8000;
 const PUBLIC_DNS_SERVERS = ["1.1.1.1", "8.8.8.8"];
 
 type SendLinkBody = {
@@ -165,6 +165,7 @@ export async function POST(request: Request) {
       headers,
       body: payload,
       cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     status = directResponse.status;
