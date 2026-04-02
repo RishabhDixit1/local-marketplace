@@ -42,6 +42,8 @@ export type ProfileRecord = {
 export type ProfileFormValues = {
   fullName: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   role: ProfileRoleFamily;
   bio: string;
   interests: string[];

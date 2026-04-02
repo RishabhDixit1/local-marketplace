@@ -3,7 +3,8 @@ import type {
   CommunityPostRecord,
   CommunityProfileRecord,
 } from "@/lib/api/community";
-import { distanceBetweenCoordinatesKm } from "@/lib/geo";
+import type { MarketplaceFeedItem } from "@/lib/marketplaceFeed";
+import { distanceBetweenCoordinatesKm, resolveCoordinatesWithAccuracy } from "@/lib/geo";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 
@@ -22,8 +23,12 @@ export type WelcomeFeedCard = {
   status?: string | null;
   title: string;
   subtitle: string;
+  locationLabel: string;
   priceLabel: string;
   distanceKm: number;
+  lat: number;
+  lng: number;
+  coordinateAccuracy: "precise" | "approximate";
   etaLabel: string;
   signalLabel: string;
   momentumLabel: string;
@@ -45,6 +50,13 @@ type CommunityFeedSnapshot = Extract<CommunityFeedResponse, { ok: true }>;
 type Coordinate = {
   latitude: number;
   longitude: number;
+};
+
+type WelcomeMapMeta = {
+  lat: number;
+  lng: number;
+  locationLabel: string;
+  coordinateAccuracy: "precise" | "approximate";
 };
 
 type FlexibleRecord = Record<string, unknown>;
@@ -390,7 +402,102 @@ const sortByCreatedAt = <T extends { created_at?: string | null }>(items: T[]) =
 
 const isoMinutesAgo = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
 
-export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => [
+const demoMapMeta: WelcomeMapMeta[] = [
+  { lat: 12.9718, lng: 77.5949, locationLabel: "MG Road, Bengaluru", coordinateAccuracy: "approximate" },
+  { lat: 12.9804, lng: 77.6408, locationLabel: "Indiranagar, Bengaluru", coordinateAccuracy: "approximate" },
+  { lat: 12.9352, lng: 77.6245, locationLabel: "Koramangala, Bengaluru", coordinateAccuracy: "approximate" },
+  { lat: 12.9279, lng: 77.6271, locationLabel: "HSR Layout, Bengaluru", coordinateAccuracy: "approximate" },
+  { lat: 12.9691, lng: 77.7499, locationLabel: "Whitefield, Bengaluru", coordinateAccuracy: "approximate" },
+  { lat: 12.9962, lng: 77.6964, locationLabel: "Kalyan Nagar, Bengaluru", coordinateAccuracy: "approximate" },
+];
+
+const buildWelcomeFeedLookup = (feedItems: MarketplaceFeedItem[]) => {
+  const byCanonicalKey = new Map<string, MarketplaceFeedItem>();
+  const byHelpRequestId = new Map<string, MarketplaceFeedItem>();
+  const byPostId = new Map<string, MarketplaceFeedItem>();
+  const byListingId = new Map<string, MarketplaceFeedItem>();
+
+  feedItems.forEach((item) => {
+    if (item.canonicalKey) {
+      byCanonicalKey.set(item.canonicalKey, item);
+    }
+    if (item.helpRequestId) {
+      byHelpRequestId.set(item.helpRequestId, item);
+    }
+    if (item.linkedHelpRequestId) {
+      byHelpRequestId.set(item.linkedHelpRequestId, item);
+    }
+    if (item.linkedPostId) {
+      byPostId.set(item.linkedPostId, item);
+    }
+    if (item.linkedListingId) {
+      byListingId.set(item.linkedListingId, item);
+    }
+  });
+
+  return {
+    byCanonicalKey,
+    byHelpRequestId,
+    byPostId,
+    byListingId,
+  };
+};
+
+const resolveWelcomeCardMapMeta = (params: {
+  canonicalKey?: string;
+  focusId: string;
+  source?: WelcomeFeedCard["source"];
+  ownerId?: string;
+  ownerProfile?: CommunityProfileRecord | null;
+  snapshot: CommunityFeedSnapshot;
+  lookup: ReturnType<typeof buildWelcomeFeedLookup>;
+}) => {
+  const { canonicalKey, focusId, source, ownerId, ownerProfile, snapshot, lookup } = params;
+
+  const matchedFeedItem =
+    (canonicalKey ? lookup.byCanonicalKey.get(canonicalKey) : null) ||
+    (source === "help_request"
+      ? lookup.byHelpRequestId.get(focusId)
+      : source === "post"
+      ? lookup.byPostId.get(focusId)
+      : source === "service" || source === "product"
+      ? lookup.byListingId.get(focusId)
+      : null);
+
+  if (matchedFeedItem) {
+    return {
+      lat: matchedFeedItem.lat,
+      lng: matchedFeedItem.lng,
+      locationLabel: matchedFeedItem.locationLabel || trim(ownerProfile?.location) || "Nearby",
+      coordinateAccuracy: matchedFeedItem.coordinateAccuracy,
+    } satisfies WelcomeMapMeta;
+  }
+
+  if (ownerProfile) {
+    const coordinateMeta = resolveCoordinatesWithAccuracy({
+      row: ownerProfile as Record<string, unknown>,
+      location: ownerProfile.location || "",
+      seed: ownerId || focusId,
+    });
+
+    return {
+      lat: coordinateMeta.coordinates.latitude,
+      lng: coordinateMeta.coordinates.longitude,
+      locationLabel: trim(ownerProfile.location) || "Nearby",
+      coordinateAccuracy: coordinateMeta.accuracy,
+    } satisfies WelcomeMapMeta;
+  }
+
+  return {
+    lat: snapshot.mapCenter.lat,
+    lng: snapshot.mapCenter.lng,
+    locationLabel: trim(snapshot.currentUserProfile?.location) || "Nearby",
+    coordinateAccuracy: "approximate",
+  } satisfies WelcomeMapMeta;
+};
+
+export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
+  const demoCards = [
   {
     id: "welcome-demo-story-1",
     focusId: "welcome-demo-story-1",
@@ -543,7 +650,13 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => [
     createdAt: isoMinutesAgo(52),
     isDemo: true,
   },
-];
+  ] satisfies Array<Omit<WelcomeFeedCard, keyof WelcomeMapMeta>>;
+
+  return demoCards.map((card, index): WelcomeFeedCard => ({
+    ...card,
+    ...demoMapMeta[index % demoMapMeta.length],
+  }));
+};
 
 export const blendWelcomeFeedCards = (
   liveCards: WelcomeFeedCard[],
@@ -568,6 +681,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
   const connectedPeerSet = new Set([snapshot.currentUserId, ...acceptedConnectionIds].filter(Boolean));
   const profileMap = new Map(snapshot.profiles.map((profile) => [profile.id, profile]));
   const viewerProfile = snapshot.currentUserProfile;
+  const feedLookup = buildWelcomeFeedLookup(snapshot.feedItems || []);
 
   const cards: WelcomeFeedCard[] = [];
 
@@ -582,19 +696,29 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const urgency = trim(request.urgency).toLowerCase();
     const title = trim(request.title) || trim(request.details) || "Need local support";
     const category = trim(request.category) || "Need";
+    const canonicalKey = buildWelcomeCanonicalKey({
+      kind: "demand",
+      ownerId,
+      title,
+      category,
+      metadata: request.metadata,
+    });
+    const mapMeta = resolveWelcomeCardMapMeta({
+      canonicalKey,
+      focusId: request.id,
+      source: "help_request",
+      ownerId,
+      ownerProfile,
+      snapshot,
+      lookup: feedLookup,
+    });
 
     cards.push({
       id: `welcome-help-${request.id}`,
       focusId: request.id,
       type: "demand",
       source: "help_request",
-      canonicalKey: buildWelcomeCanonicalKey({
-        kind: "demand",
-        ownerId,
-        title,
-        category,
-        metadata: request.metadata,
-      }),
+      canonicalKey,
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       helpRequestId: request.id,
@@ -603,7 +727,11 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       title,
       subtitle: `${ownerProfile?.name || "A connection"} shared a local request${category ? ` • ${category}` : ""}`,
       priceLabel: budget > 0 ? `Budget ₹${budget}` : "Budget shared in chat",
+      locationLabel: mapMeta.locationLabel,
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index),
+      lat: mapMeta.lat,
+      lng: mapMeta.lng,
+      coordinateAccuracy: mapMeta.coordinateAccuracy,
       etaLabel: urgency === "urgent" || urgency === "today" ? "Needs help today" : "Open for nearby responses",
       signalLabel: urgency === "urgent" ? "High urgency" : "Connected neighbor",
       momentumLabel: `${ownerProfile?.name || "Connection"} is in your local network`,
@@ -631,27 +759,38 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const cardType = normalizeMarketplaceCardType(post.type || post.post_type || parsed.kind);
     const ownerProfile = profileMap.get(ownerId);
     const title = parsed.title;
+    const canonicalKey = buildWelcomeCanonicalKey({
+      kind: cardType,
+      ownerId,
+      title,
+      category:
+        parsed.category ||
+        trim(post.category) ||
+        (cardType === "demand" ? "Need" : cardType === "service" ? "Service" : "Product"),
+      metadata: post.metadata,
+    });
+    const mapMeta = resolveWelcomeCardMapMeta({
+      canonicalKey,
+      focusId: post.id,
+      source: "post",
+      ownerId,
+      ownerProfile,
+      snapshot,
+      lookup: feedLookup,
+    });
 
     cards.push({
       id: `welcome-post-${post.id}`,
       focusId: post.id,
       type: cardType,
       source: "post",
-      canonicalKey: buildWelcomeCanonicalKey({
-        kind: cardType,
-        ownerId,
-        title,
-        category:
-          parsed.category ||
-          trim(post.category) ||
-          (cardType === "demand" ? "Need" : cardType === "service" ? "Service" : "Product"),
-        metadata: post.metadata,
-      }),
+      canonicalKey,
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       status: trim(post.status || post.state) || null,
       title,
       subtitle: `${ownerProfile?.name || "A connection"} posted this in your connected feed${parsed.category ? ` • ${parsed.category}` : ""}`,
+      locationLabel: mapMeta.locationLabel,
       priceLabel:
         parsed.budget > 0
           ? `₹${parsed.budget}`
@@ -661,6 +800,9 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
           ? "Service post"
           : "Product post",
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index + 2),
+      lat: mapMeta.lat,
+      lng: mapMeta.lng,
+      coordinateAccuracy: mapMeta.coordinateAccuracy,
       etaLabel:
         cardType === "demand"
           ? "Open for nearby responses"
@@ -691,25 +833,39 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
 
     const ownerProfile = profileMap.get(ownerId);
     const title = service.title || "Local service";
+    const canonicalKey = buildWelcomeCanonicalKey({
+      kind: "service",
+      ownerId,
+      title,
+      category: service.category || "Service",
+      metadata: service.metadata,
+    });
+    const mapMeta = resolveWelcomeCardMapMeta({
+      canonicalKey,
+      focusId: service.id,
+      source: "service",
+      ownerId,
+      ownerProfile,
+      snapshot,
+      lookup: feedLookup,
+    });
 
     cards.push({
       id: `welcome-service-${service.id}`,
       focusId: service.id,
       type: "service",
       source: "service",
-      canonicalKey: buildWelcomeCanonicalKey({
-        kind: "service",
-        ownerId,
-        title,
-        category: service.category || "Service",
-        metadata: service.metadata,
-      }),
+      canonicalKey,
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
       subtitle: `${ownerProfile?.name || "A connection"} shared this service${service.category ? ` • ${service.category}` : ""}`,
       priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
+      locationLabel: mapMeta.locationLabel,
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index + 4),
+      lat: mapMeta.lat,
+      lng: mapMeta.lng,
+      coordinateAccuracy: mapMeta.coordinateAccuracy,
       etaLabel: "Available in your network",
       signalLabel: "Connected provider",
       momentumLabel: `${ownerProfile?.name || "Connection"} is one connection away`,
@@ -734,25 +890,39 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
 
     const ownerProfile = profileMap.get(ownerId);
     const title = product.title || "Local product";
+    const canonicalKey = buildWelcomeCanonicalKey({
+      kind: "product",
+      ownerId,
+      title,
+      category: product.category || "Product",
+      metadata: product.metadata,
+    });
+    const mapMeta = resolveWelcomeCardMapMeta({
+      canonicalKey,
+      focusId: product.id,
+      source: "product",
+      ownerId,
+      ownerProfile,
+      snapshot,
+      lookup: feedLookup,
+    });
 
     cards.push({
       id: `welcome-product-${product.id}`,
       focusId: product.id,
       type: "product",
       source: "product",
-      canonicalKey: buildWelcomeCanonicalKey({
-        kind: "product",
-        ownerId,
-        title,
-        category: product.category || "Product",
-        metadata: product.metadata,
-      }),
+      canonicalKey,
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
       subtitle: `${ownerProfile?.name || "A connection"} shared this product${product.category ? ` • ${product.category}` : ""}`,
       priceLabel: product.price ? `₹${product.price}` : "Price on request",
+      locationLabel: mapMeta.locationLabel,
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index + 6),
+      lat: mapMeta.lat,
+      lng: mapMeta.lng,
+      coordinateAccuracy: mapMeta.coordinateAccuracy,
       etaLabel: "Shared with connections",
       signalLabel: "Connected seller",
       momentumLabel: `${ownerProfile?.name || "Connection"} is active nearby`,

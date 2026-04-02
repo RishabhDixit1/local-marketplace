@@ -10,7 +10,7 @@ import type {
 import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedCard from "@/app/dashboard/components/posts/FeedCard";
 import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
-import { Archive, Loader2, Pencil, Save, X } from "lucide-react";
+import { Loader2, Pencil, Save, X } from "lucide-react";
 
 type FeedGridProps = {
   items: MarketplaceDisplayFeedItem[];
@@ -254,7 +254,7 @@ export default function FeedGrid({
       <div className="grid gap-3 md:grid-cols-2">
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
-          const isOwner = !!viewerId && item.providerId === viewerId;
+          const isOwner = !!viewerId && item.providerId === viewerId && item.source === "post";
 
           return (
             <div

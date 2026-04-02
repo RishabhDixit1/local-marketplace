@@ -353,6 +353,14 @@ const buildProfileValues = (params: {
   return {
     fullName: generatedProfile.fullName || trim(existingProfile?.full_name) || trim(existingProfile?.name),
     location: generatedProfile.location || trim(existingProfile?.location),
+    latitude:
+      typeof generatedProfile.latitude === "number" && Number.isFinite(generatedProfile.latitude)
+        ? generatedProfile.latitude
+        : existingProfile?.latitude ?? null,
+    longitude:
+      typeof generatedProfile.longitude === "number" && Number.isFinite(generatedProfile.longitude)
+        ? generatedProfile.longitude
+        : existingProfile?.longitude ?? null,
     role: "provider",
     bio: generatedProfile.bio || trim(existingProfile?.bio),
     interests: generatedProfile.interests.length > 0 ? generatedProfile.interests : existingProfile?.interests || [],

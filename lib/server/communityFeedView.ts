@@ -35,7 +35,7 @@ import {
   defaultMarketCoordinates,
   distanceBetweenCoordinatesKm,
   getCoordinates,
-  resolveCoordinates,
+  resolveCoordinatesWithAccuracy,
 } from "@/lib/geo";
 
 type CommunityFeedSnapshotInput = {
@@ -247,11 +247,12 @@ export const buildCommunityFeedView = (
 
     const profileMeta = resolveProfileMeta(providerId);
     const locationLabel = stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
-    const coordinates = resolveCoordinates({
+    const coordinateMeta = resolveCoordinatesWithAccuracy({
       row,
       location: locationLabel,
       seed: `${providerId}:service:${serviceRow.id}`,
     });
+    const coordinates = coordinateMeta.coordinates;
     const title = stringFromRow(row, ["title", "name"], "Local service");
     const description = stringFromRow(row, ["description", "details", "text"], "Service listing");
     const metadataSource = readMetadataSource(row.metadata);
@@ -289,6 +290,7 @@ export const buildCommunityFeedView = (
       distanceKm: distanceBetweenCoordinatesKm(viewerPoint, coordinates),
       lat: coordinates.latitude,
       lng: coordinates.longitude,
+      coordinateAccuracy: coordinateMeta.accuracy,
       media: [],
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
@@ -314,11 +316,12 @@ export const buildCommunityFeedView = (
 
     const profileMeta = resolveProfileMeta(providerId);
     const locationLabel = stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
-    const coordinates = resolveCoordinates({
+    const coordinateMeta = resolveCoordinatesWithAccuracy({
       row,
       location: locationLabel,
       seed: `${providerId}:product:${productRow.id}`,
     });
+    const coordinates = coordinateMeta.coordinates;
     const title = stringFromRow(row, ["title", "name"], "Local product");
     const description = stringFromRow(row, ["description", "details", "text"], "Product listing");
     const metadataSource = readMetadataSource(row.metadata);
@@ -356,6 +359,7 @@ export const buildCommunityFeedView = (
       distanceKm: distanceBetweenCoordinatesKm(viewerPoint, coordinates),
       lat: coordinates.latitude,
       lng: coordinates.longitude,
+      coordinateAccuracy: coordinateMeta.accuracy,
       media: [],
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
@@ -391,11 +395,12 @@ export const buildCommunityFeedView = (
       composerMetadata?.locationLabel ||
       parsedFromText.location ||
       stringFromRow(row, ["location_label", "location"], profileMeta.locationLabel);
-    const coordinates = resolveCoordinates({
+    const coordinateMeta = resolveCoordinatesWithAccuracy({
       row,
       location: locationLabel,
       seed: `${providerId}:post:${postRow.id}`,
     });
+    const coordinates = coordinateMeta.coordinates;
     const title =
       composerMetadata?.title ||
       stringFromRow(row, ["title"], "") ||
@@ -454,6 +459,7 @@ export const buildCommunityFeedView = (
       distanceKm,
       lat: coordinates.latitude,
       lng: coordinates.longitude,
+      coordinateAccuracy: coordinateMeta.accuracy,
       media: metadataMedia.length ? metadataMedia : parsedFromText.media,
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: type === "demand" && isUrgentDemand(`${title} ${description} ${status}`),
@@ -496,11 +502,12 @@ export const buildCommunityFeedView = (
       composerMetadata?.locationLabel ||
       profileMeta.locationLabel ||
       "Nearby";
-    const coordinates = resolveCoordinates({
+    const coordinateMeta = resolveCoordinatesWithAccuracy({
       row,
       location: locationLabel,
       seed: `${providerId}:help:${helpRow.id}`,
     });
+    const coordinates = coordinateMeta.coordinates;
     const distanceKm = distanceBetweenCoordinatesKm(viewerPoint, coordinates);
     const urgency = stringFromRow(row, ["urgency"], "");
     const metadataMedia = mediaFromMarketplaceComposerMetadata(helpRow.metadata);
@@ -536,6 +543,7 @@ export const buildCommunityFeedView = (
       distanceKm,
       lat: coordinates.latitude,
       lng: coordinates.longitude,
+      coordinateAccuracy: coordinateMeta.accuracy,
       media: metadataMedia,
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: isUrgentDemand(urgency || `${title} ${description}`),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blendWelcomeFeedCards, buildWelcomeDemoFeedCards, buildWelcomeFeedCards } from "../../lib/welcomeFeed";
 import type { CommunityFeedResponse } from "../../lib/api/community";
+import type { MarketplaceFeedItem } from "../../lib/marketplaceFeed";
 
 const buildSnapshot = (overrides: Partial<Extract<CommunityFeedResponse, { ok: true }>> = {}) =>
   ({
@@ -54,6 +55,37 @@ const buildSnapshot = (overrides: Partial<Extract<CommunityFeedResponse, { ok: t
     presence: [],
     ...overrides,
   }) satisfies Extract<CommunityFeedResponse, { ok: true }>;
+
+const buildFeedItem = (overrides: Partial<MarketplaceFeedItem> = {}): MarketplaceFeedItem => ({
+  id: "feed-item-1",
+  source: "post",
+  helpRequestId: null,
+  providerId: "peer-1",
+  type: "demand",
+  title: "Need a local plumber",
+  description: "Urgent plumbing support",
+  category: "Plumbing",
+  price: 1200,
+  avatarUrl: "https://cdn.example.com/avatar.png",
+  creatorName: "Peer One",
+  creatorUsername: "peer-one",
+  locationLabel: "Koramangala",
+  distanceKm: 2.1,
+  lat: 12.9352,
+  lng: 77.6245,
+  coordinateAccuracy: "approximate",
+  media: [],
+  createdAt: "2026-03-12T12:30:00.000Z",
+  urgent: true,
+  rankScore: 78,
+  profileCompletion: 86,
+  responseMinutes: 18,
+  verificationStatus: "verified",
+  publicProfilePath: "/profile/peer-one-peer-1",
+  status: "open",
+  acceptedProviderId: null,
+  ...overrides,
+});
 
 describe("welcome feed builder", () => {
   it("creates preview cards for welcome stories and feed visualization", () => {
@@ -270,6 +302,64 @@ describe("welcome feed builder", () => {
     expect(result.cards).toHaveLength(1);
     expect(result.cards[0]?.image.startsWith("data:image/svg+xml")).toBe(true);
     expect(result.cards[0]?.image.includes("unsplash.com")).toBe(false);
+  });
+
+  it("reuses live feed map coordinates for connected welcome cards", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+          {
+            id: "post-visible",
+            user_id: "peer-1",
+            text: "Need a local plumber | Budget: 1200 | Category: Plumbing | Type: demand",
+            created_at: "2026-03-12T12:30:00.000Z",
+          },
+        ],
+        feedItems: [
+          buildFeedItem({
+            id: "feed-post-visible",
+            linkedPostId: "post-visible",
+            canonicalKey: undefined,
+            locationLabel: "Koramangala, Bengaluru",
+            lat: 12.9341,
+            lng: 77.6113,
+            coordinateAccuracy: "approximate",
+          }),
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      lat: 12.9341,
+      lng: 77.6113,
+      coordinateAccuracy: "approximate",
+      locationLabel: "Koramangala, Bengaluru",
+    });
+  });
+
+  it("falls back to owner profile coordinates when a matching feed pin is unavailable", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+          {
+            id: "post-visible",
+            user_id: "peer-1",
+            text: "Need a local plumber | Budget: 1200 | Category: Plumbing | Type: demand",
+            created_at: "2026-03-12T12:30:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      lat: 12.972,
+      lng: 77.595,
+      coordinateAccuracy: "precise",
+    });
   });
 
   it("ignores persisted seeded image urls on live listings and falls back to the live placeholder", () => {

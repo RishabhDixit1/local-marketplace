@@ -6,6 +6,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
@@ -34,6 +35,7 @@ import {
   distanceBetweenCoordinatesKm,
   getBrowserCoordinates,
   resolveCoordinates,
+  resolveCoordinatesWithAccuracy,
   type Coordinates,
 } from "@/lib/geo";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
@@ -657,11 +659,12 @@ const createProviderCards = (params: {
         reviewCount: reviewsCount,
       });
 
-      const providerCoordinates = resolveCoordinates({
+      const coordinateMeta = resolveCoordinatesWithAccuracy({
         row: profile as unknown as Record<string, unknown>,
         location: profile.location || "",
         seed: profile.id,
       });
+      const providerCoordinates = coordinateMeta.coordinates;
       const distanceKm = distanceBetweenCoordinatesKm(viewerCoordinates, providerCoordinates);
 
       const online = typeof presence?.is_online === "boolean" ? presence.is_online : availability !== "offline";
@@ -813,6 +816,7 @@ const createProviderCards = (params: {
         joinedAt: profile.created_at || null,
         latitude: providerCoordinates.latitude,
         longitude: providerCoordinates.longitude,
+        coordinateAccuracy: coordinateMeta.accuracy,
         listingCount: servicesCount + productsCount,
         serviceCount: servicesCount,
         productCount: productsCount,
@@ -846,7 +850,6 @@ export default function PeoplePage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [viewerCenter, setViewerCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -968,11 +971,6 @@ export default function PeoplePage() {
             })
           : null;
         const effectiveViewerCoordinates = browserCoordinates || viewerProfileCoordinates || defaultMarketCoordinates();
-        setViewerCenter({
-          lat: effectiveViewerCoordinates.latitude,
-          lng: effectiveViewerCoordinates.longitude,
-        });
-
         const providerIdsForDetails = Array.from(
           new Set(
             [
@@ -1720,8 +1718,6 @@ export default function PeoplePage() {
     () => providers.filter((provider) => getPresenceTone(provider) === "online").length,
     [getPresenceTone, providers]
   );
-  const activeProvider =
-    visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
 
   return (
     <div
@@ -1731,6 +1727,8 @@ export default function PeoplePage() {
           "radial-gradient(circle at 0% 0%, rgba(14,165,164,0.08), transparent 34%), radial-gradient(circle at 100% 8%, rgba(17,70,106,0.08), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.44), rgba(255,255,255,0))",
       }}
     >
+      <RouteObservability route="people" />
+
       <PeopleLiveHeader
         activeNow={activeNow}
         connectionCount={connectionBuckets.accepted.length}

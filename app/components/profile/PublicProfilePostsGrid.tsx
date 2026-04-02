@@ -14,10 +14,12 @@ import {
   Clock3,
   Loader2,
   MapPin,
+  MoreVertical,
   Share2,
   ShoppingBag,
   ShoppingCart,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
@@ -193,6 +195,9 @@ export default function PublicProfilePostsGrid({
   const [acceptingCardIds, setAcceptingCardIds] = useState<Set<string>>(new Set());
   const [chatOpening, setChatOpening] = useState(false);
   const [addedToCart, setAddedToCart] = useState<string | null>(null);
+  const [ownerMenuOpenId, setOwnerMenuOpenId] = useState<string | null>(null);
+  const [ownerBusyId, setOwnerBusyId] = useState<string | null>(null);
+  const ownerMenuRef = useRef<HTMLDivElement | null>(null);
   const resolvedAvatar = avatarUrl || createAvatarFallback({ label: displayName || "ServiQ member", seed: displayName || "public-profile" });
 
   const cart = useCart();
@@ -225,6 +230,19 @@ export default function PublicProfilePostsGrid({
       timers.clear();
     };
   }, []);
+
+  useEffect(() => {
+    if (!ownerMenuOpenId) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (ownerMenuRef.current && !ownerMenuRef.current.contains(event.target as Node)) {
+        setOwnerMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [ownerMenuOpenId]);
 
   const buildCardId = useCallback((post: PublicProfilePost) => {
     const sourceId = post.source === "help_request" ? post.helpRequestId || post.id : post.id;
@@ -539,6 +557,42 @@ export default function PublicProfilePostsGrid({
     [buildActionPath, buildCardId, displayName, ensureViewerId, locationLabel, pushToast, resolvedAvatar, savedCardIds]
   );
 
+  const handleRemoveOwnedPost = useCallback(
+    async (post: PublicProfilePost) => {
+      setOwnerMenuOpenId(null);
+      setOwnerBusyId(post.id);
+
+      try {
+        if (post.source === "help_request" && post.helpRequestId) {
+          await fetchAuthedJson<{ ok: true; helpRequestId: string; status: string }>(supabase, "/api/needs/status", {
+            method: "POST",
+            body: JSON.stringify({
+              helpRequestId: post.helpRequestId,
+              status: "cancelled",
+            }),
+          });
+          pushToast("success", "Request removed from your active posts.");
+        } else {
+          await fetchAuthedJson<{ ok: true }>(supabase, `/api/posts/manage?postId=${encodeURIComponent(post.id)}`, {
+            method: "DELETE",
+          });
+          pushToast("success", "Post deleted.");
+        }
+
+        setItems((current) => current.filter((item) => item.id !== post.id));
+        router.refresh();
+      } catch (error) {
+        pushToast(
+          "error",
+          toErrorMessage(error, post.source === "help_request" ? "Unable to close this request." : "Unable to delete this post.")
+        );
+      } finally {
+        setOwnerBusyId((current) => (current === post.id ? null : current));
+      }
+    },
+    [pushToast, router]
+  );
+
   const handleAddToCart = useCallback(
     (post: PublicProfilePost) => {
       cart.addItem({
@@ -711,6 +765,37 @@ export default function PublicProfilePostsGrid({
                     </span>
                   </div>
                 </div>
+
+                {isOwnListing ? (
+                  <div ref={ownerMenuOpenId === post.id ? ownerMenuRef : undefined} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setOwnerMenuOpenId((current) => (current === post.id ? null : post.id))}
+                      disabled={ownerBusyId === post.id}
+                      aria-label={post.source === "help_request" ? "Request options" : "Post options"}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                    >
+                      {ownerBusyId === post.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreVertical className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    {ownerMenuOpenId === post.id ? (
+                      <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveOwnedPost(post)}
+                          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {post.source === "help_request" ? "Close request" : "Delete post"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </header>
 
               <div className="mt-2.5">

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import RouteObservability from "@/app/components/RouteObservability";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -866,10 +867,11 @@ export default function WelcomePage() {
       avatarUrl: card.ownerAvatarUrl,
       creatorName: card.ownerLabel,
       creatorUsername: card.ownerLabel,
-      locationLabel: card.distanceLabel,
+      locationLabel: card.locationLabel || card.distanceLabel,
       distanceKm: card.distanceKm,
-      lat: 0,
-      lng: 0,
+      lat: card.lat,
+      lng: card.lng,
+      coordinateAccuracy: card.coordinateAccuracy,
       media: card.media,
       createdAt: card.createdAt,
       urgent: card.isUrgent,
@@ -1339,6 +1341,8 @@ export default function WelcomePage() {
 
   return (
     <>
+      <RouteObservability route="welcome" />
+
       <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
         <div className="mx-auto w-full max-w-[1480px] py-2 sm:py-4 space-y-5 sm:space-y-6">
           {!!loadError && (

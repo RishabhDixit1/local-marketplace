@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SaveProfileResponse, ProfileApiErrorCode } from "@/lib/api/profile";
+import { validateProfileValues } from "@/lib/profile/validation";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { isProfileSaveRequest, saveProfileRow } from "@/lib/server/profileWrites";
@@ -32,6 +33,12 @@ export async function POST(request: Request) {
 
   if (!isProfileSaveRequest(body)) {
     return toErrorResponse(400, "INVALID_PAYLOAD", "Request body does not match the profile save schema.");
+  }
+
+  const validationErrors = validateProfileValues(body.values, { mode: "draft" });
+  const firstValidationError = Object.values(validationErrors).find((value) => typeof value === "string" && value.trim());
+  if (firstValidationError) {
+    return toErrorResponse(400, "INVALID_PAYLOAD", firstValidationError);
   }
 
   const admin = createSupabaseAdminClient();

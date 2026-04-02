@@ -1,9 +1,10 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
-import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 export const runtime = "nodejs";
+const INTERNAL_PUSH_HEADER = "x-serviq-internal-key";
 
 type SendPushRequest = {
   userId: string;
@@ -12,14 +13,35 @@ type SendPushRequest = {
   data?: Record<string, unknown>;
 };
 
+const hasTrustedInternalKey = (request: Request) => {
+  const expected = process.env.SERVIQ_INTERNAL_PUSH_KEY?.trim() || "";
+  const provided = request.headers.get(INTERNAL_PUSH_HEADER)?.trim() || "";
+
+  if (!expected || !provided) return false;
+
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
+  if (expectedBuffer.length !== providedBuffer.length) return false;
+
+  return timingSafeEqual(expectedBuffer, providedBuffer);
+};
+
 export async function POST(request: Request) {
-  const authResult = await requireRequestAuth(request);
-  if (!authResult.ok) {
-    return NextResponse.json({ ok: false, code: "UNAUTHORIZED", message: authResult.message }, { status: authResult.status });
+  if (!process.env.SERVIQ_INTERNAL_PUSH_KEY?.trim()) {
+    return NextResponse.json(
+      { ok: false, code: "CONFIG", message: "SERVIQ_INTERNAL_PUSH_KEY is required for push delivery." },
+      { status: 503 }
+    );
   }
 
-  const admin = createSupabaseAdminClient();
-  const dbClient = admin || createSupabaseUserServerClient(authResult.auth.accessToken);
+  if (!hasTrustedInternalKey(request)) {
+    return NextResponse.json(
+      { ok: false, code: "FORBIDDEN", message: "Push delivery is restricted to trusted internal callers." },
+      { status: 403 }
+    );
+  }
+
+  const dbClient = createSupabaseAdminClient();
   if (!dbClient) {
     return NextResponse.json({ ok: false, code: "CONFIG", message: "Supabase server credentials are missing." }, { status: 500 });
   }

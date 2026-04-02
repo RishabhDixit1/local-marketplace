@@ -6,6 +6,7 @@ const enableLoginRequestSmoke = process.env.E2E_ENABLE_LOGIN_REQUEST_SMOKE === "
 
 const transitionLabelRegex =
   /Send Quote|Mark Accepted|Reject|Start Work|Mark Completed|Accept Quote|Confirm Completion|Cancel Request/i;
+const checkoutAddress = "221B Baker Street, Bengaluru";
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
   const magicLinkUrl = await resolveMagicLinkUrl();
@@ -20,6 +21,42 @@ const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
       await page.waitForTimeout(1500 * (attempt + 1));
     }
   }
+};
+
+const openProviderStoreAndAddItemToCart = async ({ page }: { page: Page }) => {
+  await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 });
+
+  const cardCount = await page.locator("article").count();
+  const maxAttempts = Math.min(cardCount, 8);
+
+  for (let index = 0; index < maxAttempts; index += 1) {
+    await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
+
+    const card = page.locator("article").nth(index);
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    await card.click();
+
+    const storeTab = page.getByRole("button", { name: /^Store$/i });
+    await expect(storeTab).toBeVisible({ timeout: 20_000 });
+    await storeTab.click();
+
+    const addToCartButton = page.getByRole("button", { name: /Add to Cart/i }).first();
+    if ((await addToCartButton.count()) > 0) {
+      await expect(addToCartButton).toBeVisible({ timeout: 10_000 });
+      await addToCartButton.click();
+      return;
+    }
+
+    const buyNowButton = page.getByRole("button", { name: /Hire Now|Buy Now/i }).first();
+    if ((await buyNowButton.count()) > 0) {
+      await expect(buyNowButton).toBeVisible({ timeout: 10_000 });
+      await buyNowButton.click();
+      return;
+    }
+  }
+
+  throw new Error("Could not find a provider with a checkoutable store item in the first 8 cards.");
 };
 
 test("login request smoke", async ({ page }) => {
@@ -118,5 +155,24 @@ test("authenticated marketplace smoke", async ({ page }) => {
     if ((await transitionButton.count()) > 0) {
       await transitionButton.click();
     }
+  });
+
+  await test.step("public profile store checkout", async () => {
+    await openProviderStoreAndAddItemToCart({ page });
+
+    const cartDialog = page.getByRole("dialog", { name: /Shopping cart/i });
+    await expect(cartDialog).toBeVisible({ timeout: 15_000 });
+    await cartDialog.getByRole("button", { name: /Checkout/i }).click();
+
+    await page.waitForURL(/\/checkout/, { timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: /^Checkout$/i })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByLabel("Delivery address").fill(checkoutAddress);
+    await page.getByRole("button", { name: /^Pay on Delivery$/i }).click();
+    await page.getByRole("button", { name: /Place Order/i }).click();
+
+    await page.waitForURL(/\/orders\/[^/]+$/, { timeout: 30_000 });
+    await expect(page.getByText(checkoutAddress)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Order ID:/i)).toBeVisible({ timeout: 20_000 });
   });
 });

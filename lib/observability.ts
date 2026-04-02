@@ -1,6 +1,15 @@
-export type ObservedRoute = "dashboard" | "chat" | "tasks";
+export type ObservedRoute =
+  | "dashboard"
+  | "chat"
+  | "tasks"
+  | "welcome"
+  | "people"
+  | "launchpad"
+  | "checkout"
+  | "profile"
+  | "settings";
 
-export type ObservabilityEventType = "route_view" | "route_perf" | "web_vital" | "client_error";
+export type ObservabilityEventType = "route_view" | "route_perf" | "web_vital" | "client_error" | "ui_action";
 
 export type ObservabilityEventPayload = {
   event_type: ObservabilityEventType;
@@ -42,6 +51,32 @@ export const captureClientObservability = async (payload: ObservabilityEventPayl
   } catch {
     // Observability should never block user flow.
   }
+};
+
+export const captureUiActionObservability = async (params: {
+  route: ObservedRoute;
+  action: string;
+  pathname?: string;
+  context?: Record<string, unknown>;
+}) =>
+  captureClientObservability({
+    event_type: "ui_action",
+    route: params.route,
+    pathname: params.pathname,
+    metric: params.action,
+    context: params.context,
+  });
+
+export const resolveObservedRouteFromPathname = (pathname: string): ObservedRoute => {
+  if (pathname.startsWith("/dashboard/chat")) return "chat";
+  if (pathname.startsWith("/dashboard/tasks")) return "tasks";
+  if (pathname.startsWith("/dashboard/welcome")) return "welcome";
+  if (pathname.startsWith("/dashboard/people")) return "people";
+  if (pathname.startsWith("/dashboard/launchpad")) return "launchpad";
+  if (pathname.startsWith("/dashboard/profile")) return "profile";
+  if (pathname.startsWith("/dashboard/settings")) return "settings";
+  if (pathname.startsWith("/checkout")) return "checkout";
+  return "dashboard";
 };
 
 export const toErrorString = (value: unknown) => {

@@ -299,6 +299,8 @@ export const createProfileCompletionChecklist = (
 export const toProfileFormValues = (profile: ProfileRecord | null | undefined): ProfileFormValues => ({
   fullName: getProfileDisplayName(profile),
   location: trim(profile?.location),
+  latitude: parseNumber(profile?.latitude),
+  longitude: parseNumber(profile?.longitude),
   role: getProfileRoleFamily(profile?.role),
   bio: trim(profile?.bio),
   interests: normalizeTopics(profile?.interests?.length ? profile.interests : profile?.services),
@@ -464,6 +466,8 @@ export const createProfileSavePayload = (params: {
     full_name: toNullableString(params.values.fullName),
     name: toNullableString(params.values.fullName),
     location: toNullableString(params.values.location),
+    latitude: typeof params.values.latitude === "number" && Number.isFinite(params.values.latitude) ? params.values.latitude : null,
+    longitude: typeof params.values.longitude === "number" && Number.isFinite(params.values.longitude) ? params.values.longitude : null,
     role: storedRole,
     bio: toNullableString(params.values.bio),
     interests: topics,

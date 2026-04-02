@@ -1,3 +1,4 @@
+import { isUsableLocationLabel } from "@/lib/geo";
 import { PROFILE_TOPIC_LIMIT, type ProfileFormValues, type ProfileValidationErrors } from "@/lib/profile/types";
 import { normalizeTopics, normalizeWebsite } from "@/lib/profile/utils";
 
@@ -22,6 +23,8 @@ export const validateProfileValues = (
     errors.location = "Enter your city, neighborhood, or service area.";
   } else if (shouldRequireOnboardingFields && values.location.trim().length < 2) {
     errors.location = "Location is too short.";
+  } else if (values.location.trim() && !isUsableLocationLabel(values.location)) {
+    errors.location = "Enter a readable area or city name, not raw GPS coordinates.";
   }
 
   if (topics.length > PROFILE_TOPIC_LIMIT) {

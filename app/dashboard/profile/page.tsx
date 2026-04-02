@@ -1,9 +1,14 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, MapPin, Phone } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
-import { uploadProfileAvatar } from "@/lib/profile/client";
+import RouteObservability from "@/app/components/RouteObservability";
+import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
+import { saveCurrentUserProfile, uploadProfileAvatar } from "@/lib/profile/client";
+import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import type { StoredProfileRole } from "@/lib/profile/types";
 
@@ -91,9 +96,9 @@ export default function EditProfilePage() {
     setError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
-        setLocation(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
+        const coordinates = getCoordinates(pos.coords.latitude, pos.coords.longitude);
+        setLat(coordinates?.latitude ?? null);
+        setLng(coordinates?.longitude ?? null);
         setLocating(false);
       },
       () => {
@@ -107,6 +112,10 @@ export default function EditProfilePage() {
   //  save 
   const handleSave = async () => {
     if (!user?.id) return;
+    if (!isUsableLocationLabel(location)) {
+      setError("Enter a readable area or city name like \"Koramangala, Bengaluru\", not raw GPS coordinates.");
+      return;
+    }
     setSaving(true);
     setError("");
     setSaved(false);
@@ -121,31 +130,26 @@ export default function EditProfilePage() {
         setAvatarFile(null);
       }
 
-      // 2. update profile row
-      const patch: Record<string, unknown> = {
-        full_name: fullName.trim() || null,
-        name: fullName.trim() || null,
-        bio: bio.trim() || null,
-        role,
-        location: location.trim() || null,
-        latitude: lat,
-        longitude: lng,
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      };
+      const nextProfile = await saveCurrentUserProfile({
+        user,
+        values: {
+          ...toProfileFormValues(profile ?? null),
+          fullName,
+          location,
+          latitude: lat,
+          longitude: lng,
+          role: role === "seeker" ? "seeker" : "provider",
+          bio,
+          interests: profile?.interests || profile?.services || [],
+          email: profile?.email || user.email || "",
+          phone: profile?.phone || user.phone || "",
+          website: profile?.website || "",
+          avatarUrl: avatarUrl || "",
+          availability: profile?.availability || "available",
+        },
+      });
 
-      const { data, error: updateError } = await supabase
-        .from("profiles")
-        .update(patch)
-        .eq("id", user.id)
-        .select("*")
-        .maybeSingle();
-
-      if (updateError) throw updateError;
-
-      if (data) {
-        setProfile(data as typeof profile);
-      }
+      setProfile(nextProfile as typeof profile);
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -171,6 +175,8 @@ export default function EditProfilePage() {
   //  render 
   return (
     <div className="mx-auto max-w-lg px-0 pb-10 sm:px-4">
+      <RouteObservability route="profile" />
+
       {/* page title */}
       <div className="mb-6 px-4 sm:px-0">
         <h1 className="text-2xl font-bold text-slate-900">Edit Profile</h1>
@@ -279,12 +285,8 @@ export default function EditProfilePage() {
               id="edit-location"
               type="text"
               value={location}
-              onChange={(e) => {
-                setLocation(e.target.value);
-                setLat(null);
-                setLng(null);
-              }}
-              placeholder="City, area or GPS"
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Area, city, or neighbourhood"
               className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/30"
             />
             <button
@@ -298,6 +300,14 @@ export default function EditProfilePage() {
               GPS
             </button>
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Keep this label human-readable for nearby discovery. GPS saves precise coordinates separately.
+          </p>
+          {lat !== null && lng !== null ? (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Precise coordinates saved: {formatCoordinatePair({ latitude: lat, longitude: lng })}
+            </p>
+          ) : null}
         </div>
 
         {/* Phone  read-only */}

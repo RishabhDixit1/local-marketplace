@@ -34,6 +34,7 @@ export type MarketplaceFeedItem = {
   distanceKm: number;
   lat: number;
   lng: number;
+  coordinateAccuracy: "precise" | "approximate";
   media: MarketplaceFeedMedia[];
   createdAt: string;
   urgent: boolean;

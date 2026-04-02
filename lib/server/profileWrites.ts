@@ -53,6 +53,8 @@ export const isProfileSaveRequest = (payload: unknown): payload is SaveProfileRe
   return (
     typeof typedValues.fullName === "string" &&
     typeof typedValues.location === "string" &&
+    (typedValues.latitude === null || typedValues.latitude === undefined || typeof typedValues.latitude === "number") &&
+    (typedValues.longitude === null || typedValues.longitude === undefined || typeof typedValues.longitude === "number") &&
     (typedValues.role === "provider" || typedValues.role === "seeker") &&
     typeof typedValues.bio === "string" &&
     Array.isArray(typedValues.interests) &&

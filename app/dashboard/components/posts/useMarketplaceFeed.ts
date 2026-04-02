@@ -34,6 +34,8 @@ type MarketplaceMapItem = {
   category: string;
   timeLabel: string;
   priceLabel: string;
+  coordinateAccuracy: "precise" | "approximate";
+  urgent?: boolean;
 };
 
 type UseMarketplaceFeedParams = {
@@ -361,6 +363,7 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
         category: item.category,
         timeLabel: item.timeLabel,
         priceLabel: item.priceLabel,
+        coordinateAccuracy: item.coordinateAccuracy,
         urgent: item.urgent,
       })),
     [displayFeed]
