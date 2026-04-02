@@ -870,6 +870,7 @@ export default function WelcomePage() {
       distanceKm: card.distanceKm,
       lat: 0,
       lng: 0,
+      coordinateAccuracy: "approximate",
       media: card.media,
       createdAt: card.createdAt,
       urgent: card.isUrgent,

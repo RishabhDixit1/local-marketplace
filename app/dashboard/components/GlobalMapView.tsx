@@ -16,6 +16,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { MarketplaceMapItem } from "@/app/components/maps/types";
+import type { CommunityFeedResponse, CommunityPeopleResponse, CommunityPresenceRecord } from "@/lib/api/community";
+import { estimateResponseMinutes } from "@/lib/business";
+import { resolveCoordinatesWithAccuracy } from "@/lib/geo";
+import { buildMarketplaceDisplayItem, type MarketplaceFeedItem } from "@/lib/marketplaceFeed";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 
 const MarketplaceMap = dynamic(
   () => import("@/app/components/MarketplaceMap").then((m) => ({ default: m.default ?? m })),
@@ -33,12 +38,21 @@ type MapItemDetail = {
   timeLabel?: string;
   priceLabel?: string;
   layer: Layer | "explore" | "people";
+  coordinateAccuracy: "precise" | "approximate";
+  detailPath: string | null;
+  detailLabel: string;
 };
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
+
+const INR = (value: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+const buildExploreDetailPath = (item: MarketplaceFeedItem) =>
+  `/dashboard?source=posts_feed&focus=${encodeURIComponent(item.id)}`;
 
 // ── Lightweight fetch helpers ──────────────────────────────────────────────────
 
@@ -48,23 +62,32 @@ async function fetchExploreItems(): Promise<MarketplaceMapItem[]> {
       credentials: "include",
     });
     if (!res.ok) return [];
-    const json = await res.json() as { feedItems?: Array<{
-      id: string; title: string; lat: number; lng: number;
-      creatorName?: string; locationLabel?: string; category?: string;
-      timeLabel?: string; priceLabel?: string; urgent?: boolean;
-    }> };
-    return (json.feedItems ?? []).map((item) => ({
-      id: item.id,
-      title: item.title,
-      lat: item.lat,
-      lng: item.lng,
-      creatorName: item.creatorName,
-      locationLabel: item.locationLabel,
-      category: item.category,
-      timeLabel: item.timeLabel,
-      priceLabel: item.priceLabel,
-      urgent: item.urgent,
-    }));
+    const json = (await res.json()) as CommunityFeedResponse;
+    if (!json.ok) return [];
+
+    return (json.feedItems ?? []).map((item) => {
+      const display = buildMarketplaceDisplayItem(item);
+      return {
+        id: item.id,
+        title: display.displayTitle,
+        lat: item.lat,
+        lng: item.lng,
+        creatorName: display.displayCreator,
+        locationLabel: item.locationLabel || display.distanceLabel,
+        category: item.category,
+        timeLabel: display.timeLabel,
+        priceLabel: display.priceLabel,
+        urgent: item.urgent,
+        coordinateAccuracy: item.coordinateAccuracy,
+        detailPath: buildExploreDetailPath(item),
+        detailLabel:
+          item.type === "demand"
+            ? "Open request"
+            : item.type === "product"
+            ? "Open product"
+            : "Open service",
+      } satisfies MarketplaceMapItem;
+    });
   } catch {
     return [];
   }
@@ -76,24 +99,81 @@ async function fetchPeopleItems(): Promise<MarketplaceMapItem[]> {
       credentials: "include",
     });
     if (!res.ok) return [];
-    const json = await res.json() as { providers?: Array<{
-      id: string; name: string; latitude?: number; longitude?: number;
-      role?: string; location?: string; primarySkill?: string;
-      responseMinutes?: number; minPriceLabel?: string;
-    }> };
-    return (json.providers ?? [])
-      .filter((p) => p.latitude && p.longitude)
-      .map((p) => ({
-        id: p.id,
-        title: p.name,
-        lat: p.latitude!,
-        lng: p.longitude!,
-        creatorName: p.role,
-        locationLabel: p.location,
-        category: p.primarySkill,
-        timeLabel: p.responseMinutes ? `~${p.responseMinutes} min reply` : undefined,
-        priceLabel: p.minPriceLabel ? `From ${p.minPriceLabel}` : undefined,
-      }));
+    const json = (await res.json()) as CommunityPeopleResponse;
+    if (!json.ok) return [];
+
+    const categoriesByProfileId = new Map<string, string[]>();
+    const pricesByProfileId = new Map<string, number[]>();
+    const presenceByProfileId = new Map<string, CommunityPresenceRecord>();
+
+    const pushCategory = (profileId: string, value: string | null | undefined) => {
+      const normalized = typeof value === "string" ? value.trim() : "";
+      if (!profileId || !normalized) return;
+      const current = categoriesByProfileId.get(profileId) || [];
+      if (current.includes(normalized)) return;
+      categoriesByProfileId.set(profileId, [...current, normalized]);
+    };
+
+    const pushPrice = (profileId: string, value: number | string | null | undefined) => {
+      const nextValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+      if (!profileId || !Number.isFinite(nextValue) || nextValue <= 0) return;
+      const current = pricesByProfileId.get(profileId) || [];
+      pricesByProfileId.set(profileId, [...current, Math.round(nextValue)]);
+    };
+
+    (json.services || []).forEach((service) => {
+      pushCategory(service.provider_id, service.category);
+      pushPrice(service.provider_id, service.price);
+    });
+    (json.products || []).forEach((product) => {
+      pushCategory(product.provider_id, product.category);
+      pushPrice(product.provider_id, product.price);
+    });
+    (json.presence || []).forEach((presence) => {
+      if (!presence.provider_id) return;
+      presenceByProfileId.set(presence.provider_id, presence);
+    });
+
+    return (json.profiles || []).reduce<MarketplaceMapItem[]>((items, profile) => {
+      if (!profile.id) return items;
+
+      const coordinateMeta = resolveCoordinatesWithAccuracy({
+        row: profile as Record<string, unknown>,
+        location: profile.location || "",
+        seed: profile.id,
+      });
+      const presence = presenceByProfileId.get(profile.id);
+      const responseMinutes = estimateResponseMinutes({
+        availability: presence?.availability || profile.availability || null,
+        providerId: profile.id,
+        baseResponseMinutes: presence?.rolling_response_minutes ?? presence?.response_sla_minutes ?? null,
+      });
+      const priceCandidates = pricesByProfileId.get(profile.id) || [];
+      const minPrice = priceCandidates.length ? Math.min(...priceCandidates) : null;
+      const primaryCategory = (categoriesByProfileId.get(profile.id) || [])[0];
+      const publicPath =
+        buildPublicProfilePath(profile) || `/dashboard/people?provider=${encodeURIComponent(profile.id)}`;
+
+      items.push({
+        id: profile.id,
+        title: profile.name?.trim() || "Community member",
+        lat: coordinateMeta.coordinates.latitude,
+        lng: coordinateMeta.coordinates.longitude,
+        creatorName: profile.role || undefined,
+        locationLabel:
+          coordinateMeta.accuracy === "approximate" && profile.location
+            ? `${profile.location} (approximate area)`
+            : profile.location || "Nearby",
+        category: primaryCategory || profile.role || undefined,
+        timeLabel: responseMinutes > 0 ? `~${responseMinutes} min reply` : undefined,
+        priceLabel: minPrice ? `From ${INR(minPrice)}` : undefined,
+        coordinateAccuracy: coordinateMeta.accuracy,
+        detailPath: publicPath,
+        detailLabel: "Open profile",
+      });
+
+      return items;
+    }, []);
   } catch {
     return [];
   }
@@ -129,7 +209,7 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const [exploreItems, setExploreItems] = useState<MarketplaceMapItem[]>([]);
   const [peopleItems, setPeopleItems] = useState<MarketplaceMapItem[]>([]);
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -140,7 +220,6 @@ export default function GlobalMapView({ open, onClose }: Props) {
   useEffect(() => {
     if (!open || hasFetched.current) return;
     hasFetched.current = true;
-    setLoading(true);
     void Promise.all([fetchExploreItems(), fetchPeopleItems(), getUserCenter()]).then(
       ([explore, people, userCenter]) => {
         setExploreItems(explore);
@@ -164,12 +243,18 @@ export default function GlobalMapView({ open, onClose }: Props) {
       id: e.id, title: e.title, subtitle: e.creatorName, category: e.category,
       locationLabel: e.locationLabel, timeLabel: e.timeLabel, priceLabel: e.priceLabel,
       layer: "explore",
+      coordinateAccuracy: e.coordinateAccuracy || "approximate",
+      detailPath: e.detailPath || null,
+      detailLabel: e.detailLabel || "View details",
     };
     const p = peopleItems.find((i) => i.id === selectedId);
     if (p) return {
       id: p.id, title: p.title, subtitle: p.creatorName, category: p.category,
       locationLabel: p.locationLabel, timeLabel: p.timeLabel, priceLabel: p.priceLabel,
       layer: "people",
+      coordinateAccuracy: p.coordinateAccuracy || "approximate",
+      detailPath: p.detailPath || null,
+      detailLabel: p.detailLabel || "View details",
     };
     return null;
   })();
@@ -192,12 +277,8 @@ export default function GlobalMapView({ open, onClose }: Props) {
   }, []);
 
   const handleViewDetail = useCallback(() => {
-    if (!selectedDetail) return;
-    if (selectedDetail.layer === "people") {
-      router.push(`/dashboard/people`);
-    } else {
-      router.push(`/dashboard`);
-    }
+    if (!selectedDetail?.detailPath) return;
+    router.push(selectedDetail.detailPath);
     onClose();
   }, [selectedDetail, router, onClose]);
 
@@ -372,6 +453,15 @@ export default function GlobalMapView({ open, onClose }: Props) {
                     {selectedDetail.category}
                   </span>
                 )}
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset ${
+                    selectedDetail.coordinateAccuracy === "precise"
+                      ? "bg-emerald-500/16 text-emerald-200 ring-emerald-400/25"
+                      : "bg-amber-500/14 text-amber-100 ring-amber-400/20"
+                  }`}
+                >
+                  {selectedDetail.coordinateAccuracy === "precise" ? "Precise pin" : "Approx area"}
+                </span>
               </div>
 
               {/* Title + subtitle */}
@@ -400,14 +490,21 @@ export default function GlobalMapView({ open, onClose }: Props) {
                 )}
               </div>
 
+              {selectedDetail.coordinateAccuracy === "approximate" ? (
+                <p className="mt-3 text-xs leading-5 text-amber-100/85">
+                  This pin represents a shared area or city, not an exact street-level address.
+                </p>
+              ) : null}
+
               {/* CTA */}
               <div className="mt-5 flex gap-3">
                 <button
                   type="button"
                   onClick={handleViewDetail}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                  disabled={!selectedDetail.detailPath}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  View details
+                  {selectedDetail.detailLabel}
                   <ExternalLink className="h-3.5 w-3.5 opacity-75" />
                 </button>
                 <button

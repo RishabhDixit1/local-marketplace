@@ -3,6 +3,8 @@ export type Coordinates = {
   longitude: number;
 };
 
+export type CoordinateAccuracy = "precise" | "approximate";
+
 export type BrowserCoordinateStatus = "idle" | "locating" | "ready" | "denied" | "unsupported" | "error";
 
 const EARTH_RADIUS_KM = 6371;
@@ -78,10 +80,26 @@ export const resolveCoordinates = (params: {
   location?: string | null;
   seed?: string;
 }) => {
-  return (
-    getCoordinatesFromRow(params.row) ||
-    inferCoordinatesFromLocation(params.location, params.seed || "")
-  );
+  return resolveCoordinatesWithAccuracy(params).coordinates;
+};
+
+export const resolveCoordinatesWithAccuracy = (params: {
+  row?: Record<string, unknown> | null;
+  location?: string | null;
+  seed?: string;
+}): { coordinates: Coordinates; accuracy: CoordinateAccuracy } => {
+  const explicitCoordinates = getCoordinatesFromRow(params.row);
+  if (explicitCoordinates) {
+    return {
+      coordinates: explicitCoordinates,
+      accuracy: "precise",
+    };
+  }
+
+  return {
+    coordinates: inferCoordinatesFromLocation(params.location, params.seed || ""),
+    accuracy: "approximate",
+  };
 };
 
 export const haversineDistanceKm = (from: Coordinates, to: Coordinates) => {

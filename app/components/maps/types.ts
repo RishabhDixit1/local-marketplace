@@ -1,3 +1,5 @@
+import type { CoordinateAccuracy } from "@/lib/geo";
+
 export type MarketplaceMapItem = {
   id: string;
   title: string;
@@ -9,6 +11,9 @@ export type MarketplaceMapItem = {
   timeLabel?: string;
   priceLabel?: string;
   urgent?: boolean;
+  coordinateAccuracy?: CoordinateAccuracy;
+  detailPath?: string | null;
+  detailLabel?: string | null;
 };
 
 export type RealtimePinPhase = "entering" | "stable" | "exiting";
