@@ -226,6 +226,6 @@ Optional forwarding env vars:
 
 The project is deployed on Vercel:https://local-marketplace-eta.vercel.app/
 
-- Production URL: https://<your-serviq-domain>
+- Production URL: https://https://local-marketplace-eta.vercel.app/
 
 For preview/production rollouts, use standard Vercel workflows connected to this GitHub repo.
