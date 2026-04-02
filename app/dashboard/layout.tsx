@@ -117,6 +117,10 @@ function DashboardShell({
       : "/dashboard/profile";
   const desktopNavCollapsed = desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
   const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
+  const hideFloatingQuickActions =
+    pathname.startsWith("/dashboard/chat") || pathname.startsWith("/dashboard/create_post");
+  const shellIconButtonClassName =
+    "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:rounded-lg";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -322,6 +326,17 @@ function DashboardShell({
     };
   }, [accessToken, authReady, shellEnhancementsReady]);
 
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setShowUserMenu(false);
+      setOpenQuickActions(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [pathname]);
+
   if (!authReady) {
     return (
       <div className="min-h-screen grid place-items-center bg-[var(--surface-app)]">
@@ -357,7 +372,11 @@ function DashboardShell({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setShowGlobalMap(true)}
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setOpenQuickActions(false);
+                    setShowGlobalMap(true);
+                  }}
                   aria-label="Open map view"
                   title="Map view"
                   className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
@@ -468,9 +487,12 @@ function DashboardShell({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-            <div className="h-16 px-4 sm:px-6 lg:px-8 flex items-center gap-3">
-              <div className="relative flex items-center gap-3 min-w-0">
+          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/92 shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] backdrop-blur-xl">
+            <div
+              className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 lg:px-8"
+              style={{ paddingTop: "env(safe-area-inset-top)" }}
+            >
+              <div className="relative flex min-w-0 shrink-0 items-center gap-3">
                 {/* Mobile (xs): logo shortcut to Welcome */}
                 <div className="sm:hidden">
                   <ServiQLogo markOnly href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
@@ -485,14 +507,18 @@ function DashboardShell({
                 <DashboardPromptBar placement="header" />
               </div>
 
-              <div className="ml-auto flex shrink-0 items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {/* Map icon — visible on all screen sizes */}
                 <button
                   type="button"
-                  onClick={() => setShowGlobalMap(true)}
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setOpenQuickActions(false);
+                    setShowGlobalMap(true);
+                  }}
                   aria-label="Open map view"
                   title="Map view"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className={shellIconButtonClassName}
                 >
                   <Map className="w-4 h-4" />
                 </button>
@@ -502,7 +528,7 @@ function DashboardShell({
                   onClick={openCart}
                   aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "Open cart"}
                   title="Cart"
-                  className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className={`relative ${shellIconButtonClassName}`}
                 >
                   <ShoppingBag className="w-4 h-4" />
                   {cartCount > 0 && (
@@ -516,14 +542,17 @@ function DashboardShell({
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowUserMenu((current) => !current)}
+                    onClick={() => {
+                      setOpenQuickActions(false);
+                      setShowUserMenu((current) => !current);
+                    }}
                     aria-label="Open account menu"
                     aria-expanded={showUserMenu}
                     title="Account"
-                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-white text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 ${
+                    className={`${shellIconButtonClassName} ${
                       showUserMenu
                         ? "border-[var(--brand-500)]/60 text-[var(--brand-700)]"
-                        : "border-slate-200 hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                        : ""
                     }`}
                   >
                     <User className="w-4 h-4" />
@@ -534,24 +563,24 @@ function DashboardShell({
                       <button
                         type="button"
                         onClick={() => setShowUserMenu(false)}
-                        className="fixed inset-0 z-[1250]"
+                        className="fixed inset-0 z-[1250] bg-slate-950/10 md:bg-transparent"
                         aria-hidden
                       />
-                      <div className="absolute right-0 top-full z-[1251] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15">
-                        <div className="border-b border-slate-100 px-4 py-3">
+                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[1251] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:absolute md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl md:inset-x-auto">
+                        <div className="border-b border-slate-100 px-4 py-3.5">
                           <p className="truncate text-sm font-bold text-slate-900">
                             {profile?.full_name || profile?.name || appName}
                           </p>
                           <p className="mt-0.5 truncate text-xs text-slate-500">ServiQ account</p>
                         </div>
-                        <div className="p-1.5">
+                        <div className="p-2">
                           <button
                             type="button"
                             onClick={() => {
                               setShowUserMenu(false);
                               router.push("/dashboard/saved");
                             }}
-                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
                             Saved
@@ -562,7 +591,7 @@ function DashboardShell({
                               setShowUserMenu(false);
                               router.push(myProfileHref);
                             }}
-                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             <User className="h-4 w-4 shrink-0 text-slate-400" />
                             View Profile
@@ -573,7 +602,7 @@ function DashboardShell({
                               setShowUserMenu(false);
                               router.push("/dashboard/settings");
                             }}
-                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                           >
                             <Settings className="h-4 w-4 shrink-0 text-slate-400" />
                             Settings
@@ -585,7 +614,7 @@ function DashboardShell({
                               setShowUserMenu(false);
                               setShowLogoutConfirm(true);
                             }}
-                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
                           >
                             <LogOut className="h-4 w-4 shrink-0" />
                             Logout
@@ -598,13 +627,13 @@ function DashboardShell({
               </div>
             </div>
             {showPrompt ? (
-              <div className="border-t border-slate-200/80 px-4 pb-3 pt-3 md:hidden">
+              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 md:hidden">
                 <DashboardPromptBar placement="header" />
               </div>
             ) : null}
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:py-8 md:pb-8">
+          <main className="flex-1 px-3 pt-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 md:py-8 md:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">Startup schema checks need admin action</p>
@@ -631,13 +660,19 @@ function DashboardShell({
         </div>
       </div>
 
-      {!pathname.startsWith("/dashboard/chat") && !pathname.startsWith("/dashboard/create_post") && (
+      {!hideFloatingQuickActions && (
         <>
           <button
             type="button"
-            onClick={() => setOpenQuickActions((current) => !current)}
+            onClick={() => {
+              setShowUserMenu(false);
+              setOpenQuickActions((current) => !current);
+            }}
             aria-label="Open quick actions"
-            className="fixed bottom-[5.25rem] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6"
+            aria-expanded={openQuickActions}
+            className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-[1.65rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 ${
+              openQuickActions ? "rotate-45 bg-[var(--brand-700)]" : ""
+            }`}
           >
             <Plus className="h-6 w-6" />
           </button>
@@ -648,16 +683,20 @@ function DashboardShell({
                 type="button"
                 onClick={() => setOpenQuickActions(false)}
                 aria-hidden
-                className="fixed inset-0 z-[1098] bg-slate-950/10"
+                className="fixed inset-0 z-[1098] bg-slate-950/15"
               />
-              <div className="fixed bottom-[8.5rem] right-4 z-[1101] w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl md:bottom-24 md:right-6">
+              <div className="fixed inset-x-3 bottom-[calc(6.95rem+env(safe-area-inset-bottom))] z-[1101] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[220px] md:rounded-2xl md:p-2">
+                <div className="px-1 pb-2 md:hidden">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Quick actions</p>
+                  <p className="mt-1 text-sm text-slate-600">Publish or manage something fast from anywhere in the dashboard.</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
                     setOpenQuickActions(false);
                     router.push("/dashboard/provider/add-service");
                   }}
-                  className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:rounded-xl md:border-transparent md:py-2"
                 >
                   Add Service
                 </button>
@@ -667,7 +706,7 @@ function DashboardShell({
                     setOpenQuickActions(false);
                     router.push("/dashboard/provider/add-product");
                   }}
-                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
                   Add Product
                 </button>
@@ -677,7 +716,7 @@ function DashboardShell({
                     setOpenQuickActions(false);
                     setOpenCreatePost(true);
                   }}
-                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
                   Post Requirement
                 </button>
@@ -687,7 +726,7 @@ function DashboardShell({
                     setOpenQuickActions(false);
                     router.push("/dashboard/launchpad");
                   }}
-                  className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
                   Set Up Business
                 </button>
@@ -717,39 +756,40 @@ function DashboardShell({
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-[1200] flex items-stretch border-t border-slate-200 bg-white/95 backdrop-blur-md"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="md:hidden fixed inset-x-0 bottom-0 z-[1200] border-t border-slate-200/90 bg-white/95 shadow-[0_-18px_44px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl"
         aria-label="Main navigation"
       >
-        {navigationTabs.map((tab) => {
-          const isActive = pathname === tab.path;
-          const Icon = tab.icon;
-          const isChatTab = tab.path === "/dashboard/chat";
-          return (
-            <Link
-              key={tab.path}
-              href={tab.path}
-              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors ${
-                isActive ? "text-[var(--brand-700)]" : "text-slate-500"
-              }`}
-              aria-label={tab.name}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <span className="relative">
-                <Icon className="h-5 w-5" />
-                {isChatTab && chatBadgeLabel ? (
-                  <span className="absolute -right-2 -top-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-0.5 py-px text-[9px] font-bold leading-none text-white ring-1 ring-white">
-                    {chatBadgeLabel}
-                  </span>
-                ) : null}
-              </span>
-              <span>{tab.name}</span>
-              {isActive ? (
-                <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-t-full bg-[var(--brand-700)]" />
-              ) : null}
-            </Link>
-          );
-        })}
+        <div className="grid grid-cols-5 gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]">
+          {navigationTabs.map((tab) => {
+            const isActive = pathname === tab.path;
+            const Icon = tab.icon;
+            const isChatTab = tab.path === "/dashboard/chat";
+            return (
+              <Link
+                key={tab.path}
+                href={tab.path}
+                className={`relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+                  isActive
+                    ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+                aria-label={tab.name}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <span className="relative">
+                  <Icon className="h-5 w-5" />
+                  {isChatTab && chatBadgeLabel ? (
+                    <span className="absolute -right-2 -top-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-0.5 py-px text-[9px] font-bold leading-none text-white ring-1 ring-white">
+                      {chatBadgeLabel}
+                    </span>
+                  ) : null}
+                </span>
+                <span>{tab.name}</span>
+                {isActive ? <span className="absolute top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--brand-600)]" /> : null}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
 

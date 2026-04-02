@@ -610,7 +610,7 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                 <Bell className="h-5 w-5 text-slate-400" />
               </div>
-              <p className="text-sm font-semibold text-slate-700">You're all caught up</p>
+              <p className="text-sm font-semibold text-slate-700">You&apos;re all caught up</p>
               <p className="text-xs text-slate-400 max-w-[18rem]">
                 New alerts appear here for chats, orders, reviews, connection requests, and Live Talk updates.
               </p>
@@ -697,12 +697,12 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
         ref={triggerRef}
         onClick={togglePanel}
         disabled={!enabled}
-        className="relative p-2 rounded-xl hover:bg-slate-100 transition-colors disabled:cursor-wait disabled:opacity-70"
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:cursor-wait disabled:opacity-70 sm:h-8 sm:w-8 sm:rounded-lg"
         aria-label="Open notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
-        <Bell className="w-5 h-5 text-slate-600" />
+        <Bell className="w-5 h-5 text-current" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full flex items-center justify-center text-white text-[11px] font-bold leading-none">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -729,7 +729,7 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
           <div
             role="alert"
             aria-live="polite"
-            className="fixed bottom-5 right-5 z-[1500] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:w-80"
+            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[1500] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
           >
             <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}>
               {(() => {

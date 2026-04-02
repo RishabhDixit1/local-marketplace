@@ -158,9 +158,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           event.preventDefault();
           void runSubmit();
         }}
-        className="w-full max-w-[760px]"
+        className="w-full max-w-none md:max-w-[760px]"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div
             className={`group relative min-w-0 flex-1 overflow-hidden rounded-2xl border bg-white transition-all duration-250 ${
               focused
@@ -176,17 +176,17 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder={effectivePrompt.placeholder}
-              className="h-10 w-full bg-transparent px-9 pr-16 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
+              className="h-11 w-full bg-transparent px-9 pr-14 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:h-10 sm:pr-16"
               aria-label="Dashboard prompt"
             />
 
             <button
               type="submit"
               disabled={submitting}
-              className="absolute right-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center gap-1 rounded-full bg-slate-900 px-2.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+              className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-full bg-slate-900 px-2.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
             >
               <Sparkles size={11} />
-              <span className="hidden lg:inline">{submitting ? "Working..." : "Search"}</span>
+              <span className="hidden sm:inline lg:inline">{submitting ? "Working..." : "Search"}</span>
             </button>
           </div>
 
