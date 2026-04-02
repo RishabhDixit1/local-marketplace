@@ -340,14 +340,6 @@ export default function FeedCard({
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => void onPrimaryAction("view_profile")}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-            aria-label={`View ${item.displayCreator} profile`}
-          >
-            Profile
-          </button>
         </div>
       </div>
 

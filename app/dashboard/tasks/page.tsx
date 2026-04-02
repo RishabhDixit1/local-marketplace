@@ -96,7 +96,7 @@ import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/
 
 type RealtimeState = "connecting" | "live" | "offline";
 type TaskSortOption = "updated" | "newest" | "oldest";
-type TaskViewTab = "inbox" | "saved" | "in-progress" | "completed" | "cancelled";
+type TaskViewTab = "inbox" | "in-progress" | "completed" | "cancelled";
 type InboxHelpRequest = {
   id: string;
   title: string | null;
@@ -470,11 +470,17 @@ const isHistoryTask = (task: OperationalTask) => {
   return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
 };
 
+const isActiveTaskStatus = (status: CanonicalOrderStatus) =>
+  status === "open" ||
+  status === "new_lead" ||
+  status === "quoted" ||
+  status === "accepted" ||
+  status === "in_progress";
+
 const resolveTaskViewForStatus = (status: CanonicalOrderStatus): TaskViewTab => {
   if (status === "completed" || status === "closed") return "completed";
   if (status === "cancelled" || status === "rejected") return "cancelled";
-  if (status === "accepted" || status === "in_progress") return "in-progress";
-  return "saved";
+  return "in-progress";
 };
 
 export default function TasksPage() {
@@ -496,6 +502,8 @@ export default function TasksPage() {
     if (typeof window === "undefined") return "in-progress";
     const tab = new URLSearchParams(window.location.search).get("tab");
     if (tab === "inbox") return "inbox";
+    if (tab === "completed") return "completed";
+    if (tab === "cancelled") return "cancelled";
     return "in-progress";
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -1226,19 +1234,11 @@ export default function TasksPage() {
         count: inboxMatches.length,
       },
       {
-        value: "saved" as const,
-        label: "Saved",
-        count: filteredTasks.filter((task) => {
-          const canonical = getCanonicalTaskStatus(task);
-          return canonical === "open" || canonical === "new_lead" || canonical === "quoted";
-        }).length,
-      },
-      {
         value: "in-progress" as const,
-        label: "In Progress",
+        label: "Active",
         count: filteredTasks.filter((task) => {
           const canonical = getCanonicalTaskStatus(task);
-          return canonical === "accepted" || canonical === "in_progress";
+          return isActiveTaskStatus(canonical);
         }).length,
       },
       {
@@ -1267,13 +1267,6 @@ export default function TasksPage() {
       return [] as OperationalTask[];
     }
 
-    if (selectedTaskView === "saved") {
-      return filteredTasks.filter((task) => {
-        const canonical = getCanonicalTaskStatus(task);
-        return canonical === "open" || canonical === "new_lead" || canonical === "quoted";
-      });
-    }
-
     if (selectedTaskView === "completed") {
       return filteredTasks.filter((task) => {
         const canonical = getCanonicalTaskStatus(task);
@@ -1290,7 +1283,7 @@ export default function TasksPage() {
 
     return filteredTasks.filter((task) => {
       const canonical = getCanonicalTaskStatus(task);
-      return canonical === "accepted" || canonical === "in_progress";
+      return isActiveTaskStatus(canonical);
     });
   }, [filteredTasks, selectedTaskView]);
 
@@ -2110,7 +2103,7 @@ export default function TasksPage() {
       setInboxMatches((current) => current.filter((item) => item.id !== matchItem.id));
       setNotice({
         kind: "success",
-        message: `You accepted "${matchItem.help_requests?.title || "the request"}". It's now in your In Progress tab.`,
+        message: `You accepted "${matchItem.help_requests?.title || "the request"}". It's now in your Active tab.`,
       });
       setSelectedTaskView("in-progress");
       startTransition(() => {
@@ -3252,24 +3245,20 @@ export default function TasksPage() {
                 <h2 className="text-2xl font-semibold text-slate-950">
                   {selectedTaskView === "inbox"
                     ? "Nearby Requests"
-                    : selectedTaskView === "saved"
-                    ? "Saved requests"
                     : selectedTaskView === "cancelled"
                       ? "Cancelled requests"
                     : selectedTaskView === "completed"
                       ? "Completed requests"
-                      : "In progress"}
+                      : "Active requests"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedTaskView === "inbox"
                     ? "Help requests matched to your profile. Accept one to get started."
-                    : selectedTaskView === "saved"
-                    ? "Open requests that are still waiting for action."
                     : selectedTaskView === "cancelled"
                       ? "Requests that were cancelled or declined and are no longer active."
                     : selectedTaskView === "completed"
                       ? "Completed work that has already been closed out."
-                      : "Accepted work that is currently active and needs follow-through."}
+                      : "Open requests, quotes, and accepted work that still need action or follow-through."}
                 </p>
               </div>
               <p className="text-sm text-slate-500">
@@ -3418,7 +3407,11 @@ export default function TasksPage() {
                   </div>
                 ) : null}
                 {visibleTasks.map((task) =>
-                  selectedTaskView === "in-progress"
+                  selectedTaskView === "in-progress" &&
+                  (() => {
+                    const canonical = getCanonicalTaskStatus(task);
+                    return canonical === "accepted" || canonical === "in_progress";
+                  })()
                     ? renderTrackedHelpRequestRow(task)
                     : selectedTaskView === "completed"
                       ? renderCompletedTaskRow(task)

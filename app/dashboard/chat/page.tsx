@@ -6,6 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
@@ -19,6 +20,7 @@ import {
   Receipt,
   Search,
   Send,
+  Smile,
   Sparkles,
   Users,
   Wifi,
@@ -92,6 +94,63 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
+const NATIVE_EMOJI_KEYBOARD_QUERY = "(max-width: 1023px)";
+const CHAT_EMOTICONS = [
+  { label: "Smile", value: "😊" },
+  { label: "Big smile", value: "😁" },
+  { label: "Laugh", value: "😂" },
+  { label: "Rolling laughter", value: "🤣" },
+  { label: "Wink", value: "😉" },
+  { label: "Warm smile", value: "☺️" },
+  { label: "Blush", value: "😊" },
+  { label: "Happy tears", value: "🥹" },
+  { label: "Love", value: "😍" },
+  { label: "Heart eyes", value: "🥰" },
+  { label: "Kiss", value: "😘" },
+  { label: "Cool", value: "😎" },
+  { label: "Thinking", value: "🤔" },
+  { label: "Mind blown", value: "🤯" },
+  { label: "Shocked", value: "😮" },
+  { label: "Oops", value: "😅" },
+  { label: "Sad", value: "😔" },
+  { label: "Crying", value: "😢" },
+  { label: "Relieved", value: "😌" },
+  { label: "Sleepy", value: "😴" },
+  { label: "Party", value: "🎉" },
+  { label: "Celebrate", value: "🎉" },
+  { label: "Celebrate more", value: "🥳" },
+  { label: "Sparkles", value: "✨" },
+  { label: "Fire", value: "🔥" },
+  { label: "Star", value: "🌟" },
+  { label: "Hundred", value: "💯" },
+  { label: "Thumbs up", value: "👍" },
+  { label: "Thumbs down", value: "👎" },
+  { label: "Clap", value: "👏" },
+  { label: "Raised hands", value: "🙌" },
+  { label: "Thanks", value: "🙏" },
+  { label: "Handshake", value: "🤝" },
+  { label: "Wave", value: "👋" },
+  { label: "Flex", value: "💪" },
+  { label: "Heart", value: "❤️" },
+  { label: "Pink heart", value: "🩷" },
+  { label: "Blue heart", value: "💙" },
+  { label: "Sparkle heart", value: "💖" },
+  { label: "Broken heart", value: "💔" },
+  { label: "Check mark", value: "✅" },
+  { label: "Idea", value: "💡" },
+  { label: "Rocket", value: "🚀" },
+  { label: "Trophy", value: "🏆" },
+  { label: "Coffee", value: "☕" },
+  { label: "Camera", value: "📸" },
+  { label: "Music", value: "🎵" },
+  { label: "Gift", value: "🎁" },
+  { label: "Smiley emoticon", value: ":)" },
+  { label: "Grin emoticon", value: ":D" },
+  { label: "Wink emoticon", value: ";)" },
+  { label: "Love emoticon", value: "<3" },
+  { label: "Unsure emoticon", value: ":/" },
+  { label: "Sad emoticon", value: ":(" },
+] as const;
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -265,6 +324,8 @@ export default function ChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showEmoticonPicker, setShowEmoticonPicker] = useState(false);
+  const [preferNativeEmojiKeyboard, setPreferNativeEmojiKeyboard] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [presenceConnection, setPresenceConnection] = useState<ChannelHealth>("connecting");
@@ -276,8 +337,10 @@ export default function ChatPage() {
   const [liveTalkBusy, setLiveTalkBusy] = useState(false);
 
   const selectedChatRef = useRef<string | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const messageSelectionRef = useRef({ start: input.length, end: input.length });
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const typingChannelRef = useRef<RealtimeChannel | null>(null);
   const localTypingRef = useRef(false);
@@ -309,6 +372,52 @@ export default function ChatPage() {
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia(NATIVE_EMOJI_KEYBOARD_QUERY);
+    const syncNativeEmojiKeyboard = () => {
+      setPreferNativeEmojiKeyboard(mediaQuery.matches);
+    };
+
+    syncNativeEmojiKeyboard();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncNativeEmojiKeyboard);
+      return () => mediaQuery.removeEventListener("change", syncNativeEmojiKeyboard);
+    }
+
+    mediaQuery.addListener(syncNativeEmojiKeyboard);
+    return () => mediaQuery.removeListener(syncNativeEmojiKeyboard);
+  }, []);
+
+  useEffect(() => {
+    setShowEmoticonPicker(false);
+  }, [preferNativeEmojiKeyboard, selectedChat]);
+
+  useEffect(() => {
+    if (!showEmoticonPicker) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (composerRef.current?.contains(event.target as Node)) return;
+      setShowEmoticonPicker(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowEmoticonPicker(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showEmoticonPicker]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -350,6 +459,37 @@ export default function ChatPage() {
     },
     [userId]
   );
+
+  const resizeMessageInput = useCallback((element: HTMLTextAreaElement | null = messageInputRef.current) => {
+    if (!element) return;
+    element.style.height = "44px";
+    element.style.height = `${Math.min(element.scrollHeight, 150)}px`;
+  }, []);
+
+  const focusMessageInput = useCallback((moveCaretToEnd = false) => {
+    const element = messageInputRef.current;
+    if (!element) return;
+
+    element.focus();
+    if (moveCaretToEnd) {
+      const caretPosition = element.value.length;
+      element.setSelectionRange(caretPosition, caretPosition);
+      messageSelectionRef.current = {
+        start: caretPosition,
+        end: caretPosition,
+      };
+    }
+    resizeMessageInput(element);
+  }, [resizeMessageInput]);
+
+  const syncMessageSelection = useCallback((element: HTMLTextAreaElement | null = messageInputRef.current) => {
+    if (!element) return;
+
+    messageSelectionRef.current = {
+      start: element.selectionStart ?? element.value.length,
+      end: element.selectionEnd ?? element.value.length,
+    };
+  }, []);
 
   const loadConversations = useCallback(
     async (soft = false) => {
@@ -961,6 +1101,16 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUserId]);
 
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      resizeMessageInput();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [resizeMessageInput, selectedChat]);
+
   const sendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || !selectedChat || sending || !userId) return;
@@ -976,6 +1126,7 @@ export default function ChatPage() {
 
     setSending(true);
     setChatError(null);
+    setShowEmoticonPicker(false);
 
     const optimisticId = `local-${Date.now()}`;
     const optimisticMessage: Message = {
@@ -988,9 +1139,8 @@ export default function ChatPage() {
 
     setMessages((previous) => [...previous, optimisticMessage]);
     setInput("");
-    if (messageInputRef.current) {
-      messageInputRef.current.style.height = "44px";
-    }
+    messageSelectionRef.current = { start: 0, end: 0 };
+    resizeMessageInput();
 
     let insertedMessage: Message | null = null;
 
@@ -1011,6 +1161,7 @@ export default function ChatPage() {
     } catch (error) {
       setMessages((previous) => previous.filter((message) => message.id !== optimisticId));
       setInput(trimmed);
+      messageSelectionRef.current = { start: trimmed.length, end: trimmed.length };
       setChatError(`Failed to send message: ${error instanceof Error ? error.message : "unknown error"}`);
       setSending(false);
       return;
@@ -1052,7 +1203,7 @@ export default function ChatPage() {
     setSending(false);
   };
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = useCallback((value: string) => {
     setInput(value);
     if (!selectedChatRef.current || !userId) return;
 
@@ -1076,7 +1227,39 @@ export default function ChatPage() {
       localTypingRef.current = false;
       sendTypingEvent(false);
     }, 1400);
-  };
+  }, [sendTypingEvent, userId]);
+
+  const insertEmoticon = useCallback((emoticon: string) => {
+    const element = messageInputRef.current;
+    const selectionStart = element?.selectionStart ?? messageSelectionRef.current.start;
+    const selectionEnd = element?.selectionEnd ?? messageSelectionRef.current.end;
+    const nextMessage = insertTextAtSelection(input, emoticon, selectionStart, selectionEnd);
+
+    handleInputChange(nextMessage.value);
+    messageSelectionRef.current = {
+      start: nextMessage.caretPosition,
+      end: nextMessage.caretPosition,
+    };
+    setShowEmoticonPicker(false);
+
+    window.requestAnimationFrame(() => {
+      const nextElement = messageInputRef.current;
+      if (!nextElement) return;
+      nextElement.focus();
+      nextElement.setSelectionRange(nextMessage.caretPosition, nextMessage.caretPosition);
+      resizeMessageInput(nextElement);
+    });
+  }, [handleInputChange, input, resizeMessageInput]);
+
+  const handleEmojiButtonClick = useCallback(() => {
+    if (preferNativeEmojiKeyboard) {
+      setShowEmoticonPicker(false);
+      focusMessageInput(true);
+      return;
+    }
+
+    setShowEmoticonPicker((current) => !current);
+  }, [focusMessageInput, preferNativeEmojiKeyboard]);
 
   const filteredConversations = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
@@ -1734,26 +1917,84 @@ export default function ChatPage() {
               </div>
 
               <footer className="border-t border-slate-200/80 bg-white px-4 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-4 sm:px-6">
-                <div className="rounded-2xl border border-slate-300 bg-slate-50 p-2">
+                <div ref={composerRef} className="relative rounded-2xl border border-slate-300 bg-slate-50 p-2">
+                  {showEmoticonPicker && !preferNativeEmojiKeyboard && (
+                    <div className="absolute bottom-full left-2 right-2 z-20 mb-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Add emoji
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmoticonPicker(false)}
+                          className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <div className="max-h-[min(18rem,55vh)] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                          {CHAT_EMOTICONS.map((option) => (
+                            <button
+                              key={option.label}
+                              type="button"
+                              onClick={() => insertEmoticon(option.value)}
+                              className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                              aria-label={`Insert ${option.label}`}
+                              title={option.label}
+                            >
+                              {option.value}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-end gap-2">
+                    <button
+                      type="button"
+                      onPointerDown={(event) => {
+                        if (!preferNativeEmojiKeyboard) return;
+                        event.preventDefault();
+                        focusMessageInput(true);
+                      }}
+                      onClick={handleEmojiButtonClick}
+                      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-bold transition ${
+                        showEmoticonPicker && !preferNativeEmojiKeyboard
+                          ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                          : "border-slate-300 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
+                      }`}
+                      aria-label={preferNativeEmojiKeyboard ? "Use device keyboard for emoji" : "Open emoji picker"}
+                      aria-expanded={preferNativeEmojiKeyboard ? undefined : showEmoticonPicker}
+                      aria-haspopup={preferNativeEmojiKeyboard ? undefined : "dialog"}
+                    >
+                      <Smile className="h-5 w-5" />
+                    </button>
                     <textarea
                       ref={messageInputRef}
                       value={input}
                       onChange={(event) => {
                         handleInputChange(event.target.value);
-                        const element = event.currentTarget;
-                        element.style.height = "44px";
-                        element.style.height = `${Math.min(element.scrollHeight, 150)}px`;
+                        resizeMessageInput(event.currentTarget);
+                        syncMessageSelection(event.currentTarget);
                       }}
+                      onClick={(event) => syncMessageSelection(event.currentTarget)}
                       onKeyDown={(event) => {
+                        syncMessageSelection(event.currentTarget);
                         if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
                           void sendMessage();
                         }
+                        if (event.key === "Escape" && showEmoticonPicker) {
+                          setShowEmoticonPicker(false);
+                        }
                       }}
+                      onKeyUp={(event) => syncMessageSelection(event.currentTarget)}
+                      onSelect={(event) => syncMessageSelection(event.currentTarget)}
                       placeholder="Write a message..."
                       rows={1}
                       maxLength={1200}
+                      enterKeyHint="send"
                       className="h-11 max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
                     />
                     <button
@@ -1775,7 +2016,11 @@ export default function ChatPage() {
                     )}
                     {lastRealtimeLabel}
                   </p>
-                  <p className="text-slate-400">Press Enter to send, Shift + Enter for newline.</p>
+                  <p className="text-slate-400">
+                    {preferNativeEmojiKeyboard
+                      ? "Use your device keyboard for emojis."
+                      : "Press Enter to send, Shift + Enter for newline, or use the emoji picker."}
+                  </p>
                 </div>
               </footer>
             </>
