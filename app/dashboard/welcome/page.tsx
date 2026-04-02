@@ -24,7 +24,7 @@ import {
   syncPendingFeedCardSaves,
 } from "@/lib/feedCardSavesClient";
 import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
-import { getProfileRoleFamily } from "@/lib/profile/utils";
+import { buildPublicProfilePath, getProfileRoleFamily } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
 import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
@@ -412,7 +412,10 @@ export default function WelcomePage() {
         audienceName: ownerLabel,
         audienceMeta: `${ownerLabel} is in your accepted network`,
         networkActionLabel: "Open profile",
-        networkActionPath: routes.people,
+        networkActionPath:
+          card.ownerId && !card.ownerId.startsWith("demo-")
+            ? buildPublicProfilePath({ id: card.ownerId, name: ownerLabel }) || routes.people
+            : routes.people,
         engagementLabel: engagementParts.length > 0 ? engagementParts.join(" • ") : "New in your live feed",
         surfaceReason: card.isDemo
           ? "Preview card while your connected marketplace fills in."
@@ -615,8 +618,15 @@ export default function WelcomePage() {
         priceLabel: card.priceLabel,
         etaLabel: card.etaLabel,
         ownerLabel: card.ownerLabel,
+        ownerId: card.ownerId || null,
         audienceLabel: card.audienceLabel,
         audienceName: card.audienceName,
+        publicProfilePath: card.networkActionPath,
+        helpRequestId: card.helpRequestId || null,
+        acceptedProviderId: card.acceptedProviderId || null,
+        status: card.status || "open",
+        source: card.source || null,
+        avatarUrl: card.ownerAvatarUrl,
         tags: card.tags,
         image: card.image,
         signalLabel: card.signalLabel,

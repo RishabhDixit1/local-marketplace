@@ -23,7 +23,6 @@ import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
 import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
-  Bookmark,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
@@ -94,7 +93,8 @@ function DashboardShell({
   const pathname = usePathname();
   const router = useRouter();
   const { profile, loading: profileLoading } = useProfileContext();
-  const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(false);
+  const [desktopNavManuallyCollapsed, setDesktopNavManuallyCollapsed] = useState(false);
+  const [desktopNavAutoCollapsed, setDesktopNavAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [accessToken, setAccessToken] = useState("");
@@ -114,7 +114,27 @@ function DashboardShell({
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
+  const desktopNavCollapsed = desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
   const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 1023px)");
+    const syncDesktopNavCollapse = () => {
+      setDesktopNavAutoCollapsed(mediaQuery.matches);
+    };
+
+    syncDesktopNavCollapse();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncDesktopNavCollapse);
+      return () => mediaQuery.removeEventListener("change", syncDesktopNavCollapse);
+    }
+
+    mediaQuery.addListener(syncDesktopNavCollapse);
+    return () => mediaQuery.removeListener(syncDesktopNavCollapse);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -321,7 +341,7 @@ function DashboardShell({
       <div className="flex min-h-screen">
         <aside
           className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] md:transition-[width] md:duration-200 ${
-            desktopNavCollapsed ? "md:w-24" : "lg:w-72 md:w-24"
+            desktopNavCollapsed ? "md:w-24" : "md:w-72"
           }`}
         >
           <div className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}>
@@ -345,7 +365,7 @@ function DashboardShell({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDesktopNavCollapsed((current) => !current)}
+                  onClick={() => setDesktopNavManuallyCollapsed((current) => !current)}
                   className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
                   title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
@@ -503,14 +523,6 @@ function DashboardShell({
                         </button>
                         <button
                           type="button"
-                          onClick={() => { setShowUserMenu(false); router.push("/dashboard/saved"); }}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
-                          Saved
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => { setShowUserMenu(false); router.push("/dashboard/settings"); }}
                           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                         >
@@ -562,16 +574,6 @@ function DashboardShell({
                     </span>
                   )}
                 </button>
-                {/* Saved & Profile only visible on md+ — on mobile these live in the bottom nav */}
-                <Link
-                  href="/dashboard/saved"
-                  className="hidden md:inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-                  aria-label="Open saved posts"
-                  title="Saved posts"
-                >
-                  <Bookmark className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Saved</span>
-                </Link>
                 <AvailabilityToggle />
                 <NotificationCenter enabled={shellEnhancementsReady} />
                 <Link
