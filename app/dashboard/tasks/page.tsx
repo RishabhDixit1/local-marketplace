@@ -2131,7 +2131,7 @@ export default function TasksPage() {
   };
 
   const actionButtonClassName =
-    "inline-flex min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex min-h-[44px] sm:min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60";
   const subtleActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]`;
   const darkActionClassName = `${actionButtonClassName} bg-slate-900 text-white hover:bg-slate-800`;
   const successActionClassName = `${actionButtonClassName} border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`;
@@ -2436,7 +2436,7 @@ export default function TasksPage() {
             </span>
           </div>
 
-          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_220px]">
             <div className="min-w-0 space-y-3">
               <div className="flex min-w-0 items-start gap-3">
                 <Image
@@ -2511,7 +2511,7 @@ export default function TasksPage() {
               ) : null}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 lg:grid-cols-1">
               <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -3148,7 +3148,7 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {compactStats.map((stat) => (
               <div key={stat.label} className="rounded-[1rem] border border-slate-200 bg-white/92 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
@@ -3189,19 +3189,26 @@ export default function TasksPage() {
             className="space-y-5 rounded-[1.9rem] border border-white/70 bg-white/90 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:p-5"
           >
             <div className="space-y-4 border-b border-slate-200 pb-4">
-              <div className="-mx-4 flex items-end gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:gap-8 sm:px-0 sm:[scrollbar-width:auto]">
+              <div className="-mx-4 flex items-end gap-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:gap-6 sm:px-0 sm:[scrollbar-width:auto]">
                 {taskTabs.map((tab) => (
                   <button
                     key={tab.value}
                     type="button"
                     onClick={() => setSelectedTaskView(tab.value)}
-                    className={`inline-flex shrink-0 border-b-[3px] pb-4 text-base font-semibold transition ${
+                    className={`inline-flex shrink-0 border-b-[3px] pb-3 text-sm font-semibold transition sm:text-base sm:pb-4 ${
                       selectedTaskView === tab.value
                         ? "border-[#0a66c2] text-[#0a66c2]"
                         : "border-transparent text-slate-500 hover:text-slate-900"
                     }`}
                   >
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {tab.count > 0 && (
+                      <span className={`ml-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
+                        selectedTaskView === tab.value ? "bg-[#0a66c2]/15 text-[#0a66c2]" : "bg-slate-100 text-slate-600"
+                      }`}>
+                        {tab.count > 99 ? "99+" : tab.count}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -3218,19 +3225,19 @@ export default function TasksPage() {
                 </span>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                <label className="flex items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
-                  <Search className="h-4.5 w-4.5 text-slate-400" />
+              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_180px]">
+                <label className="flex items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-[var(--brand-500)]/45 focus-within:shadow-[0_0_0_4px_var(--brand-ring)]">
+                  <Search className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search by title, order ID, status, person, category, location, or tags"
+                    placeholder="Search by title, status, person…"
                     className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                   />
                 </label>
 
                 <label className="flex items-center gap-2 rounded-[1.2rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Sort</span>
+                  <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Sort</span>
                   <select value={sortBy} onChange={(event) => setSortBy(event.target.value as TaskSortOption)} className="w-full bg-transparent text-sm font-medium outline-none">
                     <option value="updated">Recently updated</option>
                     <option value="newest">Newest first</option>

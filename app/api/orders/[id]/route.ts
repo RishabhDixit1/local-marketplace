@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
-import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
+import type { CanonicalOrderStatus, OrderActorRole } from "@/lib/orderWorkflow";
+import { canTransitionOrderStatus } from "@/lib/orderWorkflow";
 import { sendOrderEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -23,7 +24,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { data, error } = await admin
     .from("orders")
-    .select("id,status,price,listing_type,consumer_id,provider_id,metadata,created_at,updated_at,service_listings(title,category),product_catalog(title,category)")
+    .select(`id,status,price,listing_type,consumer_id,provider_id,metadata,created_at,updated_at,
+      service_listings(title,category),
+      product_catalog(title,category),
+      consumer_profile:profiles!consumer_id(name:full_name,avatar_url),
+      provider_profile:profiles!provider_id(name:full_name,avatar_url)`)
     .eq("id", id)
     .single();
 
@@ -80,6 +85,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, message: "Access denied." }, { status: 403 });
   }
 
+  // Enforce role-based transition rules
+  const actor: OrderActorRole = ex.consumer_id === authResult.auth.userId ? "consumer" : "provider";
+  if (!canTransitionOrderStatus({ from: ex.status, to: status, actor })) {
+    return NextResponse.json(
+      { ok: false, code: "TRANSITION_DENIED", message: `Transition from '${ex.status}' to '${status}' is not allowed for role '${actor}'.` },
+      { status: 400 }
+    );
+  }
+
   const { error } = await admin
     .from("orders")
     .update({ status, updated_at: new Date().toISOString() })
@@ -87,31 +101,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
 
-  // Fire-and-forget email notification
+  // Fire-and-forget email notification (with error capture)
   void (async () => {
-    const itemTitle = (ex.listing_type === "service" ? ex.service_listings?.[0]?.title : ex.product_catalog?.[0]?.title)
-      ?? (ex.metadata?.title as string | undefined) ?? "Order";
+    try {
+      const itemTitle = (ex.listing_type === "service" ? ex.service_listings?.[0]?.title : ex.product_catalog?.[0]?.title)
+        ?? (ex.metadata?.title as string | undefined) ?? "Order";
 
-    const emailType =
-      status === "accepted" ? "accepted" :
-      status === "rejected" ? "rejected" :
-      status === "completed" ? "completed" :
-      status === "cancelled" ? "cancelled" : null;
+      const emailType =
+        status === "accepted" ? "accepted" :
+        status === "rejected" ? "rejected" :
+        status === "completed" ? "completed" :
+        status === "cancelled" ? "cancelled" : null;
 
-    if (!emailType) return;
+      if (!emailType) return;
 
-    // Fetch consumer email
-    const { data: consumerUser } = await admin.auth.admin.getUserById(ex.consumer_id);
-    const consumerEmail = consumerUser?.user?.email;
-    if (consumerEmail) {
-      void sendOrderEmail({
-        type: emailType,
-        to: consumerEmail,
-        recipientName: (consumerUser.user?.user_metadata?.name as string | undefined) ?? "there",
-        orderId: id,
-        itemTitle,
-        price: ex.price ?? undefined,
-      });
+      // Fetch consumer email
+      const { data: consumerUser } = await admin.auth.admin.getUserById(ex.consumer_id);
+      const consumerEmail = consumerUser?.user?.email;
+      if (consumerEmail) {
+        await sendOrderEmail({
+          type: emailType,
+          to: consumerEmail,
+          recipientName: (consumerUser.user?.user_metadata?.name as string | undefined) ?? "there",
+          orderId: id,
+          itemTitle,
+          price: ex.price ?? undefined,
+        });
+      }
+    } catch (err) {
+      console.error("[order-status-email] failed for order", id, err);
     }
   })();
 
