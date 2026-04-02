@@ -402,7 +402,7 @@ const loadTaskProfiles = async (profileIds: string[]) => {
 
 const getCanonicalTaskStatus = (task: OperationalTask) => {
   if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "open") {
-    return "open";
+    return "new_lead" as const;
   }
 
   if (task.source === "help_request" && (task.rawStatus || "").toLowerCase() === "accepted") {
@@ -1124,7 +1124,7 @@ export default function TasksPage() {
     () => ({
       awaitingAction: tasks.filter((task) => {
         const canonical = getCanonicalTaskStatus(task);
-        return canonical === "open" || canonical === "new_lead" || canonical === "quoted";
+        return canonical === "new_lead" || canonical === "quoted";
       }).length,
       active: tasks.filter((task) => getCanonicalTaskStatus(task) === "accepted").length,
       inProgress: tasks.filter((task) => getCanonicalTaskStatus(task) === "in_progress").length,
@@ -1775,7 +1775,7 @@ export default function TasksPage() {
       };
     }
 
-    if (canonical === "open" || canonical === "new_lead") {
+    if (canonical === "new_lead") {
       return task.type === "posted"
         ? { title: "Keep the request visible", helper: "Wait for the right provider or cancel if the need has changed." }
         : { title: "Review the request", helper: "Use chat and the workflow actions to move this work forward." };
