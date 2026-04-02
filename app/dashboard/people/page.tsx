@@ -34,6 +34,7 @@ import {
   distanceBetweenCoordinatesKm,
   getBrowserCoordinates,
   resolveCoordinates,
+  resolveCoordinatesWithAccuracy,
   type Coordinates,
 } from "@/lib/geo";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
@@ -43,6 +44,7 @@ import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/uti
 import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
+import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCardSkeleton from "./components/ProviderCardSkeleton";
 import type {
@@ -657,11 +659,12 @@ const createProviderCards = (params: {
         reviewCount: reviewsCount,
       });
 
-      const providerCoordinates = resolveCoordinates({
+      const coordinateMeta = resolveCoordinatesWithAccuracy({
         row: profile as unknown as Record<string, unknown>,
         location: profile.location || "",
         seed: profile.id,
       });
+      const providerCoordinates = coordinateMeta.coordinates;
       const distanceKm = distanceBetweenCoordinatesKm(viewerCoordinates, providerCoordinates);
 
       const online = typeof presence?.is_online === "boolean" ? presence.is_online : availability !== "offline";
@@ -813,6 +816,7 @@ const createProviderCards = (params: {
         joinedAt: profile.created_at || null,
         latitude: providerCoordinates.latitude,
         longitude: providerCoordinates.longitude,
+        coordinateAccuracy: coordinateMeta.accuracy,
         listingCount: servicesCount + productsCount,
         serviceCount: servicesCount,
         productCount: productsCount,
@@ -1722,6 +1726,33 @@ export default function PeoplePage() {
   );
   const activeProvider =
     visibleProviders.find((provider) => provider.id === activeProviderId) || visibleProviders[0] || null;
+  const visibleProviderMapItems = useMemo(
+    () =>
+      visibleProviders
+        .filter(
+          (provider) =>
+            typeof provider.latitude === "number" &&
+            Number.isFinite(provider.latitude) &&
+            typeof provider.longitude === "number" &&
+            Number.isFinite(provider.longitude)
+        )
+        .map((provider) => ({
+          id: provider.id,
+          title: provider.name,
+          lat: provider.latitude as number,
+          lng: provider.longitude as number,
+          creatorName: provider.role || undefined,
+          locationLabel:
+            provider.coordinateAccuracy === "approximate" && provider.location
+              ? `${provider.location} (approximate area)`
+              : provider.location,
+          category: provider.primarySkill || provider.role || undefined,
+          timeLabel: provider.responseMinutes > 0 ? `~${provider.responseMinutes} min reply` : undefined,
+          priceLabel: provider.minPriceLabel || undefined,
+          coordinateAccuracy: provider.coordinateAccuracy,
+        })),
+    [visibleProviders]
+  );
 
   return (
     <div
@@ -1835,6 +1866,15 @@ export default function PeoplePage() {
 
       <div className="min-w-0">
         <main className="space-y-6">
+          {visibleProviderMapItems.length > 0 ? (
+            <PeopleMapPanel
+              items={visibleProviderMapItems}
+              center={viewerCenter}
+              activeProvider={activeProvider}
+              onSelectProvider={jumpToProviderCard}
+            />
+          ) : null}
+
           {loading ? (
             <ProviderCardSkeleton count={8} />
           ) : !providers.length ? (

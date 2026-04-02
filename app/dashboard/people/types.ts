@@ -54,6 +54,7 @@ export type ProviderCard = {
   joinedAt: string | null;
   latitude: number | null;
   longitude: number | null;
+  coordinateAccuracy: "precise" | "approximate";
   listingCount: number;
   serviceCount: number;
   productCount: number;

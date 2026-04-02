@@ -48,6 +48,11 @@ type Props = {
   onClose: () => void;
 };
 
+type ViewerCenter = {
+  lat: number;
+  lng: number;
+};
+
 const INR = (value: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 
@@ -56,9 +61,23 @@ const buildExploreDetailPath = (item: MarketplaceFeedItem) =>
 
 // ── Lightweight fetch helpers ──────────────────────────────────────────────────
 
-async function fetchExploreItems(): Promise<MarketplaceMapItem[]> {
+const buildExploreFeedUrl = (viewerCenter?: ViewerCenter | null) => {
+  const params = new URLSearchParams({
+    lite: "1",
+    limit: "200",
+  });
+
+  if (viewerCenter) {
+    params.set("lat", viewerCenter.lat.toString());
+    params.set("lng", viewerCenter.lng.toString());
+  }
+
+  return `/api/community/feed?${params.toString()}`;
+};
+
+async function fetchExploreItems(viewerCenter?: ViewerCenter | null): Promise<MarketplaceMapItem[]> {
   try {
-    const res = await fetch("/api/community/feed?lite=1&limit=200", {
+    const res = await fetch(buildExploreFeedUrl(viewerCenter), {
       credentials: "include",
     });
     if (!res.ok) return [];
@@ -213,22 +232,44 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const [locating, setLocating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const hasFetched = useRef(false);
+  const refreshRequestRef = useRef(0);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // Fetch data on first open
-  useEffect(() => {
-    if (!open || hasFetched.current) return;
-    hasFetched.current = true;
-    void Promise.all([fetchExploreItems(), fetchPeopleItems(), getUserCenter()]).then(
-      ([explore, people, userCenter]) => {
-        setExploreItems(explore);
-        setPeopleItems(people);
-        if (userCenter) setCenter(userCenter);
-        setLoading(false);
+  const refreshMapData = useCallback(
+    async (options?: { viewerCenter?: ViewerCenter | null; preserveSelection?: boolean }) => {
+      const requestId = refreshRequestRef.current + 1;
+      refreshRequestRef.current = requestId;
+      setLoading(true);
+
+      if (!options?.preserveSelection) {
+        setSheetOpen(false);
+        setSelectedId(null);
       }
-    );
-  }, [open]);
+
+      const viewerCenter = options?.viewerCenter ?? (await getUserCenter());
+      const [explore, people] = await Promise.all([fetchExploreItems(viewerCenter), fetchPeopleItems()]);
+
+      if (refreshRequestRef.current !== requestId) {
+        return;
+      }
+
+      setExploreItems(explore);
+      setPeopleItems(people);
+      setCenter((current) => viewerCenter || current);
+      setLoading(false);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setSheetOpen(false);
+      setSelectedId(null);
+      return;
+    }
+
+    void refreshMapData();
+  }, [open, refreshMapData]);
 
   const visibleItems: MarketplaceMapItem[] = (() => {
     if (activeLayer === "explore") return exploreItems;
@@ -266,10 +307,15 @@ export default function GlobalMapView({ open, onClose }: Props) {
 
   const handleLocate = useCallback(async () => {
     setLocating(true);
-    const pos = await getUserCenter();
-    if (pos) setCenter(pos);
-    setLocating(false);
-  }, []);
+    try {
+      const pos = await getUserCenter();
+      if (pos) {
+        await refreshMapData({ viewerCenter: pos, preserveSelection: true });
+      }
+    } finally {
+      setLocating(false);
+    }
+  }, [refreshMapData]);
 
   const handleDismissSheet = useCallback(() => {
     setSheetOpen(false);
@@ -306,6 +352,12 @@ export default function GlobalMapView({ open, onClose }: Props) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open, sheetOpen, onClose, handleDismissSheet]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (visibleItems.some((item) => item.id === selectedId)) return;
+    handleDismissSheet();
+  }, [handleDismissSheet, selectedId, visibleItems]);
 
   if (!open) return null;
 
