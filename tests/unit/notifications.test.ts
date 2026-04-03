@@ -24,7 +24,7 @@ const baseNotification = (overrides: Partial<NotificationRow>): NotificationRow 
 describe("notifications", () => {
   it("builds demo notifications for the current user", () => {
     const rows = getDemoNotifications("user-123");
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(rows.every((row) => row.user_id === "user-123")).toBe(true);
     expect(rows[0].created_at <= rows[1].created_at).toBe(false);
   });
@@ -79,7 +79,7 @@ describe("notifications", () => {
       )
     ).toEqual({
       ctaLabel: "View matches",
-      href: "/dashboard?focus=help-1&source=notification",
+      href: "/dashboard/tasks?tab=inbox&focus=help-1&source=notification",
     });
   });
 
@@ -92,8 +92,8 @@ describe("notifications", () => {
         })
       )
     ).toEqual({
-      ctaLabel: "Open people",
-      href: "/dashboard/people?provider=provider-7&source=notification",
+      ctaLabel: "View request",
+      href: "/dashboard/people?panel=incoming&provider=provider-7&source=notification",
     });
 
     expect(
@@ -148,6 +148,7 @@ describe("notifications", () => {
     expect(getNotificationKind("order")).toBe("order");
     expect(getNotificationKind("message")).toBe("message");
     expect(getNotificationKind("review")).toBe("review");
+    expect(getNotificationKind("connection")).toBe("connection");
     expect(getNotificationKind("anything-else")).toBe("system");
     expect(getNotificationKind(null)).toBe("system");
   });

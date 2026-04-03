@@ -564,10 +564,10 @@ function DashboardShell({
                       <button
                         type="button"
                         onClick={() => setShowUserMenu(false)}
-                        className="fixed inset-0 z-[1250] bg-slate-950/10 md:bg-transparent"
+                        className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/10 md:bg-transparent"
                         aria-hidden
                       />
-                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[1251] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:absolute md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl md:inset-x-auto">
+                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:absolute md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl md:inset-x-auto">
                         <div className="border-b border-slate-100 px-4 py-3.5">
                           <p className="truncate text-sm font-bold text-slate-900">
                             {profile?.full_name || profile?.name || appName}
@@ -671,7 +671,7 @@ function DashboardShell({
             }}
             aria-label="Open quick actions"
             aria-expanded={openQuickActions}
-            className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[1100] inline-flex h-14 w-14 items-center justify-center rounded-[1.65rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 ${
+            className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex h-14 w-14 items-center justify-center rounded-[1.65rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 ${
               openQuickActions ? "rotate-45 bg-[var(--brand-700)]" : ""
             }`}
           >
@@ -684,9 +684,9 @@ function DashboardShell({
                 type="button"
                 onClick={() => setOpenQuickActions(false)}
                 aria-hidden
-                className="fixed inset-0 z-[1098] bg-slate-950/15"
+                className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/15"
               />
-              <div className="fixed inset-x-3 bottom-[calc(6.95rem+env(safe-area-inset-bottom))] z-[1101] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[220px] md:rounded-2xl md:p-2">
+              <div className="fixed inset-x-3 bottom-[calc(6.95rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[220px] md:rounded-2xl md:p-2">
                 <div className="px-1 pb-2 md:hidden">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Quick actions</p>
                   <p className="mt-1 text-sm text-slate-600">Publish or manage something fast from anywhere in the dashboard.</p>
@@ -757,7 +757,7 @@ function DashboardShell({
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav
-        className="md:hidden fixed inset-x-0 bottom-0 z-[1200] border-t border-slate-200/90 bg-white/95 shadow-[0_-18px_44px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl"
+        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/95 shadow-[0_-18px_44px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
         aria-label="Main navigation"
       >
         <div className="grid grid-cols-5 gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]">
@@ -795,7 +795,7 @@ function DashboardShell({
 
 
       {showLogoutConfirm ? (
-        <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-900/20">
             <div className="flex items-start gap-3">
               <div className="rounded-2xl bg-amber-100 p-2 text-amber-700">

@@ -43,6 +43,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
@@ -509,11 +510,11 @@ export default function TasksPage() {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
-    // When landing on inbox tab via deep-link, focus is the match ID, not a task orderId
+    // Inbox deep-links use the same focus param, but the value can be a match id or a help request id.
     if (params.get("tab") === "inbox") return null;
     return params.get("focus");
   });
-  const [focusedMatchId] = useState<string | null>(() => {
+  const [focusedInboxId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
     if (params.get("tab") !== "inbox") return null;
@@ -1690,26 +1691,45 @@ export default function TasksPage() {
   }, [quoteEditorTaskId, tasks]);
 
   useEffect(() => {
-    if (!focusedMatchId || selectedTaskView !== "inbox") return;
+    if (!focusedInboxId || selectedTaskView !== "inbox") return;
+
+    const targetMatchId =
+      inboxMatches.find(
+        (matchItem) =>
+          matchItem.id === focusedInboxId || matchItem.help_requests?.id === focusedInboxId
+      )?.id || null;
+
+    if (!targetMatchId) return;
+
     const frameId = window.requestAnimationFrame(() => {
-      inboxCardRefs.current.get(focusedMatchId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      inboxCardRefs.current.get(targetMatchId)?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [focusedMatchId, selectedTaskView, inboxMatches]);
+  }, [focusedInboxId, inboxMatches, selectedTaskView]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
-    if (expandedTaskId) params.set("focus", expandedTaskId);
-    else params.delete("focus");
+    if (selectedTaskView === "inbox") {
+      params.set("tab", "inbox");
+      if (focusedInboxId) params.set("focus", focusedInboxId);
+      else params.delete("focus");
+    } else {
+      if (selectedTaskView === "in-progress") params.delete("tab");
+      else params.set("tab", selectedTaskView);
+
+      if (expandedTaskId) params.set("focus", expandedTaskId);
+      else params.delete("focus");
+    }
 
     const nextQuery = params.toString();
     const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
     window.history.replaceState(window.history.state, "", nextUrl);
 
+    if (selectedTaskView === "inbox") return;
     if (!expandedTaskId) return;
 
     const frameId = window.requestAnimationFrame(() => {
@@ -1719,7 +1739,7 @@ export default function TasksPage() {
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [expandedTaskId]);
+  }, [expandedTaskId, focusedInboxId, selectedTaskView]);
 
   const resolveTaskHelpRequestId = (task: OperationalTask) =>
     task.helpRequestId || (task.source === "help_request" ? task.orderId : null);
@@ -3175,6 +3195,32 @@ export default function TasksPage() {
         </div>
       </motion.section>
 
+      <PageContextStrip
+        eyebrow="Tasks"
+        title="Keep work moving without losing context"
+        description="Tasks is your operating workspace for matched requests, accepted work, quote follow-through, and completed jobs. It should always answer what needs attention next."
+        metrics={[
+          { value: `${tasks.length}`, label: "tracked tasks" },
+          { value: `${actionRequiredCount}`, label: "need attention" },
+          { value: `${inboxMatches.length}`, label: "inbox matches" },
+        ]}
+        actions={[
+          {
+            label: selectedTaskView === "inbox" ? "Refresh inbox" : "Open inbox",
+            onClick: () => {
+              setSelectedTaskView("inbox");
+              void loadInboxMatches();
+            },
+            tone: "primary",
+          },
+          {
+            label: "Open Explore",
+            onClick: () => router.push("/dashboard"),
+            tone: "secondary",
+          },
+        ]}
+      />
+
       {errorMessage ? (
         <div className="rounded-[1.2rem] border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
       ) : null}
@@ -3296,7 +3342,7 @@ export default function TasksPage() {
                 <div className="space-y-3">
                   {inboxMatches.map((matchItem) => {
                     const req = matchItem.help_requests;
-                    const isFocused = focusedMatchId === matchItem.id;
+                    const isFocused = focusedInboxId === matchItem.id || focusedInboxId === req?.id;
                     const isAccepting = acceptingMatchId === matchItem.id;
                     const budget = formatTaskBudget(req?.budget_min ?? null, req?.budget_max ?? null);
                     const timeAgo = formatAgo(matchItem.created_at, clockMs);

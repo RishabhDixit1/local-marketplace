@@ -42,6 +42,9 @@ export type MarketplaceFeedItem = {
   profileCompletion: number;
   responseMinutes: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
+  averageRating?: number | null;
+  reviewCount?: number | null;
+  listingCount?: number | null;
   publicProfilePath: string;
   status: string;
   acceptedProviderId: string | null;

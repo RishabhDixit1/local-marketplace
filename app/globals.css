@@ -11,6 +11,16 @@
   --brand-500: #0ea5a4;
   --brand-300: #67e8f9;
   --brand-ring: rgba(14, 165, 164, 0.24);
+  --layer-mobile-nav: 40;
+  --layer-floating-action: 50;
+  --layer-popover-backdrop: 59;
+  --layer-popover: 60;
+  --layer-drawer-backdrop: 70;
+  --layer-drawer: 75;
+  --layer-modal-backdrop: 80;
+  --layer-modal: 90;
+  --layer-toast: 100;
+  --layer-fullscreen: 110;
   --font-sans: "Aptos", "Manrope", "Segoe UI Variable Text", "Segoe UI", sans-serif;
   --font-display: "Sora", "Aptos Display", "Bahnschrift", "Segoe UI Semibold", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;

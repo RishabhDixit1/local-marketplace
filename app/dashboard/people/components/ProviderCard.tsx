@@ -5,6 +5,7 @@ import { memo, type KeyboardEvent } from "react";
 import { BadgeCheck, Clock3, UserCheck, UserPlus, XCircle } from "lucide-react";
 import type { ConnectionActionKey } from "@/lib/connectionState";
 import type { PresenceTone, ProviderCard as ProviderCardModel, ProviderCardConnectionState } from "../types";
+import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 
 type Props = {
   provider: ProviderCardModel;
@@ -41,13 +42,67 @@ const actionButtonClassName =
 const primaryActionClassName = `${actionButtonClassName} border border-[#1f6fd1] bg-white text-[#1f6fd1] hover:bg-[#edf5ff]`;
 
 const ProviderCard = (props: Props) => {
-  const { provider, presenceTone, connectionState, busy, busyActionKey, isActive, onActivate, onConnect, onAccept, onDecline, onViewProfile } =
-    props;
+  const {
+    provider,
+    presenceTone,
+    connectionState,
+    busy,
+    busyActionKey,
+    isActive,
+    onActivate,
+    onConnect,
+    onAccept,
+    onDecline,
+    onViewProfile,
+    onOpenTrust,
+  } = props;
 
   const description = provider.bio?.trim() || provider.trustBlurb?.trim() || `${provider.role} on ServiQ.`;
   const coverImage = provider.media[0]?.url || "";
   const subheading = provider.role?.trim() || provider.primarySkill?.trim() || provider.location;
   const requestId = connectionState.requestId;
+  const trustItems = [
+    {
+      label: provider.verified ? "Verified profile" : provider.reviews > 0 ? "Reviewed profile" : "New profile",
+      tone: provider.verified ? ("good" as const) : provider.reviews > 0 ? ("neutral" as const) : ("caution" as const),
+    },
+    provider.reviews > 0 && provider.rating !== null
+      ? {
+          label: `${provider.rating.toFixed(1)} stars`,
+          tone: "good" as const,
+        }
+      : {
+          label: "No ratings yet",
+          tone: "neutral" as const,
+        },
+    provider.reviews > 0
+      ? {
+          label: `${provider.reviews} review${provider.reviews === 1 ? "" : "s"}`,
+          tone: "neutral" as const,
+        }
+      : {
+          label: "First review pending",
+          tone: "caution" as const,
+        },
+    provider.responseMinutes > 0
+      ? {
+          label: `~${provider.responseMinutes} min replies`,
+          tone: provider.responseMinutes <= 15 ? ("good" as const) : ("neutral" as const),
+        }
+      : {
+          label: "Reply speed building",
+          tone: "caution" as const,
+        },
+    provider.completedJobs && provider.completedJobs > 0
+      ? {
+          label: `${provider.completedJobs} jobs done`,
+          tone: "good" as const,
+        }
+      : {
+          label: provider.coordinateAccuracy === "precise" ? "Exact area shared" : "Area shown approximately",
+          tone: "neutral" as const,
+        },
+  ];
 
   const handleOpenProfile = () => {
     onViewProfile(provider.id);
@@ -191,9 +246,20 @@ const ProviderCard = (props: Props) => {
           ) : null}
 
           <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-slate-600 sm:text-sm">{description}</p>
+          <TrustSnapshot items={trustItems} compact className="mt-3 text-left" />
         </div>
 
         <div className="mt-auto pt-3 sm:pt-5">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenTrust(provider.id);
+            }}
+            className="mb-2 inline-flex w-full min-h-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
+          >
+            View trust details
+          </button>
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
         </div>
       </div>

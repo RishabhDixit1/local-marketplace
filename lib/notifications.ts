@@ -122,7 +122,14 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
   const explicitHref = readMetadataString(notification, ["href", "path", "action_path"]);
   const conversationId = notification.entity_id || readMetadataString(notification, ["conversation_id", "conversationId"]);
   const orderId = notification.entity_id || readMetadataString(notification, ["order_id", "orderId", "task_id"]);
-  const helpRequestId = notification.entity_id || readMetadataString(notification, ["help_request_id", "helpRequestId"]);
+  const helpRequestId =
+    notification.entity_id ||
+    readMetadataString(notification, [
+      "help_request_id",
+      "helpRequestId",
+      "target_help_request_id",
+      "targetHelpRequestId",
+    ]);
   const requesterId = readMetadataString(notification, ["requester_id", "requesterId"]);
 
   if (explicitHref) {
@@ -156,18 +163,18 @@ export const resolveNotificationAction = (notification: NotificationRow): Notifi
   if (helpRequestEntityTypes.has(entityType)) {
     return {
       ctaLabel: "View matches",
-      href: withQuery("/dashboard/tasks", {
-        tab: "inbox",
-        focus: helpRequestId,
-        source: "notification",
-      }),
+      href: withQuery("/dashboard/tasks", { tab: "inbox", focus: helpRequestId, source: "notification" }),
     };
   }
 
   if (connectionEntityTypes.has(entityType) || notification.kind === "connection") {
     return {
       ctaLabel: "View request",
-      href: withQuery("/dashboard/people", { panel: "incoming", source: "notification" }),
+      href: withQuery("/dashboard/people", {
+        panel: "incoming",
+        provider: requesterId || null,
+        source: "notification",
+      }),
     };
   }
 
@@ -189,5 +196,6 @@ export const getNotificationKind = (kind: string | null | undefined): Notificati
   if (normalized === "order") return "order";
   if (normalized === "message") return "message";
   if (normalized === "review") return "review";
+  if (normalized === "connection" || normalized === "connection_request") return "connection";
   return "system";
 };

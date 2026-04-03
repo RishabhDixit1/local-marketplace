@@ -72,6 +72,9 @@ type FlexibleRow = Record<string, unknown>;
 const TITLE_MAX_LENGTH = 90;
 const DESCRIPTION_MAX_LENGTH = 1200;
 const CATEGORY_MAX_LENGTH = 48;
+const LISTING_IMAGES_PUBLIC_MARKER = "/storage/v1/object/public/listing-images/";
+const LISTING_IMAGES_STORAGE_PREFIX = "storage/v1/object/public/listing-images/";
+const LISTING_IMAGE_PATH_PATTERN = /^[a-z0-9][a-z0-9/_-]*\.(?:avif|gif|jpe?g|png|webp|svg)$/i;
 
 const trim = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
@@ -103,29 +106,37 @@ const normalizeHttpUrl = (value: unknown) => {
   }
 };
 
-const normalizeListingImagePath = (value: unknown) => {
+export const normalizeListingImagePath = (value: unknown) => {
   const raw = trim(value);
   if (!raw) return "";
 
   if (/^https?:\/\//i.test(raw)) {
     try {
       const parsed = new URL(raw);
-      const marker = "/storage/v1/object/public/listing-images/";
-      const markerIndex = parsed.pathname.indexOf(marker);
+      const markerIndex = parsed.pathname.indexOf(LISTING_IMAGES_PUBLIC_MARKER);
       if (markerIndex >= 0) {
-        return parsed.pathname.slice(markerIndex + marker.length).replace(/^\/+/, "");
+        const extracted = parsed.pathname.slice(markerIndex + LISTING_IMAGES_PUBLIC_MARKER.length).replace(/^\/+/, "");
+        return LISTING_IMAGE_PATH_PATTERN.test(extracted) ? extracted : "";
       }
     } catch {
       return "";
     }
+
+    return "";
   }
 
   const cleaned = raw.replace(/^\/+/, "");
-  if (cleaned.startsWith("listing-images/")) {
-    return cleaned.slice("listing-images/".length);
+  if (cleaned.startsWith(LISTING_IMAGES_STORAGE_PREFIX)) {
+    const extracted = cleaned.slice(LISTING_IMAGES_STORAGE_PREFIX.length).replace(/^\/+/, "");
+    return LISTING_IMAGE_PATH_PATTERN.test(extracted) ? extracted : "";
   }
 
-  return cleaned;
+  if (cleaned.startsWith("listing-images/")) {
+    const extracted = cleaned.slice("listing-images/".length);
+    return LISTING_IMAGE_PATH_PATTERN.test(extracted) ? extracted : "";
+  }
+
+  return LISTING_IMAGE_PATH_PATTERN.test(cleaned) ? cleaned : "";
 };
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -218,7 +229,7 @@ export const validateProductDraft = (draft: ProviderProductDraft): ProductDraftV
   }
 
   if (trim(draft.imageUrl) && !normalizeListingImagePath(draft.imageUrl)) {
-    errors.imageUrl = "Image is invalid. Upload a file or use a valid listing-images URL/path.";
+    errors.imageUrl = "Image is invalid. Upload a file or use a valid public listing-images URL/path.";
   }
 
   return errors;

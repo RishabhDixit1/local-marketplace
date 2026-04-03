@@ -41,7 +41,7 @@ describe("provider listings domain helpers", () => {
     expect(errors.title).toMatch(/at least 2 characters/i);
     expect(errors.price).toMatch(/non-negative/i);
     expect(errors.stock).toMatch(/non-negative/i);
-    expect(errors.imageUrl).toMatch(/valid public url/i);
+    expect(errors.imageUrl).toMatch(/valid public .*listing-images.*url\/path/i);
   });
 
   it("computes listing stats from normalized rows", () => {

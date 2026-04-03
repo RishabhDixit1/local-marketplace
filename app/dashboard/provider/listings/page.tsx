@@ -310,11 +310,11 @@ export default function ListingsPage() {
   };
 
   const uploadEditProductImage = async (file: File) => {
-    if (!editingProduct) return;
+    if (!editingProduct || !providerId) return;
     setBusyId(editingProduct.id);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const filePath = `${providerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("listing-images").upload(filePath, file, { contentType: file.type || "image/jpeg", upsert: false });
       if (error) throw new Error(error.message || "Unable to upload image.");
       setEditingProduct((current) => (current ? { ...current, imageUrl: filePath } : current));

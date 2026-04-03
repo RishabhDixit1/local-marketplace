@@ -269,7 +269,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex">
       <div className="flex-1 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-[420px] max-w-full overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 text-slate-900 shadow-xl animate-in slide-in-from-right">

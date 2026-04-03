@@ -313,7 +313,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
         : "Describe the item, condition, brand, size, pickup or delivery details, and what is included.";
 
   return (
-    <div className="fixed inset-0 z-[3000] flex flex-col bg-white">
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col bg-white">
       {/* header */}
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <h2 className="text-lg font-bold text-slate-900">Post</h2>
