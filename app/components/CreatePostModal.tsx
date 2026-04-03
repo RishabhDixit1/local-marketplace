@@ -32,7 +32,8 @@ export type PublishPostResult = {
 // 
 
 const MEDIA_BUCKET = "post-media";
-const TITLE_MAX = 90;
+const TITLE_MAX = 160;
+const DETAILS_MAX = 1200;
 const MAX_PHOTOS = 4;
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
@@ -128,6 +129,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   // form state
   const [postType, setPostType] = useState<PostType>("need");
   const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
   const [category, setCategory] = useState("Plumber");
   const [price, setPrice] = useState("");
   const [priceType, setPriceType] = useState<PriceType>("Fixed");
@@ -169,6 +171,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   useEffect(() => {
     if (!open) {
       setTitle("");
+      setDetails("");
       setCategory("Plumber");
       setPrice("");
       setPriceType("Fixed");
@@ -179,6 +182,15 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       setError("");
     }
   }, [open]);
+
+  useEffect(() => {
+    const nextPreviews = photos.map((file) => URL.createObjectURL(file));
+    setPhotoPreviews(nextPreviews);
+
+    return () => {
+      nextPreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [photos]);
 
   if (!open) return null;
 
@@ -204,13 +216,11 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
     const valid = files.filter((f) => f.type.startsWith("image/") && f.size <= MAX_FILE_SIZE);
     const next = [...photos, ...valid].slice(0, MAX_PHOTOS);
     setPhotos(next);
-    setPhotoPreviews(next.map((f) => URL.createObjectURL(f)));
   };
 
   const removePhoto = (index: number) => {
     const next = photos.filter((_, i) => i !== index);
     setPhotos(next);
-    setPhotoPreviews(next.map((f) => URL.createObjectURL(f)));
   };
 
   //  submit 
@@ -230,15 +240,16 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       const media = await uploadPhotos(user.id, photos);
       const parsedPrice = price.trim() ? Math.abs(parseFloat(price.replace(/[^\d.]/g, ""))) : null;
       const budgetValue = Number.isFinite(parsedPrice) && parsedPrice! > 0 ? parsedPrice : null;
-
-      // details = price type hint if price set, else empty
-      const details = price.trim()
-        ? `Price: ${price} (${priceType})`
-        : "";
+      const trimmedDetails = details.trim();
+      const pricingNote =
+        budgetValue && priceType !== "Fixed"
+          ? `Pricing preference: ${priceType.toLowerCase()}.`
+          : "";
+      const composedDetails = [trimmedDetails, pricingNote].filter(Boolean).join(trimmedDetails && pricingNote ? "\n\n" : "");
 
       const base = {
         title: title.trim(),
-        details,
+        details: composedDetails,
         category: category === "Other" ? "Other" : category,
         budget: budgetValue,
         locationLabel: location.trim(),
@@ -294,6 +305,12 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   //  render 
 
   const placeholder = PLACEHOLDERS[category] ?? "What do you need?";
+  const detailPlaceholder =
+    postType === "need"
+      ? "Explain the job, size, urgency, address landmark, and anything the helper should know."
+      : postType === "service"
+        ? "Describe what you offer, your experience, what is included, and any delivery timeline."
+        : "Describe the item, condition, brand, size, pickup or delivery details, and what is included.";
 
   return (
     <div className="fixed inset-0 z-[3000] flex flex-col bg-white">
@@ -359,17 +376,36 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
                 {title.length}/{TITLE_MAX}
               </span>
             </label>
-            <input
+            <textarea
               id="post-title"
-              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
+              rows={2}
               placeholder={placeholder}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+            />
+            <p className="mt-2 text-xs text-slate-500">Use the title for the headline. Add the full job or listing context below.</p>
+          </div>
+
+          {/* 4. Details */}
+          <div>
+            <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
+              <span>Details</span>
+              <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
+                {details.length}/{DETAILS_MAX}
+              </span>
+            </label>
+            <textarea
+              id="post-details"
+              value={details}
+              onChange={(e) => setDetails(e.target.value.slice(0, DETAILS_MAX))}
+              rows={5}
+              placeholder={detailPlaceholder}
+              className="w-full resize-y rounded-[24px] border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
             />
           </div>
 
-          {/* 4. Price */}
+          {/* 5. Price */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-price">
               Price <span className="font-normal text-slate-400">(optional)</span>
@@ -403,7 +439,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             </div>
           </div>
 
-          {/* 5. Location */}
+          {/* 6. Location */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-location">
               Location
@@ -430,7 +466,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             </div>
           </div>
 
-          {/* 6. Photos */}
+          {/* 7. Photos */}
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Photos <span className="font-normal text-slate-400">(optional, up to {MAX_PHOTOS})</span>
@@ -438,6 +474,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             <div className="flex flex-wrap gap-2">
               {photoPreviews.map((src, i) => (
                 <div key={src} className="relative h-20 w-20 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
                   <button
                     type="button"

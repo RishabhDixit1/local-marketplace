@@ -226,8 +226,8 @@ export default function FeedCard({
       </div>
 
       <div className="mt-2.5">
-        <h3 className="line-clamp-2 text-base font-semibold leading-tight text-slate-900">{item.displayTitle}</h3>
-        <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+        <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">{item.displayTitle}</h3>
+        <p className="mt-1.5 line-clamp-4 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${

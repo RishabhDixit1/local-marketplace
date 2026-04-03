@@ -439,6 +439,7 @@ export default function WelcomePage() {
     return enrichedCards.filter((card) => {
       const haystack = [
         card.title,
+        card.summary,
         card.subtitle,
         card.ownerLabel,
         card.badge,
@@ -861,7 +862,7 @@ export default function WelcomePage() {
       providerId: card.ownerId || "",
       type: card.type,
       title: card.title,
-      description: card.subtitle,
+      description: card.summary || card.subtitle,
       category: getWelcomeCardCategory(card),
       price: 0,
       avatarUrl: card.ownerAvatarUrl,
@@ -883,7 +884,7 @@ export default function WelcomePage() {
       status: card.status || "open",
       acceptedProviderId: card.acceptedProviderId || null,
       displayTitle: card.title,
-      displayDescription: card.subtitle,
+      displayDescription: card.summary || card.subtitle,
       displayCreator: card.ownerLabel,
       timeLabel: card.postedAgo,
       priceLabel: card.priceLabel,

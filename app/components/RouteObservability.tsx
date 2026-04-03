@@ -9,6 +9,7 @@ import {
   toErrorString,
   type ObservedRoute,
 } from "@/lib/observability";
+import { isAbortLikeError } from "@/lib/runtimeErrors";
 
 type RouteObservabilityProps = {
   route: ObservedRoute;
@@ -82,6 +83,9 @@ export default function RouteObservability({ route }: RouteObservabilityProps) {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       const error = event.error;
+      if (isAbortLikeError(error || event.message)) {
+        return;
+      }
       void captureClientObservability({
         event_type: "client_error",
         route,
@@ -97,6 +101,9 @@ export default function RouteObservability({ route }: RouteObservabilityProps) {
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
+      if (isAbortLikeError(event.reason)) {
+        return;
+      }
       void captureClientObservability({
         event_type: "client_error",
         route,

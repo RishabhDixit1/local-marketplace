@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Package, Briefcase, ClipboardList, BadgePlus } from "lucide-react";
 import Link from "next/link";
 
@@ -10,8 +10,31 @@ type ProviderQuickAddFABProps = {
 
 export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) {
   const [open, setOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  if (!show) return null;
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const syncModalState = () => {
+      const nextModalOpen = document.body.getAttribute("data-public-profile-modal-open") === "true";
+      setModalOpen(nextModalOpen);
+      if (nextModalOpen) {
+        setOpen(false);
+      }
+    };
+
+    syncModalState();
+
+    const observer = new MutationObserver(syncModalState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-public-profile-modal-open"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (!show || modalOpen) return null;
 
   return (
     <>

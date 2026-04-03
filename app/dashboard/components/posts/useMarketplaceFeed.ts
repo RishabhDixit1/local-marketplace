@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import { distanceBetweenCoordinatesKm, watchBrowserCoordinates, type BrowserCoordinateStatus, type Coordinates } from "@/lib/geo";
+import { getBrowserCoordinates, type BrowserCoordinateStatus, type Coordinates } from "@/lib/geo";
 import {
   buildMarketplaceDisplayItem,
   DEFAULT_MARKETPLACE_FEED_FILTER_STATE,
@@ -89,7 +89,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   });
 
   const fetchAbortRef = useRef<AbortController | null>(null);
-  const activeFeedRequestIdRef = useRef(0);
+  const disposedRef = useRef(false);
+  const inFlightFetchRef = useRef(false);
+  const queuedRefreshRef = useRef<{ hardRefresh: boolean } | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
   const lastSoftRefreshAtRef = useRef(0);
   const lastLocationRefreshRef = useRef<string>("");
@@ -97,7 +99,9 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   const hydratedFilterKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    disposedRef.current = false;
     return () => {
+      disposedRef.current = true;
       if (refreshTimeoutRef.current) {
         window.clearTimeout(refreshTimeoutRef.current);
       }
@@ -165,22 +169,28 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
   }, [browserLocation]);
 
   useEffect(() => {
-    const stopWatching = watchBrowserCoordinates(
-      (coordinates) => {
-        setBrowserLocation((current) => {
-          if (!current) {
-            return coordinates;
-          }
+    let active = true;
+    setLocationStatus("locating");
 
-          const movedDistanceKm = distanceBetweenCoordinatesKm(current, coordinates);
-          return movedDistanceKm >= 0.12 ? coordinates : current;
-        });
-      },
-      setLocationStatus
-    );
+    void getBrowserCoordinates(3500)
+      .then((coordinates) => {
+        if (!active || disposedRef.current) return;
+
+        if (coordinates) {
+          setBrowserLocation(coordinates);
+          setLocationStatus("ready");
+          return;
+        }
+
+        setLocationStatus("idle");
+      })
+      .catch(() => {
+        if (!active || disposedRef.current) return;
+        setLocationStatus("error");
+      });
 
     return () => {
-      stopWatching();
+      active = false;
     };
   }, []);
 
@@ -191,20 +201,31 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
         return;
       }
 
-      lastSoftRefreshAtRef.current = now;
-      setFeedError(null);
-
-      if (hardRefresh) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
+      if (inFlightFetchRef.current) {
+        queuedRefreshRef.current = {
+          hardRefresh: hardRefresh || queuedRefreshRef.current?.hardRefresh || false,
+        };
+        return;
       }
 
-      const requestId = activeFeedRequestIdRef.current + 1;
-      activeFeedRequestIdRef.current = requestId;
+      lastSoftRefreshAtRef.current = now;
+      inFlightFetchRef.current = true;
+
+      if (!disposedRef.current) {
+        setFeedError(null);
+      }
+
+      if (hardRefresh) {
+        if (!disposedRef.current) {
+          setLoading(true);
+        }
+      } else {
+        if (!disposedRef.current) {
+          setRefreshing(true);
+        }
+      }
 
       const controller = new AbortController();
-      fetchAbortRef.current?.abort();
       fetchAbortRef.current = controller;
       const requestPath = (() => {
         if (!browserLocationRef.current) {
@@ -229,6 +250,10 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
           throw new Error(payload.message || "Unable to load posts feed.");
         }
 
+        if (disposedRef.current) {
+          return;
+        }
+
         setViewerId(payload.currentUserId || null);
         setFeed(payload.feedItems || []);
         setFeedStats(payload.feedStats);
@@ -237,21 +262,38 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
         if (isAbortLikeError(error)) return;
 
         const message = toErrorMessage(error, "Unable to load posts feed.");
-        setFeedError(message);
+        if (!disposedRef.current) {
+          setFeedError(message);
+        }
 
         if (isFailedFetchError(error)) {
           pushToast("error", "Network issue detected. Showing the latest available posts.");
         }
 
-        setFeed((current) => current);
+        if (!disposedRef.current) {
+          setFeed((current) => current);
+        }
       } finally {
         if (fetchAbortRef.current === controller) {
           fetchAbortRef.current = null;
         }
 
-        if (activeFeedRequestIdRef.current === requestId) {
+        inFlightFetchRef.current = false;
+
+        if (!disposedRef.current) {
           setLoading(false);
           setRefreshing(false);
+        }
+
+        const queuedRefresh = queuedRefreshRef.current;
+        queuedRefreshRef.current = null;
+        if (queuedRefresh && !disposedRef.current) {
+          lastSoftRefreshAtRef.current = 0;
+          window.setTimeout(() => {
+            if (!disposedRef.current) {
+              void fetchFeed(queuedRefresh.hardRefresh);
+            }
+          }, 0);
         }
       }
     },

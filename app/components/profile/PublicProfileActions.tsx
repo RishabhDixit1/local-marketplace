@@ -55,6 +55,17 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
     return rows;
   }, []);
 
+  const resetEditDraft = useCallback(
+    (nextValues: ProfileFormValues = initialValues) => {
+      setEditValues(nextValues);
+      setEditErrors({});
+      const parts = nextValues.fullName.trim().split(/\s+/).filter(Boolean);
+      setFirstName(parts[0] || "");
+      setLastName(parts.slice(1).join(" "));
+    },
+    [initialValues]
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -89,12 +100,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
   }, [profileUserId]);
 
   useEffect(() => {
-    setEditValues(initialValues);
-    setEditErrors({});
-    const parts = initialValues.fullName.trim().split(/\s+/).filter(Boolean);
-    setFirstName(parts[0] || "");
-    setLastName(parts.slice(1).join(" "));
-  }, [initialValues]);
+    resetEditDraft(initialValues);
+  }, [initialValues, resetEditDraft]);
 
   useEffect(() => {
     if (!editDialogOpen) return;
@@ -102,10 +109,15 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     setPublicProfileModalOpen(true);
-    editDialogRef.current?.focus();
-    firstNameInputRef.current?.focus();
+    const animationFrameId = window.requestAnimationFrame(() => {
+      editDialogRef.current?.focus();
+      if (window.matchMedia("(min-width: 640px)").matches) {
+        firstNameInputRef.current?.focus();
+      }
+    });
 
     return () => {
+      window.cancelAnimationFrame(animationFrameId);
       document.body.style.overflow = previousOverflow;
       setPublicProfileModalOpen(false);
     };
@@ -247,8 +259,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
         <button
           type="button"
           onClick={() => {
-            setEditValues(initialValues);
-            setEditErrors({});
+            resetEditDraft();
             setEditDialogOpen(true);
           }}
           className="inline-flex w-full min-h-8 items-center justify-center gap-1.5 rounded-full border border-slate-900 bg-slate-900 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 sm:min-h-9 sm:w-auto sm:px-4 sm:text-xs"
@@ -350,7 +361,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
       </div>
 
       {!editDialogOpen ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/24 px-4 py-6 backdrop-blur-xl sm:px-6 sm:py-8">
+        <div className="fixed inset-0 z-[4000] grid place-items-end bg-slate-950/24 px-3 pt-6 backdrop-blur-xl sm:place-items-center sm:px-6 sm:py-8">
           <div className="absolute inset-0" onClick={closeEditDialog} />
 
           <div
@@ -359,9 +370,9 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             aria-modal="true"
             aria-label="Edit public profile"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-3xl max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)] sm:max-h-[calc(100vh-3rem)]"
+            className="relative z-10 flex max-h-[calc(100dvh-0.75rem)] w-full max-w-3xl flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.55)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px]"
           >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Edit profile</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{displayName}</h2>
@@ -379,7 +390,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6">
               <div className="grid gap-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -476,12 +487,12 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6 py-5">
+            <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-slate-200 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:flex sm:items-center sm:justify-end sm:px-6 sm:py-5">
               <button
                 type="button"
                 onClick={closeEditDialog}
                 disabled={editBusy}
-                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 sm:w-auto"
               >
                 Cancel
               </button>
@@ -489,7 +500,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
                 type="button"
                 onClick={() => void handleEditSave()}
                 disabled={editBusy}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
               >
                 {editBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <SquarePen className="h-4 w-4" />}
                 {editBusy ? "Saving..." : "Save changes"}

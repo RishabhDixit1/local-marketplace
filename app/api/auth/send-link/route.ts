@@ -1,12 +1,14 @@
 import https from "node:https";
-import { Resolver } from "node:dns";
+import { Resolver, promises as dnsPromises } from "node:dns";
 import { NextResponse } from "next/server";
 import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
 const REQUEST_TIMEOUT_MS = 8000;
+const MAGIC_LINK_COOLDOWN_MS = 60_000;
 const PUBLIC_DNS_SERVERS = ["1.1.1.1", "8.8.8.8"];
+const lastMagicLinkRequestByEmail = new Map<string, number>();
 
 type SendLinkBody = {
   email?: string;
@@ -15,7 +17,7 @@ type SendLinkBody = {
 
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const resolveIpv4ViaPublicDns = (host: string): Promise<string> =>
+const resolveIpv4ViaPublicDns = (host: string): Promise<string[]> =>
   new Promise((resolve, reject) => {
     const resolver = new Resolver();
     resolver.setServers(PUBLIC_DNS_SERVERS);
@@ -24,33 +26,64 @@ const resolveIpv4ViaPublicDns = (host: string): Promise<string> =>
         reject(error ?? new Error(`No IPv4 records found for ${host}.`));
         return;
       }
-      resolve(addresses[0]);
+      resolve(addresses);
     });
   });
 
-const postOtpThroughResolvedIp = ({
-  ip,
-  host,
+const resolveIpv4Candidates = async (host: string): Promise<string[]> => {
+  const candidates = new Set<string>();
+
+  try {
+    const systemResolved = await dnsPromises.lookup(host, { all: true, family: 4 });
+    for (const entry of systemResolved) {
+      if (entry.address) {
+        candidates.add(entry.address);
+      }
+    }
+  } catch {
+    // Continue to public resolvers below.
+  }
+
+  try {
+    const publicResolved = await resolveIpv4ViaPublicDns(host);
+    for (const address of publicResolved) {
+      if (address) {
+        candidates.add(address);
+      }
+    }
+  } catch {
+    // Keep the system DNS results if we have them.
+  }
+
+  return Array.from(candidates);
+};
+
+const postOtpRequest = ({
+  hostname,
+  hostHeader,
   path,
   anonKey,
   payload,
+  servername = hostHeader,
 }: {
-  ip: string;
-  host: string;
+  hostname: string;
+  hostHeader: string;
   path: string;
   anonKey: string;
   payload: string;
+  servername?: string;
 }): Promise<{ status: number; body: string }> =>
   new Promise((resolve, reject) => {
     const request = https.request(
       {
-        hostname: ip,
+        hostname,
         port: 443,
+        family: 4,
         method: "POST",
         path,
-        servername: host,
+        servername,
         headers: {
-          Host: host,
+          Host: hostHeader,
           apikey: anonKey,
           Authorization: `Bearer ${anonKey}`,
           "Content-Type": "application/json",
@@ -86,6 +119,39 @@ const postOtpThroughResolvedIp = ({
     request.end();
   });
 
+const postOtpThroughResolvedIps = async ({
+  ips,
+  host,
+  path,
+  anonKey,
+  payload,
+}: {
+  ips: string[];
+  host: string;
+  path: string;
+  anonKey: string;
+  payload: string;
+}): Promise<{ status: number; body: string }> => {
+  let lastError: Error | null = null;
+
+  for (const ip of ips) {
+    try {
+      return await postOtpRequest({
+        hostname: ip,
+        hostHeader: host,
+        path,
+        anonKey,
+        payload,
+        servername: host,
+      });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Resolved IP auth request failed.");
+    }
+  }
+
+  throw lastError ?? new Error(`No reachable IPv4 addresses found for ${host}.`);
+};
+
 const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
   try {
     const parsed = JSON.parse(rawBody) as {
@@ -101,6 +167,18 @@ const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
   } catch {
     return rawBody.trim() || fallback;
   }
+};
+
+const pruneExpiredMagicLinkCooldowns = (now: number) => {
+  lastMagicLinkRequestByEmail.forEach((timestamp, email) => {
+    if (now - timestamp >= MAGIC_LINK_COOLDOWN_MS) {
+      lastMagicLinkRequestByEmail.delete(email);
+    }
+  });
+};
+
+export const resetMagicLinkRequestCooldownForTests = () => {
+  lastMagicLinkRequestByEmail.clear();
 };
 
 export async function POST(request: Request) {
@@ -129,9 +207,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Invalid request payload." }, { status: 400 });
   }
 
-  const email = body.email?.trim() ?? "";
+  const email = body.email?.trim().toLowerCase() ?? "";
   if (!isEmailLike(email)) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
+  }
+
+  const now = Date.now();
+  pruneExpiredMagicLinkCooldowns(now);
+  const previousRequestAt = lastMagicLinkRequestByEmail.get(email) ?? 0;
+  const retryAfterMs = MAGIC_LINK_COOLDOWN_MS - (now - previousRequestAt);
+  if (retryAfterMs > 0) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Please wait ${retryAfterSeconds} seconds before requesting another login link.`,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+        },
+      }
+    );
   }
 
   const redirectTo = resolveAuthCallbackUrl({
@@ -150,31 +248,24 @@ export async function POST(request: Request) {
     create_user: true,
   });
 
-  const headers = {
-    apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
-    "Content-Type": "application/json",
-  };
-
   let status: number;
   let rawBody = "";
 
   try {
-    const directResponse = await fetch(otpUrl.toString(), {
-      method: "POST",
-      headers,
-      body: payload,
-      cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    const directResponse = await postOtpRequest({
+      hostname: supabaseUrl.hostname,
+      hostHeader: supabaseUrl.hostname,
+      path: `${otpUrl.pathname}${otpUrl.search}`,
+      anonKey,
+      payload,
     });
-
     status = directResponse.status;
-    rawBody = await directResponse.text();
+    rawBody = directResponse.body;
   } catch {
     try {
-      const resolvedIp = await resolveIpv4ViaPublicDns(supabaseUrl.hostname);
-      const fallbackResponse = await postOtpThroughResolvedIp({
-        ip: resolvedIp,
+      const resolvedIps = await resolveIpv4Candidates(supabaseUrl.hostname);
+      const fallbackResponse = await postOtpThroughResolvedIps({
+        ips: resolvedIps,
         host: supabaseUrl.hostname,
         path: `${otpUrl.pathname}${otpUrl.search}`,
         anonKey,
@@ -194,6 +285,7 @@ export async function POST(request: Request) {
   }
 
   if (status >= 200 && status < 300) {
+    lastMagicLinkRequestByEmail.set(email, Date.now());
     return NextResponse.json(isDevelopment ? { ok: true, redirectTo } : { ok: true });
   }
 

@@ -29,7 +29,7 @@ import {
   type MarketplaceMapCenter,
 } from "@/lib/marketplaceFeed";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
-import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import {
   defaultMarketCoordinates,
@@ -100,6 +100,13 @@ const readPublishGroupKey = (value: unknown) =>
   value && typeof value === "object" && !Array.isArray(value)
     ? stringFromRow(value as FlexibleRow, ["publishGroupKey", "publish_group_key"], "")
     : "";
+
+const fallbackImageMedia = (value: string) => {
+  const resolvedUrl = resolvePostMediaUrl(value);
+  if (!resolvedUrl) return [];
+
+  return [{ mimeType: "image/*", url: resolvedUrl }];
+};
 
 const normalizeCanonicalPart = (value: string | null | undefined) =>
   (value || "")
@@ -258,6 +265,7 @@ export const buildCommunityFeedView = (
     const metadataSource = readMetadataSource(row.metadata);
     const isComposerSyncedListing = metadataSource === "composer_listing_sync";
     const category = stringFromRow(row, ["category", "service_category", "type"], "Service");
+    const metadataMedia = mediaFromMarketplaceComposerMetadata(row.metadata);
 
     if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
@@ -291,7 +299,7 @@ export const buildCommunityFeedView = (
       lat: coordinates.latitude,
       lng: coordinates.longitude,
       coordinateAccuracy: coordinateMeta.accuracy,
-      media: [],
+      media: metadataMedia.length ? metadataMedia : fallbackImageMedia(stringFromRow(row, ["image_url", "image"], "")),
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
       rankScore: calculateLocalRankScore({
@@ -327,6 +335,7 @@ export const buildCommunityFeedView = (
     const metadataSource = readMetadataSource(row.metadata);
     const isComposerSyncedListing = metadataSource === "composer_listing_sync";
     const category = stringFromRow(row, ["category", "product_category", "type"], "Product");
+    const metadataMedia = mediaFromMarketplaceComposerMetadata(row.metadata);
 
     if (!isComposerSyncedListing && isWeakMarketplaceContent(title, description)) return;
 
@@ -360,7 +369,7 @@ export const buildCommunityFeedView = (
       lat: coordinates.latitude,
       lng: coordinates.longitude,
       coordinateAccuracy: coordinateMeta.accuracy,
-      media: [],
+      media: metadataMedia.length ? metadataMedia : fallbackImageMedia(stringFromRow(row, ["image_url", "image"], "")),
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
       rankScore: calculateLocalRankScore({
@@ -485,10 +494,11 @@ export const buildCommunityFeedView = (
 
     const profileMeta = resolveProfileMeta(providerId);
     const composerMetadata = readMarketplaceComposerMetadata(helpRow.metadata);
-    const title = composerMetadata?.title || stringFromRow(row, ["title", "name"], "Need local support");
+    const title = stringFromRow(row, ["title", "name"], "") || composerMetadata?.title || "Need local support";
     const description =
+      stringFromRow(row, ["details", "description", "text"], "") ||
       composerMetadata?.details ||
-      stringFromRow(row, ["details", "description", "text"], "Need details shared by requester");
+      "Need details shared by requester";
     const status = stringFromRow(row, ["status"], "open");
     const acceptedProviderId = stringFromRow(row, ["accepted_provider_id"], "") || null;
     const category = composerMetadata?.category || stringFromRow(row, ["category"], "Need");

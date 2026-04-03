@@ -23,6 +23,7 @@ export type WelcomeFeedCard = {
   status?: string | null;
   title: string;
   subtitle: string;
+  summary: string;
   locationLabel: string;
   priceLabel: string;
   distanceKm: number;
@@ -179,6 +180,7 @@ const normalizeMarketplaceCardType = (value?: string | null): WelcomeFeedCardTyp
 const parseMarketplacePostPreview = (rawText: string) => {
   const fallback = {
     title: rawText.trim() || "New local post",
+    description: "",
     kind: "demand" as WelcomeFeedCardType,
     category: "",
     budget: 0,
@@ -188,6 +190,7 @@ const parseMarketplacePostPreview = (rawText: string) => {
 
   const parts = rawText.split(" | ");
   const title = parts[0]?.trim() || fallback.title;
+  const description = parts[1]?.trim() || fallback.description;
   const typePart = parts.find((item) => item.startsWith("Type:"));
   const categoryPart = parts.find((item) => item.startsWith("Category:"));
   const budgetPart = parts.find((item) => item.startsWith("Budget:"));
@@ -195,11 +198,22 @@ const parseMarketplacePostPreview = (rawText: string) => {
 
   return {
     title,
+    description,
     kind: normalizeMarketplaceCardType(typePart?.replace("Type:", "").trim()),
     category: categoryPart?.replace("Category:", "").trim() || "",
     budget: budgetMatch ? Number(budgetMatch[1]) : 0,
   };
 };
+
+const fallbackWelcomeSummary = (type: WelcomeFeedCardType) =>
+  type === "demand"
+    ? "Looking for nearby help."
+    : type === "service"
+      ? "Service shared with your network."
+      : "Product shared with your network.";
+
+const resolveWelcomeSummary = (value: string | null | undefined, type: WelcomeFeedCardType) =>
+  trim(value) || fallbackWelcomeSummary(type);
 
 const normalizeImageUrlList = (values: Array<string | null | undefined>) =>
   Array.from(new Set(values.map((value) => resolvePostMediaUrl(value)).filter((value): value is string => Boolean(value))));
@@ -505,6 +519,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-neha",
     ownerName: "Neha Arora",
     title: "Need a plumber for a kitchen sink leak",
+    summary: "Kitchen sink is leaking and needs a same-evening repair visit.",
     subtitle: "Neha from Maple Residency posted this neighborhood preview • Plumbing",
     priceLabel: "Budget ₹900",
     distanceKm: 1.2,
@@ -524,6 +539,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-arjun",
     ownerName: "Arjun Tech Care",
     title: "Same-day laptop diagnostics and repair",
+    summary: "Diagnostics, issue isolation, and on-site repair help for laptops and desktops.",
     subtitle: "Arjun Tech Care is advertising a trusted service preview • Electronics",
     priceLabel: "From ₹699",
     distanceKm: 2.4,
@@ -543,6 +559,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-kavya",
     ownerName: "Kavya Home Finds",
     title: "Ergonomic office chair with pickup nearby",
+    summary: "Well-kept ergonomic chair with adjustable support and nearby pickup.",
     subtitle: "Kavya Home Finds shared a sample product card • Furniture",
     priceLabel: "₹2,800",
     distanceKm: 1.8,
@@ -562,6 +579,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-manav",
     ownerName: "Manav Kapoor",
     title: "Need help assembling a wardrobe tonight",
+    summary: "Flat-pack wardrobe needs assembly tonight with basic tools and quick turnaround.",
     subtitle: "Manav in Cedar Block posted a sample urgent task • Home setup",
     priceLabel: "Budget ₹1,200",
     distanceKm: 3.1,
@@ -581,6 +599,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-zoya",
     ownerName: "Zoya Clean Living",
     title: "Balcony deep-clean with plant setup add-on",
+    summary: "Includes sweeping, washing, and optional plant arrangement for small balconies.",
     subtitle: "Zoya Clean Living posted a demo service card • Home care",
     priceLabel: "From ₹1,499",
     distanceKm: 2.7,
@@ -600,6 +619,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-ritu",
     ownerName: "Ritu Local Goods",
     title: "Induction cooktop with two extra pans",
+    summary: "Lightly used cooktop bundle with two compatible pans and ready pickup.",
     subtitle: "Ritu Local Goods added a preview resale listing • Kitchen",
     priceLabel: "₹1,650",
     distanceKm: 1.4,
@@ -619,6 +639,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-kabir",
     ownerName: "Kabir Cooling Works",
     title: "Weekend AC servicing slots still open",
+    summary: "Routine servicing, filter cleanup, and cooling checks for home AC units.",
     subtitle: "Kabir Cooling Works added a sample seasonal service • AC repair",
     priceLabel: "From ₹899",
     distanceKm: 3.6,
@@ -638,6 +659,7 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     ownerId: "demo-welcome-simran",
     ownerName: "Simran Malhotra",
     title: "Looking for a reliable pet sitter on Sunday",
+    summary: "Need a trusted sitter for one day with feeding and short walks included.",
     subtitle: "Simran shared a preview neighborhood request • Pet care",
     priceLabel: "Budget ₹1,500",
     distanceKm: 2.1,
@@ -691,11 +713,13 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     if (trim(request.accepted_provider_id)) return;
     if (trim(request.status) && ["cancelled", "canceled", "closed", "completed", "fulfilled", "archived"].includes(trim(request.status).toLowerCase())) return;
 
+    const composerMetadata = readMarketplaceComposerMetadata(request.metadata);
     const ownerProfile = profileMap.get(ownerId);
     const budget = Math.max(Number(request.budget_max || 0), Number(request.budget_min || 0));
     const urgency = trim(request.urgency).toLowerCase();
-    const title = trim(request.title) || trim(request.details) || "Need local support";
-    const category = trim(request.category) || "Need";
+    const title = trim(request.title) || trim(composerMetadata?.title) || trim(request.details) || "Need local support";
+    const category = trim(composerMetadata?.category) || trim(request.category) || "Need";
+    const summary = resolveWelcomeSummary(trim(request.details) || trim(composerMetadata?.details), "demand");
     const canonicalKey = buildWelcomeCanonicalKey({
       kind: "demand",
       ownerId,
@@ -725,6 +749,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       acceptedProviderId: trim(request.accepted_provider_id) || null,
       status: trim(request.status) || null,
       title,
+      summary,
       subtitle: `${ownerProfile?.name || "A connection"} shared a local request${category ? ` • ${category}` : ""}`,
       priceLabel: budget > 0 ? `Budget ₹${budget}` : "Budget shared in chat",
       locationLabel: mapMeta.locationLabel,
@@ -753,20 +778,27 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const ownerId = getOwnerId(post);
     if (!connectedPeerSet.has(ownerId)) return;
 
+    const composerMetadata = readMarketplaceComposerMetadata(post.metadata);
     const parsed = parseMarketplacePostPreview(
       trim(post.text) || trim(post.content) || trim(post.description) || trim(post.title) || "New local post"
     );
-    const cardType = normalizeMarketplaceCardType(post.type || post.post_type || parsed.kind);
+    const cardType = normalizeMarketplaceCardType(post.type || post.post_type || composerMetadata?.postType || parsed.kind);
     const ownerProfile = profileMap.get(ownerId);
-    const title = parsed.title;
+    const title = trim(composerMetadata?.title) || parsed.title;
+    const category =
+      trim(composerMetadata?.category) ||
+      parsed.category ||
+      trim(post.category) ||
+      (cardType === "demand" ? "Need" : cardType === "service" ? "Service" : "Product");
+    const summary = resolveWelcomeSummary(
+      trim(composerMetadata?.details) || parsed.description || trim(post.description) || trim(post.content),
+      cardType
+    );
     const canonicalKey = buildWelcomeCanonicalKey({
       kind: cardType,
       ownerId,
       title,
-      category:
-        parsed.category ||
-        trim(post.category) ||
-        (cardType === "demand" ? "Need" : cardType === "service" ? "Service" : "Product"),
+      category,
       metadata: post.metadata,
     });
     const mapMeta = resolveWelcomeCardMapMeta({
@@ -789,6 +821,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       ownerName: ownerProfile?.name || undefined,
       status: trim(post.status || post.state) || null,
       title,
+      summary,
       subtitle: `${ownerProfile?.name || "A connection"} posted this in your connected feed${parsed.category ? ` • ${parsed.category}` : ""}`,
       locationLabel: mapMeta.locationLabel,
       priceLabel:
@@ -831,13 +864,16 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const ownerId = trim(service.provider_id);
     if (!connectedPeerSet.has(ownerId)) return;
 
+    const composerMetadata = readMarketplaceComposerMetadata(service.metadata);
     const ownerProfile = profileMap.get(ownerId);
-    const title = service.title || "Local service";
+    const title = trim(composerMetadata?.title) || service.title || "Local service";
+    const category = trim(composerMetadata?.category) || service.category || "Service";
+    const summary = resolveWelcomeSummary(trim(composerMetadata?.details) || service.description, "service");
     const canonicalKey = buildWelcomeCanonicalKey({
       kind: "service",
       ownerId,
       title,
-      category: service.category || "Service",
+      category,
       metadata: service.metadata,
     });
     const mapMeta = resolveWelcomeCardMapMeta({
@@ -859,6 +895,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
+      summary,
       subtitle: `${ownerProfile?.name || "A connection"} shared this service${service.category ? ` • ${service.category}` : ""}`,
       priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
       locationLabel: mapMeta.locationLabel,
@@ -888,13 +925,16 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
     const ownerId = trim(product.provider_id);
     if (!connectedPeerSet.has(ownerId)) return;
 
+    const composerMetadata = readMarketplaceComposerMetadata(product.metadata);
     const ownerProfile = profileMap.get(ownerId);
-    const title = product.title || "Local product";
+    const title = trim(composerMetadata?.title) || product.title || "Local product";
+    const category = trim(composerMetadata?.category) || product.category || "Product";
+    const summary = resolveWelcomeSummary(trim(composerMetadata?.details) || product.description, "product");
     const canonicalKey = buildWelcomeCanonicalKey({
       kind: "product",
       ownerId,
       title,
-      category: product.category || "Product",
+      category,
       metadata: product.metadata,
     });
     const mapMeta = resolveWelcomeCardMapMeta({
@@ -916,6 +956,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       ownerId,
       ownerName: ownerProfile?.name || undefined,
       title,
+      summary,
       subtitle: `${ownerProfile?.name || "A connection"} shared this product${product.category ? ` • ${product.category}` : ""}`,
       priceLabel: product.price ? `₹${product.price}` : "Price on request",
       locationLabel: mapMeta.locationLabel,

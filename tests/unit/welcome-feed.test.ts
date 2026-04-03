@@ -237,6 +237,7 @@ describe("welcome feed builder", () => {
     expect(result.cards[0]?.source).toBe("help_request");
     expect(result.cards[0]?.focusId).toBe("help-mirrored");
     expect(result.cards[0]?.title).toBe("Dryclean pickup");
+    expect(result.cards[0]?.summary).toBe("Pickup and wash");
   });
 
   it("prefers uploaded media from live post metadata before seeded fallback visuals", () => {
