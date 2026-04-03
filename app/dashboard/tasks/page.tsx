@@ -43,7 +43,6 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
@@ -3194,32 +3193,6 @@ export default function TasksPage() {
           </div>
         </div>
       </motion.section>
-
-      <PageContextStrip
-        eyebrow="Tasks"
-        title="Keep work moving without losing context"
-        description="Tasks is your operating workspace for matched requests, accepted work, quote follow-through, and completed jobs. It should always answer what needs attention next."
-        metrics={[
-          { value: `${tasks.length}`, label: "tracked tasks" },
-          { value: `${actionRequiredCount}`, label: "need attention" },
-          { value: `${inboxMatches.length}`, label: "inbox matches" },
-        ]}
-        actions={[
-          {
-            label: selectedTaskView === "inbox" ? "Refresh inbox" : "Open inbox",
-            onClick: () => {
-              setSelectedTaskView("inbox");
-              void loadInboxMatches();
-            },
-            tone: "primary",
-          },
-          {
-            label: "Open Explore",
-            onClick: () => router.push("/dashboard"),
-            tone: "secondary",
-          },
-        ]}
-      />
 
       {errorMessage ? (
         <div className="rounded-[1.2rem] border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>

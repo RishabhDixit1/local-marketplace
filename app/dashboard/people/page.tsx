@@ -6,7 +6,6 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -1747,35 +1746,6 @@ export default function PeoplePage() {
         onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
         onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
         onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
-      />
-
-      <PageContextStrip
-        eyebrow="People"
-        title="Check trust before you start a conversation"
-        description="People is where nearby providers become legible. Compare availability, trust signals, and local fit here before moving into chat, quotes, or tasks."
-        metrics={[
-          { value: `${discoveryProviders.length}`, label: "visible providers" },
-          { value: `${activeNow}`, label: "active now" },
-          { value: `${connectionBuckets.accepted.length}`, label: "accepted connections" },
-        ]}
-        actions={[
-          viewerCompletionPercent !== null && viewerCompletionPercent < 70
-            ? {
-                label: "Complete profile",
-                onClick: () => router.push("/dashboard/profile"),
-                tone: "primary",
-              }
-            : {
-                label: "Open connected feed",
-                onClick: () => router.push("/dashboard/welcome"),
-                tone: "primary",
-              },
-          {
-            label: "Open Explore",
-            onClick: () => router.push("/dashboard"),
-            tone: "secondary",
-          },
-        ]}
       />
 
       {viewerCompletionPercent !== null && viewerCompletionPercent < 70 && !profileBannerDismissed && (
