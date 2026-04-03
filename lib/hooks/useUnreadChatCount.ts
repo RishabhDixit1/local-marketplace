@@ -18,113 +18,116 @@ type MessageRow = {
 const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
+const UNREAD_COUNT_REFRESH_DEBOUNCE_MS = 320;
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
 
-export default function useUnreadChatCount(enabled = true) {
-  const [userId, setUserId] = useState<string | null>(null);
+export default function useUnreadChatCount(enabled = true, userId: string | null = null) {
   const [unreadCount, setUnreadCount] = useState(0);
   const conversationIdsRef = useRef<Set<string>>(new Set());
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadInFlightRef = useRef(false);
+  const queuedReloadRef = useRef(false);
 
   const loadUnreadCount = useCallback(async () => {
-    if (!enabled || !userId) {
-      conversationIdsRef.current = new Set();
-      setUnreadCount(0);
+    if (loadInFlightRef.current) {
+      queuedReloadRef.current = true;
       return;
     }
 
-    const participantsWithReadState = await supabase
-      .from("conversation_participants")
-      .select("conversation_id,last_read_at")
-      .eq("user_id", userId);
+    loadInFlightRef.current = true;
 
-    if (participantsWithReadState.error) {
-      if (isMissingColumnError(participantsWithReadState.error.message)) {
+    try {
+      if (!enabled || !userId) {
         conversationIdsRef.current = new Set();
         setUnreadCount(0);
         return;
       }
 
-      console.warn("Unable to load unread chat count:", participantsWithReadState.error.message);
-      return;
+      const participantsWithReadState = await supabase
+        .from("conversation_participants")
+        .select("conversation_id,last_read_at")
+        .eq("user_id", userId);
+
+      if (participantsWithReadState.error) {
+        if (isMissingColumnError(participantsWithReadState.error.message)) {
+          conversationIdsRef.current = new Set();
+          setUnreadCount(0);
+          return;
+        }
+
+        console.warn("Unable to load unread chat count:", participantsWithReadState.error.message);
+        return;
+      }
+
+      const participantRows = ((participantsWithReadState.data as ParticipantRow[] | null) || []).filter(
+        (row) => typeof row.conversation_id === "string" && row.conversation_id.length > 0
+      );
+
+      if (!participantRows.length) {
+        conversationIdsRef.current = new Set();
+        setUnreadCount(0);
+        return;
+      }
+
+      const conversationIds = participantRows.map((row) => row.conversation_id);
+      conversationIdsRef.current = new Set(conversationIds);
+
+      const messageScanLimit = Math.min(
+        CONVERSATION_MESSAGE_SCAN_MAX,
+        Math.max(CONVERSATION_MESSAGE_SCAN_MIN, conversationIds.length * CONVERSATION_MESSAGE_SCAN_PER_CHAT)
+      );
+
+      const { data: messageRows, error: messagesError } = await supabase
+        .from("messages")
+        .select("conversation_id,sender_id,created_at")
+        .in("conversation_id", conversationIds)
+        .order("created_at", { ascending: false })
+        .limit(messageScanLimit);
+
+      if (messagesError) {
+        console.warn("Unable to load unread chat messages:", messagesError.message);
+        return;
+      }
+
+      const lastReadAtByConversation = new Map<string, string | null>(
+        participantRows.map((row) => [row.conversation_id, row.last_read_at || null])
+      );
+
+      const nextUnreadCount = ((messageRows as MessageRow[] | null) || []).reduce((count, message) => {
+        if (message.sender_id === userId) return count;
+
+        const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
+        if (!lastReadAt) return count + 1;
+        return message.created_at > lastReadAt ? count + 1 : count;
+      }, 0);
+
+      setUnreadCount(nextUnreadCount);
+    } finally {
+      loadInFlightRef.current = false;
+      if (queuedReloadRef.current) {
+        queuedReloadRef.current = false;
+        window.setTimeout(() => {
+          void loadUnreadCount();
+        }, 0);
+      }
     }
-
-    const participantRows = ((participantsWithReadState.data as ParticipantRow[] | null) || []).filter(
-      (row) => typeof row.conversation_id === "string" && row.conversation_id.length > 0
-    );
-
-    if (!participantRows.length) {
-      conversationIdsRef.current = new Set();
-      setUnreadCount(0);
-      return;
-    }
-
-    const conversationIds = participantRows.map((row) => row.conversation_id);
-    conversationIdsRef.current = new Set(conversationIds);
-
-    const messageScanLimit = Math.min(
-      CONVERSATION_MESSAGE_SCAN_MAX,
-      Math.max(CONVERSATION_MESSAGE_SCAN_MIN, conversationIds.length * CONVERSATION_MESSAGE_SCAN_PER_CHAT)
-    );
-
-    const { data: messageRows, error: messagesError } = await supabase
-      .from("messages")
-      .select("conversation_id,sender_id,created_at")
-      .in("conversation_id", conversationIds)
-      .order("created_at", { ascending: false })
-      .limit(messageScanLimit);
-
-    if (messagesError) {
-      console.warn("Unable to load unread chat messages:", messagesError.message);
-      return;
-    }
-
-    const lastReadAtByConversation = new Map<string, string | null>(
-      participantRows.map((row) => [row.conversation_id, row.last_read_at || null])
-    );
-
-    const nextUnreadCount = ((messageRows as MessageRow[] | null) || []).reduce((count, message) => {
-      if (message.sender_id === userId) return count;
-
-      const lastReadAt = lastReadAtByConversation.get(message.conversation_id) || null;
-      if (!lastReadAt) return count + 1;
-      return message.created_at > lastReadAt ? count + 1 : count;
-    }, 0);
-
-    setUnreadCount(nextUnreadCount);
   }, [enabled, userId]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (enabled && userId) return;
 
-    let active = true;
-
-    void supabase.auth.getUser().then(({ data, error }) => {
-      if (!active) return;
-      if (error) {
-        console.warn("Unable to resolve unread chat auth:", error.message);
-        return;
-      }
-      setUserId(data.user?.id ?? null);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      setUserId(session?.user?.id ?? null);
-      if (!session?.user) {
-        setUnreadCount(0);
-        conversationIdsRef.current = new Set();
-      }
-    });
+    conversationIdsRef.current = new Set();
+    setUnreadCount(0);
 
     return () => {
-      active = false;
-      subscription.unsubscribe();
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
-  }, [enabled]);
+  }, [enabled, userId]);
 
   useEffect(() => {
     if (!enabled || !userId) {
@@ -132,9 +135,20 @@ export default function useUnreadChatCount(enabled = true) {
       return;
     }
 
+    const scheduleLoadUnreadCount = () => {
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
+
+      refreshTimerRef.current = window.setTimeout(() => {
+        refreshTimerRef.current = null;
+        void loadUnreadCount();
+      }, UNREAD_COUNT_REFRESH_DEBOUNCE_MS);
+    };
+
     const cancelIdleTask = scheduleClientIdleTask(() => {
       void loadUnreadCount();
-    }, 2200);
+    }, 3200);
 
     const participantsChannel = supabase
       .channel(`dashboard-chat-unread-participants-${userId}`)
@@ -147,7 +161,7 @@ export default function useUnreadChatCount(enabled = true) {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          void loadUnreadCount();
+          scheduleLoadUnreadCount();
         }
       )
       .subscribe();
@@ -168,12 +182,16 @@ export default function useUnreadChatCount(enabled = true) {
               : "";
 
           if (!conversationId || !conversationIdsRef.current.has(conversationId)) return;
-          void loadUnreadCount();
+          scheduleLoadUnreadCount();
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       cancelIdleTask();
       void supabase.removeChannel(participantsChannel);
       void supabase.removeChannel(messagesChannel);
