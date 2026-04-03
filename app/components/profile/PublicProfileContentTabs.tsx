@@ -24,6 +24,8 @@ type PublicProfileContentTabsProps = {
   locationLabel: string;
   responseMinutes: number;
   publicPath: string;
+  initialTab?: "marketplace" | "store" | "reviews" | "about";
+  requestReviewComposer?: boolean;
   paymentMethods?: Array<{ id: string; method_type: string; provider_name: string | null; account_handle: string | null; is_verified: boolean }>;
   workHistory?: Array<{ id: string; role_title: string; company_name: string; start_date: string | null; end_date: string | null; is_current: boolean }>;
 };
@@ -58,11 +60,13 @@ export default function PublicProfileContentTabs({
   locationLabel,
   responseMinutes,
   publicPath,
+  initialTab = "marketplace",
+  requestReviewComposer = false,
   paymentMethods = [],
   workHistory = [],
 }: PublicProfileContentTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"marketplace" | "store" | "reviews" | "about">("marketplace");
+  const [activeTab, setActiveTab] = useState<"marketplace" | "store" | "reviews" | "about">(initialTab);
   const [authResolved, setAuthResolved] = useState(false);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const isSelf = Boolean(viewerId && viewerId === profileUserId);
@@ -107,6 +111,17 @@ export default function PublicProfileContentTabs({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    if (!requestReviewComposer || !authResolved) return;
+    if (!viewerId || isSelf) return;
+    setActiveTab("reviews");
+    setReviewModalOpen(true);
+  }, [authResolved, isSelf, requestReviewComposer, viewerId]);
 
   const handleSubmitReview = useCallback(async () => {
     if (isSelf || !viewerId) return;

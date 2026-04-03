@@ -619,9 +619,10 @@ export default function PublicProfilePostsGrid({
         title: post.title,
         price: post.price,
       });
-      cart.openCart();
+      cart.closeCart();
+      router.push("/checkout");
     },
-    [cart, displayName, profileUserId]
+    [cart, displayName, profileUserId, router]
   );
 
   const handleShare = useCallback(

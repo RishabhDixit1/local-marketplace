@@ -6,17 +6,16 @@ import type { ReactNode } from "react";
 import { BadgeCheck, Clock3, ExternalLink, MapPin, MessageCircle, Star, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import ConnectionActionGroup from "@/app/components/connections/ConnectionActionGroup";
-import ReviewModal from "./ReviewModal";
 import {
   calculateProfileCompletion,
   calculateVerificationStatus,
-  createBusinessSlug,
   estimateResponseMinutes,
   verificationLabel,
 } from "@/lib/business";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 
 type Props = {
   userId: string;
@@ -54,7 +53,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
-  const [openReview, setOpenReview] = useState(false);
   const [servicesCount, setServicesCount] = useState(0);
   const [productsCount, setProductsCount] = useState(0);
   const [completedJobs, setCompletedJobs] = useState<number | null>(null);
@@ -163,10 +161,6 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
   }, [isUuidUserId, open, userId]);
 
   useEffect(() => {
-    if (!open) setOpenReview(false);
-  }, [open]);
-
-  useEffect(() => {
     if (!connectionNotice) return;
     const timerId = window.setTimeout(() => setConnectionNotice(null), 2800);
 
@@ -216,7 +210,7 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     });
   }, [avgRating, profile, profileCompletion, productsCount, reviews.length, servicesCount]);
 
-  const businessSlug = profile ? createBusinessSlug(profile.name, profile.id) : "";
+  const publicProfilePath = profile ? buildPublicProfilePath(profile) : "";
   const connectionState = useMemo(() => getConnectionState(userId), [getConnectionState, userId]);
   const connectionBusy =
     busyTargetId === userId || (connectionState.requestId ? busyRequestId === connectionState.requestId : false);
@@ -395,33 +389,34 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
 
               <button
                 type="button"
-                onClick={() => setOpenReview(true)}
-                disabled={!isUuidUserId}
+                onClick={() => {
+                  if (!publicProfilePath) return;
+                  window.open(`${publicProfilePath}?tab=reviews&writeReview=1`, "_blank");
+                }}
+                disabled={!publicProfilePath}
                 className={`w-full rounded-xl py-2 text-sm font-semibold transition ${
-                  isUuidUserId
+                  publicProfilePath
                     ? "bg-indigo-600 text-white hover:bg-indigo-500"
                     : "cursor-not-allowed bg-slate-200 text-slate-500"
                 }`}
               >
                 Write Review
               </button>
-              {!isUuidUserId && <p className="text-xs text-slate-500">Reviews are available for published member profiles only.</p>}
-              {!!businessSlug && isUuidUserId && (
+              {!publicProfilePath && <p className="text-xs text-slate-500">Reviews are available for published member profiles only.</p>}
+              {!!publicProfilePath && isUuidUserId && (
                 <button
                   type="button"
-                  onClick={() => window.open(`/business/${businessSlug}`, "_blank")}
+                  onClick={() => window.open(publicProfilePath, "_blank")}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-200 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-300"
                 >
                   <ExternalLink size={14} />
-                  Open Public Business Page
+                  Open Public Profile
                 </button>
               )}
             </div>
           </>
         )}
       </div>
-
-      <ReviewModal providerId={userId} open={openReview} onClose={() => setOpenReview(false)} />
     </div>
   );
 }

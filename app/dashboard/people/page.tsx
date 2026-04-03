@@ -1082,6 +1082,7 @@ export default function PeoplePage() {
   const persistProfileShare = useCallback(
     async (provider: ProviderCardModel, channel: "native" | "clipboard", activeViewerId: string | null) => {
       if (!activeViewerId) return;
+      const profilePath = provider.publicProfilePath || provider.fullProfilePath;
 
       const { error } = await supabase.from("feed_card_shares").insert({
         user_id: activeViewerId,
@@ -1097,7 +1098,7 @@ export default function PeoplePage() {
           priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
           audienceName: provider.location,
           tags: provider.tags.slice(0, 3),
-          actionPath: provider.fullProfilePath,
+          actionPath: profilePath,
           role: provider.role,
         },
       });
@@ -1223,13 +1224,14 @@ export default function PeoplePage() {
 
       try {
         const viewerId = await ensureViewerId();
+        const profilePath = provider.publicProfilePath || provider.fullProfilePath;
         const savePayload = {
           card_id: cardId,
           focus_id: provider.id,
           card_type: "service" as const,
           title: provider.name,
           subtitle: provider.role,
-          action_path: provider.fullProfilePath,
+          action_path: profilePath,
           metadata: {
             kind: "people_profile",
             image: provider.media[0]?.url || provider.avatar,
@@ -1238,7 +1240,7 @@ export default function PeoplePage() {
             audienceName: provider.location,
             tags: provider.tags.slice(0, 3),
             role: provider.role,
-            actionPath: provider.fullProfilePath,
+            actionPath: profilePath,
           },
         };
 
@@ -1257,13 +1259,14 @@ export default function PeoplePage() {
       } catch (error) {
         try {
           const viewerId = await ensureViewerId();
+          const profilePath = provider.publicProfilePath || provider.fullProfilePath;
           const rollbackPayload = {
             card_id: cardId,
             focus_id: provider.id,
             card_type: "service" as const,
             title: provider.name,
             subtitle: provider.role,
-            action_path: provider.fullProfilePath,
+            action_path: profilePath,
             metadata: {
               kind: "people_profile",
               image: provider.media[0]?.url || provider.avatar,
@@ -1272,7 +1275,7 @@ export default function PeoplePage() {
               audienceName: provider.location,
               tags: provider.tags.slice(0, 3),
               role: provider.role,
-              actionPath: provider.fullProfilePath,
+              actionPath: profilePath,
             },
           };
 
@@ -1316,7 +1319,7 @@ export default function PeoplePage() {
       if (!provider) return;
 
       const cardId = buildProfileCardId(providerId);
-      const sharePath = provider.fullProfilePath;
+      const sharePath = provider.publicProfilePath || provider.fullProfilePath;
       const shareUrl = `${window.location.origin}${sharePath}`;
       const shareText = `${provider.name} • ${provider.role} • ${provider.location}`;
 
