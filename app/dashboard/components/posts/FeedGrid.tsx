@@ -179,7 +179,7 @@ export default function FeedGrid({
     <>
       {/* ── Edit Post Modal ──────────────────────────────────────── */}
       {editingPost && (
-        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center bg-slate-950/40 p-4 backdrop-blur-sm sm:items-center">
           <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div className="flex items-center gap-2">

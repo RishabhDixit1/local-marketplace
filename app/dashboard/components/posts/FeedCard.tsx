@@ -24,6 +24,7 @@ import type {
 } from "@/lib/marketplaceCardActions";
 import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
+import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 
 type ActionBusyState = Record<MarketplacePrimaryActionKind | MarketplaceSecondaryActionKind, boolean>;
 
@@ -85,6 +86,12 @@ const secondaryActionMeta = {
   }
 >;
 
+const verificationLabels: Record<MarketplaceDisplayFeedItem["verificationStatus"], string> = {
+  verified: "Verified profile",
+  pending: "Checks in progress",
+  unclaimed: "Unclaimed profile",
+};
+
 export default function FeedCard({
   item,
   index,
@@ -120,6 +127,39 @@ export default function FeedCard({
   const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
   const discardButton = buttons.find((button) => button.kind === "discard");
+  const trustItems = [
+    {
+      label: verificationLabels[item.verificationStatus],
+      tone:
+        item.verificationStatus === "verified"
+          ? ("good" as const)
+          : item.verificationStatus === "pending"
+          ? ("neutral" as const)
+          : ("caution" as const),
+    },
+    item.reviewCount && item.reviewCount > 0
+      ? {
+          label: `${item.reviewCount} review${item.reviewCount === 1 ? "" : "s"}`,
+          tone: "good" as const,
+        }
+      : {
+          label: "New marketplace profile",
+          tone: "neutral" as const,
+        },
+    item.responseMinutes > 0
+      ? {
+          label: `~${item.responseMinutes} min reply`,
+          tone: item.responseMinutes <= 15 ? ("good" as const) : ("neutral" as const),
+        }
+      : {
+          label: "Reply speed building",
+          tone: "caution" as const,
+        },
+    {
+      label: item.coordinateAccuracy === "precise" ? "Exact area shared" : "Area shown approximately",
+      tone: item.coordinateAccuracy === "precise" ? ("good" as const) : ("neutral" as const),
+    },
+  ];
 
   return (
     <motion.article
@@ -228,6 +268,7 @@ export default function FeedCard({
       <div className="mt-2.5">
         <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">{item.displayTitle}</h3>
         <p className="mt-1.5 line-clamp-4 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+        <TrustSnapshot items={trustItems} compact className="mt-3" />
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
@@ -255,11 +296,6 @@ export default function FeedCard({
           >
             {item.urgent ? "Urgent" : "Standard"}
           </span>
-          {item.responseMinutes > 0 ? (
-            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500">
-              Replies ~{item.responseMinutes} min
-            </span>
-          ) : null}
         </div>
       </div>
 

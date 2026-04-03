@@ -21,7 +21,7 @@ export function CartDrawer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1400] bg-slate-950/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[var(--layer-drawer-backdrop)] bg-slate-950/40 backdrop-blur-sm"
             onClick={closeCart}
             aria-hidden
           />
@@ -32,7 +32,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed inset-y-0 right-0 z-[1401] flex w-full max-w-sm min-w-[280px] flex-col bg-white shadow-2xl"
+            className="fixed inset-y-0 right-0 z-[var(--layer-drawer)] flex w-full max-w-sm min-w-[280px] flex-col bg-white shadow-2xl"
             aria-label="Shopping cart"
             role="dialog"
             aria-modal="true"

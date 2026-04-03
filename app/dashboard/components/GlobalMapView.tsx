@@ -505,7 +505,7 @@ export default function GlobalMapView({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[9000] flex flex-col bg-[#020617]"
+      className="fixed inset-0 z-[var(--layer-fullscreen)] flex flex-col bg-[#020617]"
       role="dialog"
       aria-modal="true"
       aria-label="Map view"

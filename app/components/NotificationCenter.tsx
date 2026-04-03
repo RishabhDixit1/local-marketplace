@@ -672,13 +672,13 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
           <>
             <button
               type="button"
-              className="fixed inset-0 z-[1390] bg-slate-900/25"
+              className="fixed inset-0 z-[var(--layer-drawer-backdrop)] bg-slate-900/25"
               onClick={() => setIsOpen(false)}
               aria-label="Close notifications"
             />
             <div
               ref={panelRef}
-              className="fixed inset-x-3 top-[4.25rem] bottom-3 z-[1400] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
+              className="fixed inset-x-3 top-[4.25rem] bottom-3 z-[var(--layer-drawer)] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-4 sm:top-[4.5rem] sm:bottom-4"
               role="dialog"
               aria-label="Notifications panel"
             >
@@ -690,7 +690,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
       : null;
 
   return (
-    <div className="relative z-[1400]">
+    <div className="relative z-[var(--layer-popover)]">
       <button
         ref={triggerRef}
         onClick={togglePanel}
@@ -711,7 +711,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
       {isOpen && !useMobileSheet && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-[1400] mt-2 flex w-[24rem] max-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="absolute right-0 top-full z-[var(--layer-popover)] mt-2 flex w-[24rem] max-h-[36rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
           role="dialog"
           aria-label="Notifications panel"
         >
@@ -727,7 +727,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
           <div
             role="alert"
             aria-live="polite"
-            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[1500] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
+            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-toast)] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
           >
             <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}>
               {(() => {

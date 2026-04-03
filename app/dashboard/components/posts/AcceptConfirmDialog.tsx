@@ -21,7 +21,7 @@ export default function AcceptConfirmDialog({
   if (!open || !listing) return null;
 
   return (
-    <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/50 px-4 py-8 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.55)]">
         <div className="flex items-start justify-between gap-3">
           <div>
