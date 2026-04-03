@@ -20,6 +20,7 @@ export type MarketplaceComposerMetadata = {
 };
 
 type FlexibleRow = Record<string, unknown>;
+const COMPOSER_METADATA_SOURCES = new Set(["serviq_compose", "api_needs_publish", "composer_listing_sync"]);
 
 const isFlexibleRow = (value: unknown): value is FlexibleRow =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -108,7 +109,7 @@ export const readMarketplaceComposerMetadata = (value: unknown): MarketplaceComp
   const source = trim(value.source);
   const postType = trim(value.postType);
   const mode = trim(value.mode);
-  if (source !== "serviq_compose") return null;
+  if (source && !COMPOSER_METADATA_SOURCES.has(source)) return null;
   if (!["need", "service", "product"].includes(postType)) return null;
   if (!["urgent", "schedule"].includes(mode)) return null;
 

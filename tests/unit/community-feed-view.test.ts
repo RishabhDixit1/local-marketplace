@@ -218,4 +218,95 @@ describe("buildCommunityFeedView", () => {
       title: "Dryclean pickup",
     });
   });
+
+  it("preserves composer media for synced listings and falls back to listing image fields", () => {
+    const view = buildCommunityFeedView({
+      currentUserId: "viewer-1",
+      acceptedConnectionIds: ["provider-1", "provider-2"],
+      currentUserProfile: {
+        id: "viewer-1",
+        name: "Viewer",
+        latitude: 12.9716,
+        longitude: 77.5946,
+        role: "seeker",
+      },
+      services: [
+        {
+          id: "service-media",
+          title: "AC servicing",
+          description: "Metadata-backed listing",
+          provider_id: "provider-1",
+          category: "Repair",
+          metadata: {
+            source: "composer_listing_sync",
+            postType: "service",
+            title: "AC servicing",
+            details: "Full servicing with filter cleanup.",
+            category: "Repair",
+            budget: 999,
+            locationLabel: "Indiranagar",
+            radiusKm: 8,
+            mode: "urgent",
+            neededWithin: "today",
+            scheduleDate: "",
+            scheduleTime: "",
+            flexibleTiming: true,
+            attachmentCount: 1,
+            media: [
+              {
+                name: "ac.jpg",
+                url: "https://cdn.example.com/service/ac.jpg",
+                type: "image/jpeg",
+              },
+            ],
+          },
+          created_at: "2026-03-24T08:00:00.000Z",
+        },
+      ],
+      products: [
+        {
+          id: "product-image",
+          title: "Office chair",
+          description: "Image-url fallback listing",
+          provider_id: "provider-2",
+          category: "Furniture",
+          image_url: "https://cdn.example.com/product/chair.jpg",
+          created_at: "2026-03-24T07:00:00.000Z",
+        },
+      ],
+      posts: [],
+      helpRequests: [],
+      profiles: [
+        {
+          id: "provider-1",
+          name: "Asha Repairs",
+          role: "business",
+          latitude: 12.978,
+          longitude: 77.64,
+        },
+        {
+          id: "provider-2",
+          name: "Ritu Local Goods",
+          role: "business",
+          latitude: 12.976,
+          longitude: 77.631,
+        },
+      ],
+      reviews: [],
+      presence: [],
+    });
+
+    expect(view.feedItems.find((item) => item.id === "service-media")?.media).toEqual([
+      {
+        mimeType: "image/jpeg",
+        url: "https://cdn.example.com/service/ac.jpg",
+      },
+    ]);
+    expect(view.feedItems.find((item) => item.id === "product-image")?.media).toEqual([
+      {
+        mimeType: "image/*",
+        url: "https://cdn.example.com/product/chair.jpg",
+      },
+    ]);
+  });
 });

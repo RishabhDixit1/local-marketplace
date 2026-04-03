@@ -20,6 +20,7 @@ import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
 
 type AuthMode = "login" | "email";
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 const COUNTRY_CODE_OPTIONS: Array<{ code: string; label: string; dial: string }> = [
   { code: "IN", label: "India (+91)", dial: "+91" },
@@ -366,6 +367,11 @@ export default function LoginPage() {
                               if (e.key === "Enter") void sendEmailLink();
                             }}
                           />
+                          {isDevelopment ? (
+                            <p className="text-[11px] leading-[1.5] text-amber-300/80">
+                              Local development uses live Supabase email delivery. Use a real inbox and avoid repeated test sends to typo or placeholder addresses.
+                            </p>
+                          ) : null}
                         </div>
                         <button
                           type="button"
