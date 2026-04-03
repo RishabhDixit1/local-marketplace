@@ -1942,7 +1942,6 @@ export default function PeoplePage() {
                           if (!selectedProvider) return;
                           router.push(selectedProvider.publicProfilePath || selectedProvider.fullProfilePath);
                         }}
-                        onOpenTrust={setTrustPanelProviderId}
                       />
                     </motion.div>
                   );

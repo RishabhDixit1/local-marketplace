@@ -33,7 +33,7 @@ type OrderCreationMetadata = Record<string, string | null | undefined>;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, hydrated } = useCart();
 
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const [userPhone, setUserPhone] = useState("");
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
   const scriptLoadedRef = useRef(false);
+  const [authResolved, setAuthResolved] = useState(false);
 
   // Load user info
   useEffect(() => {
@@ -53,7 +54,11 @@ export default function CheckoutPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) { router.replace("/"); return; }
+      if (!user) {
+        setAuthResolved(true);
+        router.replace("/");
+        return;
+      }
       setUserEmail(user.email ?? "");
       setUserName(user.user_metadata?.name ?? user.email ?? "");
       setUserPhone(
@@ -63,6 +68,7 @@ export default function CheckoutPage() {
           ? user.user_metadata.phone
           : ""
       );
+      setAuthResolved(true);
     })();
   }, [router]);
 
@@ -242,6 +248,33 @@ export default function CheckoutPage() {
     return acc;
   }, {});
 
+  const handleBackNavigation = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      try {
+        const referrer = document.referrer ? new URL(document.referrer) : null;
+        if (referrer && referrer.origin === window.location.origin && referrer.pathname !== "/checkout") {
+          router.back();
+          return;
+        }
+      } catch {
+        // Fall through to dashboard when referrer parsing fails.
+      }
+    }
+
+    router.push("/dashboard");
+  }, [router]);
+
+  if (!hydrated || !authResolved) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
+        <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-slate-300" />
+          <p className="font-semibold text-slate-700">Loading checkout…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (success !== null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
@@ -264,7 +297,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <ShoppingBag className="h-12 w-12 text-slate-300" />
           <p className="font-semibold text-slate-700">Your cart is empty</p>
-          <Link href="/" className="text-sm font-medium text-blue-600 hover:underline">Browse marketplace</Link>
+          <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:underline">Browse marketplace</Link>
         </div>
       </div>
     );
@@ -277,9 +310,14 @@ export default function CheckoutPage() {
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-          <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 transition">
+          <button
+            type="button"
+            onClick={handleBackNavigation}
+            aria-label="Go back"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-100"
+          >
             <ArrowLeft className="h-4 w-4 text-slate-600" />
-          </Link>
+          </button>
           <span className="font-semibold text-slate-900">Checkout</span>
           <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length !== 1 ? "s" : ""}</span>
         </div>

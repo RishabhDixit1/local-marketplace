@@ -156,7 +156,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
   };
 
   const handleBuyNow = (itemType: "service" | "product", itemId: string, title: string, price: number) => {
-    cart.addItem({ itemType, itemId, providerId, providerName, title, price });
+    cart.replaceItems([{ itemType, itemId, providerId, providerName, title, price }]);
     cart.closeCart();
     router.push("/checkout");
   };
