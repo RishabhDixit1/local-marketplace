@@ -37,7 +37,8 @@ type DecoratedNotification = NotificationRow & {
 };
 
 const CLOCK_REFRESH_MS = 30000;
-const NOTIFICATION_REFRESH_MS = 60000;
+const NOTIFICATION_REFRESH_MS = 180000;
+const NOTIFICATION_REFRESH_DEBOUNCE_MS = 350;
 
 const kindStyles: Record<
   NotificationKind,
@@ -98,9 +99,10 @@ const isMissingNotificationsTable = (message: string) =>
 
 type NotificationCenterContentProps = {
   enabled?: boolean;
+  userId?: string | null;
 };
 
-export default function NotificationCenter({ enabled = true }: NotificationCenterContentProps) {
+export default function NotificationCenter({ enabled = true, userId = null }: NotificationCenterContentProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -108,7 +110,6 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [userId, setUserId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
   const [demoMode, setDemoMode] = useState(false);
   const [toast, setToast] = useState<{ title: string; kind: NotificationKind } | null>(null);
@@ -117,14 +118,25 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const isOpenRef = useRef(isOpen);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadInFlightRef = useRef(false);
+  const queuedReloadRef = useRef(false);
 
   const loadNotifications = useCallback(
     async (soft = false) => {
+      if (loadInFlightRef.current) {
+        queuedReloadRef.current = true;
+        return;
+      }
+
+      loadInFlightRef.current = true;
+
       if (!userId) {
         setNotifications([]);
         setLoading(false);
         setErrorMessage("");
         setDemoMode(false);
+        loadInFlightRef.current = false;
         return;
       }
 
@@ -175,6 +187,14 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
             ? "Connection issue while loading notifications. Retry once your network is stable."
             : "Unable to load notifications. Please refresh and try again."
         );
+      } finally {
+        loadInFlightRef.current = false;
+        if (queuedReloadRef.current) {
+          queuedReloadRef.current = false;
+          window.setTimeout(() => {
+            void loadNotifications(true);
+          }, 0);
+        }
       }
     },
     [userId]
@@ -188,71 +208,45 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
     return () => {
       window.clearInterval(timer);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (enabled && userId) return;
 
-    const bootstrap = async () => {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        let user = sessionData.session?.user || null;
-
-        if (!user) {
-          const {
-            data: authData,
-          } = await supabase.auth.getUser();
-          user = authData.user;
-        }
-
-        if (!user) {
-          setNotifications([]);
-          setLoading(false);
-          setErrorMessage("");
-          setDemoMode(false);
-        }
-        setUserId(user?.id || "");
-      } catch (error) {
-        console.warn("Unable to initialize notifications auth:", error);
-        setNotifications([]);
-        setLoading(false);
-        setErrorMessage("");
-        setDemoMode(false);
-        setUserId("");
-      }
-    };
-
-    void bootstrap();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        setNotifications([]);
-        setLoading(false);
-        setErrorMessage("");
-        setDemoMode(false);
-      }
-      setUserId(session?.user?.id || "");
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [enabled]);
+    setNotifications([]);
+    setLoading(false);
+    setErrorMessage("");
+    setDemoMode(false);
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, [enabled, userId]);
 
   useEffect(() => {
     if (!enabled || !userId || demoMode) return;
 
     return scheduleClientIdleTask(() => {
       void loadNotifications(true);
-    }, 2200);
+    }, 3200);
   }, [demoMode, enabled, loadNotifications, userId]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  const scheduleLoadNotifications = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      void loadNotifications(true);
+    }, NOTIFICATION_REFRESH_DEBOUNCE_MS);
+  }, [loadNotifications]);
 
   useEffect(() => {
     if (!enabled || !userId || demoMode) return;
@@ -268,7 +262,7 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          void loadNotifications(true);
+          scheduleLoadNotifications();
 
           if (
             payload.eventType === "INSERT" &&
@@ -290,22 +284,26 @@ export default function NotificationCenter({ enabled = true }: NotificationCente
       .subscribe();
 
     return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
-  }, [demoMode, enabled, loadNotifications, userId]);
+  }, [demoMode, enabled, scheduleLoadNotifications, userId]);
 
   useEffect(() => {
     if (!enabled || !userId || demoMode) return;
 
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      void loadNotifications(true);
+      scheduleLoadNotifications();
     }, NOTIFICATION_REFRESH_MS);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [demoMode, enabled, loadNotifications, userId]);
+  }, [demoMode, enabled, scheduleLoadNotifications, userId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

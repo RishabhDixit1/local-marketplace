@@ -93,7 +93,7 @@ function DashboardShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, loading: profileLoading } = useProfileContext();
+  const { user, profile, loading: profileLoading } = useProfileContext();
   const [desktopNavManuallyCollapsed, setDesktopNavManuallyCollapsed] = useState(false);
   const [desktopNavAutoCollapsed, setDesktopNavAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -110,7 +110,8 @@ function DashboardShell({
   const [openCreatePost, setOpenCreatePost] = useState(false);
   const [openQuickActions, setOpenQuickActions] = useState(false);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
-  const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady);
+  const currentUserId = user?.id ?? null;
+  const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady, currentUserId);
   const myProfileHref =
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
@@ -538,7 +539,7 @@ function DashboardShell({
                   )}
                 </button>
                 <AvailabilityToggle />
-                <NotificationCenter enabled={shellEnhancementsReady} />
+                <NotificationCenter enabled={shellEnhancementsReady} userId={currentUserId} />
                 <div className="relative">
                   <button
                     type="button"
