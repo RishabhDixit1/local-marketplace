@@ -2,7 +2,8 @@ import { Resolver, promises as dnsPromises } from "node:dns";
 import { EventEmitter } from "node:events";
 import https from "node:https";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { POST, resetMagicLinkRequestCooldownForTests } from "../../app/api/auth/send-link/route";
+import { resetMagicLinkRequestCooldownForTests } from "../../app/api/auth/send-link/cooldown";
+import { POST } from "../../app/api/auth/send-link/route";
 
 type MockHttpsPlan =
   | {
@@ -75,6 +76,9 @@ const installHttpsRequestMock = (plans: MockHttpsPlan[]) => {
 describe("POST /api/auth/send-link", () => {
   const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const originalAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const originalAllowedRecipients = process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS;
+  const originalBlockedRecipients = process.env.AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS;
+  const originalBlockedDomains = process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS;
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -91,6 +95,24 @@ describe("POST /api/auth/send-link", () => {
     } else {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalAnonKey;
     }
+
+    if (originalAllowedRecipients === undefined) {
+      delete process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS;
+    } else {
+      process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS = originalAllowedRecipients;
+    }
+
+    if (originalBlockedRecipients === undefined) {
+      delete process.env.AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS;
+    } else {
+      process.env.AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS = originalBlockedRecipients;
+    }
+
+    if (originalBlockedDomains === undefined) {
+      delete process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS;
+    } else {
+      process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS = originalBlockedDomains;
+    }
   });
 
   it("forwards the requested callback using the redirect_to query parameter", async () => {
@@ -105,7 +127,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
         redirectTo: "http://localhost:3000/auth/callback",
       }),
     });
@@ -135,7 +157,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
       }),
     });
 
@@ -160,7 +182,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
         redirectTo: "http://localhost:3000/auth/callback",
       }),
     });
@@ -171,9 +193,64 @@ describe("POST /api/auth/send-link", () => {
     const payload = JSON.parse(String(requests[0].write.mock.calls[0][0]));
 
     expect(payload).toEqual({
-      email: "user@example.com",
+      email: "person@serviq.dev",
       create_user: true,
     });
+  });
+
+  it("blocks placeholder or disposable magic-link recipients before sending to Supabase", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+
+    const { requestMock } = installHttpsRequestMock([]);
+
+    const request = new Request("http://localhost:3000/api/auth/send-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "demo@mailinator.com",
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      ok: false,
+      error: "Use a real inbox. Placeholder, disposable, or blocked email addresses cannot receive login links.",
+    });
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it("supports allowlisting magic-link recipients through environment configuration", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+    process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS = "allowed@serviq.in,@trusted.dev";
+
+    const { requestMock } = installHttpsRequestMock([]);
+
+    const request = new Request("http://localhost:3000/api/auth/send-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "outside@openlane.dev",
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toEqual({
+      ok: false,
+      error: "This email address is not approved for magic-link sign-in in this environment.",
+    });
+    expect(requestMock).not.toHaveBeenCalled();
   });
 
   it("ignores a mismatched callback host and keeps the current site origin", async () => {
@@ -188,7 +265,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
         redirectTo: "https://app.serviq.example/auth/callback",
       }),
     });
@@ -227,7 +304,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
       }),
     });
 
@@ -274,7 +351,7 @@ describe("POST /api/auth/send-link", () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: "user@example.com",
+        email: "person@serviq.dev",
       }),
     });
 
@@ -302,7 +379,7 @@ describe("POST /api/auth/send-link", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: "user@example.com",
+          email: "person@serviq.dev",
         }),
       });
 

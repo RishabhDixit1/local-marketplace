@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ensureProfileForUser, fetchProfileByUserId, subscribeToCurrentUserProfile } from "@/lib/profile/client";
 import type { ProfileRecord } from "@/lib/profile/types";
@@ -16,6 +16,7 @@ type ProfileContextValue = {
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
+const PROFILE_REALTIME_REFRESH_DEBOUNCE_MS = 280;
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -23,8 +24,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const requestVersionRef = useRef(0);
+  const realtimeRefreshTimerRef = useRef<number | null>(null);
+  const realtimeRefreshInFlightRef = useRef(false);
+  const realtimeRefreshQueuedRef = useRef(false);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     const requestVersion = requestVersionRef.current + 1;
     requestVersionRef.current = requestVersion;
 
@@ -66,7 +70,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         error instanceof Error ? error.message : "Unable to load your profile right now. Check your connection and retry."
       );
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initialRefreshId = window.setTimeout(() => {
@@ -92,12 +96,18 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       window.clearTimeout(initialRefreshId);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [refreshProfile]);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    const unsubscribe = subscribeToCurrentUserProfile(user.id, () => {
+    const runRealtimeProfileRefresh = () => {
+      if (realtimeRefreshInFlightRef.current) {
+        realtimeRefreshQueuedRef.current = true;
+        return;
+      }
+
+      realtimeRefreshInFlightRef.current = true;
       void fetchProfileByUserId(user.id, user)
         .then((latestProfile) => {
           if (latestProfile?.id) {
@@ -107,10 +117,37 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(() => {
           // Ignore transient realtime refresh failures and keep the last known profile in memory.
+        })
+        .finally(() => {
+          realtimeRefreshInFlightRef.current = false;
+          if (realtimeRefreshQueuedRef.current) {
+            realtimeRefreshQueuedRef.current = false;
+            scheduleRealtimeProfileRefresh();
+          }
         });
-    });
+    };
 
-    return unsubscribe;
+    const scheduleRealtimeProfileRefresh = () => {
+      if (realtimeRefreshTimerRef.current) {
+        window.clearTimeout(realtimeRefreshTimerRef.current);
+      }
+
+      realtimeRefreshTimerRef.current = window.setTimeout(() => {
+        realtimeRefreshTimerRef.current = null;
+        runRealtimeProfileRefresh();
+      }, PROFILE_REALTIME_REFRESH_DEBOUNCE_MS);
+    };
+
+    const unsubscribe = subscribeToCurrentUserProfile(user.id, scheduleRealtimeProfileRefresh);
+
+    return () => {
+      if (realtimeRefreshTimerRef.current) {
+        window.clearTimeout(realtimeRefreshTimerRef.current);
+        realtimeRefreshTimerRef.current = null;
+      }
+      realtimeRefreshQueuedRef.current = false;
+      unsubscribe();
+    };
   }, [user]);
 
   return (

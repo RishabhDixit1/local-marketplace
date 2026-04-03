@@ -26,7 +26,7 @@ const isMissingColumnError = (message: string) =>
 export default function useUnreadChatCount(enabled = true, userId: string | null = null) {
   const [unreadCount, setUnreadCount] = useState(0);
   const conversationIdsRef = useRef<Set<string>>(new Set());
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshTimerRef = useRef<number | null>(null);
   const loadInFlightRef = useRef(false);
   const queuedReloadRef = useRef(false);
 
