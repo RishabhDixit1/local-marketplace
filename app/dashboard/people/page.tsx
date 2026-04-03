@@ -6,7 +6,6 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -1083,6 +1082,7 @@ export default function PeoplePage() {
   const persistProfileShare = useCallback(
     async (provider: ProviderCardModel, channel: "native" | "clipboard", activeViewerId: string | null) => {
       if (!activeViewerId) return;
+      const profilePath = provider.publicProfilePath || provider.fullProfilePath;
 
       const { error } = await supabase.from("feed_card_shares").insert({
         user_id: activeViewerId,
@@ -1098,7 +1098,7 @@ export default function PeoplePage() {
           priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
           audienceName: provider.location,
           tags: provider.tags.slice(0, 3),
-          actionPath: provider.fullProfilePath,
+          actionPath: profilePath,
           role: provider.role,
         },
       });
@@ -1224,13 +1224,14 @@ export default function PeoplePage() {
 
       try {
         const viewerId = await ensureViewerId();
+        const profilePath = provider.publicProfilePath || provider.fullProfilePath;
         const savePayload = {
           card_id: cardId,
           focus_id: provider.id,
           card_type: "service" as const,
           title: provider.name,
           subtitle: provider.role,
-          action_path: provider.fullProfilePath,
+          action_path: profilePath,
           metadata: {
             kind: "people_profile",
             image: provider.media[0]?.url || provider.avatar,
@@ -1239,7 +1240,7 @@ export default function PeoplePage() {
             audienceName: provider.location,
             tags: provider.tags.slice(0, 3),
             role: provider.role,
-            actionPath: provider.fullProfilePath,
+            actionPath: profilePath,
           },
         };
 
@@ -1258,13 +1259,14 @@ export default function PeoplePage() {
       } catch (error) {
         try {
           const viewerId = await ensureViewerId();
+          const profilePath = provider.publicProfilePath || provider.fullProfilePath;
           const rollbackPayload = {
             card_id: cardId,
             focus_id: provider.id,
             card_type: "service" as const,
             title: provider.name,
             subtitle: provider.role,
-            action_path: provider.fullProfilePath,
+            action_path: profilePath,
             metadata: {
               kind: "people_profile",
               image: provider.media[0]?.url || provider.avatar,
@@ -1273,7 +1275,7 @@ export default function PeoplePage() {
               audienceName: provider.location,
               tags: provider.tags.slice(0, 3),
               role: provider.role,
-              actionPath: provider.fullProfilePath,
+              actionPath: profilePath,
             },
           };
 
@@ -1317,7 +1319,7 @@ export default function PeoplePage() {
       if (!provider) return;
 
       const cardId = buildProfileCardId(providerId);
-      const sharePath = provider.fullProfilePath;
+      const sharePath = provider.publicProfilePath || provider.fullProfilePath;
       const shareUrl = `${window.location.origin}${sharePath}`;
       const shareText = `${provider.name} • ${provider.role} • ${provider.location}`;
 
@@ -1749,35 +1751,6 @@ export default function PeoplePage() {
         onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
       />
 
-      <PageContextStrip
-        eyebrow="People"
-        title="Check trust before you start a conversation"
-        description="People is where nearby providers become legible. Compare availability, trust signals, and local fit here before moving into chat, quotes, or tasks."
-        metrics={[
-          { value: `${discoveryProviders.length}`, label: "visible providers" },
-          { value: `${activeNow}`, label: "active now" },
-          { value: `${connectionBuckets.accepted.length}`, label: "accepted connections" },
-        ]}
-        actions={[
-          viewerCompletionPercent !== null && viewerCompletionPercent < 70
-            ? {
-                label: "Complete profile",
-                onClick: () => router.push("/dashboard/profile"),
-                tone: "primary",
-              }
-            : {
-                label: "Open connected feed",
-                onClick: () => router.push("/dashboard/welcome"),
-                tone: "primary",
-              },
-          {
-            label: "Open Explore",
-            onClick: () => router.push("/dashboard"),
-            tone: "secondary",
-          },
-        ]}
-      />
-
       {viewerCompletionPercent !== null && viewerCompletionPercent < 70 && !profileBannerDismissed && (
         <div className="rounded-[1.6rem] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-3 shadow-sm sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1969,7 +1942,6 @@ export default function PeoplePage() {
                           if (!selectedProvider) return;
                           router.push(selectedProvider.publicProfilePath || selectedProvider.fullProfilePath);
                         }}
-                        onOpenTrust={setTrustPanelProviderId}
                       />
                     </motion.div>
                   );

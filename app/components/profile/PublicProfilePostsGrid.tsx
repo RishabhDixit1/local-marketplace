@@ -611,17 +611,20 @@ export default function PublicProfilePostsGrid({
 
   const handleBuyNow = useCallback(
     (post: PublicProfilePost) => {
-      cart.addItem({
-        itemType: post.type === "service" ? "service" : "product",
-        itemId: post.id,
-        providerId: profileUserId,
-        providerName: displayName,
-        title: post.title,
-        price: post.price,
-      });
-      cart.openCart();
+      cart.replaceItems([
+        {
+          itemType: post.type === "service" ? "service" : "product",
+          itemId: post.id,
+          providerId: profileUserId,
+          providerName: displayName,
+          title: post.title,
+          price: post.price,
+        },
+      ]);
+      cart.closeCart();
+      router.push("/checkout");
     },
-    [cart, displayName, profileUserId]
+    [cart, displayName, profileUserId, router]
   );
 
   const handleShare = useCallback(

@@ -230,10 +230,11 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
   const handleBuyNow = useCallback(
     (itemType: "service" | "product", itemId: string, title: string, price: number) => {
-      cart.addItem({ itemType, itemId, providerId: profileUserId, providerName: displayName, title, price });
-      cart.openCart();
+      cart.replaceItems([{ itemType, itemId, providerId: profileUserId, providerName: displayName, title, price }]);
+      cart.closeCart();
+      router.push("/checkout");
     },
-    [cart, displayName, profileUserId]
+    [cart, displayName, profileUserId, router]
   );
 
   // ── Owner: stock / availability toggles ──────────────────────────────────

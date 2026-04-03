@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
@@ -1421,35 +1420,6 @@ export default function WelcomePage() {
           </motion.div>
 
           {/* ── Live feed ── */}
-          <PageContextStrip
-            eyebrow="Welcome"
-            title="Follow the local network you already know"
-            description="Welcome is your connected feed. Stay here for realtime posts from accepted connections, then switch to Explore when you want the wider marketplace."
-            metrics={[
-              { value: `${acceptedConnectionCount}`, label: "accepted connections" },
-              { value: `${livePostCount}`, label: "connected live cards" },
-              { value: isProvider ? "Provider mode" : "Seeker mode", label: "active role" },
-            ]}
-            actions={[
-              isProvider
-                ? {
-                    label: "Explore open demand",
-                    onClick: () => router.push("/dashboard"),
-                    tone: "primary" as const,
-                  }
-                : {
-                    label: "Post a need",
-                    onClick: () => setOpenPostModal(true),
-                    tone: "primary" as const,
-                  },
-              {
-                label: "Open People",
-                onClick: () => router.push(routes.people),
-                tone: "secondary" as const,
-              },
-            ]}
-          />
-
           <div data-testid="welcome-live-feed">
               {isFeedLoading && enrichedCards.length === 0 ? (
                 <FeedGrid

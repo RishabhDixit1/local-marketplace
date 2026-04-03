@@ -27,7 +27,6 @@ type Props = {
   onToggleSave: (providerId: string) => void;
   onShare: (providerId: string) => void;
   onViewProfile: (providerId: string) => void;
-  onOpenTrust: (providerId: string) => void;
 };
 
 const presenceClasses: Record<PresenceTone, string> = {
@@ -54,7 +53,6 @@ const ProviderCard = (props: Props) => {
     onAccept,
     onDecline,
     onViewProfile,
-    onOpenTrust,
   } = props;
 
   const description = provider.bio?.trim() || provider.trustBlurb?.trim() || `${provider.role} on ServiQ.`;
@@ -250,16 +248,6 @@ const ProviderCard = (props: Props) => {
         </div>
 
         <div className="mt-auto pt-3 sm:pt-5">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenTrust(provider.id);
-            }}
-            className="mb-2 inline-flex w-full min-h-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/35 hover:text-[var(--brand-700)]"
-          >
-            View trust details
-          </button>
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
         </div>
       </div>

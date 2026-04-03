@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -26,7 +27,9 @@ type CartContextValue = {
   items: CartItem[];
   totalItems: number;
   totalPrice: number;
+  hydrated: boolean;
   addItem: (item: Omit<CartItem, "key" | "quantity">) => void;
+  replaceItems: (items: Array<Omit<CartItem, "key" | "quantity">>) => void;
   removeItem: (key: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   clearCart: () => void;
@@ -76,6 +79,7 @@ const readFromStorage = (): CartItem[] => {
 const writeToStorage = (items: CartItem[]) => {
   if (typeof window === "undefined") return;
   try {
+    window.localStorage.setItem(STORAGE_VERSION_KEY, String(CART_SCHEMA_VERSION));
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   } catch {
     // Ignore storage quota errors.
@@ -85,48 +89,65 @@ const writeToStorage = (items: CartItem[]) => {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const itemsRef = useRef<CartItem[]>([]);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
-    setItems(readFromStorage());
+    const storedItems = readFromStorage();
+    itemsRef.current = storedItems;
+    setItems(storedItems);
+    setHydrated(true);
   }, []);
 
   // Persist whenever items change
   useEffect(() => {
+    if (!hydrated) return;
+    itemsRef.current = items;
     writeToStorage(items);
-  }, [items]);
+  }, [hydrated, items]);
+
+  const commitItems = useCallback((nextItems: CartItem[]) => {
+    itemsRef.current = nextItems;
+    writeToStorage(nextItems);
+    setItems(nextItems);
+  }, []);
 
   const addItem = useCallback((incoming: Omit<CartItem, "key" | "quantity">) => {
     const key = `${incoming.itemType}:${incoming.itemId}`;
-    setItems((current) => {
-      const existing = current.find((item) => item.key === key);
-      if (existing) {
-        return current.map((item) =>
-          item.key === key ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...current, { ...incoming, key, quantity: 1 }];
-    });
+    const currentItems = itemsRef.current;
+    const existing = currentItems.find((item) => item.key === key);
+    const nextItems = existing
+      ? currentItems.map((item) => (item.key === key ? { ...item, quantity: item.quantity + 1 } : item))
+      : [...currentItems, { ...incoming, key, quantity: 1 }];
+    commitItems(nextItems);
     setIsOpen(true);
-  }, []);
+  }, [commitItems]);
+
+  const replaceItems = useCallback((incomingItems: Array<Omit<CartItem, "key" | "quantity">>) => {
+    const nextItems = incomingItems.map((incoming) => ({
+      ...incoming,
+      key: `${incoming.itemType}:${incoming.itemId}`,
+      quantity: 1,
+    }));
+    commitItems(nextItems);
+  }, [commitItems]);
 
   const removeItem = useCallback((key: string) => {
-    setItems((current) => current.filter((item) => item.key !== key));
-  }, []);
+    commitItems(itemsRef.current.filter((item) => item.key !== key));
+  }, [commitItems]);
 
   const updateQuantity = useCallback((key: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems((current) => current.filter((item) => item.key !== key));
+      commitItems(itemsRef.current.filter((item) => item.key !== key));
       return;
     }
-    setItems((current) =>
-      current.map((item) => (item.key === key ? { ...item, quantity } : item))
-    );
-  }, []);
+    commitItems(itemsRef.current.map((item) => (item.key === key ? { ...item, quantity } : item)));
+  }, [commitItems]);
 
   const clearCart = useCallback(() => {
-    setItems([]);
-  }, []);
+    commitItems([]);
+  }, [commitItems]);
 
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
@@ -146,7 +167,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       totalItems,
       totalPrice,
+      hydrated,
       addItem,
+      replaceItems,
       removeItem,
       updateQuantity,
       clearCart,
@@ -158,7 +181,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       totalItems,
       totalPrice,
+      hydrated,
       addItem,
+      replaceItems,
       removeItem,
       updateQuantity,
       clearCart,

@@ -26,7 +26,16 @@ const CartDrawer = dynamicImport(
 
 type Params = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+const pickFirst = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+const normalizeInitialTab = (value: string | undefined) => {
+  if (value === "store" || value === "reviews" || value === "about") return value;
+  return "marketplace";
+};
+const isTruthyQueryValue = (value: string | undefined) =>
+  typeof value === "string" && ["1", "true", "yes"].includes(value.trim().toLowerCase());
 
 export const dynamic = "force-dynamic";
 
@@ -109,8 +118,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function PublicProfilePage({ params }: Params) {
+export default async function PublicProfilePage({ params, searchParams }: Params) {
   const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const publicProfile = await loadPublicProfileBySlug(slug);
 
   if (!publicProfile) {
@@ -173,6 +183,8 @@ export default async function PublicProfilePage({ params }: Params) {
   const connectionLabel = formatConnectionsCount(acceptedConnectionCount);
   const joinedShortLabel = formatJoinedDate(profile.created_at).replace(/^Joined\s+/, "");
   const summaryText = headline;
+  const initialTab = normalizeInitialTab(pickFirst(resolvedSearchParams.tab));
+  const requestReviewComposer = isTruthyQueryValue(pickFirst(resolvedSearchParams.writeReview));
   return (
     <CartProvider>
       <div className="min-h-screen bg-[#f4f2ee] text-slate-950">
@@ -299,6 +311,8 @@ export default async function PublicProfilePage({ params }: Params) {
               locationLabel={profile.location || "Nearby"}
               responseMinutes={publicProfile.responseMinutes}
               publicPath={publicPath}
+              initialTab={requestReviewComposer ? "reviews" : initialTab}
+              requestReviewComposer={requestReviewComposer}
               paymentMethods={publicProfile.paymentMethods}
               workHistory={publicProfile.workHistory}
             />

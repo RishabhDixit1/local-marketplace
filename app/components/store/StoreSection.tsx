@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   Package,
@@ -65,6 +66,7 @@ function AvailabilityBadge({ status }: { status: string }) {
 
 export function StoreSection({ services, products, providerId, providerName, providerAvailability }: Props) {
   const cart = useCart();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>(services.length > 0 ? "services" : "products");
   const [added, setAdded] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -154,8 +156,9 @@ export function StoreSection({ services, products, providerId, providerName, pro
   };
 
   const handleBuyNow = (itemType: "service" | "product", itemId: string, title: string, price: number) => {
-    cart.addItem({ itemType, itemId, providerId, providerName, title, price });
-    cart.openCart();
+    cart.replaceItems([{ itemType, itemId, providerId, providerName, title, price }]);
+    cart.closeCart();
+    router.push("/checkout");
   };
 
   const toggleServiceStock = async (service: ServiceRow) => {

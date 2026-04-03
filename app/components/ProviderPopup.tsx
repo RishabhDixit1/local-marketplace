@@ -6,10 +6,10 @@ import { supabase } from "@/lib/supabase";
 import {
   calculateProfileCompletion,
   calculateVerificationStatus,
-  createBusinessSlug,
   verificationLabel,
 } from "@/lib/business";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 
 type Props = {
   userId: string;
@@ -147,10 +147,10 @@ export default function ProviderPopup({
           </div>
 
           <button
-            onClick={() => window.open(`/business/${createBusinessSlug(profile.name, profile.id)}`, "_blank")}
+            onClick={() => window.open(buildPublicProfilePath(profile), "_blank")}
             className="mt-3 w-full rounded-lg bg-slate-800 py-1.5 text-xs hover:bg-slate-700"
           >
-            View Business Page
+            View Public Profile
           </button>
         </div>
       )}

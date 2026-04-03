@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
@@ -207,29 +206,6 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
-        <PageContextStrip
-          eyebrow="Explore"
-          title="Browse the full local marketplace"
-          description="Explore open needs, service listings, and products beyond your accepted network. Use Welcome when you want the trusted feed from people you already know."
-          metrics={[
-            { value: `${feedStats.total}`, label: "live cards" },
-            { value: `${feedStats.urgent}`, label: "urgent now" },
-            { value: `${feedStats.demand}`, label: "open requests" },
-          ]}
-          actions={[
-            {
-              label: "Post a need",
-              onClick: () => setOpenPostModal(true),
-              tone: "primary",
-            },
-            {
-              label: "Open connected feed",
-              onClick: () => router.push("/dashboard/welcome"),
-              tone: "secondary",
-            },
-          ]}
-        />
-
         {(filters.query.length > 0 || showAdvancedFilters) && (
           <FeedFilters
             filters={filters}
