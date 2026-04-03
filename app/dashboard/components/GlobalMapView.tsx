@@ -227,6 +227,16 @@ const resolveDefaultLayer = (pathname: string | null | undefined): Layer => {
   return "all";
 };
 
+const MAP_LAYER_CACHE_TTL_MS = 60_000;
+const buildViewerCenterKey = (viewerCenter?: ViewerCenter | null) =>
+  viewerCenter ? `${viewerCenter.lat.toFixed(3)}:${viewerCenter.lng.toFixed(3)}` : "none";
+
+type LayerCacheEntry = {
+  fetchedAt: number;
+  items: MarketplaceMapItem[];
+  viewerCenterKey: string;
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function GlobalMapView({ open, onClose }: Props) {
@@ -243,30 +253,112 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const refreshRequestRef = useRef(0);
   const openTrackedRef = useRef(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const activeLayerRef = useRef<Layer>("all");
+  const centerRef = useRef<{ lat: number; lng: number } | null>(null);
+  const exploreCacheRef = useRef<LayerCacheEntry | null>(null);
+  const peopleCacheRef = useRef<LayerCacheEntry | null>(null);
   const observedRoute = resolveObservedRouteFromPathname(pathname || "/dashboard");
   const defaultLayer = resolveDefaultLayer(pathname);
   const mapTitle = activeLayer === "explore" ? "Explore Map" : activeLayer === "people" ? "People Map" : "Marketplace Map";
 
+  useEffect(() => {
+    activeLayerRef.current = activeLayer;
+  }, [activeLayer]);
+
+  useEffect(() => {
+    centerRef.current = center;
+  }, [center]);
+
   const refreshMapData = useCallback(
-    async (options?: { viewerCenter?: ViewerCenter | null; preserveSelection?: boolean }) => {
+    async (options?: { force?: boolean; preserveSelection?: boolean; targetLayer?: Layer; viewerCenter?: ViewerCenter | null }) => {
       const requestId = refreshRequestRef.current + 1;
       refreshRequestRef.current = requestId;
-      setLoading(true);
+      const targetLayer = options?.targetLayer ?? activeLayerRef.current;
+      const needsExplore = targetLayer === "all" || targetLayer === "explore";
+      const needsPeople = targetLayer === "all" || targetLayer === "people";
 
       if (!options?.preserveSelection) {
         setSheetOpen(false);
         setSelectedId(null);
       }
 
-      const viewerCenter = options?.viewerCenter ?? (await getUserCenter());
-      const [explore, people] = await Promise.all([fetchExploreItems(viewerCenter), fetchPeopleItems()]);
+      const viewerCenter =
+        options?.viewerCenter ?? centerRef.current ?? (needsExplore ? await getUserCenter() : null);
+      const viewerCenterKey = buildViewerCenterKey(viewerCenter);
+      const now = Date.now();
+
+      const canReuseExplore =
+        needsExplore &&
+        !options?.force &&
+        !!exploreCacheRef.current &&
+        now - exploreCacheRef.current.fetchedAt < MAP_LAYER_CACHE_TTL_MS &&
+        exploreCacheRef.current.viewerCenterKey === viewerCenterKey;
+      const canReusePeople =
+        needsPeople &&
+        !options?.force &&
+        !!peopleCacheRef.current &&
+        now - peopleCacheRef.current.fetchedAt < MAP_LAYER_CACHE_TTL_MS;
+
+      const shouldLoad =
+        (needsExplore && !canReuseExplore) ||
+        (needsPeople && !canReusePeople);
+
+      setLoading(shouldLoad);
+
+      if (canReuseExplore && exploreCacheRef.current) {
+        setExploreItems(exploreCacheRef.current.items);
+      }
+      if (canReusePeople && peopleCacheRef.current) {
+        setPeopleItems(peopleCacheRef.current.items);
+      }
+      if (!shouldLoad) {
+        setCenter((current) => viewerCenter || current);
+        return;
+      }
+
+      const tasks: Array<Promise<{ items: MarketplaceMapItem[]; layer: "explore" | "people" }>> = [];
+      if (needsExplore && !canReuseExplore) {
+        tasks.push(
+          fetchExploreItems(viewerCenter).then((items) => ({
+            layer: "explore" as const,
+            items,
+          }))
+        );
+      }
+      if (needsPeople && !canReusePeople) {
+        tasks.push(
+          fetchPeopleItems().then((items) => ({
+            layer: "people" as const,
+            items,
+          }))
+        );
+      }
+
+      const results = await Promise.all(tasks);
 
       if (refreshRequestRef.current !== requestId) {
         return;
       }
 
-      setExploreItems(explore);
-      setPeopleItems(people);
+      results.forEach((result) => {
+        if (result.layer === "explore") {
+          exploreCacheRef.current = {
+            fetchedAt: Date.now(),
+            items: result.items,
+            viewerCenterKey,
+          };
+          setExploreItems(result.items);
+          return;
+        }
+
+        peopleCacheRef.current = {
+          fetchedAt: Date.now(),
+          items: result.items,
+          viewerCenterKey: "people",
+        };
+        setPeopleItems(result.items);
+      });
+
       setCenter((current) => viewerCenter || current);
       setLoading(false);
     },
@@ -281,9 +373,13 @@ export default function GlobalMapView({ open, onClose }: Props) {
       return;
     }
 
-    setActiveLayer(defaultLayer);
-    void refreshMapData();
-  }, [defaultLayer, open, refreshMapData]);
+    if (activeLayer !== defaultLayer) {
+      setActiveLayer(defaultLayer);
+      return;
+    }
+
+    void refreshMapData({ targetLayer: activeLayer });
+  }, [activeLayer, defaultLayer, open, refreshMapData]);
 
   useEffect(() => {
     if (!open || openTrackedRef.current) return;
@@ -346,7 +442,7 @@ export default function GlobalMapView({ open, onClose }: Props) {
     try {
       const pos = await getUserCenter();
       if (pos) {
-        await refreshMapData({ viewerCenter: pos, preserveSelection: true });
+        await refreshMapData({ force: true, preserveSelection: true, targetLayer: activeLayerRef.current, viewerCenter: pos });
       }
     } finally {
       setLocating(false);

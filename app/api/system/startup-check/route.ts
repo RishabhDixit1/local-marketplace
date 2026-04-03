@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
+import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -17,9 +18,13 @@ const baseFixInstructions = [
   "Ensure SUPABASE_SERVICE_ROLE_KEY is configured in local/server env when relying on server-side avatar uploads.",
   "Apply storage policies for bucket profile-avatars if you want browser-direct avatar uploads without a service-role key.",
   "Confirm required auth URLs in Supabase Authentication URL configuration.",
+  "Set NEXT_PUBLIC_SITE_URL/SITE_URL to your canonical auth origin so magic-link callbacks always resolve correctly.",
+  "Configure a custom SMTP provider in Supabase for production auth emails to improve deliverability and bounce handling.",
+  "Optional auth hardening: set AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS or AUTH_MAGIC_LINK_BLOCKED_DOMAINS / AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS on the app server.",
 ];
 
 const missingTablePattern = /relation .* does not exist|could not find the table '.*' in the schema cache/i;
+const siteUrlLooksLocal = (value: string) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(value);
 
 const fallbackDiagnostics = async () => {
   const checks: Record<string, boolean> = {
@@ -36,8 +41,11 @@ const fallbackDiagnostics = async () => {
     feed_card_shares_table: true,
     post_media_bucket: true,
     profile_avatar_bucket: true,
+    auth_site_url: true,
   };
   const issues: string[] = [];
+  const configuredSiteUrl = getConfiguredSiteUrl();
+  const productionLike = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
@@ -131,6 +139,11 @@ const fallbackDiagnostics = async () => {
     issues.push("Missing storage bucket: profile-avatars");
   }
 
+  if (productionLike && siteUrlLooksLocal(configuredSiteUrl)) {
+    checks.auth_site_url = false;
+    issues.push(`Auth site URL resolves to a local origin (${configuredSiteUrl}). Set NEXT_PUBLIC_SITE_URL/SITE_URL to your public app domain.`);
+  }
+
   return {
     ok: issues.length === 0,
     checks,
@@ -183,11 +196,23 @@ export async function GET(request: Request) {
     checks: {},
   };
 
+  const configuredSiteUrl = getConfiguredSiteUrl();
+  const productionLike = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const issues = [...(diagnostics.issues || [])];
+  const checks = {
+    ...(diagnostics.checks || {}),
+    auth_site_url: !(productionLike && siteUrlLooksLocal(configuredSiteUrl)),
+  };
+
+  if (productionLike && siteUrlLooksLocal(configuredSiteUrl)) {
+    issues.push(`Auth site URL resolves to a local origin (${configuredSiteUrl}). Set NEXT_PUBLIC_SITE_URL/SITE_URL to your public app domain.`);
+  }
+
   return NextResponse.json({
-    ok: diagnostics.ok,
+    ok: diagnostics.ok && issues.length === 0,
     admin: true,
-    issues: diagnostics.issues || [],
-    checks: diagnostics.checks || {},
+    issues,
+    checks,
     fixInstructions: baseFixInstructions,
     source: "rpc",
   });

@@ -2,13 +2,36 @@ import https from "node:https";
 import { Resolver, promises as dnsPromises } from "node:dns";
 import { NextResponse } from "next/server";
 import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
+import {
+  getLastMagicLinkRequestAt,
+  MAGIC_LINK_COOLDOWN_MS,
+  pruneExpiredMagicLinkCooldowns,
+  recordMagicLinkRequest,
+} from "./cooldown";
 
 export const runtime = "nodejs";
 
 const REQUEST_TIMEOUT_MS = 8000;
-const MAGIC_LINK_COOLDOWN_MS = 60_000;
 const PUBLIC_DNS_SERVERS = ["1.1.1.1", "8.8.8.8"];
-const lastMagicLinkRequestByEmail = new Map<string, number>();
+const BUILTIN_BLOCKED_MAGIC_LINK_RECIPIENTS = new Set([
+  "test@example.com",
+  "user@example.com",
+  "demo@example.com",
+  "admin@example.com",
+]);
+const BUILTIN_BLOCKED_MAGIC_LINK_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "mailinator.com",
+  "guerrillamail.com",
+  "sharklasers.com",
+  "tempmail.com",
+  "temp-mail.org",
+  "10minutemail.com",
+  "yopmail.com",
+  "discard.email",
+]);
 
 type SendLinkBody = {
   email?: string;
@@ -16,6 +39,21 @@ type SendLinkBody = {
 };
 
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const normalizeRecipientEntry = (value: string) => value.trim().toLowerCase();
+const parseRecipientList = (value: string | undefined | null) =>
+  new Set(
+    (value || "")
+      .split(",")
+      .map((entry) => normalizeRecipientEntry(entry))
+      .filter(Boolean)
+  );
+const getEmailDomain = (email: string) => normalizeRecipientEntry(email.split("@")[1] || "");
+const recipientMatchesSet = (email: string, entries: Set<string>) => {
+  const normalizedEmail = normalizeRecipientEntry(email);
+  const domain = getEmailDomain(normalizedEmail);
+
+  return entries.has(normalizedEmail) || entries.has(domain) || entries.has(`@${domain}`);
+};
 
 const resolveIpv4ViaPublicDns = (host: string): Promise<string[]> =>
   new Promise((resolve, reject) => {
@@ -169,16 +207,26 @@ const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
   }
 };
 
-const pruneExpiredMagicLinkCooldowns = (now: number) => {
-  lastMagicLinkRequestByEmail.forEach((timestamp, email) => {
-    if (now - timestamp >= MAGIC_LINK_COOLDOWN_MS) {
-      lastMagicLinkRequestByEmail.delete(email);
-    }
-  });
-};
+const resolveMagicLinkRecipientError = (email: string) => {
+  const blockedRecipients = new Set([
+    ...BUILTIN_BLOCKED_MAGIC_LINK_RECIPIENTS,
+    ...parseRecipientList(process.env.AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS),
+  ]);
+  const blockedDomains = new Set([
+    ...BUILTIN_BLOCKED_MAGIC_LINK_DOMAINS,
+    ...parseRecipientList(process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS),
+  ]);
+  const allowedRecipients = parseRecipientList(process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS);
 
-export const resetMagicLinkRequestCooldownForTests = () => {
-  lastMagicLinkRequestByEmail.clear();
+  if (blockedRecipients.has(email) || blockedDomains.has(getEmailDomain(email)) || recipientMatchesSet(email, blockedRecipients)) {
+    return "Use a real inbox. Placeholder, disposable, or blocked email addresses cannot receive login links.";
+  }
+
+  if (allowedRecipients.size > 0 && !recipientMatchesSet(email, allowedRecipients)) {
+    return "This email address is not approved for magic-link sign-in in this environment.";
+  }
+
+  return null;
 };
 
 export async function POST(request: Request) {
@@ -212,9 +260,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
   }
 
+  const recipientError = resolveMagicLinkRecipientError(email);
+  if (recipientError) {
+    return NextResponse.json({ ok: false, error: recipientError }, { status: 400 });
+  }
+
   const now = Date.now();
   pruneExpiredMagicLinkCooldowns(now);
-  const previousRequestAt = lastMagicLinkRequestByEmail.get(email) ?? 0;
+  const previousRequestAt = getLastMagicLinkRequestAt(email);
   const retryAfterMs = MAGIC_LINK_COOLDOWN_MS - (now - previousRequestAt);
   if (retryAfterMs > 0) {
     const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
@@ -285,7 +338,7 @@ export async function POST(request: Request) {
   }
 
   if (status >= 200 && status < 300) {
-    lastMagicLinkRequestByEmail.set(email, Date.now());
+    recordMagicLinkRequest(email);
     return NextResponse.json(isDevelopment ? { ok: true, redirectTo } : { ok: true });
   }
 
