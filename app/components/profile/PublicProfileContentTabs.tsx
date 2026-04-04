@@ -7,6 +7,7 @@ import PublicProfileAbout from "@/app/components/profile/PublicProfileAbout";
 import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import PublicProfileStoreTab from "@/app/components/profile/PublicProfileStoreTab";
 import type { VerificationStatus } from "@/lib/business";
+import { formatPaymentRailLabel } from "@/lib/paymentFlow";
 import type { PublicProfilePost, PublicProfileReview } from "@/lib/profile/public";
 import { supabase } from "@/lib/supabase";
 import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
@@ -288,7 +289,7 @@ export default function PublicProfileContentTabs({
                       key={pm.id}
                       className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
                     >
-                      {pm.provider_name ?? pm.method_type}
+                      {formatPaymentRailLabel(pm.provider_name ?? pm.method_type)}
                       {pm.is_verified && (
                         <span className="text-emerald-500">✓</span>
                       )}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
+  BadgeIndianRupee,
   CheckCircle2,
   CreditCard,
   Loader2,
@@ -27,6 +28,11 @@ import {
   recommendOrderFulfillmentMethod,
   type OrderFulfillmentMethod,
 } from "@/lib/orderFulfillment";
+import {
+  PAYMENT_METHOD_OPTIONS,
+  getCheckoutPaymentOption,
+  type CheckoutPaymentMethod,
+} from "@/lib/paymentFlow";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 
@@ -40,7 +46,6 @@ declare global {
 const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
 
-type PaymentMethod = "razorpay" | "cod";
 type OrderCreationMetadata = Record<string, string | null | undefined>;
 const PRODUCT_DELIVERY_SUMMARY_LABELS = {
   pickup: "Pickup only",
@@ -53,12 +58,9 @@ const FULFILLMENT_ICONS: Record<OrderFulfillmentMethod, LucideIcon> = {
   platform: Sparkles,
   courier: Truck,
 };
-
-const buildFulfillmentRecommendation = (value: OrderFulfillmentMethod) => {
-  if (value === "self") return "Recommended because your current cart is best suited for pickup or meetup.";
-  if (value === "provider") return "Recommended because the provider can handle the visit or delivery directly.";
-  if (value === "platform") return "Recommended when you want ServiQ to coordinate the handoff.";
-  return "Recommended when a courier or external delivery partner will complete the handoff.";
+const PAYMENT_ICONS: Record<CheckoutPaymentMethod, LucideIcon> = {
+  razorpay: CreditCard,
+  cod: BadgeIndianRupee,
 };
 
 const buildNotesPlaceholder = (value: OrderFulfillmentMethod) => {
@@ -68,20 +70,13 @@ const buildNotesPlaceholder = (value: OrderFulfillmentMethod) => {
   return "Add delivery notes, access instructions, or service timing details (optional)...";
 };
 
-const buildFulfillmentNextAction = (value: OrderFulfillmentMethod) => {
-  if (value === "self") return "Next: add the pickup point or meeting landmark.";
-  if (value === "courier") return "Next: add the courier destination and access notes.";
-  if (value === "platform") return "Next: add the address so ServiQ can coordinate the handoff.";
-  return "Next: add the delivery or service address for the provider.";
-};
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart, hydrated } = useCart();
 
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [payMethod, setPayMethod] = useState<PaymentMethod>("razorpay");
+  const [payMethod, setPayMethod] = useState<CheckoutPaymentMethod>("razorpay");
   const [fulfillmentMethod, setFulfillmentMethod] = useState<OrderFulfillmentMethod>("provider");
   const [fulfillmentTouched, setFulfillmentTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -98,11 +93,10 @@ export default function CheckoutPage() {
     () => getOrderFulfillmentOption(fulfillmentMethod),
     [fulfillmentMethod]
   );
-  const recommendedFulfillmentOption = useMemo(
-    () => getOrderFulfillmentOption(recommendedFulfillmentMethod),
-    [recommendedFulfillmentMethod]
-  );
   const addressMinimumLength = getFulfillmentMinimumLength(fulfillmentMethod);
+  const selectedPaymentOption = useMemo(() => getCheckoutPaymentOption(payMethod), [payMethod]);
+  const SelectedFulfillmentIcon = FULFILLMENT_ICONS[fulfillmentMethod];
+  const SelectedPaymentIcon = PAYMENT_ICONS[payMethod];
 
   useEffect(() => {
     if (!hydrated || fulfillmentTouched) return;
@@ -405,7 +399,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-6">
+      <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-5">
 
         {/* Order summary */}
         <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-2 lg:row-span-5 lg:sticky lg:top-24">
@@ -418,18 +412,34 @@ export default function CheckoutPage() {
               {items.length} item{items.length !== 1 ? "s" : ""}
             </span>
           </div>
-          <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 text-[11px] font-semibold text-slate-600">
-            <div className="rounded-xl bg-white px-2.5 py-2 text-center shadow-sm">1. Flow</div>
-            <div className="rounded-xl bg-white px-2.5 py-2 text-center shadow-sm">2. Address</div>
-            <div className="rounded-xl bg-white px-2.5 py-2 text-center shadow-sm">3. Payment</div>
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+            {[
+              { key: "flow", label: "Flow", icon: SelectedFulfillmentIcon },
+              { key: "address", label: "Address", icon: MapPin },
+              { key: "payment", label: "Payment", icon: SelectedPaymentIcon },
+            ].map((step) => {
+              const Icon = step.icon;
+
+              return (
+                <div
+                  key={step.key}
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white px-2.5 py-2 shadow-sm"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-600">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="truncate text-[11px] font-semibold text-slate-600">{step.label}</span>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {Object.entries(byProvider).map(([, provItems]) => (
               provItems.map((item) => (
-                <div key={item.key} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                    <Package className="h-4 w-4" />
+                <div key={item.key} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+                    <Package className="h-3.5 w-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
@@ -450,16 +460,25 @@ export default function CheckoutPage() {
               <span className="text-base font-bold text-slate-900">{INR(totalPrice)}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Selected flow</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{fulfillmentOption.shortLabel}</p>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+                  <SelectedFulfillmentIcon className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Flow</p>
+                  <p className="truncate text-sm font-semibold text-slate-900">{fulfillmentOption.shortLabel}</p>
+                </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Payment</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{payMethod === "razorpay" ? "Online" : "On delivery"}</p>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+                  <SelectedPaymentIcon className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Payment</p>
+                  <p className="truncate text-sm font-semibold text-slate-900">{selectedPaymentOption.shortLabel}</p>
+                </div>
               </div>
             </div>
-            <p className="mt-3 text-[11px] leading-5 text-slate-500">{buildFulfillmentNextAction(fulfillmentMethod)}</p>
           </div>
         </section>
 
@@ -469,7 +488,7 @@ export default function CheckoutPage() {
             <Package className="h-4 w-4 text-slate-500" />
             Delivery / Fulfillment
           </h2>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             {ORDER_FULFILLMENT_METHODS.map((method) => {
               const option = ORDER_FULFILLMENT_OPTIONS[method];
               const active = fulfillmentMethod === method;
@@ -484,13 +503,13 @@ export default function CheckoutPage() {
                     setFulfillmentTouched(true);
                     setFulfillmentMethod(method);
                   }}
-                  className={`rounded-2xl border p-3 text-left transition sm:p-4 ${
+                  className={`rounded-2xl border p-3 text-left transition ${
                     active ? "border-blue-500 bg-blue-50 shadow-[0_12px_28px_-24px_rgba(37,99,235,0.9)]" : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${active ? "bg-white text-blue-600" : "bg-slate-100 text-slate-600"}`}>
-                      <Icon className="h-4 w-4" />
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${active ? "bg-white text-blue-600" : "bg-slate-100 text-slate-600"}`}>
+                      <Icon className="h-3.5 w-3.5" />
                     </span>
                     {recommended ? (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
@@ -498,24 +517,21 @@ export default function CheckoutPage() {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-900 sm:hidden">{option.shortLabel}</p>
-                  <p className="mt-2 hidden text-sm font-semibold text-slate-900 sm:block">{option.label}</p>
-                  <p className="mt-1 text-[11px] leading-4 text-slate-600 sm:text-xs sm:leading-5">{option.helperText}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">{option.shortLabel}</p>
                 </button>
               );
             })}
           </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Selected flow</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">{fulfillmentOption.label}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-600">{fulfillmentOption.helperText}</p>
-            <p className="mt-2 text-[11px] text-slate-500">
-              Cart recommendation: {recommendedFulfillmentOption.label}.
-            </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              {buildFulfillmentRecommendation(recommendedFulfillmentMethod)}
-            </p>
-            <p className="mt-1 text-[11px] font-medium text-slate-600">{buildFulfillmentNextAction(fulfillmentMethod)}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+              <SelectedFulfillmentIcon className="h-3.5 w-3.5" />
+            </span>
+            <span className="text-sm font-semibold text-slate-900">{fulfillmentOption.shortLabel}</span>
+            {fulfillmentMethod === recommendedFulfillmentMethod ? (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                Recommended
+              </span>
+            ) : null}
           </div>
         </section>
 
@@ -523,21 +539,25 @@ export default function CheckoutPage() {
         <section className="rounded-[1.6rem] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5 lg:col-start-1">
           <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900">
             <MapPin className="h-4 w-4 text-slate-500" />
-            {fulfillmentOption.addressLabel}
+            Address
           </h2>
           <textarea
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
             placeholder={fulfillmentOption.addressPlaceholder}
             aria-label={fulfillmentOption.addressLabel}
-            rows={3}
+            rows={2}
             maxLength={500}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
-          <p className="mt-2 text-[11px] text-slate-500">{fulfillmentOption.helperText}</p>
-          <p className={`mt-1 text-right text-[11px] ${address.length > 480 ? "text-amber-500" : "text-slate-400"}`}>
-            {address.length}/500
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+              {fulfillmentOption.shortLabel}
+            </span>
+            <p className={`text-[11px] ${address.length > 480 ? "text-amber-500" : "text-slate-400"}`}>
+              {address.length}/500
+            </p>
+          </div>
           <textarea
             className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
             placeholder={buildNotesPlaceholder(fulfillmentMethod)}
@@ -546,6 +566,9 @@ export default function CheckoutPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          <p className={`mt-2 text-right text-[11px] ${notes.length > 980 ? "text-amber-500" : "text-slate-400"}`}>
+            {notes.length}/1000
+          </p>
         </section>
 
         {/* Payment method */}
@@ -554,34 +577,55 @@ export default function CheckoutPage() {
             <CreditCard className="h-4 w-4 text-slate-500" />
             Payment Method
           </h2>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3" role="radiogroup" aria-label="Payment method">
-            {[
-              { id: "razorpay" as const, label: "Pay Online", desc: "UPI, Cards, NetBanking", icon: "💳", disabled: !razorpayAvailable },
-              { id: "cod" as const, label: "Pay on Delivery", desc: "Cash or UPI on arrival", icon: "🏠", disabled: false },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                disabled={opt.disabled}
-                onClick={() => setPayMethod(opt.id)}
-                role="radio"
-                aria-checked={payMethod === opt.id}
-                className={`flex flex-col items-start gap-2 rounded-2xl border p-3 transition text-left sm:p-4 ${
-                  payMethod === opt.id
-                    ? "border-blue-500 bg-blue-50 shadow-[0_12px_28px_-24px_rgba(37,99,235,0.9)]"
-                    : opt.disabled
-                    ? "border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed"
-                    : "border-slate-200 hover:border-slate-300"
-                }`}
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5" role="radiogroup" aria-label="Payment method">
+            {PAYMENT_METHOD_OPTIONS.map((opt) => {
+              const disabled = opt.id === "razorpay" ? !razorpayAvailable : false;
+              const Icon = PAYMENT_ICONS[opt.id];
+
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setPayMethod(opt.id)}
+                  role="radio"
+                  aria-checked={payMethod === opt.id}
+                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                    payMethod === opt.id
+                      ? "border-blue-500 bg-blue-50 shadow-[0_12px_28px_-24px_rgba(37,99,235,0.9)]"
+                      : disabled
+                      ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-40"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
+                      payMethod === opt.id ? "bg-white text-slate-900" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-sm font-semibold text-slate-900">{opt.label}</span>
+                    {disabled ? <span className="block text-[10px] text-slate-400">Not configured</span> : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Rails</span>
+            {selectedPaymentOption.rails.map((rail) => (
+              <span
+                key={`${payMethod}-${rail}`}
+                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600"
               >
-                <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${payMethod === opt.id ? "bg-white" : "bg-slate-100"}`}>{opt.icon}</span>
-                <span className="text-sm font-semibold text-slate-900">{opt.label}</span>
-                <span className="text-[11px] leading-4 text-slate-500 sm:text-xs sm:leading-5">{opt.desc}</span>
-                {opt.disabled && (
-                  <span className="text-[10px] text-slate-400">Not configured</span>
-                )}
-              </button>
+                {rail}
+              </span>
             ))}
+            <span className="ml-auto rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+              {selectedPaymentOption.collectionLabel}
+            </span>
           </div>
           {!razorpayAvailable && (
             <button
@@ -615,18 +659,14 @@ export default function CheckoutPage() {
           type="button"
           onClick={payMethod === "razorpay" ? handleRazorpay : handleCOD}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-60 lg:col-start-1"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-60 lg:col-start-1"
         >
           {busy ? (
-            <><Loader2 className="h-5 w-5 animate-spin" /> Processing…</>
+            <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
           ) : (
-            payMethod === "razorpay" ? `Pay ${INR(totalPrice)}` : `Place Order — ${INR(totalPrice)}`
+            `${selectedPaymentOption.primaryAction} ${INR(totalPrice)}`
           )}
         </button>
-
-        <p className="text-center text-xs text-slate-400 lg:col-start-1">
-          By placing this order you agree to our terms of service.
-        </p>
       </div>
     </div>
   );

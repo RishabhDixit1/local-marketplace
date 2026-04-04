@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Archive,
   ChevronRight,
   ImagePlus,
   Loader2,
@@ -19,6 +18,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { deleteProviderListing, fetchProviderListings, updateProviderListing } from "@/lib/provider/client";
 import { supabase } from "@/lib/supabase";
 import type { ProfileAvailability } from "@/lib/profile/types";
@@ -334,7 +334,8 @@ export default function ListingsPage() {
   }
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto space-y-5">
+    <div className="mx-auto w-full max-w-[1240px] space-y-4">
+      <ProviderControlNav />
 
       {/* ── Edit Service Sheet ─────────────────────────────────────── */}
       {editingService && (
@@ -455,6 +456,7 @@ export default function ListingsPage() {
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadEditProductImage(f); }} />
             </label>
             {resolveListingImageUrl(editingProduct.imageUrl) && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={resolveListingImageUrl(editingProduct.imageUrl) || ""} alt="Product preview" className="mt-2 h-20 w-20 rounded-xl border border-slate-200 object-cover" />
             )}
           </div>
@@ -463,56 +465,56 @@ export default function ListingsPage() {
 
       {/* ── Empty state onboarding ─────────────────────────────────── */}
       {!loading && services.length + products.length === 0 && (
-        <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-6">
-          <h2 className="text-lg font-bold text-slate-900">Set up your store</h2>
-          <p className="mt-1 text-sm text-slate-600">Add your first listing to start receiving bookings and orders from nearby customers.</p>
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <button onClick={() => router.push("/dashboard/profile")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
-              <div><p className="text-sm font-semibold text-slate-900">1. Complete Profile</p><p className="mt-0.5 text-xs text-slate-500">Build trust with customers</p></div>
-              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">Store setup</h2>
+          <p className="mt-1 text-sm text-slate-500">Finish the basics to go live.</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <button onClick={() => router.push("/dashboard/profile")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-[var(--brand-500)]/35 hover:bg-white">
+              <div><p className="text-sm font-semibold text-slate-900">Profile</p><p className="mt-0.5 text-[11px] text-slate-500">Trust</p></div>
+              <ChevronRight size={14} className="shrink-0 text-slate-400" />
             </button>
-            <button onClick={() => router.push("/dashboard/provider/add-service")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
-              <div><p className="text-sm font-semibold text-slate-900">2. Add Service</p><p className="mt-0.5 text-xs text-slate-500">Publish what you can do</p></div>
-              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+            <button onClick={() => router.push("/dashboard/provider/add-service")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-[var(--brand-500)]/35 hover:bg-white">
+              <div><p className="text-sm font-semibold text-slate-900">Service</p><p className="mt-0.5 text-[11px] text-slate-500">Offer</p></div>
+              <ChevronRight size={14} className="shrink-0 text-slate-400" />
             </button>
-            <button onClick={() => router.push("/dashboard/provider/add-product")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-300 hover:shadow-sm">
-              <div><p className="text-sm font-semibold text-slate-900">3. Add Product</p><p className="mt-0.5 text-xs text-slate-500">List products for buyers</p></div>
-              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+            <button onClick={() => router.push("/dashboard/provider/add-product")} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-[var(--brand-500)]/35 hover:bg-white">
+              <div><p className="text-sm font-semibold text-slate-900">Product</p><p className="mt-0.5 text-[11px] text-slate-500">Catalog</p></div>
+              <ChevronRight size={14} className="shrink-0 text-slate-400" />
             </button>
           </div>
         </div>
       )}
 
       {/* ── Page header ───────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Store</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Listings</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             {services.length} service{services.length !== 1 ? "s" : ""} · {products.length} product{products.length !== 1 ? "s" : ""}
             {refreshing ? " · syncing…" : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => router.push("/dashboard/provider/add-service")} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]">
-            <Plus size={15} /><Wrench size={14} /> Add Service
+          <button onClick={() => router.push("/dashboard/provider/add-service")} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]">
+            <Plus size={15} /><Wrench size={14} /> <span className="hidden md:inline">Service</span>
           </button>
-          <button onClick={() => router.push("/dashboard/provider/add-product")} className="inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
-            <Plus size={15} /><Package size={14} /> Add Product
+          <button onClick={() => router.push("/dashboard/provider/add-product")} className="inline-flex h-9 items-center gap-2 rounded-xl bg-[var(--brand-900)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]">
+            <Plus size={15} /><Package size={14} /> <span className="hidden md:inline">Product</span>
           </button>
         </div>
       </div>
 
       {/* ── Stats row ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
           { label: "Total Services", value: services.length, color: "text-indigo-600" },
           { label: "Active Services", value: activeServices, color: "text-emerald-600" },
           { label: "Total Products", value: products.length, color: "text-violet-600" },
           { label: "In Stock", value: activeProducts, color: "text-cyan-600" },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium text-slate-500">{stat.label}</p>
-            <p className={`mt-1 text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          <div key={stat.label} className="rounded-[1.25rem] border border-slate-200 bg-white px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{stat.label}</p>
+            <p className={`mt-1 text-xl font-bold ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
       </div>
@@ -524,13 +526,13 @@ export default function ListingsPage() {
       )}
 
       {/* ── Tab switcher ──────────────────────────────────────────── */}
-      <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+      <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
         {(["services", "products"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+            className={`flex h-9 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold transition-all ${
               activeTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
             }`}
           >
@@ -559,7 +561,7 @@ export default function ListingsPage() {
             ))}
           </div>
         ) : services.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 text-center">
             <Wrench className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-3 text-sm font-semibold text-slate-700">No services yet</p>
             <p className="mt-1 text-xs text-slate-500">Add a service to start getting booked by nearby customers.</p>
@@ -568,18 +570,18 @@ export default function ListingsPage() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {services.map((service) => {
               const paused = service.availability === "offline";
               return (
                 <motion.div
                   key={service.id}
                   layout
-                  className={`group relative rounded-2xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
+                  className={`group relative rounded-2xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                      <Wrench size={18} />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <Wrench size={16} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
@@ -595,9 +597,9 @@ export default function ListingsPage() {
                           onDelete={() => void removeService(service.id)}
                         />
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm text-slate-600">{service.description || "No description"}</p>
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{service.description || "No description"}</p>
                       <div className="mt-3 flex items-center justify-between">
-                        <p className="text-base font-bold text-indigo-600">₹{service.price.toLocaleString("en-IN")}</p>
+                        <p className="text-sm font-bold text-indigo-600">₹{service.price.toLocaleString("en-IN")}</p>
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${paused ? "bg-amber-100 text-amber-700" : service.availability === "busy" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>
                           {paused ? "Paused" : service.availability === "busy" ? "Busy" : "Active"}
                         </span>
@@ -614,7 +616,7 @@ export default function ListingsPage() {
       {/* ── Products list ─────────────────────────────────────────── */}
       {activeTab === "products" && (
         loading ? null : products.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-6 text-center">
             <Package className="mx-auto h-8 w-8 text-slate-300" />
             <p className="mt-3 text-sm font-semibold text-slate-700">No products yet</p>
             <p className="mt-1 text-xs text-slate-500">Add products to sell to nearby buyers.</p>
@@ -623,7 +625,7 @@ export default function ListingsPage() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {products.map((product) => {
               const paused = product.stock <= 0;
               const imageUrl = resolveListingImageUrl(product.imageUrl);
@@ -634,11 +636,12 @@ export default function ListingsPage() {
                   className={`rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
                 >
                   {imageUrl && (
-                    <div className="h-36 w-full overflow-hidden rounded-t-2xl bg-slate-100">
+                    <div className="h-28 w-full overflow-hidden rounded-t-2xl bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
                     </div>
                   )}
-                  <div className="p-5">
+                  <div className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h3 className="truncate font-semibold text-slate-900">{product.title}</h3>
@@ -652,9 +655,9 @@ export default function ListingsPage() {
                         onDelete={() => void removeProduct(product.id)}
                       />
                     </div>
-                    <p className="mt-2 line-clamp-2 text-sm text-slate-600">{product.description || "No description"}</p>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{product.description || "No description"}</p>
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-base font-bold text-emerald-600">₹{product.price.toLocaleString("en-IN")}</p>
+                      <p className="text-sm font-bold text-emerald-600">₹{product.price.toLocaleString("en-IN")}</p>
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${paused ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
                         {paused ? "Out of stock" : `Stock: ${product.stock}`}
                       </span>

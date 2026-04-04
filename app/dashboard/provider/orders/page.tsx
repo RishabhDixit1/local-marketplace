@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import {
   canTransitionOrderStatus,
   getAllowedTransitions,
@@ -159,34 +160,37 @@ export default function ProviderOrdersPage() {
   }
 
   return (
-    <div className="w-full max-w-[2200px] mx-auto space-y-6">
-      <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 p-5 sm:p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">Lead Pipeline</h1>
-        <p className="mt-1 text-sm text-white/90">
-          Unified provider workflow with validated state transitions.
-        </p>
+    <div className="mx-auto w-full max-w-[1240px] space-y-4">
+      <ProviderControlNav />
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Orders</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Lead pipeline</h1>
+          </div>
+          {liveNotice ? (
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {liveNotice}
+            </div>
+          ) : null}
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <MetricCard label="New Leads" value={pipelineStats.newLead} />
+          <MetricCard label="New" value={pipelineStats.newLead} />
           <MetricCard label="Quoted" value={pipelineStats.quoted} />
           <MetricCard label="Active" value={pipelineStats.active} />
-          <MetricCard label="Completed" value={pipelineStats.completed} />
+          <MetricCard label="Done" value={pipelineStats.completed} />
         </div>
-        {liveNotice && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-emerald-300/60 bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-100">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {liveNotice}
-          </div>
-        )}
-      </div>
+      </section>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
           Loading lead pipeline...
         </div>
       )}
 
       {!loading && orders.length === 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
           No leads yet. Publish services/products so nearby customers can find you.
         </div>
       )}
@@ -281,9 +285,9 @@ export default function ProviderOrdersPage() {
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-white/30 bg-white/15 p-3">
-      <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
     </div>
   );
 }
