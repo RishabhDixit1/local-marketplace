@@ -20,6 +20,7 @@ export type CommunityProfileRecord = {
   longitude?: number | null;
   onboarding_completed?: boolean | null;
   profile_completion_percent?: number | null;
+  verification_level?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -130,6 +131,7 @@ export type CommunityFeedResponse =
       profiles: CommunityProfileRecord[];
       reviews: CommunityReviewRecord[];
       presence: CommunityPresenceRecord[];
+      orderStats: CommunityOrderStatsRecord[];
     }
   | CommunityApiError;
 

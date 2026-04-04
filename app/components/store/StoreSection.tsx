@@ -31,6 +31,7 @@ type ProductRow = {
   category: string | null;
   price: number | null;
   stock: number | null;
+  delivery_method?: ProductDeliveryMethod | null;
   image_url?: string | null;
   image_path?: string | null;
 };
@@ -52,6 +53,12 @@ type ToastState = {
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+const PRODUCT_DELIVERY_LABELS: Record<ProductDeliveryMethod, string> = {
+  pickup: "Pickup only",
+  delivery: "Provider delivery",
+  both: "Pickup or delivery",
+};
 
 function AvailabilityBadge({ status }: { status: string }) {
   const norm = status.toLowerCase();
@@ -149,14 +156,27 @@ export function StoreSection({ services, products, providerId, providerName, pro
 
   if (totalItems === 0) return null;
 
-  const handleAddToCart = (key: string, itemType: "service" | "product", itemId: string, title: string, price: number) => {
-    cart.addItem({ itemType, itemId, providerId, providerName, title, price });
+  const handleAddToCart = (
+    key: string,
+    itemType: "service" | "product",
+    itemId: string,
+    title: string,
+    price: number,
+    deliveryMethod: ProductDeliveryMethod | null = null
+  ) => {
+    cart.addItem({ itemType, itemId, providerId, providerName, title, price, deliveryMethod });
     setAdded(key);
     setTimeout(() => setAdded(null), 1400);
   };
 
-  const handleBuyNow = (itemType: "service" | "product", itemId: string, title: string, price: number) => {
-    cart.replaceItems([{ itemType, itemId, providerId, providerName, title, price }]);
+  const handleBuyNow = (
+    itemType: "service" | "product",
+    itemId: string,
+    title: string,
+    price: number,
+    deliveryMethod: ProductDeliveryMethod | null = null
+  ) => {
+    cart.replaceItems([{ itemType, itemId, providerId, providerName, title, price, deliveryMethod }]);
     cart.closeCart();
     router.push("/checkout");
   };
@@ -201,7 +221,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
           description: "",
           price: Number(product.price || 0),
           stock: nextStock,
-          deliveryMethod: "pickup",
+          deliveryMethod: product.delivery_method || "pickup",
           imageUrl: product.image_path || product.image_url || "",
         },
       });
@@ -297,8 +317,9 @@ export function StoreSection({ services, products, providerId, providerName, pro
                 category: editProduct.category,
                 price: Number(editProduct.price),
                 stock: Number(editProduct.stock),
+                delivery_method: editProduct.deliveryMethod,
                 image_path: editProduct.imageUrl,
-              image_url: null,
+                image_url: null,
               }
             : item
         )
@@ -415,7 +436,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                       <button
                         type="button"
                         disabled={isSvcOffline}
-                        onClick={() => handleAddToCart(key, "service", svc.id, svc.title || "Service", price)}
+                        onClick={() => handleAddToCart(key, "service", svc.id, svc.title || "Service", price, null)}
                         aria-label={`Add ${svc.title} to cart`}
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-indigo-500 hover:text-white disabled:pointer-events-none disabled:opacity-50"
                       >
@@ -425,7 +446,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                       <button
                         type="button"
                         disabled={isSvcOffline}
-                        onClick={() => handleBuyNow("service", svc.id, svc.title || "Service", price)}
+                        onClick={() => handleBuyNow("service", svc.id, svc.title || "Service", price, null)}
                         aria-label={`Hire ${svc.title}`}
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-50"
                       >
@@ -450,6 +471,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
             const key = `product:${prod.id}`;
             const justAdded = added === key;
             const imageUrl = resolveListingImageUrl(prod.image_path || prod.image_url);
+            const deliveryMethod = prod.delivery_method || "pickup";
 
             return (
               <div key={prod.id} className="flex flex-col justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4">
@@ -469,9 +491,10 @@ export function StoreSection({ services, products, providerId, providerName, pro
                     {outOfStock ? (
                       <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-semibold text-rose-400">Out of stock</span>
                     ) : (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">In stock</span>
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">In stock</span>
                     )}
                   </div>
+                  <p className="mt-2 text-[11px] font-medium text-slate-400">{PRODUCT_DELIVERY_LABELS[deliveryMethod]}</p>
                 </div>
                 <div className="flex gap-2">
                   {isOwner ? (
@@ -486,7 +509,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                             description: "",
                             price,
                             stock: Number(prod.stock || 0),
-                            deliveryMethod: "pickup",
+                            deliveryMethod: deliveryMethod,
                             imageUrl: prod.image_path || prod.image_url || "",
                           })
                         }
@@ -515,7 +538,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                       <button
                         type="button"
                         disabled={isDisabled}
-                        onClick={() => handleAddToCart(key, "product", prod.id, prod.title || "Product", price)}
+                        onClick={() => handleAddToCart(key, "product", prod.id, prod.title || "Product", price, deliveryMethod)}
                         aria-label={`Add ${prod.title} to cart`}
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-indigo-500 hover:text-white disabled:pointer-events-none disabled:opacity-50"
                       >
@@ -525,7 +548,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
                       <button
                         type="button"
                         disabled={isDisabled}
-                        onClick={() => handleBuyNow("product", prod.id, prod.title || "Product", price)}
+                        onClick={() => handleBuyNow("product", prod.id, prod.title || "Product", price, deliveryMethod)}
                         aria-label={`Buy ${prod.title}`}
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-50"
                       >
@@ -669,6 +692,17 @@ export function StoreSection({ services, products, providerId, providerName, pro
                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
                 placeholder="Category"
               />
+              <select
+                value={editProduct.deliveryMethod}
+                onChange={(event) =>
+                  setEditProduct({ ...editProduct, deliveryMethod: event.target.value as ProductDeliveryMethod })
+                }
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              >
+                <option value="pickup">Pickup only</option>
+                <option value="delivery">Provider delivery</option>
+                <option value="both">Pickup or delivery</option>
+              </select>
               <textarea
                 value={editProduct.description}
                 onChange={(event) => setEditProduct({ ...editProduct, description: event.target.value })}

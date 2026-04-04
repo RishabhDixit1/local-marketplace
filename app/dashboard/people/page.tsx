@@ -641,7 +641,7 @@ const createProviderCards = (params: {
             providerId: profile.id,
           });
 
-      const profileCompletion = calculateProfileCompletion({
+      const computedProfileCompletion = calculateProfileCompletion({
         name: profile.name,
         location: profile.location,
         bio: profile.bio,
@@ -650,13 +650,19 @@ const createProviderCards = (params: {
         phone: profile.phone,
         website: profile.website,
       });
+      const profileCompletion =
+        typeof profile.profile_completion_percent === "number" && Number.isFinite(profile.profile_completion_percent)
+          ? profile.profile_completion_percent
+          : computedProfileCompletion;
 
       const verificationStatus = calculateVerificationStatus({
         role: profile.role,
+        verificationLevel: profile.verification_level,
         profileCompletion,
         listingsCount: servicesCount + productsCount,
         averageRating: rating ?? 0,
         reviewCount: reviewsCount,
+        completedJobs: completedJobsMap.get(profile.id) ?? 0,
       });
 
       const coordinateMeta = resolveCoordinatesWithAccuracy({

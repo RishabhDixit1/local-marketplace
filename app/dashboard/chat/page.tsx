@@ -94,7 +94,6 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
-const NATIVE_EMOJI_KEYBOARD_QUERY = "(max-width: 1023px)";
 const CHAT_EMOTICONS = [
   { label: "Smile", value: "😊" },
   { label: "Big smile", value: "😁" },
@@ -325,7 +324,6 @@ export default function ChatPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [showEmoticonPicker, setShowEmoticonPicker] = useState(false);
-  const [preferNativeEmojiKeyboard, setPreferNativeEmojiKeyboard] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [presenceConnection, setPresenceConnection] = useState<ChannelHealth>("connecting");
@@ -337,7 +335,6 @@ export default function ChatPage() {
   const [liveTalkBusy, setLiveTalkBusy] = useState(false);
 
   const selectedChatRef = useRef<string | null>(null);
-  const composerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const messageSelectionRef = useRef({ start: input.length, end: input.length });
@@ -374,35 +371,11 @@ export default function ChatPage() {
   }, [selectedChat]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mediaQuery = window.matchMedia(NATIVE_EMOJI_KEYBOARD_QUERY);
-    const syncNativeEmojiKeyboard = () => {
-      setPreferNativeEmojiKeyboard(mediaQuery.matches);
-    };
-
-    syncNativeEmojiKeyboard();
-
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", syncNativeEmojiKeyboard);
-      return () => mediaQuery.removeEventListener("change", syncNativeEmojiKeyboard);
-    }
-
-    mediaQuery.addListener(syncNativeEmojiKeyboard);
-    return () => mediaQuery.removeListener(syncNativeEmojiKeyboard);
-  }, []);
-
-  useEffect(() => {
     setShowEmoticonPicker(false);
-  }, [preferNativeEmojiKeyboard, selectedChat]);
+  }, [selectedChat]);
 
   useEffect(() => {
     if (!showEmoticonPicker) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (composerRef.current?.contains(event.target as Node)) return;
-      setShowEmoticonPicker(false);
-    };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -410,11 +383,9 @@ export default function ChatPage() {
       }
     };
 
-    document.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
   }, [showEmoticonPicker]);
@@ -465,22 +436,6 @@ export default function ChatPage() {
     element.style.height = "44px";
     element.style.height = `${Math.min(element.scrollHeight, 150)}px`;
   }, []);
-
-  const focusMessageInput = useCallback((moveCaretToEnd = false) => {
-    const element = messageInputRef.current;
-    if (!element) return;
-
-    element.focus();
-    if (moveCaretToEnd) {
-      const caretPosition = element.value.length;
-      element.setSelectionRange(caretPosition, caretPosition);
-      messageSelectionRef.current = {
-        start: caretPosition,
-        end: caretPosition,
-      };
-    }
-    resizeMessageInput(element);
-  }, [resizeMessageInput]);
 
   const syncMessageSelection = useCallback((element: HTMLTextAreaElement | null = messageInputRef.current) => {
     if (!element) return;
@@ -1252,14 +1207,8 @@ export default function ChatPage() {
   }, [handleInputChange, input, resizeMessageInput]);
 
   const handleEmojiButtonClick = useCallback(() => {
-    if (preferNativeEmojiKeyboard) {
-      setShowEmoticonPicker(false);
-      focusMessageInput(true);
-      return;
-    }
-
     setShowEmoticonPicker((current) => !current);
-  }, [focusMessageInput, preferNativeEmojiKeyboard]);
+  }, []);
 
   const filteredConversations = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
@@ -1382,7 +1331,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:rounded-3xl lg:h-[calc(100dvh-7.5rem)]" style={{ height: 'calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)' }}>
+    <div className="relative -mx-3 h-[calc(100dvh-7.5rem)] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-7.5rem)]" style={{ height: "calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)" }}>
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1431,7 +1380,7 @@ export default function ChatPage() {
               </span>
             </div>
 
-            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 sm:flex">
+            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5">
               <Search size={16} className="text-slate-500" />
               <input
                 placeholder="Search people or messages"
@@ -1711,8 +1660,9 @@ export default function ChatPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                      <button
                         type="button"
                         onClick={() => {
                           if (activeQuoteTarget) {
@@ -1722,23 +1672,24 @@ export default function ChatPage() {
                             setQuotePanelDismissed(false);
                           }
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold text-sky-700 transition hover:bg-sky-100 sm:px-3 sm:text-[11px]"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-2.5 py-2 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100 sm:px-3 sm:py-1.5"
                       >
                         <Receipt className="h-3.5 w-3.5" />
                         {showQuotePanel ? "Hide Quote" : "Send Quote"}
                       </button>
-                    {selectedConversation?.otherUserId && (
-                      <button
-                        type="button"
-                        onClick={() => void startLiveTalk()}
-                        disabled={liveTalkBusy}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-2.5 py-1.5 text-[10px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:px-3 sm:text-[11px]"
-                      >
-                        {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                        {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
-                      </button>
-                    )}
-                    <div className="hidden items-center gap-2 sm:flex">
+                      {selectedConversation?.otherUserId && (
+                        <button
+                          type="button"
+                          onClick={() => void startLiveTalk()}
+                          disabled={liveTalkBusy}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-2.5 py-2 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:px-3 sm:py-1.5"
+                        >
+                          {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                          {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       {[
                         { label: "Presence", state: presenceConnection },
                         { label: "Messages", state: streamConnection },
@@ -1751,27 +1702,28 @@ export default function ChatPage() {
                             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.badgeClassName}`}
                           >
                             <span className={`h-2 w-2 rounded-full ${style.dotClassName}`} />
-                            {channel.label}: {style.label}
+                            <span className="sm:hidden">{channel.label}</span>
+                            <span className="hidden sm:inline">{channel.label}: {style.label}</span>
                           </span>
                         );
                       })}
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:hidden ${
-                        connectedChannels >= 2
-                          ? CHANNEL_HEALTH_STYLES.connected.badgeClassName
-                          : CHANNEL_HEALTH_STYLES.connecting.badgeClassName
-                      }`}
-                    >
                       <span
-                        className={`h-2 w-2 rounded-full ${
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:hidden ${
                           connectedChannels >= 2
-                            ? CHANNEL_HEALTH_STYLES.connected.dotClassName
-                            : CHANNEL_HEALTH_STYLES.connecting.dotClassName
+                            ? CHANNEL_HEALTH_STYLES.connected.badgeClassName
+                            : CHANNEL_HEALTH_STYLES.connecting.badgeClassName
                         }`}
-                      />
-                      {connectedChannels}/3 live
-                    </span>
+                      >
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            connectedChannels >= 2
+                              ? CHANNEL_HEALTH_STYLES.connected.dotClassName
+                              : CHANNEL_HEALTH_STYLES.connecting.dotClassName
+                          }`}
+                        />
+                        {connectedChannels}/3 live
+                      </span>
+                    </div>
                   </div>
                 </div>
               </header>
@@ -1940,9 +1892,17 @@ export default function ChatPage() {
               </div>
 
               <footer className="border-t border-slate-200/80 bg-white px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-3 sm:px-6 sm:pt-4">
-                <div ref={composerRef} className="relative rounded-2xl border border-slate-300 bg-slate-50 p-2">
-                  {showEmoticonPicker && !preferNativeEmojiKeyboard && (
-                    <div className="absolute bottom-full left-2 right-2 z-20 mb-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10">
+                {showEmoticonPicker && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEmoticonPicker(false)}
+                    aria-label="Close emoji picker"
+                    className="fixed inset-0 z-10 bg-slate-950/10 backdrop-blur-[1px]"
+                  />
+                )}
+                <div className="relative rounded-2xl border border-slate-300 bg-slate-50 p-2">
+                  {showEmoticonPicker && (
+                    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                           Add emoji
@@ -1955,14 +1915,14 @@ export default function ChatPage() {
                           Close
                         </button>
                       </div>
-                      <div className="max-h-[min(18rem,55vh)] overflow-y-auto pr-1">
-                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                      <div className="max-h-[min(20rem,52vh)] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
                           {CHAT_EMOTICONS.map((option) => (
                             <button
                               key={option.label}
                               type="button"
                               onClick={() => insertEmoticon(option.value)}
-                              className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                              className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center text-base font-semibold leading-none text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                               aria-label={`Insert ${option.label}`}
                               title={option.label}
                             >
@@ -1976,20 +1936,15 @@ export default function ChatPage() {
                   <div className="flex items-end gap-2">
                     <button
                       type="button"
-                      onPointerDown={(event) => {
-                        if (!preferNativeEmojiKeyboard) return;
-                        event.preventDefault();
-                        focusMessageInput(true);
-                      }}
                       onClick={handleEmojiButtonClick}
                       className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-sm font-bold transition ${
-                        showEmoticonPicker && !preferNativeEmojiKeyboard
+                        showEmoticonPicker
                           ? "border-indigo-300 bg-indigo-50 text-indigo-700"
                           : "border-slate-300 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"
                       }`}
-                      aria-label={preferNativeEmojiKeyboard ? "Use device keyboard for emoji" : "Open emoji picker"}
-                      aria-expanded={preferNativeEmojiKeyboard ? undefined : showEmoticonPicker}
-                      aria-haspopup={preferNativeEmojiKeyboard ? undefined : "dialog"}
+                      aria-label="Open emoji picker"
+                      aria-expanded={showEmoticonPicker}
+                      aria-haspopup="dialog"
                     >
                       <Smile className="h-5 w-5" />
                     </button>
@@ -2040,9 +1995,7 @@ export default function ChatPage() {
                     {lastRealtimeLabel}
                   </p>
                   <p className="hidden text-slate-400 sm:block">
-                    {preferNativeEmojiKeyboard
-                      ? "Use your device keyboard for emojis."
-                      : "Press Enter to send, Shift + Enter for newline, or use the emoji picker."}
+                    Press Enter to send, Shift + Enter for newline, or use the emoji picker.
                   </p>
                 </div>
               </footer>

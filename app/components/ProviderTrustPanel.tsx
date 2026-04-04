@@ -29,6 +29,7 @@ type ProfileRow = {
   location: string | null;
   bio: string | null;
   role: string | null;
+  verification_level?: string | null;
   services: string[] | null;
   availability: string | null;
   email: string | null;
@@ -203,12 +204,14 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
     if (!profile) return "unclaimed";
     return calculateVerificationStatus({
       role: profile.role,
+      verificationLevel: profile.verification_level,
       profileCompletion,
       listingsCount: servicesCount + productsCount,
       averageRating: avgRating,
       reviewCount: reviews.length,
+      completedJobs,
     });
-  }, [avgRating, profile, profileCompletion, productsCount, reviews.length, servicesCount]);
+  }, [avgRating, completedJobs, profile, profileCompletion, productsCount, reviews.length, servicesCount]);
 
   const publicProfilePath = profile ? buildPublicProfilePath(profile) : "";
   const connectionState = useMemo(() => getConnectionState(userId), [getConnectionState, userId]);

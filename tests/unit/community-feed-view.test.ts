@@ -70,6 +70,7 @@ describe("buildCommunityFeedView", () => {
           id: "provider-1",
           name: "Asha Repairs",
           role: "business",
+          verification_level: "email",
           location: "Indiranagar",
           latitude: 12.978,
           longitude: 77.64,
@@ -103,6 +104,7 @@ describe("buildCommunityFeedView", () => {
           last_seen: "2026-03-24T11:00:00.000Z",
         },
       ],
+      orderStats: [{ provider_id: "provider-1", completed_jobs: 14, open_leads: 2 }],
     });
 
     expect(view.mapCenter).toEqual({ lat: 12.9716, lng: 77.5946 });
@@ -127,7 +129,9 @@ describe("buildCommunityFeedView", () => {
       id: "service-1",
       source: "service_listing",
       creatorName: "Asha Repairs",
-      verificationStatus: "pending",
+      verificationStatus: "verified",
+      averageRating: 4.7,
+      completedJobs: 14,
       responseMinutes: 9,
     });
   });
@@ -208,6 +212,7 @@ describe("buildCommunityFeedView", () => {
       ],
       reviews: [],
       presence: [],
+      orderStats: [],
     });
 
     expect(view.feedItems).toHaveLength(1);
@@ -294,6 +299,7 @@ describe("buildCommunityFeedView", () => {
       ],
       reviews: [],
       presence: [],
+      orderStats: [],
     });
 
     expect(view.feedItems.find((item) => item.id === "service-media")?.media).toEqual([
@@ -308,5 +314,55 @@ describe("buildCommunityFeedView", () => {
         url: "https://cdn.example.com/product/chair.jpg",
       },
     ]);
+  });
+
+  it("does not invent ratings for providers who only have completed jobs", () => {
+    const view = buildCommunityFeedView({
+      currentUserId: "viewer-1",
+      acceptedConnectionIds: ["provider-1"],
+      currentUserProfile: {
+        id: "viewer-1",
+        name: "Viewer",
+        latitude: 12.9716,
+        longitude: 77.5946,
+        role: "seeker",
+      },
+      services: [
+        {
+          id: "service-no-reviews",
+          title: "Laptop diagnostics",
+          description: "Hardware and software checks",
+          price: 900,
+          category: "Repair",
+          provider_id: "provider-1",
+          created_at: "2026-03-24T08:00:00.000Z",
+        },
+      ],
+      products: [],
+      posts: [],
+      helpRequests: [],
+      profiles: [
+        {
+          id: "provider-1",
+          name: "Asha Repairs",
+          role: "business",
+          location: "Indiranagar",
+          latitude: 12.978,
+          longitude: 77.64,
+          profile_completion_percent: 84,
+        },
+      ],
+      reviews: [],
+      presence: [],
+      orderStats: [{ provider_id: "provider-1", completed_jobs: 9, open_leads: 0 }],
+    });
+
+    expect(view.feedItems[0]).toMatchObject({
+      id: "service-no-reviews",
+      averageRating: null,
+      reviewCount: 0,
+      completedJobs: 9,
+      verificationStatus: "pending",
+    });
   });
 });

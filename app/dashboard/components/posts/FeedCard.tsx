@@ -92,6 +92,8 @@ const verificationLabels: Record<MarketplaceDisplayFeedItem["verificationStatus"
   unclaimed: "Unclaimed profile",
 };
 
+const formatTrustRating = (rating: number) => `${rating.toFixed(1)} stars`;
+
 export default function FeedCard({
   item,
   index,
@@ -127,6 +129,8 @@ export default function FeedCard({
   const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
   const discardButton = buttons.find((button) => button.kind === "discard");
+  const reviewCount = item.reviewCount ?? 0;
+  const completedJobs = item.completedJobs ?? 0;
   const trustItems = [
     {
       label: verificationLabels[item.verificationStatus],
@@ -137,28 +141,33 @@ export default function FeedCard({
           ? ("neutral" as const)
           : ("caution" as const),
     },
-    item.reviewCount && item.reviewCount > 0
+    reviewCount > 0 && typeof item.averageRating === "number" && Number.isFinite(item.averageRating)
       ? {
-          label: `${item.reviewCount} review${item.reviewCount === 1 ? "" : "s"}`,
+          label: formatTrustRating(item.averageRating),
           tone: "good" as const,
         }
       : {
-          label: "New marketplace profile",
+          label: "No ratings yet",
           tone: "neutral" as const,
         },
-    item.responseMinutes > 0
+    reviewCount > 0
       ? {
-          label: `~${item.responseMinutes} min reply`,
-          tone: item.responseMinutes <= 15 ? ("good" as const) : ("neutral" as const),
+          label: `${reviewCount} review${reviewCount === 1 ? "" : "s"}`,
+          tone: "neutral" as const,
         }
       : {
-          label: "Reply speed building",
+          label: "First review pending",
           tone: "caution" as const,
         },
-    {
-      label: item.coordinateAccuracy === "precise" ? "Exact area shared" : "Area shown approximately",
-      tone: item.coordinateAccuracy === "precise" ? ("good" as const) : ("neutral" as const),
-    },
+    completedJobs > 0
+      ? {
+          label: `${completedJobs} job${completedJobs === 1 ? "" : "s"} done`,
+          tone: completedJobs >= 5 ? ("good" as const) : ("neutral" as const),
+        }
+      : {
+          label: "No completed jobs yet",
+          tone: "neutral" as const,
+        },
   ];
 
   return (

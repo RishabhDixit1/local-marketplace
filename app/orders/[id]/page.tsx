@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
+import { getOrderFulfillmentOption } from "@/lib/orderFulfillment";
 
 const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -149,6 +150,7 @@ export default function OrderStatusPage() {
   const address = order.metadata?.address as string | undefined;
   const notes = order.metadata?.notes as string | undefined;
   const paymentStatus = order.metadata?.payment_status as string | undefined;
+  const fulfillmentOption = getOrderFulfillmentOption(order.metadata?.fulfillment_method);
 
   const timelineIdx = TIMELINE.indexOf(status);
 
@@ -222,8 +224,15 @@ export default function OrderStatusPage() {
         )}
 
         {/* Delivery info */}
+        <section className="rounded-2xl bg-white p-5 shadow-sm space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Fulfillment method</p>
+          <p className="text-sm font-semibold text-slate-900">{fulfillmentOption.label}</p>
+          <p className="text-xs leading-5 text-slate-600">{fulfillmentOption.description}</p>
+        </section>
+
         {(address || notes) && (
           <section className="rounded-2xl bg-white p-5 shadow-sm space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{fulfillmentOption.addressLabel}</p>
             {address && (
               <div className="flex items-start gap-2 text-sm text-slate-700">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-slate-400" />
@@ -231,7 +240,7 @@ export default function OrderStatusPage() {
               </div>
             )}
             {notes && (
-              <p className="text-xs text-slate-500 italic pl-6">"{notes}"</p>
+              <p className="text-xs text-slate-500 italic pl-6">&ldquo;{notes}&rdquo;</p>
             )}
           </section>
         )}

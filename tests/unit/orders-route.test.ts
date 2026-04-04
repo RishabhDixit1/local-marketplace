@@ -110,6 +110,7 @@ describe("POST /api/orders", () => {
               title: "Deep Cleaning",
               address: "221B Baker Street, Bengaluru",
               notes: "Call on arrival",
+              fulfillment_method: "platform",
               payment_method: "razorpay",
               payment_status: "processing",
               razorpay_order_id: "rzp_order_123",
@@ -143,6 +144,7 @@ describe("POST /api/orders", () => {
           title: "Deep Cleaning",
           address: "221B Baker Street, Bengaluru",
           notes: "Call on arrival",
+          fulfillment_method: "platform",
           payment_method: "razorpay",
           payment_status: "processing",
           razorpay_order_id: "rzp_order_123",
@@ -203,6 +205,49 @@ describe("POST /api/orders", () => {
       ok: false,
       code: "BAD_REQUEST",
       message: "Invalid payment method.",
+    });
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid fulfillment methods before any database lookup runs", async () => {
+    requireRequestAuthMock.mockResolvedValue(authContext);
+
+    const fromMock = vi.fn();
+    createSupabaseAdminClientMock.mockReturnValue({
+      from: fromMock,
+      auth: {
+        admin: {
+          getUserById: vi.fn(),
+        },
+      },
+    });
+
+    const { POST } = await import("../../app/api/orders/route");
+    const response = await POST(
+      new Request("http://localhost:3000/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              providerId: "provider-1",
+              itemType: "service",
+              itemId: "service-1",
+              price: 1499,
+              fulfillment_method: "teleport",
+            },
+          ],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: "BAD_REQUEST",
+      message: "Invalid fulfillment method.",
     });
     expect(fromMock).not.toHaveBeenCalled();
   });

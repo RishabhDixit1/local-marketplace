@@ -1,6 +1,7 @@
 import type {
   CommunityFeedResponse,
   CommunityHelpRequestRecord,
+  CommunityOrderStatsRecord,
   CommunityPostRecord,
   CommunityPresenceRecord,
   CommunityProductRecord,
@@ -49,6 +50,7 @@ type CommunityFeedSnapshotInput = {
   profiles: CommunityProfileRecord[];
   reviews: CommunityReviewRecord[];
   presence: CommunityPresenceRecord[];
+  orderStats: CommunityOrderStatsRecord[];
 };
 
 type FlexibleRow = Record<string, unknown>;
@@ -179,6 +181,15 @@ export const buildCommunityFeedView = (
     }
   });
 
+  const orderStatsMap = new Map<string, { completedJobs: number; openLeads: number }>();
+  snapshot.orderStats.forEach((row) => {
+    if (!row.provider_id) return;
+    orderStatsMap.set(row.provider_id, {
+      completedJobs: Number.isFinite(Number(row.completed_jobs)) ? Number(row.completed_jobs) : 0,
+      openLeads: Number.isFinite(Number(row.open_leads)) ? Number(row.open_leads) : 0,
+    });
+  });
+
   const listingVolumeByProvider = new Map<string, number>();
   const bumpVolume = (providerId: string) => {
     if (!providerId) return;
@@ -197,23 +208,31 @@ export const buildCommunityFeedView = (
     const profileRow = (profile || {}) as FlexibleRow;
     const presence = presenceMap.get(providerId);
     const review = reviewStats.get(providerId);
+    const orderStats = orderStatsMap.get(providerId);
 
-    const profileCompletion = calculateProfileCompletion(profile || {});
-    const averageRating = review?.count ? review.total / review.count : 4.2;
+    const profileCompletion =
+      typeof profile?.profile_completion_percent === "number" && Number.isFinite(profile.profile_completion_percent)
+        ? profile.profile_completion_percent
+        : calculateProfileCompletion(profile || {});
+    const averageRating = review?.count ? Number((review.total / review.count).toFixed(1)) : null;
     const reviewCount = review?.count || 0;
     const listingsCount = listingVolumeByProvider.get(providerId) || 0;
+    const completedJobs = orderStats?.completedJobs || 0;
     const responseMinutes = estimateResponseMinutes({
       availability: presence?.availability || profile?.availability,
       providerId,
       baseResponseMinutes: presence?.rolling_response_minutes || null,
     });
+    const rankRating = averageRating ?? (completedJobs > 0 ? 4 : 3.6);
 
     const verificationStatus = calculateVerificationStatus({
       role: profile?.role,
+      verificationLevel: profile?.verification_level,
       profileCompletion,
       listingsCount,
-      averageRating,
+      averageRating: averageRating ?? 0,
       reviewCount,
+      completedJobs,
     });
 
     const explicitProfileName = normalizeMarketplacePersonLabel(
@@ -230,7 +249,9 @@ export const buildCommunityFeedView = (
       profileCompletion,
       averageRating,
       reviewCount,
+      completedJobs,
       listingsCount,
+      rankRating,
       responseMinutes,
       verificationStatus,
       name: resolvedProfileName,
@@ -307,7 +328,7 @@ export const buildCommunityFeedView = (
       rankScore: calculateLocalRankScore({
         distanceKm: distanceBetweenCoordinatesKm(viewerPoint, coordinates),
         responseMinutes: profileMeta.responseMinutes,
-        rating: profileMeta.averageRating,
+        rating: profileMeta.rankRating,
         profileCompletion: profileMeta.profileCompletion,
       }),
       profileCompletion: profileMeta.profileCompletion,
@@ -315,6 +336,7 @@ export const buildCommunityFeedView = (
       verificationStatus: profileMeta.verificationStatus,
       averageRating: profileMeta.averageRating,
       reviewCount: profileMeta.reviewCount,
+      completedJobs: profileMeta.completedJobs,
       listingCount: profileMeta.listingsCount,
       publicProfilePath: profileMeta.publicProfilePath,
       status: stringFromRow(row, ["status", "state"], "open"),
@@ -380,7 +402,7 @@ export const buildCommunityFeedView = (
       rankScore: calculateLocalRankScore({
         distanceKm: distanceBetweenCoordinatesKm(viewerPoint, coordinates),
         responseMinutes: profileMeta.responseMinutes,
-        rating: profileMeta.averageRating,
+        rating: profileMeta.rankRating,
         profileCompletion: profileMeta.profileCompletion,
       }),
       profileCompletion: profileMeta.profileCompletion,
@@ -388,6 +410,7 @@ export const buildCommunityFeedView = (
       verificationStatus: profileMeta.verificationStatus,
       averageRating: profileMeta.averageRating,
       reviewCount: profileMeta.reviewCount,
+      completedJobs: profileMeta.completedJobs,
       listingCount: profileMeta.listingsCount,
       publicProfilePath: profileMeta.publicProfilePath,
       status: stringFromRow(row, ["status", "state"], "open"),
@@ -483,7 +506,7 @@ export const buildCommunityFeedView = (
       rankScore: calculateLocalRankScore({
         distanceKm,
         responseMinutes: profileMeta.responseMinutes,
-        rating: profileMeta.averageRating,
+        rating: profileMeta.rankRating,
         profileCompletion: profileMeta.profileCompletion,
       }),
       profileCompletion: profileMeta.profileCompletion,
@@ -491,6 +514,7 @@ export const buildCommunityFeedView = (
       verificationStatus: profileMeta.verificationStatus,
       averageRating: profileMeta.averageRating,
       reviewCount: profileMeta.reviewCount,
+      completedJobs: profileMeta.completedJobs,
       listingCount: profileMeta.listingsCount,
       publicProfilePath: profileMeta.publicProfilePath,
       status,
@@ -571,7 +595,7 @@ export const buildCommunityFeedView = (
       rankScore: calculateLocalRankScore({
         distanceKm,
         responseMinutes: profileMeta.responseMinutes,
-        rating: profileMeta.averageRating,
+        rating: profileMeta.rankRating,
         profileCompletion: profileMeta.profileCompletion,
       }),
       profileCompletion: profileMeta.profileCompletion,
@@ -579,6 +603,7 @@ export const buildCommunityFeedView = (
       verificationStatus: profileMeta.verificationStatus,
       averageRating: profileMeta.averageRating,
       reviewCount: profileMeta.reviewCount,
+      completedJobs: profileMeta.completedJobs,
       listingCount: profileMeta.listingsCount,
       publicProfilePath: profileMeta.publicProfilePath,
       status,
