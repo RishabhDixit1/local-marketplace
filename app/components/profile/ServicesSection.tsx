@@ -6,6 +6,7 @@ import { Loader2, MessageCircle, BadgeIndianRupee, Send, Sparkles } from "lucide
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { sendConnectionRequest } from "@/lib/connections";
+import { formatPaymentRailList } from "@/lib/paymentFlow";
 import type { MarketplaceServiceRecord } from "@/lib/profile/marketplace";
 
 const formatMoney = (value: number | null) => {
@@ -13,8 +14,10 @@ const formatMoney = (value: number | null) => {
   return `INR ${Number(value).toLocaleString("en-IN")}`;
 };
 
-const renderPaymentMethods = (methods: string[]) =>
-  methods.length > 0 ? methods.slice(0, 4).join(" • ") : "Flexible payment methods";
+const renderPaymentMethods = (methods: string[]) => {
+  const rails = formatPaymentRailList(methods);
+  return rails.length > 0 ? rails.slice(0, 4).join(" • ") : "Flexible payment methods";
+};
 
 export default function ServicesSection({
   profileId,

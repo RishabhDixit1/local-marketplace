@@ -129,8 +129,8 @@ export const createMarketplaceReadinessSummary = (params: {
         id: "grow-listings",
         title: "Expand your storefront",
         description: "A few focused listings create more entry points from discovery and feed surfaces.",
-        href: "/dashboard/provider/listings",
-        ctaLabel: "Manage listings",
+        href: "/dashboard/provider",
+        ctaLabel: "Open control",
       });
     }
   } else if (postsCount === 0) {
@@ -203,8 +203,8 @@ export const createMarketplaceReadinessSummary = (params: {
             id: "orders",
             title: "Stay responsive in your pipeline",
             description: "Fast replies and clear availability keep discovery momentum turning into bookings.",
-            href: "/dashboard/provider/orders",
-            ctaLabel: "Open orders",
+            href: "/dashboard/provider",
+            ctaLabel: "Open control",
           }
         : {
             id: "discover",

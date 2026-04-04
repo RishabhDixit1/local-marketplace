@@ -20,9 +20,10 @@ import { useCart } from "@/app/components/store/CartContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
-import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
+import { buildPublicProfilePath, getProfileRoleFamily, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   Bookmark,
   ClipboardList,
   ChevronsLeft,
@@ -60,15 +61,17 @@ const GlobalMapView = dynamic(
   { ssr: false }
 );
 
-const navigationTabs = [
+const baseNavigationTabs = [
   { name: "Welcome", path: "/dashboard/welcome", icon: Home },
   { name: "Explore", path: "/dashboard", icon: Newspaper },
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
-  { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
+
+const isNavigationTabActive = (pathname: string, path: string) =>
+  path === "/dashboard/provider" ? pathname === path || pathname.startsWith("/dashboard/provider/") : pathname === path;
 
 export default function DashboardLayout({
   children,
@@ -83,6 +86,37 @@ export default function DashboardLayout({
         </CartProvider>
       </DashboardPromptProvider>
     </ProfileProvider>
+  );
+}
+
+function DashboardChatShortcut({
+  active,
+  badgeLabel,
+  unreadCount,
+  className,
+}: {
+  active: boolean;
+  badgeLabel: string | null;
+  unreadCount: number;
+  className: string;
+}) {
+  return (
+    <Link
+      href="/dashboard/chat"
+      aria-label={
+        unreadCount > 0 ? `Open chat inbox, ${unreadCount} unread message${unreadCount === 1 ? "" : "s"}` : "Open chat inbox"
+      }
+      aria-current={active ? "page" : undefined}
+      title="Chat"
+      className={`relative ${className} ${active ? "border-[var(--brand-500)]/60 bg-[var(--brand-900)] text-white" : ""}`}
+    >
+      <MessageCircle className="h-4 w-4" />
+      {badgeLabel ? (
+        <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+          {badgeLabel}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
@@ -116,12 +150,17 @@ function DashboardShell({
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
+  const isProviderProfile = getProfileRoleFamily(profile?.role) === "provider";
+  const navigationTabs = isProviderProfile
+    ? [...baseNavigationTabs, { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness }]
+    : baseNavigationTabs;
   const desktopNavCollapsed = desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
   const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
+  const isChatRouteActive = pathname === "/dashboard/chat";
   const hideFloatingQuickActions =
     pathname.startsWith("/dashboard/chat") || pathname.startsWith("/dashboard/create_post");
   const shellIconButtonClassName =
-    "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:rounded-lg";
+    "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:rounded-lg";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -386,9 +425,8 @@ function DashboardShell({
 
           <nav className={`flex-1 py-6 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2" : "px-4"}`}>
             {navigationTabs.map((tab) => {
-              const isActive = pathname === tab.path;
+              const isActive = isNavigationTabActive(pathname, tab.path);
               const Icon = tab.icon;
-              const isChatTab = tab.path === "/dashboard/chat";
               return (
                 <Link
                   key={tab.path}
@@ -403,26 +441,9 @@ function DashboardShell({
                   }`}
                 >
                   <span className={`flex min-w-0 items-center ${desktopNavCollapsed ? "" : "gap-3"}`}>
-                    <span className="relative inline-flex shrink-0">
-                      <Icon className="w-5 h-5 shrink-0" />
-                      {desktopNavCollapsed && isChatTab && chatBadgeLabel ? (
-                        <span className="absolute -right-2 -top-2 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">
-                          {chatBadgeLabel}
-                        </span>
-                      ) : null}
-                    </span>
+                    <Icon className="w-5 h-5 shrink-0" />
                     {desktopNavCollapsed ? <span className="sr-only">{tab.name}</span> : tab.name}
                   </span>
-                  {!desktopNavCollapsed && isChatTab && chatBadgeLabel ? (
-                    <span
-                      className={`inline-flex min-w-[1.45rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ${
-                        isActive ? "bg-white/18 text-white ring-1 ring-white/20" : "bg-rose-500 text-white"
-                      }`}
-                      aria-label={`${chatUnreadCount} unread chat messages`}
-                    >
-                      {chatBadgeLabel}
-                    </span>
-                  ) : null}
                 </Link>
               );
             })}
@@ -502,6 +523,12 @@ function DashboardShell({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <DashboardChatShortcut
+                  active={isChatRouteActive}
+                  badgeLabel={chatBadgeLabel}
+                  unreadCount={chatUnreadCount}
+                  className={shellIconButtonClassName}
+                />
                 {/* Map icon — visible on all screen sizes */}
                 <button
                   type="button"
@@ -753,11 +780,13 @@ function DashboardShell({
         className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/95 shadow-[0_-18px_44px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
         aria-label="Main navigation"
       >
-        <div className="grid grid-cols-5 gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]">
+        <div
+          className="grid gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]"
+          style={{ gridTemplateColumns: `repeat(${navigationTabs.length}, minmax(0, 1fr))` }}
+        >
           {navigationTabs.map((tab) => {
-            const isActive = pathname === tab.path;
+            const isActive = isNavigationTabActive(pathname, tab.path);
             const Icon = tab.icon;
-            const isChatTab = tab.path === "/dashboard/chat";
             return (
               <Link
                 key={tab.path}
@@ -770,14 +799,7 @@ function DashboardShell({
                 aria-label={tab.name}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="relative">
-                  <Icon className="h-5 w-5" />
-                  {isChatTab && chatBadgeLabel ? (
-                    <span className="absolute -right-2 -top-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-0.5 py-px text-[9px] font-bold leading-none text-white ring-1 ring-white">
-                      {chatBadgeLabel}
-                    </span>
-                  ) : null}
-                </span>
+                <Icon className="h-5 w-5" />
                 <span>{tab.name}</span>
                 {isActive ? <span className="absolute top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--brand-600)]" /> : null}
               </Link>

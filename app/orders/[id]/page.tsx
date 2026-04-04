@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
+  CreditCard,
   Loader2,
   MapPin,
   Package,
@@ -18,7 +19,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
-import { getOrderFulfillmentOption } from "@/lib/orderFulfillment";
+import { getOrderFulfillmentOption, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
+import { getOrderPaymentSummary, type PaymentStatusTone } from "@/lib/paymentFlow";
 
 const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -46,6 +48,23 @@ const STATUS_COLOR: Record<CanonicalOrderStatus, string> = {
 };
 
 const TIMELINE: CanonicalOrderStatus[] = ["new_lead", "accepted", "in_progress", "completed"];
+
+const PAYMENT_TONE_STYLES: Record<PaymentStatusTone, string> = {
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  amber: "border-amber-200 bg-amber-50 text-amber-700",
+  blue: "border-blue-200 bg-blue-50 text-blue-700",
+  slate: "border-slate-200 bg-slate-50 text-slate-700",
+};
+
+const formatTimestamp = (value: string | undefined) => {
+  if (!value) return "Awaiting update";
+
+  try {
+    return new Date(value).toLocaleString("en-IN");
+  } catch {
+    return "Awaiting update";
+  }
+};
 
 type OrderRow = {
   id: string;
@@ -149,8 +168,17 @@ export default function OrderStatusPage() {
 
   const address = order.metadata?.address as string | undefined;
   const notes = order.metadata?.notes as string | undefined;
+  const paymentMethod = order.metadata?.payment_method;
   const paymentStatus = order.metadata?.payment_status as string | undefined;
+  const paymentCollectedAt = order.metadata?.paid_at as string | undefined;
+  const razorpayOrderId = order.metadata?.razorpay_order_id as string | undefined;
+  const razorpayPaymentId = order.metadata?.razorpay_payment_id as string | undefined;
   const fulfillmentOption = getOrderFulfillmentOption(order.metadata?.fulfillment_method);
+  const paymentSummary = getOrderPaymentSummary({
+    paymentMethod,
+    paymentStatus,
+    fulfillmentMethod: order.metadata?.fulfillment_method as OrderFulfillmentMethod | undefined,
+  });
 
   const timelineIdx = TIMELINE.indexOf(status);
 
@@ -183,12 +211,12 @@ export default function OrderStatusPage() {
               <p className="mt-1 text-base font-bold text-slate-900">{order.price ? INR(order.price) : "Price TBD"}</p>
             </div>
           </div>
-          {paymentStatus === "paid" && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Payment received
-            </div>
-          )}
+          <div
+            className={`mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${PAYMENT_TONE_STYLES[paymentSummary.tone]}`}
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            {paymentSummary.methodLabel} • {paymentSummary.statusLabel}
+          </div>
         </section>
 
         {/* Progress timeline */}
@@ -222,6 +250,51 @@ export default function OrderStatusPage() {
             </div>
           </section>
         )}
+
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Payment</p>
+              <h2 className="mt-1 text-base font-semibold text-slate-900">{paymentSummary.heading}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{paymentSummary.detail}</p>
+            </div>
+            <span
+              className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${PAYMENT_TONE_STYLES[paymentSummary.tone]}`}
+            >
+              {paymentSummary.statusLabel}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Method</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{paymentSummary.methodLabel}</p>
+              {paymentSummary.rails.length > 0 ? (
+                <p className="mt-1 text-xs text-slate-500">{paymentSummary.rails.join(" • ")}</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">Payment details will appear here after checkout.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Tracking</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{formatTimestamp(paymentCollectedAt)}</p>
+              <p className="mt-1 text-xs text-slate-500">{paymentSummary.support}</p>
+            </div>
+          </div>
+
+          {razorpayOrderId || razorpayPaymentId ? (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Payment reference</p>
+              {razorpayOrderId ? (
+                <p className="mt-1 break-all font-mono text-xs text-slate-600">Order: {razorpayOrderId}</p>
+              ) : null}
+              {razorpayPaymentId ? (
+                <p className="mt-1 break-all font-mono text-xs text-slate-600">Payment: {razorpayPaymentId}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
 
         {/* Delivery info */}
         <section className="rounded-2xl bg-white p-5 shadow-sm space-y-2">

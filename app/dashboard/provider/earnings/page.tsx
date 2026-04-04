@@ -11,6 +11,7 @@ import {
   Package,
   TrendingUp,
 } from "lucide-react";
+import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { supabase } from "@/lib/supabase";
 
 const INR = (v: number) =>
@@ -75,32 +76,39 @@ export default function ProviderEarningsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-900">Earnings</h1>
-        <Link href="/dashboard/provider/orders"
-          className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline">
-          View Orders <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { icon: BadgeIndianRupee, label: "Total Earned", value: INR(totalEarned), color: "text-emerald-600", bg: "bg-emerald-50" },
-          { icon: Clock3, label: "Pending", value: INR(totalPending), color: "text-amber-600", bg: "bg-amber-50" },
-          { icon: CheckCircle2, label: "Completed", value: `${completed.length} orders`, color: "text-blue-600", bg: "bg-blue-50" },
-          { icon: Package, label: "Total Orders", value: `${orders.length}`, color: "text-purple-600", bg: "bg-purple-50" },
-        ].map((card) => (
-          <div key={card.label} className="rounded-2xl bg-white p-4 shadow-sm">
-            <div className={`mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${card.bg}`}>
-              <card.icon className={`h-4.5 w-4.5 ${card.color}`} />
-            </div>
-            <p className="text-xs text-slate-500">{card.label}</p>
-            <p className="mt-0.5 text-lg font-bold text-slate-900">{card.value}</p>
+    <div className="mx-auto w-full max-w-[1240px] space-y-4">
+      <ProviderControlNav />
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Earnings</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Revenue overview</h1>
           </div>
-        ))}
-      </div>
+          <Link
+            href="/dashboard/provider/orders"
+            className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-slate-950"
+          >
+            Orders <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { icon: BadgeIndianRupee, label: "Earned", value: INR(totalEarned), color: "text-emerald-600", bg: "bg-emerald-50" },
+            { icon: Clock3, label: "Pending", value: INR(totalPending), color: "text-amber-600", bg: "bg-amber-50" },
+            { icon: CheckCircle2, label: "Done", value: `${completed.length} orders`, color: "text-blue-600", bg: "bg-blue-50" },
+            { icon: Package, label: "Total", value: `${orders.length}`, color: "text-purple-600", bg: "bg-purple-50" },
+          ].map((card) => (
+            <div key={card.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className={`mb-2 flex h-9 w-9 items-center justify-center rounded-xl ${card.bg}`}>
+                <card.icon className={`h-4.5 w-4.5 ${card.color}`} />
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{card.label}</p>
+              <p className="mt-1 text-lg font-bold text-slate-900">{card.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Monthly chart */}
       <div className="rounded-2xl bg-white p-5 shadow-sm">

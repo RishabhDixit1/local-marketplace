@@ -1,6 +1,7 @@
 "use client";
 
 import { BadgeCheck, CreditCard, Landmark } from "lucide-react";
+import { formatPaymentRailLabel } from "@/lib/paymentFlow";
 import type { MarketplacePaymentMethodRecord } from "@/lib/profile/marketplace";
 
 export default function PaymentMethodsSection({ paymentMethods }: { paymentMethods: MarketplacePaymentMethodRecord[] }) {
@@ -21,8 +22,12 @@ export default function PaymentMethodsSection({ paymentMethods }: { paymentMetho
                     {method.method_type === "card" ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-slate-950">{method.account_label || method.method_type}</p>
-                    <p className="text-sm text-slate-600">{method.provider_name || "Payment rail"}</p>
+                    <p className="text-base font-semibold text-slate-950">
+                      {method.account_label || formatPaymentRailLabel(method.method_type)}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {method.provider_name ? formatPaymentRailLabel(method.provider_name) : "Payment rail"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">

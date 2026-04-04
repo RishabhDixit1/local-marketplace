@@ -3,7 +3,8 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Package, Loader2 } from "lucide-react";
+import { BadgeIndianRupee, Boxes, ImagePlus, Loader2, Package, Truck } from "lucide-react";
+import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { createProviderListing } from "@/lib/provider/client";
 import {
   PRODUCT_DELIVERY_METHODS,
@@ -97,30 +98,42 @@ export default function AddProductPage() {
   };
 
   const fieldClassName =
-    "w-full mt-1.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
+    "mt-1.5 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20";
 
   return (
-    <div className="w-full max-w-[2200px] mx-auto space-y-5 sm:space-y-6">
+    <div className="mx-auto w-full max-w-[1180px] space-y-4">
+      <ProviderControlNav />
+
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-3xl bg-gradient-to-r from-emerald-600 via-cyan-600 to-blue-600 p-5 sm:p-7 text-white shadow-lg"
+        className="rounded-[1.75rem] border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5"
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <Package className="h-7 w-7" /> Add Product Listing
-            </h1>
-            <p className="mt-2 text-white/90">
-              Showcase products with clear pricing and stock so nearby buyers can discover them quickly.
-            </p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+              <Package className="h-3.5 w-3.5" />
+              Add product
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">New product listing</h1>
+            <p className="mt-1 text-sm text-slate-500">Compact, priced, in stock.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2">Higher visibility</div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2">Clear inventory</div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2">Delivery choices</div>
-            <div className="rounded-xl border border-white/30 bg-white/15 px-3 py-2">Fast local reach</div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            {[
+              { icon: BadgeIndianRupee, label: "Price" },
+              { icon: Boxes, label: "Stock" },
+              { icon: Truck, label: "Delivery" },
+              { icon: ImagePlus, label: "Image" },
+            ].map((chip) => (
+              <div
+                key={chip.label}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600"
+              >
+                <chip.icon className="h-3.5 w-3.5" />
+                {chip.label}
+              </div>
+            ))}
           </div>
         </div>
       </motion.section>
@@ -129,128 +142,150 @@ export default function AddProductPage() {
         onSubmit={handleSubmit}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm space-y-5"
+        className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700">Product Title</label>
-            <input
-              name="title"
-              placeholder="Cordless Drill Kit"
-              required
-              value={form.title}
-              onChange={handleChange}
-              className={fieldClassName}
-            />
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
+          <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Basics</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Product title</label>
+                <input
+                  name="title"
+                  placeholder="Cordless Drill Kit"
+                  required
+                  value={form.title}
+                  onChange={handleChange}
+                  className={fieldClassName}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Category</label>
+                <input
+                  name="category"
+                  placeholder="Tools"
+                  value={form.category}
+                  onChange={handleChange}
+                  className={fieldClassName}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Description</label>
+                <textarea
+                  name="description"
+                  rows={7}
+                  placeholder="Features, condition, warranty, included items."
+                  value={form.description}
+                  onChange={handleChange}
+                  className={fieldClassName}
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="space-y-4">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Stock + delivery</p>
+              <div className="mt-3 grid gap-4">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Price (INR)</label>
+                    <input
+                      name="price"
+                      type="number"
+                      placeholder="1499"
+                      required
+                      value={form.price}
+                      onChange={handleChange}
+                      className={fieldClassName}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Stock quantity</label>
+                    <input
+                      name="stock"
+                      type="number"
+                      placeholder="10"
+                      value={form.stock}
+                      onChange={handleChange}
+                      className={fieldClassName}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Delivery method</label>
+                  <select
+                    name="deliveryMethod"
+                    value={form.deliveryMethod}
+                    onChange={handleChange}
+                    className={fieldClassName}
+                  >
+                    {deliveryOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Image</p>
+              <div className="mt-3 space-y-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-[var(--brand-500)]/40 hover:text-slate-900">
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                  <span>{imageFile ? imageFile.name : "Upload image"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => setImageFile(event.target.files?.[0] || null)}
+                    className="sr-only"
+                  />
+                </label>
+                <input
+                  name="imageUrl"
+                  placeholder="Existing listing-images path"
+                  value={form.imageUrl}
+                  onChange={handleChange}
+                  className={fieldClassName}
+                />
+                {resolveListingImageUrl(form.imageUrl) ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveListingImageUrl(form.imageUrl) || ""}
+                      alt="Product preview"
+                      className="h-20 w-20 rounded-2xl border border-slate-200 object-cover"
+                    />
+                  </>
+                ) : null}
+              </div>
+            </section>
           </div>
-
-          <div>
-            <label className="text-sm font-medium text-slate-700">Category</label>
-            <input
-              name="category"
-              placeholder="Tools"
-              value={form.category}
-              onChange={handleChange}
-              className={fieldClassName}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-slate-700">Price (INR)</label>
-            <input
-              name="price"
-              type="number"
-              placeholder="1499"
-              required
-              value={form.price}
-              onChange={handleChange}
-              className={fieldClassName}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-slate-700">Stock Quantity</label>
-            <input
-              name="stock"
-              type="number"
-              placeholder="10"
-              value={form.stock}
-              onChange={handleChange}
-              className={fieldClassName}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-slate-700">Delivery Method</label>
-            <select
-              name="deliveryMethod"
-              value={form.deliveryMethod}
-              onChange={handleChange}
-              className={fieldClassName}
-            >
-              {deliveryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-slate-700">Product Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => setImageFile(event.target.files?.[0] || null)}
-              className={fieldClassName}
-            />
-            <input
-              name="imageUrl"
-              placeholder="optional existing listing-images path"
-              value={form.imageUrl}
-              onChange={handleChange}
-              className={fieldClassName}
-            />
-            {resolveListingImageUrl(form.imageUrl) ? (
-              <img
-                src={resolveListingImageUrl(form.imageUrl) || ""}
-                alt="Product preview"
-                className="mt-2 h-20 w-20 rounded-lg object-cover"
-              />
-            ) : null}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-slate-700">Description</label>
-          <textarea
-            name="description"
-            rows={4}
-            placeholder="Describe features, condition, warranty, and what is included."
-            value={form.description}
-            onChange={handleChange}
-            className={fieldClassName}
-          />
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Tip: include clear product titles and real photos to improve conversion.
         </div>
 
         {errorMessage ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {errorMessage}
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={loading || uploadingImage}
-          className="w-full sm:w-auto min-w-[220px] px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors text-white font-semibold flex justify-center items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading && <Loader2 className="animate-spin" />}
-          {uploadingImage ? "Uploading image..." : "List Product"}
-        </button>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+          <p className="text-xs font-medium text-slate-500">Image upload stays optional.</p>
+          <button
+            type="submit"
+            disabled={loading || uploadingImage}
+            className="inline-flex min-w-[190px] items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {(loading || uploadingImage) ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {uploadingImage ? "Uploading..." : loading ? "Saving..." : "Publish product"}
+          </button>
+        </div>
       </motion.form>
     </div>
   );
