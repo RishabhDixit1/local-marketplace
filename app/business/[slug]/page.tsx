@@ -17,6 +17,7 @@ import {
 } from "@/lib/business";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import type { ProductDeliveryMethod } from "@/lib/provider/listings";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { CartProvider } from "@/app/components/store/CartContext";
@@ -36,6 +37,7 @@ type ProfileRow = {
   id: string;
   name: string | null;
   role: string | null;
+  verification_level?: string | null;
   location: string | null;
   bio: string | null;
   services: string[] | null;
@@ -62,6 +64,7 @@ type ProductRow = {
   category: string | null;
   price: number | null;
   stock: number | null;
+  delivery_method?: ProductDeliveryMethod | null;
 };
 
 type PostRow = {
@@ -352,7 +355,7 @@ const loadBusiness = cache(async (slug: string) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id,name,role,location,bio,services,availability,email,phone,website,avatar_url,metadata")
+    .select("id,name,role,verification_level,location,bio,services,availability,email,phone,website,avatar_url,metadata")
     .eq("id", businessId)
     .maybeSingle<ProfileRow>();
 
@@ -382,7 +385,7 @@ const loadBusiness = cache(async (slug: string) => {
         .limit(8),
       supabase
         .from("product_catalog")
-        .select("id,title,category,price,stock,image_url")
+        .select("id,title,category,price,stock,image_url,delivery_method")
         .eq("provider_id", businessId)
         .limit(8),
       supabase.from("reviews").select("rating,comment").eq("provider_id", businessId).limit(10),
@@ -430,13 +433,15 @@ const loadBusiness = cache(async (slug: string) => {
 
   const verificationStatus = calculateVerificationStatus({
     role: normalizedProfile.role,
+    verificationLevel: normalizedProfile.verification_level,
     profileCompletion,
     listingsCount: safeServices.length + safeProducts.length,
     averageRating,
     reviewCount: safeReviews.length,
+    completedJobs: providerStatsRows.length > 0 ? Number(providerStatsRows[0].completed_jobs || 0) : 0,
   });
 
-  const activeLeads = providerStatsRows.length > 0 ? Number(providerStatsRows[0].open_leads || 0) : 0;
+  const completedJobs = providerStatsRows.length > 0 ? Number(providerStatsRows[0].completed_jobs || 0) : 0;
   const launchpadMeta = readLaunchpadMeta(normalizedProfile.metadata);
 
   return {
@@ -449,7 +454,7 @@ const loadBusiness = cache(async (slug: string) => {
     profileCompletion,
     responseMinutes,
     verificationStatus,
-    activeLeads,
+    completedJobs,
     launchpadMeta,
     canonicalSlug: createBusinessSlug(normalizedProfile.name, normalizedProfile.id),
   };
@@ -512,7 +517,7 @@ export default async function BusinessProfilePage({ params }: Params) {
     profileCompletion,
     responseMinutes,
     verificationStatus,
-    activeLeads,
+    completedJobs,
     launchpadMeta,
     canonicalSlug,
   } = business;
@@ -606,7 +611,7 @@ export default async function BusinessProfilePage({ params }: Params) {
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Services" value={services.length} icon={<Briefcase size={16} />} />
           <StatCard label="Products" value={products.length} icon={<BadgeCheck size={16} />} />
-          <StatCard label="Active Leads" value={activeLeads} icon={<Clock3 size={16} />} />
+          <StatCard label="Jobs Done" value={completedJobs} icon={<BadgeCheck size={16} />} />
           <StatCard label="Rating" value={averageRating || "New"} icon={<Star size={16} />} />
         </div>
 

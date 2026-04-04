@@ -31,7 +31,7 @@ const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const isMissingRelationError = (message: string) =>
-  /relation .* does not exist|table .* does not exist|could not find the table '.*' in the schema cache/i.test(
+  /relation .* does not exist|table .* does not exist|function .* does not exist|could not find the table '.*' in the schema cache|could not find the function '.*' in the schema cache/i.test(
     message
   );
 
@@ -196,6 +196,7 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
     })(),
     onboarding_completed: typeof row.onboarding_completed === "boolean" ? row.onboarding_completed : null,
     profile_completion_percent: Number.isFinite(profileCompletion) ? profileCompletion : null,
+    verification_level: stringFromRow(row, ["verification_level"], "") || null,
     created_at: stringFromRow(row, ["created_at"], "") || null,
     updated_at: stringFromRow(row, ["updated_at"], "") || null,
   };
@@ -488,7 +489,7 @@ export const loadCommunityFeedSnapshot = async (
     )
   );
 
-  const [profileRowsRaw, reviewRowsRaw, presenceRowsRaw] = await Promise.all([
+  const [profileRowsRaw, reviewRowsRaw, presenceRowsRaw, providerOrderStatsResult] = await Promise.all([
     selectProfilesByIds(db, profileIds),
     profileIds.length
       ? selectRowsWithFallback(db, "reviews", "provider_id,rating", {
@@ -502,6 +503,17 @@ export const loadCommunityFeedSnapshot = async (
           "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen",
           { allowMissingRelation: true }
         ).then((rows) => rows.filter((row) => profileIds.includes(stringFromRow(row, ["provider_id"], ""))))
+      : Promise.resolve([]),
+    profileIds.length
+      ? db.rpc("get_provider_order_stats", { provider_ids: profileIds }).then((result) => {
+          if (result.error) {
+            if (isMissingRelationError(result.error.message || "")) {
+              return [] as FlexibleRow[];
+            }
+            throw new Error(result.error.message);
+          }
+          return toFlexibleRows(result.data);
+        })
       : Promise.resolve([]),
   ]);
 
@@ -527,6 +539,9 @@ export const loadCommunityFeedSnapshot = async (
     presence: presenceRowsRaw
       .map((row) => normalizePresence(row))
       .filter((row): row is CommunityPresenceRecord => !!row),
+    orderStats: providerOrderStatsResult
+      .map((row) => normalizeOrderStats(row))
+      .filter((row): row is CommunityOrderStatsRecord => !!row),
   };
 
   return {

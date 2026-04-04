@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { ProductDeliveryMethod } from "@/lib/provider/listings";
 
 export type CartItem = {
   /** Unique key: `${itemType}:${itemId}` */
@@ -21,6 +22,7 @@ export type CartItem = {
   title: string;
   price: number;
   quantity: number;
+  deliveryMethod?: ProductDeliveryMethod | null;
 };
 
 type CartContextValue = {
@@ -41,7 +43,7 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "serviq_cart_v1";
-const CART_SCHEMA_VERSION = 2; // Bump this to force a cart reset on schema changes
+const CART_SCHEMA_VERSION = 3; // Bump this to force a cart reset on schema changes
 const STORAGE_VERSION_KEY = "serviq_cart_schema_v";
 
 const readFromStorage = (): CartItem[] => {
@@ -96,8 +98,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedItems = readFromStorage();
     itemsRef.current = storedItems;
-    setItems(storedItems);
-    setHydrated(true);
+    const hydrateTimer = window.setTimeout(() => {
+      setItems(storedItems);
+      setHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(hydrateTimer);
   }, []);
 
   // Persist whenever items change

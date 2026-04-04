@@ -9,7 +9,6 @@ import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmD
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { appTagline } from "@/lib/branding";
@@ -24,8 +23,7 @@ import {
   stagePendingFeedCardSave,
   syncPendingFeedCardSaves,
 } from "@/lib/feedCardSavesClient";
-import { createMarketplaceReadinessSummary } from "@/lib/profile/readiness";
-import { buildPublicProfilePath, getProfileRoleFamily } from "@/lib/profile/utils";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
 import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
@@ -102,20 +100,6 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 const FEED_PAGE_SIZE = 8;
-const POST_OWNER_FIELD_VARIANTS: ReadonlyArray<ReadonlyArray<string>> = [
-  ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"],
-  ["user_id", "author_id", "created_by", "requester_id", "owner_id"],
-  ["user_id", "author_id", "created_by", "requester_id"],
-  ["user_id", "author_id", "created_by"],
-  ["user_id", "author_id"],
-  ["user_id"],
-  ["author_id"],
-  ["created_by"],
-  ["requester_id"],
-  ["owner_id"],
-  ["provider_id"],
-];
-
 const HERO_TAGLINES = [
   "Where Neighbours Help and Earn in Real Time.",
   "Small Tasks. Real People. Instant Help.",
@@ -160,25 +144,8 @@ const formatTimeAgo = (value: string | null | undefined) => {
   return parsed.toLocaleDateString([], { month: "short", day: "numeric" });
 };
 
-const isMissingColumnError = (message: string) =>
-  /column .* does not exist|could not find the '.*' column/i.test(message);
-
-const buildPostOwnerFilter = (userId: string, fields: readonly string[]) =>
-  fields.map((field) => `${field}.eq.${userId}`).join(",");
-
-const countOwnedPosts = async (userId: string) => {
-  for (const ownerFields of POST_OWNER_FIELD_VARIANTS) {
-    const result = await supabase.from("posts").select("id", { count: "exact", head: true }).or(buildPostOwnerFilter(userId, ownerFields));
-    if (!result.error) return Number(result.count || 0);
-    if (isMissingColumnError(result.error.message || "")) continue;
-    return 0;
-  }
-  return 0;
-};
-
 export default function WelcomePage() {
   const router = useRouter();
-  const { profile: viewerProfile } = useProfileContext();
   const feedSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadMoreTimerRef = useRef<number | null>(null);
 
@@ -199,18 +166,12 @@ export default function WelcomePage() {
   const [feedToasts, setFeedToasts] = useState<FeedToast[]>([]);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [isProvider, setIsProvider] = useState(false);
-  const [providerServicesCount, setProviderServicesCount] = useState(0);
-  const [providerProductsCount, setProviderProductsCount] = useState(0);
-  const [seekerPostsCount, setSeekerPostsCount] = useState(0);
-  const [, setReadinessLoading] = useState(false);
   const [nearbyCards, setNearbyCards] = useState<NearbyCard[]>([]);
   const [visibleFeedCount, setVisibleFeedCount] = useState(FEED_PAGE_SIZE);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
   const [activeFeedCardId, setActiveFeedCardId] = useState<string | null>(null);
   const [hoveredFeedCardId, setHoveredFeedCardId] = useState<string | null>(null);
   const activeRef = useRef(true);
-  const viewerRoleFamily = getProfileRoleFamily(viewerProfile?.role);
-  const viewerIsProvider = viewerRoleFamily === "provider";
 
   const pushFeedToast = useCallback((kind: FeedToast["kind"], message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -468,72 +429,6 @@ export default function WelcomePage() {
   const hasMoreFeedCards = visibleCards.length < filteredCards.length;
   const isSearchActive = welcomeSearchQuery.length > 0;
 
-  useEffect(() => {
-    if (!viewerId || !viewerProfile) {
-      setProviderServicesCount(0);
-      setProviderProductsCount(0);
-      setSeekerPostsCount(0);
-      setReadinessLoading(false);
-      return;
-    }
-
-    let active = true;
-
-    const loadReadinessInsights = async () => {
-      setReadinessLoading(true);
-
-      try {
-        if (viewerRoleFamily === "provider") {
-          const [{ count: servicesCount }, { count: productsCount }] = await Promise.all([
-            supabase.from("service_listings").select("id", { count: "exact", head: true }).eq("provider_id", viewerId),
-            supabase.from("product_catalog").select("id", { count: "exact", head: true }).eq("provider_id", viewerId),
-          ]);
-
-          if (!active) return;
-
-          setProviderServicesCount(Number(servicesCount || 0));
-          setProviderProductsCount(Number(productsCount || 0));
-          setSeekerPostsCount(0);
-        } else {
-          const postsCount = await countOwnedPosts(viewerId);
-          if (!active) return;
-
-          setProviderServicesCount(0);
-          setProviderProductsCount(0);
-          setSeekerPostsCount(Number(postsCount || 0));
-        }
-      } catch {
-        if (!active) return;
-        setProviderServicesCount(0);
-        setProviderProductsCount(0);
-        setSeekerPostsCount(0);
-      } finally {
-        if (active) {
-          setReadinessLoading(false);
-        }
-      }
-    };
-
-    void loadReadinessInsights();
-
-    return () => {
-      active = false;
-    };
-  }, [viewerId, viewerProfile, viewerRoleFamily]);
-
-  const welcomeReadinessSummary = useMemo(
-    () =>
-      viewerProfile
-        ? createMarketplaceReadinessSummary({
-            profile: viewerProfile,
-            providerServicesCount,
-            providerProductsCount,
-            seekerPostsCount,
-          })
-        : null,
-    [providerProductsCount, providerServicesCount, seekerPostsCount, viewerProfile]
-  );
-
   const handleWelcomePromptSubmit = useCallback(() => {
     const normalizedQuery = welcomePromptValue.trim().toLowerCase();
     if (/(refresh|reload|sync|update)/.test(normalizedQuery)) {
@@ -547,24 +442,12 @@ export default function WelcomePage() {
   }, [loadConnectedFeed, viewerId, welcomePromptValue]);
 
   const welcomePromptConfig = useMemo<DashboardPromptConfig>(() => {
-    const defaultHref =
-      welcomeReadinessSummary?.actions[0]?.href || (viewerIsProvider ? "/dashboard/provider/add-service" : "/dashboard?compose=1");
-    const primaryAction = welcomeReadinessSummary?.actions[0];
-
     return {
       placeholder: "Search the live feed by title, owner, category, or location",
       value: welcomePromptValue,
       onValueChange: setWelcomePromptValue,
       onSubmit: handleWelcomePromptSubmit,
       actions: [
-        {
-          id: primaryAction?.id || "next-best-action",
-          label: primaryAction?.ctaLabel || (viewerIsProvider ? "Add service" : "Post need"),
-          onClick: () => {
-            router.push(primaryAction?.href || defaultHref);
-          },
-          variant: "primary",
-        },
         {
           id: "refresh-welcome-feed",
           label: isFeedLoading ? "Refreshing..." : "Refresh",
@@ -583,11 +466,8 @@ export default function WelcomePage() {
     handleWelcomePromptSubmit,
     isFeedLoading,
     loadConnectedFeed,
-    router,
     viewerId,
-    viewerIsProvider,
     welcomePromptValue,
-    welcomeReadinessSummary,
   ]);
 
   useDashboardPrompt(welcomePromptConfig);

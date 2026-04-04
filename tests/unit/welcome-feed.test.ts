@@ -53,6 +53,7 @@ const buildSnapshot = (overrides: Partial<Extract<CommunityFeedResponse, { ok: t
     ],
     reviews: [],
     presence: [],
+    orderStats: [],
     ...overrides,
   }) satisfies Extract<CommunityFeedResponse, { ok: true }>;
 

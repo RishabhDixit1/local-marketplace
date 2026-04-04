@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { sendOrderEmail } from "@/lib/email";
+import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,7 @@ type OrderRequest = {
   payment_status?: string;
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
+  fulfillment_method?: OrderFulfillmentMethod;
 };
 
 type BulkOrderRequest = {
@@ -115,6 +117,9 @@ export async function POST(request: Request) {
     if (item.payment_method && !isValidPaymentMethod(item.payment_method)) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid payment method." }, { status: 400 });
     }
+    if (item.fulfillment_method && !isOrderFulfillmentMethod(item.fulfillment_method)) {
+      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid fulfillment method." }, { status: 400 });
+    }
     const paymentStatus = trimText(item.payment_status);
     if (paymentStatus.length > 64) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Payment status is too long." }, { status: 400 });
@@ -175,6 +180,7 @@ export async function POST(request: Request) {
     if (address) metadata.address = address;
     if (notes) metadata.notes = notes;
     if (item.payment_method) metadata.payment_method = item.payment_method;
+    if (item.fulfillment_method) metadata.fulfillment_method = item.fulfillment_method;
     if (paymentStatus) metadata.payment_status = paymentStatus;
     if (razorpayOrderId) metadata.razorpay_order_id = razorpayOrderId;
     if (razorpayPaymentId) metadata.razorpay_payment_id = razorpayPaymentId;

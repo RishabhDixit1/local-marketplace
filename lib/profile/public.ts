@@ -543,7 +543,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   if (!supabase) return null;
 
   const selectClause =
-    "id,full_name,name,location,role,bio,interests,services,email,phone,website,avatar_url,availability,profile_completion_percent,metadata,created_at,updated_at";
+    "id,full_name,name,location,role,bio,interests,services,email,phone,website,avatar_url,availability,profile_completion_percent,verification_level,metadata,created_at,updated_at";
   const slugCandidates = Array.from(new Set([trimmedSlug, slugifyProfileName(trimmedSlug)])).filter(Boolean);
   const lookupCandidates: Array<{ column: "id" | "username"; value: string }> = [];
 
@@ -752,6 +752,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     .sort((a, b) => a.displayName.localeCompare(b.displayName)));
   const verificationStatus = calculateVerificationStatus({
     role: profile.role,
+    verificationLevel: profile.verification_level,
     profileCompletion: profile.profile_completion_percent,
     listingsCount: serviceCount + productCount,
     averageRating,

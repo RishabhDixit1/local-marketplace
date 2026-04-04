@@ -373,19 +373,6 @@ function DashboardShell({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setOpenQuickActions(false);
-                    setShowGlobalMap(true);
-                  }}
-                  aria-label="Open map view"
-                  title="Map view"
-                  className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-                >
-                  <Map className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
                   onClick={() => setDesktopNavManuallyCollapsed((current) => !current)}
                   className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
@@ -441,49 +428,55 @@ function DashboardShell({
             })}
           </nav>
 
-          <div className={`border-t border-slate-200 space-y-2 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
-            <Link
-              href="/dashboard/settings"
-              title={desktopNavCollapsed ? "Settings" : undefined}
-              className={`w-full flex items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[var(--brand-500)]/45 hover:text-slate-900 ${
-                desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+          <div className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
+            <div
+              className={`rounded-[1.65rem] border border-slate-200 bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.55)] ${
+                desktopNavCollapsed ? "space-y-2 px-2 py-2.5" : "space-y-2.5 px-3 py-3"
               }`}
-              aria-label="Settings"
             >
-              <Settings className="w-5 h-5 shrink-0" />
-              {!desktopNavCollapsed && <span className="text-sm font-semibold">Settings</span>}
-            </Link>
-            <button
-              onClick={() => router.push(myProfileHref)}
-              title={desktopNavCollapsed ? "My Profile" : undefined}
-              className={`w-full flex items-center rounded-xl bg-white border border-slate-200 transition-colors hover:border-[var(--brand-500)]/45 ${
-                desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
-              }`}
-              aria-label="Open my profile"
-            >
-              <div className="w-8 h-8 rounded-lg bg-[var(--brand-900)] flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
-              </div>
-              {!desktopNavCollapsed && (
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-slate-900">My Profile</p>
-                  <p className="text-xs text-slate-500">
-                    {myProfileHref === "/dashboard/profile" ? "Complete profile" : "View public profile"}
-                  </p>
+              <Link
+                href="/dashboard/settings"
+                title={desktopNavCollapsed ? "Settings" : undefined}
+                className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-[var(--brand-500)]/45 hover:text-slate-900 ${
+                  desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                }`}
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5 shrink-0" />
+                {!desktopNavCollapsed && <span className="text-sm font-semibold">Settings</span>}
+              </Link>
+              <button
+                onClick={() => router.push(myProfileHref)}
+                title={desktopNavCollapsed ? "My Profile" : undefined}
+                className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors hover:border-[var(--brand-500)]/45 ${
+                  desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                }`}
+                aria-label="Open my profile"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-900)]">
+                  <User className="w-4 h-4 text-white" />
                 </div>
-              )}
-            </button>
-            <button
-              className={`w-full flex items-center justify-center rounded-xl bg-slate-900 font-semibold text-white transition-colors hover:bg-slate-800 ${
-                desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-2.5"
-              }`}
-              onClick={() => setShowLogoutConfirm(true)}
-              title={desktopNavCollapsed ? "Logout" : undefined}
-              aria-label="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-              {!desktopNavCollapsed && <span className="text-sm">Logout</span>}
-            </button>
+                {!desktopNavCollapsed && (
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-900">My Profile</p>
+                    <p className="text-xs text-slate-500">
+                      {myProfileHref === "/dashboard/profile" ? "Complete profile" : "View public profile"}
+                    </p>
+                  </div>
+                )}
+              </button>
+              <button
+                className={`w-full flex items-center justify-center rounded-2xl bg-slate-900 font-semibold text-white transition-colors hover:bg-slate-800 ${
+                  desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-3"
+                }`}
+                onClick={() => setShowLogoutConfirm(true)}
+                title={desktopNavCollapsed ? "Logout" : undefined}
+                aria-label="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+                {!desktopNavCollapsed && <span className="text-sm">Logout</span>}
+              </button>
+            </div>
           </div>
         </aside>
 

@@ -22,6 +22,7 @@ type Profile = {
   location: string;
   bio: string;
   role: string;
+  verification_level?: string;
   services: string[];
   availability: string;
   email?: string;
@@ -105,6 +106,7 @@ export default function ProviderPopup({
             {verificationLabel(
               calculateVerificationStatus({
                 role: profile.role,
+                verificationLevel: profile.verification_level,
                 profileCompletion: calculateProfileCompletion({
                   name: profile.name,
                   location: profile.location,

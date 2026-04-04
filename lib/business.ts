@@ -6,6 +6,8 @@ export type NormalizedRole = "seeker" | "provider" | "business";
 export type VerificationStatus = "unclaimed" | "pending" | "verified";
 
 const providerRoleSet = new Set(["provider", "seller", "service_provider", "business"]);
+const strongVerificationLevelSet = new Set(["business", "kyc", "verified_business", "identity", "id_verified", "verified"]);
+const basicVerificationLevelSet = new Set(["phone", "phone_verified", "email", "email_verified"]);
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -45,8 +47,6 @@ export const normalizeRole = (role: NullableString): NormalizedRole => {
   return normalizeStoredProfileRole(role);
 };
 
-export const isClaimedBusiness = (role: NullableString) => (role || "").toLowerCase() === "business";
-
 export const calculateProfileCompletion = (profile: {
   name?: NullableString;
   full_name?: NullableString;
@@ -80,27 +80,43 @@ export const estimateResponseMinutes = (params: {
   return 7 + jitter;
 };
 
+const normalizeVerificationLevel = (value: NullableString) => (value || "").trim().toLowerCase();
+
 export const calculateVerificationStatus = (params: {
   role?: NullableString;
+  verificationLevel?: NullableString;
   profileCompletion: number;
   listingsCount: number;
   averageRating: number;
   reviewCount: number;
+  completedJobs?: number | null;
 }): VerificationStatus => {
-  if (!isClaimedBusiness(params.role)) return "unclaimed";
+  const verificationLevel = normalizeVerificationLevel(params.verificationLevel);
+  const completedJobs = Number.isFinite(Number(params.completedJobs)) ? Number(params.completedJobs) : 0;
+  const hasStrongVerification = strongVerificationLevelSet.has(verificationLevel);
+  const hasBasicVerification = basicVerificationLevelSet.has(verificationLevel);
+  const hasAnyVerification = hasStrongVerification || hasBasicVerification;
+  const providerFacing = isProviderRole(params.role);
+  const hasPublishedPresence = params.listingsCount > 0 || params.reviewCount > 0 || completedJobs > 0;
 
   const profileReady = params.profileCompletion >= 70;
-  const listingsReady = params.listingsCount >= 2;
-  const trustReady = params.reviewCount >= 3 ? params.averageRating >= 4 : params.reviewCount >= 1;
+  const listingsReady = params.listingsCount >= 1 || completedJobs >= 1;
+  const trustReady =
+    (params.reviewCount >= 3 && params.averageRating >= 4) ||
+    (params.reviewCount >= 1 && completedJobs >= 3) ||
+    completedJobs >= 8;
 
-  if (profileReady && listingsReady && trustReady) return "verified";
-  return "pending";
+  if (hasStrongVerification) return "verified";
+  if (hasAnyVerification && profileReady && listingsReady && trustReady) return "verified";
+  if (providerFacing && (hasAnyVerification || hasPublishedPresence || profileReady)) return "pending";
+  if (hasAnyVerification || (hasPublishedPresence && params.profileCompletion >= 55)) return "pending";
+  return "unclaimed";
 };
 
 export const verificationLabel = (status: VerificationStatus) => {
-  if (status === "verified") return "Verified Business";
-  if (status === "pending") return "Verification Pending";
-  return "Unclaimed Business";
+  if (status === "verified") return "Verified profile";
+  if (status === "pending") return "Verification pending";
+  return "Unclaimed profile";
 };
 
 export const calculateLocalRankScore = (params: {
