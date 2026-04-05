@@ -276,7 +276,7 @@ const buildSavedWelcomeDisplayItem = (card: WelcomeFeedCard): MarketplaceDisplay
     lat: 0,
     lng: 0,
     coordinateAccuracy: "approximate",
-    media: [{ mimeType: "image/jpeg", url: card.image }],
+    media: card.media.length ? card.media : [{ mimeType: "image/jpeg", url: card.image }],
     createdAt: card.createdAt,
     urgent: looksUrgent(card.signalLabel) || looksUrgent(card.etaLabel),
     rankScore: 0,

@@ -3,10 +3,11 @@ import type {
   CommunityPostRecord,
   CommunityProfileRecord,
 } from "@/lib/api/community";
-import type { MarketplaceFeedItem } from "@/lib/marketplaceFeed";
+import { type MarketplaceFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 import { distanceBetweenCoordinatesKm, resolveCoordinatesWithAccuracy } from "@/lib/geo";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
+import { formatServicePriceLabel, normalizeServicePricingType } from "@/lib/provider/listings";
 
 export type WelcomeFeedCardType = "demand" | "service" | "product";
 
@@ -34,6 +35,7 @@ export type WelcomeFeedCard = {
   signalLabel: string;
   momentumLabel: string;
   image: string;
+  media: MarketplaceFeedMedia[];
   actionLabel: string;
   actionPath: string;
   createdAt: string;
@@ -215,9 +217,6 @@ const fallbackWelcomeSummary = (type: WelcomeFeedCardType) =>
 const resolveWelcomeSummary = (value: string | null | undefined, type: WelcomeFeedCardType) =>
   trim(value) || fallbackWelcomeSummary(type);
 
-const normalizeImageUrlList = (values: Array<string | null | undefined>) =>
-  Array.from(new Set(values.map((value) => resolvePostMediaUrl(value)).filter((value): value is string => Boolean(value))));
-
 const escapeSvgText = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -303,28 +302,53 @@ const buildWelcomePlaceholderImage = ({
   `);
 };
 
-const parseImageUrlsFromPostText = (rawText: string) => {
+const normalizeWelcomeImageMedia = (
+  entries: Array<{ url: string | null | undefined; mimeType?: string | null }>
+): MarketplaceFeedMedia[] => {
+  const media: MarketplaceFeedMedia[] = [];
+  const seen = new Set<string>();
+
+  entries.forEach((entry) => {
+    const resolvedUrl = resolvePostMediaUrl(trim(entry.url));
+    if (!resolvedUrl || seen.has(resolvedUrl)) return;
+    seen.add(resolvedUrl);
+    media.push({
+      url: resolvedUrl,
+      mimeType: trim(entry.mimeType) || "image/jpeg",
+    });
+  });
+
+  return media;
+};
+
+const parseImageMediaFromPostText = (rawText: string) => {
   const normalized = trim(rawText);
   if (!normalized.includes("Media:")) return [];
 
-  const mediaUrls: string[] = [];
+  const media: MarketplaceFeedMedia[] = [];
   for (const match of normalized.matchAll(mediaRegex)) {
     const mimeType = trim(match[1]);
     if (mimeType && !mimeType.toLowerCase().startsWith("image/")) continue;
     const resolvedUrl = resolvePostMediaUrl(trim(match[2]));
     if (!resolvedUrl) continue;
-    mediaUrls.push(resolvedUrl);
+    media.push({
+      url: resolvedUrl,
+      mimeType: mimeType || "image/jpeg",
+    });
   }
 
-  return Array.from(new Set(mediaUrls));
+  return normalizeWelcomeImageMedia(media);
 };
 
-const extractImageUrlsFromMetadata = (value: unknown) => {
+const extractImageMediaFromMetadata = (value: unknown) => {
   const composerMetadata = readMarketplaceComposerMetadata(value);
-  const composerImages = normalizeImageUrlList(
+  const composerImages = normalizeWelcomeImageMedia(
     (composerMetadata?.media || [])
       .filter((entry) => trim(entry.type).toLowerCase().startsWith("image/"))
-      .map((entry) => entry.url)
+      .map((entry) => ({
+        url: entry.url,
+        mimeType: entry.type,
+      }))
   );
 
   if (composerImages.length > 0) return composerImages;
@@ -337,41 +361,43 @@ const extractImageUrlsFromMetadata = (value: unknown) => {
   const structuredMedia = Array.isArray(value.media)
     ? value.media
         .map((entry) => {
-          if (typeof entry === "string") return entry;
+          if (typeof entry === "string") return { url: entry, mimeType: "image/jpeg" };
           if (!isRecord(entry)) return null;
           const mimeType = trim(typeof entry.type === "string" ? entry.type : typeof entry.mimeType === "string" ? entry.mimeType : "");
           if (mimeType && !mimeType.toLowerCase().startsWith("image/")) return null;
-          return typeof entry.url === "string" ? entry.url : null;
+          return typeof entry.url === "string" ? { url: entry.url, mimeType: mimeType || "image/jpeg" } : null;
         })
-        .filter((entry): entry is string => Boolean(entry))
+        .filter((entry): entry is { url: string; mimeType: string } => Boolean(entry))
     : [];
 
-  return normalizeImageUrlList([
-    typeof value.image === "string" ? value.image : null,
-    typeof value.image_url === "string" ? value.image_url : null,
-    typeof value.cover_image === "string" ? value.cover_image : null,
-    typeof value.coverImage === "string" ? value.coverImage : null,
-    ...gallery,
+  return normalizeWelcomeImageMedia([
+    { url: typeof value.image === "string" ? value.image : null },
+    { url: typeof value.image_url === "string" ? value.image_url : null },
+    { url: typeof value.cover_image === "string" ? value.cover_image : null },
+    { url: typeof value.coverImage === "string" ? value.coverImage : null },
+    ...gallery.map((url) => ({ url, mimeType: "image/jpeg" })),
     ...structuredMedia,
   ]);
 };
 
-const resolveWelcomeCardImage = (params: {
+const resolveWelcomeCardMedia = (params: {
   fallbackImage: string;
   metadata?: unknown;
   rawText?: string | null;
   directImageUrl?: string | null;
 }) => {
-  const metadataImages = extractImageUrlsFromMetadata(params.metadata);
-  if (metadataImages.length > 0) return metadataImages[0];
+  const metadataImages = extractImageMediaFromMetadata(params.metadata);
+  if (metadataImages.length > 0) return metadataImages;
 
-  const parsedTextImages = parseImageUrlsFromPostText(params.rawText || "");
-  if (parsedTextImages.length > 0) return parsedTextImages[0];
+  const parsedTextImages = parseImageMediaFromPostText(params.rawText || "");
+  if (parsedTextImages.length > 0) return parsedTextImages;
 
   const directImage = resolvePostMediaUrl(params.directImageUrl);
-  if (directImage && !isSeededWelcomeImage(directImage)) return directImage;
+  if (directImage && !isSeededWelcomeImage(directImage)) {
+    return [{ url: directImage, mimeType: "image/jpeg" }];
+  }
 
-  return params.fallbackImage;
+  return [{ url: params.fallbackImage, mimeType: "image/jpeg" }];
 };
 
 const getOwnerId = (
@@ -672,10 +698,11 @@ export const buildWelcomeDemoFeedCards = (): WelcomeFeedCard[] => {
     createdAt: isoMinutesAgo(52),
     isDemo: true,
   },
-  ] satisfies Array<Omit<WelcomeFeedCard, keyof WelcomeMapMeta>>;
+  ] satisfies Array<Omit<WelcomeFeedCard, keyof WelcomeMapMeta | "media">>;
 
   return demoCards.map((card, index): WelcomeFeedCard => ({
     ...card,
+    media: [{ url: card.image, mimeType: "image/jpeg" }],
     ...demoMapMeta[index % demoMapMeta.length],
   }));
 };
@@ -736,6 +763,14 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       snapshot,
       lookup: feedLookup,
     });
+    const media = resolveWelcomeCardMedia({
+      fallbackImage: buildWelcomePlaceholderImage({
+        type: "demand",
+        title,
+        ownerName: ownerProfile?.name || undefined,
+      }),
+      metadata: request.metadata,
+    });
 
     cards.push({
       id: `welcome-help-${request.id}`,
@@ -760,14 +795,12 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       etaLabel: urgency === "urgent" || urgency === "today" ? "Needs help today" : "Open for nearby responses",
       signalLabel: urgency === "urgent" ? "High urgency" : "Connected neighbor",
       momentumLabel: `${ownerProfile?.name || "Connection"} is in your local network`,
-      image: resolveWelcomeCardImage({
-        fallbackImage: buildWelcomePlaceholderImage({
-          type: "demand",
-          title,
-          ownerName: ownerProfile?.name || undefined,
-        }),
-        metadata: request.metadata,
+      image: media[0]?.url || buildWelcomePlaceholderImage({
+        type: "demand",
+        title,
+        ownerName: ownerProfile?.name || undefined,
       }),
+      media,
       actionLabel: "Respond",
       actionPath: routes.posts,
       createdAt: trim(request.created_at) || new Date().toISOString(),
@@ -810,6 +843,15 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       snapshot,
       lookup: feedLookup,
     });
+    const media = resolveWelcomeCardMedia({
+      fallbackImage: buildWelcomePlaceholderImage({
+        type: cardType,
+        title,
+        ownerName: ownerProfile?.name || undefined,
+      }),
+      metadata: post.metadata,
+      rawText: trim(post.text) || trim(post.content) || trim(post.description) || trim(post.title),
+    });
 
     cards.push({
       id: `welcome-post-${post.id}`,
@@ -845,15 +887,12 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       signalLabel:
         cardType === "demand" ? "Connected requester" : cardType === "service" ? "Trusted provider" : "Local seller",
       momentumLabel: `${ownerProfile?.name || "Connection"} is visible because you are connected`,
-      image: resolveWelcomeCardImage({
-        fallbackImage: buildWelcomePlaceholderImage({
-          type: cardType,
-          title,
-          ownerName: ownerProfile?.name || undefined,
-        }),
-        metadata: post.metadata,
-        rawText: trim(post.text) || trim(post.content) || trim(post.description) || trim(post.title),
+      image: media[0]?.url || buildWelcomePlaceholderImage({
+        type: cardType,
+        title,
+        ownerName: ownerProfile?.name || undefined,
       }),
+      media,
       actionLabel: cardType === "demand" ? "Respond" : cardType === "service" ? "Connect" : "View",
       actionPath: routes.posts,
       createdAt: trim(post.created_at) || new Date().toISOString(),
@@ -885,6 +924,15 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       snapshot,
       lookup: feedLookup,
     });
+    const media = resolveWelcomeCardMedia({
+      fallbackImage: buildWelcomePlaceholderImage({
+        type: "service",
+        title,
+        ownerName: ownerProfile?.name || undefined,
+      }),
+      metadata: service.metadata,
+      directImageUrl: service.image_url,
+    });
 
     cards.push({
       id: `welcome-service-${service.id}`,
@@ -897,7 +945,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       title,
       summary,
       subtitle: `${ownerProfile?.name || "A connection"} shared this service${service.category ? ` • ${service.category}` : ""}`,
-      priceLabel: service.price ? `From ₹${service.price}` : "Price on request",
+      priceLabel: formatServicePriceLabel(service.price, normalizeServicePricingType((service as { pricing_type?: unknown }).pricing_type)),
       locationLabel: mapMeta.locationLabel,
       distanceKm: getDistanceKm(viewerProfile, ownerProfile, index + 4),
       lat: mapMeta.lat,
@@ -906,15 +954,12 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       etaLabel: "Available in your network",
       signalLabel: "Connected provider",
       momentumLabel: `${ownerProfile?.name || "Connection"} is one connection away`,
-      image: resolveWelcomeCardImage({
-        fallbackImage: buildWelcomePlaceholderImage({
-          type: "service",
-          title,
-          ownerName: ownerProfile?.name || undefined,
-        }),
-        metadata: service.metadata,
-        directImageUrl: service.image_url,
+      image: media[0]?.url || buildWelcomePlaceholderImage({
+        type: "service",
+        title,
+        ownerName: ownerProfile?.name || undefined,
       }),
+      media,
       actionLabel: "Book",
       actionPath: routes.posts,
       createdAt: trim(service.created_at) || new Date().toISOString(),
@@ -946,6 +991,15 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       snapshot,
       lookup: feedLookup,
     });
+    const media = resolveWelcomeCardMedia({
+      fallbackImage: buildWelcomePlaceholderImage({
+        type: "product",
+        title,
+        ownerName: ownerProfile?.name || undefined,
+      }),
+      metadata: product.metadata,
+      directImageUrl: product.image_url,
+    });
 
     cards.push({
       id: `welcome-product-${product.id}`,
@@ -967,15 +1021,12 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       etaLabel: "Shared with connections",
       signalLabel: "Connected seller",
       momentumLabel: `${ownerProfile?.name || "Connection"} is active nearby`,
-      image: resolveWelcomeCardImage({
-        fallbackImage: buildWelcomePlaceholderImage({
-          type: "product",
-          title,
-          ownerName: ownerProfile?.name || undefined,
-        }),
-        metadata: product.metadata,
-        directImageUrl: product.image_url,
+      image: media[0]?.url || buildWelcomePlaceholderImage({
+        type: "product",
+        title,
+        ownerName: ownerProfile?.name || undefined,
       }),
+      media,
       actionLabel: "View",
       actionPath: routes.posts,
       createdAt: trim(product.created_at) || new Date().toISOString(),

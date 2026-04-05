@@ -281,6 +281,51 @@ describe("welcome feed builder", () => {
 
     expect(result.cards).toHaveLength(1);
     expect(result.cards[0]?.image).toBe("https://cdn.example.com/uploads/birthday.jpg");
+    expect(result.cards[0]?.media).toEqual([
+      {
+        mimeType: "image/jpeg",
+        url: "https://cdn.example.com/uploads/birthday.jpg",
+      },
+    ]);
+  });
+
+  it("keeps the full uploaded image gallery for connected welcome cards", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        posts: [
+          {
+            id: "post-with-gallery",
+            user_id: "peer-1",
+            text: "Ciaz on sale 2018 model | Budget: 350000 | Category: Cars | Type: product",
+            metadata: {
+              source: "serviq_compose",
+              postType: "product",
+              title: "Ciaz on sale 2018 model",
+              details: "Urgent sale",
+              category: "Cars",
+              budget: 350000,
+              attachmentCount: 4,
+              media: [
+                { name: "car-1.jpg", url: "https://cdn.example.com/uploads/car-1.jpg", type: "image/jpeg" },
+                { name: "car-2.jpg", url: "https://cdn.example.com/uploads/car-2.jpg", type: "image/jpeg" },
+                { name: "car-3.jpg", url: "https://cdn.example.com/uploads/car-3.jpg", type: "image/jpeg" },
+                { name: "car-4.jpg", url: "https://cdn.example.com/uploads/car-4.jpg", type: "image/jpeg" },
+              ],
+            },
+            created_at: "2026-03-12T12:31:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.media.map((entry) => entry.url)).toEqual([
+      "https://cdn.example.com/uploads/car-1.jpg",
+      "https://cdn.example.com/uploads/car-2.jpg",
+      "https://cdn.example.com/uploads/car-3.jpg",
+      "https://cdn.example.com/uploads/car-4.jpg",
+    ]);
   });
 
   it("uses a generated live placeholder instead of seeded demo art when no upload exists", () => {

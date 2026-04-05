@@ -7,7 +7,11 @@ import { useCart } from "@/app/components/store/CartContext";
 import ImageUploadField from "@/app/components/ImageUploadField";
 import { createProviderListing, deleteProviderListing, updateProviderListing } from "@/lib/provider/client";
 import type { ProductDeliveryMethod, ServicePricingType } from "@/lib/provider/listings";
-import { resolveListingImageUrl } from "@/lib/provider/listings";
+import {
+  formatServicePriceLabel,
+  formatServicePricingTypeLabel,
+  resolveListingImageUrl,
+} from "@/lib/provider/listings";
 import { supabase } from "@/lib/supabase";
 
 type ServiceRow = {
@@ -16,6 +20,7 @@ type ServiceRow = {
   description: string | null;
   category: string | null;
   price: number | null;
+  pricing_type: ServicePricingType;
   availability: string | null;
 };
 
@@ -134,7 +139,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       const [svcRes, prodRes] = await Promise.all([
         supabase
           .from("service_listings")
-          .select("id,title,description,category,price,availability")
+          .select("id,title,description,category,price,pricing_type,availability")
           .eq("provider_id", profileUserId)
           .order("created_at", { ascending: false }),
         supabase
@@ -252,7 +257,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
             description: svc.description ?? "",
             price: Number(svc.price ?? 0),
             availability: next,
-            pricingType: "fixed",
+            pricingType: svc.pricing_type ?? "fixed",
           },
         });
         setServices((prev) => prev.map((s) => (s.id === svc.id ? { ...s, availability: next } : s)));
@@ -321,7 +326,15 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
       setServices((prev) =>
         prev.map((s) =>
           s.id === editService.id
-            ? { ...s, title: editService.title, category: editService.category, description: editService.description, price: editService.price, availability: editService.availability }
+            ? {
+                ...s,
+                title: editService.title,
+                category: editService.category,
+                description: editService.description,
+                price: editService.price,
+                availability: editService.availability,
+                pricing_type: editService.pricingType,
+              }
             : s
         )
       );
@@ -552,7 +565,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                     {svc.description ? (
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{svc.description}</p>
                     ) : null}
-                    <p className="mt-2 text-base font-semibold text-[#0a66c2]">{INR(price)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <p className="text-base font-semibold text-[#0a66c2]">
+                        {formatServicePriceLabel(price, svc.pricing_type)}
+                      </p>
+                      <span className="rounded-full bg-[#edf3f8] px-2.5 py-1 text-[11px] font-semibold text-[#0a66c2]">
+                        {formatServicePricingTypeLabel(svc.pricing_type)}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex gap-2">
@@ -568,7 +588,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                               description: svc.description ?? "",
                               price,
                               availability: (svc.availability as "available" | "busy" | "offline") ?? "available",
-                              pricingType: "fixed",
+                              pricingType: svc.pricing_type ?? "fixed",
                             })
                           }
                           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -641,8 +661,8 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
                 >
                   {imgUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <div className="h-44 w-full overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imgUrl}
                         alt={prod.title ?? "Product"}

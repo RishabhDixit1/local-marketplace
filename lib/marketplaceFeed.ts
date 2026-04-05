@@ -2,6 +2,7 @@ import { createAvatarFallback } from "@/lib/avatarFallback";
 import { looksLikePlaceholderText, toDisplayText as cleanDisplayText } from "@/lib/contentQuality";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
+import { formatServicePriceLabel, type ServicePricingType } from "@/lib/provider/listings";
 import { slugifyProfileName } from "@/lib/profile/utils";
 
 export type MarketplaceFeedItemType = "service" | "product" | "demand";
@@ -49,6 +50,7 @@ export type MarketplaceFeedItem = {
   publicProfilePath: string;
   status: string;
   acceptedProviderId: string | null;
+  pricingType?: ServicePricingType | null;
 };
 
 export type MarketplaceDisplayFeedItem = MarketplaceFeedItem & {
@@ -227,7 +229,10 @@ export const formatMarketplaceRelativeAge = (value?: string) => {
   return `${days}d ago`;
 };
 
-export const formatMarketplacePriceLabel = (item: Pick<MarketplaceFeedItem, "price" | "type">) => {
+export const formatMarketplacePriceLabel = (item: Pick<MarketplaceFeedItem, "price" | "type" | "pricingType">) => {
+  if (item.type === "service") {
+    return formatServicePriceLabel(item.price, item.pricingType);
+  }
   if (item.price > 0) return `INR ${Math.round(item.price).toLocaleString("en-IN")}`;
   if (item.type === "demand") return "Budget shared in chat";
   return "Price on request";

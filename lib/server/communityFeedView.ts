@@ -31,6 +31,7 @@ import {
 } from "@/lib/marketplaceFeed";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { normalizeServicePricingType } from "@/lib/provider/listings";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import {
   defaultMarketCoordinates,
@@ -341,6 +342,9 @@ export const buildCommunityFeedView = (
       publicProfilePath: profileMeta.publicProfilePath,
       status: stringFromRow(row, ["status", "state"], "open"),
       acceptedProviderId: null,
+      pricingType: normalizeServicePricingType(
+        stringFromRow(row, ["pricing_type"], readMetadataString(row.metadata, ["pricingType", "pricing_type"]))
+      ),
     });
   });
 
@@ -519,6 +523,13 @@ export const buildCommunityFeedView = (
       publicProfilePath: profileMeta.publicProfilePath,
       status,
       acceptedProviderId: null,
+      pricingType:
+        type === "service"
+          ? normalizeServicePricingType(
+              readMetadataString(row.metadata, ["pricingType", "pricing_type"]) ||
+                readMetadataString(postRow.metadata, ["pricingType", "pricing_type"])
+            )
+          : null,
     });
   });
 

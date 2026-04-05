@@ -11,7 +11,7 @@ export const PROVIDER_SERVICE_CATEGORIES = [
   "Repair",
 ] as const;
 
-export const SERVICE_PRICING_TYPES = ["fixed", "hourly", "negotiable"] as const;
+export const SERVICE_PRICING_TYPES = ["fixed", "starting_at", "hourly", "quote"] as const;
 export const PRODUCT_DELIVERY_METHODS = ["pickup", "delivery", "both"] as const;
 
 export type ServicePricingType = (typeof SERVICE_PRICING_TYPES)[number];
@@ -92,20 +92,6 @@ const normalizeText = (value: unknown, max: number) => trim(value).slice(0, max)
 const normalizeOptionalText = (value: unknown, max: number) => normalizeText(value, max);
 const normalizeCategory = (value: unknown, fallback: string) => normalizeText(value, CATEGORY_MAX_LENGTH) || fallback;
 
-const normalizeHttpUrl = (value: unknown) => {
-  const raw = trim(value);
-  if (!raw) return "";
-
-  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-  try {
-    const parsed = new URL(candidate);
-    if (!parsed.hostname || !parsed.hostname.includes(".")) return "";
-    return parsed.toString();
-  } catch {
-    return "";
-  }
-};
-
 export const normalizeListingImagePath = (value: unknown) => {
   const raw = trim(value);
   if (!raw) return "";
@@ -144,9 +130,68 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 export const normalizeServicePricingType = (value: unknown): ServicePricingType => {
   const normalized = trim(value).toLowerCase();
+  if (normalized === "negotiable") return "quote";
   return (SERVICE_PRICING_TYPES as readonly string[]).includes(normalized)
     ? (normalized as ServicePricingType)
     : "fixed";
+};
+
+export const formatServicePricingTypeLabel = (value: unknown) => {
+  switch (normalizeServicePricingType(value)) {
+    case "fixed":
+      return "Fixed price";
+    case "starting_at":
+      return "Starting price";
+    case "hourly":
+      return "Hourly rate";
+    case "quote":
+      return "Quote system";
+    default:
+      return "Fixed price";
+  }
+};
+
+const formatCompactInr = (value: number) =>
+  `INR ${Math.round(value).toLocaleString("en-IN")}`;
+
+export const formatServicePriceLabel = (price: number | null | undefined, pricingType: unknown) => {
+  const normalizedPricingType = normalizeServicePricingType(pricingType);
+  const numericPrice = typeof price === "number" ? price : Number(price);
+  const hasPrice = Number.isFinite(numericPrice) && numericPrice > 0;
+
+  if (!hasPrice) {
+    return normalizedPricingType === "quote" ? "Quote on request" : "Price on request";
+  }
+
+  const amountLabel = formatCompactInr(numericPrice);
+
+  switch (normalizedPricingType) {
+    case "fixed":
+      return amountLabel;
+    case "starting_at":
+      return `Starts at ${amountLabel}`;
+    case "hourly":
+      return `${amountLabel}/hr`;
+    case "quote":
+      return `Quote from ${amountLabel}`;
+    default:
+      return amountLabel;
+  }
+};
+
+export const describeServicePricingType = (value: unknown) => {
+  switch (normalizeServicePricingType(value)) {
+    case "fixed":
+      return "One clear total price before work starts.";
+    case "starting_at":
+      return "Publish an entry price and finalize after scope is confirmed.";
+    case "hourly":
+      return "Charge per hour for flexible or ongoing work.";
+    case "quote":
+      return "Share a custom quote after the customer explains the requirement.";
+    default:
+      return "One clear total price before work starts.";
+  }
 };
 
 export const normalizeProductDeliveryMethod = (value: unknown): ProductDeliveryMethod => {

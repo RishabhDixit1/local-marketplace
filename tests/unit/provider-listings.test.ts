@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateProviderListingsStats,
+  formatServicePriceLabel,
+  formatServicePricingTypeLabel,
   normalizeProductDraft,
+  normalizeServicePricingType,
   normalizeServiceDraft,
   validateProductDraft,
   validateServiceDraft,
@@ -26,6 +29,13 @@ describe("provider listings domain helpers", () => {
     expect(draft.title).toBe("Home AC Repair");
     expect(draft.availability).toBe("busy");
     expect(validateServiceDraft(draft)).toEqual({});
+  });
+
+  it("supports starting, hourly, and quote pricing labels", () => {
+    expect(normalizeServicePricingType("negotiable")).toBe("quote");
+    expect(formatServicePricingTypeLabel("starting_at")).toBe("Starting price");
+    expect(formatServicePriceLabel(650, "hourly")).toBe("INR 650/hr");
+    expect(formatServicePriceLabel(0, "quote")).toBe("Quote on request");
   });
 
   it("rejects invalid product drafts", () => {
