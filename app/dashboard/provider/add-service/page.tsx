@@ -8,6 +8,8 @@ import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import type { ProfileAvailability } from "@/lib/profile/types";
 import { createProviderListing } from "@/lib/provider/client";
 import {
+  describeServicePricingType,
+  formatServicePricingTypeLabel,
   PROVIDER_SERVICE_CATEGORIES,
   SERVICE_PRICING_TYPES,
   type ServicePricingType,
@@ -15,7 +17,7 @@ import {
 
 const pricingOptions = SERVICE_PRICING_TYPES.map((value) => ({
   value,
-  label: `${value[0]?.toUpperCase() || ""}${value.slice(1)}`,
+  label: formatServicePricingTypeLabel(value),
 }));
 
 const availabilityOptions: Array<{ value: ProfileAvailability; label: string }> = [
@@ -171,17 +173,35 @@ export default function AddServicePage() {
               <div className="mt-3 grid gap-4">
                 <div>
                   <label className="text-sm font-medium text-slate-700">Pricing type</label>
-                  <select name="pricingType" value={form.pricingType} onChange={handleChange} className={fieldClassName}>
+                  <div className="mt-1.5 grid grid-cols-2 gap-2">
                     {pricingOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setForm((current) => ({ ...current, pricingType: option.value as ServicePricingType }))}
+                        className={`rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                          form.pricingType === option.value
+                            ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                        }`}
+                      >
                         {option.label}
-                      </option>
+                      </button>
                     ))}
-                  </select>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">{describeServicePricingType(form.pricingType)}</p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Price (INR)</label>
+                  <label className="text-sm font-medium text-slate-700">
+                    {form.pricingType === "hourly"
+                      ? "Hourly rate (INR)"
+                      : form.pricingType === "starting_at"
+                      ? "Starting price (INR)"
+                      : form.pricingType === "quote"
+                      ? "Quote anchor (INR)"
+                      : "Price (INR)"}
+                  </label>
                   <input
                     name="price"
                     required
@@ -189,7 +209,7 @@ export default function AddServicePage() {
                     value={form.price}
                     onChange={handleChange}
                     className={fieldClassName}
-                    placeholder="500"
+                    placeholder={form.pricingType === "quote" ? "Leave 0 if you quote after chat" : "500"}
                   />
                 </div>
 

@@ -27,6 +27,7 @@ import {
   type MarketplaceWorkHistoryRecord,
   type ProfileSectionRecord,
 } from "@/lib/profile/marketplace";
+import { normalizeServicePricingType } from "@/lib/provider/listings";
 
 type ProfileRow = Record<string, unknown>;
 type GenericRow = Record<string, unknown>;
@@ -40,6 +41,7 @@ type ServiceLikeRow = {
   service_name?: string | null;
   description?: string | null;
   price?: number | string | null;
+  pricing_type?: string | null;
   service_type?: string | null;
   area?: string | null;
   payment_methods?: string[] | null;
@@ -177,6 +179,7 @@ const toServiceRecord = (row: ServiceLikeRow, profileId: string): MarketplaceSer
     title,
     description: normalizeString(row.description),
     price: toNumber(row.price),
+    pricing_type: normalizeServicePricingType(row.pricing_type),
     service_type: serviceType,
     area: normalizeString(row.area) || null,
     payment_methods: normalizeTextArray(row.payment_methods),
@@ -360,10 +363,10 @@ const loadServices = async (db: NonNullable<ReturnType<typeof getServerSupabase>
   const sourceRows =
     newRows && newRows.length > 0
       ? newRows
-      : (await selectRows<ServiceLikeRow>({
+        : (await selectRows<ServiceLikeRow>({
           db,
           table: "service_listings",
-          select: "id,provider_id,title,description,price,category,availability,metadata,created_at,updated_at",
+          select: "id,provider_id,title,description,price,pricing_type,category,availability,metadata,created_at,updated_at",
           filters: [{ column: "provider_id", value: profileId }],
           orderBy: "created_at",
         })) || [];

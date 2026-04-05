@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
   BadgeIndianRupee,
   BriefcaseBusiness,
   ClipboardList,
@@ -12,11 +11,11 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  Wrench,
 } from "lucide-react";
 import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { fetchProviderListings } from "@/lib/provider/client";
 import type { ProviderProductListing, ProviderServiceListing } from "@/lib/provider/listings";
+import { formatServicePriceLabel } from "@/lib/provider/listings";
 import {
   getOrderStatusLabel,
   getOrderStatusPillClass,
@@ -41,7 +40,7 @@ type ControlListing = {
   kind: "service" | "product";
   title: string;
   statusLabel: string;
-  price: number;
+  priceLabel: string;
   createdAt: string | null;
 };
 
@@ -182,7 +181,7 @@ export default function ProviderControlPage() {
         kind: "service" as const,
         title: service.title,
         statusLabel: service.availability === "offline" ? "Paused" : "Live",
-        price: service.price,
+        priceLabel: formatServicePriceLabel(service.price, service.pricingType),
         createdAt: service.createdAt,
       })),
       ...products.map((product) => ({
@@ -190,7 +189,7 @@ export default function ProviderControlPage() {
         kind: "product" as const,
         title: product.title,
         statusLabel: product.stock > 0 ? "In stock" : "Paused",
-        price: product.price,
+        priceLabel: product.price > 0 ? INR(product.price) : "Price on request",
         createdAt: product.createdAt,
       })),
     ];
@@ -228,33 +227,6 @@ export default function ProviderControlPage() {
       meta: "Settled",
       icon: BadgeIndianRupee,
       tone: "bg-amber-50 text-amber-700",
-    },
-  ] as const;
-
-  const controlActions = [
-    {
-      href: "/dashboard/provider/listings",
-      label: "Listings",
-      meta: `${liveListings} live`,
-      icon: BriefcaseBusiness,
-    },
-    {
-      href: "/dashboard/provider/orders",
-      label: "Orders",
-      meta: `${activeOrders} active`,
-      icon: ClipboardList,
-    },
-    {
-      href: "/dashboard/provider/earnings",
-      label: "Earnings",
-      meta: INR(totalRevenue),
-      icon: BadgeIndianRupee,
-    },
-    {
-      href: "/dashboard/profile",
-      label: "Profile",
-      meta: "Trust",
-      icon: Wrench,
     },
   ] as const;
 
@@ -352,78 +324,52 @@ export default function ProviderControlPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Actions</p>
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Storefront</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Recent listings</h2>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {controlActions.map((action) => (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="group rounded-[1.25rem] border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-[var(--brand-500)]/35 hover:bg-white hover:shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
-                    <action.icon className="h-4 w-4" />
-                  </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-slate-500" />
+          <Link href="/dashboard/provider/listings" className="text-sm font-semibold text-[var(--brand-700)] hover:underline">
+            Open all
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="mt-5 flex min-h-[220px] items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        ) : recentListings.length === 0 ? (
+          <div className="mt-4 rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            No listings yet.
+          </div>
+        ) : (
+          <div className="mt-4 space-y-2.5">
+            {recentListings.map((listing) => (
+              <div key={`${listing.kind}-${listing.id}`} className="flex items-center gap-3 rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3.5 py-3">
+                <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${listing.kind === "service" ? "bg-indigo-50 text-indigo-600" : "bg-cyan-50 text-cyan-600"}`}>
+                  {listing.kind === "service" ? <BriefcaseBusiness className="h-4 w-4" /> : <Package className="h-4 w-4" />}
                 </div>
-                <p className="mt-3 text-sm font-semibold text-slate-950">{action.label}</p>
-                <p className="mt-1 text-[11px] font-medium text-slate-500">{action.meta}</p>
-              </Link>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">{listing.title}</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      {listing.kind}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                      {listing.statusLabel}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                      {formatRelativeDate(listing.createdAt)}
+                    </span>
+                  </div>
+                </div>
+                <p className="shrink-0 text-sm font-semibold text-slate-900">{listing.priceLabel}</p>
+              </div>
             ))}
           </div>
-        </section>
-
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Storefront</p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Recent listings</h2>
-            </div>
-            <Link href="/dashboard/provider/listings" className="text-sm font-semibold text-[var(--brand-700)] hover:underline">
-              Open all
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="mt-5 flex min-h-[220px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-            </div>
-          ) : recentListings.length === 0 ? (
-            <div className="mt-4 rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-              No listings yet.
-            </div>
-          ) : (
-            <div className="mt-4 space-y-2.5">
-              {recentListings.map((listing) => (
-                <div key={`${listing.kind}-${listing.id}`} className="flex items-center gap-3 rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3.5 py-3">
-                  <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${listing.kind === "service" ? "bg-indigo-50 text-indigo-600" : "bg-cyan-50 text-cyan-600"}`}>
-                    {listing.kind === "service" ? <Wrench className="h-4 w-4" /> : <Package className="h-4 w-4" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{listing.title}</p>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        {listing.kind}
-                      </span>
-                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                        {listing.statusLabel}
-                      </span>
-                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                        {formatRelativeDate(listing.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="shrink-0 text-sm font-semibold text-slate-900">{INR(listing.price)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+        )}
+      </section>
 
       <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">

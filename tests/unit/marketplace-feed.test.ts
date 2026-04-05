@@ -53,6 +53,32 @@ describe("marketplace feed helpers", () => {
     expect(display.distanceLabel).toBe("2.1 km away");
   });
 
+  it("formats service pricing modes clearly", () => {
+    expect(
+      buildMarketplaceDisplayItem({
+        ...baseItem,
+        price: 900,
+        pricingType: "starting_at",
+      }).priceLabel
+    ).toBe("Starts at INR 900");
+
+    expect(
+      buildMarketplaceDisplayItem({
+        ...baseItem,
+        price: 450,
+        pricingType: "hourly",
+      }).priceLabel
+    ).toBe("INR 450/hr");
+
+    expect(
+      buildMarketplaceDisplayItem({
+        ...baseItem,
+        price: 0,
+        pricingType: "quote",
+      }).priceLabel
+    ).toBe("Quote on request");
+  });
+
   it("prefers the readable creator name over the generated username", () => {
     const display = buildMarketplaceDisplayItem({
       ...baseItem,

@@ -1,5 +1,7 @@
 import type { ProfileRecord, ProfileRoleFamily } from "@/lib/profile/types";
 
+import type { ServicePricingType } from "@/lib/provider/listings";
+
 export const PROFILE_SECTION_TYPES = [
   "header",
   "trust_stats",
@@ -31,6 +33,7 @@ export type MarketplaceServiceRecord = {
   title: string;
   description: string | null;
   price: number | null;
+  pricing_type: ServicePricingType;
   service_type: "onsite" | "remote" | "hybrid";
   area: string | null;
   payment_methods: string[];

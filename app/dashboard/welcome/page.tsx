@@ -369,7 +369,7 @@ export default function WelcomePage() {
         statusLabel: card.isDemo ? "Preview" : null,
         networkMetaLabel: card.isDemo ? "Preview in feed" : "In your network",
         isUrgent: isUrgentWelcomeCard(card),
-        media: [{ mimeType: "image/jpeg", url: card.image }],
+        media: card.media.length ? card.media : [{ mimeType: "image/jpeg", url: card.image }],
         audienceLabel: "Connected feed",
         audienceName: ownerLabel,
         audienceMeta: `${ownerLabel} is in your accepted network`,

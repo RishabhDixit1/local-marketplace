@@ -2,17 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MessageCircle, BadgeIndianRupee, Send, Sparkles } from "lucide-react";
+import { Loader2, MessageCircle, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { sendConnectionRequest } from "@/lib/connections";
 import { formatPaymentRailList } from "@/lib/paymentFlow";
 import type { MarketplaceServiceRecord } from "@/lib/profile/marketplace";
-
-const formatMoney = (value: number | null) => {
-  if (!Number.isFinite(Number(value)) || !value) return "Contact for pricing";
-  return `INR ${Number(value).toLocaleString("en-IN")}`;
-};
+import { formatServicePriceLabel, formatServicePricingTypeLabel } from "@/lib/provider/listings";
 
 const renderPaymentMethods = (methods: string[]) => {
   const rails = formatPaymentRailList(methods);
@@ -137,10 +133,7 @@ export default function ServicesSection({
               <div className="mt-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Price</p>
-                  <p className="mt-1 text-base font-semibold text-slate-950">
-                    <BadgeIndianRupee className="mr-1 inline-block h-4 w-4 align-[-2px]" />
-                    {formatMoney(service.price)}
-                  </p>
+                  <p className="mt-1 text-base font-semibold text-slate-950">{formatServicePriceLabel(service.price, service.pricing_type)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rating</p>
@@ -165,6 +158,9 @@ export default function ServicesSection({
                     Flexible payments
                   </span>
                 )}
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                  {formatServicePricingTypeLabel(service.pricing_type)}
+                </span>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-medium capitalize text-slate-700 shadow-sm">
                   {service.availability}
                 </span>
