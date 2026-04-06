@@ -420,7 +420,7 @@ export const loadCommunityFeedSnapshot = async (
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
     }),
-    selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,image_url,metadata,created_at", {
+    selectRowsWithFallback(db, "product_catalog", "id,title,description,price,category,provider_id,image_url,image_path,metadata,created_at", {
       orderBy: { column: "created_at", ascending: false },
       limit: CONNECTED_FEED_LIMIT_PER_TYPE,
     }),
