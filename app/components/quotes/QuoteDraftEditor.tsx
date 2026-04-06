@@ -221,7 +221,7 @@ export default function QuoteDraftEditor({
         setTaxAmount(`${result.draft.taxAmount}`);
         setExpiresAt(toDateInputValue(result.draft.expiresAt));
         setLineItems(toEditableLineItems(result.context, result.draft));
-        setSuccessMessage("Quote sent. The task is now synced to quoted.");
+        setSuccessMessage("Quote sent. The buyer will be notified and can accept or counter. Track it in Tasks.");
         onSent?.(result);
       }
     } catch (error) {

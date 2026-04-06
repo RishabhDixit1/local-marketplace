@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import RouteObservability from "@/app/components/RouteObservability";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
@@ -1140,8 +1141,8 @@ export default function PeoplePage() {
           kind: "success",
           message:
             previousState.kind === "incoming_pending"
-              ? "Connection accepted instantly."
-              : "Connection request sent.",
+              ? "Connected! Their posts now appear in your Welcome feed."
+              : "Connection request sent. You\'ll get notified when they accept — their posts will then appear in your Welcome feed.",
         });
       } catch (error) {
         setNoticeBanner({
@@ -1737,6 +1738,13 @@ export default function PeoplePage() {
       }}
     >
       <RouteObservability route="people" />
+
+      <PageContextStrip
+        label="People"
+        description="Discover and connect with providers, buyers, and collaborators near you."
+        action={{ label: "Browse listings", href: "/dashboard" }}
+        switchAction={{ label: "Post a need", href: "/dashboard?compose=1" }}
+      />
 
       <PeopleLiveHeader
         activeNow={activeNow}
