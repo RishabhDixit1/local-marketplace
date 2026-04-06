@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import { CartProvider } from "@/app/components/store/CartContext";
@@ -143,6 +143,34 @@ function DashboardShell({
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
   const [openQuickActions, setOpenQuickActions] = useState(false);
+  // Local role hint: seeded from localStorage before the DB profile loads so
+  // provider users see the Control tab immediately on page load.
+  const [localRoleHint, setLocalRoleHint] = useState<string | null>(null);
+
+  // Read cached role hint before first paint (runs client-only, before browser paints).
+  useLayoutEffect(() => {
+    try {
+      const uid = localStorage.getItem("sq:uid");
+      if (uid) {
+        const storedRole = localStorage.getItem(`sq:role:${uid}`);
+        if (storedRole) setLocalRoleHint(storedRole);
+      }
+    } catch {
+      // localStorage may be unavailable (e.g. private browsing with strict settings).
+    }
+  }, []);
+
+  // Persist role to localStorage whenever it's confirmed from the DB profile.
+  useEffect(() => {
+    if (user?.id && profile?.role) {
+      try {
+        localStorage.setItem("sq:uid", user.id);
+        localStorage.setItem(`sq:role:${user.id}`, profile.role);
+      } catch {
+        // Ignore storage write failures.
+      }
+    }
+  }, [user?.id, profile?.role]);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const currentUserId = user?.id ?? null;
   const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady, currentUserId);
@@ -150,10 +178,10 @@ function DashboardShell({
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
-  // Use the loaded profile role, falling back to auth token metadata so the
+  // Use the loaded profile role, with localStorage as the fallback so the
   // Control tab renders immediately for providers without waiting for the DB
   // profile fetch (which can be slow or fail on mobile networks).
-  const effectiveRole = profile?.role ?? (user?.user_metadata?.role as string | undefined);
+  const effectiveRole = profile?.role ?? localRoleHint ?? undefined;
   const isProviderProfile = getProfileRoleFamily(effectiveRole) === "provider";
   const navigationTabs = isProviderProfile
     ? [...baseNavigationTabs, { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness }]

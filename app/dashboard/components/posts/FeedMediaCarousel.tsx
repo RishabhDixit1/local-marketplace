@@ -12,6 +12,7 @@ type FeedMediaCarouselProps = {
 
 export default function FeedMediaCarousel({ media, title, showCountBadge = true }: FeedMediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [imgError, setImgError] = useState(false);
 
   if (!media.length) {
     return (
@@ -29,6 +30,7 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
   const canNavigate = media.length > 1;
 
   const goNext = () => {
+    setImgError(false);
     setActiveIndex((currentIndex) => {
       const normalized = Math.min(currentIndex, media.length - 1);
       return (normalized + 1) % media.length;
@@ -36,6 +38,7 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
   };
 
   const goPrev = () => {
+    setImgError(false);
     setActiveIndex((currentIndex) => {
       const normalized = Math.min(currentIndex, media.length - 1);
       return (normalized - 1 + media.length) % media.length;
@@ -46,15 +49,22 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
       <div className="aspect-[16/9]">
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={current.url}
-            alt={title}
-            loading={safeIndex === 0 ? "eager" : "lazy"}
-            decoding="async"
-            fetchPriority={safeIndex === 0 ? "high" : "auto"}
-            className="h-full w-full object-cover"
-          />
+          imgError ? (
+            <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
+              <p className="text-xs font-semibold text-slate-500">Image unavailable</p>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={current.url}
+              alt={title}
+              loading={safeIndex === 0 ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={safeIndex === 0 ? "high" : "auto"}
+              className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          )
         ) : current.mimeType.startsWith("video/") ? (
           <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("audio/") ? (
