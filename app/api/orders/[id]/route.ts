@@ -25,8 +25,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { data, error } = await admin
     .from("orders")
     .select(`id,status,price,listing_type,consumer_id,provider_id,metadata,created_at,updated_at,
-      service_listings(title,category),
-      product_catalog(title,category),
       consumer_profile:profiles!consumer_id(name:full_name,avatar_url),
       provider_profile:profiles!provider_id(name:full_name,avatar_url)`)
     .eq("id", id)

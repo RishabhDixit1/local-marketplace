@@ -76,8 +76,6 @@ type OrderRow = {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  service_listings?: { title: string | null; category: string | null } | null;
-  product_catalog?: { title: string | null; category: string | null } | null;
   consumer_profile?: { name: string | null; avatar_url: string | null } | null;
   provider_profile?: { name: string | null; avatar_url: string | null } | null;
 };
@@ -159,12 +157,10 @@ export default function OrderStatusPage() {
   const isFinal = ["completed", "closed", "cancelled", "rejected"].includes(status);
 
   const itemTitle =
-    (order.listing_type === "service" ? order.service_listings?.title : order.product_catalog?.title) ??
     (order.metadata?.title as string | undefined) ??
     "Item";
 
-  const itemCategory =
-    (order.listing_type === "service" ? order.service_listings?.category : order.product_catalog?.category) ?? "";
+  const itemCategory = (order.metadata?.category as string | undefined) ?? "";
 
   const address = order.metadata?.address as string | undefined;
   const notes = order.metadata?.notes as string | undefined;
