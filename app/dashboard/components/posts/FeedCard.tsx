@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -171,10 +170,7 @@ export default function FeedCard({
   ];
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.18) }}
+    <article
       className={`overflow-hidden rounded-3xl border bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all ${
         active
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
@@ -395,6 +391,6 @@ export default function FeedCard({
           {item.locationLabel ? ` · ${item.locationLabel}` : ""}
         </p>
       ) : null}
-    </motion.article>
+    </article>
   );
 }

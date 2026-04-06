@@ -137,7 +137,7 @@ const selectRowsWithFallback = async (
   return toFlexibleRows(fallbackResult.data);
 };
 
-const CONNECTED_FEED_LIMIT_PER_TYPE = 180;
+const CONNECTED_FEED_LIMIT_PER_TYPE = 60;
 
 const selectProfileById = async (db: SupabaseClient, userId: string) => {
   if (!userId) return null;
@@ -494,7 +494,8 @@ export const loadCommunityFeedSnapshot = async (
     profileIds.length
       ? selectRowsWithFallback(db, "reviews", "provider_id,rating", {
           allowMissingRelation: true,
-        }).then((rows) => rows.filter((row) => profileIds.includes(stringFromRow(row, ["provider_id"], ""))))
+          inFilter: { column: "provider_id", values: profileIds },
+        })
       : Promise.resolve([]),
     profileIds.length
       ? selectRowsWithFallback(
@@ -638,9 +639,10 @@ export const loadCommunityPeopleSnapshot = async (
 
   const [reviewsResult, presenceResult, providerOrderStatsResult] = await Promise.all([
     memberIds.length
-      ? selectRowsWithFallback(db, "reviews", "provider_id,rating", { allowMissingRelation: true }).then((rows) =>
-          rows.filter((row) => memberIds.includes(stringFromRow(row, ["provider_id"], "")))
-        )
+      ? selectRowsWithFallback(db, "reviews", "provider_id,rating", {
+          allowMissingRelation: true,
+          inFilter: { column: "provider_id", values: memberIds },
+        })
       : Promise.resolve([]),
     memberIds.length
       ? selectRowsWithFallback(

@@ -306,6 +306,7 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void fetchFeed(false);
     }, FEED_POLL_INTERVAL_MS);
 
