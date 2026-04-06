@@ -24,9 +24,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { data, error } = await admin
     .from("orders")
-    .select(`id,status,price,listing_type,consumer_id,provider_id,metadata,created_at,updated_at,
-      consumer_profile:profiles!consumer_id(name:full_name,avatar_url),
-      provider_profile:profiles!provider_id(name:full_name,avatar_url)`)
+    .select("id,status,price,listing_type,consumer_id,provider_id,metadata,created_at,updated_at")
     .eq("id", id)
     .single();
 
@@ -65,7 +63,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Verify caller is consumer or provider of this order
   const { data: existing } = await admin
     .from("orders")
-    .select("consumer_id,provider_id,status,price,metadata,listing_type,service_listings(title),product_catalog(title)")
+    .select("consumer_id,provider_id,status,price,metadata,listing_type")
     .eq("id", id)
     .single();
 
@@ -75,8 +73,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     consumer_id: string; provider_id: string | null; status: string; price: number | null;
     metadata: Record<string, unknown>;
     listing_type: string;
-    service_listings?: { title: string | null }[] | null;
-    product_catalog?: { title: string | null }[] | null;
   };
 
   if (ex.consumer_id !== authResult.auth.userId && ex.provider_id !== authResult.auth.userId) {
@@ -102,8 +98,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Fire-and-forget email notification (with error capture)
   void (async () => {
     try {
-      const itemTitle = (ex.listing_type === "service" ? ex.service_listings?.[0]?.title : ex.product_catalog?.[0]?.title)
-        ?? (ex.metadata?.title as string | undefined) ?? "Order";
+      const itemTitle = (ex.metadata?.title as string | undefined) ?? "Order";
 
       const emailType =
         status === "accepted" ? "accepted" :
