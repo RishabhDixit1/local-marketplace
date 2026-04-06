@@ -469,7 +469,7 @@ export const useFeedActions = ({
 
       setFeed((current) => current.filter((item) => item.helpRequestId !== acceptTarget.helpRequestId));
 
-      pushToast("success", "Task accepted successfully.");
+      pushToast("success", "Task accepted. Head to Tasks to send a quote or start the job.");
       setAcceptTarget(null);
       router.push("/dashboard/tasks");
       void refreshFeed(false);

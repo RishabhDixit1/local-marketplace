@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -1298,6 +1299,13 @@ export default function WelcomePage() {
               </div>
             </div>
           </motion.div>
+
+          <PageContextStrip
+            label="Welcome"
+            description="Posts and updates from your connected network only. New here? Connect with people first."
+            action={{ label: "Connect with people", href: "/dashboard/people" }}
+            switchAction={{ label: "Browse all providers", href: "/dashboard" }}
+          />
 
           {/* ── Live feed ── */}
           <div data-testid="welcome-live-feed">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
@@ -206,6 +207,12 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
+        <PageContextStrip
+          label="Explore"
+          description="Services and products from all providers near you. No connection required."
+          action={{ label: "Post a need", href: "/dashboard?compose=1" }}
+          switchAction={{ label: "Your network", href: "/dashboard/welcome" }}
+        />
         {(filters.query.length > 0 || showAdvancedFilters) && (
           <FeedFilters
             filters={filters}

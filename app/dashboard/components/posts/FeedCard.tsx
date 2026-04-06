@@ -130,6 +130,13 @@ export default function FeedCard({
   const discardButton = buttons.find((button) => button.kind === "discard");
   const reviewCount = item.reviewCount ?? 0;
   const completedJobs = item.completedJobs ?? 0;
+  const responseMin = item.responseMinutes ?? 0;
+  const responseSignal =
+    responseMin > 0 && responseMin < 60
+      ? { label: "Replies within 1 hr", tone: "good" as const }
+      : responseMin >= 60 && responseMin < 1440
+      ? { label: "Same-day replies", tone: "neutral" as const }
+      : null;
   const trustItems = [
     {
       label: verificationLabels[item.verificationStatus],
@@ -167,6 +174,8 @@ export default function FeedCard({
           label: "No completed jobs yet",
           tone: "neutral" as const,
         },
+    ...(responseSignal ? [responseSignal] : []),
+    ...(item.locationLabel ? [{ label: item.locationLabel, tone: "neutral" as const }] : []),
   ];
 
   return (

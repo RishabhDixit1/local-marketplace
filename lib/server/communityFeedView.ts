@@ -31,7 +31,7 @@ import {
 } from "@/lib/marketplaceFeed";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { normalizeServicePricingType } from "@/lib/provider/listings";
+import { normalizeServicePricingType, resolveListingImageUrl } from "@/lib/provider/listings";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import {
   defaultMarketCoordinates,
@@ -106,6 +106,13 @@ const readPublishGroupKey = (value: unknown) =>
 
 const fallbackImageMedia = (value: string) => {
   const resolvedUrl = resolvePostMediaUrl(value);
+  if (!resolvedUrl) return [];
+
+  return [{ mimeType: "image/*", url: resolvedUrl }];
+};
+
+const fallbackListingImageMedia = (value: string) => {
+  const resolvedUrl = resolveListingImageUrl(value);
   if (!resolvedUrl) return [];
 
   return [{ mimeType: "image/*", url: resolvedUrl }];
@@ -323,7 +330,7 @@ export const buildCommunityFeedView = (
       lat: coordinates.latitude,
       lng: coordinates.longitude,
       coordinateAccuracy: coordinateMeta.accuracy,
-      media: metadataMedia.length ? metadataMedia : fallbackImageMedia(stringFromRow(row, ["image_url", "image"], "")),
+      media: metadataMedia.length ? metadataMedia : fallbackListingImageMedia(stringFromRow(row, ["image_url", "image"], "")),
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
       rankScore: calculateLocalRankScore({
@@ -400,7 +407,7 @@ export const buildCommunityFeedView = (
       lat: coordinates.latitude,
       lng: coordinates.longitude,
       coordinateAccuracy: coordinateMeta.accuracy,
-      media: metadataMedia.length ? metadataMedia : fallbackImageMedia(stringFromRow(row, ["image_url", "image"], "")),
+      media: metadataMedia.length ? metadataMedia : fallbackListingImageMedia(stringFromRow(row, ["image_path", "image_url", "image"], "")),
       createdAt: stringFromRow(row, ["created_at"], new Date().toISOString()),
       urgent: false,
       rankScore: calculateLocalRankScore({
