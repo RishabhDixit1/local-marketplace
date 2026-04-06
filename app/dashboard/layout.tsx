@@ -150,7 +150,11 @@ function DashboardShell({
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
-  const isProviderProfile = getProfileRoleFamily(profile?.role) === "provider";
+  // Use the loaded profile role, falling back to auth token metadata so the
+  // Control tab renders immediately for providers without waiting for the DB
+  // profile fetch (which can be slow or fail on mobile networks).
+  const effectiveRole = profile?.role ?? (user?.user_metadata?.role as string | undefined);
+  const isProviderProfile = getProfileRoleFamily(effectiveRole) === "provider";
   const navigationTabs = isProviderProfile
     ? [...baseNavigationTabs, { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness }]
     : baseNavigationTabs;
@@ -792,6 +796,8 @@ function DashboardShell({
                 key={tab.path}
                 href={tab.path}
                 className={`relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+                  navigationTabs.length >= 5 ? "text-[9px]" : "text-[10px]"
+                } ${
                   isActive
                     ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
