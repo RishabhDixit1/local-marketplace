@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Trash2 } from "lucide-react";
+import { CheckCircle2, DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Sparkles, Trash2 } from "lucide-react";
 import type {
   QuoteContextRecord,
   QuoteDraftInput,
@@ -10,8 +10,9 @@ import type {
   SaveQuoteDraftResponse,
   SendQuoteDraftResponse,
 } from "@/lib/api/quotes";
+import { generateQuoteDraft } from "@/lib/ai/quoteDrafting";
 import { calculateQuoteTotals, toDateInputValue } from "@/lib/quotes/calculations";
-import { loadQuoteDraft, saveQuoteDraft, sendQuoteDraft } from "@/lib/quotes/client";
+import { acceptQuoteDraft, loadQuoteDraft, saveQuoteDraft, sendQuoteDraft } from "@/lib/quotes/client";
 
 type EditableLineItem = {
   id: string;
@@ -29,6 +30,7 @@ type QuoteDraftEditorProps = {
   onSaved?: (payload: SaveQuoteDraftResponse & { ok: true }) => void;
   onSent?: (payload: SendQuoteDraftResponse & { ok: true }) => void;
   onOpenChat?: () => void;
+  onAccepted?: (quoteId: string, orderId: string) => void;
 };
 
 const buildLocalLineItemId = (prefix: string, index: number) => `${prefix}-${index}-${Math.random().toString(36).slice(2, 8)}`;
@@ -93,13 +95,16 @@ export default function QuoteDraftEditor({
   onSaved,
   onSent,
   onOpenChat,
+  onAccepted,
 }: QuoteDraftEditorProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [context, setContext] = useState<QuoteContextRecord | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [notes, setNotes] = useState("");
   const [taxAmount, setTaxAmount] = useState("0");
@@ -134,6 +139,7 @@ export default function QuoteDraftEditor({
           result.draft?.summary || (result.context.taskTitle ? `Quote for ${result.context.taskTitle}` : "Quote");
 
         setContext(result.context);
+        setCurrentDraftId(result.draft?.id ?? null);
         setSummary(nextSummary);
         setNotes(result.draft?.notes || "");
         setTaxAmount(`${result.draft?.taxAmount ?? 0}`);
@@ -202,6 +208,7 @@ export default function QuoteDraftEditor({
         }
 
         setContext(result.context);
+        setCurrentDraftId(result.draft.id);
         setSummary(result.draft.summary || summary);
         setNotes(result.draft.notes || "");
         setTaxAmount(`${result.draft.taxAmount}`);
@@ -216,6 +223,7 @@ export default function QuoteDraftEditor({
         }
 
         setContext(result.context);
+        setCurrentDraftId(result.draft.id);
         setSummary(result.draft.summary || summary);
         setNotes(result.draft.notes || "");
         setTaxAmount(`${result.draft.taxAmount}`);
@@ -229,6 +237,42 @@ export default function QuoteDraftEditor({
     } finally {
       setSaving(false);
       setSending(false);
+    }
+  };
+
+  const handleGenerate = () => {
+    if (!context) return;
+    const generated = generateQuoteDraft(context);
+    setSummary(generated.summary);
+    setNotes(generated.notes);
+    setExpiresAt(generated.expiresAt);
+    setLineItems(
+      generated.lineItems.map((item, index) => ({
+        id: buildLocalLineItemId("gen", index),
+        label: item.label,
+        description: item.description,
+        quantity: `${item.quantity}`,
+        unitPrice: item.unitPrice > 0 ? `${item.unitPrice}` : "",
+      }))
+    );
+    setErrorMessage(null);
+    setSuccessMessage(null);
+  };
+
+  const handleAccept = async () => {
+    if (!currentDraftId) return;
+    setAccepting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const result = await acceptQuoteDraft(currentDraftId);
+      if (!result.ok) throw new Error(result.message || "Unable to accept quote.");
+      setSuccessMessage("Quote accepted. The provider has been notified and the job is now in progress.");
+      onAccepted?.(result.quoteId, result.orderId);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to accept quote.");
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -273,6 +317,16 @@ export default function QuoteDraftEditor({
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
               Suggested {formatCurrency(context.suggestedAmount)}
             </span>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Generate draft
+            </button>
           ) : null}
         </div>
       </div>
@@ -540,7 +594,20 @@ export default function QuoteDraftEditor({
               ) : null}
             </div>
 
-            {!canEdit ? (
+            {!canEdit && context?.actorRole === "consumer" && currentDraftId && (context.currentStatus === "quoted" || context.currentStatus === "sent") ? (
+              <div className="mt-5 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => void handleAccept()}
+                  disabled={accepting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {accepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {accepting ? "Accepting..." : "Accept quote"}
+                </button>
+                <p className="text-xs text-slate-500 text-center">Accepting will notify the provider and move the job into active work.</p>
+              </div>
+            ) : !canEdit ? (
               <p className="mt-4 text-xs text-slate-500">This quote is view-only here. The assigned provider controls edits and sending.</p>
             ) : null}
           </div>

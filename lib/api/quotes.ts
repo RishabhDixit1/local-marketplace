@@ -104,3 +104,12 @@ export type SendQuoteDraftResponse =
       conversationId: string | null;
     }
   | QuoteApiError;
+
+export type AcceptQuoteResponse =
+  | {
+      ok: true;
+      quoteId: string;
+      orderId: string;
+      orderStatus: string;
+    }
+  | QuoteApiError;

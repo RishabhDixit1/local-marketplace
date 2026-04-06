@@ -981,3 +981,93 @@ export const sendQuoteDraft = async (params: {
     conversationId,
   };
 };
+
+type QuoteAcceptSuccess = {
+  ok: true;
+  quoteId: string;
+  orderId: string;
+  orderStatus: string;
+};
+
+export const acceptQuoteDraft = async (params: {
+  db: SupabaseClient;
+  userId: string;
+  quoteId: string;
+}): Promise<QuoteAcceptSuccess | QuoteMutationError> => {
+  // Load the draft
+  const draftResult = await loadQuoteDraftById(params.db, params.quoteId);
+  if (!draftResult.ok) return draftResult;
+
+  const draft = draftResult.draft;
+
+  // Only the consumer can accept
+  if (!draft.consumerId || draft.consumerId !== params.userId) {
+    return createMutationError("Only the customer on this quote can accept it.", { forbidden: true });
+  }
+
+  // Must be in sent status
+  if (draft.status !== "sent") {
+    return createMutationError(
+      draft.status === "accepted"
+        ? "This quote has already been accepted."
+        : "This quote cannot be accepted in its current state.",
+      { invalid: true }
+    );
+  }
+
+  // Update quote status to accepted
+  const quoteUpdateResult = await params.db
+    .from("quote_drafts")
+    .update({ status: "accepted" })
+    .eq("id", params.quoteId);
+
+  if (quoteUpdateResult.error) {
+    return createMutationError(quoteUpdateResult.error.message || "Unable to accept quote.", {
+      code: quoteUpdateResult.error.code,
+      details: quoteUpdateResult.error.details || null,
+    });
+  }
+
+  // Sync the linked order to "accepted"
+  const orderId = draft.orderId || "";
+  if (orderId) {
+    await params.db
+      .from("orders")
+      .update({ status: "accepted" })
+      .eq("id", orderId);
+    // Non-critical — continue even if this fails
+  }
+
+  // Notify the provider
+  const providerId = draft.providerId;
+  if (providerId && providerId !== params.userId) {
+    const taskTitle = trim((draft.metadata as Record<string, unknown>)?.task_title as string) || "your quote";
+    const totalFormatted =
+      draft.total > 0 ? ` · INR ${draft.total.toLocaleString("en-IN")}` : "";
+    await params.db
+      .from("notifications")
+      .insert({
+        user_id: providerId,
+        kind: "order",
+        title: "Quote accepted",
+        message: `The customer accepted your quote for ${taskTitle}${totalFormatted}. Head to Tasks to start the job.`,
+        entity_type: "order",
+        entity_id: orderId || null,
+        metadata: {
+          order_id: orderId || null,
+          quote_draft_id: params.quoteId,
+          task_title: taskTitle,
+          total: draft.total,
+          source: "quote_flow",
+        },
+      });
+    // Non-critical — do not block the response on notification failure
+  }
+
+  return {
+    ok: true,
+    quoteId: params.quoteId,
+    orderId,
+    orderStatus: "accepted",
+  };
+};

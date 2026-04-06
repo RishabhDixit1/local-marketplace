@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  AcceptQuoteResponse,
   GetQuoteDraftResponse,
   QuoteDraftInput,
   SaveQuoteDraftResponse,
@@ -32,4 +33,9 @@ export const sendQuoteDraft = (input: QuoteDraftInput) =>
   fetchAuthedJson<SendQuoteDraftResponse>(supabase, "/api/quotes/send", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+
+export const acceptQuoteDraft = (quoteId: string) =>
+  fetchAuthedJson<AcceptQuoteResponse>(supabase, `/api/quotes/${encodeURIComponent(quoteId)}/accept`, {
+    method: "POST",
   });
