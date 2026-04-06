@@ -203,7 +203,7 @@ export const createMarketplaceReadinessSummary = (params: {
             id: "orders",
             title: "Stay responsive in your pipeline",
             description: "Fast replies and clear availability keep discovery momentum turning into bookings.",
-            href: "/dashboard/provider",
+            href: "/dashboard/provider/orders",
             ctaLabel: "Open control",
           }
         : {
