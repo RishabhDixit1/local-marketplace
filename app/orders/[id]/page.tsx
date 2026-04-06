@@ -76,8 +76,6 @@ type OrderRow = {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  consumer_profile?: { name: string | null; avatar_url: string | null } | null;
-  provider_profile?: { name: string | null; avatar_url: string | null } | null;
 };
 
 export default function OrderStatusPage() {
