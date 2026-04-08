@@ -6,6 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { buildInterestDraftMessage, parseChatDraftTemplate, parseChatFeedContext } from "@/lib/chatNavigation";
 import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -76,11 +77,13 @@ type GroupedMessages = {
 };
 
 type FeedMessageContext = {
+  source: string;
   cardId: string;
   focusId: string;
   itemType: "demand" | "service" | "product";
   title: string;
   audience: string;
+  returnPath?: string | null;
 };
 
 type RequestedQuoteContext = {
@@ -150,6 +153,19 @@ const CHAT_EMOTICONS = [
   { label: "Unsure emoticon", value: ":/" },
   { label: "Sad emoticon", value: ":(" },
 ] as const;
+
+const decodeEmojiMojibake = (value: string) => {
+  try {
+    return new TextDecoder("utf-8").decode(Uint8Array.from(value, (char) => char.charCodeAt(0)));
+  } catch {
+    return value;
+  }
+};
+
+const CHAT_EMOJI_OPTIONS = CHAT_EMOTICONS.map((option) => ({
+  ...option,
+  value: option.value.startsWith(":") || option.value === "<3" ? option.value : decodeEmojiMojibake(option.value),
+}));
 
 const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
@@ -286,25 +302,23 @@ export default function ChatPage() {
       conversationId: params.get("open"),
     };
   });
+  const [draftTemplate] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return parseChatDraftTemplate(new URLSearchParams(window.location.search));
+  });
   const [feedContext] = useState<FeedMessageContext | null>(() => {
     if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("source") !== "welcome_feed") return null;
-
-    const cardId = params.get("context_card");
-    const focusId = params.get("context_focus") || params.get("focus");
-    const itemType = params.get("context_type") || params.get("type");
-    const title = params.get("context_title");
-
-    if (!cardId || !focusId || !itemType || !title) return null;
-    if (!["demand", "service", "product"].includes(itemType)) return null;
+    const parsed = parseChatFeedContext(new URLSearchParams(window.location.search));
+    if (!parsed) return null;
 
     return {
-      cardId,
-      focusId,
-      itemType: itemType as "demand" | "service" | "product",
-      title,
-      audience: params.get("context_audience") || "Your local network",
+      source: parsed.source,
+      cardId: parsed.cardId,
+      focusId: parsed.focusId,
+      itemType: parsed.itemType,
+      title: parsed.title,
+      audience: parsed.audience || "Marketplace feed",
+      returnPath: parsed.returnPath,
     };
   });
   const [feedContextDismissed, setFeedContextDismissed] = useState(false);
@@ -314,7 +328,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [input, setInput] = useState<string>(() =>
-    feedContext ? `Hi, I am interested in "${feedContext.title}". Is it still available?` : ""
+    draftTemplate?.kind === "interest" ? buildInterestDraftMessage(draftTemplate.title) : ""
   );
   const [search, setSearch] = useState("");
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
@@ -357,8 +371,10 @@ export default function ChatPage() {
 
   const feedContextPath = useMemo(() => {
     if (!activeFeedContext) return null;
+    if (activeFeedContext.returnPath) return activeFeedContext.returnPath;
+
     const params = new URLSearchParams({
-      source: "welcome_feed",
+      source: activeFeedContext.source,
       context_card: activeFeedContext.cardId,
       focus: activeFeedContext.focusId,
       type: activeFeedContext.itemType,
@@ -1536,7 +1552,13 @@ export default function ChatPage() {
             <div className="border-b border-indigo-200/70 bg-indigo-50/70 px-4 py-3 sm:px-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">From Live Feed</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                    {activeFeedContext.source === "saved_feed"
+                      ? "From Saved Feed"
+                      : activeFeedContext.source === "public_profile"
+                        ? "From Public Profile"
+                        : "From Feed"}
+                  </p>
                   <p className="truncate text-sm font-semibold text-slate-900">{activeFeedContext.title}</p>
                   <p className="truncate text-xs text-slate-600">{activeFeedContext.audience}</p>
                 </div>
@@ -1917,7 +1939,7 @@ export default function ChatPage() {
                       </div>
                       <div className="max-h-[min(20rem,52vh)] overflow-y-auto pr-1">
                         <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-                          {CHAT_EMOTICONS.map((option) => (
+                          {CHAT_EMOJI_OPTIONS.map((option) => (
                             <button
                               key={option.label}
                               type="button"

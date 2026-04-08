@@ -18,9 +18,11 @@ import {
 import {
   buildMarketplaceFeedStats,
   dedupeMarketplaceFeedItems,
+  hasMarketplaceViewerInterest,
   isClosedMarketplaceStatus,
   isWeakMarketplaceContent,
   mediaFromMarketplaceComposerMetadata,
+  normalizeMarketplaceNeedMatchStatus,
   normalizeMarketplacePersonLabel,
   normalizeMarketplacePostKind,
   parseMarketplaceDateMs,
@@ -28,9 +30,10 @@ import {
   toMarketplaceCreatorUsername,
   type MarketplaceFeedItem,
   type MarketplaceMapCenter,
+  type MarketplaceNeedMatchStatus,
 } from "@/lib/marketplaceFeed";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
-import { resolvePostMediaUrl, resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { normalizeServicePricingType, resolveListingImageUrl } from "@/lib/provider/listings";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import {
@@ -52,6 +55,7 @@ type CommunityFeedSnapshotInput = {
   reviews: CommunityReviewRecord[];
   presence: CommunityPresenceRecord[];
   orderStats: CommunityOrderStatsRecord[];
+  viewerMatchStatusByHelpRequestId?: Record<string, MarketplaceNeedMatchStatus>;
 };
 
 type FlexibleRow = Record<string, unknown>;
@@ -104,13 +108,6 @@ const readPublishGroupKey = (value: unknown) =>
     ? stringFromRow(value as FlexibleRow, ["publishGroupKey", "publish_group_key"], "")
     : "";
 
-const fallbackImageMedia = (value: string) => {
-  const resolvedUrl = resolvePostMediaUrl(value);
-  if (!resolvedUrl) return [];
-
-  return [{ mimeType: "image/*", url: resolvedUrl }];
-};
-
 const fallbackListingImageMedia = (value: string) => {
   const resolvedUrl = resolveListingImageUrl(value);
   if (!resolvedUrl) return [];
@@ -156,6 +153,20 @@ const resolveViewerPoint = (profile: CommunityProfileRecord | null): Marketplace
 
   const fallback = defaultMarketCoordinates();
   return { lat: fallback.latitude, lng: fallback.longitude };
+};
+
+const getCommunityFeedActivityRank = (item: MarketplaceFeedItem) => {
+  const normalizedStatus = (item.status || "").trim().toLowerCase();
+
+  if (normalizedStatus === "accepted" || normalizedStatus === "in_progress") {
+    return 1;
+  }
+
+  if (isClosedMarketplaceStatus(normalizedStatus)) {
+    return 2;
+  }
+
+  return 0;
 };
 
 export const buildCommunityFeedView = (
@@ -557,7 +568,6 @@ export const buildCommunityFeedView = (
     const category = composerMetadata?.category || stringFromRow(row, ["category"], "Need");
 
     if (isClosedMarketplaceStatus(status)) return;
-    if (acceptedProviderId) return;
     if (!composerMetadata && isWeakMarketplaceContent(title, description)) return;
 
     const locationLabel =
@@ -576,6 +586,9 @@ export const buildCommunityFeedView = (
     const metadataMedia = mediaFromMarketplaceComposerMetadata(helpRow.metadata);
     const budgetMax = numberFromRow(row, ["budget_max"], 0);
     const budgetMin = numberFromRow(row, ["budget_min", "budget"], 0);
+    const viewerMatchStatus = normalizeMarketplaceNeedMatchStatus(
+      snapshot.viewerMatchStatusByHelpRequestId?.[helpRow.id]
+    );
 
     nextItems.push({
       id: helpRow.id,
@@ -626,10 +639,17 @@ export const buildCommunityFeedView = (
       publicProfilePath: profileMeta.publicProfilePath,
       status,
       acceptedProviderId,
+      viewerMatchStatus,
+      viewerHasExpressedInterest: hasMarketplaceViewerInterest(viewerMatchStatus),
     });
   });
 
   const feedItems = dedupeMarketplaceFeedItems(nextItems).sort((left, right) => {
+    const activityRankDelta = getCommunityFeedActivityRank(left) - getCommunityFeedActivityRank(right);
+    if (activityRankDelta !== 0) {
+      return activityRankDelta;
+    }
+
     const createdAtDelta = parseMarketplaceDateMs(right.createdAt) - parseMarketplaceDateMs(left.createdAt);
     if (createdAtDelta !== 0) {
       return createdAtDelta;

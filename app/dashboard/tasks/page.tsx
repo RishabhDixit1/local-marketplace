@@ -795,7 +795,7 @@ export default function TasksPage() {
         "id, help_request_id, score, distance_km, reason, status, created_at, help_requests!inner(id, title, category, budget_min, budget_max, location_label, status, requester_id, created_at)"
       )
       .eq("provider_id", currentUserId)
-      .eq("status", "open")
+      .in("status", ["open", "interested"])
       .order("score", { ascending: false })
       .limit(30);
 
@@ -2108,7 +2108,7 @@ export default function TasksPage() {
     try {
       const payload = await fetchAuthedJson<{ ok: boolean; message?: string }>(
         supabase,
-        "/api/needs/accept",
+        "/api/needs/express-interest",
         {
           method: "POST",
           body: JSON.stringify({ helpRequestId: matchItem.help_request_id }),
@@ -2119,17 +2119,22 @@ export default function TasksPage() {
         throw new Error((payload as { message?: string }).message || "Failed to accept request.");
       }
 
-      setInboxMatches((current) => current.filter((item) => item.id !== matchItem.id));
+      setInboxMatches((current) =>
+        current.map((item) =>
+          item.id === matchItem.id
+            ? {
+                ...item,
+                status: "interested",
+              }
+            : item
+        )
+      );
       setNotice({
         kind: "success",
-        message: `You accepted "${matchItem.help_requests?.title || "the request"}". It's now in your Active tab.`,
-      });
-      setSelectedTaskView("in-progress");
-      startTransition(() => {
-        void loadTasks(true);
+        message: `Interest sent for "${matchItem.help_requests?.title || "the request"}". The requester will review and get back to you.`,
       });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to accept this request right now.");
+      setErrorMessage(error instanceof Error ? error.message : "Unable to send interest right now.");
     } finally {
       setAcceptingMatchId(null);
     }
@@ -3294,10 +3299,10 @@ export default function TasksPage() {
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedTaskView === "inbox"
-                    ? "Help requests matched to your profile. Accept one to get started."
+                    ? "Help requests matched to your profile. Send interest to join the shortlist."
                     : selectedTaskView === "cancelled"
                       ? "Requests that were cancelled or declined and are no longer active."
-                    : selectedTaskView === "completed"
+                      : selectedTaskView === "completed"
                       ? "Completed work that has already been closed out."
                       : "Open requests, quotes, and accepted work that still need action or follow-through."}
                 </p>
@@ -3394,18 +3399,23 @@ export default function TasksPage() {
                             <button
                               type="button"
                               onClick={() => void acceptInboxMatch(matchItem)}
-                              disabled={isAccepting || Boolean(acceptingMatchId)}
+                              disabled={matchItem.status === "interested" || isAccepting || Boolean(acceptingMatchId)}
                               className="inline-flex min-h-10 items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {isAccepting ? (
                                 <>
                                   <Loader2 className="h-4 w-4 animate-spin" />
-                                  Accepting...
+                                  Sending...
+                                </>
+                              ) : matchItem.status === "interested" ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Pending review
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle2 className="h-4 w-4" />
-                                  Accept
+                                  Send interest
                                 </>
                               )}
                             </button>

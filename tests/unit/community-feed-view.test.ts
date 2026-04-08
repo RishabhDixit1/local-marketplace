@@ -65,6 +65,9 @@ describe("buildCommunityFeedView", () => {
           created_at: "2026-03-24T11:00:00.000Z",
         },
       ],
+      viewerMatchStatusByHelpRequestId: {
+        "help-open": "interested",
+      },
       profiles: [
         {
           id: "provider-1",
@@ -108,11 +111,11 @@ describe("buildCommunityFeedView", () => {
     });
 
     expect(view.mapCenter).toEqual({ lat: 12.9716, lng: 77.5946 });
-    expect(view.feedItems.map((item) => item.id)).toEqual(["help-open", "post-1", "service-1"]);
+    expect(view.feedItems.map((item) => item.id)).toEqual(["help-open", "post-1", "service-1", "help-taken"]);
     expect(view.feedStats).toEqual({
-      total: 3,
-      urgent: 2,
-      demand: 2,
+      total: 4,
+      urgent: 3,
+      demand: 3,
       service: 1,
       product: 0,
     });
@@ -123,6 +126,8 @@ describe("buildCommunityFeedView", () => {
       type: "demand",
       category: "Appliance Repair",
       price: 2200,
+      viewerMatchStatus: "interested",
+      viewerHasExpressedInterest: true,
     });
 
     expect(view.feedItems[2]).toMatchObject({
@@ -133,6 +138,12 @@ describe("buildCommunityFeedView", () => {
       averageRating: 4.7,
       completedJobs: 14,
       responseMinutes: 9,
+    });
+
+    expect(view.feedItems[3]).toMatchObject({
+      id: "help-taken",
+      status: "accepted",
+      acceptedProviderId: "provider-9",
     });
   });
 

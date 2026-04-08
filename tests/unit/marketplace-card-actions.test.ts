@@ -41,7 +41,7 @@ describe("resolveMarketplaceCardActionModel", () => {
 
     expect(actions.buttons).toEqual([
       expect.objectContaining({ kind: "accept", label: "No Task", disabled: true }),
-      expect.objectContaining({ kind: "send_quote", label: "Send Quote", disabled: false }),
+      expect.objectContaining({ kind: "send_quote", label: "Open Chat", disabled: false }),
       expect.objectContaining({ kind: "view_profile", label: "View Profile", disabled: false }),
     ]);
     expect(actions.icons.map((action) => action.kind)).toEqual(["save", "share"]);
@@ -60,7 +60,25 @@ describe("resolveMarketplaceCardActionModel", () => {
     });
 
     expect(actions.buttons[0]).toMatchObject({ kind: "accept", disabled: false, tone: "success" });
-    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Send Quote", disabled: false, tone: "primary" });
+    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Open Chat", disabled: false, tone: "primary" });
+  });
+
+  it("switches interested help requests to a withdraw action for the same provider", () => {
+    const actions = resolveMarketplaceCardActionModel({
+      item: {
+        ...baseItem,
+        id: "help-interested",
+        source: "help_request",
+        helpRequestId: "help-interested",
+        type: "demand",
+        viewerMatchStatus: "interested",
+        viewerHasExpressedInterest: true,
+      },
+      viewerId: "viewer-9",
+    });
+
+    expect(actions.buttons[0]).toMatchObject({ kind: "withdraw", label: "Withdraw", disabled: false, tone: "destructive" });
+    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Open Chat", disabled: false, tone: "primary" });
   });
 
   it("switches accept to decline for the accepted provider", () => {
@@ -78,7 +96,7 @@ describe("resolveMarketplaceCardActionModel", () => {
     });
 
     expect(actions.buttons[0]).toMatchObject({ kind: "decline", disabled: false, tone: "destructive" });
-    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", disabled: false, tone: "primary" });
+    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Prepare Quote", disabled: false, tone: "primary" });
   });
 
   it("switches accept to decline for the requester after someone accepts", () => {
@@ -113,7 +131,7 @@ describe("resolveMarketplaceCardActionModel", () => {
     });
 
     expect(actions.buttons[0]).toMatchObject({ kind: "accept", disabled: true, tone: "status" });
-    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Send Quote", disabled: false });
+    expect(actions.buttons[1]).toMatchObject({ kind: "send_quote", label: "Open Chat", disabled: false });
   });
 
   it("disables accept and quote on your own listing", () => {

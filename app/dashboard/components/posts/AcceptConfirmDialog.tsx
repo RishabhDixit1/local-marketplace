@@ -25,8 +25,8 @@ export default function AcceptConfirmDialog({
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_30px_70px_-35px_rgba(15,23,42,0.55)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Confirm task acceptance</p>
-            <p className="mt-1 text-sm text-slate-600">You are about to take responsibility for this request.</p>
+            <p className="text-sm font-semibold text-slate-900">Send interest in this task</p>
+            <p className="mt-1 text-sm text-slate-600">The requester will see your interest and choose a provider.</p>
           </div>
           <button
             type="button"
@@ -60,7 +60,7 @@ export default function AcceptConfirmDialog({
             className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-65"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            {busy ? "Accepting..." : "Accept task"}
+            {busy ? "Sending..." : "I'm Interested"}
           </button>
         </div>
       </div>

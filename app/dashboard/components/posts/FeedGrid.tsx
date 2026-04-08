@@ -272,6 +272,7 @@ export default function FeedGrid({
                 buttons={actionModel.buttons}
                 actionBusyState={{
                   accept: isPrimaryBusy(item, "accept"),
+                  withdraw: isPrimaryBusy(item, "withdraw"),
                   decline: isPrimaryBusy(item, "decline"),
                   send_quote: isPrimaryBusy(item, "send_quote"),
                   view_profile: false,

@@ -3,7 +3,7 @@ import type {
   CommunityPostRecord,
   CommunityProfileRecord,
 } from "@/lib/api/community";
-import { type MarketplaceFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
+import { type MarketplaceFeedItem, type MarketplaceFeedMedia, type MarketplaceNeedMatchStatus } from "@/lib/marketplaceFeed";
 import { distanceBetweenCoordinatesKm, resolveCoordinatesWithAccuracy } from "@/lib/geo";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
 import { buildMarketplaceComposerSignature, readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
@@ -22,6 +22,7 @@ export type WelcomeFeedCard = {
   helpRequestId?: string;
   acceptedProviderId?: string | null;
   status?: string | null;
+  viewerMatchStatus?: MarketplaceNeedMatchStatus | null;
   title: string;
   subtitle: string;
   summary: string;
@@ -737,7 +738,6 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
   sortByCreatedAt(snapshot.helpRequests).forEach((request, index) => {
     const ownerId = trim(request.requester_id);
     if (!connectedPeerSet.has(ownerId)) return;
-    if (trim(request.accepted_provider_id)) return;
     if (trim(request.status) && ["cancelled", "canceled", "closed", "completed", "fulfilled", "archived"].includes(trim(request.status).toLowerCase())) return;
 
     const composerMetadata = readMarketplaceComposerMetadata(request.metadata);
@@ -771,6 +771,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       }),
       metadata: request.metadata,
     });
+    const matchedFeedItem = feedLookup.byCanonicalKey.get(canonicalKey) || feedLookup.byHelpRequestId.get(request.id);
 
     cards.push({
       id: `welcome-help-${request.id}`,
@@ -783,6 +784,7 @@ export const buildWelcomeFeedCards = (snapshot: CommunityFeedSnapshot): WelcomeF
       helpRequestId: request.id,
       acceptedProviderId: trim(request.accepted_provider_id) || null,
       status: trim(request.status) || null,
+      viewerMatchStatus: matchedFeedItem?.viewerMatchStatus || null,
       title,
       summary,
       subtitle: `${ownerProfile?.name || "A connection"} shared a local request${category ? ` • ${category}` : ""}`,

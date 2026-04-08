@@ -73,10 +73,58 @@ export async function POST(request: Request) {
   const progressStage = normalizeHelpRequestProgressStage(existingMetadata.progress_stage, existing.status);
   const now = new Date().toISOString();
 
+  const previousMatchStatus =
+    acceptedProviderId && actorId === acceptedProviderId
+      ? "withdrawn"
+      : acceptedProviderId
+        ? "rejected"
+        : null;
+
+  if (acceptedProviderId && previousMatchStatus) {
+    const { error: acceptedMatchError } = await dbClient
+      .from("help_request_matches")
+      .update({
+        status: previousMatchStatus,
+        updated_at: now,
+      })
+      .eq("help_request_id", helpRequestId)
+      .eq("provider_id", acceptedProviderId);
+
+    if (acceptedMatchError) {
+      return NextResponse.json({ ok: false, code: "DB", message: acceptedMatchError.message }, { status: 500 });
+    }
+
+    const { error: reopenOtherMatchesError } = await dbClient
+      .from("help_request_matches")
+      .update({
+        status: "open",
+        updated_at: now,
+      })
+      .eq("help_request_id", helpRequestId)
+      .neq("provider_id", acceptedProviderId)
+      .eq("status", "rejected");
+
+    if (reopenOtherMatchesError) {
+      return NextResponse.json({ ok: false, code: "DB", message: reopenOtherMatchesError.message }, { status: 500 });
+    }
+  }
+
+  const { count: activeMatchCount, error: activeMatchCountError } = await dbClient
+    .from("help_request_matches")
+    .select("help_request_id", { count: "exact", head: true })
+    .eq("help_request_id", helpRequestId)
+    .in("status", ["open", "interested"]);
+
+  if (activeMatchCountError) {
+    return NextResponse.json({ ok: false, code: "DB", message: activeMatchCountError.message }, { status: 500 });
+  }
+
+  const nextHelpRequestStatus = (activeMatchCount || 0) > 0 ? "matched" : "open";
+
   const { error: updateError } = await dbClient
     .from("help_requests")
     .update({
-      status: "cancelled",
+      status: nextHelpRequestStatus,
       accepted_provider_id: null,
       metadata: {
         ...existingMetadata,
@@ -96,16 +144,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "DB", message: updateError.message }, { status: 500 });
   }
 
-  if (acceptedProviderId) {
-    await dbClient
-      .from("help_request_matches")
-      .update({
-        status: "cancelled",
-        updated_at: now,
-      })
-      .eq("help_request_id", helpRequestId)
-      .eq("provider_id", acceptedProviderId);
-  }
-
-  return NextResponse.json({ ok: true, helpRequestId, status: "cancelled" });
+  return NextResponse.json({ ok: true, helpRequestId, status: nextHelpRequestStatus, previousMatchStatus });
 }

@@ -1,7 +1,13 @@
 import type { MarketplaceFeedItem } from "@/lib/marketplaceFeed";
-import { isClosedMarketplaceStatus } from "@/lib/marketplaceFeed";
+import { isClosedMarketplaceStatus, normalizeMarketplaceNeedMatchStatus } from "@/lib/marketplaceFeed";
 
-export type MarketplacePrimaryActionKind = "accept" | "decline" | "send_quote" | "view_profile" | "discard";
+export type MarketplacePrimaryActionKind =
+  | "accept"
+  | "withdraw"
+  | "decline"
+  | "send_quote"
+  | "view_profile"
+  | "discard";
 export type MarketplaceSecondaryActionKind = "save" | "share";
 
 export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status" | "destructive";
@@ -43,20 +49,35 @@ export const resolveMarketplaceCardActionModel = (
   const isClosed = isClosedMarketplaceStatus(item.status);
   const helpRequestItem = !!item.helpRequestId;
   const normalizedStatus = (item.status || "").trim().toLowerCase();
+  const viewerMatchStatus =
+    normalizeMarketplaceNeedMatchStatus(item.viewerMatchStatus) ||
+    (item.viewerHasExpressedInterest ? "interested" : null);
 
   const acceptButton = (() => {
     if (!helpRequestItem) return buildButton("accept", "No Task", "status", true);
-    if (normalizedStatus === "accepted") return buildButton("decline", "Decline", "destructive", false);
-    if (isOwnListing) return buildButton("accept", "No Task", "status", true);
+    if (normalizedStatus === "accepted") {
+      if (item.acceptedProviderId === viewerId || isOwnListing) {
+        return buildButton("decline", "Decline", "destructive", false);
+      }
+      return buildButton("accept", "Taken", "status", true);
+    }
+    if (isOwnListing) return buildButton("accept", "Your Post", "status", true);
     if (isClosed) return buildButton("accept", "Closed", "status", true);
-    if (item.acceptedProviderId && item.acceptedProviderId !== viewerId) return buildButton("accept", "Taken", "status", true);
-    return buildButton("accept", "Accept", "success", false);
+    if (item.acceptedProviderId && item.acceptedProviderId !== viewerId) {
+      return buildButton("accept", "Taken", "status", true);
+    }
+    if (viewerMatchStatus === "interested") return buildButton("withdraw", "Withdraw", "destructive", false);
+    if (viewerMatchStatus === "rejected") return buildButton("accept", "Not selected", "status", true);
+    return buildButton("accept", "I'm Interested", "success", false);
   })();
 
   const quoteButton = (() => {
     if (isOwnListing) return buildButton("send_quote", "Your Listing", "status", true);
-    if (isClosed) return buildButton("send_quote", "Send Quote", "status", true);
-    return buildButton("send_quote", "Send Quote", "primary", false);
+    if (isClosed) return buildButton("send_quote", "Chat Closed", "status", true);
+    if (helpRequestItem && item.acceptedProviderId === viewerId) {
+      return buildButton("send_quote", "Prepare Quote", "primary", false);
+    }
+    return buildButton("send_quote", "Open Chat", "primary", false);
   })();
 
   const discardButton = helpRequestItem && isOwnListing ? buildButton("discard", "Discard", "destructive", false) : null;
