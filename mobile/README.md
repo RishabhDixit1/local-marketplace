@@ -1,0 +1,72 @@
+# ServiQ Mobile
+
+Flutter app for the ServiQ customer and provider experience.
+
+## What Exists Right Now
+
+- App shell with bottom navigation: Feed, Inbox, Tasks, Profile
+- Mobile setup screen with environment status
+- Supabase bootstrap for auth and session management
+- Native mobile sign-in starter using `supabase_flutter`
+- Authenticated feed client calling the existing Next.js route at `/api/community/feed`
+- Intentional card layouts for media-rich vs text-only feed posts
+
+## Architecture
+
+- Flutter app: Android and iOS client
+- Supabase direct from mobile: auth, session, realtime-ready client
+- Next.js APIs from mobile: feed and privileged workflows
+- OpenAI: server-side only
+
+## Step-By-Step Setup
+
+1. Install Flutter on Windows.
+2. Install Android Studio.
+3. Enable Windows Developer Mode.
+4. Open Android Studio once and install:
+   - Android SDK
+   - Android Emulator
+   - Android SDK Command-line Tools
+5. Create and boot one Android emulator.
+6. Run the app with Dart defines.
+
+## Run Command
+
+```powershell
+flutter run -d chrome `
+  --dart-define=APP_ENV=development `
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co `
+  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY `
+  --dart-define=API_BASE_URL=https://YOUR_WEB_APP_DOMAIN `
+  --dart-define=AUTH_REDIRECT_SCHEME=serviq `
+  --dart-define=AUTH_REDIRECT_HOST=auth-callback
+```
+
+When Android is ready, replace `-d chrome` with your emulator id.
+
+## Important Auth Note
+
+The mobile app uses the Supabase Flutter client directly for sign-in.
+
+Your current web route at `/api/auth/send-link` only accepts `http/https` callbacks back to `/auth/callback`, so it is not the correct native mobile sign-in path yet. That is why this app sends auth through Supabase directly with a native redirect URL like:
+
+```text
+serviq://auth-callback
+```
+
+The next platform step is registering that deep link in Android and iOS project settings.
+
+## Verification Commands
+
+```powershell
+flutter analyze --no-pub
+flutter test --no-pub test/widget_test.dart
+```
+
+## Next Product Work
+
+1. Wire deep links for Android and iOS sign-in completion.
+2. Connect realtime inbox and chat threads.
+3. Build provider task actions for interest, accept, withdraw, and progress.
+4. Add the 2-step mobile composer for needs, services, and products.
+5. Integrate push notifications with Firebase.
