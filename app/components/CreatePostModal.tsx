@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check, Loader2, MapPin, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Check, Loader2, MapPin, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type {
   PostType,
@@ -31,7 +31,6 @@ export type PublishPostResult = {
 // Static data
 // 
 
-const MEDIA_BUCKET = "post-media";
 const TITLE_MAX = 160;
 const DETAILS_MAX = 1200;
 const MAX_PHOTOS = 4;
@@ -89,23 +88,35 @@ const PLACEHOLDERS: Record<string, string> = {
 
 const PRICE_TYPES = ["Fixed", "Hourly", "Negotiable"] as const;
 type PriceType = typeof PRICE_TYPES[number];
+type ComposerStep = 1 | 2;
 
 // 
 // Helpers
 // 
 
-const uploadPhotos = async (userId: string, photos: File[]) => {
+const uploadPhotos = async (accessToken: string, photos: File[]) => {
   const uploaded: { name: string; url: string; type: string }[] = [];
   for (const file of photos) {
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `posts/${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, {
-      contentType: file.type,
-      upsert: false,
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/upload/post-media", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
     });
-    if (error) throw new Error(`Photo upload failed: ${file.name}`);
-    const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
-    uploaded.push({ name: file.name, url: data.publicUrl, type: file.type });
+
+    const payload = (await response.json().catch(() => null)) as
+      | { ok?: boolean; message?: string; media?: { name: string; url: string; type: string } }
+      | null;
+
+    if (!response.ok || !payload?.ok || !payload.media) {
+      throw new Error(payload?.message || `Photo upload failed: ${file.name}`);
+    }
+
+    uploaded.push(payload.media);
   }
   return uploaded;
 };
@@ -127,6 +138,7 @@ const getGpsLocation = (): Promise<{ latitude: number; longitude: number } | nul
 
 export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   // form state
+  const [step, setStep] = useState<ComposerStep>(1);
   const [postType, setPostType] = useState<PostType>("need");
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -170,6 +182,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   // reset when closed
   useEffect(() => {
     if (!open) {
+      setStep(1);
       setTitle("");
       setDetails("");
       setCategory("Plumber");
@@ -223,9 +236,24 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
     setPhotos(next);
   };
 
+  const validateStepOne = () => {
+    if (!title.trim()) {
+      setError("Please add a title.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    setError("");
+    if (!validateStepOne()) return;
+    setStep(2);
+  };
+
   //  submit 
   const handlePost = async () => {
-    if (!title.trim()) { setError("Please add a title."); return; }
+    if (!validateStepOne()) return;
     if (!location.trim()) { setError("Please add your location."); return; }
 
     setPosting(true);
@@ -237,7 +265,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       const token = session?.access_token;
       if (!user || !token) throw new Error("Please sign in again.");
 
-      const media = await uploadPhotos(user.id, photos);
+      const media = await uploadPhotos(token, photos);
       const parsedPrice = price.trim() ? Math.abs(parseFloat(price.replace(/[^\d.]/g, ""))) : null;
       const budgetValue = Number.isFinite(parsedPrice) && parsedPrice! > 0 ? parsedPrice : null;
       const trimmedDetails = details.trim();
@@ -311,203 +339,301 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       : postType === "service"
         ? "Describe what you offer, your experience, what is included, and any delivery timeline."
         : "Describe the item, condition, brand, size, pickup or delivery details, and what is included.";
+  const stepTitle =
+    step === 1
+      ? postType === "need"
+        ? "Start with the request"
+        : postType === "service"
+          ? "Start with the service"
+          : "Start with the product"
+      : "Add price, location, and media";
+  const stepDescription =
+    step === 1
+      ? "Keep this screen focused on the headline and the core details. We will add discovery details next."
+      : "This is where we make the post easier to trust and easier to find nearby.";
+  const primaryActionLabel =
+    step === 1
+      ? "Continue"
+      : postType === "need"
+        ? "Post Request"
+        : postType === "service"
+          ? "Post Service"
+          : "List Product";
+  const locationHint =
+    postType === "need"
+      ? "Location is required so nearby helpers can see your request."
+      : postType === "service"
+        ? "Add the area you serve so nearby customers can find you."
+        : "Add a pickup or delivery area so buyers know where the item is available.";
+  const priceHint =
+    postType === "need"
+      ? "Add a budget if you have one, or leave it blank and discuss it in chat."
+      : postType === "service"
+        ? "Use price to set expectations. Switch to hourly or negotiable if fixed pricing is not right."
+        : "Price helps product posts feel complete, even if you are open to negotiation.";
 
   return (
     <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col bg-white">
       {/* header */}
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-        <h2 className="text-lg font-bold text-slate-900">Post</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={posting}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
+      <div className="border-b border-slate-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Step {step} of 2</p>
+            <h2 className="mt-1 text-lg font-bold text-slate-900">{stepTitle}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={posting}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="mt-2 max-w-lg text-sm text-slate-500">{stepDescription}</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {[1, 2].map((stepNumber) => {
+            const isActive = step === stepNumber;
+            const isComplete = step > stepNumber;
+
+            return (
+              <button
+                key={stepNumber}
+                type="button"
+                onClick={() => {
+                  if (stepNumber === 1 || step === 2) {
+                    setStep(stepNumber as ComposerStep);
+                    setError("");
+                  }
+                }}
+                className={`rounded-2xl border px-3 py-2 text-left transition ${
+                  isActive
+                    ? "border-[var(--brand-500)] bg-[var(--brand-50)]"
+                    : isComplete
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-slate-200 bg-slate-50"
+                }`}
+                aria-current={isActive ? "step" : undefined}
+              >
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className={isActive ? "text-[var(--brand-700)]" : isComplete ? "text-emerald-700" : "text-slate-500"}>
+                    {stepNumber === 1 ? "Core Details" : "Discovery Details"}
+                  </span>
+                  {isComplete ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : null}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {stepNumber === 1 ? "Type, category, title, and description" : "Price, location, and photos"}
+                </p>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* scrollable body */}
       <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
         <div className="mx-auto max-w-lg space-y-5">
-
-          {/* 1. Post type */}
-          <div className="grid grid-cols-3 gap-2">
-            {TYPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setPostType(opt.value)}
-                className={`flex flex-col items-center gap-1 rounded-2xl border py-3 text-sm font-semibold transition ${
-                  postType === opt.value
-                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                }`}
-              >
-                <span className="text-xl leading-none">{opt.emoji}</span>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* 2. Category */}
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-category">
-              Category
-            </label>
-            <select
-              id="post-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 3. Title */}
-          <div>
-            <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-title">
-              <span>Title</span>
-              <span className={`text-xs font-normal ${title.length > TITLE_MAX - 10 ? "text-rose-500" : "text-slate-400"}`}>
-                {title.length}/{TITLE_MAX}
-              </span>
-            </label>
-            <textarea
-              id="post-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
-              rows={2}
-              placeholder={placeholder}
-              className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
-            />
-            <p className="mt-2 text-xs text-slate-500">Use the title for the headline. Add the full job or listing context below.</p>
-          </div>
-
-          {/* 4. Details */}
-          <div>
-            <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
-              <span>Details</span>
-              <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
-                {details.length}/{DETAILS_MAX}
-              </span>
-            </label>
-            <textarea
-              id="post-details"
-              value={details}
-              onChange={(e) => setDetails(e.target.value.slice(0, DETAILS_MAX))}
-              rows={5}
-              placeholder={detailPlaceholder}
-              className="w-full resize-y rounded-[24px] border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
-            />
-          </div>
-
-          {/* 5. Price */}
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-price">
-              Price <span className="font-normal text-slate-400">(optional)</span>
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="post-price"
-                type="number"
-                inputMode="numeric"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder=" Amount"
-                className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
-              />
-              <div className="flex shrink-0 overflow-hidden rounded-2xl border border-slate-200">
-                {PRICE_TYPES.map((pt) => (
+          {step === 1 ? (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {TYPE_OPTIONS.map((opt) => (
                   <button
-                    key={pt}
+                    key={opt.value}
                     type="button"
-                    onClick={() => setPriceType(pt)}
-                    className={`px-3 py-2 text-xs font-semibold transition ${
-                      priceType === pt
-                        ? "bg-[var(--brand-900)] text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    onClick={() => setPostType(opt.value)}
+                    className={`rounded-[1.35rem] border px-3 py-3 text-left transition ${
+                      postType === opt.value
+                        ? "border-[var(--brand-500)] bg-[linear-gradient(135deg,var(--brand-50)_0%,#ffffff_100%)] text-[var(--brand-700)] shadow-[0_16px_28px_-24px_rgba(15,118,110,0.65)]"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    {pt}
+                    <span className="block text-sm font-semibold">{opt.label}</span>
+                    <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+                      {opt.value === "need" ? "Ask nearby providers" : opt.value === "service" ? "Offer your work" : "Sell an item"}
+                    </span>
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
 
-          {/* 6. Location */}
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-location">
-              Location
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="post-location"
-                type="text"
-                value={location}
-                onChange={(e) => { setLocation(e.target.value); setLat(null); setLng(null); }}
-                placeholder="Area, neighbourhood, city"
-                className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
-              />
-              <button
-                type="button"
-                onClick={() => void handleGps()}
-                disabled={locating}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-                aria-label="Detect GPS"
-              >
-                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                GPS
-              </button>
-            </div>
-          </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-category">
+                  Category
+                </label>
+                <select
+                  id="post-category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
 
-          {/* 7. Photos */}
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Photos <span className="font-normal text-slate-400">(optional, up to {MAX_PHOTOS})</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {photoPreviews.map((src, i) => (
-                <div key={src} className="relative h-20 w-20 shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
+              <div>
+                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-title">
+                  <span>Title</span>
+                  <span className={`text-xs font-normal ${title.length > TITLE_MAX - 10 ? "text-rose-500" : "text-slate-400"}`}>
+                    {title.length}/{TITLE_MAX}
+                  </span>
+                </label>
+                <textarea
+                  id="post-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
+                  rows={2}
+                  placeholder={placeholder}
+                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                />
+                <p className="mt-2 text-xs text-slate-500">Use the title as the headline people will scan first.</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
+                  <span>Details</span>
+                  <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
+                    {details.length}/{DETAILS_MAX}
+                  </span>
+                </label>
+                <textarea
+                  id="post-details"
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value.slice(0, DETAILS_MAX))}
+                  rows={5}
+                  placeholder={detailPlaceholder}
+                  className="w-full resize-y rounded-[24px] border border-slate-200 bg-white px-4 py-3.5 text-base leading-6 text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Clear details reduce back-and-forth and help the right people respond faster.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
+                <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-700">
+                    {postType === "need" ? "Need Help" : postType === "service" ? "Service" : "Product"}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-700">{category}</span>
+                </div>
+                <h3 className="mt-3 text-base font-semibold text-slate-900">{title.trim() || "Untitled post"}</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  {details.trim()
+                    ? `${details.trim().slice(0, 140)}${details.trim().length > 140 ? "..." : ""}`
+                    : "Add pricing, location, and media to make this post feel complete before publishing."}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-price">
+                  Price <span className="font-normal text-slate-400">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="post-price"
+                    type="number"
+                    inputMode="numeric"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="Amount"
+                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  />
+                  <div className="flex shrink-0 overflow-hidden rounded-2xl border border-slate-200">
+                    {PRICE_TYPES.map((pt) => (
+                      <button
+                        key={pt}
+                        type="button"
+                        onClick={() => setPriceType(pt)}
+                        className={`px-3 py-2 text-xs font-semibold transition ${
+                          priceType === pt
+                            ? "bg-[var(--brand-900)] text-white"
+                            : "bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {pt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">{priceHint}</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-location">
+                  Location
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="post-location"
+                    type="text"
+                    value={location}
+                    onChange={(e) => { setLocation(e.target.value); setLat(null); setLng(null); }}
+                    placeholder="Area, neighbourhood, city"
+                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
+                  />
                   <button
                     type="button"
-                    onClick={() => removePhoto(i)}
-                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white shadow"
-                    aria-label={`Remove photo ${i + 1}`}
+                    onClick={() => void handleGps()}
+                    disabled={locating}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                    aria-label="Detect GPS"
                   >
-                    <X className="h-3 w-3" />
+                    {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                    GPS
                   </button>
                 </div>
-              ))}
-              {photos.length < MAX_PHOTOS && (
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-slate-400 hover:bg-white"
-                  aria-label="Add photo"
-                >
-                  <Camera className="h-5 w-5" />
-                  <span className="text-[10px] font-semibold">Add</span>
-                </button>
-              )}
-            </div>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="sr-only"
-              onChange={handlePhotoChange}
-              aria-label="Upload photos"
-            />
-          </div>
+                <p className="mt-2 text-xs text-slate-500">{locationHint}</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Photos <span className="font-normal text-slate-400">(optional, up to {MAX_PHOTOS})</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {photoPreviews.map((src, i) => (
+                    <div key={src} className="relative h-20 w-20 shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white shadow"
+                        aria-label={`Remove photo ${i + 1}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {photos.length < MAX_PHOTOS && (
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-slate-400 hover:bg-white"
+                      aria-label="Add photo"
+                    >
+                      <Camera className="h-5 w-5" />
+                      <span className="text-[10px] font-semibold">Add</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={handlePhotoChange}
+                  aria-label="Upload photos"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Add real photos when they help someone judge the request, the service, or the product faster.
+                </p>
+              </div>
+            </>
+          )}
 
           {/* error */}
           {error ? (
@@ -518,10 +644,24 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
 
       {/* sticky post button */}
       <div className="border-t border-slate-200 bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-3">
-        <div className="mx-auto max-w-lg">
+        <div className="mx-auto flex max-w-lg gap-3">
+          {step === 2 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setStep(1);
+              }}
+              disabled={posting}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => void handlePost()}
+            onClick={() => void (step === 1 ? handleNextStep() : handlePost())}
             disabled={posting || posted}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-4 text-base font-bold text-white shadow-md transition hover:bg-[var(--brand-700)] disabled:opacity-60 active:scale-[0.98]"
           >
@@ -530,7 +670,10 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
             ) : posted ? (
               <><Check className="h-5 w-5" /> Posted!</>
             ) : (
-              postType === "need" ? " Post Request" : postType === "service" ? " Post Service" : " List Product"
+              <>
+                {primaryActionLabel}
+                {step === 1 ? <ArrowRight className="h-4 w-4" /> : null}
+              </>
             )}
           </button>
         </div>

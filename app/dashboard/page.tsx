@@ -172,7 +172,7 @@ export default function MarketplacePage() {
         return chatOpeningProviderId === item.providerId;
       }
 
-      if (primaryKind === "accept") {
+      if (primaryKind === "accept" || primaryKind === "withdraw" || primaryKind === "decline") {
         return isListingBusy(item, acceptingListingIds);
       }
 

@@ -182,6 +182,43 @@ describe("welcome feed builder", () => {
     expect(result.cards.every((card) => card.ownerId === "peer-1")).toBe(true);
   });
 
+  it("carries the viewer's explicit interest state into welcome cards", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        feedItems: [
+          buildFeedItem({
+            id: "help-visible",
+            source: "help_request",
+            helpRequestId: "help-visible",
+            providerId: "peer-1",
+            type: "demand",
+            title: "Need same-day mover",
+            description: "Small apartment move",
+            category: "Moving",
+            viewerMatchStatus: "interested",
+            viewerHasExpressedInterest: true,
+          }),
+        ],
+        helpRequests: [
+          {
+            id: "help-visible",
+            requester_id: "peer-1",
+            title: "Need same-day mover",
+            details: "Small apartment move",
+            budget_max: 2500,
+            category: "Moving",
+            urgency: "urgent",
+            created_at: "2026-03-12T12:50:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.viewerMatchStatus).toBe("interested");
+  });
+
   it("collapses mirrored need rows into a single welcome card", () => {
     const mirroredMetadata = {
       source: "serviq_compose",

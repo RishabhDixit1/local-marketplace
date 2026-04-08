@@ -6,8 +6,9 @@ import type { CommunityFeedResponse } from "@/lib/api/community";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import { createAvatarFallback } from "@/lib/avatarFallback";
+import { buildChatConversationPath } from "@/lib/chatNavigation";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { mergeFeedCardSaves, type FeedCardSaveRecord, type FeedCardType } from "@/lib/feedCardSaves";
 import {
   buildMarketplaceDisplayItem,
@@ -286,6 +287,12 @@ const buildSavedWelcomeDisplayItem = (card: WelcomeFeedCard): MarketplaceDisplay
     publicProfilePath: buildSavedWelcomeProfilePath(card),
     status: card.status || "open",
     acceptedProviderId: card.acceptedProviderId || null,
+    viewerMatchStatus: card.viewerMatchStatus || null,
+    viewerHasExpressedInterest:
+      card.viewerMatchStatus === "interested" ||
+      card.viewerMatchStatus === "accepted" ||
+      card.viewerMatchStatus === "in_progress" ||
+      card.viewerMatchStatus === "completed",
   });
 };
 
@@ -614,25 +621,32 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
       }
 
       const conversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, ownerId);
-      const interestMessage =
-        item.helpRequestId && item.acceptedProviderId === activeViewerId
-          ? `Hi, I am preparing a quote for "${item.displayTitle}" and will share it shortly.`
-          : `Hi, I am interested in "${item.displayTitle}" and can help with it.`;
-
-      await insertConversationMessage(supabase, {
-        conversationId,
-        senderId: activeViewerId,
-        content: interestMessage,
-      });
-
-      const params = new URLSearchParams({ open: conversationId });
-      if (item.helpRequestId && item.acceptedProviderId === activeViewerId) {
-        params.set("quote", "1");
-        params.set("helpRequest", item.helpRequestId);
-      }
-
-      router.push(`/dashboard/chat?${params.toString()}`);
-      pushFeedToast("success", "Interest sent to the creator.");
+      router.push(
+        buildChatConversationPath({
+          conversationId,
+          feedContext: {
+            source: "saved_feed",
+            cardId: card.card_id,
+            focusId: card.focus_id,
+            itemType: item.type,
+            title: item.displayTitle,
+            audience: "Saved feed",
+            returnPath: fallbackPath,
+          },
+          quoteContext:
+            item.helpRequestId && item.acceptedProviderId === activeViewerId
+              ? { helpRequestId: item.helpRequestId }
+              : null,
+          draftTemplate:
+            item.helpRequestId && item.acceptedProviderId === activeViewerId
+              ? null
+              : {
+                  kind: "interest",
+                  title: item.displayTitle,
+                },
+        })
+      );
+      pushFeedToast("success", item.helpRequestId && item.acceptedProviderId === activeViewerId ? "Quote draft opened." : "Chat opened.");
     } catch (error) {
       pushFeedToast("error", toErrorMessage(error, "Unable to start the quote flow."));
     } finally {
@@ -657,7 +671,12 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
         throw new Error("You can only decline requests you created or accepted.");
       }
 
-      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "cancelled" }>(supabase, "/api/needs/reopen", {
+      const response = await fetchAuthedJson<{
+        ok: true;
+        helpRequestId: string;
+        status: "open" | "matched";
+        previousMatchStatus: "withdrawn" | "rejected" | null;
+      }>(supabase, "/api/needs/reopen", {
         method: "POST",
         body: JSON.stringify({ helpRequestId: item.helpRequestId }),
       });
@@ -666,14 +685,49 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
         ...current,
         [card.card_id]: {
           ...item,
-          status: "open",
+          status: response.status,
           acceptedProviderId: null,
+          viewerMatchStatus:
+            item.acceptedProviderId === activeViewerId ? response.previousMatchStatus : item.viewerMatchStatus,
+          viewerHasExpressedInterest: item.acceptedProviderId === activeViewerId ? false : item.viewerHasExpressedInterest,
         },
       }));
 
       pushFeedToast("success", "Request declined.");
     } catch (error) {
       pushFeedToast("error", toErrorMessage(error, "Unable to decline this task right now."));
+    } finally {
+      setAcceptingCardId((current) => (current === card.card_id ? null : current));
+    }
+  }, [ensureViewerId, pushFeedToast]);
+
+  const withdrawSavedInterest = useCallback(async (card: FeedCardSaveRecord, item: MarketplaceDisplayFeedItem) => {
+    if (!item.helpRequestId) {
+      pushFeedToast("info", "Withdraw is available for active task requests.");
+      return;
+    }
+
+    setAcceptingCardId(card.card_id);
+
+    try {
+      await ensureViewerId();
+      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "withdrawn" }>(supabase, "/api/needs/withdraw-interest", {
+        method: "POST",
+        body: JSON.stringify({ helpRequestId: item.helpRequestId }),
+      });
+
+      setLiveActionItemsByCardId((current) => ({
+        ...current,
+        [card.card_id]: {
+          ...item,
+          viewerMatchStatus: "withdrawn",
+          viewerHasExpressedInterest: false,
+        },
+      }));
+
+      pushFeedToast("success", "Interest withdrawn.");
+    } catch (error) {
+      pushFeedToast("error", toErrorMessage(error, "Unable to withdraw interest right now."));
     } finally {
       setAcceptingCardId((current) => (current === card.card_id ? null : current));
     }
@@ -718,7 +772,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
         throw new Error("You cannot accept your own task.");
       }
 
-      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "interested" }>(supabase, "/api/needs/express-interest", {
         method: "POST",
         body: JSON.stringify({ helpRequestId: acceptTarget.item.helpRequestId }),
       });
@@ -727,23 +781,22 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
         ...current,
         [acceptTarget.cardId]: {
           ...acceptTarget.item,
-          status: "accepted",
-          acceptedProviderId: activeViewerId,
+          viewerMatchStatus: "interested",
+          viewerHasExpressedInterest: true,
         },
       }));
 
-      pushFeedToast("success", "Task accepted successfully.");
+      pushFeedToast("success", "Interest sent! The requester will review and get back to you.");
       setAcceptTarget(null);
-      router.push("/dashboard/tasks");
       void loadLiveActionItems();
     } catch (error) {
-      pushFeedToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+      pushFeedToast("error", toErrorMessage(error, "Unable to send interest right now."));
     } finally {
       setAcceptingCardId((current) => (current === acceptTarget.cardId ? null : current));
     }
-  }, [acceptTarget, ensureViewerId, loadLiveActionItems, pushFeedToast, router]);
+  }, [acceptTarget, ensureViewerId, loadLiveActionItems, pushFeedToast]);
 
-  const handlePrimaryAction = useCallback(async (card: FeedCardSaveRecord, item: MarketplaceDisplayFeedItem, kind: "accept" | "decline" | "send_quote") => {
+  const handlePrimaryAction = useCallback(async (card: FeedCardSaveRecord, item: MarketplaceDisplayFeedItem, kind: "accept" | "withdraw" | "decline" | "send_quote") => {
     if (kind === "send_quote") {
       await openInterestThread(card, item);
       return;
@@ -754,8 +807,13 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
       return;
     }
 
+    if (kind === "withdraw") {
+      await withdrawSavedInterest(card, item);
+      return;
+    }
+
     openAcceptDialog(card, item);
-  }, [declineSavedCard, openAcceptDialog, openInterestThread]);
+  }, [declineSavedCard, openAcceptDialog, openInterestThread, withdrawSavedInterest]);
 
   return (
     <div className={embedded ? "space-y-5" : "w-full max-w-[1180px] mx-auto space-y-5 sm:space-y-6"}>
@@ -864,8 +922,8 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
               (
                 button
               ): button is (typeof actionModel.buttons)[number] & {
-                kind: "accept" | "decline";
-              } => button.kind === "accept" || button.kind === "decline"
+                kind: "accept" | "withdraw" | "decline";
+              } => button.kind === "accept" || button.kind === "withdraw" || button.kind === "decline"
             );
             const sendQuoteButton = actionModel.buttons.find(
               (
@@ -1008,7 +1066,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                       onClick={() => void handlePrimaryAction(card, resolvedItem, acceptButton.kind)}
                       disabled={acceptButton.disabled || isAccepting}
                       data-testid="saved-feed-accept"
-                      aria-label={isAccepting ? "Accepting saved post" : acceptButton.label}
+                      aria-label={isAccepting ? "Updating saved post action" : acceptButton.label}
                       title={isAccepting ? "Working..." : acceptButton.label}
                       className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
                         buttonToneClassNames[acceptButton.tone]
@@ -1016,7 +1074,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     >
                       {isAccepting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : acceptButton.kind === "decline" ? (
+                      ) : acceptButton.kind === "decline" || acceptButton.kind === "withdraw" ? (
                         <X className="h-4 w-4" />
                       ) : (
                         <Check className="h-4 w-4" />

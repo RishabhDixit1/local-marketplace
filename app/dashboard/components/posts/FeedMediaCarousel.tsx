@@ -15,14 +15,7 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
   const [imgError, setImgError] = useState(false);
 
   if (!media.length) {
-    return (
-      <div className="grid aspect-[16/9] place-items-center rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 via-white to-cyan-50 text-center">
-        <div>
-          <p className="text-xs font-semibold text-slate-600">No media yet</p>
-          <p className="mt-1 text-[11px] text-slate-500">This post does not include image or video attachments.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const safeIndex = Math.min(activeIndex, media.length - 1);

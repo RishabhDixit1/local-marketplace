@@ -56,6 +56,7 @@ const buttonToneClassNames: Record<MarketplaceCardActionButton<MarketplacePrimar
 
 const buttonBusyLabels: Record<MarketplacePrimaryActionKind, string> = {
   accept: "Accepting",
+  withdraw: "Withdrawing",
   decline: "Declining",
   send_quote: "Opening",
   view_profile: "Opening",
@@ -112,7 +113,9 @@ export default function FeedCard({
   ownerBusy,
 }: FeedCardProps) {
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
+  const hasMedia = item.media.length > 0;
 
   useEffect(() => {
     if (!ownerMenuOpen) return;
@@ -125,7 +128,9 @@ export default function FeedCard({
     return () => document.removeEventListener("mousedown", handler);
   }, [ownerMenuOpen]);
 
-  const acceptButton = buttons.find((button) => button.kind === "accept" || button.kind === "decline");
+  const acceptButton = buttons.find(
+    (button) => button.kind === "accept" || button.kind === "withdraw" || button.kind === "decline"
+  );
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
   const discardButton = buttons.find((button) => button.kind === "discard");
   const reviewCount = item.reviewCount ?? 0;
@@ -276,12 +281,65 @@ export default function FeedCard({
       </header>
 
       <div className="mt-2.5">
-        <FeedMediaCarousel media={item.media} title={item.displayTitle} />
+        {hasMedia ? (
+          <FeedMediaCarousel media={item.media} title={item.displayTitle} />
+        ) : (
+          <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 ${
+                  item.type === "demand"
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : item.type === "service"
+                      ? "border-cyan-200 bg-cyan-50 text-cyan-700"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                }`}
+              >
+                {item.type === "demand" ? "Need" : item.type === "service" ? "Service" : "Product"}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-600">
+                {item.category}
+              </span>
+              {item.urgent ? (
+                <span className="inline-flex items-center rounded-full border border-rose-200 bg-white/85 px-2.5 py-1 text-rose-700">
+                  Urgent
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-[1.15rem] font-semibold leading-tight text-slate-950">{item.displayTitle}</h3>
+              <p className={`mt-2 text-sm leading-6 text-slate-600 ${descExpanded ? "" : "line-clamp-4"}`}>{item.displayDescription}</p>
+              {item.displayDescription.length > 160 && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((expanded) => !expanded)}
+                  className="mt-2 text-xs font-semibold text-[var(--brand-700)] hover:underline focus-visible:outline-none"
+                >
+                  {descExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-2.5">
-        <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">{item.displayTitle}</h3>
-        <p className="mt-1.5 line-clamp-4 text-sm leading-relaxed text-slate-600">{item.displayDescription}</p>
+        {hasMedia ? (
+          <>
+            <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">{item.displayTitle}</h3>
+            <p className={`mt-1.5 text-sm leading-relaxed text-slate-600 ${descExpanded ? "" : "line-clamp-3"}`}>{item.displayDescription}</p>
+            {item.displayDescription.length > 120 && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded((expanded) => !expanded)}
+                className="mt-1 text-xs font-semibold text-[var(--brand-700)] hover:underline focus-visible:outline-none"
+              >
+                {descExpanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </>
+        ) : null}
         <TrustSnapshot items={trustItems} compact className="mt-3" />
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <span
@@ -327,7 +385,7 @@ export default function FeedCard({
           >
             {actionBusyState[acceptButton.kind] ? (
               <Loader2 size={16} className="animate-spin" />
-            ) : acceptButton.kind === "decline" ? (
+            ) : acceptButton.kind === "decline" || acceptButton.kind === "withdraw" ? (
               <X size={16} />
             ) : (
               <Check size={16} />

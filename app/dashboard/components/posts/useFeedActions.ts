@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
+import { buildChatConversationPath } from "@/lib/chatNavigation";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   clearPendingFeedCardSave,
   getPendingFeedCardIds,
@@ -389,27 +390,32 @@ export const useFeedActions = ({
 
         setChatOpeningProviderId(ownerId);
         const conversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, ownerId);
-
-        const interestMessage =
-          item.helpRequestId && item.acceptedProviderId === activeViewerId
-            ? `Hi, I am preparing a quote for "${item.displayTitle}" and will share it shortly.`
-            : `Hi, I am interested in "${item.displayTitle}" and can help with it.`;
-
-        await insertConversationMessage(supabase, {
-          conversationId,
-          senderId: activeViewerId,
-          content: interestMessage,
-        });
-
-        const params = new URLSearchParams({ open: conversationId });
-
-        if (item.helpRequestId && item.acceptedProviderId === activeViewerId) {
-          params.set("quote", "1");
-          params.set("helpRequest", item.helpRequestId);
-        }
-
-        router.push(`/dashboard/chat?${params.toString()}`);
-        pushToast("success", "Interest sent to the creator.");
+        router.push(
+          buildChatConversationPath({
+            conversationId,
+            feedContext: {
+              source: "posts_feed",
+              cardId: buildMarketplaceFeedCardId(item),
+              focusId: item.id,
+              itemType: item.type,
+              title: item.displayTitle,
+              audience: "Marketplace feed",
+              returnPath: buildFeedContextPath(item),
+            },
+            quoteContext:
+              item.helpRequestId && item.acceptedProviderId === activeViewerId
+                ? { helpRequestId: item.helpRequestId }
+                : null,
+            draftTemplate:
+              item.helpRequestId && item.acceptedProviderId === activeViewerId
+                ? null
+                : {
+                    kind: "interest",
+                    title: item.displayTitle,
+                  },
+          })
+        );
+        pushToast("success", item.helpRequestId && item.acceptedProviderId === activeViewerId ? "Quote draft opened." : "Chat opened.");
       } catch (error) {
         pushToast("error", toErrorMessage(error, "Unable to start the quote flow."));
       } finally {
@@ -431,8 +437,8 @@ export const useFeedActions = ({
         return;
       }
 
-      if (item.acceptedProviderId && viewerId && item.acceptedProviderId !== viewerId) {
-        pushToast("info", "This task is already accepted.");
+      if (item.status === "accepted") {
+        pushToast("info", "This task is no longer accepting interest.");
         return;
       }
 
@@ -462,19 +468,28 @@ export const useFeedActions = ({
         throw new Error("You cannot accept your own task.");
       }
 
-      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+      await fetchAuthedJson<{ ok: true; helpRequestId: string }>(supabase, "/api/needs/express-interest", {
         method: "POST",
         body: JSON.stringify({ helpRequestId: acceptTarget.helpRequestId }),
       });
 
-      setFeed((current) => current.filter((item) => item.helpRequestId !== acceptTarget.helpRequestId));
+      setFeed((current) =>
+        current.map((feedItem) =>
+          feedItem.helpRequestId === acceptTarget.helpRequestId
+            ? {
+                ...feedItem,
+                viewerMatchStatus: "interested",
+                viewerHasExpressedInterest: true,
+              }
+            : feedItem
+        )
+      );
 
-      pushToast("success", "Task accepted. Head to Tasks to send a quote or start the job.");
+      pushToast("success", "Interest sent! The requester will review and get back to you.");
       setAcceptTarget(null);
-      router.push("/dashboard/tasks");
       void refreshFeed(false);
     } catch (error) {
-      pushToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+      pushToast("error", toErrorMessage(error, "Unable to send interest right now."));
     } finally {
       setAcceptingListingIds((current) => {
         const next = new Set(current);
@@ -482,7 +497,52 @@ export const useFeedActions = ({
         return next;
       });
     }
-  }, [acceptTarget, ensureViewerId, pushToast, refreshFeed, router, setFeed]);
+  }, [acceptTarget, ensureViewerId, pushToast, refreshFeed, setFeed]);
+
+  const withdrawInterest = useCallback(
+    async (item: MarketplaceDisplayFeedItem) => {
+      if (!item.helpRequestId) {
+        pushToast("info", "Withdraw is available for active task requests.");
+        return;
+      }
+
+      const cardId = buildMarketplaceFeedCardId(item);
+      setAcceptingListingIds((current) => new Set(current).add(cardId));
+
+      try {
+        await ensureViewerId();
+        await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "withdrawn" }>(supabase, "/api/needs/withdraw-interest", {
+          method: "POST",
+          body: JSON.stringify({ helpRequestId: item.helpRequestId }),
+        });
+
+        setFeed((current) =>
+          current.map((entry) =>
+            entry.helpRequestId === item.helpRequestId
+              ? {
+                  ...entry,
+                  viewerMatchStatus: "withdrawn",
+                  viewerHasExpressedInterest: false,
+                }
+              : entry
+          )
+        );
+
+        pushToast("success", "Interest withdrawn.");
+        void refreshFeed(false);
+      } catch (error) {
+        pushToast("error", toErrorMessage(error, "Unable to withdraw interest right now."));
+      } finally {
+        setAcceptingListingIds((current) => {
+          const next = new Set(current);
+          next.delete(cardId);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    },
+    [ensureViewerId, pushToast, refreshFeed, setFeed]
+  );
 
   const declineListing = useCallback(
     async (item: MarketplaceDisplayFeedItem) => {
@@ -503,7 +563,12 @@ export const useFeedActions = ({
           throw new Error("You can only decline requests you created or accepted.");
         }
 
-        await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "cancelled" }>(supabase, "/api/needs/reopen", {
+        const response = await fetchAuthedJson<{
+          ok: true;
+          helpRequestId: string;
+          status: "open" | "matched";
+          previousMatchStatus: "withdrawn" | "rejected" | null;
+        }>(supabase, "/api/needs/reopen", {
           method: "POST",
           body: JSON.stringify({ helpRequestId: item.helpRequestId }),
         });
@@ -513,8 +578,14 @@ export const useFeedActions = ({
             entry.helpRequestId === item.helpRequestId
               ? {
                   ...entry,
-                  status: "open",
+                  status: response.status,
                   acceptedProviderId: null,
+                  viewerMatchStatus:
+                    item.acceptedProviderId === activeViewerId
+                      ? response.previousMatchStatus
+                      : entry.viewerMatchStatus,
+                  viewerHasExpressedInterest:
+                    item.acceptedProviderId === activeViewerId ? false : entry.viewerHasExpressedInterest,
                 }
               : entry
           )
@@ -585,6 +656,11 @@ export const useFeedActions = ({
         return;
       }
 
+      if (primaryKind === "withdraw") {
+        await withdrawInterest(item);
+        return;
+      }
+
       if (primaryKind === "accept") {
         openAcceptDialog(item);
         return;
@@ -597,7 +673,7 @@ export const useFeedActions = ({
         await discardListing(item);
       }
     },
-    [declineListing, discardListing, openAcceptDialog, openListingProfile, openQuoteThread]
+    [declineListing, discardListing, openAcceptDialog, openListingProfile, openQuoteThread, withdrawInterest]
   );
 
   const handleSecondaryAction = useCallback(

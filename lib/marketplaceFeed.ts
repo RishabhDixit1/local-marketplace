@@ -13,6 +13,16 @@ export type MarketplaceFeedMedia = {
   url: string;
 };
 
+export type MarketplaceNeedMatchStatus =
+  | "open"
+  | "interested"
+  | "accepted"
+  | "in_progress"
+  | "completed"
+  | "withdrawn"
+  | "rejected"
+  | "cancelled";
+
 export type MarketplaceFeedItem = {
   id: string;
   source: MarketplaceFeedItemSource;
@@ -50,6 +60,8 @@ export type MarketplaceFeedItem = {
   publicProfilePath: string;
   status: string;
   acceptedProviderId: string | null;
+  viewerMatchStatus?: MarketplaceNeedMatchStatus | null;
+  viewerHasExpressedInterest?: boolean;
   pricingType?: ServicePricingType | null;
 };
 
@@ -116,6 +128,17 @@ const CLOSED_STATUSES = new Set([
   "archived",
   "deleted",
   "hidden",
+]);
+
+const NEED_MATCH_STATUSES = new Set<MarketplaceNeedMatchStatus>([
+  "open",
+  "interested",
+  "accepted",
+  "in_progress",
+  "completed",
+  "withdrawn",
+  "rejected",
+  "cancelled",
 ]);
 
 export const DEFAULT_MARKETPLACE_FEED_FILTER_STATE: MarketplaceFeedFilterState = {
@@ -263,6 +286,18 @@ export const normalizeMarketplaceStatusLabel = (status?: string | null) => {
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
 };
+
+export const normalizeMarketplaceNeedMatchStatus = (value?: string | null): MarketplaceNeedMatchStatus | null => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (!normalized || !NEED_MATCH_STATUSES.has(normalized as MarketplaceNeedMatchStatus)) {
+    return null;
+  }
+
+  return normalized as MarketplaceNeedMatchStatus;
+};
+
+export const hasMarketplaceViewerInterest = (status?: MarketplaceNeedMatchStatus | null) =>
+  status === "interested" || status === "accepted" || status === "in_progress" || status === "completed";
 
 export const isUUIDLike = (value?: string | null) =>
   !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);

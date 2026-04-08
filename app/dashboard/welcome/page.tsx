@@ -24,9 +24,10 @@ import {
   stagePendingFeedCardSave,
   syncPendingFeedCardSaves,
 } from "@/lib/feedCardSavesClient";
+import { buildChatConversationPath } from "@/lib/chatNavigation";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
-import { getOrCreateDirectConversationId, insertConversationMessage } from "@/lib/directMessages";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { isClosedMarketplaceStatus, type MarketplaceDisplayFeedItem, type MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 import {
   resolveMarketplaceCardActionModel,
@@ -172,6 +173,7 @@ export default function WelcomePage() {
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
   const [activeFeedCardId, setActiveFeedCardId] = useState<string | null>(null);
   const [hoveredFeedCardId, setHoveredFeedCardId] = useState<string | null>(null);
+  const [expressedInterestCardIds, setExpressedInterestCardIds] = useState<Set<string>>(new Set());
   const activeRef = useRef(true);
 
   const pushFeedToast = useCallback((kind: FeedToast["kind"], message: string) => {
@@ -695,8 +697,8 @@ export default function WelcomePage() {
       return false;
     }
 
-    if (card.acceptedProviderId && card.acceptedProviderId !== viewerId) {
-      pushFeedToast("info", "This task is already accepted.");
+    if (card.status === "accepted") {
+      pushFeedToast("info", "This task is no longer accepting interest.");
       return false;
     }
 
@@ -705,16 +707,10 @@ export default function WelcomePage() {
       return false;
     }
 
-    if (card.acceptedProviderId === viewerId) {
-      return true;
-    }
-
-    await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "accepted" }>(supabase, "/api/needs/accept", {
+    await fetchAuthedJson<{ ok: true; helpRequestId: string }>(supabase, "/api/needs/express-interest", {
       method: "POST",
       body: JSON.stringify({ helpRequestId: card.helpRequestId }),
     });
-
-    setNearbyCards((current) => current.filter((item) => item.id !== card.id));
 
     return true;
   }, [pushFeedToast, viewerId]);
@@ -764,6 +760,12 @@ export default function WelcomePage() {
       publicProfilePath: buildNetworkActionPath(card),
       status: card.status || "open",
       acceptedProviderId: card.acceptedProviderId || null,
+      viewerMatchStatus: card.viewerMatchStatus || null,
+      viewerHasExpressedInterest:
+        card.viewerMatchStatus === "interested" ||
+        card.viewerMatchStatus === "accepted" ||
+        card.viewerMatchStatus === "in_progress" ||
+        card.viewerMatchStatus === "completed",
       displayTitle: card.title,
       displayDescription: card.summary || card.subtitle,
       displayCreator: card.ownerLabel,
@@ -807,25 +809,32 @@ export default function WelcomePage() {
       }
 
       const targetConversationId = await getOrCreateDirectConversationId(supabase, activeViewerId, recipientId);
-      const interestMessage =
-        card.helpRequestId && card.acceptedProviderId === activeViewerId
-          ? `Hi, I am preparing a quote for "${card.title}" and will share it shortly.`
-          : `Hi, I am interested in "${card.title}" and can help with it.`;
-
-      await insertConversationMessage(supabase, {
-        conversationId: targetConversationId,
-        senderId: activeViewerId,
-        content: interestMessage,
-      });
-
-      const params = new URLSearchParams({ open: targetConversationId });
-      if (card.helpRequestId && card.acceptedProviderId === activeViewerId) {
-        params.set("quote", "1");
-        params.set("helpRequest", card.helpRequestId);
-      }
-
-      router.push(`/dashboard/chat?${params.toString()}`);
-      pushFeedToast("success", "Interest sent to the creator.");
+      router.push(
+        buildChatConversationPath({
+          conversationId: targetConversationId,
+          feedContext: {
+            source: "welcome_feed",
+            cardId: card.id,
+            focusId: card.focusId,
+            itemType: card.type,
+            title: card.title,
+            audience: card.audienceMeta,
+            returnPath: buildFeedFocusPath(card),
+          },
+          quoteContext:
+            card.helpRequestId && card.acceptedProviderId === activeViewerId
+              ? { helpRequestId: card.helpRequestId }
+              : null,
+          draftTemplate:
+            card.helpRequestId && card.acceptedProviderId === activeViewerId
+              ? null
+              : {
+                  kind: "interest",
+                  title: card.title,
+                },
+        })
+      );
+      pushFeedToast("success", card.helpRequestId && card.acceptedProviderId === activeViewerId ? "Quote draft opened." : "Chat opened.");
     } catch (error) {
       pushFeedToast("error", toErrorMessage(error, "Unable to start the quote flow."));
     } finally {
@@ -841,14 +850,73 @@ export default function WelcomePage() {
       const accepted = await acceptHelpRequestCard(acceptTargetCard);
       if (!accepted) return;
       setAcceptTargetCard(null);
-      pushFeedToast("success", "Task moved to In Progress.");
-      router.push("/dashboard/tasks");
+      if (acceptTargetCard.helpRequestId) {
+        setExpressedInterestCardIds((current) => new Set([...current, acceptTargetCard.helpRequestId!]));
+      }
+      pushFeedToast("success", "Interest sent! The requester will review and get back to you.");
     } catch (error) {
-      pushFeedToast("error", toErrorMessage(error, "Unable to accept this task right now."));
+      pushFeedToast("error", toErrorMessage(error, "Unable to send interest right now."));
     } finally {
       setAcceptingCardId((current) => (current === acceptTargetCard.id ? null : current));
     }
-  }, [acceptHelpRequestCard, acceptTargetCard, pushFeedToast, router]);
+  }, [acceptHelpRequestCard, acceptTargetCard, pushFeedToast]);
+
+  const withdrawWelcomeInterest = useCallback(async (card: EnrichedNearbyCard) => {
+    if (!card.helpRequestId) {
+      pushFeedToast("info", "Withdraw is available for active task requests.");
+      return;
+    }
+
+    setAcceptingCardId(card.id);
+    try {
+      const activeViewerId = await ensureViewerId();
+      await fetchAuthedJson<{ ok: true; helpRequestId: string; status: "withdrawn" }>(supabase, "/api/needs/withdraw-interest", {
+        method: "POST",
+        body: JSON.stringify({ helpRequestId: card.helpRequestId }),
+      });
+
+      setExpressedInterestCardIds((current) => {
+        const next = new Set(current);
+        next.delete(card.helpRequestId!);
+        return next;
+      });
+
+      pushFeedToast("success", "Interest withdrawn.");
+      void loadConnectedFeed(activeViewerId, { soft: true });
+    } catch (error) {
+      pushFeedToast("error", toErrorMessage(error, "Unable to withdraw interest right now."));
+    } finally {
+      setAcceptingCardId((current) => (current === card.id ? null : current));
+    }
+  }, [ensureViewerId, loadConnectedFeed, pushFeedToast]);
+
+  const declineWelcomeRequest = useCallback(async (card: EnrichedNearbyCard) => {
+    if (!card.helpRequestId) {
+      pushFeedToast("info", "Decline is available for accepted task requests.");
+      return;
+    }
+
+    setAcceptingCardId(card.id);
+    try {
+      const activeViewerId = await ensureViewerId();
+      await fetchAuthedJson<{
+        ok: true;
+        helpRequestId: string;
+        status: "open" | "matched";
+        previousMatchStatus: "withdrawn" | "rejected" | null;
+      }>(supabase, "/api/needs/reopen", {
+        method: "POST",
+        body: JSON.stringify({ helpRequestId: card.helpRequestId }),
+      });
+
+      pushFeedToast("success", "Request declined.");
+      void loadConnectedFeed(activeViewerId, { soft: true });
+    } catch (error) {
+      pushFeedToast("error", toErrorMessage(error, "Unable to decline this task right now."));
+    } finally {
+      setAcceptingCardId((current) => (current === card.id ? null : current));
+    }
+  }, [ensureViewerId, loadConnectedFeed, pushFeedToast]);
 
   const handleShareCard = useCallback(async (card: EnrichedNearbyCard) => {
     const focusPath = buildFeedFocusPath(card);
@@ -901,7 +969,13 @@ export default function WelcomePage() {
   const resolveWelcomeActionModel = useCallback(
     (item: MarketplaceDisplayFeedItem): MarketplaceCardActionModel => {
       const model = resolveMarketplaceCardActionModel({
-        item,
+        item: {
+          ...item,
+          viewerMatchStatus:
+            item.viewerMatchStatus ||
+            (item.helpRequestId && expressedInterestCardIds.has(item.helpRequestId) ? "interested" : null),
+          viewerHasExpressedInterest: !!item.helpRequestId && expressedInterestCardIds.has(item.helpRequestId),
+        },
         viewerId,
       });
 
@@ -910,7 +984,7 @@ export default function WelcomePage() {
         buttons: model.buttons.filter((button) => button.kind !== "discard"),
       };
     },
-    [viewerId]
+    [expressedInterestCardIds, viewerId]
   );
 
   const handleWelcomePrimaryAction = useCallback(
@@ -933,11 +1007,21 @@ export default function WelcomePage() {
         return;
       }
 
+      if (primaryKind === "withdraw") {
+        await withdrawWelcomeInterest(card);
+        return;
+      }
+
+      if (primaryKind === "decline") {
+        await declineWelcomeRequest(card);
+        return;
+      }
+
       if (primaryKind === "send_quote") {
         await openWelcomeQuoteThread(card);
       }
     },
-    [buildFeedFocusPath, buildNetworkActionPath, cardById, openWelcomeQuoteThread, router]
+    [buildFeedFocusPath, buildNetworkActionPath, cardById, declineWelcomeRequest, openWelcomeQuoteThread, router, withdrawWelcomeInterest]
   );
 
   const handleWelcomeSecondaryAction = useCallback(
@@ -971,7 +1055,7 @@ export default function WelcomePage() {
 
   const isWelcomePrimaryBusy = useCallback(
     (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
-      if (primaryKind === "accept") return acceptingCardId === item.id;
+      if (primaryKind === "accept" || primaryKind === "withdraw" || primaryKind === "decline") return acceptingCardId === item.id;
       if (primaryKind === "send_quote") return messageCardId === item.id;
       return false;
     },

@@ -13,6 +13,10 @@ import type {
   CommunityReviewRecord,
   CommunityServiceRecord,
 } from "@/lib/api/community";
+import {
+  normalizeMarketplaceNeedMatchStatus,
+  type MarketplaceNeedMatchStatus,
+} from "@/lib/marketplaceFeed";
 import { buildCommunityFeedView } from "@/lib/server/communityFeedView";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { listAcceptedConnectionPeerIds } from "@/lib/server/chatGuards";
@@ -73,9 +77,16 @@ const selectRowsWithFallback = async (
     allowMissingRelation?: boolean;
     inFilter?: { column: string; values: string[] };
     orFilter?: string;
+    eqFilters?: Array<{ column: string; value: string }>;
   } = {}
 ): Promise<FlexibleRow[]> => {
   let primaryQuery = db.from(table).select(primarySelect);
+
+  if (options.eqFilters?.length) {
+    for (const filter of options.eqFilters) {
+      primaryQuery = primaryQuery.eq(filter.column, filter.value);
+    }
+  }
 
   if (options.inFilter?.column && options.inFilter.values.length > 0) {
     primaryQuery = primaryQuery.in(options.inFilter.column, options.inFilter.values);
@@ -108,6 +119,12 @@ const selectRowsWithFallback = async (
   }
 
   let fallbackQuery = db.from(table).select("*");
+
+  if (options.eqFilters?.length) {
+    for (const filter of options.eqFilters) {
+      fallbackQuery = fallbackQuery.eq(filter.column, filter.value);
+    }
+  }
 
   if (options.inFilter?.column && options.inFilter.values.length > 0) {
     fallbackQuery = fallbackQuery.in(options.inFilter.column, options.inFilter.values);
@@ -472,6 +489,28 @@ export const loadCommunityFeedSnapshot = async (
       return feedScope === "all" || requesterId === currentUserId || acceptedPeers.has(requesterId);
     });
 
+  const viewerHelpRequestIds = Array.from(new Set(helpRequests.map((row) => row.id).filter(Boolean)));
+  const viewerMatchRowsRaw =
+    viewerHelpRequestIds.length > 0
+      ? await selectRowsWithFallback(db, "help_request_matches", "help_request_id,status", {
+          allowMissingRelation: true,
+          eqFilters: [{ column: "provider_id", value: currentUserId }],
+          inFilter: { column: "help_request_id", values: viewerHelpRequestIds },
+        })
+      : [];
+  const viewerMatchStatusByHelpRequestId = viewerMatchRowsRaw.reduce<Record<string, MarketplaceNeedMatchStatus>>(
+    (current, row) => {
+      const helpRequestId = stringFromRow(row, ["help_request_id"], "");
+      const matchStatus = normalizeMarketplaceNeedMatchStatus(stringFromRow(row, ["status"], ""));
+      if (helpRequestId && matchStatus) {
+        current[helpRequestId] = matchStatus;
+      }
+
+      return current;
+    },
+    {}
+  );
+
   const profileIds = Array.from(
     new Set(
       [
@@ -543,6 +582,7 @@ export const loadCommunityFeedSnapshot = async (
     orderStats: providerOrderStatsResult
       .map((row) => normalizeOrderStats(row))
       .filter((row): row is CommunityOrderStatsRecord => !!row),
+    viewerMatchStatusByHelpRequestId,
   };
 
   return {
