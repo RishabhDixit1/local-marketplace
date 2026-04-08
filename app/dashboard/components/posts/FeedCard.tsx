@@ -43,6 +43,7 @@ type FeedCardProps = {
   onOwnerEdit?: () => void;
   onOwnerArchive?: () => void;
   onOwnerDelete?: () => void;
+  ownerDeleteLabel?: string;
   ownerBusy?: boolean;
 };
 
@@ -93,6 +94,10 @@ const verificationLabels: Record<MarketplaceDisplayFeedItem["verificationStatus"
 };
 
 const formatTrustRating = (rating: number) => `${rating.toFixed(1)} stars`;
+type TrustItem = {
+  label: string;
+  tone: "neutral" | "good" | "caution";
+};
 
 export default function FeedCard({
   item,
@@ -110,8 +115,10 @@ export default function FeedCard({
   onOwnerEdit,
   onOwnerArchive,
   onOwnerDelete,
+  ownerDeleteLabel = "Delete post",
   ownerBusy,
 }: FeedCardProps) {
+  void index;
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
@@ -119,11 +126,13 @@ export default function FeedCard({
 
   useEffect(() => {
     if (!ownerMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (ownerMenuRef.current && !ownerMenuRef.current.contains(e.target as Node)) {
+
+    const handler = (event: MouseEvent) => {
+      if (ownerMenuRef.current && !ownerMenuRef.current.contains(event.target as Node)) {
         setOwnerMenuOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [ownerMenuOpen]);
@@ -136,6 +145,9 @@ export default function FeedCard({
   const reviewCount = item.reviewCount ?? 0;
   const completedJobs = item.completedJobs ?? 0;
   const responseMin = item.responseMinutes ?? 0;
+  const ownerCanEdit = typeof onOwnerEdit === "function";
+  const ownerCanArchive = typeof onOwnerArchive === "function";
+  const ownerCanDelete = typeof onOwnerDelete === "function";
   const responseSignal =
     responseMin > 0 && responseMin < 60
       ? { label: "Replies within 1 hr", tone: "good" as const }
@@ -143,45 +155,61 @@ export default function FeedCard({
       ? { label: "Same-day replies", tone: "neutral" as const }
       : null;
   const trustItems = [
-    {
-      label: verificationLabels[item.verificationStatus],
-      tone:
-        item.verificationStatus === "verified"
-          ? ("good" as const)
-          : item.verificationStatus === "pending"
-          ? ("neutral" as const)
-          : ("caution" as const),
-    },
-    reviewCount > 0 && typeof item.averageRating === "number" && Number.isFinite(item.averageRating)
+    item.verificationStatus === "verified"
       ? {
-          label: formatTrustRating(item.averageRating),
+          label: verificationLabels[item.verificationStatus],
           tone: "good" as const,
         }
-      : {
-          label: "No ratings yet",
-          tone: "neutral" as const,
-        },
-    reviewCount > 0
+      : item.verificationStatus === "pending"
       ? {
-          label: `${reviewCount} review${reviewCount === 1 ? "" : "s"}`,
+          label: verificationLabels[item.verificationStatus],
           tone: "neutral" as const,
         }
-      : {
-          label: "First review pending",
-          tone: "caution" as const,
-        },
-    completedJobs > 0
+      : null,
+    reviewCount > 0 && typeof item.averageRating === "number" && Number.isFinite(item.averageRating)
       ? {
-          label: `${completedJobs} job${completedJobs === 1 ? "" : "s"} done`,
+          label: `${formatTrustRating(item.averageRating)} (${reviewCount})`,
+          tone: "good" as const,
+        }
+      : completedJobs > 0
+      ? {
+          label: `${completedJobs} completed job${completedJobs === 1 ? "" : "s"}`,
           tone: completedJobs >= 5 ? ("good" as const) : ("neutral" as const),
         }
       : {
-          label: "No completed jobs yet",
+          label: "New to marketplace",
           tone: "neutral" as const,
         },
-    ...(responseSignal ? [responseSignal] : []),
-    ...(item.locationLabel ? [{ label: item.locationLabel, tone: "neutral" as const }] : []),
-  ];
+    responseSignal,
+  ].filter(Boolean) as TrustItem[];
+
+  const detailPills = [
+    {
+      label: item.type === "demand" ? "Need" : item.type === "service" ? "Service" : "Product",
+      className:
+        item.type === "demand"
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : item.type === "service"
+          ? "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700",
+    },
+    {
+      label: item.category,
+      className: "border-slate-200 bg-slate-50 text-slate-700",
+    },
+    item.priceLabel && (item.type !== "demand" || item.price > 0)
+      ? {
+          label: item.priceLabel,
+          className: "border-cyan-200 bg-cyan-50 text-cyan-700",
+        }
+      : null,
+    item.urgent
+      ? {
+          label: "Urgent",
+          className: "border-rose-200 bg-rose-50 text-rose-700",
+        }
+      : null,
+  ].filter((value): value is { label: string; className: string } => !!value);
 
   return (
     <article
@@ -235,47 +263,68 @@ export default function FeedCard({
             {item.urgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
           </div>
         </div>
+
         {headerAction ? <div className="shrink-0 self-center">{headerAction}</div> : null}
+
         {isOwner ? (
           <div ref={ownerMenuRef} className="relative shrink-0 self-center">
             <button
               type="button"
-              onClick={() => setOwnerMenuOpen((p) => !p)}
+              onClick={() => setOwnerMenuOpen((current) => !current)}
               disabled={ownerBusy}
               aria-label="Post options"
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
             >
               {ownerBusy ? <Loader2 size={15} className="animate-spin" /> : <MoreVertical size={15} />}
             </button>
-            {ownerMenuOpen && (
+
+            {ownerMenuOpen && (ownerCanEdit || ownerCanArchive || ownerCanDelete) ? (
               <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
-                <button
-                  type="button"
-                  onClick={() => { setOwnerMenuOpen(false); onOwnerEdit?.(); }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Pencil size={14} className="text-slate-400" />
-                  Edit post
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOwnerMenuOpen(false); onOwnerArchive?.(); }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Archive size={14} className="text-amber-400" />
-                  Archive post
-                </button>
-                <div className="my-1 border-t border-slate-100" />
-                <button
-                  type="button"
-                  onClick={() => { setOwnerMenuOpen(false); onOwnerDelete?.(); }}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
-                >
-                  <Trash2 size={14} />
-                  Delete post
-                </button>
+                {ownerCanEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnerMenuOpen(false);
+                      onOwnerEdit?.();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Pencil size={14} className="text-slate-400" />
+                    Edit post
+                  </button>
+                ) : null}
+
+                {ownerCanArchive ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnerMenuOpen(false);
+                      onOwnerArchive?.();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Archive size={14} className="text-amber-400" />
+                    Archive post
+                  </button>
+                ) : null}
+
+                {ownerCanDelete && (ownerCanEdit || ownerCanArchive) ? <div className="my-1 border-t border-slate-100" /> : null}
+
+                {ownerCanDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOwnerMenuOpen(false);
+                      onOwnerDelete?.();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                  >
+                    <Trash2 size={14} />
+                    {ownerDeleteLabel}
+                  </button>
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -286,31 +335,22 @@ export default function FeedCard({
         ) : (
           <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-              <span
-                className={`inline-flex items-center rounded-full border px-2.5 py-1 ${
-                  item.type === "demand"
-                    ? "border-rose-200 bg-rose-50 text-rose-700"
-                    : item.type === "service"
-                      ? "border-cyan-200 bg-cyan-50 text-cyan-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                }`}
-              >
-                {item.type === "demand" ? "Need" : item.type === "service" ? "Service" : "Product"}
-              </span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-slate-600">
-                {item.category}
-              </span>
-              {item.urgent ? (
-                <span className="inline-flex items-center rounded-full border border-rose-200 bg-white/85 px-2.5 py-1 text-rose-700">
-                  Urgent
+              {detailPills.slice(0, 2).map((pill) => (
+                <span
+                  key={`${item.id}:hero:${pill.label}`}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-1 ${pill.className}`}
+                >
+                  {pill.label}
                 </span>
-              ) : null}
+              ))}
             </div>
 
             <div className="mt-4">
               <h3 className="text-[1.15rem] font-semibold leading-tight text-slate-950">{item.displayTitle}</h3>
-              <p className={`mt-2 text-sm leading-6 text-slate-600 ${descExpanded ? "" : "line-clamp-4"}`}>{item.displayDescription}</p>
-              {item.displayDescription.length > 160 && (
+              <p className={`mt-2 text-sm leading-6 text-slate-600 ${descExpanded ? "" : "line-clamp-4"}`}>
+                {item.displayDescription}
+              </p>
+              {item.displayDescription.length > 160 ? (
                 <button
                   type="button"
                   onClick={() => setDescExpanded((expanded) => !expanded)}
@@ -318,7 +358,7 @@ export default function FeedCard({
                 >
                   {descExpanded ? "Show less" : "Show more"}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         )}
@@ -327,9 +367,13 @@ export default function FeedCard({
       <div className="mt-2.5">
         {hasMedia ? (
           <>
-            <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">{item.displayTitle}</h3>
-            <p className={`mt-1.5 text-sm leading-relaxed text-slate-600 ${descExpanded ? "" : "line-clamp-3"}`}>{item.displayDescription}</p>
-            {item.displayDescription.length > 120 && (
+            <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">
+              {item.displayTitle}
+            </h3>
+            <p className={`mt-1.5 text-sm leading-relaxed text-slate-600 ${descExpanded ? "" : "line-clamp-3"}`}>
+              {item.displayDescription}
+            </p>
+            {item.displayDescription.length > 120 ? (
               <button
                 type="button"
                 onClick={() => setDescExpanded((expanded) => !expanded)}
@@ -337,41 +381,25 @@ export default function FeedCard({
               >
                 {descExpanded ? "Show less" : "Show more"}
               </button>
-            )}
+            ) : null}
           </>
         ) : null}
-        <TrustSnapshot items={trustItems} compact className="mt-3" />
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-              item.type === "demand"
-                ? "border-rose-200 bg-rose-50 text-rose-700"
-                : item.type === "service"
-                ? "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {item.type === "demand" ? "Need" : item.type === "service" ? "Service" : "Product"}
-          </span>
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-            {item.category}
-          </span>
-          <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
-            {item.priceLabel}
-          </span>
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-              item.urgent
-                ? "border-rose-200 bg-rose-50 text-rose-700"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {item.urgent ? "Urgent" : "Standard"}
-          </span>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {detailPills.map((pill) => (
+            <span
+              key={`${item.id}:${pill.label}`}
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${pill.className}`}
+            >
+              {pill.label}
+            </span>
+          ))}
         </div>
+
+        <TrustSnapshot items={trustItems} compact className="mt-3" />
       </div>
 
-      <div className="mt-3 flex items-center gap-1.5">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {acceptButton ? (
           <button
             type="button"
@@ -379,7 +407,7 @@ export default function FeedCard({
             disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
             aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
             title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
               buttonToneClassNames[acceptButton.tone]
             }`}
           >
@@ -390,6 +418,7 @@ export default function FeedCard({
             ) : (
               <Check size={16} />
             )}
+            <span>{acceptButton.label}</span>
           </button>
         ) : null}
 
@@ -400,11 +429,12 @@ export default function FeedCard({
             disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
             aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
             title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
               buttonToneClassNames[sendQuoteButton.tone]
             }`}
           >
             {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            <span>{sendQuoteButton.label}</span>
           </button>
         ) : null}
 
@@ -415,15 +445,16 @@ export default function FeedCard({
             disabled={discardButton.disabled || actionBusyState.discard}
             aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
             title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
               buttonToneClassNames[discardButton.tone]
             }`}
           >
             {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+            <span>{discardButton.label}</span>
           </button>
         ) : null}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1.5 max-sm:w-full max-sm:justify-end">
           {(["share", "save"] as const).map((actionKind) => {
             const busy = actionBusyState[actionKind];
             const isActive = actionKind === "save" ? saved : false;
@@ -451,11 +482,10 @@ export default function FeedCard({
         </div>
       </div>
 
-      {/* Creator + location footer */}
       {item.locationLabel ? (
         <p className="mt-2 truncate text-[11px] text-slate-400">
           {item.displayCreator}
-          {item.locationLabel ? ` · ${item.locationLabel}` : ""}
+          {item.locationLabel ? ` - ${item.locationLabel}` : ""}
         </p>
       ) : null}
     </article>

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import { CartProvider } from "@/app/components/store/CartContext";
@@ -20,7 +20,7 @@ import { useCart } from "@/app/components/store/CartContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
-import { buildPublicProfilePath, getProfileRoleFamily, isProfileOnboardingComplete } from "@/lib/profile/utils";
+import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -66,6 +66,7 @@ const baseNavigationTabs = [
   { name: "Explore", path: "/dashboard", icon: Newspaper },
   { name: "People", path: "/dashboard/people", icon: Users },
   { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
+  { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
@@ -143,34 +144,6 @@ function DashboardShell({
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
   const [openQuickActions, setOpenQuickActions] = useState(false);
-  // Local role hint: seeded from localStorage before the DB profile loads so
-  // provider users see the Control tab immediately on page load.
-  const [localRoleHint, setLocalRoleHint] = useState<string | null>(null);
-
-  // Read cached role hint before first paint (runs client-only, before browser paints).
-  useLayoutEffect(() => {
-    try {
-      const uid = localStorage.getItem("sq:uid");
-      if (uid) {
-        const storedRole = localStorage.getItem(`sq:role:${uid}`);
-        if (storedRole) setLocalRoleHint(storedRole);
-      }
-    } catch {
-      // localStorage may be unavailable (e.g. private browsing with strict settings).
-    }
-  }, []);
-
-  // Persist role to localStorage whenever it's confirmed from the DB profile.
-  useEffect(() => {
-    if (user?.id && profile?.role) {
-      try {
-        localStorage.setItem("sq:uid", user.id);
-        localStorage.setItem(`sq:role:${user.id}`, profile.role);
-      } catch {
-        // Ignore storage write failures.
-      }
-    }
-  }, [user?.id, profile?.role]);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const currentUserId = user?.id ?? null;
   const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady, currentUserId);
@@ -178,14 +151,7 @@ function DashboardShell({
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
-  // Use the loaded profile role, with localStorage as the fallback so the
-  // Control tab renders immediately for providers without waiting for the DB
-  // profile fetch (which can be slow or fail on mobile networks).
-  const effectiveRole = profile?.role ?? localRoleHint ?? undefined;
-  const isProviderProfile = getProfileRoleFamily(effectiveRole) === "provider";
-  const navigationTabs = isProviderProfile
-    ? [...baseNavigationTabs, { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness }]
-    : baseNavigationTabs;
+  const navigationTabs = baseNavigationTabs;
   const desktopNavCollapsed = desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
   const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
   const isChatRouteActive = pathname === "/dashboard/chat";
@@ -751,7 +717,7 @@ function DashboardShell({
                   }}
                   className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:rounded-xl md:border-transparent md:py-2"
                 >
-                  Add Service
+                  Offer Service
                 </button>
                 <button
                   type="button"
@@ -761,7 +727,7 @@ function DashboardShell({
                   }}
                   className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
-                  Add Product
+                  List Product
                 </button>
                 <button
                   type="button"
@@ -771,17 +737,17 @@ function DashboardShell({
                   }}
                   className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
-                  Post Requirement
+                  Post a Need
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setOpenQuickActions(false);
-                    router.push("/dashboard/launchpad");
+                    router.push("/dashboard/provider");
                   }}
                   className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
                 >
-                  Set Up Business
+                  Manage Store
                 </button>
               </div>
             </>
@@ -792,10 +758,11 @@ function DashboardShell({
         <CreatePostModal
           open={openCreatePost}
           onClose={() => setOpenCreatePost(false)}
+          allowedPostTypes={["need"]}
           onPublished={(result?: PublishPostResult) => {
             setOpenCreatePost(false);
-            if (result?.postType === "service" || result?.postType === "product") {
-              router.push("/dashboard/profile");
+            if (result?.helpRequestId) {
+              router.push(`/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`);
             } else if (result?.postType === "need") {
               router.push("/dashboard");
             }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Camera, Check, Loader2, MapPin, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -19,6 +19,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onPublished?: (result?: PublishPostResult) => void | Promise<void>;
+  allowedPostTypes?: PostType[];
 };
 
 export type PublishPostResult = {
@@ -63,6 +64,7 @@ const TYPE_OPTIONS: { value: PostType; label: string; emoji: string }[] = [
   { value: "service", label: "Offer Service", emoji: "" },
   { value: "product", label: "List Product", emoji: "" },
 ];
+const DEFAULT_ALLOWED_POST_TYPES: PostType[] = ["need", "service", "product"];
 
 const PLACEHOLDERS: Record<string, string> = {
   Plumber: "Need plumber for tap leakage",
@@ -136,10 +138,22 @@ const getGpsLocation = (): Promise<{ latitude: number; longitude: number } | nul
 // Component
 // 
 
-export default function CreatePostModal({ open, onClose, onPublished }: Props) {
+export default function CreatePostModal({
+  open,
+  onClose,
+  onPublished,
+  allowedPostTypes = DEFAULT_ALLOWED_POST_TYPES,
+}: Props) {
+  const availableTypeOptions = useMemo(() => {
+    const allowedSet = new Set(allowedPostTypes);
+    const filtered = TYPE_OPTIONS.filter((option) => allowedSet.has(option.value));
+    return filtered.length > 0 ? filtered : TYPE_OPTIONS.filter((option) => option.value === "need");
+  }, [allowedPostTypes]);
+  const defaultPostType = availableTypeOptions[0]?.value ?? "need";
+
   // form state
   const [step, setStep] = useState<ComposerStep>(1);
-  const [postType, setPostType] = useState<PostType>("need");
+  const [postType, setPostType] = useState<PostType>(defaultPostType);
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [category, setCategory] = useState("Plumber");
@@ -158,6 +172,12 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   const [error, setError] = useState("");
 
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const isNeedOnlyComposer = availableTypeOptions.length === 1 && availableTypeOptions[0]?.value === "need";
+
+  useEffect(() => {
+    if (availableTypeOptions.some((option) => option.value === postType)) return;
+    setPostType(defaultPostType);
+  }, [availableTypeOptions, defaultPostType, postType]);
 
   // pre-fill location from profile
   useEffect(() => {
@@ -183,6 +203,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
   useEffect(() => {
     if (!open) {
       setStep(1);
+      setPostType(defaultPostType);
       setTitle("");
       setDetails("");
       setCategory("Plumber");
@@ -194,7 +215,7 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       setPosted(false);
       setError("");
     }
-  }, [open]);
+  }, [defaultPostType, open]);
 
   useEffect(() => {
     const nextPreviews = photos.map((file) => URL.createObjectURL(file));
@@ -349,7 +370,9 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
       : "Add price, location, and media";
   const stepDescription =
     step === 1
-      ? "Keep this screen focused on the headline and the core details. We will add discovery details next."
+      ? isNeedOnlyComposer
+        ? "Keep this screen focused on the need itself. We will add location, budget, and media next."
+        : "Keep this screen focused on the headline and the core details. We will add discovery details next."
       : "This is where we make the post easier to trust and easier to find nearby.";
   const primaryActionLabel =
     step === 1
@@ -436,25 +459,37 @@ export default function CreatePostModal({ open, onClose, onPublished }: Props) {
         <div className="mx-auto max-w-lg space-y-5">
           {step === 1 ? (
             <>
-              <div className="grid grid-cols-3 gap-2">
-                {TYPE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setPostType(opt.value)}
-                    className={`rounded-[1.35rem] border px-3 py-3 text-left transition ${
-                      postType === opt.value
-                        ? "border-[var(--brand-500)] bg-[linear-gradient(135deg,var(--brand-50)_0%,#ffffff_100%)] text-[var(--brand-700)] shadow-[0_16px_28px_-24px_rgba(15,118,110,0.65)]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                    }`}
-                  >
-                    <span className="block text-sm font-semibold">{opt.label}</span>
-                    <span className="mt-1 block text-[11px] leading-4 text-slate-500">
-                      {opt.value === "need" ? "Ask nearby providers" : opt.value === "service" ? "Offer your work" : "Sell an item"}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {availableTypeOptions.length > 1 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {availableTypeOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPostType(opt.value)}
+                      className={`rounded-[1.35rem] border px-3 py-3 text-left transition ${
+                        postType === opt.value
+                          ? "border-[var(--brand-500)] bg-[linear-gradient(135deg,var(--brand-50)_0%,#ffffff_100%)] text-[var(--brand-700)] shadow-[0_16px_28px_-24px_rgba(15,118,110,0.65)]"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">{opt.label}</span>
+                      <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+                        {opt.value === "need" ? "Ask nearby providers" : opt.value === "service" ? "Offer your work" : "Sell an item"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-[var(--brand-500)]/20 bg-[linear-gradient(145deg,var(--brand-50)_0%,#ffffff_100%)] p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">
+                    Need Post
+                  </p>
+                  <h3 className="mt-2 text-base font-semibold text-slate-900">Create a local need post</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Services and products now belong in your Store and Control flows. This composer is only for help requests.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-category">

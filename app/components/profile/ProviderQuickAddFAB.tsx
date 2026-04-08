@@ -68,7 +68,7 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
               <Briefcase className="h-4 w-4" />
-              Add Service
+              Offer Service
             </Link>
             <Link
               href="/dashboard/provider/add-product"
@@ -76,7 +76,7 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
               <Package className="h-4 w-4" />
-              Add Product
+              List Product
             </Link>
             <Link
               href="/dashboard/create_post?intent=requirement"
@@ -84,15 +84,15 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
               <ClipboardList className="h-4 w-4" />
-              Post Requirement
+              Post a Need
             </Link>
             <Link
-              href="/dashboard/create_post?intent=job"
+              href="/dashboard/provider"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
               <BadgePlus className="h-4 w-4" />
-              Post Job
+              Manage Store
             </Link>
           </div>
         </>
