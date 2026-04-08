@@ -562,20 +562,18 @@ export default function TasksPage() {
 
       setCurrentUserId(user.id);
 
-      const [ordersRes, helpRequestsPayload] = await Promise.all([
+      const [ordersRes, helpRequestsResult] = await Promise.all([
         supabase
           .from("orders")
           .select("*")
           .or(`consumer_id.eq.${user.id},provider_id.eq.${user.id}`)
           .order("created_at", { ascending: false })
           .limit(120),
-        fetchAuthedJson<{ ok: true; requests: HelpRequestRow[] } | { ok: false; message?: string }>(
-          supabase,
-          "/api/tasks/help-requests",
-          {
-            method: "GET",
-          }
-        ),
+        fetchAuthedJson<{ ok: true; requests: HelpRequestRow[] } | { ok: false; message?: string }>(supabase, "/api/tasks/help-requests", {
+          method: "GET",
+        })
+          .then((payload) => ({ ok: true as const, payload }))
+          .catch((error: unknown) => ({ ok: false as const, error })),
       ]);
 
       if (ordersRes.error) {
@@ -588,8 +586,26 @@ export default function TasksPage() {
       }
 
       const liveOrders = (ordersRes.data as OrderRow[] | null) || [];
-      const helpRequestErrorMessage = helpRequestsPayload.ok ? null : helpRequestsPayload.message || "Help request activity unavailable.";
-      let liveHelpRequests = helpRequestsPayload.ok ? helpRequestsPayload.requests || [] : [];
+      let helpRequestErrorMessage: string | null = null;
+      let liveHelpRequests: HelpRequestRow[] = [];
+
+      if (helpRequestsResult.ok) {
+        const helpRequestsPayload = helpRequestsResult.payload;
+        if (helpRequestsPayload.ok) {
+          liveHelpRequests = helpRequestsPayload.requests || [];
+        } else {
+          helpRequestErrorMessage = helpRequestsPayload.message || "Help request activity unavailable.";
+        }
+      } else {
+        helpRequestErrorMessage =
+          helpRequestsResult.error instanceof Error && !/fetch failed/i.test(helpRequestsResult.error.message)
+            ? helpRequestsResult.error.message
+            : "Live request inbox is reconnecting.";
+      }
+
+      if (helpRequestErrorMessage) {
+        console.warn("Tasks help request inbox unavailable:", helpRequestErrorMessage);
+      }
 
       const helpRequestIdsWithOrders = new Set(
         liveOrders.map((order) => order.help_request_id).filter((id): id is string => Boolean(id))
@@ -757,8 +773,6 @@ export default function TasksPage() {
 
       if (eventsRes.error && !isMissingSupabaseRelation(eventsRes.error.message || "")) {
         setErrorMessage(`Task activity feed unavailable: ${eventsRes.error.message}`);
-      } else if (helpRequestErrorMessage) {
-        setErrorMessage(`Help request activity unavailable: ${helpRequestErrorMessage}`);
       } else if (supportError) {
         setErrorMessage(`Support queue unavailable: ${supportError.message}`);
       }

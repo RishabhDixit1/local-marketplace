@@ -70,6 +70,7 @@ export default function FeedGrid({
   } | null>(null);
 
   const handleOwnerArchive = useCallback(async (item: MarketplaceDisplayFeedItem) => {
+    if (item.source !== "post") return;
     if (!window.confirm("Archive this post? It will no longer appear in the feed.")) return;
     setOwnerBusyId(item.id);
     try {
@@ -86,13 +87,26 @@ export default function FeedGrid({
   }, [onFeedRefresh]);
 
   const handleOwnerDelete = useCallback(async (item: MarketplaceDisplayFeedItem) => {
-    if (!window.confirm("Permanently delete this post? This cannot be undone.")) return;
+    const confirmMessage =
+      item.source === "help_request"
+        ? "Delete this request from your live feed? This cannot be undone."
+        : "Permanently delete this post? This cannot be undone.";
+    if (!window.confirm(confirmMessage)) return;
+
     setOwnerBusyId(item.id);
     try {
-      const res = await fetch(`/api/posts/manage?postId=${item.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res =
+        item.source === "help_request" && item.helpRequestId
+          ? await fetch("/api/needs/status", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ helpRequestId: item.helpRequestId, status: "cancelled" }),
+            })
+          : await fetch(`/api/posts/manage?postId=${item.id}`, {
+              method: "DELETE",
+              credentials: "include",
+            });
       if (res.ok) onFeedRefresh?.();
     } finally {
       setOwnerBusyId(null);
@@ -218,7 +232,7 @@ export default function FeedGrid({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Budget (₹)</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">Budget (INR)</label>
                   <input
                     type="number"
                     min={0}
@@ -254,7 +268,11 @@ export default function FeedGrid({
       <div className="grid gap-3 md:grid-cols-2">
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
-          const isOwner = !!viewerId && item.providerId === viewerId && item.source === "post";
+          const isOwner =
+            !!viewerId &&
+            item.providerId === viewerId &&
+            (item.source === "post" || item.source === "help_request");
+          const canEditOwnerItem = item.source === "post";
 
           return (
             <div
@@ -287,15 +305,21 @@ export default function FeedGrid({
                 headerAction={renderHeaderAction ? renderHeaderAction(item) : null}
                 isOwner={isOwner}
                 ownerBusy={ownerBusyId === item.id}
-                onOwnerEdit={() => setEditingPost({
-                  id: item.id,
-                  title: item.title,
-                  details: item.description,
-                  category: item.category,
-                  budget: item.price,
-                })}
-                onOwnerArchive={() => void handleOwnerArchive(item)}
+                onOwnerEdit={
+                  canEditOwnerItem
+                    ? () =>
+                        setEditingPost({
+                          id: item.id,
+                          title: item.title,
+                          details: item.description,
+                          category: item.category,
+                          budget: item.price,
+                        })
+                    : undefined
+                }
+                onOwnerArchive={canEditOwnerItem ? () => void handleOwnerArchive(item) : undefined}
                 onOwnerDelete={() => void handleOwnerDelete(item)}
+                ownerDeleteLabel={item.source === "help_request" ? "Delete request" : "Delete post"}
               />
             </div>
           );

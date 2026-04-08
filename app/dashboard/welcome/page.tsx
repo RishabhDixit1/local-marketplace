@@ -1475,7 +1475,7 @@ export default function WelcomePage() {
                       className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
                     >
                       <Zap size={14} />
-                      Create a post
+                      Post a need
                     </button>
                   </div>
                 </div>
@@ -1551,11 +1551,10 @@ export default function WelcomePage() {
       <CreatePostModal
         open={openPostModal}
         onClose={() => setOpenPostModal(false)}
+        allowedPostTypes={["need"]}
         onPublished={(result) => {
           setOpenPostModal(false);
-          if (result?.postType === "service" || result?.postType === "product") {
-            router.push("/dashboard/profile");
-          } else if (result?.helpRequestId) {
+          if (result?.helpRequestId) {
             router.push(`/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`);
           } else {
             router.push("/dashboard");

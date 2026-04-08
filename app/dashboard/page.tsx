@@ -268,6 +268,7 @@ export default function MarketplacePage() {
       {composerOpen ? (
         <CreatePostModal
           open={composerOpen}
+          allowedPostTypes={["need"]}
           onClose={() => {
             setOpenPostModal(false);
             if (composeRequested) {
