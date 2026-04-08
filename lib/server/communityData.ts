@@ -565,8 +565,7 @@ export const loadCommunityFeedSnapshot = async (
     }
   });
 
-  const snapshot: Omit<Extract<CommunityFeedResponse, { ok: true }>, "feedItems" | "feedStats" | "mapCenter"> = {
-    ok: true,
+  const snapshot: Parameters<typeof buildCommunityFeedView>[0] = {
     currentUserId,
     acceptedConnectionIds: acceptedPeerIds,
     currentUserProfile: currentUserProfileRow ? normalizeProfile(currentUserProfileRow) : null,
@@ -585,8 +584,11 @@ export const loadCommunityFeedSnapshot = async (
     viewerMatchStatusByHelpRequestId,
   };
 
+  const { viewerMatchStatusByHelpRequestId: _viewerMatchStatusByHelpRequestId, ...responseSnapshot } = snapshot;
+
   return {
-    ...snapshot,
+    ok: true,
+    ...responseSnapshot,
     ...buildCommunityFeedView(snapshot, options.viewerOverride || null),
   };
 };
