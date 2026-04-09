@@ -37,11 +37,12 @@ export default function TrustSnapshot({
           return (
             <span
               key={`${item.label}:${tone}`}
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+              title={item.label}
+              className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-medium ${
                 toneClassNames[tone]
               }`}
             >
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </span>
           );
         })}

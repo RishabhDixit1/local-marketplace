@@ -210,6 +210,8 @@ export default function FeedCard({
         }
       : null,
   ].filter((value): value is { label: string; className: string } => !!value);
+  const heroPills = hasMedia ? detailPills : detailPills.slice(0, 2);
+  const secondaryPills = hasMedia ? detailPills : detailPills.slice(heroPills.length);
 
   return (
     <article
@@ -254,7 +256,7 @@ export default function FeedCard({
             ) : null}
           </div>
 
-          <div className="mt-1 flex items-center gap-2 overflow-hidden text-[11px] text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
             <span>{item.timeLabel}</span>
             <span className="inline-flex min-w-0 items-center gap-1 truncate">
               <MapPin size={11} />
@@ -335,7 +337,7 @@ export default function FeedCard({
         ) : (
           <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-              {detailPills.slice(0, 2).map((pill) => (
+              {heroPills.map((pill) => (
                 <span
                   key={`${item.id}:hero:${pill.label}`}
                   className={`inline-flex items-center rounded-full border px-2.5 py-1 ${pill.className}`}
@@ -385,76 +387,81 @@ export default function FeedCard({
           </>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {detailPills.map((pill) => (
-            <span
-              key={`${item.id}:${pill.label}`}
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${pill.className}`}
-            >
-              {pill.label}
-            </span>
-          ))}
-        </div>
+        {secondaryPills.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {secondaryPills.map((pill) => (
+              <span
+                key={`${item.id}:${pill.label}`}
+                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-semibold ${pill.className}`}
+                title={pill.label}
+              >
+                <span className="truncate">{pill.label}</span>
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <TrustSnapshot items={trustItems} compact className="mt-3" />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {acceptButton ? (
-          <button
-            type="button"
-            onClick={() => void onPrimaryAction(acceptButton.kind)}
-            disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
-            aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-            title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-              buttonToneClassNames[acceptButton.tone]
-            }`}
-          >
-            {actionBusyState[acceptButton.kind] ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : acceptButton.kind === "decline" || acceptButton.kind === "withdraw" ? (
-              <X size={16} />
-            ) : (
-              <Check size={16} />
-            )}
-            <span>{acceptButton.label}</span>
-          </button>
-        ) : null}
+      <div className="mt-3 flex flex-col gap-2.5">
+        <div className="flex flex-wrap gap-2">
+          {acceptButton ? (
+            <button
+              type="button"
+              onClick={() => void onPrimaryAction(acceptButton.kind)}
+              disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
+              aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
+              title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+                buttonToneClassNames[acceptButton.tone]
+              }`}
+            >
+              {actionBusyState[acceptButton.kind] ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : acceptButton.kind === "decline" || acceptButton.kind === "withdraw" ? (
+                <X size={16} />
+              ) : (
+                <Check size={16} />
+              )}
+              <span className="truncate">{acceptButton.label}</span>
+            </button>
+          ) : null}
 
-        {sendQuoteButton ? (
-          <button
-            type="button"
-            onClick={() => void onPrimaryAction("send_quote")}
-            disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
-            aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-            title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-              buttonToneClassNames[sendQuoteButton.tone]
-            }`}
-          >
-            {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            <span>{sendQuoteButton.label}</span>
-          </button>
-        ) : null}
+          {sendQuoteButton ? (
+            <button
+              type="button"
+              onClick={() => void onPrimaryAction("send_quote")}
+              disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
+              aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
+              title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+                buttonToneClassNames[sendQuoteButton.tone]
+              }`}
+            >
+              {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              <span className="truncate">{sendQuoteButton.label}</span>
+            </button>
+          ) : null}
 
-        {discardButton ? (
-          <button
-            type="button"
-            onClick={() => void onPrimaryAction("discard")}
-            disabled={discardButton.disabled || actionBusyState.discard}
-            aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-            title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-              buttonToneClassNames[discardButton.tone]
-            }`}
-          >
-            {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-            <span>{discardButton.label}</span>
-          </button>
-        ) : null}
+          {discardButton ? (
+            <button
+              type="button"
+              onClick={() => void onPrimaryAction("discard")}
+              disabled={discardButton.disabled || actionBusyState.discard}
+              aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
+              title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+                buttonToneClassNames[discardButton.tone]
+              }`}
+            >
+              {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              <span className="truncate">{discardButton.label}</span>
+            </button>
+          ) : null}
+        </div>
 
-        <div className="ml-auto flex items-center gap-1.5 max-sm:w-full max-sm:justify-end">
+        <div className="flex items-center justify-end gap-1.5">
           {(["share", "save"] as const).map((actionKind) => {
             const busy = actionBusyState[actionKind];
             const isActive = actionKind === "save" ? saved : false;
