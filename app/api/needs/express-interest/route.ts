@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  getHelpRequestMatchStatusWriteCandidates,
+  isHelpRequestMatchStatusConstraintError,
+} from "@/lib/helpRequestMatchStatus";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
@@ -62,18 +66,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "CLOSED", message: "This request already has an accepted provider." }, { status: 409 });
   }
 
-  const { error: upsertError } = await adminDbClient
-    .from("help_request_matches")
-    .upsert(
-      {
-        help_request_id: helpRequestId,
-        provider_id: providerId,
-        score: 0,
-        status: "interested",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "help_request_id,provider_id", ignoreDuplicates: false }
-    );
+  const now = new Date().toISOString();
+  let upsertError: { message: string } | null = null;
+
+  for (const persistedStatus of getHelpRequestMatchStatusWriteCandidates("interested")) {
+    const { error } = await adminDbClient
+      .from("help_request_matches")
+      .upsert(
+        {
+          help_request_id: helpRequestId,
+          provider_id: providerId,
+          score: 0,
+          status: persistedStatus,
+          updated_at: now,
+        },
+        { onConflict: "help_request_id,provider_id", ignoreDuplicates: false }
+      );
+
+    if (!error) {
+      upsertError = null;
+      break;
+    }
+
+    upsertError = error;
+    if (!isHelpRequestMatchStatusConstraintError(error.message)) {
+      break;
+    }
+  }
 
   if (upsertError) {
     return NextResponse.json({ ok: false, code: "DB", message: upsertError.message }, { status: 500 });

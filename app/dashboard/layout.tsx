@@ -156,7 +156,9 @@ function DashboardShell({
   const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
   const isChatRouteActive = pathname === "/dashboard/chat";
   const hideFloatingQuickActions =
-    pathname.startsWith("/dashboard/chat") || pathname.startsWith("/dashboard/create_post");
+    pathname.startsWith("/dashboard/chat") ||
+    pathname.startsWith("/dashboard/create_post") ||
+    pathname.startsWith("/dashboard/launchpad");
   const shellIconButtonClassName =
     "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:rounded-lg";
 
@@ -689,11 +691,11 @@ function DashboardShell({
             }}
             aria-label="Open quick actions"
             aria-expanded={openQuickActions}
-            className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex h-14 w-14 items-center justify-center rounded-[1.65rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 ${
+            className={`fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-floating-action)] inline-flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:h-14 md:w-14 md:rounded-[1.65rem] ${
               openQuickActions ? "rotate-45 bg-[var(--brand-700)]" : ""
             }`}
           >
-            <Plus className="h-6 w-6" />
+            <Plus className="h-5 w-5 md:h-6 md:w-6" />
           </button>
 
           {openQuickActions ? (
@@ -704,50 +706,38 @@ function DashboardShell({
                 aria-hidden
                 className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/15"
               />
-              <div className="fixed inset-x-3 bottom-[calc(6.95rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[220px] md:rounded-2xl md:p-2">
+              <div className="fixed inset-x-3 bottom-[calc(6.2rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[260px] md:rounded-2xl md:p-2">
                 <div className="px-1 pb-2 md:hidden">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Quick actions</p>
-                  <p className="mt-1 text-sm text-slate-600">Publish or manage something fast from anywhere in the dashboard.</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Post a local need or let AI set up your business inventory without creating a feed post.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    router.push("/dashboard/provider/add-service");
-                  }}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:rounded-xl md:border-transparent md:py-2"
-                >
-                  Offer Service
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    router.push("/dashboard/provider/add-product");
-                  }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
-                >
-                  List Product
-                </button>
                 <button
                   type="button"
                   onClick={() => {
                     setOpenQuickActions(false);
                     setOpenCreatePost(true);
                   }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 md:rounded-xl md:border-transparent"
                 >
-                  Post a Need
+                  <span className="block text-sm font-semibold text-slate-900">Post a Need</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Create a live request for Welcome and Explore.
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setOpenQuickActions(false);
-                    router.push("/dashboard/provider");
+                    router.push("/dashboard/launchpad");
                   }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent md:py-2"
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent"
                 >
-                  Manage Store
+                  <span className="block text-sm font-semibold text-slate-900">Set Up Business</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Use AI to draft your services, products, pricing, and inventory privately.
+                  </span>
                 </button>
               </div>
             </>

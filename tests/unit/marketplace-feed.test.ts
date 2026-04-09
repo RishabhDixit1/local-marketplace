@@ -3,6 +3,7 @@ import {
   buildMarketplaceDisplayItem,
   dedupeMarketplaceFeedItems,
   matchesMarketplaceFeedFilters,
+  normalizeMarketplaceNeedMatchStatus,
   type MarketplaceFeedItem,
 } from "../../lib/marketplaceFeed";
 
@@ -166,5 +167,12 @@ describe("marketplace feed helpers", () => {
 
     expect(deduped).toHaveLength(1);
     expect(deduped[0]?.source).toBe("help_request");
+  });
+
+  it("normalizes legacy help-request match statuses into the explicit UI states", () => {
+    expect(normalizeMarketplaceNeedMatchStatus("open")).toBe("interested");
+    expect(normalizeMarketplaceNeedMatchStatus("suggested")).toBe("interested");
+    expect(normalizeMarketplaceNeedMatchStatus("declined")).toBe("rejected");
+    expect(normalizeMarketplaceNeedMatchStatus("expired")).toBe("withdrawn");
   });
 });

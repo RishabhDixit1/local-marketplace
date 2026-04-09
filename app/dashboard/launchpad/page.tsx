@@ -179,8 +179,10 @@ export default function LaunchpadPage() {
             <Rocket className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Business Launchpad</h1>
-            <p className="text-sm text-slate-500">Go live in minutes. AI drafts your profile and listings.</p>
+            <h1 className="text-xl font-bold text-slate-900">Set Up Business</h1>
+            <p className="text-sm text-slate-500">
+              Let AI draft your profile, services, products, pricing, and inventory without creating a feed post.
+            </p>
           </div>
         </div>
       </div>
