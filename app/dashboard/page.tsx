@@ -23,12 +23,18 @@ const CreatePostModal = dynamic(
   { ssr: false }
 );
 
+const MOBILE_INITIAL_VISIBLE_ITEMS = 8;
+const MOBILE_VISIBLE_INCREMENT = 6;
+
 export default function MarketplacePage() {
   const router = useRouter();
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_INITIAL_VISIBLE_ITEMS);
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
+  const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
     const toastId =
@@ -53,6 +59,25 @@ export default function MarketplacePage() {
       timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
       timers.clear();
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const syncViewport = () => {
+      setIsSmallScreen(mediaQuery.matches);
+    };
+
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
   }, []);
 
   const {
@@ -105,7 +130,9 @@ export default function MarketplacePage() {
 
   const postsPromptConfig = useMemo<DashboardPromptConfig>(
     () => ({
-      placeholder: "Search by title, details, category, creator, or location",
+      placeholder: isSmallScreen
+        ? "Search titles, category, or location"
+        : "Search by title, details, category, creator, or location",
       value: filters.query,
       onValueChange: (nextValue: string) => {
         setFilters((current) => ({ ...current, query: nextValue }));
@@ -136,15 +163,78 @@ export default function MarketplacePage() {
         },
       ],
     }),
-    [fetchFeed, filters.query, refreshing, setFilters, showAdvancedFilters, setShowAdvancedFilters]
+    [fetchFeed, filters.query, isSmallScreen, refreshing, setFilters, showAdvancedFilters, setShowAdvancedFilters]
   );
 
   useDashboardPrompt(postsPromptConfig);
+
+  useEffect(() => {
+    if (!isSmallScreen) return;
+
+    setMobileVisibleCount(MOBILE_INITIAL_VISIBLE_ITEMS);
+  }, [
+    filters.category,
+    filters.freshOnly,
+    filters.maxDistanceKm,
+    filters.mediaOnly,
+    filters.query,
+    filters.type,
+    filters.urgentOnly,
+    filters.verifiedOnly,
+    isSmallScreen,
+  ]);
 
   const resolvedHoveredMapItemId = useMemo(
     () => (hoveredMapItemId && displayFeed.some((item) => item.id === hoveredMapItemId) ? hoveredMapItemId : null),
     [displayFeed, hoveredMapItemId]
   );
+
+  const visibleFeed = useMemo(() => {
+    if (!isSmallScreen) {
+      return displayFeed;
+    }
+
+    return displayFeed.slice(0, mobileVisibleCount);
+  }, [displayFeed, isSmallScreen, mobileVisibleCount]);
+
+  const hasMoreMobileItems = isSmallScreen && visibleFeed.length < displayFeed.length;
+
+  useEffect(() => {
+    if (!isSmallScreen || !focusItemId) return;
+
+    const focusIndex = displayFeed.findIndex((item) => item.id === focusItemId);
+    if (focusIndex === -1) return;
+
+    setMobileVisibleCount((current) => Math.max(current, focusIndex + 1));
+  }, [displayFeed, focusItemId, isSmallScreen]);
+
+  useEffect(() => {
+    if (!hasMoreMobileItems || !mobileLoadMoreRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+
+        setMobileVisibleCount((current) => {
+          if (current >= displayFeed.length) {
+            return current;
+          }
+
+          return Math.min(current + MOBILE_VISIBLE_INCREMENT, displayFeed.length);
+        });
+      },
+      {
+        rootMargin: "240px 0px",
+      }
+    );
+
+    observer.observe(mobileLoadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [displayFeed.length, hasMoreMobileItems]);
 
   const handleResetOrRefresh = useCallback(() => {
     resetFilters();
@@ -232,7 +322,7 @@ export default function MarketplacePage() {
         ) : null}
 
         <FeedGrid
-          items={displayFeed}
+          items={visibleFeed}
           loading={showFeedLoading}
           hasAnyFeed={feed.length > 0}
           feedError={feedError}
@@ -253,6 +343,21 @@ export default function MarketplacePage() {
           onSecondaryAction={handleSecondaryAction}
           onFeedRefresh={() => void fetchFeed(true)}
         />
+
+        {hasMoreMobileItems ? (
+          <div className="pb-2 sm:hidden">
+            <div ref={mobileLoadMoreRef} className="h-3 w-full" aria-hidden />
+            <button
+              type="button"
+              onClick={() =>
+                setMobileVisibleCount((current) => Math.min(current + MOBILE_VISIBLE_INCREMENT, displayFeed.length))
+              }
+              className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+            >
+              Show more posts
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <AcceptConfirmDialog

@@ -502,7 +502,7 @@ function DashboardShell({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/92 shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] backdrop-blur-xl">
+          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
             <div
               className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 lg:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -762,11 +762,11 @@ function DashboardShell({
 
       <CartDrawer />
 
-      <GlobalMapView open={showGlobalMap} onClose={() => setShowGlobalMap(false)} />
+      {showGlobalMap ? <GlobalMapView open onClose={() => setShowGlobalMap(false)} /> : null}
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/95 shadow-[0_-18px_44px_-30px_rgba(15,23,42,0.55)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/98 shadow-[0_-14px_36px_-28px_rgba(15,23,42,0.42)] backdrop-blur-none md:hidden"
         aria-label="Main navigation"
       >
         <div

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   MarketplaceCardActionModel,
@@ -62,6 +62,13 @@ export default function FeedGrid({
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const deepLinkHandledRef = useRef(false);
   const skeletonCards = useMemo(() => Array.from({ length: 6 }, (_, index) => `skeleton-${index}`), []);
+  const cardVisibilityStyle = useMemo<CSSProperties>(
+    () => ({
+      contentVisibility: "auto",
+      containIntrinsicSize: "720px",
+    }),
+    []
+  );
 
   // Owner post management state
   const [ownerBusyId, setOwnerBusyId] = useState<string | null>(null);
@@ -278,6 +285,7 @@ export default function FeedGrid({
             <div
               key={item.id}
               data-feed-card-id={item.id}
+              style={cardVisibilityStyle}
               ref={(node) => {
                 cardRefs.current.set(item.id, node);
               }}
