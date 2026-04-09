@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  getHelpRequestMatchStatusWriteCandidates,
+  isHelpRequestMatchStatusConstraintError,
+} from "@/lib/helpRequestMatchStatus";
 import { normalizeHelpRequestProgressStage } from "@/lib/helpRequestProgress";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
@@ -81,28 +85,56 @@ export async function POST(request: Request) {
         : null;
 
   if (acceptedProviderId && previousMatchStatus) {
-    const { error: acceptedMatchError } = await dbClient
-      .from("help_request_matches")
-      .update({
-        status: previousMatchStatus,
-        updated_at: now,
-      })
-      .eq("help_request_id", helpRequestId)
-      .eq("provider_id", acceptedProviderId);
+    let acceptedMatchError: { message: string } | null = null;
+
+    for (const persistedStatus of getHelpRequestMatchStatusWriteCandidates(previousMatchStatus)) {
+      const { error } = await dbClient
+        .from("help_request_matches")
+        .update({
+          status: persistedStatus,
+          updated_at: now,
+        })
+        .eq("help_request_id", helpRequestId)
+        .eq("provider_id", acceptedProviderId);
+
+      if (!error) {
+        acceptedMatchError = null;
+        break;
+      }
+
+      acceptedMatchError = error;
+      if (!isHelpRequestMatchStatusConstraintError(error.message)) {
+        break;
+      }
+    }
 
     if (acceptedMatchError) {
       return NextResponse.json({ ok: false, code: "DB", message: acceptedMatchError.message }, { status: 500 });
     }
 
-    const { error: reopenOtherMatchesError } = await dbClient
-      .from("help_request_matches")
-      .update({
-        status: "open",
-        updated_at: now,
-      })
-      .eq("help_request_id", helpRequestId)
-      .neq("provider_id", acceptedProviderId)
-      .eq("status", "rejected");
+    let reopenOtherMatchesError: { message: string } | null = null;
+
+    for (const persistedStatus of getHelpRequestMatchStatusWriteCandidates("active_pool")) {
+      const { error } = await dbClient
+        .from("help_request_matches")
+        .update({
+          status: persistedStatus,
+          updated_at: now,
+        })
+        .eq("help_request_id", helpRequestId)
+        .neq("provider_id", acceptedProviderId)
+        .in("status", ["rejected", "declined"]);
+
+      if (!error) {
+        reopenOtherMatchesError = null;
+        break;
+      }
+
+      reopenOtherMatchesError = error;
+      if (!isHelpRequestMatchStatusConstraintError(error.message)) {
+        break;
+      }
+    }
 
     if (reopenOtherMatchesError) {
       return NextResponse.json({ ok: false, code: "DB", message: reopenOtherMatchesError.message }, { status: 500 });
@@ -113,7 +145,7 @@ export async function POST(request: Request) {
     .from("help_request_matches")
     .select("help_request_id", { count: "exact", head: true })
     .eq("help_request_id", helpRequestId)
-    .in("status", ["open", "interested"]);
+    .in("status", ["open", "interested", "suggested"]);
 
   if (activeMatchCountError) {
     return NextResponse.json({ ok: false, code: "DB", message: activeMatchCountError.message }, { status: 500 });

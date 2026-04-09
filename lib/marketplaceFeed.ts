@@ -1,5 +1,6 @@
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { looksLikePlaceholderText, toDisplayText as cleanDisplayText } from "@/lib/contentQuality";
+import { canonicalizeStoredHelpRequestMatchStatus } from "@/lib/helpRequestMatchStatus";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
 import { formatServicePriceLabel, type ServicePricingType } from "@/lib/provider/listings";
@@ -128,17 +129,6 @@ const CLOSED_STATUSES = new Set([
   "archived",
   "deleted",
   "hidden",
-]);
-
-const NEED_MATCH_STATUSES = new Set<MarketplaceNeedMatchStatus>([
-  "open",
-  "interested",
-  "accepted",
-  "in_progress",
-  "completed",
-  "withdrawn",
-  "rejected",
-  "cancelled",
 ]);
 
 export const DEFAULT_MARKETPLACE_FEED_FILTER_STATE: MarketplaceFeedFilterState = {
@@ -288,12 +278,7 @@ export const normalizeMarketplaceStatusLabel = (status?: string | null) => {
 };
 
 export const normalizeMarketplaceNeedMatchStatus = (value?: string | null): MarketplaceNeedMatchStatus | null => {
-  const normalized = (value || "").trim().toLowerCase();
-  if (!normalized || !NEED_MATCH_STATUSES.has(normalized as MarketplaceNeedMatchStatus)) {
-    return null;
-  }
-
-  return normalized as MarketplaceNeedMatchStatus;
+  return canonicalizeStoredHelpRequestMatchStatus(value) as MarketplaceNeedMatchStatus | null;
 };
 
 export const hasMarketplaceViewerInterest = (status?: MarketplaceNeedMatchStatus | null) =>

@@ -84,6 +84,66 @@ describe("POST /api/needs/express-interest", () => {
     });
   });
 
+  it("falls back to the legacy open status when production still has the older constraint", async () => {
+    requireRequestAuthMock.mockResolvedValue(authContext);
+
+    const selectChain = makeSelectChain({
+      data: {
+        requester_id: "requester-1",
+        status: "open",
+        accepted_provider_id: null,
+      },
+      error: null,
+    });
+    const upsert = vi
+      .fn()
+      .mockResolvedValueOnce({
+        error: { message: 'new row for relation "help_request_matches" violates check constraint "help_request_matches_status_check"' },
+      })
+      .mockResolvedValueOnce({ error: null });
+    const dbClient = {
+      from: vi.fn().mockReturnValueOnce(selectChain).mockReturnValue({ upsert }),
+    };
+
+    createSupabaseAdminClientMock.mockReturnValue(dbClient);
+
+    const { POST } = await import("../../app/api/needs/express-interest/route");
+    const response = await POST(
+      new Request("http://localhost:3000/api/needs/express-interest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ helpRequestId: "help-legacy" }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(upsert).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        help_request_id: "help-legacy",
+        provider_id: "provider-1",
+        status: "interested",
+      }),
+      { onConflict: "help_request_id,provider_id", ignoreDuplicates: false }
+    );
+    expect(upsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        help_request_id: "help-legacy",
+        provider_id: "provider-1",
+        status: "open",
+      }),
+      { onConflict: "help_request_id,provider_id", ignoreDuplicates: false }
+    );
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      helpRequestId: "help-legacy",
+      status: "interested",
+    });
+  });
+
   it("rejects expressing interest in your own request", async () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
 

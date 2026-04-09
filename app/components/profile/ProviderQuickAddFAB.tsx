@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Package, Briefcase, ClipboardList, BadgePlus } from "lucide-react";
+import { Plus, ClipboardList, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 type ProviderQuickAddFABProps = {
@@ -42,11 +42,11 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        aria-label="Quick add service or product"
+        aria-label="Open quick actions"
         aria-expanded={open}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] hover:shadow-xl md:bottom-8 md:right-8"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-3 z-40 flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-[var(--brand-900)] text-white shadow-lg transition hover:bg-[var(--brand-700)] hover:shadow-xl md:bottom-8 md:right-8 md:h-14 md:w-14 md:rounded-full"
       >
-        <Plus className="h-6 w-6" />
+        <Plus className="h-5 w-5 md:h-6 md:w-6" />
       </button>
 
       {/* Menu */}
@@ -61,25 +61,9 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
           />
 
           {/* PopoverMenu */}
-          <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-2 md:bottom-28 md:right-8">
+          <div className="fixed bottom-[calc(6.2rem+env(safe-area-inset-bottom))] right-3 z-40 flex flex-col gap-2 md:bottom-28 md:right-8">
             <Link
-              href="/dashboard/provider/add-service"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
-            >
-              <Briefcase className="h-4 w-4" />
-              Offer Service
-            </Link>
-            <Link
-              href="/dashboard/provider/add-product"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
-            >
-              <Package className="h-4 w-4" />
-              List Product
-            </Link>
-            <Link
-              href="/dashboard/create_post?intent=requirement"
+              href="/dashboard?compose=1"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
@@ -87,12 +71,12 @@ export function ProviderQuickAddFAB({ show = false }: ProviderQuickAddFABProps) 
               Post a Need
             </Link>
             <Link
-              href="/dashboard/provider"
+              href="/dashboard/launchpad"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-md transition hover:bg-slate-50"
             >
-              <BadgePlus className="h-4 w-4" />
-              Manage Store
+              <Sparkles className="h-4 w-4" />
+              Set Up Business
             </Link>
           </div>
         </>

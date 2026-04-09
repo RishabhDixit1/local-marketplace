@@ -34,15 +34,12 @@ const makeDoubleEqUpdateChain = () => {
   return chain;
 };
 
-const makeEqNeqEqUpdateChain = () => {
-  let eqCalls = 0;
+const makeEqNeqInUpdateChain = () => {
   const chain = {
     update: vi.fn(() => chain),
-    eq: vi.fn(() => {
-      eqCalls += 1;
-      return eqCalls >= 2 ? Promise.resolve({ error: null }) : chain;
-    }),
+    eq: vi.fn(() => chain),
     neq: vi.fn(() => chain),
+    in: vi.fn(async () => ({ error: null })),
   };
 
   return chain;
@@ -98,7 +95,7 @@ describe("POST /api/needs/reopen", () => {
       error: null,
     });
     const acceptedMatchUpdateChain = makeDoubleEqUpdateChain();
-    const reopenOtherMatchesChain = makeEqNeqEqUpdateChain();
+    const reopenOtherMatchesChain = makeEqNeqInUpdateChain();
     const activeMatchCountChain = makeCountChain(1);
     const helpRequestUpdateChain = makeSingleEqUpdateChain();
 
@@ -137,8 +134,9 @@ describe("POST /api/needs/reopen", () => {
         updated_at: expect.any(String),
       })
     );
+    expect(reopenOtherMatchesChain.in).toHaveBeenCalledWith("status", ["rejected", "declined"]);
     expect(activeMatchCountChain.select).toHaveBeenCalledWith("help_request_id", { count: "exact", head: true });
-    expect(activeMatchCountChain.in).toHaveBeenCalledWith("status", ["open", "interested"]);
+    expect(activeMatchCountChain.in).toHaveBeenCalledWith("status", ["open", "interested", "suggested"]);
     expect(helpRequestUpdateChain.update).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "matched",
@@ -182,7 +180,7 @@ describe("POST /api/needs/reopen", () => {
       error: null,
     });
     const acceptedMatchUpdateChain = makeDoubleEqUpdateChain();
-    const reopenOtherMatchesChain = makeEqNeqEqUpdateChain();
+    const reopenOtherMatchesChain = makeEqNeqInUpdateChain();
     const activeMatchCountChain = makeCountChain(0);
     const helpRequestUpdateChain = makeSingleEqUpdateChain();
 

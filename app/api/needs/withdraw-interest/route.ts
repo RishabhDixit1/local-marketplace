@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  getHelpRequestMatchStatusWriteCandidates,
+  isHelpRequestMatchStatusConstraintError,
+} from "@/lib/helpRequestMatchStatus";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 
@@ -57,14 +61,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "This interest can no longer be withdrawn here." }, { status: 409 });
   }
 
-  const { error: updateError } = await adminDbClient
-    .from("help_request_matches")
-    .update({
-      status: "withdrawn",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("help_request_id", helpRequestId)
-    .eq("provider_id", providerId);
+  const now = new Date().toISOString();
+  let updateError: { message: string } | null = null;
+
+  for (const persistedStatus of getHelpRequestMatchStatusWriteCandidates("withdrawn")) {
+    const { error } = await adminDbClient
+      .from("help_request_matches")
+      .update({
+        status: persistedStatus,
+        updated_at: now,
+      })
+      .eq("help_request_id", helpRequestId)
+      .eq("provider_id", providerId);
+
+    if (!error) {
+      updateError = null;
+      break;
+    }
+
+    updateError = error;
+    if (!isHelpRequestMatchStatusConstraintError(error.message)) {
+      break;
+    }
+  }
 
   if (updateError) {
     return NextResponse.json({ ok: false, code: "DB", message: updateError.message }, { status: 500 });
