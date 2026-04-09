@@ -44,6 +44,22 @@ flutter run -d chrome `
 
 When Android is ready, replace `-d chrome` with your emulator id.
 
+## Easier Android Run On This Repo
+
+This repo already keeps the web Supabase values in [`.env.local`](C:/Users/rishab_dixit/OneDrive%20-%20McGraw%20Hill%20Education/Desktop/local-marketplace/.env.local). Instead of copying them by hand every time, run:
+
+```powershell
+.\scripts\run-mobile-android.ps1
+```
+
+Optional flags:
+
+```powershell
+.\scripts\run-mobile-android.ps1 -DeviceId emulator-5554
+.\scripts\run-mobile-android.ps1 -ApiBaseUrl http://10.0.2.2:3000
+.\scripts\run-mobile-android.ps1 -PrintOnly
+```
+
 ## Important Auth Note
 
 The mobile app uses the Supabase Flutter client directly for sign-in.

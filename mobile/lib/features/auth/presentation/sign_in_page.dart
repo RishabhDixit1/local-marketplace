@@ -25,6 +25,25 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     super.dispose();
   }
 
+  String _friendlyErrorMessage(Object error, AppBootstrap bootstrap) {
+    final rawMessage = error.toString();
+    final normalizedMessage = rawMessage.toLowerCase();
+
+    if (bootstrap.config.usesPlaceholderSupabaseConfig ||
+        normalizedMessage.contains('example.supabase.co') ||
+        normalizedMessage.contains('your-project.supabase.co')) {
+      return 'This mobile app is still using placeholder Supabase values. '
+          'Restart it with the real SUPABASE_URL and SUPABASE_ANON_KEY.';
+    }
+
+    if (normalizedMessage.contains('failed host lookup')) {
+      return 'The phone could not reach Supabase. Double-check the mobile '
+          'SUPABASE_URL value and confirm the device has internet access.';
+    }
+
+    return 'Unable to send sign-in link: $rawMessage';
+  }
+
   Future<void> _sendMagicLink() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -32,6 +51,16 @@ class _SignInPageState extends ConsumerState<SignInPage> {
 
     final bootstrap = ref.read(appBootstrapProvider);
     final client = bootstrap.client;
+    if (bootstrap.config.usesPlaceholderSupabaseConfig) {
+      setState(() {
+        _errorMessage =
+            'This app is still running with placeholder Supabase values. '
+            'Restart it with the real SUPABASE_URL and SUPABASE_ANON_KEY.';
+        _statusMessage = null;
+      });
+      return;
+    }
+
     if (client == null) {
       setState(() {
         _errorMessage =
@@ -77,7 +106,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       }
 
       setState(() {
-        _errorMessage = 'Unable to send sign-in link: $error';
+        _errorMessage = _friendlyErrorMessage(error, bootstrap);
       });
     } finally {
       if (mounted) {

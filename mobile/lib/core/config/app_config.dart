@@ -51,4 +51,12 @@ class AppConfig {
 
   String get magicLinkRedirectUrl =>
       '${authRedirectScheme.trim()}://${authRedirectHost.trim()}';
+
+  Uri? get supabaseUri => Uri.tryParse(supabaseUrl.trim());
+
+  String get supabaseHost => supabaseUri?.host.toLowerCase() ?? '';
+
+  bool get usesPlaceholderSupabaseConfig =>
+      supabaseHost.contains('example.supabase.co') ||
+      supabaseHost.contains('your-project.supabase.co');
 }
