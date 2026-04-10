@@ -17,7 +17,8 @@ const STORAGE_KEY = "serviq_provider_status_v1";
 
 const readStoredStatus = (): OnlineStatus => {
   try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const raw =
+      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (raw === "available" || raw === "busy" || raw === "offline") return raw;
   } catch {
     // ignore
@@ -59,24 +60,27 @@ export function AvailabilityToggle() {
     return () => document.removeEventListener("mousedown", handle);
   }, [open]);
 
-  const changeStatus = useCallback(async (next: OnlineStatus) => {
-    setOpen(false);
-    if (next === status) return;
-    setSaving(true);
-    try {
-      await sendPresencePing(next);
-      setStatus(next);
+  const changeStatus = useCallback(
+    async (next: OnlineStatus) => {
+      setOpen(false);
+      if (next === status) return;
+      setSaving(true);
       try {
-        localStorage.setItem(STORAGE_KEY, next);
+        await sendPresencePing(next);
+        setStatus(next);
+        try {
+          localStorage.setItem(STORAGE_KEY, next);
+        } catch {
+          // ignore storage errors
+        }
       } catch {
-        // ignore storage errors
+        // Silently fail — heartbeat will eventually sync
+      } finally {
+        setSaving(false);
       }
-    } catch {
-      // Silently fail — heartbeat will eventually sync
-    } finally {
-      setSaving(false);
-    }
-  }, [status]);
+    },
+    [status],
+  );
 
   const cfg = STATUS_CONFIG[status];
 
@@ -88,16 +92,16 @@ export function AvailabilityToggle() {
         aria-label="Change availability status"
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex min-h-10 items-center gap-1.5 rounded-[1rem] border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white sm:min-h-0 sm:rounded-xl sm:px-3 sm:py-1.5"
+        className="flex min-h-8 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white md:min-h-9 md:gap-1.5 md:rounded-[1rem] md:px-3 md:py-2 md:text-xs"
       >
         {saving ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
         ) : (
           <span className={`h-2 w-2 rounded-full ${cfg.dot}`} aria-hidden />
         )}
-        <span className="hidden sm:inline">{cfg.label}</span>
-        <RadioTower className="h-3.5 w-3.5 text-slate-500 sm:hidden" />
-        <ChevronDown className="hidden h-3 w-3 text-slate-500 sm:block" />
+        <span className="hidden md:inline">{cfg.label}</span>
+        <RadioTower className="h-3.5 w-3.5 text-slate-500 md:hidden" />
+        <ChevronDown className="hidden h-3 w-3 text-slate-500 md:block" />
       </button>
 
       {open && (
@@ -122,7 +126,9 @@ export function AvailabilityToggle() {
                 <span className={`h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
                 {c.label}
                 {s === status && (
-                  <span className="ml-auto text-[10px] font-normal text-slate-500">current</span>
+                  <span className="ml-auto text-[10px] font-normal text-slate-500">
+                    current
+                  </span>
                 )}
               </button>
             );

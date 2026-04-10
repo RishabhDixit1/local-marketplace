@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
+import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
+import 'package:serviq_mobile/features/feed/presentation/feed_page.dart';
 
 void main() {
   testWidgets('section card renders child content', (
@@ -15,4 +19,96 @@ void main() {
 
     expect(find.text('ServiQ mobile'), findsOneWidget);
   });
+
+  testWidgets('feed page stays stable on narrow handset widths', (
+    WidgetTester tester,
+  ) async {
+    await _pumpFeedPage(tester, const Size(320, 640));
+
+    expect(find.text('Marketplace'), findsOneWidget);
+    expect(
+      find.text('Nearby demand, trusted providers, faster response.'),
+      findsOneWidget,
+    );
+    expect(find.text('Connected'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feed page stays stable on iPhone-sized widths', (
+    WidgetTester tester,
+  ) async {
+    await _pumpFeedPage(tester, const Size(390, 844));
+
+    expect(find.text('Marketplace'), findsOneWidget);
+    expect(
+      find.text('Emergency multi-room electrical rewiring support'),
+      findsOneWidget,
+    );
+    expect(find.text('Products'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
+
+Future<void> _pumpFeedPage(WidgetTester tester, Size size) async {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+
+  await tester.pumpWidget(
+    ProviderScope(
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: const FeedPage(snapshotOverride: AsyncData(_sampleSnapshot)),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+const _sampleSnapshot = MobileFeedSnapshot(
+  currentUserId: 'viewer-1',
+  stats: MobileFeedStats(
+    total: 12,
+    urgent: 4,
+    demand: 7,
+    service: 3,
+    product: 2,
+  ),
+  items: [
+    MobileFeedItem(
+      id: 'need-1',
+      type: MobileFeedItemType.demand,
+      title: 'Emergency multi-room electrical rewiring support',
+      description:
+          'Need a verified electrician who can inspect, rewire, and document a repair plan for an older flat before tenants move in this weekend.',
+      category: 'Electrical and safety inspection',
+      creatorName: 'Priyanka Narayanan',
+      locationLabel: 'Koramangala 6th Block, Bengaluru',
+      statusLabel: 'Awaiting Provider Confirmation',
+      priceLabel: 'Budget shared in chat',
+      timeLabel: 'Recently posted',
+      distanceLabel: '14.2 km away',
+      urgent: true,
+      mediaCount: 3,
+    ),
+    MobileFeedItem(
+      id: 'service-1',
+      type: MobileFeedItemType.service,
+      title: 'On-site appliance repair and preventive service',
+      description:
+          'Same-day visits for washing machines, microwaves, and refrigerators with spare-part pickup if needed.',
+      category: 'Appliance repair and maintenance',
+      creatorName: 'Northside Repair Collective',
+      locationLabel: 'HSR Layout, Bengaluru',
+      statusLabel: 'Open',
+      priceLabel: 'INR 1200',
+      timeLabel: '2h ago',
+      distanceLabel: '7.4 km away',
+      urgent: false,
+      mediaCount: 0,
+    ),
+  ],
+);

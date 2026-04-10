@@ -134,7 +134,7 @@ class SetupPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Mobile auth uses the Supabase Flutter client directly. Your current web-only /api/auth/send-link callback logic still accepts only http/https callbacks, so native sign-in should stay on the Supabase SDK path.',
+                    'Mobile auth uses the Supabase Flutter client directly. Android and iOS now register the default `serviq://auth-callback` return path, so keep your Supabase redirect URL and dart defines aligned with that callback while testing.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],

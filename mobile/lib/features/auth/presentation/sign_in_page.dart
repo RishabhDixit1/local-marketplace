@@ -90,7 +90,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
 
       setState(() {
         _statusMessage =
-            'Magic link sent. Open the email on your device and complete the sign-in flow in the app once deep links are registered.';
+            'Magic link sent. Open the email on your device and the native callback should return you to ServiQ if your Supabase redirect URL matches this app callback.';
       });
     } on AuthException catch (error) {
       if (!mounted) {
@@ -133,7 +133,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'We are keeping auth native to Supabase here. After the deep-link plumbing is finished on Android and iOS, this same flow will sign users in directly on the app.',
+              'We are keeping auth native to Supabase here. The app now registers the default mobile callback, so this same flow can return directly into ServiQ once Supabase is configured with the matching redirect URL.',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 20),
@@ -224,7 +224,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'If the link opens your browser instead of the app, the native deep link registration still needs to be added in Android and iOS project settings.',
+                    'If the link still opens only in the browser, double-check that Supabase Additional Redirect URLs includes this exact callback and that your run command is using the same scheme and host.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],

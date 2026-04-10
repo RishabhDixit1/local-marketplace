@@ -53,6 +53,19 @@ class MobileApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    return _sendJson(
+      method: 'PATCH',
+      path: path,
+      body: body,
+      authenticated: authenticated,
+    );
+  }
+
   Future<Map<String, dynamic>> _sendJson({
     required String method,
     required String path,
@@ -84,6 +97,12 @@ class MobileApiClient {
       response = await _httpClient.get(uri, headers: headers);
     } else if (method == 'POST') {
       response = await _httpClient.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body ?? const <String, dynamic>{}),
+      );
+    } else if (method == 'PATCH') {
+      response = await _httpClient.patch(
         uri,
         headers: headers,
         body: jsonEncode(body ?? const <String, dynamic>{}),

@@ -70,7 +70,7 @@ Your current web route at `/api/auth/send-link` only accepts `http/https` callba
 serviq://auth-callback
 ```
 
-The next platform step is registering that deep link in Android and iOS project settings.
+This repo now registers that callback in Android and iOS project settings. Make sure Supabase Authentication -> Additional Redirect URLs includes the exact same callback.
 
 ## Verification Commands
 
@@ -81,8 +81,8 @@ flutter test --no-pub test/widget_test.dart
 
 ## Next Product Work
 
-1. Wire deep links for Android and iOS sign-in completion.
+1. Verify the native auth callback flow on a real Android device and later on iOS/macOS.
 2. Connect realtime inbox and chat threads.
-3. Build provider task actions for interest, accept, withdraw, and progress.
+3. Expand the mobile task board with requester-side completion and decline flows.
 4. Add the 2-step mobile composer for needs, services, and products.
 5. Integrate push notifications with Firebase.
