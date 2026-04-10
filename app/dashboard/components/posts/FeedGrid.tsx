@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   MarketplaceCardActionModel,
@@ -25,13 +25,24 @@ type FeedGridProps = {
   onHoverItemChange: (itemId: string | null) => void;
   onResetOrRefresh: () => void;
   onOpenComposer: () => void;
-  resolveActionModel: (item: MarketplaceDisplayFeedItem) => MarketplaceCardActionModel;
+  resolveActionModel: (
+    item: MarketplaceDisplayFeedItem,
+  ) => MarketplaceCardActionModel;
   isSavedListing: (item: MarketplaceDisplayFeedItem) => boolean;
   isSaveBusy: (item: MarketplaceDisplayFeedItem) => boolean;
   isShareBusy: (item: MarketplaceDisplayFeedItem) => boolean;
-  isPrimaryBusy: (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => boolean;
-  onPrimaryAction: (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => void | Promise<void>;
-  onSecondaryAction: (item: MarketplaceDisplayFeedItem, action: MarketplaceSecondaryActionKind) => void | Promise<void>;
+  isPrimaryBusy: (
+    item: MarketplaceDisplayFeedItem,
+    primaryKind: MarketplacePrimaryActionKind,
+  ) => boolean;
+  onPrimaryAction: (
+    item: MarketplaceDisplayFeedItem,
+    primaryKind: MarketplacePrimaryActionKind,
+  ) => void | Promise<void>;
+  onSecondaryAction: (
+    item: MarketplaceDisplayFeedItem,
+    action: MarketplaceSecondaryActionKind,
+  ) => void | Promise<void>;
   onFeedRefresh?: () => void;
   renderHeaderAction?: (item: MarketplaceDisplayFeedItem) => ReactNode;
 };
@@ -61,64 +72,78 @@ export default function FeedGrid({
 }: FeedGridProps) {
   const cardRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const deepLinkHandledRef = useRef(false);
-  const skeletonCards = useMemo(() => Array.from({ length: 6 }, (_, index) => `skeleton-${index}`), []);
-  const cardVisibilityStyle = useMemo<CSSProperties>(
-    () => ({
-      contentVisibility: "auto",
-      containIntrinsicSize: "720px",
-    }),
-    []
+  const skeletonCards = useMemo(
+    () => Array.from({ length: 6 }, (_, index) => `skeleton-${index}`),
+    [],
   );
 
   // Owner post management state
   const [ownerBusyId, setOwnerBusyId] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<{
-    id: string; title: string; details: string; category: string; budget: number;
+    id: string;
+    title: string;
+    details: string;
+    category: string;
+    budget: number;
   } | null>(null);
 
-  const handleOwnerArchive = useCallback(async (item: MarketplaceDisplayFeedItem) => {
-    if (item.source !== "post") return;
-    if (!window.confirm("Archive this post? It will no longer appear in the feed.")) return;
-    setOwnerBusyId(item.id);
-    try {
-      const res = await fetch("/api/posts/manage", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: item.id, action: "archive" }),
-      });
-      if (res.ok) onFeedRefresh?.();
-    } finally {
-      setOwnerBusyId(null);
-    }
-  }, [onFeedRefresh]);
+  const handleOwnerArchive = useCallback(
+    async (item: MarketplaceDisplayFeedItem) => {
+      if (item.source !== "post") return;
+      if (
+        !window.confirm(
+          "Archive this post? It will no longer appear in the feed.",
+        )
+      )
+        return;
+      setOwnerBusyId(item.id);
+      try {
+        const res = await fetch("/api/posts/manage", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postId: item.id, action: "archive" }),
+        });
+        if (res.ok) onFeedRefresh?.();
+      } finally {
+        setOwnerBusyId(null);
+      }
+    },
+    [onFeedRefresh],
+  );
 
-  const handleOwnerDelete = useCallback(async (item: MarketplaceDisplayFeedItem) => {
-    const confirmMessage =
-      item.source === "help_request"
-        ? "Delete this request from your live feed? This cannot be undone."
-        : "Permanently delete this post? This cannot be undone.";
-    if (!window.confirm(confirmMessage)) return;
+  const handleOwnerDelete = useCallback(
+    async (item: MarketplaceDisplayFeedItem) => {
+      const confirmMessage =
+        item.source === "help_request"
+          ? "Delete this request from your live feed? This cannot be undone."
+          : "Permanently delete this post? This cannot be undone.";
+      if (!window.confirm(confirmMessage)) return;
 
-    setOwnerBusyId(item.id);
-    try {
-      const res =
-        item.source === "help_request" && item.helpRequestId
-          ? await fetch("/api/needs/status", {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ helpRequestId: item.helpRequestId, status: "cancelled" }),
-            })
-          : await fetch(`/api/posts/manage?postId=${item.id}`, {
-              method: "DELETE",
-              credentials: "include",
-            });
-      if (res.ok) onFeedRefresh?.();
-    } finally {
-      setOwnerBusyId(null);
-    }
-  }, [onFeedRefresh]);
+      setOwnerBusyId(item.id);
+      try {
+        const res =
+          item.source === "help_request" && item.helpRequestId
+            ? await fetch("/api/needs/status", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  helpRequestId: item.helpRequestId,
+                  status: "cancelled",
+                }),
+              })
+            : await fetch(`/api/posts/manage?postId=${item.id}`, {
+                method: "DELETE",
+                credentials: "include",
+              });
+        if (res.ok) onFeedRefresh?.();
+      } finally {
+        setOwnerBusyId(null);
+      }
+    },
+    [onFeedRefresh],
+  );
 
   const handleOwnerSaveEdit = useCallback(async () => {
     if (!editingPost) return;
@@ -137,7 +162,10 @@ export default function FeedGrid({
           budget: editingPost.budget,
         }),
       });
-      if (res.ok) { setEditingPost(null); onFeedRefresh?.(); }
+      if (res.ok) {
+        setEditingPost(null);
+        onFeedRefresh?.();
+      }
     } finally {
       setOwnerBusyId(null);
     }
@@ -151,7 +179,9 @@ export default function FeedGrid({
     onActiveItemChange(focusItemId);
 
     const frameId = window.requestAnimationFrame(() => {
-      cardRefs.current.get(focusItemId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      cardRefs.current
+        .get(focusItemId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
     return () => {
@@ -161,9 +191,12 @@ export default function FeedGrid({
 
   if (loading) {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 xl:grid-cols-2">
         {skeletonCards.map((key) => (
-          <div key={key} className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div
+            key={key}
+            className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
             <div className="flex items-center gap-3">
               <div className="h-11 w-11 animate-pulse rounded-full bg-slate-200" />
               <div className="flex-1 space-y-1.5">
@@ -207,44 +240,70 @@ export default function FeedGrid({
                 <Pencil size={16} className="text-[var(--brand-700)]" />
                 <h2 className="text-sm font-bold text-slate-900">Edit Post</h2>
               </div>
-              <button type="button" onClick={() => setEditingPost(null)} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingPost(null)}
+                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
+              >
                 <X size={16} />
               </button>
             </div>
             <div className="space-y-3 p-5">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Title</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  Title
+                </label>
                 <input
                   value={editingPost.title}
-                  onChange={(e) => setEditingPost({ ...editingPost, title: e.target.value })}
+                  onChange={(e) =>
+                    setEditingPost({ ...editingPost, title: e.target.value })
+                  }
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Description</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  Description
+                </label>
                 <textarea
                   rows={3}
                   value={editingPost.details}
-                  onChange={(e) => setEditingPost({ ...editingPost, details: e.target.value })}
+                  onChange={(e) =>
+                    setEditingPost({ ...editingPost, details: e.target.value })
+                  }
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Category</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                    Category
+                  </label>
                   <input
                     value={editingPost.category}
-                    onChange={(e) => setEditingPost({ ...editingPost, category: e.target.value })}
+                    onChange={(e) =>
+                      setEditingPost({
+                        ...editingPost,
+                        category: e.target.value,
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Budget (INR)</label>
+                  <label className="mb-1 block text-xs font-semibold text-slate-600">
+                    Budget (INR)
+                  </label>
                   <input
                     type="number"
                     min={0}
                     value={editingPost.budget}
-                    onChange={(e) => setEditingPost({ ...editingPost, budget: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setEditingPost({
+                        ...editingPost,
+                        budget: Number(e.target.value),
+                      })
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                   />
                 </div>
@@ -257,7 +316,11 @@ export default function FeedGrid({
                 disabled={ownerBusyId === editingPost.id}
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
               >
-                {ownerBusyId === editingPost.id ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                {ownerBusyId === editingPost.id ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Save size={15} />
+                )}
                 Save changes
               </button>
               <button
@@ -272,7 +335,7 @@ export default function FeedGrid({
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 xl:grid-cols-2">
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
           const isOwner =
@@ -285,7 +348,6 @@ export default function FeedGrid({
             <div
               key={item.id}
               data-feed-card-id={item.id}
-              style={cardVisibilityStyle}
               ref={(node) => {
                 cardRefs.current.set(item.id, node);
               }}
@@ -309,8 +371,12 @@ export default function FeedGrid({
                 onPrimaryAction={(action) => onPrimaryAction(item, action)}
                 onSecondaryAction={(action) => onSecondaryAction(item, action)}
                 onFocus={() => onActiveItemChange(item.id)}
-                onHoverChange={(hovered) => onHoverItemChange(hovered ? item.id : null)}
-                headerAction={renderHeaderAction ? renderHeaderAction(item) : null}
+                onHoverChange={(hovered) =>
+                  onHoverItemChange(hovered ? item.id : null)
+                }
+                headerAction={
+                  renderHeaderAction ? renderHeaderAction(item) : null
+                }
                 isOwner={isOwner}
                 ownerBusy={ownerBusyId === item.id}
                 onOwnerEdit={
@@ -325,9 +391,17 @@ export default function FeedGrid({
                         })
                     : undefined
                 }
-                onOwnerArchive={canEditOwnerItem ? () => void handleOwnerArchive(item) : undefined}
+                onOwnerArchive={
+                  canEditOwnerItem
+                    ? () => void handleOwnerArchive(item)
+                    : undefined
+                }
                 onOwnerDelete={() => void handleOwnerDelete(item)}
-                ownerDeleteLabel={item.source === "help_request" ? "Delete request" : "Delete post"}
+                ownerDeleteLabel={
+                  item.source === "help_request"
+                    ? "Delete request"
+                    : "Delete post"
+                }
               />
             </div>
           );

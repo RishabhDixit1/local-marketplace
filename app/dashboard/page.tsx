@@ -8,19 +8,24 @@ import RouteObservability from "@/app/components/RouteObservability";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import ProfileToastViewport, { type ProfileToast } from "@/app/components/profile/ProfileToastViewport";
+import ProfileToastViewport, {
+  type ProfileToast,
+} from "@/app/components/profile/ProfileToastViewport";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedFilters from "@/app/dashboard/components/posts/FeedFilters";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
-import { buildMarketplaceFeedCardId, type MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
+import {
+  buildMarketplaceFeedCardId,
+  type MarketplaceDisplayFeedItem,
+} from "@/lib/marketplaceFeed";
 import type { MarketplacePrimaryActionKind } from "@/lib/marketplaceCardActions";
 
 const CreatePostModal = dynamic(
   () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
-  { ssr: false }
+  { ssr: false },
 );
 
 const MOBILE_INITIAL_VISIBLE_ITEMS = 8;
@@ -31,26 +36,31 @@ export default function MarketplacePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
-  const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_INITIAL_VISIBLE_ITEMS);
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(
+    MOBILE_INITIAL_VISIBLE_ITEMS,
+  );
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const pushToast = useCallback((kind: ProfileToast["kind"], message: string) => {
-    const toastId =
-      typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const pushToast = useCallback(
+    (kind: ProfileToast["kind"], message: string) => {
+      const toastId =
+        typeof window !== "undefined" && window.crypto?.randomUUID
+          ? window.crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    setToasts((current) => [...current, { id: toastId, kind, message }]);
+      setToasts((current) => [...current, { id: toastId, kind, message }]);
 
-    const timeoutId = window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== toastId));
-      toastTimersRef.current.delete(toastId);
-    }, 4600);
+      const timeoutId = window.setTimeout(() => {
+        setToasts((current) => current.filter((toast) => toast.id !== toastId));
+        toastTimersRef.current.delete(toastId);
+      }, 4600);
 
-    toastTimersRef.current.set(toastId, timeoutId);
-  }, []);
+      toastTimersRef.current.set(toastId, timeoutId);
+    },
+    [],
+  );
 
   useEffect(() => {
     const timers = toastTimersRef.current;
@@ -163,7 +173,15 @@ export default function MarketplacePage() {
         },
       ],
     }),
-    [fetchFeed, filters.query, isSmallScreen, refreshing, setFilters, showAdvancedFilters, setShowAdvancedFilters]
+    [
+      fetchFeed,
+      filters.query,
+      isSmallScreen,
+      refreshing,
+      setFilters,
+      showAdvancedFilters,
+      setShowAdvancedFilters,
+    ],
   );
 
   useDashboardPrompt(postsPromptConfig);
@@ -185,8 +203,12 @@ export default function MarketplacePage() {
   ]);
 
   const resolvedHoveredMapItemId = useMemo(
-    () => (hoveredMapItemId && displayFeed.some((item) => item.id === hoveredMapItemId) ? hoveredMapItemId : null),
-    [displayFeed, hoveredMapItemId]
+    () =>
+      hoveredMapItemId &&
+      displayFeed.some((item) => item.id === hoveredMapItemId)
+        ? hoveredMapItemId
+        : null,
+    [displayFeed, hoveredMapItemId],
   );
 
   const visibleFeed = useMemo(() => {
@@ -197,7 +219,8 @@ export default function MarketplacePage() {
     return displayFeed.slice(0, mobileVisibleCount);
   }, [displayFeed, isSmallScreen, mobileVisibleCount]);
 
-  const hasMoreMobileItems = isSmallScreen && visibleFeed.length < displayFeed.length;
+  const hasMoreMobileItems =
+    isSmallScreen && visibleFeed.length < displayFeed.length;
 
   useEffect(() => {
     if (!isSmallScreen || !focusItemId) return;
@@ -209,7 +232,11 @@ export default function MarketplacePage() {
   }, [displayFeed, focusItemId, isSmallScreen]);
 
   useEffect(() => {
-    if (!hasMoreMobileItems || !mobileLoadMoreRef.current || typeof window === "undefined") {
+    if (
+      !hasMoreMobileItems ||
+      !mobileLoadMoreRef.current ||
+      typeof window === "undefined"
+    ) {
       return;
     }
 
@@ -223,12 +250,15 @@ export default function MarketplacePage() {
             return current;
           }
 
-          return Math.min(current + MOBILE_VISIBLE_INCREMENT, displayFeed.length);
+          return Math.min(
+            current + MOBILE_VISIBLE_INCREMENT,
+            displayFeed.length,
+          );
         });
       },
       {
         rootMargin: "240px 0px",
-      }
+      },
     );
 
     observer.observe(mobileLoadMoreRef.current);
@@ -245,7 +275,7 @@ export default function MarketplacePage() {
 
   const isSaveBusy = useCallback(
     (item: MarketplaceDisplayFeedItem) => isListingBusy(item, savingListingIds),
-    [isListingBusy, savingListingIds]
+    [isListingBusy, savingListingIds],
   );
 
   const isShareBusy = useCallback(
@@ -253,16 +283,23 @@ export default function MarketplacePage() {
       const cardId = buildMarketplaceFeedCardId(item);
       return sharingCardId === cardId || sharingCardId === item.id;
     },
-    [sharingCardId]
+    [sharingCardId],
   );
 
   const isPrimaryBusy = useCallback(
-    (item: MarketplaceDisplayFeedItem, primaryKind: MarketplacePrimaryActionKind) => {
+    (
+      item: MarketplaceDisplayFeedItem,
+      primaryKind: MarketplacePrimaryActionKind,
+    ) => {
       if (primaryKind === "send_quote") {
         return chatOpeningProviderId === item.providerId;
       }
 
-      if (primaryKind === "accept" || primaryKind === "withdraw" || primaryKind === "decline") {
+      if (
+        primaryKind === "accept" ||
+        primaryKind === "withdraw" ||
+        primaryKind === "decline"
+      ) {
         return isListingBusy(item, acceptingListingIds);
       }
 
@@ -272,7 +309,12 @@ export default function MarketplacePage() {
 
       return false;
     },
-    [acceptingListingIds, chatOpeningProviderId, discardingListingIds, isListingBusy]
+    [
+      acceptingListingIds,
+      chatOpeningProviderId,
+      discardingListingIds,
+      isListingBusy,
+    ],
   );
 
   const handlePublished = useCallback(
@@ -282,18 +324,18 @@ export default function MarketplacePage() {
           "success",
           result.matchedCount && result.matchedCount > 0
             ? `Request published. ${result.matchedCount} provider matches are ready.`
-            : "Request published. Matching is in progress."
+            : "Request published. Matching is in progress.",
         );
         void fetchFeed(true);
       } else {
         router.push("/dashboard/profile");
       }
     },
-    [fetchFeed, pushToast, router]
+    [fetchFeed, pushToast, router],
   );
 
   return (
-    <div className="min-h-screen bg-[var(--surface-app)] pb-24 pt-5 text-slate-900 sm:pt-6">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pb-24 pt-5 text-slate-900 sm:pt-6">
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
@@ -308,7 +350,9 @@ export default function MarketplacePage() {
             filters={filters}
             categoryOptions={categoryOptions}
             showAdvancedFilters={showAdvancedFilters}
-            onToggleAdvanced={() => setShowAdvancedFilters((current) => !current)}
+            onToggleAdvanced={() =>
+              setShowAdvancedFilters((current) => !current)
+            }
             onReset={resetFilters}
             onFiltersChange={setFilters}
           />
@@ -316,7 +360,9 @@ export default function MarketplacePage() {
 
         {feedError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <p className="font-semibold">Could not fully refresh the live feed.</p>
+            <p className="font-semibold">
+              Could not fully refresh the live feed.
+            </p>
             <p className="mt-1 text-xs">{feedError}</p>
           </div>
         ) : null}
@@ -350,7 +396,12 @@ export default function MarketplacePage() {
             <button
               type="button"
               onClick={() =>
-                setMobileVisibleCount((current) => Math.min(current + MOBILE_VISIBLE_INCREMENT, displayFeed.length))
+                setMobileVisibleCount((current) =>
+                  Math.min(
+                    current + MOBILE_VISIBLE_INCREMENT,
+                    displayFeed.length,
+                  ),
+                )
               }
               className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
             >
@@ -363,7 +414,9 @@ export default function MarketplacePage() {
       <AcceptConfirmDialog
         open={!!acceptTarget}
         listing={acceptTarget}
-        busy={!!(acceptTarget && isListingBusy(acceptTarget, acceptingListingIds))}
+        busy={
+          !!(acceptTarget && isListingBusy(acceptTarget, acceptingListingIds))
+        }
         onCancel={() => setAcceptTarget(null)}
         onConfirm={() => {
           void confirmAccept();
@@ -387,7 +440,9 @@ export default function MarketplacePage() {
       <ProfileToastViewport
         toasts={toasts}
         onDismiss={(toastId) => {
-          setToasts((current) => current.filter((toast) => toast.id !== toastId));
+          setToasts((current) =>
+            current.filter((toast) => toast.id !== toastId),
+          );
           const timeoutId = toastTimersRef.current.get(toastId);
           if (timeoutId) {
             window.clearTimeout(timeoutId);

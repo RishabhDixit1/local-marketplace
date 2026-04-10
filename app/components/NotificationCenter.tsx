@@ -84,7 +84,9 @@ const formatTimeAgo = (nowMs: number, timestamp: string) => {
   return `${days}d ago`;
 };
 
-const normalizeNotificationRows = (rows: NotificationRowRaw[] | null | undefined): NotificationRow[] => {
+const normalizeNotificationRows = (
+  rows: NotificationRowRaw[] | null | undefined,
+): NotificationRow[] => {
   return (rows || []).map((row) => ({
     ...row,
     kind: getNotificationKind(row.kind),
@@ -94,7 +96,7 @@ const normalizeNotificationRows = (rows: NotificationRowRaw[] | null | undefined
 
 const isMissingNotificationsTable = (message: string) =>
   /relation .*notifications.* does not exist|table .*notifications.* does not exist|could not find the table '.*notifications.*' in the schema cache/i.test(
-    message
+    message,
   );
 
 type NotificationCenterContentProps = {
@@ -102,7 +104,10 @@ type NotificationCenterContentProps = {
   userId?: string | null;
 };
 
-export default function NotificationCenter({ enabled = true, userId = null }: NotificationCenterContentProps) {
+export default function NotificationCenter({
+  enabled = true,
+  userId = null,
+}: NotificationCenterContentProps) {
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -112,7 +117,10 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [errorMessage, setErrorMessage] = useState("");
   const [demoMode, setDemoMode] = useState(false);
-  const [toast, setToast] = useState<{ title: string; kind: NotificationKind } | null>(null);
+  const [toast, setToast] = useState<{
+    title: string;
+    kind: NotificationKind;
+  } | null>(null);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -145,7 +153,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
       try {
         const { data, error } = await supabase
           .from("notifications")
-          .select("id,user_id,kind,title,message,entity_type,entity_id,metadata,read_at,cleared_at,created_at")
+          .select(
+            "id,user_id,kind,title,message,entity_type,entity_id,metadata,read_at,cleared_at,created_at",
+          )
           .eq("user_id", userId)
           .is("cleared_at", null)
           .order("created_at", { ascending: false })
@@ -155,7 +165,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
           if (isMissingNotificationsTable(error.message)) {
             setNotifications(getDemoNotifications(userId));
             setErrorMessage(
-              "Live notifications are in demo mode. Apply canonical Supabase migrations (npm run supabase:migrate or npm run supabase:sql-editor) to enable realtime DB events."
+              "Live notifications are in demo mode. Apply canonical Supabase migrations (npm run supabase:migrate or npm run supabase:sql-editor) to enable realtime DB events.",
             );
             setDemoMode(true);
             setLoading(false);
@@ -164,12 +174,18 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
 
           setNotifications([]);
           setLoading(false);
-          setErrorMessage("Unable to load notifications. Please refresh and try again.");
+          setErrorMessage(
+            "Unable to load notifications. Please refresh and try again.",
+          );
           setDemoMode(false);
           return;
         }
 
-        setNotifications(normalizeNotificationRows((data as NotificationRowRaw[] | null) || []));
+        setNotifications(
+          normalizeNotificationRows(
+            (data as NotificationRowRaw[] | null) || [],
+          ),
+        );
         setErrorMessage("");
         setDemoMode(false);
         setLoading(false);
@@ -185,7 +201,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
         setErrorMessage(
           isFailedFetchError(error)
             ? "Connection issue while loading notifications. Retry once your network is stable."
-            : "Unable to load notifications. Please refresh and try again."
+            : "Unable to load notifications. Please refresh and try again.",
         );
       } finally {
         loadInFlightRef.current = false;
@@ -197,7 +213,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
         }
       }
     },
-    [userId]
+    [userId],
   );
 
   useEffect(() => {
@@ -271,15 +287,18 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
             typeof payload.new === "object"
           ) {
             const row = payload.new as Record<string, unknown>;
-            const title = typeof row.title === "string" ? row.title : "New notification";
-            const kind = getNotificationKind(typeof row.kind === "string" ? row.kind : null);
+            const title =
+              typeof row.title === "string" ? row.title : "New notification";
+            const kind = getNotificationKind(
+              typeof row.kind === "string" ? row.kind : null,
+            );
 
             setToast({ title, kind });
 
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
             toastTimerRef.current = setTimeout(() => setToast(null), 5000);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -310,10 +329,13 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
 
     const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
     const mobileWidthQuery = window.matchMedia("(max-width: 640px)");
-    const touchCapable = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    const touchCapable =
+      navigator.maxTouchPoints > 0 || "ontouchstart" in window;
 
     const updateMode = () => {
-      setUseMobileSheet(touchCapable || coarsePointerQuery.matches || mobileWidthQuery.matches);
+      setUseMobileSheet(
+        touchCapable || coarsePointerQuery.matches || mobileWidthQuery.matches,
+      );
     };
 
     updateMode();
@@ -355,7 +377,11 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
 
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
-      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      if (
+        panelRef.current?.contains(target) ||
+        triggerRef.current?.contains(target)
+      )
+        return;
       setIsOpen(false);
     };
 
@@ -386,7 +412,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
 
   const unreadCount = useMemo(
     () => decoratedNotifications.filter((item) => item.unread).length,
-    [decoratedNotifications]
+    [decoratedNotifications],
   );
 
   const markAsRead = useCallback(
@@ -396,8 +422,10 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
       const timestamp = new Date().toISOString();
       setNotifications((current) =>
         current.map((item) =>
-          item.id === id && !item.read_at ? { ...item, read_at: timestamp } : item
-        )
+          item.id === id && !item.read_at
+            ? { ...item, read_at: timestamp }
+            : item,
+        ),
       );
 
       if (demoMode) return;
@@ -413,7 +441,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
         void loadNotifications(true);
       }
     },
-    [demoMode, loadNotifications, userId]
+    [demoMode, loadNotifications, userId],
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -421,12 +449,16 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
 
     const timestamp = new Date().toISOString();
     setNotifications((current) =>
-      current.map((item) => (item.read_at ? item : { ...item, read_at: timestamp }))
+      current.map((item) =>
+        item.read_at ? item : { ...item, read_at: timestamp },
+      ),
     );
 
     if (demoMode) return;
 
-    const { error: rpcError } = await supabase.rpc("mark_all_notifications_read");
+    const { error: rpcError } = await supabase.rpc(
+      "mark_all_notifications_read",
+    );
     if (!rpcError) return;
 
     const { error: fallbackError } = await supabase
@@ -461,7 +493,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
         void loadNotifications(true);
       }
     },
-    [demoMode, loadNotifications, userId]
+    [demoMode, loadNotifications, userId],
   );
 
   const clearAll = useCallback(async () => {
@@ -510,7 +542,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
     const Icon = style.icon;
     const action = resolveNotificationAction(item);
     // Derive matching bg color from the badge class, e.g. "bg-violet-100 …" → "bg-violet-100"
-    const iconBg = style.badgeClassName.split(" ").find((c) => c.startsWith("bg-")) ?? "bg-slate-100";
+    const iconBg =
+      style.badgeClassName.split(" ").find((c) => c.startsWith("bg-")) ??
+      "bg-slate-100";
 
     return (
       <li key={item.id} className="border-b border-slate-100 last:border-b-0">
@@ -520,16 +554,26 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
             onClick={() => void openNotification(item)}
             className="flex min-w-0 flex-1 items-start gap-3 text-left"
           >
-            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+            <div
+              className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}
+            >
               <Icon className={`h-4 w-4 ${style.iconClassName}`} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-slate-900 leading-5">{item.title}</p>
-                <span className="shrink-0 text-[11px] text-slate-400">{item.timeLabel}</span>
+                <p className="text-sm font-semibold text-slate-900 leading-5">
+                  {item.title}
+                </p>
+                <span className="shrink-0 text-[11px] text-slate-400">
+                  {item.timeLabel}
+                </span>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500 leading-4 line-clamp-2">{item.message}</p>
-              <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClassName}`}>
+              <p className="mt-0.5 text-xs text-slate-500 leading-4 line-clamp-2">
+                {item.message}
+              </p>
+              <span
+                className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.badgeClassName}`}
+              >
                 {action.ctaLabel}
               </span>
             </div>
@@ -569,7 +613,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
               : "bg-emerald-100 text-emerald-700"
           }`}
         >
-          <span className={`h-1.5 w-1.5 rounded-full ${demoMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${demoMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`}
+          />
           {demoMode ? "Demo" : "Live"}
         </div>
       </div>
@@ -586,7 +632,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
           {unreadItems.length > 0 && (
             <>
               <li className="sticky top-0 z-10 flex items-center gap-2 bg-sky-50 px-3 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-600">Unread</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-600">
+                  Unread
+                </span>
               </li>
               {unreadItems.map(renderItem)}
             </>
@@ -596,7 +644,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
           {readItems.length > 0 && (
             <>
               <li className="sticky top-0 z-10 flex items-center gap-2 bg-slate-50 px-3 py-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Earlier</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  Earlier
+                </span>
               </li>
               {readItems.map(renderItem)}
             </>
@@ -608,9 +658,12 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                 <Bell className="h-5 w-5 text-slate-400" />
               </div>
-              <p className="text-sm font-semibold text-slate-700">You&apos;re all caught up</p>
+              <p className="text-sm font-semibold text-slate-700">
+                You&apos;re all caught up
+              </p>
               <p className="text-xs text-slate-400 max-w-[18rem]">
-                New alerts appear here for chats, orders, reviews, connection requests, and Live Talk updates.
+                New alerts appear here for chats, orders, reviews, connection
+                requests, and Live Talk updates.
               </p>
             </li>
           )}
@@ -685,7 +738,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
               {panelContent}
             </div>
           </>,
-          document.body
+          document.body,
         )
       : null;
 
@@ -695,14 +748,14 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
         ref={triggerRef}
         onClick={togglePanel}
         disabled={!enabled}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:cursor-wait disabled:opacity-70 sm:h-8 sm:w-8 sm:rounded-lg"
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] disabled:cursor-wait disabled:opacity-70 md:h-9 md:w-9 md:rounded-xl"
         aria-label="Open notifications"
         aria-expanded={isOpen}
         aria-haspopup="dialog"
       >
         <Bell className="w-5 h-5 text-current" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 rounded-full flex items-center justify-center text-white text-[11px] font-bold leading-none">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white md:h-5 md:min-w-5 md:text-[11px]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -729,7 +782,9 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
             aria-live="polite"
             className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-toast)] flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xl transition-all animate-in fade-in slide-in-from-bottom-3 duration-300 sm:bottom-5 sm:right-5 sm:w-80"
           >
-            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}>
+            <div
+              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100`}
+            >
               {(() => {
                 const style = kindStyles[toast.kind];
                 const Icon = style.icon;
@@ -737,8 +792,12 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
               })()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-500">New notification</p>
-              <p className="mt-0.5 line-clamp-2 text-sm font-medium text-slate-900">{toast.title}</p>
+              <p className="text-xs font-semibold text-slate-500">
+                New notification
+              </p>
+              <p className="mt-0.5 line-clamp-2 text-sm font-medium text-slate-900">
+                {toast.title}
+              </p>
             </div>
             <button
               type="button"
@@ -752,7 +811,7 @@ export default function NotificationCenter({ enabled = true, userId = null }: No
               <X className="h-3.5 w-3.5" />
             </button>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

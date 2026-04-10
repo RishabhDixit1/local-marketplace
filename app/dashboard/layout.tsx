@@ -15,12 +15,18 @@ import {
 import ServiQLogo from "@/app/components/ServiQLogo";
 import OnboardingGuard from "@/app/components/profile/OnboardingGuard";
 import QuickOnboardingSheet from "@/app/components/profile/QuickOnboardingSheet";
-import { ProfileProvider, useProfileContext } from "@/app/components/profile/ProfileContext";
+import {
+  ProfileProvider,
+  useProfileContext,
+} from "@/app/components/profile/ProfileContext";
 import { useCart } from "@/app/components/store/CartContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
-import { buildPublicProfilePath, isProfileOnboardingComplete } from "@/lib/profile/utils";
+import {
+  buildPublicProfilePath,
+  isProfileOnboardingComplete,
+} from "@/lib/profile/utils";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -42,23 +48,32 @@ import {
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
 
-const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
-  ssr: false,
-});
+const CreatePostModal = dynamic(
+  () => import("@/app/components/CreatePostModal").then((mod) => mod.default),
+  {
+    ssr: false,
+  },
+);
 
 const AvailabilityToggle = dynamic(
-  () => import("@/app/components/AvailabilityToggle").then((m) => ({ default: m.AvailabilityToggle })),
-  { ssr: false }
+  () =>
+    import("@/app/components/AvailabilityToggle").then((m) => ({
+      default: m.AvailabilityToggle,
+    })),
+  { ssr: false },
 );
 
 const CartDrawer = dynamic(
-  () => import("@/app/components/store/CartDrawer").then((m) => ({ default: m.CartDrawer })),
-  { ssr: false }
+  () =>
+    import("@/app/components/store/CartDrawer").then((m) => ({
+      default: m.CartDrawer,
+    })),
+  { ssr: false },
 );
 
 const GlobalMapView = dynamic(
   () => import("@/app/dashboard/components/GlobalMapView"),
-  { ssr: false }
+  { ssr: false },
 );
 
 const baseNavigationTabs = [
@@ -72,7 +87,9 @@ const baseNavigationTabs = [
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
 
 const isNavigationTabActive = (pathname: string, path: string) =>
-  path === "/dashboard/provider" ? pathname === path || pathname.startsWith("/dashboard/provider/") : pathname === path;
+  path === "/dashboard/provider"
+    ? pathname === path || pathname.startsWith("/dashboard/provider/")
+    : pathname === path;
 
 export default function DashboardLayout({
   children,
@@ -105,7 +122,9 @@ function DashboardChatShortcut({
     <Link
       href="/dashboard/chat"
       aria-label={
-        unreadCount > 0 ? `Open chat inbox, ${unreadCount} unread message${unreadCount === 1 ? "" : "s"}` : "Open chat inbox"
+        unreadCount > 0
+          ? `Open chat inbox, ${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`
+          : "Open chat inbox"
       }
       aria-current={active ? "page" : undefined}
       title="Chat"
@@ -121,15 +140,12 @@ function DashboardChatShortcut({
   );
 }
 
-function DashboardShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, loading: profileLoading } = useProfileContext();
-  const [desktopNavManuallyCollapsed, setDesktopNavManuallyCollapsed] = useState(false);
+  const [desktopNavManuallyCollapsed, setDesktopNavManuallyCollapsed] =
+    useState(false);
   const [desktopNavAutoCollapsed, setDesktopNavAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -137,7 +153,9 @@ function DashboardShell({
   const [shellEnhancementsPrimed, setShellEnhancementsPrimed] = useState(false);
   const [showStartupIssues, setShowStartupIssues] = useState(false);
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
-  const [startupFixInstructions, setStartupFixInstructions] = useState<string[]>([]);
+  const [startupFixInstructions, setStartupFixInstructions] = useState<
+    string[]
+  >([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showGlobalMap, setShowGlobalMap] = useState(false);
   const { totalItems: cartCount, openCart } = useCart();
@@ -146,21 +164,30 @@ function DashboardShell({
   const [openQuickActions, setOpenQuickActions] = useState(false);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const currentUserId = user?.id ?? null;
-  const chatUnreadCount = useUnreadChatCount(authReady && shellEnhancementsReady, currentUserId);
+  const chatUnreadCount = useUnreadChatCount(
+    authReady && shellEnhancementsReady,
+    currentUserId,
+  );
   const myProfileHref =
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
   const navigationTabs = baseNavigationTabs;
-  const desktopNavCollapsed = desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
-  const chatBadgeLabel = chatUnreadCount > 9 ? "9+" : chatUnreadCount > 0 ? String(chatUnreadCount) : null;
+  const desktopNavCollapsed =
+    desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
+  const chatBadgeLabel =
+    chatUnreadCount > 9
+      ? "9+"
+      : chatUnreadCount > 0
+        ? String(chatUnreadCount)
+        : null;
   const isChatRouteActive = pathname === "/dashboard/chat";
   const hideFloatingQuickActions =
     pathname.startsWith("/dashboard/chat") ||
     pathname.startsWith("/dashboard/create_post") ||
     pathname.startsWith("/dashboard/launchpad");
   const shellIconButtonClassName =
-    "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-8 sm:w-8 sm:rounded-lg";
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -174,7 +201,8 @@ function DashboardShell({
 
     if (typeof mediaQuery.addEventListener === "function") {
       mediaQuery.addEventListener("change", syncDesktopNavCollapse);
-      return () => mediaQuery.removeEventListener("change", syncDesktopNavCollapse);
+      return () =>
+        mediaQuery.removeEventListener("change", syncDesktopNavCollapse);
     }
 
     mediaQuery.addListener(syncDesktopNavCollapse);
@@ -269,7 +297,10 @@ function DashboardShell({
     let active = true;
 
     const runStartupCheck = async () => {
-      if (typeof window !== "undefined" && window.sessionStorage.getItem(STARTUP_CHECK_SESSION_KEY) === "1") {
+      if (
+        typeof window !== "undefined" &&
+        window.sessionStorage.getItem(STARTUP_CHECK_SESSION_KEY) === "1"
+      ) {
         return;
       }
 
@@ -299,7 +330,9 @@ function DashboardShell({
           return;
         }
 
-        const issues = Array.isArray(payload.issues) ? payload.issues.filter(Boolean) : [];
+        const issues = Array.isArray(payload.issues)
+          ? payload.issues.filter(Boolean)
+          : [];
         const fixInstructions = Array.isArray(payload.fixInstructions)
           ? payload.fixInstructions.filter(Boolean)
           : [];
@@ -339,7 +372,8 @@ function DashboardShell({
           },
           body: JSON.stringify({
             isOnline: document.visibilityState === "visible",
-            availability: document.visibilityState === "visible" ? "available" : "away",
+            availability:
+              document.visibilityState === "visible" ? "available" : "away",
             responseSlaMinutes: 15,
           }),
         });
@@ -393,37 +427,64 @@ function DashboardShell({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] md:transition-[width] md:duration-200 ${
+          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
             desktopNavCollapsed ? "md:w-24" : "md:w-72"
           }`}
         >
-          <div className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}>
+          <div
+            className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 {desktopNavCollapsed ? (
-                  <ServiQLogo compact markOnly href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
+                  <ServiQLogo
+                    compact
+                    markOnly
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
                 ) : (
-                  <ServiQLogo className="max-w-[220px]" href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
+                  <ServiQLogo
+                    className="max-w-[220px]"
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
                 )}
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setDesktopNavManuallyCollapsed((current) => !current)}
+                  onClick={() =>
+                    setDesktopNavManuallyCollapsed((current) => !current)
+                  }
                   className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-                  aria-label={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
-                  title={desktopNavCollapsed ? "Expand navigation" : "Collapse navigation"}
+                  aria-label={
+                    desktopNavCollapsed
+                      ? "Expand navigation"
+                      : "Collapse navigation"
+                  }
+                  title={
+                    desktopNavCollapsed
+                      ? "Expand navigation"
+                      : "Collapse navigation"
+                  }
                 >
-                  {desktopNavCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+                  {desktopNavCollapsed ? (
+                    <ChevronsRight className="w-4 h-4" />
+                  ) : (
+                    <ChevronsLeft className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
-          <nav className={`flex-1 py-6 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2" : "px-4"}`}>
+          <nav
+            className={`flex-1 py-6 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2" : "px-4"}`}
+          >
             {navigationTabs.map((tab) => {
               const isActive = isNavigationTabActive(pathname, tab.path);
               const Icon = tab.icon;
@@ -433,44 +494,62 @@ function DashboardShell({
                   href={tab.path}
                   title={desktopNavCollapsed ? tab.name : undefined}
                   className={`flex items-center rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    desktopNavCollapsed ? "justify-center px-3 py-3" : "justify-between px-4 py-3"
+                    desktopNavCollapsed
+                      ? "justify-center px-3 py-3"
+                      : "justify-between px-4 py-3"
                   } ${
                     isActive
                       ? "bg-[var(--brand-900)] text-white shadow-[0_12px_26px_-18px_rgba(15,23,42,0.85)]"
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
-                  <span className={`flex min-w-0 items-center ${desktopNavCollapsed ? "" : "gap-3"}`}>
+                  <span
+                    className={`flex min-w-0 items-center ${desktopNavCollapsed ? "" : "gap-3"}`}
+                  >
                     <Icon className="w-5 h-5 shrink-0" />
-                    {desktopNavCollapsed ? <span className="sr-only">{tab.name}</span> : tab.name}
+                    {desktopNavCollapsed ? (
+                      <span className="sr-only">{tab.name}</span>
+                    ) : (
+                      tab.name
+                    )}
                   </span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}>
+          <div
+            className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
+          >
             <div
               className={`rounded-[1.65rem] border border-slate-200 bg-slate-50/85 shadow-[0_18px_36px_-34px_rgba(15,23,42,0.55)] ${
-                desktopNavCollapsed ? "space-y-2 px-2 py-2.5" : "space-y-2.5 px-3 py-3"
+                desktopNavCollapsed
+                  ? "space-y-2 px-2 py-2.5"
+                  : "space-y-2.5 px-3 py-3"
               }`}
             >
               <Link
                 href="/dashboard/settings"
                 title={desktopNavCollapsed ? "Settings" : undefined}
                 className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-[var(--brand-500)]/45 hover:text-slate-900 ${
-                  desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                  desktopNavCollapsed
+                    ? "justify-center px-3 py-3"
+                    : "gap-3 px-4 py-3"
                 }`}
                 aria-label="Settings"
               >
                 <Settings className="w-5 h-5 shrink-0" />
-                {!desktopNavCollapsed && <span className="text-sm font-semibold">Settings</span>}
+                {!desktopNavCollapsed && (
+                  <span className="text-sm font-semibold">Settings</span>
+                )}
               </Link>
               <button
                 onClick={() => router.push(myProfileHref)}
                 title={desktopNavCollapsed ? "My Profile" : undefined}
                 className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors hover:border-[var(--brand-500)]/45 ${
-                  desktopNavCollapsed ? "justify-center px-3 py-3" : "gap-3 px-4 py-3"
+                  desktopNavCollapsed
+                    ? "justify-center px-3 py-3"
+                    : "gap-3 px-4 py-3"
                 }`}
                 aria-label="Open my profile"
               >
@@ -479,9 +558,13 @@ function DashboardShell({
                 </div>
                 {!desktopNavCollapsed && (
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900">My Profile</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      My Profile
+                    </p>
                     <p className="text-xs text-slate-500">
-                      {myProfileHref === "/dashboard/profile" ? "Complete profile" : "View public profile"}
+                      {myProfileHref === "/dashboard/profile"
+                        ? "Complete profile"
+                        : "View public profile"}
                     </p>
                   </div>
                 )}
@@ -495,14 +578,16 @@ function DashboardShell({
                 aria-label="Logout"
               >
                 <LogOut className="w-4 h-4" />
-                {!desktopNavCollapsed && <span className="text-sm">Logout</span>}
+                {!desktopNavCollapsed && (
+                  <span className="text-sm">Logout</span>
+                )}
               </button>
             </div>
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
+        <div className="flex-1 flex min-w-0 flex-col overflow-x-clip">
+          <header className="sticky top-0 z-40 overflow-x-clip border-b border-slate-200/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
             <div
               className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 lg:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -510,19 +595,28 @@ function DashboardShell({
               <div className="relative flex min-w-0 shrink-0 items-center gap-3">
                 {/* Mobile (xs): logo shortcut to Welcome */}
                 <div className="sm:hidden">
-                  <ServiQLogo markOnly href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
+                  <ServiQLogo
+                    markOnly
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
                 </div>
                 {/* Tablet (sm-lg): compact logo shortcut to Welcome */}
                 <div className="hidden sm:block lg:hidden min-w-0">
-                  <ServiQLogo compact className="max-w-[180px]" href="/dashboard/welcome" ariaLabel="Open Welcome dashboard" />
+                  <ServiQLogo
+                    compact
+                    className="max-w-[180px]"
+                    href="/dashboard/welcome"
+                    ariaLabel="Open Welcome dashboard"
+                  />
                 </div>
               </div>
 
-              <div className="hidden md:flex min-w-0 flex-1 justify-center px-2">
+              <div className="hidden lg:flex min-w-0 flex-1 justify-center px-2">
                 <DashboardPromptBar placement="header" />
               </div>
 
-              <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-1 max-[360px]:gap-0.5 sm:gap-1.5">
                 <DashboardChatShortcut
                   active={isChatRouteActive}
                   badgeLabel={chatBadgeLabel}
@@ -547,7 +641,11 @@ function DashboardShell({
                 <button
                   type="button"
                   onClick={openCart}
-                  aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "Open cart"}
+                  aria-label={
+                    cartCount > 0
+                      ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`
+                      : "Open cart"
+                  }
                   title="Cart"
                   className={`relative ${shellIconButtonClassName}`}
                 >
@@ -559,7 +657,10 @@ function DashboardShell({
                   )}
                 </button>
                 <AvailabilityToggle />
-                <NotificationCenter enabled={shellEnhancementsReady} userId={currentUserId} />
+                <NotificationCenter
+                  enabled={shellEnhancementsReady}
+                  userId={currentUserId}
+                />
                 <div className="relative">
                   <button
                     type="button"
@@ -584,15 +685,17 @@ function DashboardShell({
                       <button
                         type="button"
                         onClick={() => setShowUserMenu(false)}
-                        className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/10 md:bg-transparent"
+                        className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/10 lg:bg-transparent"
                         aria-hidden
                       />
-                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:absolute md:right-0 md:top-full md:mt-2 md:w-64 md:rounded-2xl md:inset-x-auto">
+                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:absolute lg:right-0 lg:top-full lg:mt-2 lg:w-64 lg:rounded-2xl lg:inset-x-auto">
                         <div className="border-b border-slate-100 px-4 py-3.5">
                           <p className="truncate text-sm font-bold text-slate-900">
                             {profile?.full_name || profile?.name || appName}
                           </p>
-                          <p className="mt-0.5 truncate text-xs text-slate-500">ServiQ account</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">
+                            ServiQ account
+                          </p>
                         </div>
                         <div className="p-2">
                           <button
@@ -648,16 +751,18 @@ function DashboardShell({
               </div>
             </div>
             {showPrompt ? (
-              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 md:hidden">
+              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 lg:hidden">
                 <DashboardPromptBar placement="header" />
               </div>
             ) : null}
           </header>
 
-          <main className="flex-1 px-3 pt-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 md:py-8 md:pb-8">
+          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 lg:py-8 lg:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
-                <p className="text-sm font-semibold">Startup schema checks need admin action</p>
+                <p className="text-sm font-semibold">
+                  Startup schema checks need admin action
+                </p>
                 <ul className="mt-2 list-disc pl-5 text-xs space-y-1">
                   {startupIssues.map((issue) => (
                     <li key={issue}>{issue}</li>
@@ -706,11 +811,14 @@ function DashboardShell({
                 aria-hidden
                 className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/15"
               />
-              <div className="fixed inset-x-3 bottom-[calc(6.2rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 md:bottom-24 md:right-6 md:left-auto md:w-[260px] md:rounded-2xl md:p-2">
-                <div className="px-1 pb-2 md:hidden">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Quick actions</p>
+              <div className="fixed inset-x-3 bottom-[calc(6.2rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 lg:bottom-24 lg:right-6 lg:left-auto lg:w-[260px] lg:rounded-2xl lg:p-2">
+                <div className="px-1 pb-2 lg:hidden">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Quick actions
+                  </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    Post a local need or let AI set up your business inventory without creating a feed post.
+                    Post a local need or let AI set up your business inventory
+                    without creating a feed post.
                   </p>
                 </div>
                 <button
@@ -719,9 +827,11 @@ function DashboardShell({
                     setOpenQuickActions(false);
                     setOpenCreatePost(true);
                   }}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 md:rounded-xl md:border-transparent"
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:rounded-xl lg:border-transparent"
                 >
-                  <span className="block text-sm font-semibold text-slate-900">Post a Need</span>
+                  <span className="block text-sm font-semibold text-slate-900">
+                    Post a Need
+                  </span>
                   <span className="mt-1 block text-xs leading-5 text-slate-500">
                     Create a live request for Welcome and Explore.
                   </span>
@@ -732,11 +842,14 @@ function DashboardShell({
                     setOpenQuickActions(false);
                     router.push("/dashboard/launchpad");
                   }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 md:mt-1 md:rounded-xl md:border-transparent"
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
                 >
-                  <span className="block text-sm font-semibold text-slate-900">Set Up Business</span>
+                  <span className="block text-sm font-semibold text-slate-900">
+                    Set Up Business
+                  </span>
                   <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Use AI to draft your services, products, pricing, and inventory privately.
+                    Use AI to draft your services, products, pricing, and
+                    inventory privately.
                   </span>
                 </button>
               </div>
@@ -752,7 +865,9 @@ function DashboardShell({
           onPublished={(result?: PublishPostResult) => {
             setOpenCreatePost(false);
             if (result?.helpRequestId) {
-              router.push(`/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`);
+              router.push(
+                `/dashboard?focus=${encodeURIComponent(result.helpRequestId)}&source=create_post`,
+              );
             } else if (result?.postType === "need") {
               router.push("/dashboard");
             }
@@ -762,16 +877,20 @@ function DashboardShell({
 
       <CartDrawer />
 
-      {showGlobalMap ? <GlobalMapView open onClose={() => setShowGlobalMap(false)} /> : null}
+      {showGlobalMap ? (
+        <GlobalMapView open onClose={() => setShowGlobalMap(false)} />
+      ) : null}
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/98 shadow-[0_-14px_36px_-28px_rgba(15,23,42,0.42)] backdrop-blur-none md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/98 shadow-[0_-14px_36px_-28px_rgba(15,23,42,0.42)] backdrop-blur-none lg:hidden"
         aria-label="Main navigation"
       >
         <div
           className="grid gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]"
-          style={{ gridTemplateColumns: `repeat(${navigationTabs.length}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${navigationTabs.length}, minmax(0, 1fr))`,
+          }}
         >
           {navigationTabs.map((tab) => {
             const isActive = isNavigationTabActive(pathname, tab.path);
@@ -792,13 +911,14 @@ function DashboardShell({
               >
                 <Icon className="h-5 w-5" />
                 <span>{tab.name}</span>
-                {isActive ? <span className="absolute top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--brand-600)]" /> : null}
+                {isActive ? (
+                  <span className="absolute top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--brand-600)]" />
+                ) : null}
               </Link>
             );
           })}
         </div>
       </nav>
-
 
       {showLogoutConfirm ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
@@ -808,9 +928,14 @@ function DashboardShell({
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-slate-900">Log out of {appName}?</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Log out of {appName}?
+                </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  You can always sign back in with your phone number and password, use OTP recovery if you forget it, or open an email magic link. Any unsaved local changes on open pages will be lost.
+                  You can always sign back in with your phone number and
+                  password, use OTP recovery if you forget it, or open an email
+                  magic link. Any unsaved local changes on open pages will be
+                  lost.
                 </p>
               </div>
             </div>
