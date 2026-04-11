@@ -12,6 +12,7 @@ import {
   Star,
   Wrench,
 } from "lucide-react";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import type {
   GetLaunchpadDraftResponse,
@@ -37,20 +38,17 @@ export default function LaunchpadReviewPage() {
     let active = true;
     void (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) throw new Error("Session expired.");
-
         const url = draftId
           ? `/api/launchpad/draft?draft_id=${encodeURIComponent(draftId)}`
           : "/api/launchpad/draft";
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        const payload = (await res.json().catch(() => null)) as GetLaunchpadDraftResponse | null;
+        const payload = await fetchAuthedJson<GetLaunchpadDraftResponse>(
+          supabase,
+          url
+        );
 
         if (!active) return;
-        if (!res.ok || !payload?.ok) {
-          setLoadError(payload && !payload.ok ? payload.message : "Could not load draft.");
+        if (!payload.ok) {
+          setLoadError(payload.message || "Could not load draft.");
         } else {
           const ok = payload as Extract<GetLaunchpadDraftResponse, { ok: true }>;
           if (!ok.draft) {
@@ -73,22 +71,17 @@ export default function LaunchpadReviewPage() {
     setPublishError("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Session expired.");
+      const payload = await fetchAuthedJson<PublishLaunchpadDraftResponse>(
+        supabase,
+        "/api/launchpad/publish",
+        {
+          method: "POST",
+          body: JSON.stringify({ draftId }),
+        }
+      );
 
-      const res = await fetch("/api/launchpad/publish", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId }),
-      });
-      const payload = (await res.json().catch(() => null)) as PublishLaunchpadDraftResponse | null;
-
-      if (!res.ok || !payload?.ok) {
-        throw new Error(
-          payload && !payload.ok
-            ? (payload as Extract<PublishLaunchpadDraftResponse, { ok: false }>).message
-            : "Publish failed."
-        );
+      if (!payload.ok) {
+        throw new Error(payload.message || "Publish failed.");
       }
 
       setPublished(true);

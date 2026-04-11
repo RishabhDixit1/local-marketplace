@@ -27,6 +27,7 @@ import {
   buildPublicProfilePath,
   isProfileOnboardingComplete,
 } from "@/lib/profile/utils";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   AlertTriangle,
   BriefcaseBusiness,
@@ -149,7 +150,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const [desktopNavAutoCollapsed, setDesktopNavAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [authReady, setAuthReady] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
   const [shellEnhancementsPrimed, setShellEnhancementsPrimed] = useState(false);
   const [showStartupIssues, setShowStartupIssues] = useState(false);
   const [startupIssues, setStartupIssues] = useState<string[]>([]);
@@ -182,10 +182,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         ? String(chatUnreadCount)
         : null;
   const isChatRouteActive = pathname === "/dashboard/chat";
+  const isFeedLandingRoute =
+    pathname === "/dashboard" || pathname === "/dashboard/welcome";
   const hideFloatingQuickActions =
     pathname.startsWith("/dashboard/chat") ||
     pathname.startsWith("/dashboard/create_post") ||
-    pathname.startsWith("/dashboard/launchpad");
+    pathname.startsWith("/dashboard/launchpad") ||
+    (desktopNavAutoCollapsed && isFeedLandingRoute);
   const shellIconButtonClassName =
     "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
 
@@ -221,7 +224,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       if (!active) return;
 
       if (session?.user) {
-        setAccessToken(session.access_token || "");
         setAuthReady(true);
         return;
       }
@@ -235,12 +237,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         if (!active) return;
         if (retrySession?.user) {
-          setAccessToken(retrySession.access_token || "");
           setAuthReady(true);
           return;
         }
 
-        setAccessToken("");
         setAuthReady(false);
         setShellEnhancementsPrimed(false);
         router.replace("/");
@@ -259,13 +259,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           window.clearTimeout(redirectTimer);
           redirectTimer = null;
         }
-        setAccessToken(session.access_token || "");
         setAuthReady(true);
         return;
       }
 
       if (event === "SIGNED_OUT") {
-        setAccessToken("");
         setAuthReady(false);
         setShellEnhancementsPrimed(false);
         router.replace("/");
@@ -293,7 +291,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [authReady, shellEnhancementsPrimed]);
 
   useEffect(() => {
-    if (!authReady || !accessToken || !shellEnhancementsReady) return;
+    if (!authReady || !shellEnhancementsReady) return;
     let active = true;
 
     const runStartupCheck = async () => {
@@ -304,22 +302,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (!active || !accessToken) return;
+      if (!active) return;
 
       try {
-        const response = await fetch("/api/system/startup-check", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        const payload = (await response.json().catch(() => null)) as {
+        const payload = await fetchAuthedJson<{
           ok?: boolean;
           admin?: boolean;
           issues?: string[];
           fixInstructions?: string[];
-        } | null;
+        }>(supabase, "/api/system/startup-check", {
+          method: "GET",
+        });
 
         if (!active) return;
 
@@ -354,22 +347,18 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
-  }, [accessToken, authReady, shellEnhancementsReady]);
+  }, [authReady, shellEnhancementsReady]);
 
   useEffect(() => {
-    if (!authReady || !accessToken || !shellEnhancementsReady) return;
+    if (!authReady || !shellEnhancementsReady) return;
     let active = true;
 
     const pingPresence = async () => {
-      if (!active || !accessToken) return;
+      if (!active) return;
 
       try {
-        await fetch("/api/presence/ping", {
+        await fetchAuthedJson(supabase, "/api/presence/ping", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             isOnline: document.visibilityState === "visible",
             availability:
@@ -398,7 +387,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       window.clearInterval(presenceIntervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [accessToken, authReady, shellEnhancementsReady]);
+  }, [authReady, shellEnhancementsReady]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -757,7 +746,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             ) : null}
           </header>
 
-          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 lg:py-8 lg:pb-8">
+          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 lg:py-8 lg:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">
@@ -796,7 +785,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             }}
             aria-label="Open quick actions"
             aria-expanded={openQuickActions}
-            className={`fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-3 z-[var(--layer-floating-action)] inline-flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:h-14 md:w-14 md:rounded-[1.65rem] ${
+            className={`fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:h-14 md:w-14 md:rounded-[1.65rem] ${
               openQuickActions ? "rotate-45 bg-[var(--brand-700)]" : ""
             }`}
           >

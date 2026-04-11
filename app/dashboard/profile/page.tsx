@@ -6,7 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, MapPin, Phone } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import RouteObservability from "@/app/components/RouteObservability";
-import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
+import {
+  formatCoordinatePair,
+  getCoordinates,
+  isUsableLocationLabel,
+  requestBrowserCoordinates,
+} from "@/lib/geo";
 import { saveCurrentUserProfile, uploadProfileAvatar } from "@/lib/profile/client";
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
@@ -87,26 +92,24 @@ export default function EditProfilePage() {
   };
 
   //  gps location 
-  const handleGps = () => {
-    if (!navigator.geolocation) {
-      setError("GPS not supported on this device.");
-      return;
-    }
+  const handleGps = async () => {
     setLocating(true);
     setError("");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coordinates = getCoordinates(pos.coords.latitude, pos.coords.longitude);
-        setLat(coordinates?.latitude ?? null);
-        setLng(coordinates?.longitude ?? null);
-        setLocating(false);
-      },
-      () => {
-        setError("Could not get GPS location. You can type your location manually.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: false, timeout: 10000 }
-    );
+    const result = await requestBrowserCoordinates({
+      timeoutMs: 10000,
+      maximumAge: 15000,
+    });
+    if (result.ok) {
+      const coordinates = getCoordinates(
+        result.coordinates.latitude,
+        result.coordinates.longitude
+      );
+      setLat(coordinates?.latitude ?? null);
+      setLng(coordinates?.longitude ?? null);
+    } else {
+      setError(result.message);
+    }
+    setLocating(false);
   };
 
   //  save 
@@ -280,7 +283,7 @@ export default function EditProfilePage() {
           <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="edit-location">
             Location
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               id="edit-location"
               type="text"
@@ -291,9 +294,9 @@ export default function EditProfilePage() {
             />
             <button
               type="button"
-              onClick={handleGps}
+              onClick={() => void handleGps()}
               disabled={locating}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
               aria-label="Use current GPS location"
             >
               {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}

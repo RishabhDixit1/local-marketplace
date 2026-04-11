@@ -158,7 +158,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           event.preventDefault();
           void runSubmit();
         }}
-        className="w-full max-w-none md:max-w-[760px]"
+        className="w-full max-w-none space-y-2 md:max-w-[760px]"
       >
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div
@@ -218,6 +218,35 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             </div>
           )}
         </div>
+        {actions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 xl:hidden">
+            {actions.slice(0, 2).map((action) => {
+              const Icon = action.icon;
+              const isPrimary = action.variant === "primary";
+
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => {
+                    void action.onClick();
+                  }}
+                  disabled={action.disabled}
+                  className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-[11px] font-semibold transition ${
+                    isPrimary
+                      ? "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {Icon ? (
+                    <Icon size={12} className={action.busy ? "animate-spin" : ""} />
+                  ) : null}
+                  {action.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </form>
     );
   }
