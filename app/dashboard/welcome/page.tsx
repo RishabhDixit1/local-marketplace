@@ -154,6 +154,7 @@ export default function WelcomePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [welcomePromptValue, setWelcomePromptValue] = useState("");
   const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [feedEmptyReason, setFeedEmptyReason] = useState<"no_connections" | "no_connected_content" | null>(null);
@@ -189,6 +190,25 @@ export default function WelcomePage() {
     return () => {
       activeRef.current = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 480px)");
+    const syncViewport = () => {
+      setIsSmallScreen(mediaQuery.matches);
+    };
+
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
   }, []);
 
   const adjustCardMetrics = useCallback((cardId: string, updates: Partial<CardMetrics>) => {
@@ -446,7 +466,9 @@ export default function WelcomePage() {
 
   const welcomePromptConfig = useMemo<DashboardPromptConfig>(() => {
     return {
-      placeholder: "Search the live feed by title, owner, category, or location",
+      placeholder: isSmallScreen
+        ? "Search your network feed"
+        : "Search the live feed by title, owner, category, or location",
       value: welcomePromptValue,
       onValueChange: setWelcomePromptValue,
       onSubmit: handleWelcomePromptSubmit,
@@ -467,6 +489,7 @@ export default function WelcomePage() {
     };
   }, [
     handleWelcomePromptSubmit,
+    isSmallScreen,
     isFeedLoading,
     loadConnectedFeed,
     viewerId,
@@ -1363,11 +1386,11 @@ export default function WelcomePage() {
               </div>
 
               {/* right: CTA pair */}
-              <div className="flex shrink-0 gap-2">
+              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setOpenPostModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] active:scale-[.97]"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] active:scale-[.97] sm:w-auto"
                 >
                   <Zap size={13} />
                   Post a Need
@@ -1375,7 +1398,7 @@ export default function WelcomePage() {
                 <button
                   type="button"
                   onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] active:scale-[.97]"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] active:scale-[.97] sm:w-auto"
                 >
                   <UsersRound size={13} />
                   Earn Nearby

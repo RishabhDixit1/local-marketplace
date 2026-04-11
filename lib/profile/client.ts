@@ -2,6 +2,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import type { SaveProfileResponse, UploadProfileAvatarResponse } from "@/lib/api/profile";
+import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
 import {
@@ -65,29 +66,19 @@ export const saveCurrentUserProfile = async (params: {
   user: Pick<User, "id" | "email">;
   values: ProfileFormValues;
 }) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || "";
+  const payload = await fetchAuthedJson<SaveProfileResponse>(
+    supabase,
+    "/api/profile/save",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        values: params.values,
+      }),
+    }
+  );
 
-  if (!accessToken) {
-    throw new Error("You need to be signed in to save your profile.");
-  }
-
-  const response = await fetch("/api/profile/save", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      values: params.values,
-    }),
-  });
-
-  const payload = (await response.json().catch(() => null)) as SaveProfileResponse | null;
-  if (!response.ok || !payload || payload.ok === false) {
-    throw new Error(payload && payload.ok === false ? payload.message : "Unable to save profile.");
+  if (payload.ok === false) {
+    throw new Error(payload.message || "Unable to save profile.");
   }
 
   bootstrappedUserIds.add(params.user.id);
@@ -95,29 +86,20 @@ export const saveCurrentUserProfile = async (params: {
 };
 
 export const uploadProfileAvatar = async (params: { userId: string; file: File }) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const accessToken = session?.access_token || "";
-
-  if (!accessToken) {
-    throw new Error("You need to be signed in to upload an avatar.");
-  }
-
   const body = new FormData();
   body.set("file", params.file);
 
-  const response = await fetch("/api/profile/avatar", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body,
-  });
+  const payload = await fetchAuthedJson<UploadProfileAvatarResponse>(
+    supabase,
+    "/api/profile/avatar",
+    {
+      method: "POST",
+      body,
+    }
+  );
 
-  const payload = (await response.json().catch(() => null)) as UploadProfileAvatarResponse | null;
-  if (!response.ok || !payload || payload.ok === false) {
-    throw new Error(payload && payload.ok === false ? payload.message : "Avatar upload failed.");
+  if (payload.ok === false) {
+    throw new Error(payload.message || "Avatar upload failed.");
   }
 
   return payload.publicUrl;

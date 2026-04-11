@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import MarketplaceJourneyGuide, { type MarketplaceJourneyMode } from "@/app/components/onboarding/MarketplaceJourneyGuide";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
-import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
+import {
+  formatCoordinatePair,
+  getCoordinates,
+  isUsableLocationLabel,
+  requestBrowserCoordinates,
+} from "@/lib/geo";
 import type { ProfileRecord } from "@/lib/profile/types";
 import { supabase } from "@/lib/supabase";
 
@@ -405,25 +410,25 @@ export default function QuickOnboardingSheet() {
                       type="button"
                       disabled={locating}
                       onClick={() => {
-                        if (!navigator.geolocation) {
-                          setError("GPS is not supported on this device.");
-                          return;
-                        }
-                        setLocating(true);
-                        setError("");
-                        navigator.geolocation.getCurrentPosition(
-                          (position) => {
-                            const coordinates = getCoordinates(position.coords.latitude, position.coords.longitude);
+                        void (async () => {
+                          setLocating(true);
+                          setError("");
+                          const result = await requestBrowserCoordinates({
+                            timeoutMs: 10000,
+                            maximumAge: 15000,
+                          });
+                          if (result.ok) {
+                            const coordinates = getCoordinates(
+                              result.coordinates.latitude,
+                              result.coordinates.longitude
+                            );
                             setLatitude(coordinates?.latitude ?? null);
                             setLongitude(coordinates?.longitude ?? null);
-                            setLocating(false);
-                          },
-                          () => {
-                            setError("Could not fetch GPS location. You can still enter the city manually.");
-                            setLocating(false);
-                          },
-                          { enableHighAccuracy: false, timeout: 10000 }
-                        );
+                          } else {
+                            setError(result.message);
+                          }
+                          setLocating(false);
+                        })();
                       }}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                     >

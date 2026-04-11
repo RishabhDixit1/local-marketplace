@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Camera, Check, Loader2, MapPin, X } from "lucide-react";
+import { fetchAuthedJson } from "@/lib/clientApi";
+import {
+  formatCoordinatePair,
+  isUsableLocationLabel,
+  requestBrowserCoordinates,
+} from "@/lib/geo";
 import { supabase } from "@/lib/supabase";
 import type {
   PostType,
@@ -96,43 +102,29 @@ type ComposerStep = 1 | 2;
 // Helpers
 // 
 
-const uploadPhotos = async (accessToken: string, photos: File[]) => {
+const uploadPhotos = async (photos: File[]) => {
   const uploaded: { name: string; url: string; type: string }[] = [];
   for (const file of photos) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch("/api/upload/post-media", {
+    const payload = await fetchAuthedJson<{
+      ok?: boolean;
+      message?: string;
+      media?: { name: string; url: string; type: string };
+    }>(supabase, "/api/upload/post-media", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
       body: formData,
     });
 
-    const payload = (await response.json().catch(() => null)) as
-      | { ok?: boolean; message?: string; media?: { name: string; url: string; type: string } }
-      | null;
-
-    if (!response.ok || !payload?.ok || !payload.media) {
-      throw new Error(payload?.message || `Photo upload failed: ${file.name}`);
+    if (!payload.ok || !payload.media) {
+      throw new Error(payload.message || `Photo upload failed: ${file.name}`);
     }
 
     uploaded.push(payload.media);
   }
   return uploaded;
 };
-
-const getGpsLocation = (): Promise<{ latitude: number; longitude: number } | null> =>
-  new Promise((resolve) => {
-    if (!navigator?.geolocation) return resolve(null);
-    const t = window.setTimeout(() => resolve(null), 3000);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { clearTimeout(t); resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); },
-      () => { clearTimeout(t); resolve(null); },
-      { enableHighAccuracy: false, timeout: 2800 }
-    );
-  });
 
 // 
 // Component
@@ -170,6 +162,7 @@ export default function CreatePostModal({
   const [locating, setLocating] = useState(false);
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState("");
+  const [gpsNotice, setGpsNotice] = useState("");
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const isNeedOnlyComposer = availableTypeOptions.length === 1 && availableTypeOptions[0]?.value === "need";
@@ -214,6 +207,7 @@ export default function CreatePostModal({
       setPosting(false);
       setPosted(false);
       setError("");
+      setGpsNotice("");
     }
   }, [defaultPostType, open]);
 
@@ -232,13 +226,18 @@ export default function CreatePostModal({
   const handleGps = async () => {
     setLocating(true);
     setError("");
-    const coords = await getGpsLocation();
-    if (coords) {
-      setLat(coords.latitude);
-      setLng(coords.longitude);
-      setLocation(`${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`);
+    setGpsNotice("");
+    const result = await requestBrowserCoordinates({ timeoutMs: 4000 });
+    if (result.ok) {
+      setLat(result.coordinates.latitude);
+      setLng(result.coordinates.longitude);
+      setGpsNotice(
+        location.trim()
+          ? "Precise GPS saved. Your readable location label stays visible to people."
+          : "Precise GPS saved. Add a readable area or neighbourhood so people know where to help."
+      );
     } else {
-      setError("Could not get GPS. Type your area manually.");
+      setError(result.message);
     }
     setLocating(false);
   };
@@ -276,17 +275,17 @@ export default function CreatePostModal({
   const handlePost = async () => {
     if (!validateStepOne()) return;
     if (!location.trim()) { setError("Please add your location."); return; }
+    if (!isUsableLocationLabel(location)) {
+      setError("Enter a readable area or city name, not raw GPS coordinates.");
+      return;
+    }
 
     setPosting(true);
     setError("");
+    setGpsNotice("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      const token = session?.access_token;
-      if (!user || !token) throw new Error("Please sign in again.");
-
-      const media = await uploadPhotos(token, photos);
+      const media = await uploadPhotos(photos);
       const parsedPrice = price.trim() ? Math.abs(parseFloat(price.replace(/[^\d.]/g, ""))) : null;
       const budgetValue = Number.isFinite(parsedPrice) && parsedPrice! > 0 ? parsedPrice : null;
       const trimmedDetails = details.trim();
@@ -314,28 +313,41 @@ export default function CreatePostModal({
       let result: PublishPostResult = { postType };
 
       if (postType === "need") {
-        const coords = lat && lng ? { latitude: lat, longitude: lng } : await getGpsLocation();
-        const response = await fetch("/api/needs/publish", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...base,
-            postType: "need",
-            latitude: coords?.latitude ?? null,
-            longitude: coords?.longitude ?? null,
-          } satisfies PublishNeedRequest),
-        });
-        const payload = (await response.json().catch(() => null)) as PublishNeedResponse | null;
-        if (!response.ok || !payload?.ok) throw new Error("message" in (payload ?? {}) ? (payload as { message: string }).message : "Failed to post.");
+        const fallbackGpsResult =
+          typeof lat === "number" && typeof lng === "number"
+            ? null
+            : await requestBrowserCoordinates({ timeoutMs: 3200 });
+        const coords =
+          typeof lat === "number" && typeof lng === "number"
+            ? { latitude: lat, longitude: lng }
+            : fallbackGpsResult?.ok
+            ? fallbackGpsResult.coordinates
+            : null;
+        const payload = await fetchAuthedJson<PublishNeedResponse>(
+          supabase,
+          "/api/needs/publish",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              ...base,
+              postType: "need",
+              latitude: coords?.latitude ?? null,
+              longitude: coords?.longitude ?? null,
+            } satisfies PublishNeedRequest),
+          }
+        );
+        if (!payload.ok) throw new Error(payload.message || "Failed to post.");
         result = { postType, helpRequestId: (payload as { helpRequestId?: string }).helpRequestId, matchedCount: Number((payload as { matchedCount?: number }).matchedCount || 0) };
       } else {
-        const response = await fetch("/api/posts/publish", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ ...base, postType } satisfies PublishPostRequest),
-        });
-        const payload = (await response.json().catch(() => null)) as PublishPostResponse | null;
-        if (!response.ok || !payload?.ok) throw new Error("message" in (payload ?? {}) ? (payload as { message: string }).message : "Failed to post.");
+        const payload = await fetchAuthedJson<PublishPostResponse>(
+          supabase,
+          "/api/posts/publish",
+          {
+            method: "POST",
+            body: JSON.stringify({ ...base, postType } satisfies PublishPostRequest),
+          }
+        );
+        if (!payload.ok) throw new Error(payload.message || "Failed to post.");
       }
 
       setPosted(true);
@@ -600,12 +612,15 @@ export default function CreatePostModal({
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="post-location">
                   Location
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     id="post-location"
                     type="text"
                     value={location}
-                    onChange={(e) => { setLocation(e.target.value); setLat(null); setLng(null); }}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      setGpsNotice("");
+                    }}
                     placeholder="Area, neighbourhood, city"
                     className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-400)]/20 placeholder:text-slate-400"
                   />
@@ -613,7 +628,7 @@ export default function CreatePostModal({
                     type="button"
                     onClick={() => void handleGps()}
                     disabled={locating}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
                     aria-label="Detect GPS"
                   >
                     {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
@@ -621,6 +636,17 @@ export default function CreatePostModal({
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">{locationHint}</p>
+                {gpsNotice ? (
+                  <p className="mt-2 text-xs font-medium text-[var(--brand-700)]">
+                    {gpsNotice}
+                  </p>
+                ) : null}
+                {typeof lat === "number" && typeof lng === "number" ? (
+                  <p className="mt-2 text-xs font-medium text-emerald-700">
+                    Precise coordinates saved:{" "}
+                    {formatCoordinatePair({ latitude: lat, longitude: lng }, 4)}
+                  </p>
+                ) : null}
               </div>
 
               <div>

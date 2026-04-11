@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Loader2, MapPin, Rocket, Sparkles } from "lucide-react";
 import RouteObservability from "@/app/components/RouteObservability";
-import { formatCoordinatePair, getCoordinates, isUsableLocationLabel } from "@/lib/geo";
+import { fetchAuthedJson } from "@/lib/clientApi";
+import {
+  formatCoordinatePair,
+  getCoordinates,
+  isUsableLocationLabel,
+  requestBrowserCoordinates,
+} from "@/lib/geo";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_LAUNCHPAD_ANSWERS } from "@/lib/launchpad/validation";
 import type { LaunchpadAnswers, LaunchpadBrandTone, LaunchpadOfferingType, SaveLaunchpadDraftResponse } from "@/lib/api/launchpad";
@@ -49,15 +55,10 @@ const GPS_TIMEOUT = 3000;
 // Helpers
 // ─────────────────────────────────────────────
 
-const getGps = (): Promise<{ latitude: number; longitude: number } | null> =>
-  new Promise((resolve) => {
-    if (!navigator?.geolocation) return resolve(null);
-    const t = window.setTimeout(() => resolve(null), GPS_TIMEOUT);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { clearTimeout(t); resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); },
-      () => { clearTimeout(t); resolve(null); },
-      { enableHighAccuracy: false, timeout: GPS_TIMEOUT - 200 }
-    );
+const getGps = () =>
+  requestBrowserCoordinates({
+    timeoutMs: GPS_TIMEOUT + 1000,
+    maximumAge: 15000,
   });
 
 // ─────────────────────────────────────────────
@@ -112,13 +113,16 @@ export default function LaunchpadPage() {
   const handleGps = async () => {
     setLocating(true);
     setError("");
-    const coords = await getGps();
-    if (coords) {
-      const normalized = getCoordinates(coords.latitude, coords.longitude);
+    const result = await getGps();
+    if (result.ok) {
+      const normalized = getCoordinates(
+        result.coordinates.latitude,
+        result.coordinates.longitude
+      );
       set("latitude", normalized?.latitude ?? null);
       set("longitude", normalized?.longitude ?? null);
     } else {
-      setError("Could not get GPS location. Type your area manually.");
+      setError(result.message);
     }
     setLocating(false);
   };
@@ -142,22 +146,17 @@ export default function LaunchpadPage() {
     setError("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Please sign in again.");
+      const payload = await fetchAuthedJson<SaveLaunchpadDraftResponse>(
+        supabase,
+        "/api/launchpad/draft",
+        {
+          method: "POST",
+          body: JSON.stringify({ answers }),
+        }
+      );
 
-      const response = await fetch("/api/launchpad/draft", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-      });
-      const payload = (await response.json().catch(() => null)) as SaveLaunchpadDraftResponse | null;
-
-      if (!response.ok || !payload?.ok) {
-        throw new Error(
-          payload && !payload.ok
-            ? (payload as { message?: string }).message || "Failed to generate."
-            : "Failed to generate."
-        );
+      if (!payload.ok) {
+        throw new Error(payload.message || "Failed to generate.");
       }
 
       router.push(`/dashboard/launchpad/review?draft=${payload.draft.id}`);
@@ -294,7 +293,7 @@ export default function LaunchpadPage() {
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-location">
                 Your location
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   id="lp-location"
                   type="text"
@@ -307,7 +306,7 @@ export default function LaunchpadPage() {
                   type="button"
                   onClick={() => void handleGps()}
                   disabled={locating}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:min-h-0"
                   aria-label="Detect GPS"
                 >
                   {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}

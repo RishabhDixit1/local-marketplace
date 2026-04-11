@@ -6,6 +6,29 @@ export type Coordinates = {
 export type CoordinateAccuracy = "precise" | "approximate";
 
 export type BrowserCoordinateStatus = "idle" | "locating" | "ready" | "denied" | "unsupported" | "error";
+export type BrowserCoordinatePermissionState =
+  | PermissionState
+  | "unsupported"
+  | "unknown";
+export type BrowserCoordinateRequestErrorCode =
+  | "unsupported"
+  | "denied"
+  | "timeout"
+  | "unavailable"
+  | "unknown";
+export type BrowserCoordinateRequestResult =
+  | {
+      ok: true;
+      coordinates: Coordinates;
+      accuracyMeters: number | null;
+      permissionState: BrowserCoordinatePermissionState;
+    }
+  | {
+      ok: false;
+      code: BrowserCoordinateRequestErrorCode;
+      message: string;
+      permissionState: BrowserCoordinatePermissionState;
+    };
 
 const EARTH_RADIUS_KM = 6371;
 const COORDINATE_LABEL_PATTERN = /^-?\d{1,2}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/;
@@ -144,9 +167,57 @@ export const distanceBetweenCoordinatesKm = (
   return roundDistance(haversineDistanceKm(viewerCoordinates, targetCoordinates));
 };
 
-export const getBrowserCoordinates = (timeoutMs = 6000): Promise<Coordinates | null> => {
+export const getBrowserGeolocationPermissionState = async (): Promise<BrowserCoordinatePermissionState> => {
   if (typeof window === "undefined" || typeof navigator === "undefined" || !navigator.geolocation) {
-    return Promise.resolve(null);
+    return "unsupported";
+  }
+
+  if (!navigator.permissions?.query) {
+    return "unknown";
+  }
+
+  try {
+    const status = await navigator.permissions.query({
+      name: "geolocation" as PermissionName,
+    });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+};
+
+const getBrowserCoordinateErrorMessage = (code: BrowserCoordinateRequestErrorCode) => {
+  switch (code) {
+    case "unsupported":
+      return "GPS is not supported on this device or browser.";
+    case "denied":
+      return "Location permission is blocked. Allow GPS access in browser settings or type your area manually.";
+    case "timeout":
+      return "GPS is taking too long. Move to a clearer spot or type your area manually.";
+    case "unavailable":
+      return "Your device could not find an exact location. Type your area manually for now.";
+    default:
+      return "Could not get your current location. Type your area manually.";
+  }
+};
+
+export const requestBrowserCoordinates = async ({
+  timeoutMs = 6000,
+  enableHighAccuracy = false,
+  maximumAge = 120000,
+}: {
+  timeoutMs?: number;
+  enableHighAccuracy?: boolean;
+  maximumAge?: number;
+} = {}): Promise<BrowserCoordinateRequestResult> => {
+  const permissionState = await getBrowserGeolocationPermissionState();
+  if (permissionState === "unsupported") {
+    return {
+      ok: false,
+      code: "unsupported",
+      message: getBrowserCoordinateErrorMessage("unsupported"),
+      permissionState,
+    };
   }
 
   return new Promise((resolve) => {
@@ -155,7 +226,12 @@ export const getBrowserCoordinates = (timeoutMs = 6000): Promise<Coordinates | n
     const timeoutId = window.setTimeout(() => {
       if (completed) return;
       completed = true;
-      resolve(null);
+      resolve({
+        ok: false,
+        code: "timeout",
+        message: getBrowserCoordinateErrorMessage("timeout"),
+        permissionState,
+      });
     }, timeoutMs);
 
     navigator.geolocation.getCurrentPosition(
@@ -163,23 +239,61 @@ export const getBrowserCoordinates = (timeoutMs = 6000): Promise<Coordinates | n
         if (completed) return;
         completed = true;
         window.clearTimeout(timeoutId);
-        resolve(
-          getCoordinates(position.coords.latitude, position.coords.longitude)
+        const coordinates = getCoordinates(
+          position.coords.latitude,
+          position.coords.longitude
         );
+        if (!coordinates) {
+          resolve({
+            ok: false,
+            code: "unknown",
+            message: getBrowserCoordinateErrorMessage("unknown"),
+            permissionState,
+          });
+          return;
+        }
+
+        resolve({
+          ok: true,
+          coordinates,
+          accuracyMeters: Number.isFinite(position.coords.accuracy)
+            ? position.coords.accuracy
+            : null,
+          permissionState,
+        });
       },
-      () => {
+      (error) => {
         if (completed) return;
         completed = true;
         window.clearTimeout(timeoutId);
-        resolve(null);
+        const code: BrowserCoordinateRequestErrorCode =
+          error.code === error.PERMISSION_DENIED
+            ? "denied"
+            : error.code === error.TIMEOUT
+            ? "timeout"
+            : error.code === error.POSITION_UNAVAILABLE
+            ? "unavailable"
+            : "unknown";
+
+        resolve({
+          ok: false,
+          code,
+          message: getBrowserCoordinateErrorMessage(code),
+          permissionState: code === "denied" ? "denied" : permissionState,
+        });
       },
       {
-        enableHighAccuracy: false,
+        enableHighAccuracy,
         timeout: timeoutMs,
-        maximumAge: 120000,
+        maximumAge,
       }
     );
   });
+};
+
+export const getBrowserCoordinates = async (timeoutMs = 6000): Promise<Coordinates | null> => {
+  const result = await requestBrowserCoordinates({ timeoutMs });
+  return result.ok ? result.coordinates : null;
 };
 
 export const watchBrowserCoordinates = (

@@ -1,12 +1,32 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-const getErrorMessage = async (response: Response) => {
-  const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-  return payload?.message || `${response.status} ${response.statusText}`.trim();
-};
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 const isMessagePayload = (value: unknown): value is { message?: string } =>
   typeof value === "object" && value !== null && "message" in value;
+
+const isFormDataBody = (body: RequestInit["body"]) =>
+  typeof FormData !== "undefined" && body instanceof FormData;
+
+const parseJsonSafely = async <T>(response: Response) =>
+  (await response.json().catch(() => null)) as T | null;
+
+const shouldRefreshSession = (session: Session | null) => {
+  if (!session?.access_token) return true;
+  if (typeof session.expires_at !== "number") return false;
+  return session.expires_at * 1000 - Date.now() < 60_000;
+};
+
+const refreshAccessToken = async (supabase: SupabaseClient) => {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.refreshSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(error?.message || "Session expired. Please sign in again.");
+  }
+
+  return session.access_token;
+};
 
 export const getAccessToken = async (supabase: SupabaseClient) => {
   const {
@@ -14,35 +34,72 @@ export const getAccessToken = async (supabase: SupabaseClient) => {
     error,
   } = await supabase.auth.getSession();
 
-  if (error || !session?.access_token) {
+  if (error) {
     throw new Error(error?.message || "Login required.");
+  }
+
+  if (session?.access_token && !shouldRefreshSession(session)) {
+    return session.access_token;
+  }
+
+  if (session?.refresh_token) {
+    return refreshAccessToken(supabase);
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Login required.");
   }
 
   return session.access_token;
 };
 
+export const fetchAuthed = async (
+  supabase: SupabaseClient,
+  input: string,
+  init: RequestInit = {},
+  options: { retryOnUnauthorized?: boolean } = {}
+) => {
+  const makeRequest = async (mode: "session" | "refresh") => {
+    const accessToken =
+      mode === "refresh"
+        ? await refreshAccessToken(supabase)
+        : await getAccessToken(supabase);
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${accessToken}`);
+
+    if (init.body && !headers.has("Content-Type") && !isFormDataBody(init.body)) {
+      headers.set("Content-Type", "application/json");
+    }
+
+    return fetch(input, {
+      ...init,
+      headers,
+      cache: init.cache ?? "no-store",
+    });
+  };
+
+  let response = await makeRequest("session");
+  if (response.status === 401 && options.retryOnUnauthorized !== false) {
+    response = await makeRequest("refresh");
+  }
+
+  return response;
+};
+
 export const fetchAuthedJson = async <T>(
   supabase: SupabaseClient,
   input: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  options: { retryOnUnauthorized?: boolean } = {}
 ): Promise<T> => {
-  const accessToken = await getAccessToken(supabase);
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${accessToken}`);
+  const response = await fetchAuthed(supabase, input, init, options);
+  const payload = await parseJsonSafely<T | { message?: string }>(response);
 
-  if (init.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetch(input, {
-    ...init,
-    headers,
-    cache: init.cache ?? "no-store",
-  });
-
-  const payload = (await response.json().catch(() => null)) as T | { message?: string } | null;
   if (!response.ok || !payload) {
-    throw new Error(isMessagePayload(payload) ? payload.message || "Request failed." : await getErrorMessage(response));
+    const fallbackMessage = `${response.status} ${response.statusText}`.trim() || "Request failed.";
+    throw new Error(
+      isMessagePayload(payload) ? payload.message || fallbackMessage : fallbackMessage
+    );
   }
 
   return payload as T;
