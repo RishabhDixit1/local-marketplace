@@ -41,6 +41,14 @@ class _SignInPageState extends ConsumerState<SignInPage> {
           'SUPABASE_URL value and confirm the device has internet access.';
     }
 
+    if (normalizedMessage.contains('network is unreachable') ||
+        normalizedMessage.contains('connection failed') ||
+        normalizedMessage.contains('os error: network is unreachable')) {
+      return 'The device could not open a network connection to Supabase. '
+          'Relaunch the Android app after the manifest update, then confirm '
+          'the emulator itself has internet access.';
+    }
+
     return 'Unable to send sign-in link: $rawMessage';
   }
 

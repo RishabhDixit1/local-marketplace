@@ -25,7 +25,7 @@ class AppBootstrap {
       !config.hasMinimumClientConfig || initializationError != null;
 
   static Future<AppBootstrap> initialize() async {
-    final config = AppConfig.fromEnvironment();
+    final config = await AppConfig.load();
 
     if (!config.hasSupabaseConfig) {
       return AppBootstrap(
@@ -33,7 +33,7 @@ class AppBootstrap {
         client: null,
         supabaseReady: false,
         initializationError:
-            'Missing SUPABASE_URL or SUPABASE_ANON_KEY dart defines.',
+            'Missing SUPABASE_URL or SUPABASE_ANON_KEY. Add dart defines or create mobile/config/local.json.',
       );
     }
 

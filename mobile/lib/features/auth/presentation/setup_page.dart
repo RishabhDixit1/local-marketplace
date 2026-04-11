@@ -15,15 +15,19 @@ class SetupPage extends ConsumerWidget {
     final canContinue =
         config.hasMinimumClientConfig && bootstrap.initializationError == null;
 
-    final command = [
-      'flutter run -d chrome',
-      '--dart-define=APP_ENV=development',
-      '--dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co',
-      '--dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY',
-      '--dart-define=API_BASE_URL=https://YOUR_WEB_APP_DOMAIN',
-      '--dart-define=AUTH_REDIRECT_SCHEME=serviq',
-      '--dart-define=AUTH_REDIRECT_HOST=auth-callback',
-    ].join(' \\\n');
+    const command = '''
+macOS / Linux
+bash scripts/run-mobile.sh
+
+Android emulator override
+bash scripts/run-mobile.sh --device emulator-5554 --api-base-url http://10.0.2.2:3000
+
+Sync config for IDE launches only
+bash scripts/run-mobile.sh --sync-only
+
+Windows
+.\\scripts\\run-mobile-android.ps1
+''';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mobile Setup')),
@@ -50,7 +54,7 @@ class SetupPage extends ConsumerWidget {
                     ready: config.hasSupabaseConfig,
                     detail: config.hasSupabaseConfig
                         ? 'Present'
-                        : 'Missing SUPABASE_URL or SUPABASE_ANON_KEY',
+                        : 'Missing SUPABASE_URL or SUPABASE_ANON_KEY in dart defines or mobile/config/local.json',
                   ),
                   const SizedBox(height: 14),
                   _StatusRow(
@@ -58,7 +62,7 @@ class SetupPage extends ConsumerWidget {
                     ready: config.hasApiConfig,
                     detail: config.hasApiConfig
                         ? config.apiBaseUrl
-                        : 'Missing API_BASE_URL',
+                        : 'Missing API_BASE_URL in dart defines or mobile/config/local.json',
                   ),
                   const SizedBox(height: 14),
                   _StatusRow(
@@ -85,24 +89,24 @@ class SetupPage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Do these 3 Windows steps',
+                    'One-time setup checklist',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 10),
                   const _ChecklistItem(
                     index: 1,
                     text:
-                        'Enable Windows Developer Mode so Flutter plugins can create symlinks inside the project.',
+                        'Install Flutter and open Android Studio or Xcode once so the platform toolchains finish setup.',
                   ),
                   const _ChecklistItem(
                     index: 2,
                     text:
-                        'Open Android Studio once and complete the SDK installation, including Android SDK, Emulator, and Command-line Tools.',
+                        'Start the local Next.js app so the API base URL points at a real ServiQ backend while testing.',
                   ),
                   const _ChecklistItem(
                     index: 3,
                     text:
-                        'Create one Android emulator and boot it successfully before the first flutter run.',
+                        'Run one of the helper scripts below to sync mobile/config/local.json before launching from your IDE.',
                   ),
                 ],
               ),
@@ -113,7 +117,7 @@ class SetupPage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Run with dart defines',
+                    'Recommended local run',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 10),
@@ -134,7 +138,7 @@ class SetupPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Mobile auth uses the Supabase Flutter client directly. Android and iOS now register the default `serviq://auth-callback` return path, so keep your Supabase redirect URL and dart defines aligned with that callback while testing.',
+                    'The helper scripts read the public Supabase values from the repo .env.local, write mobile/config/local.json for debug builds, and still pass matching dart defines when they launch Flutter. Use the Android emulator override because localhost inside Android maps to 10.0.2.2.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],

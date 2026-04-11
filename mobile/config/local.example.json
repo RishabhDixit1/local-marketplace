@@ -1,0 +1,8 @@
+{
+  "APP_ENV": "development",
+  "SUPABASE_URL": "https://your-project.supabase.co",
+  "SUPABASE_ANON_KEY": "your-supabase-anon-key",
+  "API_BASE_URL": "http://localhost:3000",
+  "AUTH_REDIRECT_SCHEME": "serviq",
+  "AUTH_REDIRECT_HOST": "auth-callback"
+}
