@@ -9,6 +9,7 @@ type TrustSnapshotProps = {
   items: TrustSnapshotItem[];
   compact?: boolean;
   className?: string;
+  mobileItemLimit?: number;
 };
 
 const toneClassNames: Record<NonNullable<TrustSnapshotItem["tone"]>, string> = {
@@ -21,6 +22,7 @@ export default function TrustSnapshot({
   items,
   compact = false,
   className = "",
+  mobileItemLimit,
 }: TrustSnapshotProps) {
   if (items.length === 0) return null;
 
@@ -32,15 +34,17 @@ export default function TrustSnapshot({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const tone = item.tone || "neutral";
+          const hideOnMobile =
+            typeof mobileItemLimit === "number" && mobileItemLimit >= 0 && index >= mobileItemLimit
+              ? "hidden sm:inline-flex"
+              : "";
           return (
             <span
               key={`${item.label}:${tone}`}
               title={item.label}
-              className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                toneClassNames[tone]
-              }`}
+              className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-medium ${hideOnMobile} ${toneClassNames[tone]}`}
             >
               <span className="truncate">{item.label}</span>
             </span>

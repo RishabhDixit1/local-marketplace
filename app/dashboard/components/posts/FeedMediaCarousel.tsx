@@ -8,9 +8,17 @@ type FeedMediaCarouselProps = {
   media: MarketplaceFeedMedia[];
   title: string;
   showCountBadge?: boolean;
+  aspectClassName?: string;
+  className?: string;
 };
 
-export default function FeedMediaCarousel({ media, title, showCountBadge = true }: FeedMediaCarouselProps) {
+export default function FeedMediaCarousel({
+  media,
+  title,
+  showCountBadge = true,
+  aspectClassName = "aspect-[16/9]",
+  className = "",
+}: FeedMediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
 
@@ -39,8 +47,8 @@ export default function FeedMediaCarousel({ media, title, showCountBadge = true 
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-      <div className="aspect-[16/9]">
+    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${className}`.trim()}>
+      <div className={aspectClassName}>
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
           imgError ? (
             <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
