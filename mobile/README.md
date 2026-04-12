@@ -7,7 +7,7 @@ Flutter app for the ServiQ customer and provider experience.
 - App shell with bottom navigation: Feed, Inbox, Tasks, Profile
 - Mobile setup screen with environment status
 - Supabase bootstrap for auth and session management
-- Native mobile sign-in starter using `supabase_flutter`
+- Mobile auth with email OTP, Google via Supabase OAuth, and in-app password setup
 - Authenticated feed client calling the existing Next.js route at `/api/community/feed`
 - Intentional card layouts for media-rich vs text-only feed posts
 
@@ -78,6 +78,7 @@ serviq://auth-callback
 
 This repo now registers that callback in Android and iOS project settings. Make sure Supabase Authentication -> Additional Redirect URLs includes the exact same callback.
 
+If you want true email OTP in the mobile flow, make sure the Supabase email template includes `{{ .Token }}` so users receive a code they can type into the app. Google sign-in also uses the same callback when returning from the browser.
 ## Manual Dart-Define Fallback
 
 ```bash

@@ -138,6 +138,7 @@ Windows
                   ),
                   const SizedBox(height: 12),
                   Text(
+                    'Mobile auth uses the Supabase Flutter client directly. Android and iOS now register the default `serviq://auth-callback` return path, so keep your Supabase redirect URL and dart defines aligned with that callback while testing. If you want one-time email codes instead of only magic links, update the Supabase email template to include `{{ .Token }}`. Google sign-in also returns through this same callback.',
                     'The helper scripts read the public Supabase values from the repo .env.local, write mobile/config/local.json for debug builds, and still pass matching dart defines when they launch Flutter. Use the Android emulator override because localhost inside Android maps to 10.0.2.2.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
