@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:serviq_mobile/core/config/app_config.dart';
+import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
+import 'package:serviq_mobile/features/auth/presentation/sign_in_page.dart';
 import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
 import 'package:serviq_mobile/features/feed/presentation/feed_page.dart';
 
@@ -46,6 +49,39 @@ void main() {
     );
     expect(find.text('Products'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sign in page shows the three mobile auth paths', (
+    WidgetTester tester,
+  ) async {
+    const bootstrap = AppBootstrap(
+      config: AppConfig(
+        appName: 'ServiQ',
+        environment: 'test',
+        supabaseUrl: 'https://demo-project.supabase.co',
+        supabaseAnonKey: 'demo-anon-key',
+        apiBaseUrl: 'https://demo.serviq.app',
+        authRedirectScheme: 'serviq',
+        authRedirectHost: 'auth-callback',
+      ),
+      client: null,
+      supabaseReady: false,
+      initializationError: null,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appBootstrapProvider.overrideWithValue(bootstrap)],
+        child: MaterialApp(theme: AppTheme.light(), home: const SignInPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continue with email code'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Continue with Google'), findsAtLeastNWidgets(1));
+    expect(find.text('Email + password'), findsOneWidget);
   });
 }
 
