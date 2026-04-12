@@ -215,7 +215,9 @@ export default function FeedCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-3xl border bg-white p-3.5 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all ${
+      data-testid="feed-card"
+      data-card-id={item.id}
+      className={`overflow-hidden rounded-[1.6rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-3xl sm:p-3.5 ${
         active
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
           : "border-slate-200"
@@ -224,7 +226,7 @@ export default function FeedCard({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
     >
-      <header className="flex items-center gap-3">
+      <header className="flex items-center gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
@@ -235,7 +237,7 @@ export default function FeedCard({
           <img
             src={item.avatarUrl}
             alt={`${item.displayCreator} avatar`}
-            className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+            className="h-10 w-10 rounded-full border border-slate-200 object-cover sm:h-11 sm:w-11"
           />
         </button>
 
@@ -244,19 +246,19 @@ export default function FeedCard({
             <button
               type="button"
               onClick={() => void onPrimaryAction("view_profile")}
-              className="min-w-0 max-w-full truncate text-left text-base font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+              className="min-w-0 max-w-full truncate text-left text-[15px] font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:text-base"
               aria-label={`Open ${item.displayCreator} profile`}
             >
               {item.displayCreator}
             </button>
             {item.verificationStatus === "verified" ? (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 sm:px-2 sm:text-[10px]">
                 Verified
               </span>
             ) : null}
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500 sm:text-[11px]">
             <span>{item.timeLabel}</span>
             <span className="inline-flex min-w-0 items-center gap-1 truncate">
               <MapPin size={11} />
@@ -331,12 +333,16 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2.5">
+      <div className="mt-2 sm:mt-2.5">
         {hasMedia ? (
-          <FeedMediaCarousel media={item.media} title={item.displayTitle} />
+          <FeedMediaCarousel
+            media={item.media}
+            title={item.displayTitle}
+            aspectClassName="aspect-[11/5] sm:aspect-[16/9]"
+          />
         ) : (
-          <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+          <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3.5 sm:rounded-[1.75rem] sm:p-4">
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold sm:gap-2 sm:text-[11px]">
               {heroPills.map((pill) => (
                 <span
                   key={`${item.id}:hero:${pill.label}`}
@@ -347,9 +353,9 @@ export default function FeedCard({
               ))}
             </div>
 
-            <div className="mt-4">
-              <h3 className="text-[1.15rem] font-semibold leading-tight text-slate-950">{item.displayTitle}</h3>
-              <p className={`mt-2 text-sm leading-6 text-slate-600 ${descExpanded ? "" : "line-clamp-4"}`}>
+            <div className="mt-3 sm:mt-4">
+              <h3 className="text-base font-semibold leading-tight text-slate-950 sm:text-[1.15rem]">{item.displayTitle}</h3>
+              <p className={`mt-2 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-6 ${descExpanded ? "" : "line-clamp-3 sm:line-clamp-4"}`}>
                 {item.displayDescription}
               </p>
               {item.displayDescription.length > 160 ? (
@@ -366,13 +372,17 @@ export default function FeedCard({
         )}
       </div>
 
-      <div className="mt-2.5">
+      <div className="mt-2 sm:mt-2.5">
         {hasMedia ? (
           <>
-            <h3 className="line-clamp-3 text-base font-semibold leading-tight text-slate-900 sm:line-clamp-2">
+            <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900 sm:text-base">
               {item.displayTitle}
             </h3>
-            <p className={`mt-1.5 text-sm leading-relaxed text-slate-600 ${descExpanded ? "" : "line-clamp-3"}`}>
+            <p
+              className={`mt-1.5 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-relaxed ${
+                descExpanded ? "" : "line-clamp-2 sm:line-clamp-3"
+              }`}
+            >
               {item.displayDescription}
             </p>
             {item.displayDescription.length > 120 ? (
@@ -388,11 +398,13 @@ export default function FeedCard({
         ) : null}
 
         {secondaryPills.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {secondaryPills.map((pill) => (
+          <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3">
+            {secondaryPills.map((pill, index) => (
               <span
                 key={`${item.id}:${pill.label}`}
-                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[11px] font-semibold ${pill.className}`}
+                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
+                  index >= 2 ? "hidden sm:inline-flex" : ""
+                } ${pill.className}`}
                 title={pill.label}
               >
                 <span className="truncate">{pill.label}</span>
@@ -401,10 +413,10 @@ export default function FeedCard({
           </div>
         ) : null}
 
-        <TrustSnapshot items={trustItems} compact className="mt-3" />
+        <TrustSnapshot items={trustItems} compact className="mt-2.5 sm:mt-3" mobileItemLimit={2} />
       </div>
 
-      <div className="mt-3 flex flex-col gap-2.5">
+      <div className="mt-2.5 flex flex-col gap-2 sm:mt-3 sm:gap-2.5">
         <div className="flex flex-wrap gap-2">
           {acceptButton ? (
             <button
@@ -413,7 +425,7 @@ export default function FeedCard({
               disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
               aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
               title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                 buttonToneClassNames[acceptButton.tone]
               }`}
             >
@@ -435,7 +447,7 @@ export default function FeedCard({
               disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
               aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
               title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                 buttonToneClassNames[sendQuoteButton.tone]
               }`}
             >
@@ -451,7 +463,7 @@ export default function FeedCard({
               disabled={discardButton.disabled || actionBusyState.discard}
               aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
               title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center ${
+              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                 buttonToneClassNames[discardButton.tone]
               }`}
             >
@@ -476,7 +488,7 @@ export default function FeedCard({
                 disabled={busy}
                 aria-label={label}
                 title={label}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 sm:h-10 sm:w-10 ${
                   isActive
                     ? "border-slate-900 bg-slate-900 text-white"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
@@ -490,7 +502,7 @@ export default function FeedCard({
       </div>
 
       {item.locationLabel ? (
-        <p className="mt-2 truncate text-[11px] text-slate-400">
+        <p className="mt-2 hidden truncate text-[11px] text-slate-400 sm:block">
           {item.displayCreator}
           {item.locationLabel ? ` - ${item.locationLabel}` : ""}
         </p>
