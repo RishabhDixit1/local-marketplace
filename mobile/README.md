@@ -20,44 +20,50 @@ Flutter app for the ServiQ customer and provider experience.
 
 ## Step-By-Step Setup
 
-1. Install Flutter on Windows.
-2. Install Android Studio.
-3. Enable Windows Developer Mode.
-4. Open Android Studio once and install:
+1. Install Flutter.
+2. Install Android Studio and/or Xcode.
+3. Open the platform tool once so the SDK install completes.
+4. Create and boot one simulator or emulator.
+5. Start the local Next.js app from the repo root with `npm run dev`.
+6. Sync the mobile config and run Flutter.
+
+Open Android Studio once and install:
    - Android SDK
    - Android Emulator
    - Android SDK Command-line Tools
-5. Create and boot one Android emulator.
-6. Run the app with Dart defines.
+ 
+## Recommended Local Run
 
-## Run Command
+The repo already keeps the public Supabase values in the root `.env.local`. The helper scripts reuse those values, write `mobile/config/local.json` for debug IDE launches, and pass matching Flutter dart defines.
 
-```powershell
-flutter run -d chrome `
-  --dart-define=APP_ENV=development `
-  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co `
-  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY `
-  --dart-define=API_BASE_URL=https://YOUR_WEB_APP_DOMAIN `
-  --dart-define=AUTH_REDIRECT_SCHEME=serviq `
-  --dart-define=AUTH_REDIRECT_HOST=auth-callback
+macOS / Linux:
+
+```bash
+bash scripts/run-mobile.sh
 ```
 
-When Android is ready, replace `-d chrome` with your emulator id.
+Android emulator override:
 
-## Easier Android Run On This Repo
+```bash
+bash scripts/run-mobile.sh --device emulator-5554 --api-base-url http://10.0.2.2:3000
+```
 
-This repo already keeps the web Supabase values in [`.env.local`](C:/Users/rishab_dixit/OneDrive%20-%20McGraw%20Hill%20Education/Desktop/local-marketplace/.env.local). Instead of copying them by hand every time, run:
+Sync config only, then launch from your IDE:
+
+```bash
+bash scripts/run-mobile.sh --sync-only
+```
+
+Windows PowerShell:
 
 ```powershell
 .\scripts\run-mobile-android.ps1
 ```
 
-Optional flags:
+Windows PowerShell sync-only:
 
 ```powershell
-.\scripts\run-mobile-android.ps1 -DeviceId emulator-5554
-.\scripts\run-mobile-android.ps1 -ApiBaseUrl http://10.0.2.2:3000
-.\scripts\run-mobile-android.ps1 -PrintOnly
+.\scripts\run-mobile-android.ps1 -SyncOnly
 ```
 
 ## Important Auth Note
@@ -73,6 +79,19 @@ serviq://auth-callback
 This repo now registers that callback in Android and iOS project settings. Make sure Supabase Authentication -> Additional Redirect URLs includes the exact same callback.
 
 If you want true email OTP in the mobile flow, make sure the Supabase email template includes `{{ .Token }}` so users receive a code they can type into the app. Google sign-in also uses the same callback when returning from the browser.
+## Manual Dart-Define Fallback
+
+```bash
+flutter run \
+  --dart-define=APP_ENV=development \
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY \
+  --dart-define=API_BASE_URL=http://localhost:3000 \
+  --dart-define=AUTH_REDIRECT_SCHEME=serviq \
+  --dart-define=AUTH_REDIRECT_HOST=auth-callback
+```
+
+For Android emulators, replace `http://localhost:3000` with `http://10.0.2.2:3000`.
 
 ## Verification Commands
 

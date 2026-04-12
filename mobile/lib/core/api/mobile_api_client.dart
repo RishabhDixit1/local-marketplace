@@ -75,7 +75,7 @@ class MobileApiClient {
   }) async {
     if (!_config.hasApiConfig) {
       throw const ApiException(
-        'API base URL is missing. Add API_BASE_URL with --dart-define.',
+        'API base URL is missing. Add API_BASE_URL with --dart-define or mobile/config/local.json.',
       );
     }
 

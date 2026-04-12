@@ -3,6 +3,7 @@ param(
   [string]$ApiBaseUrl = "http://10.0.2.2:3000",
   [string]$EnvFile = ".env.local",
   [string]$AppEnv = "development",
+  [switch]$SyncOnly,
   [switch]$PrintOnly
 )
 
@@ -36,6 +37,8 @@ function Get-EnvValue {
 
 $supabaseUrl = Get-EnvValue "NEXT_PUBLIC_SUPABASE_URL"
 $supabaseAnonKey = Get-EnvValue "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+$configDir = Join-Path $mobileDir "config"
+$configPath = Join-Path $configDir "local.json"
 
 $flutterCommand = Get-Command flutter.bat -ErrorAction SilentlyContinue
 if ($flutterCommand) {
@@ -59,6 +62,7 @@ Write-Host "Device: $DeviceId"
 Write-Host "Supabase host: $supabaseUrl"
 Write-Host "Anon key: $maskedKey"
 Write-Host "API base URL: $ApiBaseUrl"
+Write-Host "Mobile config path: $configPath"
 
 $flutterArgs = @(
   "run",
@@ -74,7 +78,23 @@ $flutterArgs = @(
 if ($PrintOnly) {
   Write-Host ""
   Write-Host "Resolved flutter command:"
-  Write-Host "$flutterExe $($flutterArgs -join ' ')"
+  Write-Host "$flutterExe run -d $DeviceId --dart-define=APP_ENV=$AppEnv --dart-define=SUPABASE_URL=$supabaseUrl --dart-define=SUPABASE_ANON_KEY=$maskedKey --dart-define=API_BASE_URL=$ApiBaseUrl --dart-define=AUTH_REDIRECT_SCHEME=serviq --dart-define=AUTH_REDIRECT_HOST=auth-callback"
+  exit 0
+}
+
+New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+@{
+  APP_ENV = $AppEnv
+  SUPABASE_URL = $supabaseUrl
+  SUPABASE_ANON_KEY = $supabaseAnonKey
+  API_BASE_URL = $ApiBaseUrl
+  AUTH_REDIRECT_SCHEME = "serviq"
+  AUTH_REDIRECT_HOST = "auth-callback"
+} | ConvertTo-Json | Set-Content -LiteralPath $configPath
+
+Write-Host "Synced mobile debug config."
+
+if ($SyncOnly) {
   exit 0
 }
 
