@@ -510,7 +510,14 @@ export default function CreatePostModal({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={preview.url} alt={preview.name} className="h-full w-full object-cover" />
               ) : preview.kind === "video" ? (
-                <video src={preview.url} className="h-full w-full object-cover" muted playsInline />
+                <video
+                  src={preview.url}
+                  className="h-full w-full object-cover"
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-2 bg-slate-50 px-3 text-center">
                   <FileAudio className="h-6 w-6 text-[var(--brand-700)]" />

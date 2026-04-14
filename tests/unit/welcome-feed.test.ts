@@ -365,6 +365,58 @@ describe("welcome feed builder", () => {
     ]);
   });
 
+  it("preserves uploaded video media on connected welcome need cards", () => {
+    const result = buildWelcomeFeedCards(
+      buildSnapshot({
+        acceptedConnectionIds: ["peer-1"],
+        helpRequests: [
+          {
+            id: "help-with-video",
+            requester_id: "peer-1",
+            title: "Need appliance repair",
+            details: "Kitchen drawer needs a quick fix",
+            category: "Appliance Repair",
+            budget_max: 900,
+            urgency: "urgent",
+            metadata: {
+              source: "api_needs_publish",
+              postType: "need",
+              publishGroupKey: "serviq:need:appliance-video",
+              title: "Need appliance repair",
+              details: "Kitchen drawer needs a quick fix",
+              category: "Appliance Repair",
+              budget: 900,
+              locationLabel: "Koramangala",
+              radiusKm: 8,
+              mode: "urgent",
+              neededWithin: "Within 24 hours",
+              scheduleDate: "",
+              scheduleTime: "",
+              flexibleTiming: true,
+              attachmentCount: 1,
+              media: [
+                {
+                  name: "drawer-repair.mp4",
+                  url: "https://cdn.example.com/uploads/drawer-repair.mp4",
+                  type: "video/mp4",
+                },
+              ],
+            },
+            created_at: "2026-03-12T12:32:00.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.media).toEqual([
+      {
+        mimeType: "video/mp4",
+        url: "https://cdn.example.com/uploads/drawer-repair.mp4",
+      },
+    ]);
+  });
+
   it("uses a generated live placeholder instead of seeded demo art when no upload exists", () => {
     const result = buildWelcomeFeedCards(
       buildSnapshot({

@@ -303,7 +303,7 @@ const buildWelcomePlaceholderImage = ({
   `);
 };
 
-const normalizeWelcomeImageMedia = (
+const normalizeWelcomeMedia = (
   entries: Array<{ url: string | null | undefined; mimeType?: string | null }>
 ): MarketplaceFeedMedia[] => {
   const media: MarketplaceFeedMedia[] = [];
@@ -322,14 +322,13 @@ const normalizeWelcomeImageMedia = (
   return media;
 };
 
-const parseImageMediaFromPostText = (rawText: string) => {
+const parseWelcomeMediaFromPostText = (rawText: string) => {
   const normalized = trim(rawText);
   if (!normalized.includes("Media:")) return [];
 
   const media: MarketplaceFeedMedia[] = [];
   for (const match of normalized.matchAll(mediaRegex)) {
     const mimeType = trim(match[1]);
-    if (mimeType && !mimeType.toLowerCase().startsWith("image/")) continue;
     const resolvedUrl = resolvePostMediaUrl(trim(match[2]));
     if (!resolvedUrl) continue;
     media.push({
@@ -338,21 +337,20 @@ const parseImageMediaFromPostText = (rawText: string) => {
     });
   }
 
-  return normalizeWelcomeImageMedia(media);
+  return normalizeWelcomeMedia(media);
 };
 
-const extractImageMediaFromMetadata = (value: unknown) => {
+const extractWelcomeMediaFromMetadata = (value: unknown) => {
   const composerMetadata = readMarketplaceComposerMetadata(value);
-  const composerImages = normalizeWelcomeImageMedia(
+  const composerMedia = normalizeWelcomeMedia(
     (composerMetadata?.media || [])
-      .filter((entry) => trim(entry.type).toLowerCase().startsWith("image/"))
       .map((entry) => ({
         url: entry.url,
         mimeType: entry.type,
       }))
   );
 
-  if (composerImages.length > 0) return composerImages;
+  if (composerMedia.length > 0) return composerMedia;
 
   if (!isRecord(value)) return [];
 
@@ -365,13 +363,12 @@ const extractImageMediaFromMetadata = (value: unknown) => {
           if (typeof entry === "string") return { url: entry, mimeType: "image/jpeg" };
           if (!isRecord(entry)) return null;
           const mimeType = trim(typeof entry.type === "string" ? entry.type : typeof entry.mimeType === "string" ? entry.mimeType : "");
-          if (mimeType && !mimeType.toLowerCase().startsWith("image/")) return null;
           return typeof entry.url === "string" ? { url: entry.url, mimeType: mimeType || "image/jpeg" } : null;
         })
         .filter((entry): entry is { url: string; mimeType: string } => Boolean(entry))
     : [];
 
-  return normalizeWelcomeImageMedia([
+  return normalizeWelcomeMedia([
     { url: typeof value.image === "string" ? value.image : null },
     { url: typeof value.image_url === "string" ? value.image_url : null },
     { url: typeof value.cover_image === "string" ? value.cover_image : null },
@@ -387,11 +384,11 @@ const resolveWelcomeCardMedia = (params: {
   rawText?: string | null;
   directImageUrl?: string | null;
 }) => {
-  const metadataImages = extractImageMediaFromMetadata(params.metadata);
-  if (metadataImages.length > 0) return metadataImages;
+  const metadataMedia = extractWelcomeMediaFromMetadata(params.metadata);
+  if (metadataMedia.length > 0) return metadataMedia;
 
-  const parsedTextImages = parseImageMediaFromPostText(params.rawText || "");
-  if (parsedTextImages.length > 0) return parsedTextImages;
+  const parsedTextMedia = parseWelcomeMediaFromPostText(params.rawText || "");
+  if (parsedTextMedia.length > 0) return parsedTextMedia;
 
   const directImage = resolvePostMediaUrl(params.directImageUrl);
   if (directImage && !isSeededWelcomeImage(directImage)) {
