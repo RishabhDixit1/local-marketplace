@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SaveProfileRequest } from "@/lib/api/profile";
 import { PROFILE_AVATAR_BUCKET, type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
 import { createProfileSavePayload, normalizeProfileRecord } from "@/lib/profile/utils";
+import { STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 
 type ProfileWriteResult = {
   ok: boolean;
@@ -173,6 +174,7 @@ export const uploadProfileAvatarFile = async (params: {
 
   const { error } = await params.db.storage.from(PROFILE_AVATAR_BUCKET).upload(objectPath, buffer, {
     contentType: params.file.type || "application/octet-stream",
+    cacheControl: STORAGE_CACHE_SECONDS,
     upsert: false,
   });
 

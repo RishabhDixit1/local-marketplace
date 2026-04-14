@@ -2460,7 +2460,6 @@ export default function TasksPage() {
                   alt={creatorName}
                   width={52}
                   height={52}
-                  unoptimized
                   className="h-12 w-12 shrink-0 rounded-2xl border border-slate-200 object-cover sm:h-14 sm:w-14"
                 />
 
@@ -2747,7 +2746,6 @@ export default function TasksPage() {
                   alt={creatorName}
                   width={56}
                   height={56}
-                  unoptimized
                   className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
                 />
               </button>
@@ -2757,7 +2755,6 @@ export default function TasksPage() {
                 alt={creatorName}
                 width={56}
                 height={56}
-                unoptimized
                 className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
               />
             )}
@@ -2954,7 +2951,6 @@ export default function TasksPage() {
                   alt={creatorName}
                   width={56}
                   height={56}
-                  unoptimized
                   className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
                 />
               </button>
@@ -2964,7 +2960,6 @@ export default function TasksPage() {
                 alt={creatorName}
                 width={56}
                 height={56}
-                unoptimized
                 className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
               />
             )}

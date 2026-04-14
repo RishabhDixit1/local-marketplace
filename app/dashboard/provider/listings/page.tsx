@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -22,6 +23,8 @@ import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { deleteProviderListing, fetchProviderListings, updateProviderListing } from "@/lib/provider/client";
 import { supabase } from "@/lib/supabase";
 import type { ProfileAvailability } from "@/lib/profile/types";
+import { compressImageFile } from "@/lib/clientImageCompression";
+import { LISTING_IMAGE_MAX_BYTES, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
 import type {
   ProductDeliveryMethod,
   ProviderProductListing,
@@ -322,9 +325,15 @@ export default function ListingsPage() {
     if (!editingProduct || !providerId) return;
     setBusyId(editingProduct.id);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const preparedImage = (await compressImageFile(file, { maxBytes: LISTING_IMAGE_MAX_BYTES })).file;
+      if (preparedImage.size > LISTING_IMAGE_MAX_BYTES) {
+        throw new Error(`Image must be ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)} or smaller after compression.`);
+      }
+      const ext = preparedImage.name.split(".").pop() || "jpg";
       const filePath = `${providerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("listing-images").upload(filePath, file, { contentType: file.type || "image/jpeg", upsert: false });
+      const { error } = await supabase.storage
+        .from("listing-images")
+        .upload(filePath, preparedImage, { contentType: preparedImage.type || "image/jpeg", cacheControl: STORAGE_CACHE_SECONDS, upsert: false });
       if (error) throw new Error(error.message || "Unable to upload image.");
       setEditingProduct((current) => (current ? { ...current, imageUrl: filePath } : current));
     } catch (uploadError) {
@@ -647,9 +656,15 @@ export default function ListingsPage() {
                   className={`rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md ${paused ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
                 >
                   {imageUrl && (
-                    <div className="h-28 w-full overflow-hidden rounded-t-2xl bg-slate-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
+                    <div className="relative h-28 w-full overflow-hidden rounded-t-2xl bg-slate-100">
+                      <Image
+                        src={imageUrl}
+                        alt={product.title}
+                        fill
+                        sizes="(max-width: 640px) 92vw, 420px"
+                        quality={72}
+                        className="object-cover"
+                      />
                     </div>
                   )}
                   <div className="p-4">

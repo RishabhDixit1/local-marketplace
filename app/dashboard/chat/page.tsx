@@ -1725,7 +1725,6 @@ export default function ChatPage() {
                           alt={`${chat.name} avatar`}
                           width={44}
                           height={44}
-                          unoptimized
                           className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                         />
                         <span
@@ -1881,7 +1880,6 @@ export default function ChatPage() {
                             alt={`${selectedConversation.name} avatar`}
                             width={42}
                             height={42}
-                            unoptimized
                             className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                           />
                           <span

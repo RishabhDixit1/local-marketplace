@@ -1,8 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { deriveConnectionState, listCurrentUserConnectionRows, type ConnectionRequestRow } from "@/lib/connections";
@@ -133,7 +132,14 @@ export default function PublicConnectionsTrigger({
                     >
                       <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-sm font-semibold text-slate-700">
                         {connection.avatarUrl ? (
-                          <img src={connection.avatarUrl} alt={connection.displayName} className="h-full w-full object-cover" />
+                          <Image
+                            src={connection.avatarUrl}
+                            alt={connection.displayName}
+                            width={56}
+                            height={56}
+                            quality={70}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           connection.displayName
                             .split(" ")

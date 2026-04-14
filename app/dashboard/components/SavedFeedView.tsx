@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
@@ -963,10 +964,13 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                     aria-label={`Open ${displayCreator} profile`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={avatarUrl}
                       alt={`${displayCreator} avatar`}
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                      quality={70}
                       className="h-11 w-11 rounded-full border border-slate-200 object-cover"
                     />
                   </button>

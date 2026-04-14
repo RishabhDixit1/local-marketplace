@@ -10,6 +10,8 @@ import {
   normalizeProfileRecord,
   resolveAuthenticatedProfilePath,
 } from "@/lib/profile/utils";
+import { compressImageFile } from "@/lib/clientImageCompression";
+import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 
 const bootstrappedUserIds = new Set<string>();
 
@@ -86,8 +88,13 @@ export const saveCurrentUserProfile = async (params: {
 };
 
 export const uploadProfileAvatar = async (params: { userId: string; file: File }) => {
+  const prepared = (await compressImageFile(params.file, { maxBytes: PROFILE_IMAGE_MAX_BYTES })).file;
+  if (prepared.size > PROFILE_IMAGE_MAX_BYTES) {
+    throw new Error(`Profile image must be ${formatUploadLimit(PROFILE_IMAGE_MAX_BYTES)} or smaller after compression.`);
+  }
+
   const body = new FormData();
-  body.set("file", params.file);
+  body.set("file", prepared);
 
   const payload = await fetchAuthedJson<UploadProfileAvatarResponse>(
     supabase,

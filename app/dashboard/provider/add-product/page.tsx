@@ -12,6 +12,8 @@ import {
   type ProductDeliveryMethod,
 } from "@/lib/provider/listings";
 import { supabase } from "@/lib/supabase";
+import { compressImageFile } from "@/lib/clientImageCompression";
+import { LISTING_IMAGE_MAX_BYTES, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
 
 const deliveryOptions = PRODUCT_DELIVERY_METHODS.map((value) => ({
   value,
@@ -64,11 +66,15 @@ export default function AddProductPage() {
       let imagePath = form.imageUrl;
       if (imageFile) {
         setUploadingImage(true);
-        const ext = imageFile.name.split(".").pop() || "jpg";
+        const preparedImage = (await compressImageFile(imageFile, { maxBytes: LISTING_IMAGE_MAX_BYTES })).file;
+        if (preparedImage.size > LISTING_IMAGE_MAX_BYTES) {
+          throw new Error(`Image must be ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)} or smaller after compression.`);
+        }
+        const ext = preparedImage.name.split(".").pop() || "jpg";
         const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("listing-images")
-          .upload(filePath, imageFile, { contentType: imageFile.type || "image/jpeg", upsert: false });
+          .upload(filePath, preparedImage, { contentType: preparedImage.type || "image/jpeg", cacheControl: STORAGE_CACHE_SECONDS, upsert: false });
         if (uploadError) {
           throw new Error(uploadError.message || "Unable to upload image.");
         }

@@ -302,7 +302,6 @@ export default function ProviderTrustPanel({ userId, open, onClose }: Props) {
                 alt={profile?.name || "ServiQ member"}
                 width={96}
                 height={96}
-                unoptimized
                 className="mx-auto mb-3 h-24 w-24 rounded-full border-4 border-indigo-500 object-cover"
               />
               <h2 className="text-xl font-semibold">{profile?.name || "ServiQ member"}</h2>

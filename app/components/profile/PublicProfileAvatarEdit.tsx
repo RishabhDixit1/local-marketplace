@@ -9,6 +9,7 @@ import type { ProfileFormValues } from "@/lib/profile/types";
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
+import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 
 type PublicProfileAvatarEditProps = {
   profileUserId: string;
@@ -100,7 +101,7 @@ export default function PublicProfileAvatarEdit({
 
   const handleFileSelect = (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage("Avatar must be 5MB or smaller.");
+      setErrorMessage(`Avatar source must be 5 MB or smaller. It will be compressed to ${formatUploadLimit(PROFILE_IMAGE_MAX_BYTES)} before upload.`);
       return;
     }
 
@@ -226,7 +227,7 @@ export default function PublicProfileAvatarEdit({
                       <div className="space-y-2">
                         <p className="text-base font-semibold text-slate-950 sm:text-lg">{displayName}</p>
                         <p className="text-sm leading-6 text-slate-500">
-                          PNG, JPG, WEBP, or GIF up to 5MB.
+                          PNG, JPG, WEBP, or GIF. Images are compressed before upload.
                         </p>
                       </div>
                     </div>

@@ -83,7 +83,6 @@ export default function ProviderPopup({
               alt={profile.name || "Provider avatar"}
               width={48}
               height={48}
-              unoptimized
               className="w-12 h-12 rounded-full"
             />
 

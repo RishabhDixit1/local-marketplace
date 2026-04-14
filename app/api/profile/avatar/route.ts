@@ -3,6 +3,7 @@ import type { UploadProfileAvatarResponse, ProfileApiErrorCode } from "@/lib/api
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { uploadProfileAvatarFile } from "@/lib/server/profileWrites";
+import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 
 export const runtime = "nodejs";
 
@@ -35,8 +36,8 @@ export async function POST(request: Request) {
     return toErrorResponse(400, "INVALID_PAYLOAD", "Avatar file is missing.");
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    return toErrorResponse(400, "INVALID_PAYLOAD", "Avatar must be 5MB or smaller.");
+  if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+    return toErrorResponse(400, "INVALID_PAYLOAD", `Profile image must be ${formatUploadLimit(PROFILE_IMAGE_MAX_BYTES)} or smaller.`);
   }
 
   const admin = createSupabaseAdminClient();

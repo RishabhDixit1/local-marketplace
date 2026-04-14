@@ -1,6 +1,7 @@
 "use client";
 
 import { type ChangeEvent, useRef } from "react";
+import Image from "next/image";
 import {
   BadgeCheck,
   BriefcaseBusiness,
@@ -109,8 +110,14 @@ export default function ProfileHeader({
     >
       {hasBackgroundImage ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={backgroundImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <Image
+            src={backgroundImageUrl}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 1180px"
+            quality={72}
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.45),rgba(79,70,229,0.18),rgba(15,23,42,0.62))]" />
         </>
       ) : null}
@@ -164,8 +171,14 @@ export default function ProfileHeader({
           <div className="relative shrink-0">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white/90 bg-white/20 text-2xl font-semibold uppercase text-white shadow-xl sm:h-24 sm:w-24 sm:text-3xl">
               {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={fullName || "Profile avatar"} className="h-full w-full object-cover" />
+                <Image
+                  src={avatarUrl}
+                  alt={fullName || "Profile avatar"}
+                  width={96}
+                  height={96}
+                  quality={70}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <span>{heroTitle.slice(0, 2)}</span>
               )}
