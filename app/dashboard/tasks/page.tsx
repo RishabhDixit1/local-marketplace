@@ -47,7 +47,6 @@ import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPro
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
@@ -1327,7 +1326,7 @@ export default function TasksPage() {
         {
           id: "refresh-tasks",
           label: loading ? "Refreshing..." : "Refresh",
-          icon: Loader2,
+          icon: RefreshCw,
           onClick: () => {
             void loadTasks(true);
           },
@@ -3122,12 +3121,6 @@ export default function TasksPage() {
   return (
     <div className="mx-auto w-full max-w-[1480px] space-y-4 px-2 sm:space-y-6 sm:px-5 lg:space-y-7 lg:px-6">
       <RouteObservability route="tasks" />
-
-      <PageContextStrip
-        label="Tasks"
-        description="Every active job from first contact through to completion, in one place."
-        action={{ label: "Browse services", href: "/dashboard" }}
-      />
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}

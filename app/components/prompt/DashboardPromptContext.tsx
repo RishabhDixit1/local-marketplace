@@ -51,6 +51,15 @@ const getRoutePlaceholder = (pathname: string) => {
 
 const DashboardPromptContext = createContext<DashboardPromptContextValue | null>(null);
 
+const getPromptActionClassName = (isPrimary: boolean, size: "compact" | "page" = "compact") =>
+  `inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition ${
+    size === "page" ? "h-8 px-2.5 text-[11px] sm:h-9 sm:px-3 sm:text-xs" : "h-8 px-2.5 text-[11px]"
+  } ${
+    isPrimary
+      ? "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]"
+      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+  } disabled:cursor-not-allowed disabled:opacity-60`;
+
 export function DashboardPromptProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [pagePromptState, setPagePromptState] = useState<{ route: string; prompt: DashboardPromptConfig } | null>(null);
@@ -183,7 +192,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             <button
               type="submit"
               disabled={submitting}
-              className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-full bg-slate-900 px-2.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+              className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-slate-900 px-2.5 text-[11px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
             >
               <Sparkles size={11} />
               <span className="hidden sm:inline lg:inline">{submitting ? "Working..." : "Search"}</span>
@@ -204,11 +213,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
                       void action.onClick();
                     }}
                     disabled={action.disabled}
-                    className={`inline-flex h-9 items-center gap-1 rounded-full px-3 text-[11px] font-semibold transition ${
-                      isPrimary
-                        ? "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]"
-                        : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                    className={getPromptActionClassName(isPrimary)}
                   >
                     {Icon ? <Icon size={12} className={action.busy ? "animate-spin" : ""} /> : null}
                     {action.label}
@@ -219,7 +224,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           )}
         </div>
         {actions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 xl:hidden">
+          <div className="flex flex-wrap items-center justify-end gap-1.5 xl:hidden">
             {actions.slice(0, 2).map((action) => {
               const Icon = action.icon;
               const isPrimary = action.variant === "primary";
@@ -232,11 +237,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
                     void action.onClick();
                   }}
                   disabled={action.disabled}
-                  className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-[11px] font-semibold transition ${
-                    isPrimary
-                      ? "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]"
-                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  className={getPromptActionClassName(isPrimary)}
                 >
                   {Icon ? (
                     <Icon size={12} className={action.busy ? "animate-spin" : ""} />
@@ -283,7 +284,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           <button
             type="submit"
             disabled={submitting}
-            className="absolute right-2 top-1/2 inline-flex min-h-8 -translate-y-1/2 items-center gap-1 rounded-full bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
+            className="absolute right-2 top-1/2 inline-flex min-h-8 -translate-y-1/2 items-center gap-1 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-70"
           >
             <Sparkles size={12} />
             {submitting ? "Working..." : "Search"}
@@ -304,11 +305,7 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
                     void action.onClick();
                   }}
                   disabled={action.disabled}
-                  className={`inline-flex min-h-9 items-center gap-1 rounded-full px-3 text-xs font-semibold transition ${
-                    isPrimary
-                      ? "bg-[var(--brand-900)] text-white hover:bg-[var(--brand-700)]"
-                      : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  className={getPromptActionClassName(isPrimary, "page")}
                 >
                   {Icon ? (
                     <Icon size={13} className={action.busy ? "animate-spin" : ""} />
