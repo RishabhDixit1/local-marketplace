@@ -47,8 +47,10 @@ export default function FeedMediaCarousel({
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${className}`.trim()}>
-      <div className={aspectClassName}>
+    <div
+      className={`relative overflow-hidden rounded-[1.2rem] border border-slate-200 bg-slate-100 sm:rounded-[1.4rem] ${className}`.trim()}
+    >
+      <div className={`w-full ${aspectClassName} max-h-[16.5rem] sm:max-h-[19rem] lg:max-h-[21rem]`}>
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
           imgError ? (
             <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
@@ -87,7 +89,7 @@ export default function FeedMediaCarousel({
           <button
             type="button"
             onClick={goPrev}
-            className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            className="absolute left-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white sm:h-8 sm:w-8"
             aria-label="Previous media"
           >
             <ChevronLeft size={14} />
@@ -95,7 +97,7 @@ export default function FeedMediaCarousel({
           <button
             type="button"
             onClick={goNext}
-            className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white"
+            className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-slate-700 shadow-sm transition hover:bg-white sm:h-8 sm:w-8"
             aria-label="Next media"
           >
             <ChevronRight size={14} />
@@ -104,7 +106,7 @@ export default function FeedMediaCarousel({
       ) : null}
 
       {showCountBadge ? (
-        <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white">
+        <div className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-slate-900/70 px-2 py-1 text-[10px] font-semibold text-white sm:px-2.5 sm:text-[11px]">
           {safeIndex + 1} / {media.length}
         </div>
       ) : null}

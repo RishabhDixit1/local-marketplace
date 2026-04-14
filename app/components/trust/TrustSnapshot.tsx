@@ -26,10 +26,25 @@ export default function TrustSnapshot({
 }: TrustSnapshotProps) {
   if (items.length === 0) return null;
 
+  const resolvedMobileLimit =
+    typeof mobileItemLimit === "number" && mobileItemLimit >= 0
+      ? mobileItemLimit
+      : null;
+  const hiddenItemCount =
+    resolvedMobileLimit === null
+      ? 0
+      : Math.max(0, items.length - resolvedMobileLimit);
+
   return (
-    <div className={`space-y-2 ${className}`.trim()}>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-        <ShieldCheck className={compact ? "h-3.5 w-3.5 text-[var(--brand-700)]" : "h-4 w-4 text-[var(--brand-700)]"} />
+    <div className={`space-y-1.5 ${className}`.trim()}>
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-[11px]">
+        <ShieldCheck
+          className={
+            compact
+              ? "h-3.5 w-3.5 text-[var(--brand-700)]"
+              : "h-4 w-4 text-[var(--brand-700)]"
+          }
+        />
         <span>Trust Snapshot</span>
       </div>
 
@@ -37,7 +52,7 @@ export default function TrustSnapshot({
         {items.map((item, index) => {
           const tone = item.tone || "neutral";
           const hideOnMobile =
-            typeof mobileItemLimit === "number" && mobileItemLimit >= 0 && index >= mobileItemLimit
+            resolvedMobileLimit !== null && index >= resolvedMobileLimit
               ? "hidden sm:inline-flex"
               : "";
           return (
@@ -50,6 +65,11 @@ export default function TrustSnapshot({
             </span>
           );
         })}
+        {hiddenItemCount > 0 ? (
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 sm:hidden">
+            +{hiddenItemCount} more
+          </span>
+        ) : null}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Camera, Check, Loader2, MapPin, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Check, FileAudio, Film, Loader2, MapPin, Paperclip, X } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   formatCoordinatePair,
@@ -40,7 +40,7 @@ export type PublishPostResult = {
 
 const TITLE_MAX = 160;
 const DETAILS_MAX = 1200;
-const MAX_PHOTOS = 4;
+const MAX_ATTACHMENTS = 6;
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 const CATEGORIES = [
@@ -102,9 +102,9 @@ type ComposerStep = 1 | 2;
 // Helpers
 // 
 
-const uploadPhotos = async (photos: File[]) => {
+const uploadMedia = async (files: File[]) => {
   const uploaded: { name: string; url: string; type: string }[] = [];
-  for (const file of photos) {
+  for (const file of files) {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -118,12 +118,18 @@ const uploadPhotos = async (photos: File[]) => {
     });
 
     if (!payload.ok || !payload.media) {
-      throw new Error(payload.message || `Photo upload failed: ${file.name}`);
+      throw new Error(payload.message || `Media upload failed: ${file.name}`);
     }
 
     uploaded.push(payload.media);
   }
   return uploaded;
+};
+
+const getAttachmentKind = (file: File) => {
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "audio";
+  return "image";
 };
 
 // 
@@ -154,8 +160,8 @@ export default function CreatePostModal({
   const [location, setLocation] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentPreviews, setAttachmentPreviews] = useState<Array<{ url: string; kind: "image" | "video" | "audio"; name: string }>>([]);
 
   // ui state
   const [posting, setPosting] = useState(false);
@@ -164,7 +170,7 @@ export default function CreatePostModal({
   const [error, setError] = useState("");
   const [gpsNotice, setGpsNotice] = useState("");
 
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const isNeedOnlyComposer = availableTypeOptions.length === 1 && availableTypeOptions[0]?.value === "need";
 
   useEffect(() => {
@@ -202,8 +208,8 @@ export default function CreatePostModal({
       setCategory("Plumber");
       setPrice("");
       setPriceType("Fixed");
-      setPhotos([]);
-      setPhotoPreviews([]);
+      setAttachments([]);
+      setAttachmentPreviews([]);
       setPosting(false);
       setPosted(false);
       setError("");
@@ -212,13 +218,17 @@ export default function CreatePostModal({
   }, [defaultPostType, open]);
 
   useEffect(() => {
-    const nextPreviews = photos.map((file) => URL.createObjectURL(file));
-    setPhotoPreviews(nextPreviews);
+    const nextPreviews = attachments.map((file) => ({
+      url: URL.createObjectURL(file),
+      kind: getAttachmentKind(file),
+      name: file.name,
+    }));
+    setAttachmentPreviews(nextPreviews);
 
     return () => {
-      nextPreviews.forEach((url) => URL.revokeObjectURL(url));
+      nextPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
     };
-  }, [photos]);
+  }, [attachments]);
 
   if (!open) return null;
 
@@ -242,18 +252,29 @@ export default function CreatePostModal({
     setLocating(false);
   };
 
-  //  photos 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //  media 
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
-    const valid = files.filter((f) => f.type.startsWith("image/") && f.size <= MAX_FILE_SIZE);
-    const next = [...photos, ...valid].slice(0, MAX_PHOTOS);
-    setPhotos(next);
+    const valid = files.filter(
+      (file) =>
+        (file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/")) &&
+        file.size <= MAX_FILE_SIZE
+    );
+
+    if (valid.length !== files.length) {
+      setError("Only image, video, or audio files up to 25 MB are allowed.");
+    } else {
+      setError("");
+    }
+
+    const next = [...attachments, ...valid].slice(0, MAX_ATTACHMENTS);
+    setAttachments(next);
   };
 
-  const removePhoto = (index: number) => {
-    const next = photos.filter((_, i) => i !== index);
-    setPhotos(next);
+  const removeAttachment = (index: number) => {
+    const next = attachments.filter((_, i) => i !== index);
+    setAttachments(next);
   };
 
   const validateStepOne = () => {
@@ -285,7 +306,7 @@ export default function CreatePostModal({
     setGpsNotice("");
 
     try {
-      const media = await uploadPhotos(photos);
+      const media = await uploadMedia(attachments);
       const parsedPrice = price.trim() ? Math.abs(parseFloat(price.replace(/[^\d.]/g, ""))) : null;
       const budgetValue = Number.isFinite(parsedPrice) && parsedPrice! > 0 ? parsedPrice : null;
       const trimmedDetails = details.trim();
@@ -383,8 +404,8 @@ export default function CreatePostModal({
   const stepDescription =
     step === 1
       ? isNeedOnlyComposer
-        ? "Keep this screen focused on the need itself. We will add location, budget, and media next."
-        : "Keep this screen focused on the headline and the core details. We will add discovery details next."
+        ? "Start with the need, and attach media right away if it helps people understand the job faster."
+        : "Start with the headline and core details. You can attach media now, then add location and pricing next."
       : "This is where we make the post easier to trust and easier to find nearby.";
   const primaryActionLabel =
     step === 1
@@ -406,6 +427,130 @@ export default function CreatePostModal({
       : postType === "service"
         ? "Use price to set expectations. Switch to hourly or negotiable if fixed pricing is not right."
         : "Price helps product posts feel complete, even if you are open to negotiation.";
+  const attachmentCountLabel = `${attachments.length}/${MAX_ATTACHMENTS} attached`;
+
+  const renderAttachmentSection = (compact = false) => (
+    <div
+      className={`rounded-[1.75rem] border ${
+        compact
+          ? "border-slate-200 bg-[linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#eef2ff_100%)] p-4"
+          : "border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(145deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-4"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-700)]">
+            Media
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-slate-900">
+            {compact ? "Attach photos, video, or audio now" : "Show the request clearly"}
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            {compact
+              ? "You do not need to wait for step two. Add visuals or a quick voice note as soon as you have the details."
+              : "Images, short video clips, and voice notes make the post easier to trust and much easier to respond to."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => mediaInputRef.current?.click()}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          {compact ? <Paperclip className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+          {attachments.length ? "Add more" : "Add media"}
+        </button>
+      </div>
+
+      {attachmentPreviews.length > 0 ? (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {attachmentPreviews.map((preview, index) => (
+            <div
+              key={`${preview.url}-${index}`}
+              className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white ${
+                compact ? "h-24" : "h-28"
+              }`}
+            >
+              {preview.kind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={preview.url} alt={preview.name} className="h-full w-full object-cover" />
+              ) : preview.kind === "video" ? (
+                <video src={preview.url} className="h-full w-full object-cover" muted playsInline />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-2 bg-slate-50 px-3 text-center">
+                  <FileAudio className="h-6 w-6 text-[var(--brand-700)]" />
+                  <p className="line-clamp-2 text-[11px] font-semibold text-slate-700">{preview.name}</p>
+                </div>
+              )}
+              {preview.kind !== "audio" ? (
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/75 to-transparent px-3 pb-2 pt-6 text-[10px] font-semibold text-white">
+                  <span className="line-clamp-1 block">{preview.name}</span>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => removeAttachment(index)}
+                className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-950/85 text-white shadow-md transition hover:bg-slate-900"
+                aria-label={`Remove attachment ${index + 1}`}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">
+                {preview.kind === "video" ? <Film className="h-3 w-3" /> : preview.kind === "audio" ? <FileAudio className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
+                {preview.kind}
+              </div>
+            </div>
+          ))}
+          {attachments.length < MAX_ATTACHMENTS ? (
+            <button
+              type="button"
+              onClick={() => mediaInputRef.current?.click()}
+              className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 text-slate-500 transition hover:border-slate-400 hover:bg-white ${
+                compact ? "h-24" : "h-28"
+              }`}
+            >
+              <Paperclip className="h-5 w-5" />
+              <span className="text-[11px] font-semibold">Add more</span>
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 p-4">
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              { label: "Images", icon: Camera },
+              { label: "Videos", icon: Film },
+              { label: "Voice notes", icon: FileAudio },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+                <item.icon className="h-4 w-4 text-[var(--brand-700)]" />
+                <span className="font-semibold">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-sm text-slate-600">
+            Add real context now so nearby people can judge the request faster and trust what they are responding to.
+          </p>
+        </div>
+      )}
+
+      <input
+        ref={mediaInputRef}
+        type="file"
+        accept="image/*,video/*,audio/*"
+        multiple
+        className="sr-only"
+        onChange={handleAttachmentChange}
+        aria-label="Upload media"
+      />
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <p>Support images, short videos, and voice notes up to 25 MB each.</p>
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-600">
+          {attachmentCountLabel}
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col bg-white">
@@ -458,7 +603,7 @@ export default function CreatePostModal({
                   {isComplete ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : null}
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {stepNumber === 1 ? "Type, category, title, and description" : "Price, location, and photos"}
+                  {stepNumber === 1 ? "Type, category, title, description, and media" : "Price, location, and discovery details"}
                 </p>
               </button>
             );
@@ -556,6 +701,8 @@ export default function CreatePostModal({
                   Clear details reduce back-and-forth and help the right people respond faster.
                 </p>
               </div>
+
+              {renderAttachmentSection(true)}
             </>
           ) : (
             <>
@@ -649,50 +796,7 @@ export default function CreatePostModal({
                 ) : null}
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Photos <span className="font-normal text-slate-400">(optional, up to {MAX_PHOTOS})</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {photoPreviews.map((src, i) => (
-                    <div key={src} className="relative h-20 w-20 shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`Photo ${i + 1}`} className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white shadow"
-                        aria-label={`Remove photo ${i + 1}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {photos.length < MAX_PHOTOS && (
-                    <button
-                      type="button"
-                      onClick={() => photoInputRef.current?.click()}
-                      className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500 transition hover:border-slate-400 hover:bg-white"
-                      aria-label="Add photo"
-                    >
-                      <Camera className="h-5 w-5" />
-                      <span className="text-[10px] font-semibold">Add</span>
-                    </button>
-                  )}
-                </div>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="sr-only"
-                  onChange={handlePhotoChange}
-                  aria-label="Upload photos"
-                />
-                <p className="mt-2 text-xs text-slate-500">
-                  Add real photos when they help someone judge the request, the service, or the product faster.
-                </p>
-              </div>
+              {renderAttachmentSection(false)}
             </>
           )}
 

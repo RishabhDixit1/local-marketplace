@@ -6,7 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import { buildInterestDraftMessage, parseChatDraftTemplate, parseChatFeedContext } from "@/lib/chatNavigation";
+import { buildInterestDraftMessage, parseChatDraftTemplate, parseChatFeedContext, parseChatQuoteContext } from "@/lib/chatNavigation";
 import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -97,6 +97,17 @@ const CONVERSATION_MESSAGE_SCAN_MIN = 200;
 const CONVERSATION_MESSAGE_SCAN_MAX = 1000;
 const CONVERSATION_MESSAGE_SCAN_PER_CHAT = 40;
 const MESSAGE_HISTORY_LIMIT = 300;
+const FEED_CONTEXT_QUERY_KEYS = [
+  "source",
+  "context_card",
+  "context_focus",
+  "context_type",
+  "context_title",
+  "context_audience",
+  "context_return",
+] as const;
+const QUOTE_CONTEXT_QUERY_KEYS = ["quote", "order", "helpRequest"] as const;
+const DRAFT_CONTEXT_QUERY_KEYS = ["draft_kind", "draft_title"] as const;
 const CHAT_EMOTICONS = [
   { label: "Smile", value: "😊" },
   { label: "Big smile", value: "😁" },
@@ -165,6 +176,62 @@ const decodeEmojiMojibake = (value: string) => {
 const CHAT_EMOJI_OPTIONS = CHAT_EMOTICONS.map((option) => ({
   ...option,
   value: option.value.startsWith(":") || option.value === "<3" ? option.value : decodeEmojiMojibake(option.value),
+}));
+const CHAT_PICKER_VALUE_OVERRIDES = {
+  Smile: "😊",
+  "Big smile": "😁",
+  Laugh: "😂",
+  "Rolling laughter": "🤣",
+  Wink: "😉",
+  "Warm smile": "☺️",
+  Blush: "😊",
+  "Happy tears": "🥹",
+  Love: "😍",
+  "Heart eyes": "🥰",
+  Kiss: "😘",
+  Cool: "😎",
+  Thinking: "🤔",
+  "Mind blown": "🤯",
+  Shocked: "😮",
+  Oops: "😅",
+  Sad: "😔",
+  Crying: "😢",
+  Relieved: "😌",
+  Sleepy: "😴",
+  Party: "🎉",
+  Celebrate: "🎉",
+  "Celebrate more": "🥳",
+  Sparkles: "✨",
+  Fire: "🔥",
+  Star: "🌟",
+  Hundred: "💯",
+  "Thumbs up": "👍",
+  "Thumbs down": "👎",
+  Clap: "👏",
+  "Raised hands": "🙌",
+  Thanks: "🙏",
+  Handshake: "🤝",
+  Wave: "👋",
+  Flex: "💪",
+  Heart: "❤️",
+  "Pink heart": "🩷",
+  "Blue heart": "💙",
+  "Sparkle heart": "💖",
+  "Broken heart": "💔",
+  "Check mark": "✅",
+  Idea: "💡",
+  Rocket: "🚀",
+  Trophy: "🏆",
+  Coffee: "☕",
+  Camera: "📸",
+  Music: "🎵",
+  Gift: "🎁",
+} as const;
+
+const CHAT_PICKER_OPTIONS = CHAT_EMOJI_OPTIONS.map((option) => ({
+  ...option,
+  value:
+    CHAT_PICKER_VALUE_OVERRIDES[option.label as keyof typeof CHAT_PICKER_VALUE_OVERRIDES] || option.value,
 }));
 
 const isMissingColumnError = (message: string) =>
@@ -282,54 +349,92 @@ const mapLiveTalkRow = (row: Record<string, unknown> | null | undefined): LiveTa
   };
 };
 
+const buildChatRouteHref = (params: URLSearchParams) => {
+  const query = params.toString();
+  return query ? `/dashboard/chat?${query}` : "/dashboard/chat";
+};
+
+const clearChatRouteContext = (params: URLSearchParams) => {
+  [...FEED_CONTEXT_QUERY_KEYS, ...QUOTE_CONTEXT_QUERY_KEYS, ...DRAFT_CONTEXT_QUERY_KEYS].forEach((key) => {
+    params.delete(key);
+  });
+  return params;
+};
+
+const normalizeFeedContext = (searchParams: URLSearchParams): FeedMessageContext | null => {
+  const parsed = parseChatFeedContext(searchParams);
+  if (!parsed) return null;
+
+  return {
+    source: parsed.source,
+    cardId: parsed.cardId,
+    focusId: parsed.focusId,
+    itemType: parsed.itemType,
+    title: parsed.title,
+    audience: parsed.audience || "Marketplace feed",
+    returnPath: parsed.returnPath,
+  };
+};
+
+const buildFeedContextKey = (value: FeedMessageContext | null) =>
+  value
+    ? [
+        value.source,
+        value.cardId,
+        value.focusId,
+        value.itemType,
+        value.title,
+        value.audience,
+        value.returnPath || "",
+      ].join("::")
+    : "";
+
+const normalizeQuoteTarget = (searchParams: URLSearchParams, conversationId: string | null): RequestedQuoteContext | null => {
+  const parsed = parseChatQuoteContext(searchParams);
+  if (!parsed) return null;
+
+  return {
+    orderId: parsed.orderId || null,
+    helpRequestId: parsed.helpRequestId || null,
+    conversationId,
+  };
+};
+
+const buildQuoteTargetKey = (value: RequestedQuoteContext | null) =>
+  value ? [value.orderId || "", value.helpRequestId || "", value.conversationId || ""].join("::") : "";
+
 export default function ChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedChatId = searchParams.get("open");
+  const searchParamString = searchParams.toString();
+  const requestedChatId = searchParams.get("open")?.trim() || null;
   const requestedLiveTalk = searchParams.get("liveTalk") === "1";
-  const [quoteTarget, setQuoteTarget] = useState<RequestedQuoteContext | null>(() => {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("quote") !== "1") return null;
-
-    const orderId = params.get("order");
-    const helpRequestId = params.get("helpRequest");
-    if (!orderId && !helpRequestId) return null;
-
-    return {
-      orderId,
-      helpRequestId,
-      conversationId: params.get("open"),
-    };
-  });
-  const [draftTemplate] = useState(() => {
-    if (typeof window === "undefined") return null;
-    return parseChatDraftTemplate(new URLSearchParams(window.location.search));
-  });
-  const [feedContext] = useState<FeedMessageContext | null>(() => {
-    if (typeof window === "undefined") return null;
-    const parsed = parseChatFeedContext(new URLSearchParams(window.location.search));
-    if (!parsed) return null;
-
-    return {
-      source: parsed.source,
-      cardId: parsed.cardId,
-      focusId: parsed.focusId,
-      itemType: parsed.itemType,
-      title: parsed.title,
-      audience: parsed.audience || "Marketplace feed",
-      returnPath: parsed.returnPath,
-    };
-  });
+  const draftTemplate = useMemo(
+    () => parseChatDraftTemplate(new URLSearchParams(searchParamString)),
+    [searchParamString]
+  );
+  const draftMessage = useMemo(
+    () => (draftTemplate?.kind === "interest" ? buildInterestDraftMessage(draftTemplate.title) : ""),
+    [draftTemplate]
+  );
+  const feedContext = useMemo(
+    () => normalizeFeedContext(new URLSearchParams(searchParamString)),
+    [searchParamString]
+  );
+  const routeFeedContextKey = useMemo(() => buildFeedContextKey(feedContext), [feedContext]);
+  const routeQuoteTarget = useMemo(
+    () => normalizeQuoteTarget(new URLSearchParams(searchParamString), requestedChatId),
+    [requestedChatId, searchParamString]
+  );
+  const routeQuoteKey = useMemo(() => buildQuoteTargetKey(routeQuoteTarget), [routeQuoteTarget]);
+  const [quoteTarget, setQuoteTarget] = useState<RequestedQuoteContext | null>(routeQuoteTarget);
   const [feedContextDismissed, setFeedContextDismissed] = useState(false);
   const [quotePanelDismissed, setQuotePanelDismissed] = useState(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [input, setInput] = useState<string>(() =>
-    draftTemplate?.kind === "interest" ? buildInterestDraftMessage(draftTemplate.title) : ""
-  );
+  const [input, setInput] = useState<string>(draftMessage);
   const [search, setSearch] = useState("");
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
   const [userId, setUserId] = useState<string>("");
@@ -355,6 +460,7 @@ export default function ChatPage() {
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const typingChannelRef = useRef<RealtimeChannel | null>(null);
   const localTypingRef = useRef(false);
+  const autoDraftRef = useRef(draftMessage);
   const stopTypingTimerRef = useRef<number | null>(null);
   const remoteTypingTimerRef = useRef<number | null>(null);
   const autoRequestedLiveTalkRef = useRef(false);
@@ -387,6 +493,41 @@ export default function ChatPage() {
   }, [selectedChat]);
 
   useEffect(() => {
+    setFeedContextDismissed(false);
+  }, [routeFeedContextKey]);
+
+  useEffect(() => {
+    setQuoteTarget(routeQuoteTarget);
+    setQuotePanelDismissed(false);
+  }, [routeQuoteKey, routeQuoteTarget]);
+
+  useEffect(() => {
+    const previousAutoDraft = autoDraftRef.current;
+    const nextAutoDraft = draftMessage;
+
+    setInput((current) => {
+      if (nextAutoDraft && (!current.trim() || current === previousAutoDraft)) {
+        messageSelectionRef.current = { start: nextAutoDraft.length, end: nextAutoDraft.length };
+        return nextAutoDraft;
+      }
+
+      if (!nextAutoDraft && current === previousAutoDraft) {
+        messageSelectionRef.current = { start: 0, end: 0 };
+        return "";
+      }
+
+      return current;
+    });
+
+    autoDraftRef.current = nextAutoDraft;
+  }, [draftMessage]);
+
+  useEffect(() => {
+    if (!requestedChatId) return;
+    setSelectedChat((current) => (current === requestedChatId ? current : requestedChatId));
+  }, [requestedChatId]);
+
+  useEffect(() => {
     setShowEmoticonPicker(false);
   }, [selectedChat]);
 
@@ -407,9 +548,7 @@ export default function ChatPage() {
   }, [showEmoticonPicker]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParamString);
     if (quoteTarget) {
       params.set("quote", "1");
       if (quoteTarget.orderId) params.set("order", quoteTarget.orderId);
@@ -418,15 +557,29 @@ export default function ChatPage() {
       else params.delete("helpRequest");
       if (quoteTarget.conversationId) params.set("open", quoteTarget.conversationId);
     } else {
-      params.delete("quote");
-      params.delete("order");
-      params.delete("helpRequest");
+      QUOTE_CONTEXT_QUERY_KEYS.forEach((key) => params.delete(key));
     }
 
-    const nextQuery = params.toString();
-    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-    window.history.replaceState(window.history.state, "", nextUrl);
-  }, [quoteTarget]);
+    const nextHref = buildChatRouteHref(params);
+    const currentHref = buildChatRouteHref(new URLSearchParams(searchParamString));
+    if (nextHref !== currentHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }, [quoteTarget, router, searchParamString]);
+
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const params = new URLSearchParams(searchParamString);
+    if (params.get("open") === selectedChat) return;
+    params.set("open", selectedChat);
+
+    const nextHref = buildChatRouteHref(params);
+    const currentHref = buildChatRouteHref(new URLSearchParams(searchParamString));
+    if (nextHref !== currentHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }, [router, searchParamString, selectedChat]);
 
   const sendTypingEvent = useCallback(
     (isTyping: boolean) => {
@@ -1226,6 +1379,45 @@ export default function ChatPage() {
     setShowEmoticonPicker((current) => !current);
   }, []);
 
+  const applyComposerSuggestion = useCallback(
+    (value: string) => {
+      handleInputChange(value);
+      messageSelectionRef.current = { start: value.length, end: value.length };
+
+      window.requestAnimationFrame(() => {
+        const element = messageInputRef.current;
+        if (!element) return;
+        element.focus();
+        element.setSelectionRange(value.length, value.length);
+        resizeMessageInput(element);
+      });
+    },
+    [handleInputChange, resizeMessageInput]
+  );
+
+  const selectConversation = useCallback(
+    (conversationId: string, clearContext = false) => {
+      setSelectedChat(conversationId);
+
+      if (!clearContext) return;
+
+      setQuoteTarget(null);
+      setQuotePanelDismissed(false);
+      setFeedContextDismissed(false);
+
+      const params = new URLSearchParams(searchParamString);
+      clearChatRouteContext(params);
+      params.set("open", conversationId);
+
+      const nextHref = buildChatRouteHref(params);
+      const currentHref = buildChatRouteHref(new URLSearchParams(searchParamString));
+      if (nextHref !== currentHref) {
+        router.replace(nextHref, { scroll: false });
+      }
+    },
+    [router, searchParamString]
+  );
+
   const filteredConversations = useMemo(() => {
     const normalizedSearch = search.toLowerCase();
 
@@ -1242,14 +1434,14 @@ export default function ChatPage() {
 
   const handleChatPromptSubmit = useCallback(() => {
     if (filteredConversations[0]) {
-      setSelectedChat(filteredConversations[0].id);
+      selectConversation(filteredConversations[0].id, true);
       return;
     }
 
     if (search.trim()) {
       setInboxFilter("all");
     }
-  }, [filteredConversations, search]);
+  }, [filteredConversations, search, selectConversation]);
 
   const chatPromptConfig = useMemo<DashboardPromptConfig>(
     () => ({
@@ -1307,6 +1499,42 @@ export default function ChatPage() {
     () => conversations.filter((conversation) => conversation.otherUserId && onlineUserIds.has(conversation.otherUserId)).length,
     [conversations, onlineUserIds]
   );
+
+  const starterSuggestions = useMemo(() => {
+    if (activeFeedContext?.itemType === "demand") {
+      return [
+        draftMessage || `Hi, I saw "${activeFeedContext.title}" and I can help.`,
+        "Can you share the exact timing and location?",
+        "What budget are you targeting for this request?",
+      ];
+    }
+
+    if (activeFeedContext?.itemType === "service") {
+      return [
+        draftMessage || `Hi, I am interested in "${activeFeedContext.title}". Is it still available?`,
+        "What is included in this service?",
+        "When is the earliest you can take this up?",
+      ];
+    }
+
+    if (activeFeedContext?.itemType === "product") {
+      return [
+        draftMessage || `Hi, I am interested in "${activeFeedContext.title}". Is it still available?`,
+        "Can you share the final price and condition?",
+        "Is pickup or delivery possible today?",
+      ];
+    }
+
+    if (messages.length > 0) {
+      return [];
+    }
+
+    return [
+      "Hello! Is this still available?",
+      "Can you share the next steps here?",
+      "Happy to discuss price and timing.",
+    ];
+  }, [activeFeedContext, draftMessage, messages.length]);
 
   const selectedUserOnline =
     selectedConversation?.otherUserId ? onlineUserIds.has(selectedConversation.otherUserId) : false;
@@ -1499,7 +1727,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     key={chat.id}
-                    onClick={() => setSelectedChat(chat.id)}
+                    onClick={() => selectConversation(chat.id, true)}
                     className={`w-full rounded-[1.15rem] border px-3 py-3 text-left transition-all duration-200 sm:rounded-2xl ${
                       isSelected
                         ? "border-indigo-300 bg-gradient-to-r from-indigo-50 via-sky-50 to-white shadow-sm"
@@ -1549,18 +1777,32 @@ export default function ChatPage() {
 
         <section className={`flex-1 flex-col ${selectedChat ? "flex" : "hidden md:flex"}`}>
           {activeFeedContext && (
-            <div className="border-b border-indigo-200/70 bg-indigo-50/70 px-4 py-3 sm:px-6">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="border-b border-indigo-200/70 bg-[linear-gradient(135deg,rgba(224,231,255,0.8),rgba(255,255,255,0.92))] px-4 py-3 sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
-                    {activeFeedContext.source === "saved_feed"
-                      ? "From Saved Feed"
-                      : activeFeedContext.source === "public_profile"
-                        ? "From Public Profile"
-                        : "From Feed"}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {activeFeedContext.source === "saved_feed"
+                        ? "From Saved Feed"
+                        : activeFeedContext.source === "public_profile"
+                          ? "From Public Profile"
+                          : "From Feed"}
+                    </span>
+                    {draftMessage ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                        Suggested opener ready
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                    Linked listing
                   </p>
                   <p className="truncate text-sm font-semibold text-slate-900">{activeFeedContext.title}</p>
-                  <p className="truncate text-xs text-slate-600">{activeFeedContext.audience}</p>
+                  <p className="truncate text-xs text-slate-600">
+                    {activeFeedContext.audience}
+                    {draftMessage ? " • we prepared a context-aware first message for you" : ""}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1624,7 +1866,7 @@ export default function ChatPage() {
                     <button
                       key={conversation.id}
                       type="button"
-                      onClick={() => setSelectedChat(conversation.id)}
+                      onClick={() => selectConversation(conversation.id, true)}
                       className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
                     >
                       <p className="truncate text-sm font-semibold text-slate-900">{conversation.name}</p>
@@ -1856,9 +2098,53 @@ export default function ChatPage() {
                     Loading conversation...
                   </p>
                 ) : messages.length === 0 ? (
-                  <div className="mx-auto mt-10 max-w-lg rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
-                    <p className="font-semibold text-slate-800">No messages yet</p>
-                    <p className="mt-1">Send the first message to start this conversation.</p>
+                  <div className="mx-auto mt-10 max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        Ready to start
+                      </span>
+                      {activeFeedContext ? (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                          {activeFeedContext.audience}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-4 text-lg font-semibold text-slate-900">No messages yet</p>
+                    <p className="mt-1">
+                      {activeFeedContext
+                        ? "Use the prepared opener below or start with your own message. This thread is already linked to the post you came from."
+                        : "Send the first message to start this conversation."}
+                    </p>
+                    {draftMessage ? (
+                      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                          Suggested opener
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-800">{draftMessage}</p>
+                        <button
+                          type="button"
+                          onClick={() => applyComposerSuggestion(draftMessage)}
+                          className="mt-3 inline-flex items-center rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                        >
+                          Use this opener
+                        </button>
+                      </div>
+                    ) : null}
+                    {starterSuggestions.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {starterSuggestions.slice(0, 3).map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => applyComposerSuggestion(suggestion)}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1922,7 +2208,21 @@ export default function ChatPage() {
                     className="fixed inset-0 z-10 bg-slate-950/10 backdrop-blur-[1px]"
                   />
                 )}
-                <div className="relative rounded-2xl border border-slate-300 bg-slate-50 p-2">
+                {starterSuggestions.length > 0 && !input.trim() ? (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {starterSuggestions.slice(0, 3).map((suggestion) => (
+                      <button
+                        key={`composer:${suggestion}`}
+                        type="button"
+                        onClick={() => applyComposerSuggestion(suggestion)}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="relative rounded-[1.65rem] border border-slate-300 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-2.5 shadow-[0_18px_32px_-28px_rgba(15,23,42,0.45)]">
                   {showEmoticonPicker && (
                     <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+6.25rem)] z-20 rounded-[1.6rem] border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/15 sm:absolute sm:bottom-full sm:left-2 sm:right-2 sm:mb-2 sm:rounded-2xl">
                       <div className="mb-2 flex items-center justify-between gap-2">
@@ -1939,7 +2239,7 @@ export default function ChatPage() {
                       </div>
                       <div className="max-h-[min(20rem,52vh)] overflow-y-auto pr-1">
                         <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-                          {CHAT_EMOJI_OPTIONS.map((option) => (
+                          {CHAT_PICKER_OPTIONS.map((option) => (
                             <button
                               key={option.label}
                               type="button"
@@ -1955,6 +2255,19 @@ export default function ChatPage() {
                       </div>
                     </div>
                   )}
+                  <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                        {selectedConversation ? `Replying to ${selectedConversation.name}` : "New message"}
+                      </span>
+                      {draftMessage && input === draftMessage ? (
+                        <span className="hidden items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:inline-flex">
+                          Context-aware draft loaded
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-400">{input.length}/1200</span>
+                  </div>
                   <div className="flex items-end gap-2">
                     <button
                       type="button"
