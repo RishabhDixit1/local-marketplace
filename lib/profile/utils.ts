@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import {
+  FIRST_TIME_POST_LOGIN_REDIRECT_ROUTE,
   POST_LOGIN_REDIRECT_ROUTE,
   PROFILE_BIO_MIN_LENGTH,
   PROFILE_ROUTE,
@@ -491,5 +492,7 @@ export const createProfileSavePayload = (params: {
 
 export const buildOnboardingProfileHref = () => `${PROFILE_ROUTE}?onboarding=1`;
 
-export const resolveAuthenticatedProfilePath = (_profile: FlexibleProfileShape | null | undefined, nextPath?: string) =>
-  nextPath || POST_LOGIN_REDIRECT_ROUTE;
+export const resolveAuthenticatedProfilePath = (profile: FlexibleProfileShape | null | undefined, nextPath?: string) => {
+  if (nextPath) return nextPath;
+  return profile?.onboarding_completed ? POST_LOGIN_REDIRECT_ROUTE : FIRST_TIME_POST_LOGIN_REDIRECT_ROUTE;
+};
