@@ -12,6 +12,9 @@ import FeedCard from "@/app/dashboard/components/posts/FeedCard";
 import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
 import { Loader2, Pencil, Save, X } from "lucide-react";
 
+const feedGridClassName =
+  "grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,23rem),1fr))] 2xl:gap-4";
+
 type FeedGridProps = {
   items: MarketplaceDisplayFeedItem[];
   loading: boolean;
@@ -191,11 +194,11 @@ export default function FeedGrid({
 
   if (loading) {
     return (
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className={feedGridClassName}>
         {skeletonCards.map((key) => (
           <div
             key={key}
-            className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="w-full max-w-[40rem] justify-self-center overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white p-3.5 shadow-sm sm:rounded-[1.6rem] sm:p-4"
           >
             <div className="flex items-center gap-3">
               <div className="h-11 w-11 animate-pulse rounded-full bg-slate-200" />
@@ -204,13 +207,13 @@ export default function FeedGrid({
                 <div className="h-2.5 w-1/2 animate-pulse rounded bg-slate-100" />
               </div>
             </div>
-            <div className="mt-3 h-44 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="mt-3 h-40 animate-pulse rounded-[1.2rem] bg-slate-100 sm:h-44 sm:rounded-[1.4rem]" />
             <div className="mt-3 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
             <div className="mt-2 h-3 w-full animate-pulse rounded bg-slate-100" />
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
-              <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+            <div className="mt-4 flex gap-2">
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100 sm:h-10 sm:w-28 sm:flex-1" />
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100 sm:h-10 sm:w-28 sm:flex-1" />
+              <div className="ml-auto h-9 w-9 animate-pulse rounded-full bg-slate-100" />
             </div>
           </div>
         ))}
@@ -335,7 +338,7 @@ export default function FeedGrid({
         </div>
       )}
 
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className={feedGridClassName}>
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
           const isOwner =
@@ -348,6 +351,7 @@ export default function FeedGrid({
             <div
               key={item.id}
               data-feed-card-id={item.id}
+              className="h-full w-full min-w-0 max-w-[40rem] justify-self-center"
               ref={(node) => {
                 cardRefs.current.set(item.id, node);
               }}

@@ -60,6 +60,20 @@ export const parseChatDraftTemplate = (params: URLSearchParams): ChatDraftTempla
   };
 };
 
+export const parseChatQuoteContext = (params: URLSearchParams): ChatQuoteContext | null => {
+  if (trim(params.get("quote")) !== "1") return null;
+
+  const helpRequestId = trim(params.get("helpRequest")) || null;
+  const orderId = trim(params.get("order")) || null;
+
+  if (!helpRequestId && !orderId) return null;
+
+  return {
+    helpRequestId,
+    orderId,
+  };
+};
+
 export const parseChatFeedContext = (params: URLSearchParams): ChatFeedContext | null => {
   const source = trim(params.get("source"));
   if (!isChatFeedSource(source)) return null;

@@ -9,10 +9,10 @@ import {
   Check,
   Loader2,
   MapPin,
+  MessageCircle,
   MoreVertical,
   Pencil,
   Share2,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -120,7 +120,7 @@ export default function FeedCard({
 }: FeedCardProps) {
   void index;
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
-  const [descExpanded, setDescExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
   const hasMedia = item.media.length > 0;
 
@@ -210,14 +210,21 @@ export default function FeedCard({
         }
       : null,
   ].filter((value): value is { label: string; className: string } => !!value);
-  const heroPills = hasMedia ? detailPills : detailPills.slice(0, 2);
-  const secondaryPills = hasMedia ? detailPills : detailPills.slice(heroPills.length);
+  const heroPills = hasMedia ? [] : detailPills.slice(0, 2);
+  const metaPills = hasMedia ? detailPills : detailPills.slice(heroPills.length);
+  const visibleMetaPills = detailsExpanded ? metaPills : metaPills.slice(0, 2);
+  const descriptionClampClassName = hasMedia ? "line-clamp-2 sm:line-clamp-3" : "line-clamp-3 sm:line-clamp-4";
+  const shouldShowDetailsToggle =
+    item.displayDescription.length > (hasMedia ? 120 : 160) ||
+    metaPills.length > 2 ||
+    !!item.locationLabel ||
+    trustItems.length > 2;
 
   return (
     <article
       data-testid="feed-card"
       data-card-id={item.id}
-      className={`overflow-hidden rounded-[1.6rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-3xl sm:p-3.5 ${
+      className={`h-full w-full min-w-0 overflow-hidden rounded-[1.35rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-[1.6rem] sm:p-3.5 ${
         active
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
           : "border-slate-200"
@@ -226,7 +233,7 @@ export default function FeedCard({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
     >
-      <header className="flex items-center gap-2.5 sm:gap-3">
+      <header className="flex items-start gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
@@ -237,16 +244,16 @@ export default function FeedCard({
           <img
             src={item.avatarUrl}
             alt={`${item.displayCreator} avatar`}
-            className="h-10 w-10 rounded-full border border-slate-200 object-cover sm:h-11 sm:w-11"
+            className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
           />
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => void onPrimaryAction("view_profile")}
-              className="min-w-0 max-w-full truncate text-left text-[15px] font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:text-base"
+              className="min-w-0 max-w-full truncate text-left text-[14px] font-semibold text-slate-900 transition hover:text-[var(--brand-800)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:text-[15px]"
               aria-label={`Open ${item.displayCreator} profile`}
             >
               {item.displayCreator}
@@ -277,7 +284,7 @@ export default function FeedCard({
               onClick={() => setOwnerMenuOpen((current) => !current)}
               disabled={ownerBusy}
               aria-label="Post options"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 sm:h-8 sm:w-8"
             >
               {ownerBusy ? <Loader2 size={15} className="animate-spin" /> : <MoreVertical size={15} />}
             </button>
@@ -333,15 +340,15 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2 sm:mt-2.5">
+      <div className="mt-2.5">
         {hasMedia ? (
           <FeedMediaCarousel
             media={item.media}
             title={item.displayTitle}
-            aspectClassName="aspect-[11/5] sm:aspect-[16/9]"
+            aspectClassName="aspect-[16/11] sm:aspect-[16/10]"
           />
         ) : (
-          <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3.5 sm:rounded-[1.75rem] sm:p-4">
+          <div className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3 sm:rounded-[1.35rem] sm:p-3.5">
             <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold sm:gap-2 sm:text-[11px]">
               {heroPills.map((pill) => (
                 <span
@@ -353,58 +360,44 @@ export default function FeedCard({
               ))}
             </div>
 
-            <div className="mt-3 sm:mt-4">
-              <h3 className="text-base font-semibold leading-tight text-slate-950 sm:text-[1.15rem]">{item.displayTitle}</h3>
-              <p className={`mt-2 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-6 ${descExpanded ? "" : "line-clamp-3 sm:line-clamp-4"}`}>
+            <div className={heroPills.length > 0 ? "mt-3" : ""}>
+              <h3 className="break-words text-[15px] font-semibold leading-tight text-slate-950 [overflow-wrap:anywhere] sm:text-[1.02rem]">
+                {item.displayTitle}
+              </h3>
+              <p
+                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-6 ${
+                  detailsExpanded ? "" : descriptionClampClassName
+                }`}
+              >
                 {item.displayDescription}
               </p>
-              {item.displayDescription.length > 160 ? (
-                <button
-                  type="button"
-                  onClick={() => setDescExpanded((expanded) => !expanded)}
-                  className="mt-2 text-xs font-semibold text-[var(--brand-700)] hover:underline focus-visible:outline-none"
-                >
-                  {descExpanded ? "Show less" : "Show more"}
-                </button>
-              ) : null}
             </div>
           </div>
         )}
       </div>
 
-      <div className="mt-2 sm:mt-2.5">
+      <div className="mt-2.5">
         {hasMedia ? (
           <>
-            <h3 className="line-clamp-2 text-[15px] font-semibold leading-tight text-slate-900 sm:text-base">
+            <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere] sm:text-[1.02rem]">
               {item.displayTitle}
             </h3>
             <p
-              className={`mt-1.5 text-[13px] leading-5 text-slate-600 sm:text-sm sm:leading-relaxed ${
-                descExpanded ? "" : "line-clamp-2 sm:line-clamp-3"
+              className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-relaxed ${
+                detailsExpanded ? "" : descriptionClampClassName
               }`}
             >
               {item.displayDescription}
             </p>
-            {item.displayDescription.length > 120 ? (
-              <button
-                type="button"
-                onClick={() => setDescExpanded((expanded) => !expanded)}
-                className="mt-1 text-xs font-semibold text-[var(--brand-700)] hover:underline focus-visible:outline-none"
-              >
-                {descExpanded ? "Show less" : "Show more"}
-              </button>
-            ) : null}
           </>
         ) : null}
 
-        {secondaryPills.length > 0 ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3">
-            {secondaryPills.map((pill, index) => (
+        {visibleMetaPills.length > 0 ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {visibleMetaPills.map((pill) => (
               <span
                 key={`${item.id}:${pill.label}`}
-                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
-                  index >= 2 ? "hidden sm:inline-flex" : ""
-                } ${pill.className}`}
+                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${pill.className}`}
                 title={pill.label}
               >
                 <span className="truncate">{pill.label}</span>
@@ -413,11 +406,39 @@ export default function FeedCard({
           </div>
         ) : null}
 
-        <TrustSnapshot items={trustItems} compact className="mt-2.5 sm:mt-3" mobileItemLimit={2} />
+        {shouldShowDetailsToggle ? (
+          <button
+            type="button"
+            onClick={() => setDetailsExpanded((expanded) => !expanded)}
+            className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-800)]"
+          >
+            {detailsExpanded ? "Show less" : "Show more"}
+          </button>
+        ) : null}
+
+        <TrustSnapshot
+          items={trustItems}
+          compact
+          className="mt-2.5 sm:mt-3"
+          mobileItemLimit={detailsExpanded ? trustItems.length : 2}
+        />
+
+        {item.locationLabel ? (
+          <p
+            className={`mt-2 items-start gap-1.5 text-[11px] text-slate-400 sm:text-xs ${
+              detailsExpanded ? "flex" : "hidden sm:flex"
+            }`}
+          >
+            <MapPin size={12} className="mt-0.5 shrink-0" />
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+              {item.locationLabel}
+            </span>
+          </p>
+        ) : null}
       </div>
 
-      <div className="mt-2.5 flex flex-col gap-2 sm:mt-3 sm:gap-2.5">
-        <div className="flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:mt-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           {acceptButton ? (
             <button
               type="button"
@@ -425,7 +446,7 @@ export default function FeedCard({
               disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
               aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
               title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
+              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
                 buttonToneClassNames[acceptButton.tone]
               }`}
             >
@@ -436,7 +457,7 @@ export default function FeedCard({
               ) : (
                 <Check size={16} />
               )}
-              <span className="truncate">{acceptButton.label}</span>
+              <span className="hidden truncate sm:inline">{acceptButton.label}</span>
             </button>
           ) : null}
 
@@ -447,12 +468,12 @@ export default function FeedCard({
               disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
               aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
               title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
+              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
                 buttonToneClassNames[sendQuoteButton.tone]
               }`}
             >
-              {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="truncate">{sendQuoteButton.label}</span>
+              {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+              <span className="hidden truncate sm:inline">{sendQuoteButton.label}</span>
             </button>
           ) : null}
 
@@ -463,17 +484,17 @@ export default function FeedCard({
               disabled={discardButton.disabled || actionBusyState.discard}
               aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
               title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:min-w-0 max-sm:flex-1 max-sm:justify-center sm:min-h-11 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
+              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
                 buttonToneClassNames[discardButton.tone]
               }`}
             >
               {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-              <span className="truncate">{discardButton.label}</span>
+              <span className="hidden truncate sm:inline">{discardButton.label}</span>
             </button>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center gap-1.5 self-end sm:self-auto">
           {(["share", "save"] as const).map((actionKind) => {
             const busy = actionBusyState[actionKind];
             const isActive = actionKind === "save" ? saved : false;
@@ -488,7 +509,7 @@ export default function FeedCard({
                 disabled={busy}
                 aria-label={label}
                 title={label}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 sm:h-10 sm:w-10 ${
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9 ${
                   isActive
                     ? "border-slate-900 bg-slate-900 text-white"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
@@ -500,13 +521,6 @@ export default function FeedCard({
           })}
         </div>
       </div>
-
-      {item.locationLabel ? (
-        <p className="mt-2 hidden truncate text-[11px] text-slate-400 sm:block">
-          {item.displayCreator}
-          {item.locationLabel ? ` - ${item.locationLabel}` : ""}
-        </p>
-      ) : null}
     </article>
   );
 }
