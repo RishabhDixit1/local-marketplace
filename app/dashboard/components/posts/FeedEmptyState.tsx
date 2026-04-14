@@ -34,7 +34,7 @@ export default function FeedEmptyState({
           className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
         >
           <RotateCcw size={14} />
-          {!hasAnyFeed ? "Refresh feed" : "Reset filters"}
+          {!hasAnyFeed ? "Try again" : "Reset filters"}
         </button>
         <button
           type="button"

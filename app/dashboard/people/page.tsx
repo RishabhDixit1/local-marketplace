@@ -4,7 +4,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Bell, ChevronDown, Compass, Loader2, RefreshCw, Sparkles, Users } from "lucide-react";
+import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -1506,21 +1506,8 @@ export default function PeoplePage() {
       value: searchQuery,
       onValueChange: setSearchQuery,
       onSubmit: handlePeoplePromptSubmit,
-      actions: [
-        {
-          id: "refresh-people",
-          label: syncing ? "Refreshing..." : "Refresh",
-          icon: RefreshCw,
-          onClick: () => {
-            void loadProviders(true);
-          },
-          variant: "secondary",
-          disabled: syncing,
-          busy: syncing,
-        },
-      ],
     }),
-    [handlePeoplePromptSubmit, loadProviders, searchQuery, syncing]
+    [handlePeoplePromptSubmit, searchQuery]
   );
 
   useDashboardPrompt(peoplePromptConfig);
@@ -1859,7 +1846,7 @@ export default function PeoplePage() {
                 onClick={() => void loadProviders(false)}
                 className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
               >
-                Refresh discovery
+                Check again
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>
@@ -1887,7 +1874,7 @@ export default function PeoplePage() {
                 }}
                 className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
               >
-                {searchQuery.trim() ? "Clear search" : "Refresh people"}
+                {searchQuery.trim() ? "Clear search" : "Check again"}
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </button>
             </div>

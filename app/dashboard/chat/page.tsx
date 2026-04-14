@@ -1449,21 +1449,8 @@ export default function ChatPage() {
       value: search,
       onValueChange: setSearch,
       onSubmit: handleChatPromptSubmit,
-      actions: [
-        {
-          id: "refresh-chat",
-          label: loadingConversations ? "Refreshing..." : "Refresh",
-          icon: Loader2,
-          onClick: () => {
-            void loadConversations(true);
-          },
-          variant: "secondary",
-          disabled: loadingConversations || !userId,
-          busy: loadingConversations,
-        },
-      ],
     }),
-    [handleChatPromptSubmit, loadConversations, loadingConversations, search, userId]
+    [handleChatPromptSubmit, search]
   );
 
   useDashboardPrompt(chatPromptConfig);
@@ -1575,7 +1562,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative -mx-3 h-[calc(100dvh-7.5rem)] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-7.5rem)]" style={{ height: "calc(100dvh - 7.5rem - env(safe-area-inset-bottom, 0px) - 3.5rem)" }}>
+    <div className="relative -mx-3 h-[calc(100dvh-11.75rem)] min-h-[28rem] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-9.5rem)] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-7.5rem)]">
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
@@ -1588,10 +1575,10 @@ export default function ChatPage() {
             selectedChat ? "hidden md:flex" : "flex"
           } flex-col`}
         >
-          <div className="border-b border-slate-200/80 px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5">
+          <div className="border-b border-slate-200/80 px-3 pb-3 pt-3 sm:px-5 sm:pb-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 sm:text-xs">Local Inbox</p>
+                <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 sm:block sm:text-xs">Local Inbox</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Messages</h2>
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 sm:hidden">
@@ -1612,19 +1599,16 @@ export default function ChatPage() {
               </span>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2 sm:hidden">
+            <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
               <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                 {totalUnread} unread
               </span>
               <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                 {onlineContacts} online
               </span>
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                {connectedChannels}/3 live
-              </span>
             </div>
 
-            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5">
+            <div className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-3 py-2.5 sm:flex">
               <Search size={16} className="text-slate-500" />
               <input
                 placeholder="Search people or messages"
@@ -1878,8 +1862,8 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <header className="border-b border-slate-200/80 bg-white/90 px-3 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <header className="border-b border-slate-200/80 bg-white/90 px-3 py-2.5 backdrop-blur-xl sm:px-6 sm:py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
@@ -1925,7 +1909,7 @@ export default function ChatPage() {
                   </div>
 
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                    <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -1936,43 +1920,28 @@ export default function ChatPage() {
                             setQuotePanelDismissed(false);
                           }
                         }}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-2.5 py-2 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100 sm:px-3 sm:py-1.5"
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-2.5 py-2 text-[11px] font-semibold text-sky-700 transition hover:bg-sky-100 sm:rounded-full sm:px-3 sm:py-1.5"
                       >
                         <Receipt className="h-3.5 w-3.5" />
-                        {showQuotePanel ? "Hide Quote" : "Send Quote"}
+                        <span className="sm:hidden">{showQuotePanel ? "Hide" : "Quote"}</span>
+                        <span className="hidden sm:inline">{showQuotePanel ? "Hide Quote" : "Send Quote"}</span>
                       </button>
                       {selectedConversation?.otherUserId && (
                         <button
                           type="button"
                           onClick={() => void startLiveTalk()}
                           disabled={liveTalkBusy}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-300 bg-cyan-50 px-2.5 py-2 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:px-3 sm:py-1.5"
+                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-2.5 py-2 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:rounded-full sm:px-3 sm:py-1.5"
                         >
                           {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                          {liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}
+                          <span className="sm:hidden">{liveTalkRequest?.status === "pending" ? "Pending" : "Live"}</span>
+                          <span className="hidden sm:inline">{liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}</span>
                         </button>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      {[
-                        { label: "Presence", state: presenceConnection },
-                        { label: "Messages", state: streamConnection },
-                        { label: "Typing", state: typingConnection },
-                      ].map((channel) => {
-                        const style = CHANNEL_HEALTH_STYLES[channel.state];
-                        return (
-                          <span
-                            key={channel.label}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.badgeClassName}`}
-                          >
-                            <span className={`h-2 w-2 rounded-full ${style.dotClassName}`} />
-                            <span className="sm:hidden">{channel.label}</span>
-                            <span className="hidden sm:inline">{channel.label}: {style.label}</span>
-                          </span>
-                        );
-                      })}
+                    <div className="flex items-center justify-end sm:hidden">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold sm:hidden ${
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                           connectedChannels >= 2
                             ? CHANNEL_HEALTH_STYLES.connected.badgeClassName
                             : CHANNEL_HEALTH_STYLES.connecting.badgeClassName
@@ -1985,8 +1954,26 @@ export default function ChatPage() {
                               : CHANNEL_HEALTH_STYLES.connecting.dotClassName
                           }`}
                         />
-                        {connectedChannels}/3 live
+                        Live {connectedChannels}/3
                       </span>
+                    </div>
+                    <div className="hidden flex-wrap items-center gap-2 sm:flex sm:justify-end">
+                      {[
+                        { label: "Presence", state: presenceConnection },
+                        { label: "Messages", state: streamConnection },
+                        { label: "Typing", state: typingConnection },
+                      ].map((channel) => {
+                        const style = CHANNEL_HEALTH_STYLES[channel.state];
+                        return (
+                          <span
+                            key={channel.label}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.badgeClassName}`}
+                          >
+                            <span className={`h-2 w-2 rounded-full ${style.dotClassName}`} />
+                            {channel.label}: {style.label}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

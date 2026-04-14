@@ -32,7 +32,6 @@ import {
   MessageCircle,
   Package,
   Phone,
-  RefreshCw,
   Repeat2,
   Search,
   Share2,
@@ -1322,21 +1321,8 @@ export default function TasksPage() {
       value: searchQuery,
       onValueChange: setSearchQuery,
       onSubmit: handleTaskPromptSubmit,
-      actions: [
-        {
-          id: "refresh-tasks",
-          label: loading ? "Refreshing..." : "Refresh",
-          icon: RefreshCw,
-          onClick: () => {
-            void loadTasks(true);
-          },
-          variant: "secondary",
-          disabled: loading,
-          busy: loading,
-        },
-      ],
     }),
-    [handleTaskPromptSubmit, loadTasks, loading, searchQuery]
+    [handleTaskPromptSubmit, searchQuery]
   );
 
   useDashboardPrompt(taskPromptConfig);
@@ -3164,10 +3150,6 @@ export default function TasksPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void loadTasks(true)} disabled={loading} className={darkActionClassName}>
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
               <button
                 type="button"
                 onClick={() => {
