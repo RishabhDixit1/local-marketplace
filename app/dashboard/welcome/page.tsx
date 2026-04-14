@@ -36,7 +36,7 @@ import {
 } from "@/lib/marketplaceCardActions";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
-import { Loader2, RefreshCw, UsersRound, Zap } from "lucide-react";
+import { Loader2, UsersRound, Zap } from "lucide-react";
 
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
@@ -471,27 +471,10 @@ export default function WelcomePage() {
       value: welcomePromptValue,
       onValueChange: setWelcomePromptValue,
       onSubmit: handleWelcomePromptSubmit,
-      actions: [
-        {
-          id: "refresh-welcome-feed",
-          label: isFeedLoading ? "Refreshing..." : "Refresh",
-          icon: RefreshCw,
-          onClick: () => {
-            if (!viewerId) return;
-            void loadConnectedFeed(viewerId, { soft: false });
-          },
-          variant: "secondary",
-          disabled: !viewerId || isFeedLoading,
-          busy: isFeedLoading,
-        },
-      ],
     };
   }, [
     handleWelcomePromptSubmit,
     isSmallScreen,
-    isFeedLoading,
-    loadConnectedFeed,
-    viewerId,
     welcomePromptValue,
   ]);
 
@@ -1448,18 +1431,6 @@ export default function WelcomePage() {
                       className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
                     >
                       Clear search
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (viewerId) {
-                          void loadConnectedFeed(viewerId, { soft: false });
-                        }
-                      }}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--brand-500)] hover:text-[var(--brand-700)]"
-                    >
-                      <Loader2 size={14} />
-                      Refresh
                     </button>
                   </div>
                 </div>

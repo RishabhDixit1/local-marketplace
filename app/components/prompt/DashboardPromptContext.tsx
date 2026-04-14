@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Search, Sparkles } from "lucide-react";
@@ -14,6 +14,8 @@ export type DashboardPromptAction = {
   variant?: "primary" | "secondary";
   disabled?: boolean;
   busy?: boolean;
+  active?: boolean;
+  showWhenFocused?: boolean;
 };
 
 export type DashboardPromptConfig = {
@@ -145,6 +147,33 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   const { effectivePrompt, showPrompt } = useDashboardPromptContext();
   const [focused, setFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const focusHideTimerRef = useRef<number | null>(null);
+
+  const showFocusControls = useCallback(() => {
+    if (focusHideTimerRef.current) {
+      window.clearTimeout(focusHideTimerRef.current);
+      focusHideTimerRef.current = null;
+    }
+    setFocused(true);
+  }, []);
+
+  const hideFocusControls = useCallback(() => {
+    if (focusHideTimerRef.current) {
+      window.clearTimeout(focusHideTimerRef.current);
+    }
+    focusHideTimerRef.current = window.setTimeout(() => {
+      setFocused(false);
+      focusHideTimerRef.current = null;
+    }, 160);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (focusHideTimerRef.current) {
+        window.clearTimeout(focusHideTimerRef.current);
+      }
+    };
+  }, []);
 
   const runSubmit = useCallback(async () => {
     if (!effectivePrompt.onSubmit) return;
@@ -159,6 +188,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   if (!showPrompt) return null;
 
   const actions = effectivePrompt.actions || [];
+  const visibleActions = actions.filter(
+    (action) => !action.showWhenFocused || focused || action.active || action.busy
+  );
 
   if (placement === "header") {
     return (
@@ -182,8 +214,8 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             <input
               value={effectivePrompt.value}
               onChange={(event) => effectivePrompt.onValueChange(event.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
+              onFocus={showFocusControls}
+              onBlur={hideFocusControls}
               placeholder={effectivePrompt.placeholder}
               className="h-11 w-full bg-transparent px-9 pr-14 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:h-10 sm:pr-16"
               aria-label="Dashboard prompt"
@@ -199,9 +231,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             </button>
           </div>
 
-          {actions.length > 0 && (
+          {visibleActions.length > 0 && (
             <div className="hidden xl:flex items-center gap-1">
-              {actions.slice(0, 2).map((action) => {
+              {visibleActions.slice(0, 2).map((action) => {
                 const Icon = action.icon;
                 const isPrimary = action.variant === "primary";
 
@@ -223,9 +255,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
             </div>
           )}
         </div>
-        {actions.length > 0 && (
+        {visibleActions.length > 0 && (
           <div className="flex flex-wrap items-center justify-end gap-1.5 xl:hidden">
-            {actions.slice(0, 2).map((action) => {
+            {visibleActions.slice(0, 2).map((action) => {
               const Icon = action.icon;
               const isPrimary = action.variant === "primary";
 
@@ -274,8 +306,8 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           <input
             value={effectivePrompt.value}
             onChange={(event) => effectivePrompt.onValueChange(event.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onFocus={showFocusControls}
+            onBlur={hideFocusControls}
             placeholder={effectivePrompt.placeholder}
             className="h-12 w-full bg-transparent px-12 pr-24 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 sm:h-14 sm:text-base"
             aria-label="Dashboard prompt"
@@ -291,9 +323,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
           </button>
         </div>
 
-        {actions.length > 0 && (
+        {visibleActions.length > 0 && (
           <div className="flex items-center justify-end gap-2">
-            {actions.map((action) => {
+            {visibleActions.map((action) => {
               const Icon = action.icon;
               const isPrimary = action.variant === "primary";
 

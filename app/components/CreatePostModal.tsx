@@ -42,6 +42,7 @@ const TITLE_MAX = 160;
 const DETAILS_MAX = 1200;
 const MAX_ATTACHMENTS = 6;
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const MEDIA_FILE_ACCEPT = "image/*,video/*,audio/*";
 
 const CATEGORIES = [
   "Plumber",
@@ -99,6 +100,12 @@ type PriceType = typeof PRICE_TYPES[number];
 type ComposerStep = 1 | 2;
 type AttachmentKind = "image" | "video" | "audio";
 type AttachmentPreview = { url: string; kind: AttachmentKind; name: string };
+
+const MEDIA_PICKER_OPTIONS: Array<{ label: string; accept: string; icon: typeof Camera }> = [
+  { label: "Images", accept: "image/*", icon: Camera },
+  { label: "Videos", accept: "video/*", icon: Film },
+  { label: "Voice notes", accept: "audio/*", icon: FileAudio },
+];
 
 // 
 // Helpers
@@ -279,6 +286,13 @@ export default function CreatePostModal({
     setAttachments(next);
   };
 
+  const openMediaPicker = (accept = MEDIA_FILE_ACCEPT) => {
+    const input = mediaInputRef.current;
+    if (!input) return;
+    input.accept = accept;
+    input.click();
+  };
+
   const validateStepOne = () => {
     if (!title.trim()) {
       setError("Please add a title.");
@@ -431,6 +445,25 @@ export default function CreatePostModal({
         : "Price helps product posts feel complete, even if you are open to negotiation.";
   const attachmentCountLabel = `${attachments.length}/${MAX_ATTACHMENTS} attached`;
 
+  const renderMediaOptionButtons = () => (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {MEDIA_PICKER_OPTIONS.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => openMediaPicker(item.accept)}
+            className="flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm text-slate-700 transition hover:border-[var(--brand-500)]/50 hover:bg-[var(--brand-50)]"
+          >
+            <Icon className="h-4 w-4 shrink-0 text-[var(--brand-700)]" />
+            <span className="font-semibold">{item.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const renderAttachmentSection = (compact = false) => (
     <div
       className={`rounded-[1.75rem] border ${
@@ -455,7 +488,7 @@ export default function CreatePostModal({
         </div>
         <button
           type="button"
-          onClick={() => mediaInputRef.current?.click()}
+          onClick={() => openMediaPicker()}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
           {compact ? <Paperclip className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
@@ -464,7 +497,8 @@ export default function CreatePostModal({
       </div>
 
       {attachmentPreviews.length > 0 ? (
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {attachmentPreviews.map((preview, index) => (
             <div
               key={`${preview.url}-${index}`}
@@ -505,7 +539,7 @@ export default function CreatePostModal({
           {attachments.length < MAX_ATTACHMENTS ? (
             <button
               type="button"
-              onClick={() => mediaInputRef.current?.click()}
+              onClick={() => openMediaPicker()}
               className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 text-slate-500 transition hover:border-slate-400 hover:bg-white ${
                 compact ? "h-24" : "h-28"
               }`}
@@ -514,21 +548,19 @@ export default function CreatePostModal({
               <span className="text-[11px] font-semibold">Add more</span>
             </button>
           ) : null}
-        </div>
+          </div>
+          {attachments.length < MAX_ATTACHMENTS ? (
+            <div className="mt-3 rounded-[1.35rem] border border-dashed border-slate-300 bg-white/70 p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Add another media type
+              </p>
+              {renderMediaOptionButtons()}
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className="mt-4 rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 p-4">
-          <div className="grid gap-2 sm:grid-cols-3">
-            {[
-              { label: "Images", icon: Camera },
-              { label: "Videos", icon: Film },
-              { label: "Voice notes", icon: FileAudio },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-                <item.icon className="h-4 w-4 text-[var(--brand-700)]" />
-                <span className="font-semibold">{item.label}</span>
-              </div>
-            ))}
-          </div>
+          {renderMediaOptionButtons()}
           <p className="mt-3 text-sm text-slate-600">
             Add real context now so nearby people can judge the request faster and trust what they are responding to.
           </p>
@@ -538,7 +570,7 @@ export default function CreatePostModal({
       <input
         ref={mediaInputRef}
         type="file"
-        accept="image/*,video/*,audio/*"
+        accept={MEDIA_FILE_ACCEPT}
         multiple
         className="sr-only"
         onChange={handleAttachmentChange}
@@ -555,7 +587,7 @@ export default function CreatePostModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col bg-white">
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col overflow-hidden bg-white" style={{ height: "100dvh" }}>
       {/* header */}
       <div className="border-b border-slate-200 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -614,7 +646,7 @@ export default function CreatePostModal({
       </div>
 
       {/* scrollable body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
+      <div className="flex-1 overscroll-contain overflow-y-auto px-4 pb-6 pt-4">
         <div className="mx-auto max-w-lg space-y-5">
           {step === 1 ? (
             <>

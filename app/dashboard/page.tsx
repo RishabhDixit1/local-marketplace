@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { RefreshCw, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -99,7 +99,6 @@ export default function MarketplacePage() {
     setFilters,
     showAdvancedFilters,
     setShowAdvancedFilters,
-    refreshing,
     feedError,
     categoryOptions,
     displayFeed,
@@ -158,25 +157,14 @@ export default function MarketplacePage() {
             setShowAdvancedFilters((current) => !current);
           },
           variant: "secondary",
-        },
-        {
-          id: "refresh-posts",
-          label: refreshing ? "Refreshing..." : "Refresh",
-          icon: RefreshCw,
-          onClick: () => {
-            void fetchFeed(true);
-          },
-          busy: refreshing,
-          disabled: refreshing,
-          variant: "secondary",
+          active: showAdvancedFilters,
+          showWhenFocused: true,
         },
       ],
     }),
     [
-      fetchFeed,
       filters.query,
       isSmallScreen,
-      refreshing,
       setFilters,
       showAdvancedFilters,
       setShowAdvancedFilters,
@@ -368,7 +356,7 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
-        {(filters.query.length > 0 || showAdvancedFilters) && (
+        {showAdvancedFilters && (
           <FeedFilters
             filters={filters}
             categoryOptions={categoryOptions}
