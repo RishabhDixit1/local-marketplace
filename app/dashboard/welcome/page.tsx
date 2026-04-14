@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -37,7 +36,7 @@ import {
 } from "@/lib/marketplaceCardActions";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
-import { Loader2, UsersRound, Zap } from "lucide-react";
+import { Loader2, RefreshCw, UsersRound, Zap } from "lucide-react";
 
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
@@ -476,7 +475,7 @@ export default function WelcomePage() {
         {
           id: "refresh-welcome-feed",
           label: isFeedLoading ? "Refreshing..." : "Refresh",
-          icon: Loader2,
+          icon: RefreshCw,
           onClick: () => {
             if (!viewerId) return;
             void loadConnectedFeed(viewerId, { soft: false });
@@ -1406,13 +1405,6 @@ export default function WelcomePage() {
               </div>
             </div>
           </motion.div>
-
-          <PageContextStrip
-            label="Welcome"
-            description="Posts and updates from your connected network only. New here? Connect with people first."
-            action={{ label: "Connect with people", href: "/dashboard/people" }}
-            switchAction={{ label: "Browse all providers", href: "/dashboard" }}
-          />
 
           {/* ── Live feed ── */}
           <div data-testid="welcome-live-feed">

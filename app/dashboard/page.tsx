@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RouteObservability from "@/app/components/RouteObservability";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import ProfileToastViewport, {
@@ -36,9 +35,10 @@ export default function MarketplacePage() {
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
-  const [mobileVisibleCount, setMobileVisibleCount] = useState(
-    MOBILE_INITIAL_VISIBLE_ITEMS,
-  );
+  const [mobileVisibleState, setMobileVisibleState] = useState({
+    count: MOBILE_INITIAL_VISIBLE_ITEMS,
+    key: "",
+  });
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -95,7 +95,6 @@ export default function MarketplacePage() {
     setViewerId,
     feed,
     setFeed,
-    feedStats,
     filters,
     setFilters,
     showAdvancedFilters,
@@ -186,10 +185,17 @@ export default function MarketplacePage() {
 
   useDashboardPrompt(postsPromptConfig);
 
-  useEffect(() => {
-    if (!isSmallScreen) return;
-
-    setMobileVisibleCount(MOBILE_INITIAL_VISIBLE_ITEMS);
+  const mobileFeedResetKey = useMemo(() => {
+    return [
+      filters.category,
+      filters.freshOnly,
+      filters.maxDistanceKm,
+      filters.mediaOnly,
+      filters.query,
+      filters.type,
+      filters.urgentOnly,
+      filters.verifiedOnly,
+    ].join("|");
   }, [
     filters.category,
     filters.freshOnly,
@@ -199,8 +205,31 @@ export default function MarketplacePage() {
     filters.type,
     filters.urgentOnly,
     filters.verifiedOnly,
-    isSmallScreen,
   ]);
+
+  const rawMobileVisibleCount =
+    mobileVisibleState.key === mobileFeedResetKey
+      ? mobileVisibleState.count
+      : MOBILE_INITIAL_VISIBLE_ITEMS;
+
+  const updateMobileVisibleCount = useCallback(
+    (updater: number | ((current: number) => number)) => {
+      setMobileVisibleState((current) => {
+        const currentCount =
+          current.key === mobileFeedResetKey
+            ? current.count
+            : MOBILE_INITIAL_VISIBLE_ITEMS;
+        const nextCount =
+          typeof updater === "function" ? updater(currentCount) : updater;
+
+        return {
+          count: nextCount,
+          key: mobileFeedResetKey,
+        };
+      });
+    },
+    [mobileFeedResetKey],
+  );
 
   const resolvedHoveredMapItemId = useMemo(
     () =>
@@ -211,25 +240,25 @@ export default function MarketplacePage() {
     [displayFeed, hoveredMapItemId],
   );
 
+  const resolvedMobileVisibleCount = useMemo(() => {
+    if (!isSmallScreen || !focusItemId) return rawMobileVisibleCount;
+
+    const focusIndex = displayFeed.findIndex((item) => item.id === focusItemId);
+    if (focusIndex === -1) return rawMobileVisibleCount;
+
+    return Math.max(rawMobileVisibleCount, focusIndex + 1);
+  }, [displayFeed, focusItemId, isSmallScreen, rawMobileVisibleCount]);
+
   const visibleFeed = useMemo(() => {
     if (!isSmallScreen) {
       return displayFeed;
     }
 
-    return displayFeed.slice(0, mobileVisibleCount);
-  }, [displayFeed, isSmallScreen, mobileVisibleCount]);
+    return displayFeed.slice(0, resolvedMobileVisibleCount);
+  }, [displayFeed, isSmallScreen, resolvedMobileVisibleCount]);
 
   const hasMoreMobileItems =
     isSmallScreen && visibleFeed.length < displayFeed.length;
-
-  useEffect(() => {
-    if (!isSmallScreen || !focusItemId) return;
-
-    const focusIndex = displayFeed.findIndex((item) => item.id === focusItemId);
-    if (focusIndex === -1) return;
-
-    setMobileVisibleCount((current) => Math.max(current, focusIndex + 1));
-  }, [displayFeed, focusItemId, isSmallScreen]);
 
   useEffect(() => {
     if (
@@ -245,7 +274,7 @@ export default function MarketplacePage() {
         const [entry] = entries;
         if (!entry?.isIntersecting) return;
 
-        setMobileVisibleCount((current) => {
+        updateMobileVisibleCount((current) => {
           if (current >= displayFeed.length) {
             return current;
           }
@@ -264,7 +293,7 @@ export default function MarketplacePage() {
     observer.observe(mobileLoadMoreRef.current);
 
     return () => observer.disconnect();
-  }, [displayFeed.length, hasMoreMobileItems]);
+  }, [displayFeed.length, hasMoreMobileItems, updateMobileVisibleCount]);
 
   const handleResetOrRefresh = useCallback(() => {
     resetFilters();
@@ -339,12 +368,6 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
-        <PageContextStrip
-          label="Explore"
-          description="Services and products from all providers near you. No connection required."
-          action={{ label: "Post a need", href: "/dashboard?compose=1" }}
-          switchAction={{ label: "Your network", href: "/dashboard/welcome" }}
-        />
         {(filters.query.length > 0 || showAdvancedFilters) && (
           <FeedFilters
             filters={filters}
@@ -396,7 +419,7 @@ export default function MarketplacePage() {
             <button
               type="button"
               onClick={() =>
-                setMobileVisibleCount((current) =>
+                updateMobileVisibleCount((current) =>
                   Math.min(
                     current + MOBILE_VISIBLE_INCREMENT,
                     displayFeed.length,

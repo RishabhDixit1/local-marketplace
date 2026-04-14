@@ -4,10 +4,9 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
+import { AlertCircle, Bell, ChevronDown, Compass, Loader2, RefreshCw, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import RouteObservability from "@/app/components/RouteObservability";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
@@ -1511,7 +1510,7 @@ export default function PeoplePage() {
         {
           id: "refresh-people",
           label: syncing ? "Refreshing..." : "Refresh",
-          icon: Loader2,
+          icon: RefreshCw,
           onClick: () => {
             void loadProviders(true);
           },
@@ -1738,13 +1737,6 @@ export default function PeoplePage() {
       }}
     >
       <RouteObservability route="people" />
-
-      <PageContextStrip
-        label="People"
-        description="Discover and connect with providers, buyers, and collaborators near you."
-        action={{ label: "Browse listings", href: "/dashboard" }}
-        switchAction={{ label: "Post a need", href: "/dashboard?compose=1" }}
-      />
 
       <PeopleLiveHeader
         activeNow={activeNow}
