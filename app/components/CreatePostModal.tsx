@@ -97,6 +97,8 @@ const PLACEHOLDERS: Record<string, string> = {
 const PRICE_TYPES = ["Fixed", "Hourly", "Negotiable"] as const;
 type PriceType = typeof PRICE_TYPES[number];
 type ComposerStep = 1 | 2;
+type AttachmentKind = "image" | "video" | "audio";
+type AttachmentPreview = { url: string; kind: AttachmentKind; name: string };
 
 // 
 // Helpers
@@ -126,7 +128,7 @@ const uploadMedia = async (files: File[]) => {
   return uploaded;
 };
 
-const getAttachmentKind = (file: File) => {
+const getAttachmentKind = (file: File): AttachmentKind => {
   if (file.type.startsWith("video/")) return "video";
   if (file.type.startsWith("audio/")) return "audio";
   return "image";
@@ -161,7 +163,7 @@ export default function CreatePostModal({
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [attachmentPreviews, setAttachmentPreviews] = useState<Array<{ url: string; kind: "image" | "video" | "audio"; name: string }>>([]);
+  const [attachmentPreviews, setAttachmentPreviews] = useState<AttachmentPreview[]>([]);
 
   // ui state
   const [posting, setPosting] = useState(false);
