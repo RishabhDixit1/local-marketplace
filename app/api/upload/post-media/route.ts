@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { getPostMediaLimitBytes, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 
 export const runtime = "nodejs";
 
 const BUCKET = "post-media";
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const ALLOWED_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -39,8 +39,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Only image, video, or audio uploads are allowed." }, { status: 400 });
   }
 
-  if (file.size > MAX_FILE_BYTES) {
-    return NextResponse.json({ ok: false, message: "File too large. Max 25 MB." }, { status: 400 });
+  const limitBytes = getPostMediaLimitBytes(file.type);
+  if (file.size > limitBytes) {
+    return NextResponse.json({ ok: false, message: `File too large. Max ${formatUploadLimit(limitBytes)}.` }, { status: 400 });
   }
 
   const admin = createSupabaseAdminClient();
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
 
   const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
     contentType: file.type,
+    cacheControl: STORAGE_CACHE_SECONDS,
     upsert: false,
   });
 

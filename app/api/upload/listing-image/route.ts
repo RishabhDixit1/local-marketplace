@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { LISTING_IMAGE_MAX_BYTES, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 
 export const runtime = "nodejs";
 
 const BUCKET = "listing-images";
-const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4 MB
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 
 export async function POST(request: Request) {
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Only JPEG, PNG, or WebP images are allowed." }, { status: 400 });
   }
 
-  if (file.size > MAX_FILE_BYTES) {
-    return NextResponse.json({ ok: false, message: "File too large. Max 4 MB." }, { status: 400 });
+  if (file.size > LISTING_IMAGE_MAX_BYTES) {
+    return NextResponse.json({ ok: false, message: `File too large. Max ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)}.` }, { status: 400 });
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
@@ -45,6 +45,7 @@ export async function POST(request: Request) {
 
   const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
     contentType: file.type,
+    cacheControl: STORAGE_CACHE_SECONDS,
     upsert: false,
   });
 

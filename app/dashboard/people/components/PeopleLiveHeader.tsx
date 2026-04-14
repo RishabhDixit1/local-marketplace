@@ -77,17 +77,11 @@ const fallbackPreview = (userId: string): ProviderPreview => ({
 });
 
 function PersonRow({
-  entry,
   preview,
-  isBusy,
-  busyActionKey,
   meta,
   actions,
 }: {
-  entry: ConnectionBucketEntry;
   preview: ProviderPreview;
-  isBusy: boolean;
-  busyActionKey: ConnectionActionKey | null;
   meta: string;
   actions: React.ReactNode;
 }) {
@@ -100,7 +94,6 @@ function PersonRow({
             alt={preview.name}
             width={40}
             height={40}
-            unoptimized
             className="h-10 w-10 rounded-xl border border-slate-100 object-cover"
           />
           <span
@@ -318,10 +311,7 @@ export default function PeopleLiveHeader({
                   return (
                     <PersonRow
                       key={entry.requestId}
-                      entry={entry}
                       preview={preview}
-                      isBusy={isBusy}
-                      busyActionKey={busyActionKey}
                       meta={`${preview.role}  ${formatWhen(entry.updatedAt)}`}
                       actions={
                         <>
@@ -387,10 +377,7 @@ export default function PeopleLiveHeader({
                   return (
                     <PersonRow
                       key={entry.requestId}
-                      entry={entry}
                       preview={preview}
-                      isBusy={isBusy}
-                      busyActionKey={busyActionKey}
                       meta={`${preview.role}  Sent ${formatWhen(entry.updatedAt)}`}
                       actions={
                         <button
@@ -442,10 +429,7 @@ export default function PeopleLiveHeader({
                   return (
                     <PersonRow
                       key={entry.requestId}
-                      entry={entry}
                       preview={preview}
-                      isBusy={isBusy}
-                      busyActionKey={busyActionKey}
                       meta={`${preview.role}  Connected ${formatWhen(entry.updatedAt)}`}
                       actions={
                         <button

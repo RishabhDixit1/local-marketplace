@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ExternalLink, Image as ImageIcon, Sparkles } from "lucide-react";
 import type { MarketplacePortfolioRecord } from "@/lib/profile/marketplace";
 
@@ -21,10 +22,16 @@ export default function PortfolioSection({ portfolio }: { portfolio: Marketplace
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {portfolio.map((item) => (
             <article key={item.id} className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
-              <div className="aspect-[16/10] bg-slate-200">
+              <div className="relative aspect-[16/10] bg-slate-200">
                 {item.media_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.media_url} alt={item.title} className="h-full w-full object-cover" />
+                  <Image
+                    src={item.media_url}
+                    alt={item.title}
+                    fill
+                    sizes="(max-width: 768px) 92vw, 360px"
+                    quality={72}
+                    className="object-cover"
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-slate-500">
                     <ImageIcon className="h-10 w-10" />

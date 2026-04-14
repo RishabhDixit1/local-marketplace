@@ -105,7 +105,6 @@ export default function ConnectionsPanel({
                           alt={preview.name}
                           width={36}
                           height={36}
-                          unoptimized
                           className="h-9 w-9 rounded-lg border border-slate-200 object-cover"
                         />
                         <span

@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import dynamicImport from "next/dynamic";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -206,10 +206,14 @@ export default async function PublicProfilePage({ params, searchParams }: Params
         `}</style>
         <section className="relative h-[25svh] min-h-[240px] max-h-[320px] overflow-hidden rounded-[28px] border border-slate-300/30 bg-[linear-gradient(125deg,#eff6ff_0%,#dbeafe_24%,#c7d2fe_58%,#e0e7ff_100%)] text-white shadow-[0_24px_70px_-35px_rgba(15,23,42,0.55)]">
           {coverImageUrl ? (
-            <img
+            <Image
               src={coverImageUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover will-change-transform motion-safe:[animation:profile-cover-drift_18s_ease-in-out_infinite]"
+              fill
+              sizes="(max-width: 768px) 100vw, 1180px"
+              quality={72}
+              priority
+              className="object-cover will-change-transform motion-safe:[animation:profile-cover-drift_18s_ease-in-out_infinite]"
             />
           ) : null}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(125,211,252,0.55),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(99,102,241,0.45),transparent_28%),radial-gradient(circle_at_74%_82%,rgba(148,163,184,0.28),transparent_26%),linear-gradient(140deg,rgba(255,255,255,0.22),transparent_24%,rgba(255,255,255,0.12)_24%,transparent_38%,rgba(255,255,255,0.08)_38%,transparent)]" />
@@ -238,7 +242,7 @@ export default async function PublicProfilePage({ params, searchParams }: Params
                 <div className="relative w-fit shrink-0">
                   <div className="flex h-18 w-18 items-center justify-center overflow-hidden rounded-full border-[4px] border-white/90 bg-slate-950 text-xl font-semibold text-white shadow-[0_20px_32px_-24px_rgba(15,23,42,0.48)] sm:h-20 sm:w-20 sm:text-2xl">
                     {profileAvatarUrl ? (
-                      <img src={profileAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                      <Image src={profileAvatarUrl} alt={displayName} width={80} height={80} quality={70} className="h-full w-full object-cover" />
                     ) : (
                       <span>{avatarFallback}</span>
                     )}

@@ -16,6 +16,12 @@ import type {
   PublishNeedResponse,
   PublishPostResponse,
 } from "@/lib/api/publish";
+import { compressImageFile, isCompressibleImageFile } from "@/lib/clientImageCompression";
+import {
+  POST_MEDIA_LIMIT_COPY,
+  POST_MEDIA_MAX_ATTACHMENTS,
+  getPostMediaLimitBytes,
+} from "@/lib/mediaLimits";
 
 // 
 // Types
@@ -40,8 +46,6 @@ export type PublishPostResult = {
 
 const TITLE_MAX = 160;
 const DETAILS_MAX = 1200;
-const MAX_ATTACHMENTS = 6;
-const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const MEDIA_FILE_ACCEPT = "image/*,video/*,audio/*";
 
 const CATEGORIES = [
@@ -174,6 +178,7 @@ export default function CreatePostModal({
 
   // ui state
   const [posting, setPosting] = useState(false);
+  const [mediaProcessing, setMediaProcessing] = useState(false);
   const [locating, setLocating] = useState(false);
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState("");
@@ -220,6 +225,7 @@ export default function CreatePostModal({
       setAttachments([]);
       setAttachmentPreviews([]);
       setPosting(false);
+      setMediaProcessing(false);
       setPosted(false);
       setError("");
       setGpsNotice("");
@@ -262,23 +268,42 @@ export default function CreatePostModal({
   };
 
   //  media 
-  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
-    const valid = files.filter(
-      (file) =>
-        (file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/")) &&
-        file.size <= MAX_FILE_SIZE
-    );
+    if (!files.length) return;
 
-    if (valid.length !== files.length) {
-      setError("Only image, video, or audio files up to 25 MB are allowed.");
-    } else {
-      setError("");
+    setMediaProcessing(true);
+    const valid: File[] = [];
+    let rejected = false;
+
+    try {
+      for (const file of files) {
+        const supported = file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/");
+        if (!supported) {
+          rejected = true;
+          continue;
+        }
+
+        const prepared =
+          isCompressibleImageFile(file)
+            ? (await compressImageFile(file, { maxBytes: getPostMediaLimitBytes(file.type) })).file
+            : file;
+
+        const limitBytes = getPostMediaLimitBytes(prepared.type || file.type);
+        if (prepared.size > limitBytes) {
+          rejected = true;
+          continue;
+        }
+
+        valid.push(prepared);
+      }
+
+      setAttachments((current) => [...current, ...valid].slice(0, POST_MEDIA_MAX_ATTACHMENTS));
+      setError(rejected ? `Some files were skipped. ${POST_MEDIA_LIMIT_COPY}` : "");
+    } finally {
+      setMediaProcessing(false);
     }
-
-    const next = [...attachments, ...valid].slice(0, MAX_ATTACHMENTS);
-    setAttachments(next);
   };
 
   const removeAttachment = (index: number) => {
@@ -288,7 +313,7 @@ export default function CreatePostModal({
 
   const openMediaPicker = (accept = MEDIA_FILE_ACCEPT) => {
     const input = mediaInputRef.current;
-    if (!input) return;
+    if (!input || mediaProcessing || attachments.length >= POST_MEDIA_MAX_ATTACHMENTS) return;
     input.accept = accept;
     input.click();
   };
@@ -443,7 +468,7 @@ export default function CreatePostModal({
       : postType === "service"
         ? "Use price to set expectations. Switch to hourly or negotiable if fixed pricing is not right."
         : "Price helps product posts feel complete, even if you are open to negotiation.";
-  const attachmentCountLabel = `${attachments.length}/${MAX_ATTACHMENTS} attached`;
+  const attachmentCountLabel = `${attachments.length}/${POST_MEDIA_MAX_ATTACHMENTS} attached`;
 
   const renderMediaOptionButtons = () => (
     <div className="grid gap-2 sm:grid-cols-3">
@@ -454,6 +479,7 @@ export default function CreatePostModal({
             key={item.label}
             type="button"
             onClick={() => openMediaPicker(item.accept)}
+            disabled={mediaProcessing || attachments.length >= POST_MEDIA_MAX_ATTACHMENTS}
             className="flex min-h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left text-sm text-slate-700 transition hover:border-[var(--brand-500)]/50 hover:bg-[var(--brand-50)]"
           >
             <Icon className="h-4 w-4 shrink-0 text-[var(--brand-700)]" />
@@ -489,10 +515,11 @@ export default function CreatePostModal({
         <button
           type="button"
           onClick={() => openMediaPicker()}
+          disabled={mediaProcessing || attachments.length >= POST_MEDIA_MAX_ATTACHMENTS}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
-          {compact ? <Paperclip className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-          {attachments.length ? "Add more" : "Add media"}
+          {mediaProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : compact ? <Paperclip className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+          {mediaProcessing ? "Preparing..." : attachments.length ? "Add more" : "Add media"}
         </button>
       </div>
 
@@ -543,20 +570,21 @@ export default function CreatePostModal({
               </div>
             </div>
           ))}
-          {attachments.length < MAX_ATTACHMENTS ? (
+          {attachments.length < POST_MEDIA_MAX_ATTACHMENTS ? (
             <button
               type="button"
               onClick={() => openMediaPicker()}
+              disabled={mediaProcessing}
               className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 text-slate-500 transition hover:border-slate-400 hover:bg-white ${
                 compact ? "h-24" : "h-28"
               }`}
             >
-              <Paperclip className="h-5 w-5" />
-              <span className="text-[11px] font-semibold">Add more</span>
+              {mediaProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+              <span className="text-[11px] font-semibold">{mediaProcessing ? "Preparing" : "Add more"}</span>
             </button>
           ) : null}
           </div>
-          {attachments.length < MAX_ATTACHMENTS ? (
+          {attachments.length < POST_MEDIA_MAX_ATTACHMENTS ? (
             <div className="mt-3 rounded-[1.35rem] border border-dashed border-slate-300 bg-white/70 p-3">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Add another media type
@@ -580,12 +608,12 @@ export default function CreatePostModal({
         accept={MEDIA_FILE_ACCEPT}
         multiple
         className="sr-only"
-        onChange={handleAttachmentChange}
+        onChange={(event) => void handleAttachmentChange(event)}
         aria-label="Upload media"
       />
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-        <p>Support images, short videos, and voice notes up to 25 MB each.</p>
+        <p>{POST_MEDIA_LIMIT_COPY} Images are compressed before upload.</p>
         <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-semibold text-slate-600">
           {attachmentCountLabel}
         </span>
@@ -868,7 +896,7 @@ export default function CreatePostModal({
           <button
             type="button"
             onClick={() => void (step === 1 ? handleNextStep() : handlePost())}
-            disabled={posting || posted}
+            disabled={posting || posted || mediaProcessing}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-4 text-base font-bold text-white shadow-md transition hover:bg-[var(--brand-700)] disabled:opacity-60 active:scale-[0.98]"
           >
             {posting ? (

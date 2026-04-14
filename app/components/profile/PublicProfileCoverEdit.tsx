@@ -10,6 +10,7 @@ import type { ProfileFormValues } from "@/lib/profile/types";
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
+import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 
 type PublicProfileCoverEditProps = {
   profileUserId: string;
@@ -201,7 +202,7 @@ export default function PublicProfileCoverEdit({
                   <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-base font-semibold text-slate-950 sm:text-lg">{displayName}</p>
-                      <p className="text-sm leading-6 text-slate-500">PNG, JPG, WEBP, or GIF up to 5MB.</p>
+                      <p className="text-sm leading-6 text-slate-500">PNG, JPG, WEBP, or GIF. Images are compressed before upload.</p>
                     </div>
 
                     <button
@@ -227,7 +228,7 @@ export default function PublicProfileCoverEdit({
                       const file = event.target.files?.[0];
                       if (!file) return;
                       if (file.size > 5 * 1024 * 1024) {
-                        setErrorMessage("Cover image must be 5MB or smaller.");
+                        setErrorMessage(`Cover source must be 5 MB or smaller. It will be compressed to ${formatUploadLimit(PROFILE_IMAGE_MAX_BYTES)} before upload.`);
                         return;
                       }
                       setErrorMessage("");

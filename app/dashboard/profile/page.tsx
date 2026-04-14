@@ -16,6 +16,7 @@ import { saveCurrentUserProfile, uploadProfileAvatar } from "@/lib/profile/clien
 import { toProfileFormValues } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import type { StoredProfileRole } from "@/lib/profile/types";
+import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 
 //  helpers 
 
@@ -87,6 +88,11 @@ export default function EditProfilePage() {
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`Profile photo source must be 5 MB or smaller. It will be compressed to ${formatUploadLimit(PROFILE_IMAGE_MAX_BYTES)} before upload.`);
+      return;
+    }
+    setError("");
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };

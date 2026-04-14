@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -650,7 +650,14 @@ export default async function BusinessProfilePage({ params }: Params) {
                       >
                         {post.imageUrl ? (
                           <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
-                            <img src={post.imageUrl} alt={post.title} className="h-full w-full object-cover" />
+                            <Image
+                              src={post.imageUrl}
+                              alt={post.title}
+                              fill
+                              sizes="(max-width: 768px) 92vw, 560px"
+                              quality={72}
+                              className="object-cover"
+                            />
                           </div>
                         ) : null}
 

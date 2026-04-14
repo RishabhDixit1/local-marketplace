@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Briefcase, Loader2, Package, Pencil, Plus, ShoppingBag, ShoppingCart, Trash2, X, Zap } from "lucide-react";
 import { useCart } from "@/app/components/store/CartContext";
@@ -661,12 +662,14 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
                   className="flex flex-col justify-between overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
                 >
                   {imgUrl ? (
-                    <div className="h-44 w-full overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                    <div className="relative h-44 w-full overflow-hidden">
+                      <Image
                         src={imgUrl}
                         alt={prod.title ?? "Product"}
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="(max-width: 640px) 92vw, 420px"
+                        quality={72}
+                        className="object-cover"
                       />
                     </div>
                   ) : (

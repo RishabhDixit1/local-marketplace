@@ -204,7 +204,6 @@ const ProviderCard = (props: Props) => {
             src={coverImage}
             alt={`${provider.name} cover`}
             fill
-            unoptimized
             className="object-cover"
             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
           />
@@ -221,7 +220,6 @@ const ProviderCard = (props: Props) => {
               alt={provider.name}
               width={108}
               height={108}
-              unoptimized
               className="h-[72px] w-[72px] rounded-full border-[3px] border-white object-cover shadow-[0_18px_30px_-24px_rgba(15,23,42,0.45)] sm:h-[96px] sm:w-[96px] sm:border-4"
             />
             <span

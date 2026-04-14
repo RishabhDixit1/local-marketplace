@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Briefcase,
@@ -477,8 +478,15 @@ export function StoreSection({ services, products, providerId, providerName, pro
               <div key={prod.id} className="flex flex-col justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <div>
                   {imageUrl ? (
-                    <div className="mb-3 h-28 overflow-hidden rounded-lg border border-slate-800">
-                      <img src={imageUrl} alt={prod.title || "Product image"} className="h-full w-full object-cover" />
+                    <div className="relative mb-3 h-28 overflow-hidden rounded-lg border border-slate-800">
+                      <Image
+                        src={imageUrl}
+                        alt={prod.title || "Product image"}
+                        fill
+                        sizes="(max-width: 640px) 92vw, 320px"
+                        quality={72}
+                        className="object-cover"
+                      />
                     </div>
                   ) : null}
                   <div className="flex items-start justify-between gap-2">
