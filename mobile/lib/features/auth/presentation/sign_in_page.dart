@@ -70,11 +70,11 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   String? _validateOtp(String? value) {
     final token = value?.trim() ?? '';
     if (token.isEmpty) {
-      return 'Enter the 6-digit code from your email.';
+      return 'Enter the 8-digit code from your email.';
     }
 
-    if (!RegExp(r'^\d{6}$').hasMatch(token)) {
-      return 'Use the 6-digit code from your email.';
+    if (!RegExp(r'^\d{8}$').hasMatch(token)) {
+      return 'Use the 8-digit code from your email.';
     }
 
     return null;
@@ -109,15 +109,6 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     }
 
     return null;
-    if (normalizedMessage.contains('network is unreachable') ||
-        normalizedMessage.contains('connection failed') ||
-        normalizedMessage.contains('os error: network is unreachable')) {
-      return 'The device could not open a network connection to Supabase. '
-          'Relaunch the Android app after the manifest update, then confirm '
-          'the emulator itself has internet access.';
-    }
-
-    return 'Unable to send sign-in link: $rawMessage';
   }
 
   Future<void> _sendEmailCode() async {
@@ -145,7 +136,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         _otpEmail = email;
         _otpController.clear();
         _emailCodeStatus =
-            'Code sent to $email. Enter the 6-digit code from your email to continue.';
+            'Code sent to $email. Enter the 8-digit code from your email to continue.';
       });
     } catch (error) {
       if (!mounted) {
@@ -434,10 +425,10 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
-                        maxLength: 6,
+                        maxLength: 8,
                         decoration: const InputDecoration(
-                          labelText: '6-digit code',
-                          hintText: '123456',
+                          labelText: '8-digit code',
+                          hintText: '12345678',
                         ),
                         validator: _validateOtp,
                         onFieldSubmitted: (_) => _verifyEmailCode(),
