@@ -9,7 +9,9 @@ import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/home/presentation/home_shell_page.dart';
 import '../../features/inbox/presentation/inbox_page.dart';
+import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/task_post/presentation/task_post_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -57,6 +59,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/sign-in',
         builder: (context, state) => const SignInPage(),
       ),
+      GoRoute(
+        path: '/app/post-task',
+        builder: (context, state) => const TaskPostPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return HomeShellPage(navigationShell: navigationShell);
@@ -75,6 +81,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/app/inbox',
                 builder: (context, state) => const InboxPage(),
+                routes: [
+                  GoRoute(
+                    path: ':conversationId',
+                    builder: (context, state) => ChatThreadPage(
+                      conversationId: state.pathParameters['conversationId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -83,6 +97,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/app/tasks',
                 builder: (context, state) => const TasksPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/notifications',
+                builder: (context, state) => const NotificationsPage(),
               ),
             ],
           ),

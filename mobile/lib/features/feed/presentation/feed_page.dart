@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
+import '../../inbox/data/chat_repository.dart';
 
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({super.key, this.snapshotOverride});
@@ -17,10 +20,100 @@ class FeedPage extends ConsumerStatefulWidget {
 
 class _FeedPageState extends ConsumerState<FeedPage> {
   MobileFeedScope _scope = MobileFeedScope.all;
+  String? _busyFeedActionId;
 
   Future<void> _refresh() async {
     ref.invalidate(feedSnapshotProvider(_scope));
     await ref.read(feedSnapshotProvider(_scope).future);
+  }
+
+  Future<void> _sendInterest(MobileFeedItem item) async {
+    final helpRequestId = item.helpRequestId;
+    if (helpRequestId == null || _busyFeedActionId != null) {
+      return;
+    }
+
+    setState(() {
+      _busyFeedActionId = item.id;
+    });
+
+    try {
+      if (item.viewerHasExpressedInterest) {
+        await ref.read(feedRepositoryProvider).withdrawInterest(helpRequestId);
+      } else {
+        await ref.read(feedRepositoryProvider).expressInterest(helpRequestId);
+      }
+
+      ref.invalidate(feedSnapshotProvider(_scope));
+      await ref.read(feedSnapshotProvider(_scope).future);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            item.viewerHasExpressedInterest
+                ? 'Interest withdrawn.'
+                : 'Interest sent. The requester will review it shortly.',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyFeedActionId = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _openChat(MobileFeedItem item) async {
+    if (_busyFeedActionId != null || item.providerId.trim().isEmpty) {
+      return;
+    }
+
+    final userId =
+        ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
+    if (userId.isNotEmpty && item.providerId == userId) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('This is your own post.')));
+      return;
+    }
+
+    setState(() {
+      _busyFeedActionId = item.id;
+    });
+
+    try {
+      final conversationId = await ref
+          .read(chatRepositoryProvider)
+          .getOrCreateDirectConversation(recipientId: item.providerId);
+      if (!mounted) {
+        return;
+      }
+      context.push('/app/inbox/$conversationId');
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyFeedActionId = null;
+        });
+      }
+    }
   }
 
   @override
@@ -36,6 +129,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Marketplace')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final posted = await context.push<bool>('/app/post-task');
+          if (posted == true && mounted) {
+            await _refresh();
+          }
+        },
+        icon: const Icon(Icons.add_task_rounded),
+        label: const Text('Post task'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -63,7 +166,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       ...data.items.map(
                         (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 14),
-                          child: _FeedCard(item: item),
+                          child: _FeedCard(
+                            item: item,
+                            busy: _busyFeedActionId == item.id,
+                            onPrimaryAction:
+                                item.isDemand &&
+                                    item.helpRequestId != null &&
+                                    item.providerId != data.currentUserId &&
+                                    !item.isClosed
+                                ? () => _sendInterest(item)
+                                : null,
+                            onChatAction:
+                                item.providerId.isNotEmpty &&
+                                    item.providerId != data.currentUserId
+                                ? () => _openChat(item)
+                                : null,
+                          ),
                         ),
                       ),
                   ],
@@ -329,9 +447,17 @@ class _StatCard extends StatelessWidget {
 }
 
 class _FeedCard extends StatelessWidget {
-  const _FeedCard({required this.item});
+  const _FeedCard({
+    required this.item,
+    required this.busy,
+    required this.onPrimaryAction,
+    required this.onChatAction,
+  });
 
   final MobileFeedItem item;
+  final bool busy;
+  final VoidCallback? onPrimaryAction;
+  final VoidCallback? onChatAction;
 
   @override
   Widget build(BuildContext context) {
@@ -418,6 +544,36 @@ class _FeedCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onPrimaryAction != null || onChatAction != null) ...[
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (onPrimaryAction != null)
+                  FilledButton(
+                    onPressed: busy ? null : onPrimaryAction,
+                    child: busy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            item.viewerHasExpressedInterest
+                                ? 'Withdraw Interest'
+                                : 'Express Interest',
+                          ),
+                  ),
+                if (onChatAction != null)
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : onChatAction,
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    label: const Text('Chat'),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
