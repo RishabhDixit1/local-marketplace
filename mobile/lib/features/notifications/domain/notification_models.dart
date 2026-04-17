@@ -129,7 +129,10 @@ MobileNotificationAction resolveMobileNotificationAction(
     );
   }
 
-  return const MobileNotificationAction(label: 'View feed', route: '/app/feed');
+  return const MobileNotificationAction(
+    label: 'View feed',
+    route: '/app/welcome',
+  );
 }
 
 const _conversationEntityTypes = {
