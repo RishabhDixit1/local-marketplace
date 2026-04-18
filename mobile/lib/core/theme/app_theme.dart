@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color _surfaceApp = Color(0xFFF3F6FB);
@@ -21,19 +20,19 @@ class AppTheme {
       surface: _surfaceCard,
     );
 
-    final baseTextTheme = GoogleFonts.manropeTextTheme();
+    final baseTextTheme = Typography.material2021().black;
     final textTheme = baseTextTheme.copyWith(
-      headlineLarge: GoogleFonts.sora(
+      headlineLarge: const TextStyle(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: _ink,
       ),
-      headlineMedium: GoogleFonts.sora(
+      headlineMedium: const TextStyle(
         fontSize: 26,
         fontWeight: FontWeight.w700,
         color: _ink,
       ),
-      titleLarge: GoogleFonts.sora(
+      titleLarge: const TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: _ink,

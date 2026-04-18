@@ -39,6 +39,25 @@ $supabaseUrl = Get-EnvValue "NEXT_PUBLIC_SUPABASE_URL"
 $supabaseAnonKey = Get-EnvValue "NEXT_PUBLIC_SUPABASE_ANON_KEY"
 $configDir = Join-Path $mobileDir "config"
 $configPath = Join-Path $configDir "local.json"
+$existingConfig = $null
+
+if (Test-Path -LiteralPath $configPath) {
+  try {
+    $existingConfig = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+  } catch {
+    $existingConfig = $null
+  }
+}
+
+$allowBadCertificatesLine = $envLines | Where-Object { $_.StartsWith("MOBILE_ALLOW_BAD_CERTIFICATES=") } | Select-Object -First 1
+if ($allowBadCertificatesLine) {
+  $allowBadCertificatesRaw = $allowBadCertificatesLine.Substring("MOBILE_ALLOW_BAD_CERTIFICATES=".Length).Trim().ToLowerInvariant()
+  $allowBadCertificates = @("1", "true", "yes", "on") -contains $allowBadCertificatesRaw
+} elseif ($null -ne $existingConfig -and $null -ne $existingConfig.ALLOW_BAD_CERTIFICATES) {
+  $allowBadCertificates = [bool]$existingConfig.ALLOW_BAD_CERTIFICATES
+} else {
+  $allowBadCertificates = $false
+}
 
 $flutterCommand = Get-Command flutter.bat -ErrorAction SilentlyContinue
 if ($flutterCommand) {
@@ -62,6 +81,7 @@ Write-Host "Device: $DeviceId"
 Write-Host "Supabase host: $supabaseUrl"
 Write-Host "Anon key: $maskedKey"
 Write-Host "API base URL: $ApiBaseUrl"
+Write-Host "Allow bad certificates: $allowBadCertificates"
 Write-Host "Mobile config path: $configPath"
 
 $flutterArgs = @(
@@ -72,13 +92,14 @@ $flutterArgs = @(
   "--dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey",
   "--dart-define=API_BASE_URL=$ApiBaseUrl",
   "--dart-define=AUTH_REDIRECT_SCHEME=serviq",
-  "--dart-define=AUTH_REDIRECT_HOST=auth-callback"
+  "--dart-define=AUTH_REDIRECT_HOST=auth-callback",
+  "--dart-define=ALLOW_BAD_CERTIFICATES=$allowBadCertificates"
 )
 
 if ($PrintOnly) {
   Write-Host ""
   Write-Host "Resolved flutter command:"
-  Write-Host "$flutterExe run -d $DeviceId --dart-define=APP_ENV=$AppEnv --dart-define=SUPABASE_URL=$supabaseUrl --dart-define=SUPABASE_ANON_KEY=$maskedKey --dart-define=API_BASE_URL=$ApiBaseUrl --dart-define=AUTH_REDIRECT_SCHEME=serviq --dart-define=AUTH_REDIRECT_HOST=auth-callback"
+  Write-Host "$flutterExe run -d $DeviceId --dart-define=APP_ENV=$AppEnv --dart-define=SUPABASE_URL=$supabaseUrl --dart-define=SUPABASE_ANON_KEY=$maskedKey --dart-define=API_BASE_URL=$ApiBaseUrl --dart-define=AUTH_REDIRECT_SCHEME=serviq --dart-define=AUTH_REDIRECT_HOST=auth-callback --dart-define=ALLOW_BAD_CERTIFICATES=$allowBadCertificates"
   exit 0
 }
 
@@ -90,6 +111,7 @@ New-Item -ItemType Directory -Force -Path $configDir | Out-Null
   API_BASE_URL = $ApiBaseUrl
   AUTH_REDIRECT_SCHEME = "serviq"
   AUTH_REDIRECT_HOST = "auth-callback"
+  ALLOW_BAD_CERTIFICATES = $allowBadCertificates
 } | ConvertTo-Json | Set-Content -LiteralPath $configPath
 
 Write-Host "Synced mobile debug config."

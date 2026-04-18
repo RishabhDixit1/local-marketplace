@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/api/mobile_api_client.dart';
+import '../../../core/supabase/app_bootstrap.dart';
+import '../../../core/widgets/section_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -28,18 +33,96 @@ enum FeedPageMode {
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({
     super.key,
+    this.snapshotOverride,
+    this.pageTitle = 'Explore',
+    this.initialScope = MobileFeedScope.all,
     this.mode = FeedPageMode.explore,
     this.snapshotOverride,
   });
 
   final FeedPageMode mode;
   final AsyncValue<MobileFeedSnapshot>? snapshotOverride;
+  final String pageTitle;
+  final MobileFeedScope initialScope;
 
   @override
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
 
 class _FeedPageState extends ConsumerState<FeedPage> {
+  late MobileFeedScope _scope;
+  RealtimeChannel? _feedChannel;
+
+  AppBootstrap? _readBootstrap() {
+    try {
+      return ref.read(appBootstrapProvider);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = widget.initialScope;
+    _subscribeToRealtime();
+  }
+
+  @override
+  void dispose() {
+    final client = _readBootstrap()?.client;
+    final channel = _feedChannel;
+    if (client != null && channel != null) {
+      client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeToRealtime() {
+    final client = _readBootstrap()?.client;
+    if (client == null) {
+      return;
+    }
+
+    void invalidateFeed() {
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
+    }
+
+    _feedChannel = client
+        .channel('mobile-explore-feed')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'posts',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'help_requests',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'service_listings',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'product_catalog',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'connection_requests',
+          callback: (_) => invalidateFeed(),
+        )
+        .subscribe();
+  }
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _busyFeedActionId;
@@ -183,6 +266,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final currentUser = session?.user;
 
     return Scaffold(
+      appBar: AppBar(title: Text(widget.pageTitle)),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -290,6 +374,55 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 }
 
+class _FeedHero extends StatelessWidget {
+  const _FeedHero({required this.scope, required this.onScopeChanged});
+
+  final MobileFeedScope scope;
+  final ValueChanged<MobileFeedScope> onScopeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 360;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(compact ? 26 : 32),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B1F33), Color(0xFF11466A), Color(0xFF0EA5A4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: EdgeInsets.all(compact ? 18 : 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nearby demand, trusted providers, faster response.',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontSize: compact ? 23 : null,
+              height: 1.12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Browse the same marketplace data as the web app, with one shared backend for demand, services, products, and trust signals.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontSize: compact ? 13 : null,
+              height: 1.45,
+              color: Colors.white.withValues(alpha: 0.84),
+            ),
+          ),
+          SizedBox(height: compact ? 14 : 18),
+          _FeedScopeSelector(
+            scope: scope,
+            compact: compact,
+            onScopeChanged: onScopeChanged,
+          ),
+        ],
+      ),
+    );
 String _displayLabelForUser(User? user) {
   final metadataName = user?.userMetadata?['name'];
   if (metadataName is String && metadataName.trim().isNotEmpty) {

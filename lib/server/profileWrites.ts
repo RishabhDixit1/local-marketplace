@@ -1,7 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { SaveProfileRequest } from "@/lib/api/profile";
 import { PROFILE_AVATAR_BUCKET, type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
-import { createProfileSavePayload, normalizeProfileRecord } from "@/lib/profile/utils";
+import { buildBootstrapProfilePatch, createProfileSavePayload, normalizeProfileRecord } from "@/lib/profile/utils";
 import { STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 
 type ProfileWriteResult = {
@@ -42,6 +42,20 @@ const buildProfileRead = async (db: SupabaseClient, userId: string, email: strin
     error: null,
   };
 };
+
+const bootstrapUpsertVariants = (payload: Record<string, unknown>) => [
+  payload,
+  Object.fromEntries(
+    Object.entries(payload).filter(([key]) =>
+      ["id", "full_name", "name", "email", "avatar_url", "role", "location", "availability", "metadata"].includes(key)
+    )
+  ),
+  Object.fromEntries(
+    Object.entries(payload).filter(([key]) => ["id", "name", "email", "avatar_url", "role", "availability"].includes(key))
+  ),
+  Object.fromEntries(Object.entries(payload).filter(([key]) => ["id", "name", "email", "avatar_url"].includes(key))),
+  { id: payload.id },
+];
 
 export const isProfileSaveRequest = (payload: unknown): payload is SaveProfileRequest => {
   if (!payload || typeof payload !== "object") return false;
@@ -159,6 +173,29 @@ export const saveProfileRow = async (params: {
     code: "RETRY_EXHAUSTED",
     details: null,
   };
+};
+
+export const ensureProfileBootstrapRow = async (params: {
+  db: SupabaseClient;
+  user: User;
+}): Promise<ProfileRecord | null> => {
+  const existingRead = await buildProfileRead(params.db, params.user.id, params.user.email || "");
+  const existingProfile = existingRead.profile || null;
+  const patch = buildBootstrapProfilePatch(params.user, existingProfile);
+
+  if (existingProfile && Object.keys(patch).length <= 1) {
+    return existingProfile;
+  }
+
+  for (const payload of bootstrapUpsertVariants(patch)) {
+    const { error } = await params.db.from("profiles").upsert(payload, { onConflict: "id" });
+    if (!error) {
+      const latestRead = await buildProfileRead(params.db, params.user.id, params.user.email || "");
+      return latestRead.profile;
+    }
+  }
+
+  return existingProfile;
 };
 
 export const uploadProfileAvatarFile = async (params: {

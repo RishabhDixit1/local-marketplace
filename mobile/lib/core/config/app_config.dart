@@ -12,6 +12,7 @@ class AppConfig {
     required this.apiBaseUrl,
     required this.authRedirectScheme,
     required this.authRedirectHost,
+    required this.allowBadCertificates,
   });
 
   factory AppConfig.fromEnvironment() {
@@ -32,12 +33,13 @@ class AppConfig {
         'AUTH_REDIRECT_HOST',
         defaultValue: 'auth-callback',
       ),
+      allowBadCertificates: bool.fromEnvironment('ALLOW_BAD_CERTIFICATES'),
     );
   }
 
   static Future<AppConfig> load() async {
     final environmentConfig = AppConfig.fromEnvironment();
-    if (environmentConfig.hasMinimumClientConfig || !kDebugMode) {
+    if (!kDebugMode) {
       return environmentConfig;
     }
 
@@ -56,6 +58,7 @@ class AppConfig {
   final String apiBaseUrl;
   final String authRedirectScheme;
   final String authRedirectHost;
+  final bool allowBadCertificates;
 
   AppConfig mergeWith(AppConfig fallback) {
     return AppConfig(
@@ -72,6 +75,7 @@ class AppConfig {
         authRedirectHost,
         fallback.authRedirectHost,
       ),
+      allowBadCertificates: allowBadCertificates || fallback.allowBadCertificates,
     );
   }
 
@@ -125,6 +129,7 @@ class AppConfig {
           'AUTH_REDIRECT_HOST',
           defaultValue: 'auth-callback',
         ),
+        allowBadCertificates: _readBool(decoded, 'ALLOW_BAD_CERTIFICATES'),
       );
     } on FlutterError {
       return null;
@@ -146,6 +151,25 @@ class AppConfig {
     }
 
     return defaultValue;
+  }
+
+  static bool _readBool(Map<dynamic, dynamic> values, String key) {
+    final value = values[key];
+
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+
+    if (value is num) {
+      return value != 0;
+    }
+
+    return false;
   }
 
   static String _pickNonEmpty(String primary, String fallback) {

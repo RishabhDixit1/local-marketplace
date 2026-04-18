@@ -1,9 +1,11 @@
+import type { User } from "@supabase/supabase-js";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 
 export type RequestAuthContext = {
   userId: string;
   email: string;
   accessToken: string;
+  user: User;
 };
 
 export type AuthFailure = {
@@ -54,6 +56,7 @@ export const requireRequestAuth = async (
       userId: data.user.id,
       email: data.user.email || "",
       accessToken,
+      user: data.user,
     },
   };
 };

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../api/mobile_api_client.dart';
 import '../supabase/app_bootstrap.dart';
 
 final mobileAuthServiceProvider = Provider<MobileAuthService>((ref) {
@@ -83,6 +84,41 @@ class MobileAuthService {
       email: email.trim(),
       shouldCreateUser: true,
     );
+  }
+
+  Future<String> sendMagicLink(String email) async {
+    final apiClient = MobileApiClient(
+      config: _bootstrap.config,
+      supabaseClient: _bootstrap.client,
+    );
+
+    try {
+      final payload = await apiClient.postJson(
+        '/api/auth/send-link',
+        body: {
+          'email': email.trim(),
+          'redirectTo': _bootstrap.config.magicLinkRedirectUrl,
+        },
+        authenticated: false,
+      );
+
+      if (payload['ok'] != true) {
+        throw ApiException(
+          (payload['message'] as String?) ??
+              (payload['error'] as String?) ??
+              'Unable to send the magic link.',
+        );
+      }
+
+      final resolvedRedirect = payload['redirectTo'];
+      if (resolvedRedirect is String && resolvedRedirect.trim().isNotEmpty) {
+        return resolvedRedirect.trim();
+      }
+
+      return _bootstrap.config.magicLinkRedirectUrl;
+    } finally {
+      apiClient.dispose();
+    }
   }
 
   Future<AuthResponse> verifyEmailCode({

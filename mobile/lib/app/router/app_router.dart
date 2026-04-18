@@ -9,12 +9,15 @@ import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/home/presentation/home_shell_page.dart';
+import '../../features/people/presentation/people_page.dart';
+import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/inbox/presentation/inbox_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/task_post/presentation/task_post_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
+import '../../features/welcome/presentation/welcome_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
@@ -62,6 +65,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SignInPage(),
       ),
       GoRoute(
+        path: '/app/create',
+        builder: (context, state) => const CreateNeedPage(),
         path: '/app/post-task',
         builder: (context, state) => const TaskPostPage(),
       ),
@@ -94,6 +99,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/welcome',
+                builder: (context, state) => const WelcomePage(),
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.welcome),
               ),
@@ -103,6 +109,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/app/explore',
+                builder: (context, state) => const FeedPage(),
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
               ),

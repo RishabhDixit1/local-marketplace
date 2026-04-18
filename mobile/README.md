@@ -66,6 +66,17 @@ Windows PowerShell sync-only:
 .\scripts\run-mobile-android.ps1 -SyncOnly
 ```
 
+If your laptop sits behind corporate HTTPS inspection and Android shows
+`CERTIFICATE_VERIFY_FAILED`, set this in the repo root `.env.local` before
+running the PowerShell helper:
+
+```text
+MOBILE_ALLOW_BAD_CERTIFICATES=1
+```
+
+That flag is debug-only and only relaxes TLS validation for the configured
+mobile hosts. It is meant for local emulator development on managed networks.
+
 ## Important Auth Note
 
 The mobile app uses the Supabase Flutter client directly for sign-in.

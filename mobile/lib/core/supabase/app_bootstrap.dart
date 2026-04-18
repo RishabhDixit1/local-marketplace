@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../network/debug_http_overrides.dart';
 
 final appBootstrapProvider = Provider<AppBootstrap>((ref) {
   throw UnimplementedError('AppBootstrap must be overridden in main().');
@@ -30,6 +31,8 @@ class AppBootstrap {
 
   static Future<AppBootstrap> initialize() async {
     final config = await AppConfig.load();
+    DebugNetworkTrust.installIfNeeded(config);
+    final httpClient = DebugNetworkTrust.createHttpClient(config);
 
     if (!config.hasSupabaseConfig) {
       return AppBootstrap(
@@ -49,6 +52,7 @@ class AppBootstrap {
       final instance = await Supabase.initialize(
         url: config.supabaseUrl,
         anonKey: config.supabaseAnonKey,
+        httpClient: httpClient,
         debug: kDebugMode,
       ).timeout(_initializationTimeout);
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { unstable_noStore as noStore } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import type { ProfileRecord } from "@/lib/profile/types";
 import {
@@ -487,17 +488,16 @@ const loadSections = async (db: NonNullable<ReturnType<typeof getServerSupabase>
   return sortProfileSections(mergeProfileSections(rows as ProfileSectionRecord[], profileId));
 };
 
-export async function loadMarketplaceProfileBundleByUsername(identifier: string): Promise<
-  (MarketplaceProfileBundle & {
-    displayName: string;
-    publicPath: string;
-    canonicalUsername: string;
-  }) | null
-> {
-  noStore();
-  const db = getServerSupabase();
-  if (!db) return null;
+type MarketplaceBundleResult = MarketplaceProfileBundle & {
+  displayName: string;
+  publicPath: string;
+  canonicalUsername: string;
+};
 
+const loadMarketplaceProfileBundle = async (
+  db: NonNullable<ReturnType<typeof getServerSupabase>>,
+  identifier: string
+): Promise<MarketplaceBundleResult | null> => {
   const profile = await loadProfileByLookup(db, identifier);
   if (!profile) return null;
 
@@ -512,13 +512,7 @@ export async function loadMarketplaceProfileBundleByUsername(identifier: string)
       profile.id,
       toPortfolioRecord
     ),
-    loadRows<GenericRow, MarketplaceWorkHistoryRecord>(
-      db,
-      "work_history",
-      "*",
-      profile.id,
-      toWorkHistoryRecord
-    ),
+    loadRows<GenericRow, MarketplaceWorkHistoryRecord>(db, "work_history", "*", profile.id, toWorkHistoryRecord),
     loadRows<GenericRow, MarketplaceAvailabilityRecord>(
       db,
       "availability",
@@ -580,8 +574,25 @@ export async function loadMarketplaceProfileBundleByUsername(identifier: string)
     canonicalUsername: profile.username || slugifyProfileName(getProfileDisplayName(profile) || profile.id),
     publicPath,
   };
+};
+
+export async function loadMarketplaceProfileBundleByUsername(identifier: string): Promise<MarketplaceBundleResult | null> {
+  noStore();
+  const db = getServerSupabase();
+  if (!db) return null;
+
+  return loadMarketplaceProfileBundle(db, identifier);
 }
 
-export async function loadMarketplaceProfileBundleByProfileId(profileId: string) {
-  return loadMarketplaceProfileBundleByUsername(profileId);
+export async function loadMarketplaceProfileBundleByProfileId(
+  profileId: string,
+  options?: {
+    dbClient?: SupabaseClient | null;
+  }
+) {
+  noStore();
+  const db = (options?.dbClient as NonNullable<ReturnType<typeof getServerSupabase>> | null) || getServerSupabase();
+  if (!db) return null;
+
+  return loadMarketplaceProfileBundle(db, profileId);
 }

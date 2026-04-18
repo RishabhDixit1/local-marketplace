@@ -79,6 +79,7 @@ describe("POST /api/auth/send-link", () => {
   const originalAllowedRecipients = process.env.AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS;
   const originalBlockedRecipients = process.env.AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS;
   const originalBlockedDomains = process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS;
+  const originalMobileRedirectUrls = process.env.MOBILE_AUTH_REDIRECT_URLS;
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -112,6 +113,12 @@ describe("POST /api/auth/send-link", () => {
       delete process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS;
     } else {
       process.env.AUTH_MAGIC_LINK_BLOCKED_DOMAINS = originalBlockedDomains;
+    }
+
+    if (originalMobileRedirectUrls === undefined) {
+      delete process.env.MOBILE_AUTH_REDIRECT_URLS;
+    } else {
+      process.env.MOBILE_AUTH_REDIRECT_URLS = originalMobileRedirectUrls;
     }
   });
 
@@ -196,6 +203,33 @@ describe("POST /api/auth/send-link", () => {
       email: "person@serviq.dev",
       create_user: true,
     });
+  });
+
+  it("allows the native mobile callback when it is explicitly allowlisted", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+    process.env.MOBILE_AUTH_REDIRECT_URLS = "serviq://auth-callback";
+
+    const { requestMock } = installHttpsRequestMock([{ type: "response", status: 200, body: "" }]);
+
+    const request = new Request("http://localhost:3000/api/auth/send-link", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: "person@serviq.dev",
+        redirectTo: "serviq://auth-callback",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+
+    const [options] = requestMock.mock.calls[0];
+    const otpUrl = new URL(`https://example.supabase.co${String((options as { path: string }).path)}`);
+
+    expect(otpUrl.searchParams.get("redirect_to")).toBe("serviq://auth-callback");
   });
 
   it("blocks placeholder or disposable magic-link recipients before sending to Supabase", async () => {

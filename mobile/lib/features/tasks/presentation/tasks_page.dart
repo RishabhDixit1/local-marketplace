@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/task_repository.dart';
 import '../domain/task_snapshot.dart';
@@ -17,6 +18,15 @@ class TasksPage extends ConsumerStatefulWidget {
 class _TasksPageState extends ConsumerState<TasksPage> {
   MobileTaskStatus _selectedStatus = MobileTaskStatus.active;
   String? _busyTaskId;
+  RealtimeChannel? _tasksChannel;
+
+  AppBootstrap? _readBootstrap() {
+    try {
+      return ref.read(appBootstrapProvider);
+    } catch (_) {
+      return null;
+    }
+  }
   RealtimeChannel? _ordersChannel;
   RealtimeChannel? _helpRequestsChannel;
   RealtimeChannel? _taskEventsChannel;
@@ -24,6 +34,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   @override
   void initState() {
     super.initState();
+    _subscribeToRealtime();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bindRealtimeChannels();
     });
@@ -31,6 +42,27 @@ class _TasksPageState extends ConsumerState<TasksPage> {
 
   @override
   void dispose() {
+    final client = _readBootstrap()?.client;
+    final channel = _tasksChannel;
+    if (client != null && channel != null) {
+      client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeToRealtime() {
+    final client = _readBootstrap()?.client;
+    final userId = client?.auth.currentUser?.id ?? '';
+    if (client == null || userId.isEmpty) {
+      return;
+    }
+
+    void invalidateTasks() {
+      ref.invalidate(taskSnapshotProvider);
+    }
+
+    _tasksChannel = client
+        .channel('mobile-tasks-$userId')
     _disposeRealtimeChannels();
     super.dispose();
   }
@@ -54,6 +86,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'orders',
+          callback: (_) => invalidateTasks(),
+        )
           callback: (_) => refresh(),
         )
         .subscribe();
@@ -64,6 +98,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'help_requests',
+          callback: (_) => invalidateTasks(),
+        )
           callback: (_) => refresh(),
         )
         .subscribe();
@@ -74,6 +110,16 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'task_events',
+          callback: (_) => invalidateTasks(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notification_escalations',
+          callback: (_) => invalidateTasks(),
+        )
+        .subscribe();
+  }
           callback: (_) => refresh(),
         )
         .subscribe();

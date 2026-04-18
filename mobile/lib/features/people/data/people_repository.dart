@@ -1,6 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/supabase/app_bootstrap.dart';
+import '../domain/people_snapshot.dart';
+
+final peopleRepositoryProvider = Provider<PeopleRepository>((ref) {
+  final bootstrap = ref.watch(appBootstrapProvider);
+  final apiClient = MobileApiClient(
+    config: bootstrap.config,
+    supabaseClient: bootstrap.client,
+  );
+  ref.onDispose(apiClient.dispose);
+
+  return PeopleRepository(apiClient);
 import '../../../core/api/mobile_api_provider.dart';
 import '../domain/people_snapshot.dart';
 
@@ -21,6 +33,13 @@ class PeopleRepository {
     final payload = await _apiClient.getJson('/api/community/people');
     if (payload['ok'] != true) {
       throw ApiException(
+        (payload['message'] as String?) ??
+            'Unable to load the people directory right now.',
+      );
+    }
+
+    return MobilePeopleSnapshot.fromJson(payload);
+  }
         (payload['message'] as String?) ?? 'Unable to load nearby people.',
       );
     }
