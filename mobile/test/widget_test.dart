@@ -53,6 +53,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Local Help Marketplace for Everyday Needs.'), findsOneWidget);
+    expect(find.textContaining('Marketplace feed'), findsOneWidget);
+    expect(find.text('Post a Need'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -62,11 +65,12 @@ void main() {
     await _pumpFeedPage(tester, const Size(390, 844));
 
     expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('Local Help Marketplace for Everyday Needs.'), findsOneWidget);
     expect(
       find.text('Emergency multi-room electrical rewiring support'),
-      findsOneWidget,
+      findsAtLeastNWidgets(1),
     );
-    expect(find.text('Products'), findsOneWidget);
+    expect(find.text('Electrical and safety inspection'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

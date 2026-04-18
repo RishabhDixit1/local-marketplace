@@ -27,11 +27,17 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       return null;
     }
   }
+  RealtimeChannel? _ordersChannel;
+  RealtimeChannel? _helpRequestsChannel;
+  RealtimeChannel? _taskEventsChannel;
 
   @override
   void initState() {
     super.initState();
     _subscribeToRealtime();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bindRealtimeChannels();
+    });
   }
 
   @override
@@ -57,18 +63,49 @@ class _TasksPageState extends ConsumerState<TasksPage> {
 
     _tasksChannel = client
         .channel('mobile-tasks-$userId')
+    _disposeRealtimeChannels();
+    super.dispose();
+  }
+
+  void _bindRealtimeChannels() {
+    _disposeRealtimeChannels();
+
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (userId.isEmpty) {
+      return;
+    }
+
+    final client = Supabase.instance.client;
+    void refresh() {
+      ref.invalidate(taskSnapshotProvider);
+    }
+
+    _ordersChannel = client
+        .channel('mobile-tasks-orders-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'orders',
           callback: (_) => invalidateTasks(),
         )
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+
+    _helpRequestsChannel = client
+        .channel('mobile-tasks-help-requests-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'help_requests',
           callback: (_) => invalidateTasks(),
         )
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+
+    _taskEventsChannel = client
+        .channel('mobile-tasks-events-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -82,6 +119,26 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           callback: (_) => invalidateTasks(),
         )
         .subscribe();
+  }
+          callback: (_) => refresh(),
+        )
+        .subscribe();
+  }
+
+  void _disposeRealtimeChannels() {
+    final client = Supabase.instance.client;
+    if (_ordersChannel != null) {
+      client.removeChannel(_ordersChannel!);
+      _ordersChannel = null;
+    }
+    if (_helpRequestsChannel != null) {
+      client.removeChannel(_helpRequestsChannel!);
+      _helpRequestsChannel = null;
+    }
+    if (_taskEventsChannel != null) {
+      client.removeChannel(_taskEventsChannel!);
+      _taskEventsChannel = null;
+    }
   }
 
   Future<void> _refresh() async {
