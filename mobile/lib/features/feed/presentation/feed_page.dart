@@ -1,22 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
 
 class FeedPage extends ConsumerStatefulWidget {
-  const FeedPage({super.key, this.snapshotOverride});
+  const FeedPage({
+    super.key,
+    this.snapshotOverride,
+    this.pageTitle = 'Explore',
+    this.initialScope = MobileFeedScope.all,
+  });
 
   final AsyncValue<MobileFeedSnapshot>? snapshotOverride;
+  final String pageTitle;
+  final MobileFeedScope initialScope;
 
   @override
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
 
 class _FeedPageState extends ConsumerState<FeedPage> {
-  MobileFeedScope _scope = MobileFeedScope.all;
+  late MobileFeedScope _scope;
+  RealtimeChannel? _feedChannel;
+
+  AppBootstrap? _readBootstrap() {
+    try {
+      return ref.read(appBootstrapProvider);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scope = widget.initialScope;
+    _subscribeToRealtime();
+  }
+
+  @override
+  void dispose() {
+    final client = _readBootstrap()?.client;
+    final channel = _feedChannel;
+    if (client != null && channel != null) {
+      client.removeChannel(channel);
+    }
+    super.dispose();
+  }
+
+  void _subscribeToRealtime() {
+    final client = _readBootstrap()?.client;
+    if (client == null) {
+      return;
+    }
+
+    void invalidateFeed() {
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
+      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
+    }
+
+    _feedChannel = client
+        .channel('mobile-explore-feed')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'posts',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'help_requests',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'service_listings',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'product_catalog',
+          callback: (_) => invalidateFeed(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'connection_requests',
+          callback: (_) => invalidateFeed(),
+        )
+        .subscribe();
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(feedSnapshotProvider(_scope));
@@ -35,7 +116,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Marketplace')),
+      appBar: AppBar(title: Text(widget.pageTitle)),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -126,7 +207,7 @@ class _FeedHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'This feed uses the same authenticated backend routes as the web app, so ranking and workflow logic stay shared across platforms.',
+            'Browse the same marketplace data as the web app, with one shared backend for demand, services, products, and trust signals.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontSize: compact ? 13 : null,
               height: 1.45,

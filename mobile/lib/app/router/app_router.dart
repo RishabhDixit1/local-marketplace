@@ -8,9 +8,11 @@ import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/home/presentation/home_shell_page.dart';
-import '../../features/inbox/presentation/inbox_page.dart';
+import '../../features/people/presentation/people_page.dart';
+import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
+import '../../features/welcome/presentation/welcome_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
@@ -31,7 +33,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (!setupRequired && location == '/setup') {
-        return signedIn ? '/app/feed' : '/sign-in';
+        return signedIn ? '/app/welcome' : '/sign-in';
       }
 
       if (!setupRequired && !signedIn && visitingApp) {
@@ -41,7 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!setupRequired &&
           signedIn &&
           (location == '/' || location == '/sign-in')) {
-        return '/app/feed';
+        return '/app/welcome';
       }
 
       if (!setupRequired && !signedIn && location == '/') {
@@ -57,6 +59,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/sign-in',
         builder: (context, state) => const SignInPage(),
       ),
+      GoRoute(
+        path: '/app/create',
+        builder: (context, state) => const CreateNeedPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return HomeShellPage(navigationShell: navigationShell);
@@ -65,7 +71,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/feed',
+                path: '/app/welcome',
+                builder: (context, state) => const WelcomePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/explore',
                 builder: (context, state) => const FeedPage(),
               ),
             ],
@@ -73,8 +87,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/inbox',
-                builder: (context, state) => const InboxPage(),
+                path: '/app/people',
+                builder: (context, state) => const PeoplePage(),
               ),
             ],
           ),

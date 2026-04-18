@@ -33,6 +33,10 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   String? _emailCodeStatus;
   String? _emailCodeError;
 
+  bool _magicLinkSubmitting = false;
+  String? _magicLinkStatus;
+  String? _magicLinkError;
+
   bool _googleSubmitting = false;
   String? _googleStatus;
   String? _googleError;
@@ -123,6 +127,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       _emailCodeSubmitting = true;
       _emailCodeError = null;
       _emailCodeStatus = null;
+      _magicLinkError = null;
+      _magicLinkStatus = null;
     });
 
     try {
@@ -153,6 +159,52 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       if (mounted) {
         setState(() {
           _emailCodeSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendMagicLink() async {
+    if (!_emailFormKey.currentState!.validate()) {
+      return;
+    }
+
+    final authService = ref.read(mobileAuthServiceProvider);
+    final email = _emailController.text.trim();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _magicLinkSubmitting = true;
+      _magicLinkError = null;
+      _magicLinkStatus = null;
+      _emailCodeError = null;
+    });
+
+    try {
+      final resolvedRedirect = await authService.sendMagicLink(email);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _magicLinkStatus =
+            'Magic link sent to $email. Open it on this phone and it will return to $resolvedRedirect.';
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _magicLinkError = authService.friendlyErrorMessage(
+          error,
+          fallbackPrefix: 'Unable to send magic link',
+        );
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _magicLinkSubmitting = false;
         });
       }
     }
@@ -327,6 +379,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       _otpController.clear();
       _emailCodeStatus = null;
       _emailCodeError = null;
+      _magicLinkStatus = null;
+      _magicLinkError = null;
     });
   }
 
@@ -356,6 +410,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
               children: const [
                 Chip(label: Text('Existing users: email code first')),
                 Chip(label: Text('Same email keeps the same account')),
+                Chip(label: Text('Magic links can return into the app')),
                 Chip(label: Text('Brand-new users: Google is fastest')),
               ],
             ),
@@ -378,7 +433,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     key: _emailFormKey,
                     child: TextFormField(
                       controller: _emailController,
-                      enabled: _otpEmail == null && !_emailCodeSubmitting,
+                      enabled: _otpEmail == null &&
+                          !_emailCodeSubmitting &&
+                          !_magicLinkSubmitting,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.send,
                       autofillHints: const [AutofillHints.email],
@@ -391,22 +448,58 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _emailCodeSubmitting ? null : _sendEmailCode,
-                    icon: _emailCodeSubmitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.mark_email_read_rounded),
-                    label: Text(
-                      _emailCodeSubmitting
-                          ? 'Sending...'
-                          : _otpEmail == null
-                          ? 'Send email code'
-                          : 'Resend code',
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _emailCodeSubmitting
+                              ? null
+                              : _sendEmailCode,
+                          icon: _emailCodeSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.mark_email_read_rounded),
+                          label: Text(
+                            _emailCodeSubmitting
+                                ? 'Sending...'
+                                : _otpEmail == null
+                                ? 'Send email code'
+                                : 'Resend code',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _magicLinkSubmitting || _emailCodeSubmitting
+                              ? null
+                              : _sendMagicLink,
+                          icon: _magicLinkSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.link_rounded),
+                          label: Text(
+                            _magicLinkSubmitting
+                                ? 'Sending link...'
+                                : 'Send magic link',
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (_otpEmail != null) ...[
                     const SizedBox(height: 14),
@@ -460,6 +553,10 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                   _AuthMessage(
                     successMessage: _emailCodeStatus,
                     errorMessage: _emailCodeError,
+                  ),
+                  _AuthMessage(
+                    successMessage: _magicLinkStatus,
+                    errorMessage: _magicLinkError,
                   ),
                 ],
               ),

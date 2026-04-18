@@ -1,4 +1,5 @@
 const DEFAULT_LOCAL_SITE_URL = "http://localhost:3000";
+const DEFAULT_MOBILE_AUTH_REDIRECT_URLS = ["serviq://auth-callback"];
 
 export const cleanSiteUrl = (value: string | undefined | null): string => value?.trim().replace(/\/+$/u, "") ?? "";
 
@@ -32,6 +33,35 @@ const normalizeAbsoluteUrl = (value: string | undefined | null): URL | null => {
   } catch {
     return null;
   }
+};
+
+const normalizeMobileRedirectUrl = (value: string | undefined | null): string | null => {
+  const trimmed = cleanSiteUrl(value);
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return null;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const getAllowedMobileAuthRedirectUrls = (): Set<string> => {
+  const configured = cleanSiteUrl(process.env.MOBILE_AUTH_REDIRECT_URLS);
+  const values = configured
+    ? configured.split(",")
+    : DEFAULT_MOBILE_AUTH_REDIRECT_URLS;
+
+  return new Set(
+    values
+      .map((entry) => normalizeMobileRedirectUrl(entry))
+      .filter((entry): entry is string => Boolean(entry))
+  );
 };
 
 export const getConfiguredSiteUrl = (): string =>
@@ -75,6 +105,12 @@ export const resolveAuthCallbackUrl = ({
 }): string => {
   const requestOrigin = resolveRequestOrigin(request) || getConfiguredSiteUrl();
   const fallbackRedirectTo = buildAuthCallbackUrl(requestOrigin);
+  const requestedMobileRedirect = normalizeMobileRedirectUrl(requestedRedirectTo);
+
+  if (requestedMobileRedirect && getAllowedMobileAuthRedirectUrls().has(requestedMobileRedirect)) {
+    return requestedMobileRedirect;
+  }
+
   const requestedUrl = normalizeAbsoluteUrl(requestedRedirectTo);
 
   if (!requestedUrl) {

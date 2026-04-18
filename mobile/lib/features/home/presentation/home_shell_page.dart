@@ -22,19 +22,28 @@ class HomeShellPage extends StatelessWidget {
         onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'Feed',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline_rounded),
-            label: 'Inbox',
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore_rounded),
+            label: 'Explore',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_alt_rounded),
+            label: 'People',
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
+            selectedIcon: Icon(Icons.assignment_rounded),
             label: 'Tasks',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
+            icon: Icon(Icons.tune_outlined),
+            selectedIcon: Icon(Icons.person_rounded),
             label: 'Profile',
           ),
         ],

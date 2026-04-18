@@ -1,8 +1,9 @@
 {
-  "APP_ENV": "development",
-  "SUPABASE_URL": "https://hcayrcsmddtqqlvkvaqd.supabase.co",
-  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjYXlyY3NtZGR0cXFsdmt2YXFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzEzMzksImV4cCI6MjA4NDg0NzMzOX0.g2Ptit_lcfoEbBipy1PuTP2BQzLm_RB1_uXLvlL5TOo",
-  "API_BASE_URL": "http://10.0.2.2:3000",
-  "AUTH_REDIRECT_SCHEME": "serviq",
-  "AUTH_REDIRECT_HOST": "auth-callback"
+    "ALLOW_BAD_CERTIFICATES":  true,
+    "SUPABASE_ANON_KEY":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjYXlyY3NtZGR0cXFsdmt2YXFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzEzMzksImV4cCI6MjA4NDg0NzMzOX0.g2Ptit_lcfoEbBipy1PuTP2BQzLm_RB1_uXLvlL5TOo",
+    "SUPABASE_URL":  "https://hcayrcsmddtqqlvkvaqd.supabase.co",
+    "API_BASE_URL":  "http://10.0.2.2:3000",
+    "AUTH_REDIRECT_SCHEME":  "serviq",
+    "AUTH_REDIRECT_HOST":  "auth-callback",
+    "APP_ENV":  "development"
 }
