@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -356,6 +357,13 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
+        <PageContextStrip
+          label="Explore"
+          description="See every nearby post in one live stream, then open, chat, save, or act on the ones that matter now."
+          action={{ label: "Post a Need", href: "/dashboard/create_post" }}
+          switchAction={{ label: "Open Welcome", href: "/dashboard/welcome" }}
+        />
+
         {showAdvancedFilters && (
           <FeedFilters
             filters={filters}

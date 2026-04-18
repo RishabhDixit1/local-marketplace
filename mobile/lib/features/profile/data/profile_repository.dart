@@ -1,21 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/supabase/app_bootstrap.dart';
 import '../domain/mobile_profile_snapshot.dart';
 
-final mobileProfileApiClientProvider = Provider<MobileApiClient>((ref) {
-  final bootstrap = ref.watch(appBootstrapProvider);
-  final client = MobileApiClient(
-    config: bootstrap.config,
-    supabaseClient: bootstrap.client,
-  );
-  ref.onDispose(client.dispose);
-  return client;
-});
-
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return ProfileRepository(ref.watch(mobileProfileApiClientProvider));
+  return ProfileRepository(ref.watch(mobileApiClientProvider));
 });
 
 final profileSnapshotProvider = FutureProvider<MobileProfileSnapshot>((ref) {

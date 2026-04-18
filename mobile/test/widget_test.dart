@@ -7,29 +7,37 @@ import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
 import 'package:serviq_mobile/features/auth/presentation/sign_in_page.dart';
+import 'package:serviq_mobile/features/chat/data/chat_repository.dart';
+import 'package:serviq_mobile/features/chat/domain/chat_models.dart';
+import 'package:serviq_mobile/features/chat/presentation/chat_page.dart';
+import 'package:serviq_mobile/features/feed/data/feed_repository.dart';
 import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
 import 'package:serviq_mobile/features/feed/presentation/feed_page.dart';
+import 'package:serviq_mobile/features/people/data/people_repository.dart';
+import 'package:serviq_mobile/features/people/domain/people_snapshot.dart';
 import 'package:serviq_mobile/features/post_create/presentation/create_need_page.dart';
+import 'package:serviq_mobile/features/provider/presentation/provider_profile_page.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
+import 'package:serviq_mobile/features/search/presentation/search_page.dart';
+
+const _bootstrap = AppBootstrap(
+  config: AppConfig(
+    appName: 'ServiQ',
+    environment: 'test',
+    supabaseUrl: 'https://demo-project.supabase.co',
+    supabaseAnonKey: 'demo-anon-key',
+    apiBaseUrl: 'https://demo.serviq.app',
+    authRedirectScheme: 'serviq',
+    authRedirectHost: 'auth-callback',
+    allowBadCertificates: false,
+  ),
+  client: null,
+  supabaseReady: false,
+  initializationError: null,
+);
 
 void main() {
-  const bootstrap = AppBootstrap(
-    config: AppConfig(
-      appName: 'ServiQ',
-      environment: 'test',
-      supabaseUrl: 'https://demo-project.supabase.co',
-      supabaseAnonKey: 'demo-anon-key',
-      apiBaseUrl: 'https://demo.serviq.app',
-      authRedirectScheme: 'serviq',
-      authRedirectHost: 'auth-callback',
-      allowBadCertificates: false,
-    ),
-    client: null,
-    supabaseReady: false,
-    initializationError: null,
-  );
-
   testWidgets('section card renders child content', (
     WidgetTester tester,
   ) async {
@@ -49,9 +57,10 @@ void main() {
 
     expect(find.text('Explore'), findsOneWidget);
     expect(
-      find.text('Nearby demand, trusted providers, faster response.'),
+      find.text('Local discovery with stronger trust cues.'),
       findsOneWidget,
     );
+    expect(find.text('Verified'), findsAtLeastNWidgets(1));
     expect(find.text('Connected'), findsOneWidget);
     expect(find.text('Local Help Marketplace for Everyday Needs.'), findsOneWidget);
     expect(find.textContaining('Marketplace feed'), findsOneWidget);
@@ -70,6 +79,7 @@ void main() {
       find.text('Emergency multi-room electrical rewiring support'),
       findsAtLeastNWidgets(1),
     );
+    expect(find.text('Live local feed'), findsOneWidget);
     expect(find.text('Electrical and safety inspection'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -79,7 +89,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appBootstrapProvider.overrideWithValue(bootstrap)],
+        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(theme: AppTheme.light(), home: const SignInPage()),
       ),
     );
@@ -98,7 +108,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appBootstrapProvider.overrideWithValue(bootstrap)],
+        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
         child: MaterialApp(
           theme: AppTheme.light(),
           home: const ProfilePage(snapshotOverride: AsyncData(_sampleProfile)),
@@ -108,10 +118,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profile summary'), findsOneWidget);
+    expect(find.text('Saved / history'), findsOneWidget);
+
+    await tester.tap(find.text('Activity'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Services'), findsAtLeastNWidgets(1));
     expect(find.text('Products'), findsAtLeastNWidgets(1));
-    expect(find.text('Link Google to this account'), findsOneWidget);
     expect(find.text('Emergency electrical repair'), findsOneWidget);
+
+    await tester.tap(find.text('Trust'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Link Google to this account'), findsOneWidget);
   });
 
   testWidgets('create request page validates before step two', (
@@ -138,6 +157,79 @@ void main() {
     expect(find.text('Add a clear request title.'), findsOneWidget);
     expect(find.text('Location and budget'), findsNothing);
   });
+
+  testWidgets('search page shows nearby provider matches', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          feedSnapshotProvider(
+            MobileFeedScope.all,
+          ).overrideWith((ref) async => _sampleSnapshot),
+          peopleSnapshotProvider.overrideWith((ref) async => _samplePeopleSnapshot),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const SearchPage(initialQuery: 'electric'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search nearby'), findsOneWidget);
+    expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('provider profile opens with related local posts', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          peopleSnapshotProvider.overrideWith((ref) async => _samplePeopleSnapshot),
+          feedSnapshotProvider(
+            MobileFeedScope.all,
+          ).overrideWith((ref) async => _sampleSnapshot),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ProviderProfilePage(providerId: 'provider-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Provider profile'), findsOneWidget);
+    expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
+    expect(find.text('Services and signals'), findsOneWidget);
+  });
+
+  testWidgets('chat page opens a conversation thread', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          chatConversationsProvider.overrideWith((ref) async => _sampleConversations),
+          chatMessagesProvider(
+            'conv-1',
+          ).overrideWith((ref) async => _sampleMessages),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ChatPage(initialConversationId: 'conv-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conversation'), findsOneWidget);
+    expect(find.text('I can reach within 20 minutes.'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpFeedPage(WidgetTester tester, Size size) async {
@@ -150,6 +242,7 @@ Future<void> _pumpFeedPage(WidgetTester tester, Size size) async {
 
   await tester.pumpWidget(
     ProviderScope(
+      overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
       child: MaterialApp(
         theme: AppTheme.light(),
         home: const FeedPage(snapshotOverride: AsyncData(_sampleSnapshot)),
@@ -171,33 +264,55 @@ const _sampleSnapshot = MobileFeedSnapshot(
   items: [
     MobileFeedItem(
       id: 'need-1',
+      providerId: 'provider-1',
+      source: MobileFeedSource.helpRequest,
       type: MobileFeedItemType.demand,
       title: 'Emergency multi-room electrical rewiring support',
       description:
           'Need a verified electrician who can inspect, rewire, and document a repair plan for an older flat before tenants move in this weekend.',
       category: 'Electrical and safety inspection',
       creatorName: 'Priyanka Narayanan',
+      avatarUrl: '',
       locationLabel: 'Koramangala 6th Block, Bengaluru',
       statusLabel: 'Awaiting Provider Confirmation',
       priceLabel: 'Budget shared in chat',
       timeLabel: 'Recently posted',
       distanceLabel: '14.2 km away',
+      publicProfilePath: '/profile/priyanka-narayanan',
+      verificationStatus: 'verified',
+      profileCompletion: 92,
+      responseMinutes: 18,
+      averageRating: 4.8,
+      reviewCount: 21,
+      completedJobs: 37,
+      listingCount: 4,
       urgent: true,
       mediaCount: 3,
     ),
     MobileFeedItem(
       id: 'service-1',
+      providerId: 'provider-2',
+      source: MobileFeedSource.serviceListing,
       type: MobileFeedItemType.service,
       title: 'On-site appliance repair and preventive service',
       description:
           'Same-day visits for washing machines, microwaves, and refrigerators with spare-part pickup if needed.',
       category: 'Appliance repair and maintenance',
       creatorName: 'Northside Repair Collective',
+      avatarUrl: '',
       locationLabel: 'HSR Layout, Bengaluru',
       statusLabel: 'Open',
       priceLabel: 'INR 1200',
       timeLabel: '2h ago',
       distanceLabel: '7.4 km away',
+      publicProfilePath: '/profile/northside-repair',
+      verificationStatus: 'pending',
+      profileCompletion: 76,
+      responseMinutes: 34,
+      averageRating: 4.6,
+      reviewCount: 9,
+      completedJobs: 12,
+      listingCount: 2,
       urgent: false,
       mediaCount: 0,
     ),
@@ -287,3 +402,52 @@ const _sampleProfile = MobileProfileSnapshot(
   completionPercent: 92,
   trustScore: 88,
 );
+
+const _samplePeopleSnapshot = MobilePeopleSnapshot(
+  currentUserId: 'viewer-1',
+  people: [
+    MobilePersonCard(
+      id: 'provider-1',
+      name: 'Priyanka Narayanan',
+      avatarUrl: '',
+      headline: 'Trusted home services across Bengaluru',
+      locationLabel: 'Koramangala 6th Block, Bengaluru',
+      isOnline: true,
+      activityLabel: 'Online now',
+      verificationLabel: 'Verified',
+      completionPercent: 92,
+      primaryTags: ['Electrical', 'Emergency repairs'],
+      openNeedsCount: 2,
+      postCount: 5,
+      completedJobs: 37,
+      openLeads: 3,
+      averageRating: 4.9,
+      reviewCount: 18,
+      priceLabel: 'From INR 1200',
+    ),
+  ],
+);
+
+const _sampleConversations = [
+  ChatConversation(
+    id: 'conv-1',
+    name: 'Priyanka Narayanan',
+    avatarUrl: '',
+    otherUserId: 'provider-1',
+    lastMessage: 'I can reach within 20 minutes.',
+    lastMessageAt: null,
+    unreadCount: 1,
+    isOnline: true,
+    subtitle: 'Trusted home services across Bengaluru',
+  ),
+];
+
+final _sampleMessages = [
+  ChatMessageItem(
+    id: 'msg-1',
+    conversationId: 'conv-1',
+    senderId: 'provider-1',
+    content: 'I can reach within 20 minutes.',
+    createdAt: DateTime(2026, 4, 18, 10, 30),
+  ),
+];

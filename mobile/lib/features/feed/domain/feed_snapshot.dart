@@ -25,6 +25,26 @@ enum MobileFeedItemType {
   }
 }
 
+enum MobileFeedSource {
+  helpRequest,
+  post,
+  serviceListing,
+  productListing;
+
+  String get label {
+    switch (this) {
+      case MobileFeedSource.helpRequest:
+        return 'Request';
+      case MobileFeedSource.post:
+        return 'Post';
+      case MobileFeedSource.serviceListing:
+        return 'Service';
+      case MobileFeedSource.productListing:
+        return 'Product';
+    }
+  }
+}
+
 class MobileFeedSnapshot {
   const MobileFeedSnapshot({
     required this.currentUserId,
@@ -52,6 +72,12 @@ class MobileFeedSnapshot {
   final String currentUserId;
   final MobileFeedStats stats;
   final List<MobileFeedItem> items;
+
+  List<MobileFeedItem> get requests =>
+      items.where((item) => item.type == MobileFeedItemType.demand).toList();
+
+  List<MobileFeedItem> get providers =>
+      items.where((item) => item.type != MobileFeedItemType.demand).toList();
 }
 
 class MobileFeedStats {
@@ -83,6 +109,8 @@ class MobileFeedStats {
 class MobileFeedItem {
   const MobileFeedItem({
     required this.id,
+    required this.providerId,
+    required this.source,
     this.providerId = '',
     this.helpRequestId,
     required this.type,
@@ -90,11 +118,20 @@ class MobileFeedItem {
     required this.description,
     required this.category,
     required this.creatorName,
+    required this.avatarUrl,
     required this.locationLabel,
     required this.statusLabel,
     required this.priceLabel,
     required this.timeLabel,
     required this.distanceLabel,
+    required this.publicProfilePath,
+    required this.verificationStatus,
+    required this.profileCompletion,
+    required this.responseMinutes,
+    required this.averageRating,
+    required this.reviewCount,
+    required this.completedJobs,
+    required this.listingCount,
     required this.urgent,
     required this.mediaCount,
     this.status = 'open',
@@ -127,6 +164,11 @@ class MobileFeedItem {
 
     return MobileFeedItem(
       id: _readString(json['id']),
+      providerId: _readString(
+        json['providerId'],
+        fallback: _readString(json['provider_id']),
+      ),
+      source: _parseSource(json['source'] as String?),
       providerId: _readString(json['providerId']),
       helpRequestId: _nullableString(json['helpRequestId']),
       type: type,
@@ -134,6 +176,7 @@ class MobileFeedItem {
       description: description,
       category: _readString(json['category'], fallback: type.label),
       creatorName: creatorName,
+      avatarUrl: _readString(json['avatarUrl'] ?? json['avatar_url']),
       locationLabel: location,
       statusLabel: status,
       priceLabel: _formatPrice(type: type, price: _toDouble(json['price'])),
@@ -142,6 +185,17 @@ class MobileFeedItem {
         _toDouble(json['distanceKm']),
         fallback: location,
       ),
+      publicProfilePath: _readString(json['publicProfilePath']),
+      verificationStatus: _readString(
+        json['verificationStatus'],
+        fallback: 'pending',
+      ),
+      profileCompletion: _toInt(json['profileCompletion']),
+      responseMinutes: _toInt(json['responseMinutes']),
+      averageRating: _nullableDouble(json['averageRating']),
+      reviewCount: _toInt(json['reviewCount']),
+      completedJobs: _toInt(json['completedJobs']),
+      listingCount: _toInt(json['listingCount']),
       urgent: json['urgent'] == true,
       mediaCount: mediaCount,
       status: _readString(json['status'], fallback: 'open'),
@@ -153,17 +207,27 @@ class MobileFeedItem {
 
   final String id;
   final String providerId;
+  final MobileFeedSource source;
   final String? helpRequestId;
   final MobileFeedItemType type;
   final String title;
   final String description;
   final String category;
   final String creatorName;
+  final String avatarUrl;
   final String locationLabel;
   final String statusLabel;
   final String priceLabel;
   final String timeLabel;
   final String distanceLabel;
+  final String publicProfilePath;
+  final String verificationStatus;
+  final int profileCompletion;
+  final int responseMinutes;
+  final double? averageRating;
+  final int reviewCount;
+  final int completedJobs;
+  final int listingCount;
   final bool urgent;
   final int mediaCount;
   final String status;
@@ -172,6 +236,33 @@ class MobileFeedItem {
   final bool viewerHasExpressedInterest;
 
   bool get hasMedia => mediaCount > 0;
+  bool get isVerified => verificationStatus == 'verified';
+
+  String get trustLabel {
+    if (isVerified) {
+      return 'Verified';
+    }
+    if (profileCompletion >= 85) {
+      return 'Profile complete';
+    }
+    return 'Growing trust';
+  }
+
+  String get responseLabel {
+    if (responseMinutes > 0) {
+      return 'Replies in $responseMinutes min';
+    }
+    return 'Response time building';
+  }
+
+  String get ratingLabel {
+    final rating = averageRating;
+    if (rating == null || reviewCount == 0) {
+      return 'New to reviews';
+    }
+
+      return '${rating.toStringAsFixed(1)} ($reviewCount)';
+  }
   bool get isDemand => type == MobileFeedItemType.demand;
   bool get isOpen => _normalizeStatus(status) == 'open';
   bool get isAccepted => _normalizeStatus(status) == 'accepted';
@@ -213,6 +304,14 @@ double _toDouble(Object? value) {
   return 0;
 }
 
+double? _nullableDouble(Object? value) {
+  final parsed = _toDouble(value);
+  if (parsed <= 0) {
+    return null;
+  }
+  return parsed;
+}
+
 String _readString(Object? value, {String fallback = ''}) {
   final text = value is String ? value.trim() : '';
   return text.isEmpty ? fallback : text;
@@ -231,6 +330,19 @@ MobileFeedItemType _parseType(String? value) {
       return MobileFeedItemType.product;
     default:
       return MobileFeedItemType.demand;
+  }
+}
+
+MobileFeedSource _parseSource(String? value) {
+  switch ((value ?? '').trim().toLowerCase()) {
+    case 'service_listing':
+      return MobileFeedSource.serviceListing;
+    case 'product_listing':
+      return MobileFeedSource.productListing;
+    case 'post':
+      return MobileFeedSource.post;
+    default:
+      return MobileFeedSource.helpRequest;
   }
 }
 

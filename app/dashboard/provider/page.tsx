@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeIndianRupee,
@@ -12,6 +13,9 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
+import PageContextStrip from "@/app/components/PageContextStrip";
+import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
+import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import ProviderControlNav from "@/app/components/provider/ProviderControlNav";
 import { fetchProviderListings } from "@/lib/provider/client";
 import type { ProviderProductListing, ProviderServiceListing } from "@/lib/provider/listings";
@@ -55,6 +59,7 @@ const formatRelativeDate = (value: string | null | undefined) => {
 };
 
 export default function ProviderControlPage() {
+  const router = useRouter();
   const [providerId, setProviderId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("Provider");
   const [services, setServices] = useState<ProviderServiceListing[]>([]);
@@ -63,6 +68,7 @@ export default function ProviderControlPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadControlCenter = useCallback(async (userId: string, options?: { silent?: boolean }) => {
     const silent = Boolean(options?.silent);
@@ -199,6 +205,64 @@ export default function ProviderControlPage() {
       .slice(0, 5);
   }, [products, services]);
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const filteredRecentListings = useMemo(() => {
+    if (!normalizedSearchQuery) return recentListings;
+
+    return recentListings.filter((listing) =>
+      [listing.title, listing.kind, listing.statusLabel, listing.priceLabel]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearchQuery)
+    );
+  }, [normalizedSearchQuery, recentListings]);
+
+  const filteredOrders = useMemo(() => {
+    if (!normalizedSearchQuery) return orders;
+
+    return orders.filter((order) => {
+      const title =
+        typeof order.metadata?.title === "string" && order.metadata.title.trim()
+          ? order.metadata.title.trim()
+          : `${order.listing_type} order`;
+
+      return [title, order.listing_type, normalizeOrderStatus(order.status), order.price ? INR(order.price) : "price tbd"]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearchQuery);
+    });
+  }, [normalizedSearchQuery, orders]);
+
+  const controlPromptConfig = useMemo<DashboardPromptConfig>(
+    () => ({
+      placeholder: "Search listings, orders, inventory, pricing, or business setup",
+      value: searchQuery,
+      onValueChange: setSearchQuery,
+      actions: [
+        {
+          id: "refresh",
+          label: "Refresh",
+          icon: RefreshCw,
+          onClick: () =>
+            providerId ? loadControlCenter(providerId, { silent: true }) : undefined,
+          variant: "secondary",
+          busy: refreshing,
+        },
+        {
+          id: "business-ai",
+          label: "Business AI",
+          icon: Sparkles,
+          onClick: () => router.push("/dashboard/launchpad"),
+          variant: "primary",
+        },
+      ],
+    }),
+    [loadControlCenter, providerId, refreshing, router, searchQuery]
+  );
+
+  useDashboardPrompt(controlPromptConfig);
+
   const metricCards = [
     {
       label: "Live",
@@ -245,6 +309,13 @@ export default function ProviderControlPage() {
     <div className="mx-auto w-full max-w-[1240px] space-y-4">
       <ProviderControlNav />
 
+      <PageContextStrip
+        label="Control"
+        description="Run listings, orders, inventory, and AI-assisted business setup from the same control center."
+        action={{ label: "Open Business AI", href: "/dashboard/launchpad" }}
+        switchAction={{ label: "Open Tasks", href: "/dashboard/tasks" }}
+      />
+
       <section className="rounded-[1.5rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
@@ -279,14 +350,21 @@ export default function ProviderControlPage() {
               className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-slate-950"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden md:inline">Service</span>
+              <span className="hidden md:inline">Add Service</span>
             </Link>
             <Link
               href="/dashboard/provider/add-product"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-slate-950"
             >
               <Package className="h-4 w-4" />
-              <span className="hidden md:inline">Product</span>
+              <span className="hidden md:inline">Add Product</span>
+            </Link>
+            <Link
+              href="/dashboard/launchpad"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden md:inline">Business AI</span>
             </Link>
             <button
               type="button"
@@ -339,13 +417,13 @@ export default function ProviderControlPage() {
           <div className="mt-5 flex min-h-[220px] items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
-        ) : recentListings.length === 0 ? (
+        ) : filteredRecentListings.length === 0 ? (
           <div className="mt-4 rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            No listings yet.
+            {searchQuery.trim() ? "No listings match this search yet." : "No listings yet."}
           </div>
         ) : (
           <div className="mt-4 space-y-2.5">
-            {recentListings.map((listing) => (
+            {filteredRecentListings.map((listing) => (
               <div key={`${listing.kind}-${listing.id}`} className="flex items-center gap-3 rounded-[1.2rem] border border-slate-200 bg-slate-50 px-3.5 py-3">
                 <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${listing.kind === "service" ? "bg-indigo-50 text-indigo-600" : "bg-cyan-50 text-cyan-600"}`}>
                   {listing.kind === "service" ? <BriefcaseBusiness className="h-4 w-4" /> : <Package className="h-4 w-4" />}
@@ -386,13 +464,13 @@ export default function ProviderControlPage() {
           <div className="mt-5 flex min-h-[220px] items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="mt-4 rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            No orders yet.
+            {searchQuery.trim() ? "No orders match this search yet." : "No orders yet."}
           </div>
         ) : (
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {orders.slice(0, 6).map((order) => {
+            {filteredOrders.slice(0, 6).map((order) => {
               const status = normalizeOrderStatus(order.status);
               const title =
                 typeof order.metadata?.title === "string" && order.metadata.title.trim()

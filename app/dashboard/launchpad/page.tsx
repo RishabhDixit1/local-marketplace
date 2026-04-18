@@ -178,7 +178,7 @@ export default function LaunchpadPage() {
             <Rocket className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Set Up Business</h1>
+            <h1 className="text-xl font-bold text-slate-900">Business AI</h1>
             <p className="text-sm text-slate-500">
               Let AI draft your profile, services, products, pricing, and inventory without creating a feed post.
             </p>
@@ -494,7 +494,7 @@ export default function LaunchpadPage() {
           {submitting ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Generating pack…</>
           ) : (
-            <><Sparkles className="h-5 w-5" /> Generate Business Pack</>
+            <><Sparkles className="h-5 w-5" /> Generate Business AI Pack</>
           )}
         </button>
 

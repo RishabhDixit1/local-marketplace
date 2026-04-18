@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
+  ArrowUpRight,
   Archive,
   Bookmark,
   BookmarkCheck,
@@ -142,6 +143,7 @@ export default function FeedCard({
     (button) => button.kind === "accept" || button.kind === "withdraw" || button.kind === "decline"
   );
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
+  const openButton = buttons.find((button) => button.kind === "view_profile");
   const discardButton = buttons.find((button) => button.kind === "discard");
   const reviewCount = item.reviewCount ?? 0;
   const completedJobs = item.completedJobs ?? 0;
@@ -478,6 +480,22 @@ export default function FeedCard({
             >
               {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
               <span className="hidden truncate sm:inline">{sendQuoteButton.label}</span>
+            </button>
+          ) : null}
+
+          {openButton ? (
+            <button
+              type="button"
+              onClick={() => void onPrimaryAction("view_profile")}
+              disabled={openButton.disabled || actionBusyState.view_profile}
+              aria-label={actionBusyState.view_profile ? buttonBusyLabels.view_profile : openButton.label}
+              title={actionBusyState.view_profile ? buttonBusyLabels.view_profile : openButton.label}
+              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
+                buttonToneClassNames[openButton.tone]
+              }`}
+            >
+              {actionBusyState.view_profile ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
+              <span className="hidden truncate sm:inline">{openButton.label}</span>
             </button>
           ) : null}
 

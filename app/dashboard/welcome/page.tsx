@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
@@ -1321,6 +1322,12 @@ export default function WelcomePage() {
               {loadError}
             </div>
           )}
+          <PageContextStrip
+            label="Welcome"
+            description="This feed only shows posts from accepted connections, so the next step is clearer when you already trust the people involved."
+            action={{ label: "Manage People", href: "/dashboard/people" }}
+            switchAction={{ label: "Open Explore", href: "/dashboard" }}
+          />
 
           {/* ── Compact startup hero ── */}
           <motion.div

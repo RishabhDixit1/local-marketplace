@@ -4,9 +4,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../supabase/app_bootstrap.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
@@ -17,6 +19,16 @@ class ApiException implements Exception {
   @override
   String toString() => statusCode == null ? message : '[$statusCode] $message';
 }
+
+final mobileApiClientProvider = Provider<MobileApiClient>((ref) {
+  final bootstrap = ref.watch(appBootstrapProvider);
+  final client = MobileApiClient(
+    config: bootstrap.config,
+    supabaseClient: bootstrap.client,
+  );
+  ref.onDispose(client.dispose);
+  return client;
+});
 
 class MobileApiClient {
   static const Duration _requestTimeout = Duration(seconds: 15);
@@ -97,6 +109,8 @@ class MobileApiClient {
       if (authenticated) ..._buildAuthHeaders(),
     };
 
+    try {
+      late http.Response response;
     late http.Response response;
     try {
       if (method == 'GET') {
@@ -122,6 +136,29 @@ class MobileApiClient {
       } else {
         throw ApiException('Unsupported method: $method');
       }
+
+      final payload = _decodeBody(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(
+          _extractMessage(payload) ?? 'Request failed.',
+          statusCode: response.statusCode,
+        );
+      }
+
+      return payload;
+    } on FormatException {
+      throw const ApiException('Unexpected response format from the server.');
+    } on SocketException {
+      throw const ApiException(
+        'Network connection failed. Check your internet and try again.',
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'The server took too long to respond. Please try again.',
+      );
+    } on http.ClientException {
+      throw const ApiException(
+        'Unable to reach the server right now. Please try again.',
     } on TimeoutException {
       throw ApiException(
         'The API request timed out after '
@@ -150,8 +187,6 @@ class MobileApiClient {
         statusCode: response.statusCode,
       );
     }
-
-    return payload;
   }
 
   Uri _resolveBaseUri() {

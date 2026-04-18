@@ -60,7 +60,7 @@ export default function AcceptConfirmDialog({
             className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-65"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-            {busy ? "Sending..." : "I'm Interested"}
+            {busy ? "Sending..." : "Send Interest"}
           </button>
         </div>
       </div>

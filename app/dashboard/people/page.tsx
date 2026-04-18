@@ -6,6 +6,7 @@ import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -1742,6 +1743,13 @@ export default function PeoplePage() {
         onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
         onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
         onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
+      />
+
+      <PageContextStrip
+        label="People"
+        description="Find nearby providers, manage connection requests, and jump into profiles before you start the conversation."
+        action={{ label: "Edit Profile", href: "/dashboard/profile" }}
+        switchAction={{ label: "Open Welcome", href: "/dashboard/welcome" }}
       />
 
       {viewerCompletionPercent !== null && viewerCompletionPercent < 70 && !profileBannerDismissed && (

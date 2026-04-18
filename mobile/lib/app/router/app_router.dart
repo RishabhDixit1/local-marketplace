@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/constants/app_routes.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/supabase/app_bootstrap.dart';
+import '../../features/chat/presentation/chat_page.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/home/presentation/home_shell_page.dart';
+import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
+import '../../features/provider/presentation/provider_onboarding_page.dart';
+import '../../features/provider/presentation/provider_profile_page.dart';
+import '../../features/profile/presentation/profile_page.dart';
+import '../../features/search/presentation/search_page.dart';
 import '../../features/inbox/presentation/inbox_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
@@ -24,7 +31,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateControllerProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: AppRoutes.root,
     debugLogDiagnostics: false,
     refreshListenable: authState,
     redirect: (context, state) {
@@ -33,39 +40,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final signedIn = authState.isAuthenticated;
       final visitingApp = location.startsWith('/app');
 
-      if (setupRequired && location != '/setup') {
-        return '/setup';
+      if (setupRequired && location != AppRoutes.setup) {
+        return AppRoutes.setup;
       }
 
-      if (!setupRequired && location == '/setup') {
-        return signedIn ? '/app/welcome' : '/sign-in';
+      if (!setupRequired && location == AppRoutes.setup) {
+        return signedIn ? AppRoutes.home : AppRoutes.signIn;
       }
 
       if (!setupRequired && !signedIn && visitingApp) {
-        return '/sign-in';
+        return AppRoutes.signIn;
       }
 
       if (!setupRequired &&
           signedIn &&
-          (location == '/' || location == '/sign-in')) {
-        return '/app/welcome';
+          (location == AppRoutes.root || location == AppRoutes.signIn)) {
+        return AppRoutes.home;
       }
 
-      if (!setupRequired && !signedIn && location == '/') {
-        return '/sign-in';
+      if (!setupRequired && !signedIn && location == AppRoutes.root) {
+        return AppRoutes.signIn;
       }
 
       return null;
     },
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const SizedBox.shrink()),
-      GoRoute(path: '/setup', builder: (context, state) => const SetupPage()),
       GoRoute(
-        path: '/sign-in',
+        path: AppRoutes.root,
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+      GoRoute(
+        path: AppRoutes.setup,
+        builder: (context, state) => const SetupPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.signIn,
         builder: (context, state) => const SignInPage(),
       ),
       GoRoute(
-        path: '/app/create',
+        path: AppRoutes.createRequest,
         builder: (context, state) => const CreateNeedPage(),
         path: '/app/post-task',
         builder: (context, state) => const TaskPostPage(),
@@ -90,6 +103,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/app/profile',
         builder: (context, state) => const ProfilePage(),
       ),
+      GoRoute(
+        path: AppRoutes.search,
+        builder: (context, state) => SearchPage(
+          initialQuery: state.uri.queryParameters['q'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.chat,
+        builder: (context, state) => ChatPage(
+          initialConversationId: state.uri.queryParameters['conversationId'],
+          recipientId: state.uri.queryParameters['recipientId'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.providerOnboarding,
+        builder: (context, state) => const ProviderOnboardingPage(),
+      ),
+      GoRoute(
+        path: '/app/provider/:providerId',
+        builder: (context, state) => ProviderProfilePage(
+          providerId: state.pathParameters['providerId'] ?? '',
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return HomeShellPage(navigationShell: navigationShell);
@@ -98,7 +138,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/welcome',
+                path: AppRoutes.home,
                 builder: (context, state) => const WelcomePage(),
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.welcome),
@@ -108,7 +148,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/explore',
+                path: AppRoutes.explore,
                 builder: (context, state) => const FeedPage(),
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
@@ -118,7 +158,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/people',
+                path: AppRoutes.people,
                 builder: (context, state) => const PeoplePage(),
               ),
             ],
@@ -126,7 +166,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/app/tasks',
+                path: AppRoutes.tasks,
                 builder: (context, state) => const TasksPage(),
               ),
             ],
@@ -134,6 +174,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.profile,
+                builder: (context, state) => const ProfilePage(),
                 path: '/app/control',
                 builder: (context, state) => const ControlPage(),
               ),

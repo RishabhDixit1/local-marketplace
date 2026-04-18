@@ -40,6 +40,7 @@ import {
   Map,
   MessageCircle,
   Newspaper,
+  Pencil,
   Plus,
   Settings,
   ShoppingBag,
@@ -54,14 +55,6 @@ const CreatePostModal = dynamic(
   {
     ssr: false,
   },
-);
-
-const AvailabilityToggle = dynamic(
-  () =>
-    import("@/app/components/AvailabilityToggle").then((m) => ({
-      default: m.AvailabilityToggle,
-    })),
-  { ssr: false },
 );
 
 const CartDrawer = dynamic(
@@ -172,6 +165,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     !profileLoading && profile && isProfileOnboardingComplete(profile)
       ? buildPublicProfilePath(profile) || "/dashboard/profile"
       : "/dashboard/profile";
+  const publicProfileMenuLabel =
+    myProfileHref === "/dashboard/profile"
+      ? "Complete Profile"
+      : "View Public Profile";
   const navigationTabs = baseNavigationTabs;
   const desktopNavCollapsed =
     desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
@@ -186,6 +183,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     pathname === "/dashboard" || pathname === "/dashboard/welcome";
   const hideFloatingQuickActions =
     pathname.startsWith("/dashboard/chat") ||
+    pathname.startsWith("/dashboard/notifications") ||
     pathname.startsWith("/dashboard/create_post") ||
     pathname.startsWith("/dashboard/launchpad") ||
     (desktopNavAutoCollapsed && isFeedLandingRoute);
@@ -613,39 +611,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   className={shellIconButtonClassName}
                 />
                 {/* Map icon — visible on all screen sizes */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    setOpenQuickActions(false);
-                    setShowGlobalMap(true);
-                  }}
-                  aria-label="Open map view"
-                  title="Map view"
-                  className={shellIconButtonClassName}
-                >
-                  <Map className="w-4 h-4" />
-                </button>
                 {/* Cart button — visible on all screen sizes */}
-                <button
-                  type="button"
-                  onClick={openCart}
-                  aria-label={
-                    cartCount > 0
-                      ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`
-                      : "Open cart"
-                  }
-                  title="Cart"
-                  className={`relative ${shellIconButtonClassName}`}
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  {cartCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[var(--brand-900)] px-0.5 text-[9px] font-bold leading-none text-white">
-                      {cartCount > 9 ? "9+" : cartCount}
-                    </span>
-                  )}
-                </button>
-                <AvailabilityToggle />
                 <NotificationCenter
                   enabled={shellEnhancementsReady}
                   userId={currentUserId}
@@ -704,10 +670,21 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                               setShowUserMenu(false);
                               router.push(myProfileHref);
                             }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
                           >
                             <User className="h-4 w-4 shrink-0 text-slate-400" />
-                            View Profile
+                            {publicProfileMenuLabel}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              router.push("/dashboard/profile");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
+                            Edit Profile
                           </button>
                           <button
                             type="button"
@@ -834,11 +811,47 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
                 >
                   <span className="block text-sm font-semibold text-slate-900">
-                    Set Up Business
+                    Business AI
                   </span>
                   <span className="mt-1 block text-xs leading-5 text-slate-500">
                     Use AI to draft your services, products, pricing, and
                     inventory privately.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    setShowGlobalMap(true);
+                  }}
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
+                >
+                  <span className="block text-sm font-semibold text-slate-900">
+                    <span className="inline-flex items-center gap-2">
+                      <Map className="h-4 w-4" />
+                      Open Map
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Jump into the live nearby map across Explore and People.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenQuickActions(false);
+                    openCart();
+                  }}
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
+                >
+                  <span className="block text-sm font-semibold text-slate-900">
+                    <span className="inline-flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4" />
+                      Open Cart
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Review saved store items{cartCount > 0 ? ` (${cartCount})` : ""} without leaving your flow.
                   </span>
                 </button>
               </div>

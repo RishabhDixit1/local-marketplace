@@ -13,6 +13,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import PageContextStrip from "@/app/components/PageContextStrip";
 import {
   Activity,
   AlertCircle,
@@ -1376,7 +1377,7 @@ export default function TasksPage() {
 
   const getTaskTransitionLabel = (task: OperationalTask, nextStatus: CanonicalOrderStatus) => {
     if (task.source === "help_request") {
-      if (nextStatus === "completed") return task.type === "posted" ? "Confirm completion" : "Mark complete";
+      if (nextStatus === "completed") return "Complete";
       if (nextStatus === "cancelled") return "Decline";
     }
 
@@ -2702,21 +2703,21 @@ export default function TasksPage() {
 
       if (stepKey === "travel_started" && providerCanDriveStages && progressStage === "accepted") {
         return {
-          label: "Start travel",
+          label: "Start",
           onClick: () => void updateTaskProgressStage(task, "travel_started"),
         };
       }
 
       if (stepKey === "work_started" && providerCanDriveStages && progressStage === "travel_started") {
         return {
-          label: "Start work",
+          label: "Start Work",
           onClick: () => void updateTaskProgressStage(task, "work_started"),
         };
       }
 
       if (stepKey === "completed" && progressStage === "work_started" && primaryTransitions.includes("completed")) {
         return {
-          label: "Complete task",
+          label: "Complete",
           onClick: () => void confirmAndRefreshTaskStatus(task, "completed"),
         };
       }
@@ -3102,6 +3103,13 @@ export default function TasksPage() {
   return (
     <div className="mx-auto w-full max-w-[1480px] space-y-4 px-2 sm:space-y-6 sm:px-5 lg:space-y-7 lg:px-6">
       <RouteObservability route="tasks" />
+
+      <PageContextStrip
+        label="Tasks"
+        description="Keep every matched lead, accepted request, active job, and completed order in one operating queue."
+        action={{ label: "Open Control", href: "/dashboard/provider" }}
+        switchAction={{ label: "Open Explore", href: "/dashboard" }}
+      />
 
       <motion.section
         initial={{ opacity: 0, y: 14 }}
