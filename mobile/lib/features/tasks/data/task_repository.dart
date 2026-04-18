@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../domain/task_snapshot.dart';
@@ -11,6 +12,9 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
     apiClient: ref.watch(mobileApiClientProvider),
     supabaseClient: bootstrap.client,
   );
+  final apiClient = ref.watch(mobileApiClientProvider);
+
+  return TaskRepository(apiClient: apiClient, supabaseClient: bootstrap.client);
 });
 
 final taskSnapshotProvider = FutureProvider<MobileTaskSnapshot>((ref) {

@@ -111,6 +111,8 @@ class MobileFeedItem {
     required this.id,
     required this.providerId,
     required this.source,
+    this.providerId = '',
+    this.helpRequestId,
     required this.type,
     required this.title,
     required this.description,
@@ -132,6 +134,10 @@ class MobileFeedItem {
     required this.listingCount,
     required this.urgent,
     required this.mediaCount,
+    this.status = 'open',
+    this.acceptedProviderId,
+    this.viewerMatchStatus,
+    this.viewerHasExpressedInterest = false,
   });
 
   factory MobileFeedItem.fromJson(Map<String, dynamic> json) {
@@ -163,6 +169,8 @@ class MobileFeedItem {
         fallback: _readString(json['provider_id']),
       ),
       source: _parseSource(json['source'] as String?),
+      providerId: _readString(json['providerId']),
+      helpRequestId: _nullableString(json['helpRequestId']),
       type: type,
       title: title,
       description: description,
@@ -190,12 +198,17 @@ class MobileFeedItem {
       listingCount: _toInt(json['listingCount']),
       urgent: json['urgent'] == true,
       mediaCount: mediaCount,
+      status: _readString(json['status'], fallback: 'open'),
+      acceptedProviderId: _nullableString(json['acceptedProviderId']),
+      viewerMatchStatus: _nullableString(json['viewerMatchStatus']),
+      viewerHasExpressedInterest: json['viewerHasExpressedInterest'] == true,
     );
   }
 
   final String id;
   final String providerId;
   final MobileFeedSource source;
+  final String? helpRequestId;
   final MobileFeedItemType type;
   final String title;
   final String description;
@@ -217,6 +230,10 @@ class MobileFeedItem {
   final int listingCount;
   final bool urgent;
   final int mediaCount;
+  final String status;
+  final String? acceptedProviderId;
+  final String? viewerMatchStatus;
+  final bool viewerHasExpressedInterest;
 
   bool get hasMedia => mediaCount > 0;
   bool get isVerified => verificationStatus == 'verified';
@@ -246,6 +263,16 @@ class MobileFeedItem {
 
       return '${rating.toStringAsFixed(1)} ($reviewCount)';
   }
+  bool get isDemand => type == MobileFeedItemType.demand;
+  bool get isOpen => _normalizeStatus(status) == 'open';
+  bool get isAccepted => _normalizeStatus(status) == 'accepted';
+  bool get isClosed => const {
+    'completed',
+    'cancelled',
+    'canceled',
+    'closed',
+    'archived',
+  }.contains(_normalizeStatus(status));
 }
 
 int _toInt(Object? value) {
@@ -288,6 +315,11 @@ double? _nullableDouble(Object? value) {
 String _readString(Object? value, {String fallback = ''}) {
   final text = value is String ? value.trim() : '';
   return text.isEmpty ? fallback : text;
+}
+
+String? _nullableString(Object? value) {
+  final text = _readString(value);
+  return text.isEmpty ? null : text;
 }
 
 MobileFeedItemType _parseType(String? value) {
@@ -379,4 +411,8 @@ String _humanizeStatus(String raw) {
             : '${segment[0].toUpperCase()}${segment.substring(1)}',
       )
       .join(' ');
+}
+
+String _normalizeStatus(String raw) {
+  return raw.trim().toLowerCase().replaceAll('-', '_');
 }

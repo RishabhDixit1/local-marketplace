@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -95,7 +96,7 @@ class MobileApiClient {
       );
     }
 
-    final uri = Uri.parse(_config.apiBaseUrl)
+    final uri = _resolveBaseUri()
         .resolve(path)
         .replace(
           queryParameters: queryParameters?.map(
@@ -110,6 +111,8 @@ class MobileApiClient {
 
     try {
       late http.Response response;
+    late http.Response response;
+    try {
       if (method == 'GET') {
         response = await _httpClient
             .get(uri, headers: headers)
@@ -156,8 +159,79 @@ class MobileApiClient {
     } on http.ClientException {
       throw const ApiException(
         'Unable to reach the server right now. Please try again.',
+    } on TimeoutException {
+      throw ApiException(
+        'The API request timed out after '
+        '${_requestTimeout.inSeconds} seconds. '
+        'Check that ${_describeBaseUrl()} is reachable from this device.',
+      );
+    } on SocketException catch (error) {
+      throw ApiException(_buildSocketErrorMessage(uri, error));
+    } on http.ClientException catch (error) {
+      throw ApiException(
+        'The mobile client could not reach ${uri.origin}. '
+        'Check API_BASE_URL and confirm the local Next.js server is running. '
+        'Details: ${error.message}',
       );
     }
+
+    final payload = _decodeBody(
+      response.body,
+      contentType: response.headers['content-type'],
+      statusCode: response.statusCode,
+      requestUri: uri,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        _extractMessage(payload) ?? 'Request failed.',
+        statusCode: response.statusCode,
+      );
+    }
+  }
+
+  Uri _resolveBaseUri() {
+    final parsed = Uri.parse(_config.apiBaseUrl.trim());
+    if (kIsWeb) {
+      return parsed;
+    }
+
+    if (Platform.isAndroid && _isAndroidLocalhostAlias(parsed.host)) {
+      return parsed.replace(host: '10.0.2.2');
+    }
+
+    return parsed;
+  }
+
+  bool _isAndroidLocalhostAlias(String host) {
+    final normalized = host.trim().toLowerCase();
+    return normalized == 'localhost' ||
+        normalized == '127.0.0.1' ||
+        normalized == '0.0.0.0';
+  }
+
+  String _describeBaseUrl() => _resolveBaseUri().origin;
+
+  String _buildSocketErrorMessage(Uri uri, SocketException error) {
+    final code = error.osError?.errorCode;
+    final refused = code == 61 || code == 111;
+    final androidLocalhostHint =
+        !kIsWeb &&
+            Platform.isAndroid &&
+            _isAndroidLocalhostAlias(Uri.parse(_config.apiBaseUrl.trim()).host)
+        ? ' Android emulators must use 10.0.2.2 instead of localhost.'
+        : '';
+
+    if (refused) {
+      return 'Connection refused for ${uri.origin}. '
+          'No server is accepting requests there right now. '
+          'Start the local web/API server with `npm run dev`, '
+          'or update API_BASE_URL if your backend is running elsewhere.'
+          '$androidLocalhostHint';
+    }
+
+    return 'The mobile client could not connect to ${uri.origin}. '
+        'Check API_BASE_URL, device networking, and whether the backend is reachable. '
+        'Details: ${error.message}';
   }
 
   Map<String, String> _buildAuthHeaders() {
@@ -174,21 +248,71 @@ class MobileApiClient {
     return {'Authorization': 'Bearer $accessToken'};
   }
 
-  Map<String, dynamic> _decodeBody(String rawBody) {
+  Map<String, dynamic> _decodeBody(
+    String rawBody, {
+    String? contentType,
+    int? statusCode,
+    Uri? requestUri,
+  }) {
     if (rawBody.trim().isEmpty) {
       return const <String, dynamic>{};
     }
 
-    final decoded = jsonDecode(rawBody);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+    final normalizedContentType = (contentType ?? '').toLowerCase();
+    final looksLikeHtml =
+        normalizedContentType.contains('text/html') ||
+        rawBody.trimLeft().startsWith('<!DOCTYPE html') ||
+        rawBody.trimLeft().startsWith('<html');
+
+    if (looksLikeHtml) {
+      final target = requestUri?.path.isNotEmpty == true
+          ? requestUri!.path
+          : (requestUri?.origin ?? 'the API route');
+      final preview = _bodyPreview(rawBody);
+      throw ApiException(
+        'The server returned HTML instead of JSON for $target'
+        '${statusCode == null ? '' : ' (HTTP $statusCode)'}. '
+        'This usually means the Next.js route crashed or returned an error page. '
+        'Check the local web server logs.'
+        '${preview.isEmpty ? '' : ' Response preview: $preview'}',
+        statusCode: statusCode,
+      );
     }
 
-    if (decoded is Map) {
-      return decoded.map((key, value) => MapEntry(key.toString(), value));
+    try {
+      final decoded = jsonDecode(rawBody);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+    } on FormatException catch (error) {
+      throw ApiException(
+        'The server returned an invalid JSON response'
+        '${statusCode == null ? '' : ' (HTTP $statusCode)'}. '
+        'Check the API route and local server logs. '
+        'Details: ${error.message}',
+        statusCode: statusCode,
+      );
     }
 
     throw const ApiException('Unexpected JSON response shape.');
+  }
+
+  String _bodyPreview(String rawBody) {
+    final collapsed = rawBody.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (collapsed.isEmpty) {
+      return '';
+    }
+
+    const maxLength = 120;
+    if (collapsed.length <= maxLength) {
+      return collapsed;
+    }
+
+    return '${collapsed.substring(0, maxLength)}...';
   }
 
   String? _extractMessage(Map<String, dynamic> payload) {
