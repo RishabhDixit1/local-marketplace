@@ -1,12 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/supabase/app_bootstrap.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/empty_state_view.dart';
+import '../../../shared/components/error_state_view.dart';
+import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/trust_badge.dart';
 import '../data/task_repository.dart';
 import '../domain/task_snapshot.dart';
+
+enum _TaskRoleFilter {
+  all,
+  requester,
+  provider;
+
+  String get label {
+    switch (this) {
+      case _TaskRoleFilter.all:
+        return 'All';
+      case _TaskRoleFilter.requester:
+        return 'Requester';
+      case _TaskRoleFilter.provider:
+        return 'Provider';
+    }
+  }
+}
 
 class TasksPage extends ConsumerStatefulWidget {
   const TasksPage({super.key});
@@ -17,6 +41,7 @@ class TasksPage extends ConsumerStatefulWidget {
 
 class _TasksPageState extends ConsumerState<TasksPage> {
   MobileTaskStatus _selectedStatus = MobileTaskStatus.active;
+  _TaskRoleFilter _selectedRole = _TaskRoleFilter.all;
   String? _busyTaskId;
   RealtimeChannel? _tasksChannel;
 
@@ -107,6 +132,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
         return;
       }
 
+      HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(action.successMessage)));
@@ -141,9 +167,42 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
   }
 
+  List<MobileTaskItem> _applyRoleFilter(List<MobileTaskItem> items) {
+    switch (_selectedRole) {
+      case _TaskRoleFilter.all:
+        return items;
+      case _TaskRoleFilter.requester:
+        return items.where((item) => item.role == MobileTaskRole.posted).toList();
+      case _TaskRoleFilter.provider:
+        return items
+            .where((item) => item.role == MobileTaskRole.accepted)
+            .toList();
+    }
+  }
+
+  int _countFor(MobileTaskSnapshot snapshot, MobileTaskStatus status) {
+    return _applyRoleFilter(snapshot.itemsFor(status)).length;
+  }
+
+  int _roleCount(MobileTaskSnapshot snapshot, _TaskRoleFilter filter) {
+    switch (filter) {
+      case _TaskRoleFilter.all:
+        return snapshot.items.length;
+      case _TaskRoleFilter.requester:
+        return snapshot.items
+            .where((item) => item.role == MobileTaskRole.posted)
+            .length;
+      case _TaskRoleFilter.provider:
+        return snapshot.items
+            .where((item) => item.role == MobileTaskRole.accepted)
+            .length;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
+    final data = snapshot.asData?.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tasks')),
@@ -153,50 +212,93 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
-              const _TasksHero(),
+              _TasksHero(
+                snapshot: data,
+                selectedRole: _selectedRole,
+                roleCount: data == null ? 0 : _roleCount(data, _selectedRole),
+              ),
               const SizedBox(height: 16),
+              if (data != null) ...[
+                _TasksFilters(
+                  snapshot: data,
+                  selectedStatus: _selectedStatus,
+                  selectedRole: _selectedRole,
+                  onStatusSelected: (status) {
+                    setState(() {
+                      _selectedStatus = status;
+                    });
+                  },
+                  onRoleSelected: (role) {
+                    setState(() {
+                      _selectedRole = role;
+                    });
+                  },
+                  countFor: (status) => _countFor(data, status),
+                  roleCountFor: (role) => _roleCount(data, role),
+                ),
+                const SizedBox(height: 16),
+              ],
               snapshot.when(
-                data: (data) {
-                  final items = data.itemsFor(_selectedStatus);
+                data: (loaded) {
+                  final laneItems = _applyRoleFilter(
+                    loaded.itemsFor(_selectedStatus),
+                  );
+
+                  if (loaded.items.isEmpty) {
+                    return SectionCard(
+                      child: EmptyStateView(
+                        title: 'No live tasks yet',
+                        message:
+                            'Accepted jobs, nearby requests, and active delivery updates will land here once the local marketplace starts moving.',
+                      ),
+                    );
+                  }
+
+                  if (laneItems.isEmpty) {
+                    return SectionCard(
+                      child: EmptyStateView(
+                        title:
+                            'Nothing in ${_selectedStatus.label.toLowerCase()}',
+                        message:
+                            _selectedRole == _TaskRoleFilter.all
+                                ? 'Switch lanes to check the rest of your queue.'
+                                : 'Try another lane or switch roles to see the rest of your work.',
+                      ),
+                    );
+                  }
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _TaskFilterBar(
-                        selectedStatus: _selectedStatus,
-                        snapshot: data,
-                        onSelected: (status) {
-                          setState(() {
-                            _selectedStatus = status;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      if (data.items.isEmpty)
-                        const SectionCard(child: _TasksEmptyState())
-                      else if (items.isEmpty)
-                        SectionCard(
-                          child: _FilteredEmptyState(status: _selectedStatus),
-                        )
-                      else
-                        ...items.map(
+                    children: laneItems
+                        .map(
                           (task) => Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: _TaskCard(
+                            child: _TaskActionWrapper(
                               task: task,
                               busy: _busyTaskId == task.id,
                               onPrimaryAction: task.primaryAction == null
                                   ? null
                                   : () => _runPrimaryAction(task),
+                              child: _TaskCard(
+                                task: task,
+                                busy: _busyTaskId == task.id,
+                                onPrimaryAction: task.primaryAction == null
+                                    ? null
+                                    : () => _runPrimaryAction(task),
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                        )
+                        .toList(),
                   );
                 },
                 loading: () => const _TasksLoadingState(),
-                error: (error, stackTrace) =>
-                    SectionCard(child: _TasksErrorState(error: error)),
+                error: (error, stackTrace) => SectionCard(
+                  child: _TasksErrorState(
+                    error: error,
+                    onRetry: _refresh,
+                  ),
+                ),
               ),
             ],
           ),
@@ -207,13 +309,34 @@ class _TasksPageState extends ConsumerState<TasksPage> {
 }
 
 class _TasksHero extends StatelessWidget {
-  const _TasksHero();
+  const _TasksHero({
+    required this.snapshot,
+    required this.selectedRole,
+    required this.roleCount,
+  });
+
+  final MobileTaskSnapshot? snapshot;
+  final _TaskRoleFilter selectedRole;
+  final int roleCount;
 
   @override
   Widget build(BuildContext context) {
+    final activeCount = snapshot?.countFor(MobileTaskStatus.active) ?? 0;
+    final inProgressCount = snapshot?.countFor(MobileTaskStatus.inProgress) ?? 0;
+    final requesterCount = snapshot == null
+        ? 0
+        : snapshot!.items
+            .where((item) => item.role == MobileTaskRole.posted)
+            .length;
+    final providerCount = snapshot == null
+        ? 0
+        : snapshot!.items
+            .where((item) => item.role == MobileTaskRole.accepted)
+            .length;
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           colors: [Color(0xFF0B1F33), Color(0xFF1D4ED8), Color(0xFF0EA5A4)],
           begin: Alignment.topLeft,
@@ -225,28 +348,37 @@ class _TasksHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Provider execution loop, now backed by live data.',
+            'Everything moving nearby, in one board.',
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
-            'This task board combines current orders with request activity from the existing ServiQ backend so the phone workflow stays aligned with the web app.',
+            selectedRole == _TaskRoleFilter.all
+                ? 'Track active requests, accepted jobs, and completion progress without losing the local context.'
+                : '$roleCount ${selectedRole.label.toLowerCase()} tasks are currently visible in this board.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.84),
             ),
           ),
           const SizedBox(height: 18),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              _HeroBadge(icon: Icons.flash_on_rounded, label: 'Open leads'),
-              _HeroBadge(icon: Icons.route_rounded, label: 'Travel updates'),
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _HeroBadge(icon: Icons.flash_on_rounded, label: '$activeCount active'),
               _HeroBadge(
-                icon: Icons.verified_rounded,
-                label: 'Completion history',
+                icon: Icons.route_rounded,
+                label: '$inProgressCount in progress',
+              ),
+              _HeroBadge(
+                icon: Icons.person_outline_rounded,
+                label: '$requesterCount requester',
+              ),
+              _HeroBadge(
+                icon: Icons.storefront_outlined,
+                label: '$providerCount provider',
               ),
             ],
           ),
@@ -287,23 +419,81 @@ class _HeroBadge extends StatelessWidget {
   }
 }
 
-class _TaskFilterBar extends StatelessWidget {
-  const _TaskFilterBar({
-    required this.selectedStatus,
+class _TasksFilters extends StatelessWidget {
+  const _TasksFilters({
     required this.snapshot,
-    required this.onSelected,
+    required this.selectedStatus,
+    required this.selectedRole,
+    required this.onStatusSelected,
+    required this.onRoleSelected,
+    required this.countFor,
+    required this.roleCountFor,
   });
 
-  final MobileTaskStatus selectedStatus;
   final MobileTaskSnapshot snapshot;
-  final ValueChanged<MobileTaskStatus> onSelected;
+  final MobileTaskStatus selectedStatus;
+  final _TaskRoleFilter selectedRole;
+  final ValueChanged<MobileTaskStatus> onStatusSelected;
+  final ValueChanged<_TaskRoleFilter> onRoleSelected;
+  final int Function(MobileTaskStatus status) countFor;
+  final int Function(_TaskRoleFilter role) roleCountFor;
 
   @override
   Widget build(BuildContext context) {
+    final total = snapshot.items.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Task lanes', style: Theme.of(context).textTheme.titleLarge),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 10.0;
+            final tileWidth = (constraints.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                SizedBox(
+                  width: tileWidth,
+                  child: MetricTile(
+                    label: 'Board',
+                    value: '$total live tasks',
+                    caption: 'Realtime orders and local requests',
+                    icon: Icons.dashboard_outlined,
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: MetricTile(
+                    label: 'Current lane',
+                    value:
+                        '${countFor(selectedStatus)} ${selectedStatus.label.toLowerCase()}',
+                    caption: '${roleCountFor(selectedRole)} in ${selectedRole.label.toLowerCase()} view',
+                    icon: Icons.tune_rounded,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 18),
+        Text('Role', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: _TaskRoleFilter.values
+              .map(
+                (role) => ChoiceChip(
+                  label: Text('${role.label} (${roleCountFor(role)})'),
+                  selected: role == selectedRole,
+                  onSelected: (_) => onRoleSelected(role),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 18),
+        Text('Task lanes', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -311,14 +501,67 @@ class _TaskFilterBar extends StatelessWidget {
           children: MobileTaskStatus.values
               .map(
                 (status) => ChoiceChip(
-                  label: Text('${status.label} (${snapshot.countFor(status)})'),
+                  label: Text('${status.label} (${countFor(status)})'),
                   selected: status == selectedStatus,
-                  onSelected: (_) => onSelected(status),
+                  onSelected: (_) => onStatusSelected(status),
                 ),
               )
               .toList(),
         ),
       ],
+    );
+  }
+}
+
+class _TaskActionWrapper extends StatelessWidget {
+  const _TaskActionWrapper({
+    required this.task,
+    required this.busy,
+    required this.onPrimaryAction,
+    required this.child,
+  });
+
+  final MobileTaskItem task;
+  final bool busy;
+  final VoidCallback? onPrimaryAction;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final action = task.primaryAction;
+    if (action == null) {
+      return child;
+    }
+
+    return Dismissible(
+      key: ValueKey('task-${task.id}'),
+      direction: busy ? DismissDirection.none : DismissDirection.startToEnd,
+      dismissThresholds: const {DismissDirection.startToEnd: 0.25},
+      confirmDismiss: (_) async {
+        onPrimaryAction?.call();
+        return false;
+      },
+      background: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            const Icon(Icons.swipe_right_alt_rounded, color: Colors.white),
+            const SizedBox(width: 10),
+            Text(
+              action.label,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+      child: child,
     );
   }
 }
@@ -339,6 +582,7 @@ class _TaskCard extends StatelessWidget {
     final action = task.primaryAction;
     final showTracker =
         task.isProviderTask || task.status != MobileTaskStatus.active;
+    final timelineLabel = _timelineSummary(task);
 
     return SectionCard(
       child: Column(
@@ -392,13 +636,17 @@ class _TaskCard extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: task.isProviderTask
+                      ? AppColors.primarySoft
+                      : AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   task.role.summary,
-                  style: Theme.of(context).textTheme.labelLarge,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ],
@@ -416,6 +664,44 @@ class _TaskCard extends StatelessWidget {
               _MetaPill(icon: Icons.schedule_rounded, label: task.createdLabel),
             ],
           ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: task.isProviderTask
+                  ? AppColors.primarySoft
+                  : AppColors.accentSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.isProviderTask
+                      ? 'Provider view'
+                      : 'Requester view',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  timelineLabel,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (action != null) ...[
+                  const SizedBox(height: 10),
+                  TrustBadge(
+                    label: 'Swipe right to ${action.label.toLowerCase()}',
+                    icon: Icons.swipe_right_alt_rounded,
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                  ),
+                ],
+              ],
+            ),
+          ),
           if (showTracker) ...[
             const SizedBox(height: 18),
             Container(
@@ -429,15 +715,29 @@ class _TaskCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Live tracker',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Progress timeline',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      if (task.isProviderTask)
+                        TrustBadge(
+                          label: 'Live updates',
+                          icon: Icons.bolt_rounded,
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  ...task.trackerSteps.map(
-                    (step) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _TrackerStep(step: step),
+                  const SizedBox(height: 14),
+                  ...task.trackerSteps.asMap().entries.map(
+                    (entry) => _TrackerStep(
+                      step: entry.value,
+                      showConnector:
+                          entry.key != task.trackerSteps.length - 1,
                     ),
                   ),
                 ],
@@ -465,9 +765,13 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _TrackerStep extends StatelessWidget {
-  const _TrackerStep({required this.step});
+  const _TrackerStep({
+    required this.step,
+    required this.showConnector,
+  });
 
   final MobileTaskTrackerStep step;
+  final bool showConnector;
 
   @override
   Widget build(BuildContext context) {
@@ -482,29 +786,50 @@ class _TrackerStep extends StatelessWidget {
         ? Colors.white
         : const Color(0xFF64748B);
 
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
-          child: Icon(
-            isDone ? Icons.check_rounded : Icons.circle,
-            color: foreground,
-            size: isDone ? 16 : 10,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            step.label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-              color: isActive ? const Color(0xFF0B1F33) : null,
+    return Padding(
+      padding: EdgeInsets.only(bottom: showConnector ? 2 : 0),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
+                  child: Icon(
+                    isDone ? Icons.check_rounded : Icons.circle,
+                    color: foreground,
+                    size: isDone ? 16 : 10,
+                  ),
+                ),
+                if (showConnector)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: const Color(0xFFE2E8F0),
+                    ),
+                  ),
+              ],
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 12),
+                child: Text(
+                  step.label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                    color: isActive ? const Color(0xFF0B1F33) : null,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -569,12 +894,20 @@ class _TasksLoadingState extends StatelessWidget {
     return Column(
       children: List.generate(
         3,
-        (index) => const Padding(
-          padding: EdgeInsets.only(bottom: 14),
+        (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
           child: SectionCard(
-            child: SizedBox(
-              height: 220,
-              child: Center(child: CircularProgressIndicator()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                LoadingShimmer(height: 18, width: 160),
+                SizedBox(height: 12),
+                LoadingShimmer(height: 14),
+                SizedBox(height: 10),
+                LoadingShimmer(height: 14, width: 240),
+                SizedBox(height: 16),
+                LoadingShimmer(height: 88),
+              ],
             ),
           ),
         ),
@@ -583,56 +916,14 @@ class _TasksLoadingState extends StatelessWidget {
   }
 }
 
-class _TasksEmptyState extends StatelessWidget {
-  const _TasksEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'No live tasks yet',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'As orders and accepted requests start moving through ServiQ, they will land here with mobile-first status tracking.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ],
-    );
-  }
-}
-
-class _FilteredEmptyState extends StatelessWidget {
-  const _FilteredEmptyState({required this.status});
-
-  final MobileTaskStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Nothing in ${status.label.toLowerCase()}',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Switch task lanes to check the rest of your work queue.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ],
-    );
-  }
-}
-
 class _TasksErrorState extends StatelessWidget {
-  const _TasksErrorState({required this.error});
+  const _TasksErrorState({
+    required this.error,
+    required this.onRetry,
+  });
 
   final Object error;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -641,23 +932,40 @@ class _TasksErrorState extends StatelessWidget {
       _ => error.toString(),
     };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'The mobile task board could not load yet',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 10),
-        Text(message, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 10),
-        Text(
-          'Check the device session, API_BASE_URL, and your Supabase connection, then pull to refresh.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+    return ErrorStateView(
+      title: 'Unable to load the task board',
+      message: message,
+      onRetry: onRetry,
     );
   }
+}
+
+String _timelineSummary(MobileTaskItem task) {
+  if (task.isProviderTask) {
+    return switch (task.progressStage) {
+      MobileTaskProgressStage.pendingAcceptance =>
+        'You still need to confirm this task so the requester sees movement.',
+      MobileTaskProgressStage.accepted =>
+        'Acceptance is recorded. Start travel when you are on the way.',
+      MobileTaskProgressStage.travelStarted =>
+        'The requester can see you are on the way. Start work when you arrive.',
+      MobileTaskProgressStage.workStarted =>
+        'Work is in progress. Mark completion once the job is wrapped.',
+      MobileTaskProgressStage.completed =>
+        'This job is complete and ready for trust-building follow-through.',
+    };
+  }
+
+  return switch (task.status) {
+    MobileTaskStatus.active =>
+      'Your request is still live nearby. Providers can accept or reply from discovery.',
+    MobileTaskStatus.inProgress =>
+      'A provider has taken action and the local timeline is moving.',
+    MobileTaskStatus.completed =>
+      'This request is done and now contributes to your local history.',
+    MobileTaskStatus.cancelled =>
+      'This request was cancelled. Nearby activity has been stopped for now.',
+  };
 }
 
 Color _statusTint(MobileTaskStatus status) {

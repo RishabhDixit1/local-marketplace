@@ -7,13 +7,10 @@ import '../domain/task_snapshot.dart';
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
-  final apiClient = MobileApiClient(
-    config: bootstrap.config,
+  return TaskRepository(
+    apiClient: ref.watch(mobileApiClientProvider),
     supabaseClient: bootstrap.client,
   );
-  ref.onDispose(apiClient.dispose);
-
-  return TaskRepository(apiClient: apiClient, supabaseClient: bootstrap.client);
 });
 
 final taskSnapshotProvider = FutureProvider<MobileTaskSnapshot>((ref) {

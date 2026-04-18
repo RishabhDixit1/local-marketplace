@@ -140,7 +140,7 @@ export default function LaunchpadReviewPage() {
       </button>
 
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Review Your Business Pack</h1>
+        <h1 className="text-xl font-bold text-slate-900">Review Your Business AI Pack</h1>
         <p className="mt-1 text-sm text-slate-500">
           Check what will be published to your profile and storefront listings. This will not create a marketplace feed post.
         </p>

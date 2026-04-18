@@ -147,14 +147,17 @@ test("mobile shell navigation, overlays, and quick actions", async ({ page, cont
   await page.goto("/dashboard/welcome", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("navigation", { name: /Main navigation/i })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("button", { name: /Open map view/i })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: /Open notifications/i })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: /Open account menu/i })).toBeVisible({ timeout: 20_000 });
 
   await test.step("account menu opens with mobile actions", async () => {
     await page.getByRole("button", { name: /Open account menu/i }).click();
     await expect(page.getByText(/ServiQ account/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Saved$/i })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /^View Profile$/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /^(View Public Profile|Complete Profile)$/i })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByRole("button", { name: /^Edit Profile$/i })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Settings$/i }).last()).toBeVisible({ timeout: 10_000 });
     await page.mouse.click(16, 220);
   });
@@ -164,14 +167,14 @@ test("mobile shell navigation, overlays, and quick actions", async ({ page, cont
     await expect(quickActionsButton).toBeVisible({ timeout: 10_000 });
     await quickActionsButton.click();
     await expect(page.getByText(/Quick actions/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /^Add Service$/i })).toBeVisible({ timeout: 10_000 });
-    await quickActionsButton.click();
+    await expect(page.getByRole("button", { name: /^Business AI$/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /^Open Map$/i })).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("link", { name: /^Explore$/i }).click();
     await page.waitForURL(/\/dashboard(?:\?.*)?$/, { timeout: 20_000 });
     await expect(page.getByRole("link", { name: /^Explore$/i })).toHaveAttribute("aria-current", "page");
 
-    await page.getByRole("button", { name: /Open map view/i }).click();
+    await page.getByRole("button", { name: /^Open Map$/i }).click();
     const mapDialog = page.getByRole("dialog", { name: /Map view/i });
     await expect(mapDialog).toBeVisible({ timeout: 15_000 });
     await expect(mapDialog.getByRole("button", { name: /^Explore$/i })).toBeVisible({ timeout: 10_000 });
@@ -181,10 +184,10 @@ test("mobile shell navigation, overlays, and quick actions", async ({ page, cont
   });
 
   await test.step("bottom navigation and logo return to welcome", async () => {
-    await page.getByRole("link", { name: /^Chat$/i }).click();
+    await page.getByRole("link", { name: /Open chat inbox/i }).click();
     await page.waitForURL(/\/dashboard\/chat/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /^Messages$/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("link", { name: /^Chat$/i })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: /Open chat inbox/i })).toHaveAttribute("aria-current", "page");
 
     await page.getByRole("link", { name: /^Tasks$/i }).click();
     await page.waitForURL(/\/dashboard\/tasks/, { timeout: 20_000 });

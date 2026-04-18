@@ -1,11 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/constants/app_routes.dart';
+import '../../../core/error/app_error_mapper.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/app_search_field.dart';
+import '../../../shared/components/empty_state_view.dart';
+import '../../../shared/components/error_state_view.dart';
+import '../../../shared/components/filter_chip_group.dart';
+import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/provider_card.dart';
+import '../../../shared/components/section_header.dart';
 import '../data/people_repository.dart';
-import '../domain/people_snapshot.dart';
 
 class PeoplePage extends ConsumerStatefulWidget {
   const PeoplePage({super.key});
@@ -16,52 +27,37 @@ class PeoplePage extends ConsumerStatefulWidget {
 
 class _PeoplePageState extends ConsumerState<PeoplePage> {
   final _searchController = TextEditingController();
+  Timer? _debounce;
   String _query = '';
-  bool _onlineOnly = false;
+  final Set<String> _filters = <String>{};
   RealtimeChannel? _peopleChannel;
-
-  AppBootstrap? _readBootstrap() {
-    try {
-      return ref.read(appBootstrapProvider);
-    } catch (_) {
-      return null;
-    }
-  }
+  SupabaseClient? _client;
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_handleSearchChanged);
-    _subscribeToRealtime();
+    try {
+      _client = ref.read(appBootstrapProvider).client;
+    } catch (_) {
+      _client = null;
+    }
+    _subscribe();
   }
 
   @override
   void dispose() {
-    _searchController
-      ..removeListener(_handleSearchChanged)
-      ..dispose();
-    final client = _readBootstrap()?.client;
-    final channel = _peopleChannel;
-    if (client != null && channel != null) {
-      client.removeChannel(channel);
+    _debounce?.cancel();
+    _searchController.dispose();
+    if (_client != null && _peopleChannel != null) {
+      _client!.removeChannel(_peopleChannel!);
     }
     super.dispose();
   }
 
-  void _handleSearchChanged() {
-    setState(() {
-      _query = _searchController.text;
-    });
-  }
-
-  void _subscribeToRealtime() {
-    final client = _readBootstrap()?.client;
+  void _subscribe() {
+    final client = _client;
     if (client == null) {
       return;
-    }
-
-    void invalidatePeople() {
-      ref.invalidate(peopleSnapshotProvider);
     }
 
     _peopleChannel = client
@@ -70,37 +66,19 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'profiles',
-          callback: (_) => invalidatePeople(),
+          callback: (_) => ref.invalidate(peopleSnapshotProvider),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'provider_presence',
-          callback: (_) => invalidatePeople(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'service_listings',
-          callback: (_) => invalidatePeople(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'product_catalog',
-          callback: (_) => invalidatePeople(),
+          callback: (_) => ref.invalidate(peopleSnapshotProvider),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'reviews',
-          callback: (_) => invalidatePeople(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'orders',
-          callback: (_) => invalidatePeople(),
+          callback: (_) => ref.invalidate(peopleSnapshotProvider),
         )
         .subscribe();
   }
@@ -110,423 +88,167 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     await ref.read(peopleSnapshotProvider.future);
   }
 
+  void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 220), () {
+      if (mounted) {
+        setState(() => _query = value.trim());
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(peopleSnapshotProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('People')),
+      appBar: AppBar(
+        title: const Text('People'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push(AppRoutes.notifications),
+            icon: const Icon(Icons.notifications_none_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nearby providers, trust first.',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Search by skill, service area, response speed, and reputation.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    AppSearchField(
+                      controller: _searchController,
+                      hintText: 'Search name, skill, area, or trust signal',
+                      onChanged: _onQueryChanged,
+                    ),
+                    const SizedBox(height: 12),
+                    FilterChipGroup<String>(
+                      options: const [
+                        FilterOption(value: 'online', label: 'Online now'),
+                        FilterOption(value: 'verified', label: 'Verified'),
+                        FilterOption(value: 'top_rated', label: 'Top rated'),
+                      ],
+                      selectedValues: _filters,
+                      onChanged: (next) => setState(() {
+                        _filters
+                          ..clear()
+                          ..addAll(next);
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               snapshot.when(
                 data: (data) {
                   final filtered = data.people.where((person) {
-                    if (_onlineOnly && !person.isOnline) {
+                    if (_filters.contains('online') && !person.isOnline) {
                       return false;
                     }
+                    if (_filters.contains('verified') &&
+                        person.completionPercent < 80) {
+                      return false;
+                    }
+                    if (_filters.contains('top_rated') &&
+                        ((person.averageRating ?? 0) < 4.5 ||
+                            person.reviewCount < 1)) {
+                      return false;
+                    }
+
                     return person.matchesQuery(_query);
                   }).toList();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _PeopleHero(snapshot: data),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        decoration: const InputDecoration(
-                          labelText: 'Search nearby people',
-                          hintText: 'Name, skill, location, trust level',
-                          prefixIcon: Icon(Icons.search_rounded),
-                        ),
+                      SectionHeader(
+                        title: 'Provider directory',
+                        subtitle:
+                            '${filtered.length} people match your current view.',
                       ),
                       const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          FilterChip(
-                            label: const Text('Online now'),
-                            selected: _onlineOnly,
-                            onSelected: (selected) {
-                              setState(() {
-                                _onlineOnly = selected;
-                              });
-                            },
-                          ),
-                          FilterChip(
-                            label: Text('${data.totalCount} people'),
-                            selected: !_onlineOnly,
-                            onSelected: (_) {
-                              setState(() {
-                                _onlineOnly = false;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
                       if (filtered.isEmpty)
-                        const SectionCard(child: _PeopleEmptyState())
+                        const SectionCard(
+                          child: EmptyStateView(
+                            title: 'No matching providers',
+                            message:
+                                'Broaden the search or clear a filter to widen the local network.',
+                          ),
+                        )
                       else
                         ...filtered.map(
                           (person) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _PersonCard(person: person),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ProviderCard(
+                              person: person,
+                              onOpenProfile: () => context.push(
+                                AppRoutes.provider(person.id),
+                              ),
+                              onMessage: () => context.push(
+                                '${AppRoutes.chat}?recipientId=${person.id}',
+                              ),
+                            ),
                           ),
                         ),
                     ],
                   );
                 },
-                loading: () => const _PeopleLoadingState(),
-                error: (error, stackTrace) =>
-                    SectionCard(child: _PeopleErrorState(error: error)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PeopleHero extends StatelessWidget {
-  const _PeopleHero({required this.snapshot});
-
-  final MobilePeopleSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B1F33), Color(0xFF1D4ED8), Color(0xFF22C55E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Find the people already making ServiQ feel alive.',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'This directory is built from the same live profiles, presence, reviews, and order history that power the web product.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.84),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroStat(label: 'People', value: snapshot.totalCount.toString()),
-              _HeroStat(
-                label: 'Online',
-                value: snapshot.onlineCount.toString(),
-              ),
-              _HeroStat(
-                label: 'Ready',
-                value: snapshot.verifiedCount.toString(),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.white),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PersonCard extends StatelessWidget {
-  const _PersonCard({required this.person});
-
-  final MobilePersonCard person;
-
-  @override
-  Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: const Color(0xFFE0F2FE),
-                    backgroundImage: person.avatarUrl.isEmpty
-                        ? null
-                        : NetworkImage(person.avatarUrl),
-                    child: person.avatarUrl.isEmpty
-                        ? Text(
-                            person.name.characters.first.toUpperCase(),
-                            style: Theme.of(context).textTheme.titleLarge,
-                          )
-                        : null,
+                loading: () => const _PeopleLoading(),
+                error: (error, _) => SectionCard(
+                  child: ErrorStateView(
+                    title: 'Unable to load people',
+                    message: AppErrorMapper.toMessage(error),
+                    onRetry: _refresh,
                   ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: person.isOnline
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFFCBD5E1),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(person.name, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 6),
-                    Text(
-                      person.headline,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _MetaPill(
-                          icon: Icons.location_on_outlined,
-                          label: person.locationLabel,
-                        ),
-                        _MetaPill(
-                          icon: person.isOnline
-                              ? Icons.bolt_rounded
-                              : Icons.schedule_rounded,
-                          label: person.activityLabel,
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _InfoPill(
-                label: person.verificationLabel,
-                background: const Color(0xFFE0F2FE),
-                foreground: const Color(0xFF0B1F33),
-              ),
-              _InfoPill(
-                label: person.priceLabel,
-                background: const Color(0xFFF1F5F9),
-                foreground: const Color(0xFF334155),
-              ),
-              _InfoPill(
-                label: person.ratingLabel,
-                background: const Color(0xFFFEF3C7),
-                foreground: const Color(0xFF92400E),
-              ),
-              _InfoPill(
-                label: person.workLabel,
-                background: const Color(0xFFDCFCE7),
-                foreground: const Color(0xFF166534),
-              ),
-            ],
-          ),
-          if (person.primaryTags.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: person.primaryTags
-                  .map(
-                    (tag) => Chip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text(tag),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaPill extends StatelessWidget {
-  const _MetaPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF334155)),
-          const SizedBox(width: 8),
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(color: foreground, fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _PeopleEmptyState extends StatelessWidget {
-  const _PeopleEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('No matches yet', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        Text(
-          'Try a different search or switch off the online filter to widen the local network.',
-          style: Theme.of(context).textTheme.bodyMedium,
         ),
-      ],
+      ),
     );
   }
 }
 
-class _PeopleLoadingState extends StatelessWidget {
-  const _PeopleLoadingState();
+class _PeopleLoading extends StatelessWidget {
+  const _PeopleLoading();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: List.generate(
         3,
-        (index) => const Padding(
-          padding: EdgeInsets.only(bottom: 14),
+        (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
           child: SectionCard(
-            child: SizedBox(
-              height: 180,
-              child: Center(child: CircularProgressIndicator()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                LoadingShimmer(height: 18, width: 140),
+                SizedBox(height: 10),
+                LoadingShimmer(height: 14),
+                SizedBox(height: 8),
+                LoadingShimmer(height: 14, width: 220),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PeopleErrorState extends StatelessWidget {
-  const _PeopleErrorState({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Unable to load people right now',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        Text(error.toString(), style: Theme.of(context).textTheme.bodyMedium),
-      ],
     );
   }
 }

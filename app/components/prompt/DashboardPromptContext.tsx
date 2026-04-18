@@ -40,13 +40,26 @@ const PROMPT_ROUTE_SET = new Set([
   "/dashboard/people",
   "/dashboard/tasks",
   "/dashboard/chat",
+  "/dashboard/notifications",
 ]);
+
+const PROMPT_ROUTE_PREFIXES = ["/dashboard/provider"];
+
+const matchesPromptRoute = (pathname: string) =>
+  PROMPT_ROUTE_SET.has(pathname) ||
+  PROMPT_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 
 const getRoutePlaceholder = (pathname: string) => {
   if (pathname === "/dashboard") return "Search posts, services, products, or nearby needs";
   if (pathname === "/dashboard/people") return "Search people by name, role, location, or expertise";
   if (pathname === "/dashboard/tasks") return "Search tasks by title, status, category, or owner";
   if (pathname === "/dashboard/chat") return "Search chats by member name or message keyword";
+  if (pathname === "/dashboard/notifications") return "Search notifications by title, message, type, or action";
+  if (pathname === "/dashboard/provider" || pathname.startsWith("/dashboard/provider/")) {
+    return "Search listings, orders, inventory, pricing, or business setup";
+  }
   if (pathname === "/dashboard/welcome") return "Ask what to do next in ServiQ";
   return DEFAULT_PLACEHOLDER;
 };
@@ -67,7 +80,7 @@ export function DashboardPromptProvider({ children }: { children: ReactNode }) {
   const [pagePromptState, setPagePromptState] = useState<{ route: string; prompt: DashboardPromptConfig } | null>(null);
   const [routeDrafts, setRouteDrafts] = useState<Record<string, string>>({});
 
-  const showPrompt = PROMPT_ROUTE_SET.has(pathname);
+  const showPrompt = matchesPromptRoute(pathname);
 
   const defaultPrompt = useMemo<DashboardPromptConfig>(
     () => ({

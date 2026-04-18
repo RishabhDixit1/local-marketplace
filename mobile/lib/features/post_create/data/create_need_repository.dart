@@ -1,17 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/supabase/app_bootstrap.dart';
 
 final createNeedRepositoryProvider = Provider<CreateNeedRepository>((ref) {
-  final bootstrap = ref.watch(appBootstrapProvider);
-  final apiClient = MobileApiClient(
-    config: bootstrap.config,
-    supabaseClient: bootstrap.client,
-  );
-  ref.onDispose(apiClient.dispose);
-
-  return CreateNeedRepository(apiClient);
+  return CreateNeedRepository(ref.watch(mobileApiClientProvider));
 });
 
 enum CreateNeedMode {

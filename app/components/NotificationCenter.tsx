@@ -102,13 +102,18 @@ const isMissingNotificationsTable = (message: string) =>
 type NotificationCenterContentProps = {
   enabled?: boolean;
   userId?: string | null;
+  renderMode?: "trigger" | "page";
+  filterQuery?: string;
 };
 
 export default function NotificationCenter({
   enabled = true,
   userId = null,
+  renderMode = "trigger",
+  filterQuery = "",
 }: NotificationCenterContentProps) {
   const router = useRouter();
+  const isStandalonePage = renderMode === "page";
 
   const [isOpen, setIsOpen] = useState(false);
   const [useMobileSheet, setUseMobileSheet] = useState(false);
@@ -242,12 +247,19 @@ export default function NotificationCenter({
   }, [enabled, userId]);
 
   useEffect(() => {
-    if (!enabled || !userId || demoMode) return;
+    if (!enabled || !userId) return;
+
+    if (isStandalonePage) {
+      void loadNotifications(false);
+      return;
+    }
+
+    if (demoMode) return;
 
     return scheduleClientIdleTask(() => {
       void loadNotifications(true);
     }, 3200);
-  }, [demoMode, enabled, loadNotifications, userId]);
+  }, [demoMode, enabled, isStandalonePage, loadNotifications, userId]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -527,6 +539,10 @@ export default function NotificationCenter({
 
   const togglePanel = () => {
     if (!enabled) return;
+    if (useMobileSheet) {
+      router.push("/dashboard/notifications");
+      return;
+    }
     const nextOpen = !isOpen;
     setIsOpen(nextOpen);
     if (nextOpen && userId) {
@@ -534,8 +550,29 @@ export default function NotificationCenter({
     }
   };
 
-  const unreadItems = decoratedNotifications.filter((n) => n.unread);
-  const readItems = decoratedNotifications.filter((n) => !n.unread);
+  const normalizedFilterQuery = filterQuery.trim().toLowerCase();
+  const visibleNotifications = useMemo(() => {
+    if (!normalizedFilterQuery) {
+      return decoratedNotifications;
+    }
+
+    return decoratedNotifications.filter((item) => {
+      const action = resolveNotificationAction(item);
+      const searchableText = [
+        item.title,
+        item.message,
+        item.kind,
+        action.ctaLabel,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedFilterQuery);
+    });
+  }, [decoratedNotifications, normalizedFilterQuery]);
+
+  const unreadItems = visibleNotifications.filter((n) => n.unread);
+  const readItems = visibleNotifications.filter((n) => !n.unread);
 
   const renderItem = (item: DecoratedNotification) => {
     const style = kindStyles[item.kind];
@@ -653,17 +690,18 @@ export default function NotificationCenter({
           )}
 
           {/* Empty state */}
-          {decoratedNotifications.length === 0 && (
+          {visibleNotifications.length === 0 && (
             <li className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                 <Bell className="h-5 w-5 text-slate-400" />
               </div>
               <p className="text-sm font-semibold text-slate-700">
-                You&apos;re all caught up
+                {normalizedFilterQuery ? "No notifications match this search" : "You&apos;re all caught up"}
               </p>
               <p className="text-xs text-slate-400 max-w-[18rem]">
-                New alerts appear here for chats, orders, reviews, connection
-                requests, and Live Talk updates.
+                {normalizedFilterQuery
+                  ? "Try a different title, message keyword, or notification type."
+                  : "New alerts appear here for chats, orders, reviews, connection requests, and Live Talk updates."}
               </p>
             </li>
           )}
@@ -720,7 +758,7 @@ export default function NotificationCenter({
 
   const canUseDOM = typeof document !== "undefined";
   const mobilePanel =
-    canUseDOM && isOpen && useMobileSheet
+    canUseDOM && !isStandalonePage && isOpen && useMobileSheet
       ? createPortal(
           <>
             <button
@@ -741,6 +779,14 @@ export default function NotificationCenter({
           document.body,
         )
       : null;
+
+  if (isStandalonePage) {
+    return (
+      <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_24px_70px_-50px_rgba(15,23,42,0.24)]">
+        {panelContent}
+      </div>
+    );
+  }
 
   return (
     <div className="relative z-[var(--layer-popover)]">

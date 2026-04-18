@@ -5,9 +5,37 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/error_state_view.dart';
+import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/trust_badge.dart';
 import '../data/profile_repository.dart';
 import '../domain/mobile_profile_snapshot.dart';
+
+enum _ProfileSection {
+  overview,
+  activity,
+  history,
+  trust,
+  settings;
+
+  String get label {
+    switch (this) {
+      case _ProfileSection.overview:
+        return 'Overview';
+      case _ProfileSection.activity:
+        return 'Activity';
+      case _ProfileSection.history:
+        return 'Saved / history';
+      case _ProfileSection.trust:
+        return 'Trust';
+      case _ProfileSection.settings:
+        return 'Settings';
+    }
+  }
+}
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key, this.title = 'Profile', this.snapshotOverride});
@@ -24,6 +52,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  _ProfileSection _selectedSection = _ProfileSection.overview;
   bool _passwordSubmitting = false;
   String? _passwordStatus;
   String? _passwordError;
@@ -173,6 +202,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
               snapshot.when(
@@ -181,159 +211,402 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   children: [
                     _ProfileHero(snapshot: data),
                     const SizedBox(height: 16),
-                    _MetricsGrid(snapshot: data),
+                    _ProfileSectionBar(
+                      selectedSection: _selectedSection,
+                      onSelected: (section) {
+                        setState(() {
+                          _selectedSection = section;
+                        });
+                      },
+                    ),
                     const SizedBox(height: 16),
-                    _SummaryCard(snapshot: data),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfileService>(
-                      title: 'Services',
-                      subtitle:
-                          '${data.serviceCount} live services from the web profile now available on mobile.',
-                      emptyState:
-                          'No services added yet. The provider storefront is ready for the next listing.',
-                      items: data.services.take(3).toList(),
-                      itemBuilder: (service) => _PreviewRow(
-                        title: service.title,
-                        subtitle:
-                            '${_formatPrice(service.price)} / ${_humanize(service.availability)}',
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: _buildSection(
+                        context,
+                        snapshot: data,
+                        user: user,
+                        onSignOut: () async {
+                          await auth.signOut();
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfileProduct>(
-                      title: 'Products',
-                      subtitle:
-                          '${data.productCount} product listings synced into the mobile account view.',
-                      emptyState:
-                          'No products yet. Once the web catalog grows, it will appear here too.',
-                      items: data.products.take(3).toList(),
-                      itemBuilder: (product) => _PreviewRow(
-                        title: product.title,
-                        subtitle:
-                            '${_formatPrice(product.price)} / ${product.stock} in stock',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfilePortfolioItem>(
-                      title: 'Portfolio',
-                      subtitle:
-                          '${data.portfolioCount} proof points and projects ready for buyer trust.',
-                      emptyState:
-                          'No portfolio entries yet. Add showcased work from the web profile next.',
-                      items: data.portfolio.take(3).toList(),
-                      itemBuilder: (entry) => _PreviewRow(
-                        title: entry.title,
-                        subtitle: entry.category,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfileWorkHistoryItem>(
-                      title: 'Work history',
-                      subtitle:
-                          '${data.workHistoryCount} experience entries carried over from the profile bundle.',
-                      emptyState:
-                          'No work history added yet. This slot is ready for trust-building experience.',
-                      items: data.workHistory.take(3).toList(),
-                      itemBuilder: (entry) => _PreviewRow(
-                        title: entry.roleTitle,
-                        subtitle: entry.isCurrent
-                            ? '${entry.companyName} / Current'
-                            : entry.companyName,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfileAvailabilityItem>(
-                      title: 'Availability',
-                      subtitle:
-                          '${data.availabilityCount} schedule blocks synced for faster matching.',
-                      emptyState:
-                          'No detailed schedule yet. The profile still shows your overall availability.',
-                      items: data.availability.take(3).toList(),
-                      itemBuilder: (entry) => _PreviewRow(
-                        title: entry.label,
-                        subtitle: _availabilitySummary(entry),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfilePaymentMethod>(
-                      title: 'Payment methods',
-                      subtitle:
-                          '${data.paymentMethodCount} payout methods visible to the signed-in owner only.',
-                      emptyState:
-                          'No payout methods saved yet.',
-                      items: data.paymentMethods.take(3).toList(),
-                      itemBuilder: (entry) => _PreviewRow(
-                        title: _humanize(entry.methodType),
-                        subtitle: _paymentSummary(entry),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _CollectionCard<MobileProfileReview>(
-                      title: 'Reviews',
-                      subtitle:
-                          '${data.reviewCount} reviews and a ${data.averageRating.toStringAsFixed(1)} average now reach the app too.',
-                      emptyState:
-                          'No reviews yet. Completed jobs and follow-through will start building this section.',
-                      items: data.reviews.take(3).toList(),
-                      itemBuilder: (entry) => _PreviewRow(
-                        title: '${entry.rating.toStringAsFixed(1)} stars',
-                        subtitle: entry.comment.isEmpty
-                            ? 'No written note'
-                            : entry.comment,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _SignInMethodsCard(
-                      linkedProviders: data.linkedProviders,
-                      hasGoogle: data.linkedProviders.contains('google'),
-                      googleSubmitting: _googleSubmitting,
-                      googleStatus: _googleStatus,
-                      googleError: _googleError,
-                      onLinkGoogle: _linkGoogle,
-                    ),
-                    const SizedBox(height: 14),
-                    _PasswordCard(
-                      formKey: _passwordFormKey,
-                      passwordController: _passwordController,
-                      confirmPasswordController:
-                          _confirmPasswordController,
-                      passwordSubmitting: _passwordSubmitting,
-                      passwordStatus: _passwordStatus,
-                      passwordError: _passwordError,
-                      obscurePassword: _obscurePassword,
-                      obscureConfirmPassword: _obscureConfirmPassword,
-                      onTogglePassword: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                      onToggleConfirmPassword: () {
-                        setState(() {
-                          _obscureConfirmPassword =
-                              !_obscureConfirmPassword;
-                        });
-                      },
-                      onSubmit: _updatePassword,
-                      validatePassword: _validatePassword,
-                      validateConfirmation:
-                          _validatePasswordConfirmation,
-                    ),
-                    const SizedBox(height: 14),
-                    _AccountCard(
-                      snapshot: data,
-                      user: user,
-                      onSignOut: () async {
-                        await auth.signOut();
-                      },
                     ),
                   ],
                 ),
                 loading: () => const _ProfileLoadingState(),
-                error: (error, stackTrace) =>
-                    _ProfileErrorState(error: error),
+                error: (error, stackTrace) => _ProfileErrorState(
+                  error: error,
+                  onRetry: _refresh,
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required MobileProfileSnapshot snapshot,
+    required User? user,
+    required VoidCallback onSignOut,
+  }) {
+    switch (_selectedSection) {
+      case _ProfileSection.overview:
+        return _OverviewSection(snapshot: snapshot);
+      case _ProfileSection.activity:
+        return _ActivitySection(snapshot: snapshot);
+      case _ProfileSection.history:
+        return _HistorySection(snapshot: snapshot);
+      case _ProfileSection.trust:
+        return _TrustSection(
+          snapshot: snapshot,
+          googleSubmitting: _googleSubmitting,
+          googleStatus: _googleStatus,
+          googleError: _googleError,
+          onLinkGoogle: _linkGoogle,
+          formKey: _passwordFormKey,
+          passwordController: _passwordController,
+          confirmPasswordController: _confirmPasswordController,
+          passwordSubmitting: _passwordSubmitting,
+          passwordStatus: _passwordStatus,
+          passwordError: _passwordError,
+          obscurePassword: _obscurePassword,
+          obscureConfirmPassword: _obscureConfirmPassword,
+          onTogglePassword: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+          onToggleConfirmPassword: () {
+            setState(() {
+              _obscureConfirmPassword = !_obscureConfirmPassword;
+            });
+          },
+          onSubmit: _updatePassword,
+          validatePassword: _validatePassword,
+          validateConfirmation: _validatePasswordConfirmation,
+        );
+      case _ProfileSection.settings:
+        return _SettingsSection(
+          snapshot: snapshot,
+          user: user,
+          onSignOut: onSignOut,
+        );
+    }
+  }
+}
+
+class _ProfileSectionBar extends StatelessWidget {
+  const _ProfileSectionBar({
+    required this.selectedSection,
+    required this.onSelected,
+  });
+
+  final _ProfileSection selectedSection;
+  final ValueChanged<_ProfileSection> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: _ProfileSection.values
+          .map(
+            (section) => ChoiceChip(
+              label: Text(section.label),
+              selected: section == selectedSection,
+              onSelected: (_) => onSelected(section),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _OverviewSection extends StatelessWidget {
+  const _OverviewSection({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-overview'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _MetricsGrid(snapshot: snapshot),
+        const SizedBox(height: 16),
+        _CompletionCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _SummaryCard(snapshot: snapshot),
+      ],
+    );
+  }
+}
+
+class _ActivitySection extends StatelessWidget {
+  const _ActivitySection({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-activity'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionIntro(
+          title: 'Marketplace activity',
+          message:
+              'Your live services, products, and availability stay together here so it is easier to spot what buyers can act on right now.',
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfileService>(
+          title: 'Services',
+          subtitle:
+              '${snapshot.serviceCount} live services from the web profile now available on mobile.',
+          emptyState:
+              'No services added yet. The provider storefront is ready for the next listing.',
+          items: snapshot.services.take(4).toList(),
+          itemBuilder: (service) => _PreviewRow(
+            title: service.title,
+            subtitle:
+                '${_formatPrice(service.price)} / ${_humanize(service.availability)}',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfileProduct>(
+          title: 'Products',
+          subtitle:
+              '${snapshot.productCount} product listings synced into the mobile account view.',
+          emptyState:
+              'No products yet. Once the web catalog grows, it will appear here too.',
+          items: snapshot.products.take(4).toList(),
+          itemBuilder: (product) => _PreviewRow(
+            title: product.title,
+            subtitle:
+                '${_formatPrice(product.price)} / ${product.stock} in stock',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfileAvailabilityItem>(
+          title: 'Availability',
+          subtitle:
+              '${snapshot.availabilityCount} schedule blocks synced for faster local matching.',
+          emptyState:
+              'No detailed schedule yet. The profile still shows your overall availability.',
+          items: snapshot.availability.take(4).toList(),
+          itemBuilder: (entry) => _PreviewRow(
+            title: entry.label,
+            subtitle: _availabilitySummary(entry),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistorySection extends StatelessWidget {
+  const _HistorySection({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-history'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          title: 'Saved and history',
+          message:
+              'Saved mobile collections are not connected yet, so this space currently keeps your proof, work history, and reviews together in one calmer view.',
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfilePortfolioItem>(
+          title: 'Portfolio',
+          subtitle:
+              '${snapshot.portfolioCount} proof points and projects ready for buyer trust.',
+          emptyState:
+              'No portfolio entries yet. Add showcased work from the web profile next.',
+          items: snapshot.portfolio.take(4).toList(),
+          itemBuilder: (entry) => _PreviewRow(
+            title: entry.title,
+            subtitle: entry.category,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfileWorkHistoryItem>(
+          title: 'Work history',
+          subtitle:
+              '${snapshot.workHistoryCount} experience entries carried over from the profile bundle.',
+          emptyState:
+              'No work history added yet. This slot is ready for trust-building experience.',
+          items: snapshot.workHistory.take(4).toList(),
+          itemBuilder: (entry) => _PreviewRow(
+            title: entry.roleTitle,
+            subtitle: entry.isCurrent
+                ? '${entry.companyName} / Current'
+                : entry.companyName,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfileReview>(
+          title: 'Reviews',
+          subtitle:
+              '${snapshot.reviewCount} reviews and a ${snapshot.averageRating.toStringAsFixed(1)} average now reach the app too.',
+          emptyState:
+              'No reviews yet. Completed jobs and follow-through will start building this section.',
+          items: snapshot.reviews.take(4).toList(),
+          itemBuilder: (entry) => _PreviewRow(
+            title: '${entry.rating.toStringAsFixed(1)} stars',
+            subtitle: entry.comment.isEmpty ? 'No written note' : entry.comment,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrustSection extends StatelessWidget {
+  const _TrustSection({
+    required this.snapshot,
+    required this.googleSubmitting,
+    required this.googleStatus,
+    required this.googleError,
+    required this.onLinkGoogle,
+    required this.formKey,
+    required this.passwordController,
+    required this.confirmPasswordController,
+    required this.passwordSubmitting,
+    required this.passwordStatus,
+    required this.passwordError,
+    required this.obscurePassword,
+    required this.obscureConfirmPassword,
+    required this.onTogglePassword,
+    required this.onToggleConfirmPassword,
+    required this.onSubmit,
+    required this.validatePassword,
+    required this.validateConfirmation,
+  });
+
+  final MobileProfileSnapshot snapshot;
+  final bool googleSubmitting;
+  final String? googleStatus;
+  final String? googleError;
+  final VoidCallback onLinkGoogle;
+  final GlobalKey<FormState> formKey;
+  final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
+  final bool passwordSubmitting;
+  final String? passwordStatus;
+  final String? passwordError;
+  final bool obscurePassword;
+  final bool obscureConfirmPassword;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onToggleConfirmPassword;
+  final VoidCallback onSubmit;
+  final String? Function(String?) validatePassword;
+  final String? Function(String?) validateConfirmation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-trust'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TrustSummaryCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _SignInMethodsCard(
+          linkedProviders: snapshot.linkedProviders,
+          hasGoogle: snapshot.linkedProviders.contains('google'),
+          googleSubmitting: googleSubmitting,
+          googleStatus: googleStatus,
+          googleError: googleError,
+          onLinkGoogle: onLinkGoogle,
+        ),
+        const SizedBox(height: 14),
+        _PasswordCard(
+          formKey: formKey,
+          passwordController: passwordController,
+          confirmPasswordController: confirmPasswordController,
+          passwordSubmitting: passwordSubmitting,
+          passwordStatus: passwordStatus,
+          passwordError: passwordError,
+          obscurePassword: obscurePassword,
+          obscureConfirmPassword: obscureConfirmPassword,
+          onTogglePassword: onTogglePassword,
+          onToggleConfirmPassword: onToggleConfirmPassword,
+          onSubmit: onSubmit,
+          validatePassword: validatePassword,
+          validateConfirmation: validateConfirmation,
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.snapshot,
+    required this.user,
+    required this.onSignOut,
+  });
+
+  final MobileProfileSnapshot snapshot;
+  final User? user;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-settings'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _LocationCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _CollectionCard<MobileProfilePaymentMethod>(
+          title: 'Payment methods',
+          subtitle:
+              '${snapshot.paymentMethodCount} payout methods visible to the signed-in owner only.',
+          emptyState: 'No payout methods saved yet.',
+          items: snapshot.paymentMethods.take(4).toList(),
+          itemBuilder: (entry) => _PreviewRow(
+            title: _humanize(entry.methodType),
+            subtitle: _paymentSummary(entry),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _AccountCard(
+          snapshot: snapshot,
+          user: user,
+          onSignOut: onSignOut,
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionIntro extends StatelessWidget {
+  const _SectionIntro({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(message, style: Theme.of(context).textTheme.bodyMedium),
+        ],
       ),
     );
   }
@@ -457,10 +730,30 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      ('Trust', snapshot.trustScore.toString()),
-      ('Reviews', snapshot.reviewCount.toString()),
-      ('Services', snapshot.serviceCount.toString()),
-      ('Products', snapshot.productCount.toString()),
+      (
+        'Trust score',
+        snapshot.trustScore.toString(),
+        'Reputation built across requests and follow-through',
+        Icons.verified_outlined,
+      ),
+      (
+        'Reviews',
+        snapshot.reviewCount.toString(),
+        '${snapshot.averageRating.toStringAsFixed(1)} average rating',
+        Icons.star_outline_rounded,
+      ),
+      (
+        'Services',
+        snapshot.serviceCount.toString(),
+        'Live offerings visible nearby',
+        Icons.design_services_outlined,
+      ),
+      (
+        'Products',
+        snapshot.productCount.toString(),
+        'Catalog currently synced to mobile',
+        Icons.inventory_2_outlined,
+      ),
     ];
 
     return LayoutBuilder(
@@ -475,27 +768,77 @@ class _MetricsGrid extends StatelessWidget {
               .map(
                 (item) => SizedBox(
                   width: tileWidth,
-                  child: SectionCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.$1,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item.$2,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                      ],
-                    ),
+                  child: MetricTile(
+                    label: item.$1,
+                    value: item.$2,
+                    caption: item.$3,
+                    icon: item.$4,
                   ),
                 ),
               )
               .toList(),
         );
       },
+    );
+  }
+}
+
+class _CompletionCard extends StatelessWidget {
+  const _CompletionCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final completionValue = (snapshot.completionPercent / 100).clamp(0.0, 1.0);
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Profile completion',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'A more complete profile improves trust, faster replies, and higher intent from nearby users.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: completionValue,
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: '${snapshot.completionPercent}% complete',
+                icon: Icons.checklist_rounded,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primary,
+              ),
+              TrustBadge(
+                label: _humanize(snapshot.profile.verificationLevel),
+                icon: Icons.verified_user_outlined,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+              if (snapshot.profile.location.isNotEmpty)
+                TrustBadge(
+                  label: snapshot.profile.location,
+                  icon: Icons.location_on_outlined,
+                  backgroundColor: AppColors.surfaceMuted,
+                  foregroundColor: AppColors.ink,
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -531,6 +874,105 @@ class _SummaryCard extends StatelessWidget {
             value: _humanize(profile.verificationLevel),
           ),
           _InfoRow(
+            label: 'Public profile',
+            value: snapshot.publicPath.isEmpty
+                ? 'Not ready yet'
+                : snapshot.publicPath,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrustSummaryCard extends StatelessWidget {
+  const _TrustSummaryCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Trust and completion', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 10),
+          Text(
+            'This is the part of your profile that affects credibility, repeat sign-in confidence, and how comfortably people reach out.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: '${snapshot.trustScore} trust score',
+                icon: Icons.shield_outlined,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primary,
+              ),
+              TrustBadge(
+                label: '${snapshot.reviewCount} reviews',
+                icon: Icons.star_outline_rounded,
+                backgroundColor: AppColors.warningSoft,
+                foregroundColor: AppColors.warning,
+              ),
+              TrustBadge(
+                label: _humanize(profile.verificationLevel),
+                icon: Icons.verified_user_outlined,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _InfoRow(
+            label: 'Average rating',
+            value: snapshot.averageRating <= 0
+                ? 'No rating yet'
+                : snapshot.averageRating.toStringAsFixed(1),
+          ),
+          _InfoRow(
+            label: 'Linked sign-in methods',
+            value: snapshot.linkedProviders.isEmpty
+                ? 'Email'
+                : snapshot.linkedProviders.map(_providerLabel).join(', '),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationCard extends StatelessWidget {
+  const _LocationCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Settings and location', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 10),
+          Text(
+            'Keep your contact details and service area clear so the mobile experience stays grounded in local intent.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          _InfoRow(
+            label: 'Location',
+            value: profile.location.isEmpty ? 'Not added yet' : profile.location,
+          ),
+          _InfoRow(
             label: 'Phone',
             value: profile.phone.isEmpty ? 'Not added yet' : profile.phone,
           ),
@@ -539,10 +981,8 @@ class _SummaryCard extends StatelessWidget {
             value: profile.website.isEmpty ? 'Not added yet' : profile.website,
           ),
           _InfoRow(
-            label: 'Public profile',
-            value: snapshot.publicPath.isEmpty
-                ? 'Not ready yet'
-                : snapshot.publicPath,
+            label: 'Availability mode',
+            value: _humanize(profile.availability),
           ),
         ],
       ),
@@ -876,12 +1316,20 @@ class _ProfileLoadingState extends StatelessWidget {
     return Column(
       children: List.generate(
         3,
-        (index) => const Padding(
-          padding: EdgeInsets.only(bottom: 14),
+        (index) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
           child: SectionCard(
-            child: SizedBox(
-              height: 180,
-              child: Center(child: CircularProgressIndicator()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                LoadingShimmer(height: 22, width: 180),
+                SizedBox(height: 12),
+                LoadingShimmer(height: 14),
+                SizedBox(height: 10),
+                LoadingShimmer(height: 14, width: 220),
+                SizedBox(height: 16),
+                LoadingShimmer(height: 120),
+              ],
             ),
           ),
         ),
@@ -891,9 +1339,13 @@ class _ProfileLoadingState extends StatelessWidget {
 }
 
 class _ProfileErrorState extends StatelessWidget {
-  const _ProfileErrorState({required this.error});
+  const _ProfileErrorState({
+    required this.error,
+    required this.onRetry,
+  });
 
   final Object error;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -903,21 +1355,10 @@ class _ProfileErrorState extends StatelessWidget {
     };
 
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Unable to load your profile bundle',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 10),
-          Text(message, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 10),
-          Text(
-            'Pull to refresh after the session and API base URL are ready.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
+      child: ErrorStateView(
+        title: 'Unable to load your profile bundle',
+        message: message,
+        onRetry: onRetry,
       ),
     );
   }
@@ -943,9 +1384,7 @@ class _ProfileMessage extends StatelessWidget {
       child: Text(
         errorMessage ?? successMessage ?? '',
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: showingError
-              ? theme.colorScheme.error
-              : const Color(0xFF0F766E),
+          color: showingError ? theme.colorScheme.error : AppColors.primary,
           fontWeight: FontWeight.w700,
         ),
       ),

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { memo, type KeyboardEvent } from "react";
-import { BadgeCheck, Clock3, UserCheck, UserPlus, XCircle } from "lucide-react";
+import { BadgeCheck, Clock3, MessageCircle, UserCheck, UserPlus, XCircle } from "lucide-react";
 import type { ConnectionActionKey } from "@/lib/connectionState";
 import type { PresenceTone, ProviderCard as ProviderCardModel, ProviderCardConnectionState } from "../types";
 import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
@@ -39,6 +39,7 @@ const actionButtonClassName =
   "inline-flex w-full min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-65 sm:min-h-10 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm";
 
 const primaryActionClassName = `${actionButtonClassName} border border-[#1f6fd1] bg-white text-[#1f6fd1] hover:bg-[#edf5ff]`;
+const secondaryActionClassName = `${actionButtonClassName} border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900`;
 
 const ProviderCard = (props: Props) => {
   const {
@@ -47,11 +48,13 @@ const ProviderCard = (props: Props) => {
     connectionState,
     busy,
     busyActionKey,
+    chatBusy,
     isActive,
     onActivate,
     onConnect,
     onAccept,
     onDecline,
+    onMessage,
     onViewProfile,
   } = props;
 
@@ -247,6 +250,30 @@ const ProviderCard = (props: Props) => {
 
         <div className="mt-auto pt-2 sm:pt-4">
           <div className="flex flex-wrap gap-2">{renderConnectionAction()}</div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onMessage(provider.id);
+              }}
+              disabled={chatBusy}
+              className={secondaryActionClassName}
+            >
+              <MessageCircle className="h-4 w-4" />
+              {chatBusy ? "Opening..." : "Message"}
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpenProfile();
+              }}
+              className={secondaryActionClassName}
+            >
+              View Profile
+            </button>
+          </div>
         </div>
       </div>
     </article>

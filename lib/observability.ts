@@ -1,6 +1,7 @@
 export type ObservedRoute =
   | "dashboard"
   | "chat"
+  | "notifications"
   | "tasks"
   | "welcome"
   | "people"
@@ -69,6 +70,7 @@ export const captureUiActionObservability = async (params: {
 
 export const resolveObservedRouteFromPathname = (pathname: string): ObservedRoute => {
   if (pathname.startsWith("/dashboard/chat")) return "chat";
+  if (pathname.startsWith("/dashboard/notifications")) return "notifications";
   if (pathname.startsWith("/dashboard/tasks")) return "tasks";
   if (pathname.startsWith("/dashboard/welcome")) return "welcome";
   if (pathname.startsWith("/dashboard/people")) return "people";

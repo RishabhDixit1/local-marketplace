@@ -1,18 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/supabase/app_bootstrap.dart';
 import '../domain/feed_snapshot.dart';
-
-final mobileApiClientProvider = Provider<MobileApiClient>((ref) {
-  final bootstrap = ref.watch(appBootstrapProvider);
-  final client = MobileApiClient(
-    config: bootstrap.config,
-    supabaseClient: bootstrap.client,
-  );
-  ref.onDispose(client.dispose);
-  return client;
-});
 
 final feedRepositoryProvider = Provider<FeedRepository>((ref) {
   return FeedRepository(ref.watch(mobileApiClientProvider));
