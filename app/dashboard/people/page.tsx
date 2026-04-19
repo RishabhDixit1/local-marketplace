@@ -1,16 +1,34 @@
 ﻿"use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import dynamic from "next/dynamic";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Bell, ChevronDown, Compass, Loader2, Sparkles, Users } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  ChevronDown,
+  Compass,
+  Loader2,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import type { CommunityPeopleResponse, CommunityProfileRecord } from "@/lib/api/community";
+import type {
+  CommunityPeopleResponse,
+  CommunityProfileRecord,
+} from "@/lib/api/community";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { ensureClientProfile } from "@/lib/clientProfile";
 import {
@@ -29,7 +47,10 @@ import {
   createBusinessSlug,
   estimateResponseMinutes,
 } from "@/lib/business";
-import type { ConnectionDecision, ConnectionState } from "@/lib/connectionState";
+import type {
+  ConnectionDecision,
+  ConnectionState,
+} from "@/lib/connectionState";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
   defaultMarketCoordinates,
@@ -42,8 +63,14 @@ import {
 import { useConnectionRequests } from "@/lib/hooks/useConnectionRequests";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/utils";
-import { extractPresenceUserIds, GLOBAL_PRESENCE_CHANNEL } from "@/lib/realtime";
+import {
+  buildPublicProfilePath,
+  getProfileDisplayName,
+} from "@/lib/profile/utils";
+import {
+  extractPresenceUserIds,
+  GLOBAL_PRESENCE_CHANNEL,
+} from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
 import ProviderCard from "./components/ProviderCard";
@@ -59,8 +86,9 @@ import type {
 } from "./types";
 
 const ProviderTrustPanel = dynamic(
-  () => import("@/app/components/ProviderTrustPanel").then((mod) => mod.default),
-  { ssr: false }
+  () =>
+    import("@/app/components/ProviderTrustPanel").then((mod) => mod.default),
+  { ssr: false },
 );
 
 type ProfileRow = CommunityProfileRecord;
@@ -128,7 +156,9 @@ type ServiceDetailRow = {
   description?: string | null;
   category?: string | null;
   price?: number | string | null;
+  image_url?: string | null;
   availability?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 
@@ -141,6 +171,7 @@ type ProductDetailRow = {
   price?: number | string | null;
   delivery_method?: string | null;
   image_url?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at?: string | null;
 };
 
@@ -150,14 +181,18 @@ type SavedCardRow = {
 
 type FlexibleRow = Record<string, unknown>;
 
-type CommunityPeopleSuccessPayload = Extract<CommunityPeopleResponse, { ok: true }>;
+type CommunityPeopleSuccessPayload = Extract<
+  CommunityPeopleResponse,
+  { ok: true }
+>;
 
 const PAGE_SIZE = 12;
 const GEO_LOOKUP_TIMEOUT_MS = 1200;
 const MAX_DISCOVERABLE_PROFILES = 140;
 const AUTO_SYNC_INTERVAL_MS = 30000;
 const NEW_PROVIDER_WINDOW_DAYS = 21;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRICE_FORMATTER = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
@@ -174,7 +209,12 @@ const EMPTY_CONNECTION_STATE: ConnectionState = {
 const normalizeText = (value: string | null | undefined) => value?.trim() || "";
 
 const toFiniteNumber = (value: unknown) => {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : Number.NaN;
   return Number.isFinite(parsed) ? parsed : null;
 };
 
@@ -182,11 +222,13 @@ const isFlexibleRow = (value: unknown): value is FlexibleRow =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const toFlexibleRows = (value: unknown) =>
-  Array.isArray(value) ? value.filter((item): item is FlexibleRow => isFlexibleRow(item)) : [];
+  Array.isArray(value)
+    ? value.filter((item): item is FlexibleRow => isFlexibleRow(item))
+    : [];
 
 const isMissingRelationError = (message: string) =>
   /relation .* does not exist|table .* does not exist|function .* does not exist|could not find the table '.*' in the schema cache/i.test(
-    message
+    message,
   );
 
 const formatCurrency = (value: number | null) => {
@@ -196,7 +238,11 @@ const formatCurrency = (value: number | null) => {
 
 const buildProfileCardId = (providerId: string) => `people:${providerId}`;
 
-const pushTag = (map: Map<string, Set<string>>, providerId: string, tag: string | null | undefined) => {
+const pushTag = (
+  map: Map<string, Set<string>>,
+  providerId: string,
+  tag: string | null | undefined,
+) => {
   const normalized = normalizeText(tag);
   if (!normalized) return;
   if (!map.has(providerId)) {
@@ -205,7 +251,11 @@ const pushTag = (map: Map<string, Set<string>>, providerId: string, tag: string 
   map.get(providerId)?.add(normalized);
 };
 
-const pushPrice = (map: Map<string, number[]>, providerId: string, value: number | null | undefined) => {
+const pushPrice = (
+  map: Map<string, number[]>,
+  providerId: string,
+  value: number | null | undefined,
+) => {
   if (!Number.isFinite(value)) return;
   const nextValue = Number(value);
   if (!Number.isFinite(nextValue) || nextValue <= 0) return;
@@ -217,7 +267,9 @@ const isNewProvider = (joinedAt: string | null) => {
   if (!joinedAt) return false;
   const timestamp = new Date(joinedAt).getTime();
   if (Number.isNaN(timestamp)) return false;
-  return Date.now() - timestamp <= NEW_PROVIDER_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return (
+    Date.now() - timestamp <= NEW_PROVIDER_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  );
 };
 
 const isUuid = (value: string) => UUID_PATTERN.test(value);
@@ -230,21 +282,27 @@ const formatRelativeTimestamp = (value: string | null) => {
   const diffMinutes = Math.max(1, Math.floor((Date.now() - timestamp) / 60000));
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
   if (diffMinutes < 24 * 60) return `${Math.floor(diffMinutes / 60)}h ago`;
-  if (diffMinutes < 24 * 60 * 7) return `${Math.floor(diffMinutes / (60 * 24))}d ago`;
+  if (diffMinutes < 24 * 60 * 7)
+    return `${Math.floor(diffMinutes / (60 * 24))}d ago`;
   return `${Math.floor(diffMinutes / (60 * 24 * 7))}w ago`;
 };
 
 const PLACEHOLDER_TEXT_PATTERN =
   /\b(demo|sample|seed(?:ed)?|placeholder|dummy|fake|mock|test|temp|lorem|ipsum)\b/i;
 
-const KEYBOARD_MASH_PATTERN = /(asdf|qwer|zxcv|hjkl|sdfg|dsaf|sdfs|xcad|tmynr|hbtgr|fvcg|gaewg|sdga)/i;
+const KEYBOARD_MASH_PATTERN =
+  /(asdf|qwer|zxcv|hjkl|sdfg|dsaf|sdfs|xcad|tmynr|hbtgr|fvcg|gaewg|sdga)/i;
 
 const countVowels = (value: string) => (value.match(/[aeiou]/gi) || []).length;
 
 const looksLikeGarbageToken = (value: string) => {
   const normalized = normalizeText(value).toLowerCase();
   if (!normalized) return false;
-  if (PLACEHOLDER_TEXT_PATTERN.test(normalized) || KEYBOARD_MASH_PATTERN.test(normalized)) return true;
+  if (
+    PLACEHOLDER_TEXT_PATTERN.test(normalized) ||
+    KEYBOARD_MASH_PATTERN.test(normalized)
+  )
+    return true;
   if (normalized.length < 5 || normalized.includes(" ")) return false;
 
   const vowelRatio = countVowels(normalized) / normalized.length;
@@ -254,7 +312,11 @@ const looksLikeGarbageToken = (value: string) => {
 const looksLikePlaceholderText = (value: string | null | undefined) => {
   const normalized = normalizeText(value);
   if (!normalized) return false;
-  if (PLACEHOLDER_TEXT_PATTERN.test(normalized) || KEYBOARD_MASH_PATTERN.test(normalized)) return true;
+  if (
+    PLACEHOLDER_TEXT_PATTERN.test(normalized) ||
+    KEYBOARD_MASH_PATTERN.test(normalized)
+  )
+    return true;
 
   const tokens = normalized.toLowerCase().match(/[a-z]+/g) || [];
   if (!tokens.length) return false;
@@ -266,7 +328,9 @@ const looksLikePlaceholderText = (value: string | null | undefined) => {
 const sanitizeProfileServices = (services: string[] | null | undefined) =>
   (services || [])
     .map((service) => normalizeText(service))
-    .filter((service) => service.length > 0 && !looksLikePlaceholderText(service));
+    .filter(
+      (service) => service.length > 0 && !looksLikePlaceholderText(service),
+    );
 
 const isProviderFacingRole = (value: string | null | undefined) => {
   const normalized = normalizeText(value).toLowerCase();
@@ -292,7 +356,7 @@ const selectOptionalRows = async <TRow extends FlexibleRow>(
   options: {
     limit?: number;
     inFilter?: { column: string; values: string[] };
-  } = {}
+  } = {},
 ): Promise<TRow[]> => {
   let query = supabase.from(table).select("*");
 
@@ -315,38 +379,67 @@ const selectOptionalRows = async <TRow extends FlexibleRow>(
   return toFlexibleRows(data) as TRow[];
 };
 
-const loadPeopleSnapshotDirect = async (viewerId: string): Promise<CommunityPeopleSuccessPayload> => {
-  const [profiles, services, products, posts, helpRequests, reviews, presence] = await Promise.all([
-    selectOptionalRows<ProfileRow>("profiles", { limit: MAX_DISCOVERABLE_PROFILES }),
-    selectOptionalRows<ServiceDetailRow>("service_listings", { limit: MAX_DISCOVERABLE_PROFILES * 6 }),
-    selectOptionalRows<ProductDetailRow>("product_catalog", { limit: MAX_DISCOVERABLE_PROFILES * 6 }),
-    selectOptionalRows<PostRow>("posts", { limit: MAX_DISCOVERABLE_PROFILES * 6 }),
-    selectOptionalRows<HelpRequestRow>("help_requests", { limit: MAX_DISCOVERABLE_PROFILES * 6 }),
-    selectOptionalRows<ReviewRow>("reviews", { limit: MAX_DISCOVERABLE_PROFILES * 10 }),
-    selectOptionalRows<ProviderPresenceRow>("provider_presence", { limit: MAX_DISCOVERABLE_PROFILES * 2 }),
-  ]);
+const loadPeopleSnapshotDirect = async (
+  viewerId: string,
+): Promise<CommunityPeopleSuccessPayload> => {
+  const [profiles, services, products, posts, helpRequests, reviews, presence] =
+    await Promise.all([
+      selectOptionalRows<ProfileRow>("profiles", {
+        limit: MAX_DISCOVERABLE_PROFILES,
+      }),
+      selectOptionalRows<ServiceDetailRow>("service_listings", {
+        limit: MAX_DISCOVERABLE_PROFILES * 6,
+      }),
+      selectOptionalRows<ProductDetailRow>("product_catalog", {
+        limit: MAX_DISCOVERABLE_PROFILES * 6,
+      }),
+      selectOptionalRows<PostRow>("posts", {
+        limit: MAX_DISCOVERABLE_PROFILES * 6,
+      }),
+      selectOptionalRows<HelpRequestRow>("help_requests", {
+        limit: MAX_DISCOVERABLE_PROFILES * 6,
+      }),
+      selectOptionalRows<ReviewRow>("reviews", {
+        limit: MAX_DISCOVERABLE_PROFILES * 10,
+      }),
+      selectOptionalRows<ProviderPresenceRow>("provider_presence", {
+        limit: MAX_DISCOVERABLE_PROFILES * 2,
+      }),
+    ]);
 
   const activeProviderIds = Array.from(
     new Set(
       [
-        ...services.map((row) => normalizeText(typeof row.provider_id === "string" ? row.provider_id : null)),
-        ...products.map((row) => normalizeText(typeof row.provider_id === "string" ? row.provider_id : null)),
+        ...services.map((row) =>
+          normalizeText(
+            typeof row.provider_id === "string" ? row.provider_id : null,
+          ),
+        ),
+        ...products.map((row) =>
+          normalizeText(
+            typeof row.provider_id === "string" ? row.provider_id : null,
+          ),
+        ),
         ...posts.map((row) =>
           normalizeText(
             typeof row.user_id === "string"
               ? row.user_id
               : typeof row.author_id === "string"
-              ? row.author_id
-              : typeof row.created_by === "string"
-              ? row.created_by
-              : typeof row.provider_id === "string"
-              ? row.provider_id
-              : null
-          )
+                ? row.author_id
+                : typeof row.created_by === "string"
+                  ? row.created_by
+                  : typeof row.provider_id === "string"
+                    ? row.provider_id
+                    : null,
+          ),
         ),
-        ...helpRequests.map((row) => normalizeText(typeof row.requester_id === "string" ? row.requester_id : null)),
-      ].filter(Boolean)
-    )
+        ...helpRequests.map((row) =>
+          normalizeText(
+            typeof row.requester_id === "string" ? row.requester_id : null,
+          ),
+        ),
+      ].filter(Boolean),
+    ),
   );
 
   let orderStats: ProviderOrderStatsRow[] = [];
@@ -360,59 +453,140 @@ const loadPeopleSnapshotDirect = async (viewerId: string): Promise<CommunityPeop
         throw new Error(error.message);
       }
     } else {
-      orderStats = ((data as ProviderOrderStatsRow[] | null) || []).filter((row) => !!row.provider_id);
+      orderStats = ((data as ProviderOrderStatsRow[] | null) || []).filter(
+        (row) => !!row.provider_id,
+      );
     }
   }
 
   return {
     ok: true,
     currentUserId: viewerId,
-    profiles: profiles.filter((profile) => typeof profile.id === "string" && profile.id.length > 0),
+    profiles: profiles.filter(
+      (profile) => typeof profile.id === "string" && profile.id.length > 0,
+    ),
     services: services
-      .filter((row) => typeof row.provider_id === "string" && row.provider_id.length > 0)
+      .filter(
+        (row) =>
+          typeof row.provider_id === "string" && row.provider_id.length > 0,
+      )
       .map((row) => ({
         provider_id: String(row.provider_id),
-        category: normalizeText(typeof row.category === "string" ? row.category : null) || "Service",
+        title: normalizeText(typeof row.title === "string" ? row.title : null),
+        category:
+          normalizeText(
+            typeof row.category === "string" ? row.category : null,
+          ) || "Service",
         price: toFiniteNumber(row.price) ?? 0,
+        image_url:
+          normalizeText(
+            typeof row.image_url === "string" ? row.image_url : null,
+          ) || null,
+        metadata:
+          row.metadata &&
+          typeof row.metadata === "object" &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : null,
+        created_at:
+          normalizeText(
+            typeof row.created_at === "string" ? row.created_at : null,
+          ) || null,
       })),
     products: products
-      .filter((row) => typeof row.provider_id === "string" && row.provider_id.length > 0)
+      .filter(
+        (row) =>
+          typeof row.provider_id === "string" && row.provider_id.length > 0,
+      )
       .map((row) => ({
         provider_id: String(row.provider_id),
-        category: normalizeText(typeof row.category === "string" ? row.category : null) || "Product",
+        title: normalizeText(typeof row.title === "string" ? row.title : null),
+        category:
+          normalizeText(
+            typeof row.category === "string" ? row.category : null,
+          ) || "Product",
         price: toFiniteNumber(row.price) ?? 0,
+        image_url:
+          normalizeText(
+            typeof row.image_url === "string" ? row.image_url : null,
+          ) || null,
+        metadata:
+          row.metadata &&
+          typeof row.metadata === "object" &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : null,
+        created_at:
+          normalizeText(
+            typeof row.created_at === "string" ? row.created_at : null,
+          ) || null,
       })),
     posts: posts.map((row) => ({
-      user_id: normalizeText(typeof row.user_id === "string" ? row.user_id : null) || null,
-      author_id: normalizeText(typeof row.author_id === "string" ? row.author_id : null) || null,
-      created_by: normalizeText(typeof row.created_by === "string" ? row.created_by : null) || null,
-      provider_id: normalizeText(typeof row.provider_id === "string" ? row.provider_id : null) || null,
-      category: normalizeText(typeof row.category === "string" ? row.category : null) || null,
-      status: normalizeText(typeof row.status === "string" ? row.status : null) || null,
-      state: normalizeText(typeof row.state === "string" ? row.state : null) || null,
+      user_id:
+        normalizeText(typeof row.user_id === "string" ? row.user_id : null) ||
+        null,
+      author_id:
+        normalizeText(
+          typeof row.author_id === "string" ? row.author_id : null,
+        ) || null,
+      created_by:
+        normalizeText(
+          typeof row.created_by === "string" ? row.created_by : null,
+        ) || null,
+      provider_id:
+        normalizeText(
+          typeof row.provider_id === "string" ? row.provider_id : null,
+        ) || null,
+      category:
+        normalizeText(typeof row.category === "string" ? row.category : null) ||
+        null,
+      status:
+        normalizeText(typeof row.status === "string" ? row.status : null) ||
+        null,
+      state:
+        normalizeText(typeof row.state === "string" ? row.state : null) || null,
     })),
     helpRequests: helpRequests.map((row) => ({
-      requester_id: normalizeText(typeof row.requester_id === "string" ? row.requester_id : null) || null,
-      category: normalizeText(typeof row.category === "string" ? row.category : null) || null,
+      requester_id:
+        normalizeText(
+          typeof row.requester_id === "string" ? row.requester_id : null,
+        ) || null,
+      category:
+        normalizeText(typeof row.category === "string" ? row.category : null) ||
+        null,
       budget_min: toFiniteNumber(row.budget_min),
       budget_max: toFiniteNumber(row.budget_max),
-      status: normalizeText(typeof row.status === "string" ? row.status : null) || null,
+      status:
+        normalizeText(typeof row.status === "string" ? row.status : null) ||
+        null,
     })),
     reviews: reviews
-      .filter((row) => typeof row.provider_id === "string" && row.provider_id.length > 0)
+      .filter(
+        (row) =>
+          typeof row.provider_id === "string" && row.provider_id.length > 0,
+      )
       .map((row) => ({
         provider_id: String(row.provider_id),
         rating: toFiniteNumber(row.rating),
       })),
     presence: presence
-      .filter((row) => typeof row.provider_id === "string" && row.provider_id.length > 0)
+      .filter(
+        (row) =>
+          typeof row.provider_id === "string" && row.provider_id.length > 0,
+      )
       .map((row) => ({
         provider_id: String(row.provider_id),
         is_online: typeof row.is_online === "boolean" ? row.is_online : null,
-        availability: normalizeText(typeof row.availability === "string" ? row.availability : null) || null,
+        availability:
+          normalizeText(
+            typeof row.availability === "string" ? row.availability : null,
+          ) || null,
         response_sla_minutes: toFiniteNumber(row.response_sla_minutes),
         rolling_response_minutes: toFiniteNumber(row.rolling_response_minutes),
-        last_seen: normalizeText(typeof row.last_seen === "string" ? row.last_seen : null) || null,
+        last_seen:
+          normalizeText(
+            typeof row.last_seen === "string" ? row.last_seen : null,
+          ) || null,
       })),
     orderStats,
   };
@@ -447,7 +621,13 @@ const createProviderCards = (params: {
   serviceDetails: ServiceDetailRow[];
   productDetails: ProductDetailRow[];
 }) => {
-  const { payload, viewerId, viewerCoordinates, serviceDetails, productDetails } = params;
+  const {
+    payload,
+    viewerId,
+    viewerCoordinates,
+    serviceDetails,
+    productDetails,
+  } = params;
   const serviceRows = (payload.services || []) as ServiceRow[];
   const productRows = (payload.products || []) as ProductRow[];
   const postRows = (payload.posts || []) as PostRow[];
@@ -490,7 +670,9 @@ const createProviderCards = (params: {
   postRows.forEach((row) => {
     const status = normalizeText(row.status || row.state).toLowerCase();
     if (status && status !== "open") return;
-    const userId = normalizeText(row.user_id || row.author_id || row.created_by || row.provider_id);
+    const userId = normalizeText(
+      row.user_id || row.author_id || row.created_by || row.provider_id,
+    );
     if (!userId) return;
     demandCountMap.set(userId, (demandCountMap.get(userId) || 0) + 1);
     pushTag(demandTagMap, userId, row.category);
@@ -499,7 +681,12 @@ const createProviderCards = (params: {
 
   helpRequestRows.forEach((row) => {
     const status = normalizeText(row.status).toLowerCase();
-    if (["completed", "fulfilled", "closed", "cancelled", "canceled"].includes(status)) return;
+    if (
+      ["completed", "fulfilled", "closed", "cancelled", "canceled"].includes(
+        status,
+      )
+    )
+      return;
     const requesterId = normalizeText(row.requester_id);
     if (!requesterId) return;
     demandCountMap.set(requesterId, (demandCountMap.get(requesterId) || 0) + 1);
@@ -511,7 +698,12 @@ const createProviderCards = (params: {
   });
 
   reviewRows.forEach((row) => {
-    if (!row.provider_id || typeof row.rating !== "number" || !Number.isFinite(row.rating)) return;
+    if (
+      !row.provider_id ||
+      typeof row.rating !== "number" ||
+      !Number.isFinite(row.rating)
+    )
+      return;
     const previous = ratingMap.get(row.provider_id) || { sum: 0, count: 0 };
     ratingMap.set(row.provider_id, {
       sum: previous.sum + row.rating,
@@ -520,23 +712,41 @@ const createProviderCards = (params: {
   });
 
   serviceDetails.forEach((row, index) => {
-    const providerId = normalizeText(typeof row.provider_id === "string" ? row.provider_id : null);
+    const providerId = normalizeText(
+      typeof row.provider_id === "string" ? row.provider_id : null,
+    );
     if (!providerId) return;
-    const title = normalizeText(typeof row.title === "string" ? row.title : null) || normalizeText(row.category) || "Local service";
-    const description = normalizeText(typeof row.description === "string" ? row.description : null) || "Published service on ServiQ.";
+    const title =
+      normalizeText(typeof row.title === "string" ? row.title : null) ||
+      normalizeText(row.category) ||
+      "Local service";
+    const description =
+      normalizeText(
+        typeof row.description === "string" ? row.description : null,
+      ) || "Published service on ServiQ.";
     const price = toFiniteNumber(row.price);
     const offering: ProviderOffering = {
-      id: normalizeText(typeof row.id === "string" ? row.id : null) || `service-offering-${providerId}-${index}`,
+      id:
+        normalizeText(typeof row.id === "string" ? row.id : null) ||
+        `service-offering-${providerId}-${index}`,
       kind: "service",
       title,
       description,
-      category: normalizeText(typeof row.category === "string" ? row.category : null) || "Service",
+      category:
+        normalizeText(typeof row.category === "string" ? row.category : null) ||
+        "Service",
       price,
       priceLabel: formatCurrency(price),
-      availability: normalizeText(typeof row.availability === "string" ? row.availability : null) || null,
+      availability:
+        normalizeText(
+          typeof row.availability === "string" ? row.availability : null,
+        ) || null,
       imageUrl: null,
       deliveryMethod: null,
-      createdAt: normalizeText(typeof row.created_at === "string" ? row.created_at : null) || null,
+      createdAt:
+        normalizeText(
+          typeof row.created_at === "string" ? row.created_at : null,
+        ) || null,
     };
 
     const current = serviceOfferingMap.get(providerId) || [];
@@ -546,25 +756,45 @@ const createProviderCards = (params: {
   });
 
   productDetails.forEach((row, index) => {
-    const providerId = normalizeText(typeof row.provider_id === "string" ? row.provider_id : null);
+    const providerId = normalizeText(
+      typeof row.provider_id === "string" ? row.provider_id : null,
+    );
     if (!providerId) return;
-    const title = normalizeText(typeof row.title === "string" ? row.title : null) || normalizeText(row.category) || "Local product";
-    const description = normalizeText(typeof row.description === "string" ? row.description : null) || "Published product on ServiQ.";
+    const title =
+      normalizeText(typeof row.title === "string" ? row.title : null) ||
+      normalizeText(row.category) ||
+      "Local product";
+    const description =
+      normalizeText(
+        typeof row.description === "string" ? row.description : null,
+      ) || "Published product on ServiQ.";
     const price = toFiniteNumber(row.price);
-    const imageUrl = normalizeText(typeof row.image_url === "string" ? row.image_url : null) || null;
+    const imageUrl =
+      normalizeText(typeof row.image_url === "string" ? row.image_url : null) ||
+      null;
 
     const offering: ProviderOffering = {
-      id: normalizeText(typeof row.id === "string" ? row.id : null) || `product-offering-${providerId}-${index}`,
+      id:
+        normalizeText(typeof row.id === "string" ? row.id : null) ||
+        `product-offering-${providerId}-${index}`,
       kind: "product",
       title,
       description,
-      category: normalizeText(typeof row.category === "string" ? row.category : null) || "Product",
+      category:
+        normalizeText(typeof row.category === "string" ? row.category : null) ||
+        "Product",
       price,
       priceLabel: formatCurrency(price),
       availability: null,
       imageUrl,
-      deliveryMethod: normalizeText(typeof row.delivery_method === "string" ? row.delivery_method : null) || null,
-      createdAt: normalizeText(typeof row.created_at === "string" ? row.created_at : null) || null,
+      deliveryMethod:
+        normalizeText(
+          typeof row.delivery_method === "string" ? row.delivery_method : null,
+        ) || null,
+      createdAt:
+        normalizeText(
+          typeof row.created_at === "string" ? row.created_at : null,
+        ) || null,
     };
 
     const current = productOfferingMap.get(providerId) || [];
@@ -587,9 +817,9 @@ const createProviderCards = (params: {
     pushTag(combinedTagMap, providerId, offering.category);
   });
 
-  const profileRows = ((payload.profiles || []).slice(0, MAX_DISCOVERABLE_PROFILES) as ProfileRow[]).filter(
-    (profile) => !!profile.id
-  );
+  const profileRows = (
+    (payload.profiles || []).slice(0, MAX_DISCOVERABLE_PROFILES) as ProfileRow[]
+  ).filter((profile) => !!profile.id);
 
   const presenceMap = new Map<string, ProviderPresenceRow>();
   presenceRows.forEach((row) => {
@@ -613,7 +843,8 @@ const createProviderCards = (params: {
       const productsCount = productCountMap.get(profile.id) || 0;
       const demandCount = demandCountMap.get(profile.id) || 0;
       const profileServiceCount = sanitizedServices.length;
-      const hasProviderSignals = servicesCount + productsCount + profileServiceCount > 0;
+      const hasProviderSignals =
+        servicesCount + productsCount + profileServiceCount > 0;
       const hasProviderRole = isProviderFacingRole(profile.role);
       const hasPlaceholderName = looksLikePlaceholderText(profile.name);
       const hasCompletedOnboarding = Boolean(profile.onboarding_completed);
@@ -621,19 +852,32 @@ const createProviderCards = (params: {
         Boolean(normalizeText(profile.bio)) ||
         Boolean(normalizeText(profile.location)) ||
         Boolean(normalizeText(profile.avatar_url));
-      const hasDiscoverableOnboarding = hasCompletedOnboarding || (profile.profile_completion_percent || 0) >= 60 || hasProfilePresence;
+      const hasDiscoverableOnboarding =
+        hasCompletedOnboarding ||
+        (profile.profile_completion_percent || 0) >= 60 ||
+        hasProfilePresence;
 
-      if (hasPlaceholderName || (!hasProviderSignals && !hasProviderRole && !hasDiscoverableOnboarding)) {
+      if (
+        hasPlaceholderName ||
+        (!hasProviderSignals && !hasProviderRole && !hasDiscoverableOnboarding)
+      ) {
         return null;
       }
 
       const ratingAgg = ratingMap.get(profile.id);
       const reviewsCount = ratingAgg?.count || 0;
-      const rating = reviewsCount > 0 ? Number((ratingAgg!.sum / reviewsCount).toFixed(1)) : null;
+      const rating =
+        reviewsCount > 0
+          ? Number((ratingAgg!.sum / reviewsCount).toFixed(1))
+          : null;
       const presence = presenceMap.get(profile.id) || null;
-      const availability = normalizeText(presence?.availability || profile.availability || "available").toLowerCase();
+      const availability = normalizeText(
+        presence?.availability || profile.availability || "available",
+      ).toLowerCase();
       const responseMinutesFromPresence = Number(
-        presence?.rolling_response_minutes ?? presence?.response_sla_minutes ?? Number.NaN
+        presence?.rolling_response_minutes ??
+          presence?.response_sla_minutes ??
+          Number.NaN,
       );
       const responseMinutes = Number.isFinite(responseMinutesFromPresence)
         ? Math.max(1, Math.round(responseMinutesFromPresence))
@@ -652,7 +896,8 @@ const createProviderCards = (params: {
         website: profile.website,
       });
       const profileCompletion =
-        typeof profile.profile_completion_percent === "number" && Number.isFinite(profile.profile_completion_percent)
+        typeof profile.profile_completion_percent === "number" &&
+        Number.isFinite(profile.profile_completion_percent)
           ? profile.profile_completion_percent
           : computedProfileCompletion;
 
@@ -672,9 +917,15 @@ const createProviderCards = (params: {
         seed: profile.id,
       });
       const providerCoordinates = coordinateMeta.coordinates;
-      const distanceKm = distanceBetweenCoordinatesKm(viewerCoordinates, providerCoordinates);
+      const distanceKm = distanceBetweenCoordinatesKm(
+        viewerCoordinates,
+        providerCoordinates,
+      );
 
-      const online = typeof presence?.is_online === "boolean" ? presence.is_online : availability !== "offline";
+      const online =
+        typeof presence?.is_online === "boolean"
+          ? presence.is_online
+          : availability !== "offline";
 
       const rankBase = calculateLocalRankScore({
         distanceKm,
@@ -682,12 +933,19 @@ const createProviderCards = (params: {
         rating: rating ?? 0,
         profileCompletion,
       });
-      const rankScore = Math.max(1, Math.min(100, Math.round(rankBase + (online ? 4 : 0))));
+      const rankScore = Math.max(
+        1,
+        Math.min(100, Math.round(rankBase + (online ? 4 : 0))),
+      );
 
       const rawRoleLabel = normalizeText(profile.role);
       const roleLabel =
-        (rawRoleLabel && !looksLikePlaceholderText(rawRoleLabel) ? rawRoleLabel : "") ||
-        (servicesCount + productsCount > 0 ? "Service provider" : "Community member");
+        (rawRoleLabel && !looksLikePlaceholderText(rawRoleLabel)
+          ? rawRoleLabel
+          : "") ||
+        (servicesCount + productsCount > 0
+          ? "Service provider"
+          : "Community member");
       const serviceTags = Array.from(serviceTagMap.get(profile.id) || []);
       const productTags = Array.from(productTagMap.get(profile.id) || []);
       const demandTags = Array.from(demandTagMap.get(profile.id) || []);
@@ -699,7 +957,7 @@ const createProviderCards = (params: {
           ...productTags,
           ...demandTags,
           roleLabel,
-        ])
+        ]),
       )
         .map((value) => normalizeText(value))
         .filter((value) => value.length > 0 && !looksLikePlaceholderText(value))
@@ -708,7 +966,9 @@ const createProviderCards = (params: {
       const primarySkill = resolvedTags[0] || roleLabel;
       const normalizedBio = normalizeText(profile.bio);
       const bio =
-        (normalizedBio && !looksLikePlaceholderText(normalizedBio) ? normalizedBio : "") ||
+        (normalizedBio && !looksLikePlaceholderText(normalizedBio)
+          ? normalizedBio
+          : "") ||
         (servicesCount + productsCount > 0
           ? "Local provider profile with published marketplace activity."
           : "Published member profile on ServiQ.");
@@ -720,7 +980,11 @@ const createProviderCards = (params: {
         .map((offering) => {
           const title = normalizeText(offering.title);
           const category = normalizeText(offering.category);
-          if (!title || !category || looksLikePlaceholderText(`${title} ${category}`)) {
+          if (
+            !title ||
+            !category ||
+            looksLikePlaceholderText(`${title} ${category}`)
+          ) {
             return null;
           }
 
@@ -733,8 +997,8 @@ const createProviderCards = (params: {
               description && !looksLikePlaceholderText(description)
                 ? description
                 : offering.kind === "product"
-                ? "Published product on ServiQ."
-                : "Published service on ServiQ.",
+                  ? "Published product on ServiQ."
+                  : "Published service on ServiQ.",
           };
         })
         .filter((offering): offering is ProviderOffering => Boolean(offering))
@@ -754,25 +1018,26 @@ const createProviderCards = (params: {
       const recentActivityLabel = online
         ? "Active in the network right now"
         : lastSeenLabel
-        ? `Seen ${formatRelativeTimestamp(lastSeenLabel)}`
-        : demandCount > 0
-        ? `${demandCount} recent marketplace requests`
-        : isNewProvider(profile.created_at || null)
-        ? "New to ServiQ this month"
-        : `${Math.max(1, servicesCount + productsCount)} live offers in the marketplace`;
+          ? `Seen ${formatRelativeTimestamp(lastSeenLabel)}`
+          : demandCount > 0
+            ? `${demandCount} recent marketplace requests`
+            : isNewProvider(profile.created_at || null)
+              ? "New to ServiQ this month"
+              : `${Math.max(1, servicesCount + productsCount)} live offers in the marketplace`;
 
       const trustBlurb =
         verificationStatus === "verified"
           ? "Verified profile with live marketplace signals, trust metadata, and local discovery strength."
           : reviewsCount >= 3 && rating !== null
-          ? `${reviewsCount} real reviews with a ${rating.toFixed(1)} average and active nearby visibility.`
-          : profileCompletion >= 80
-          ? "Strong profile completeness and consistent local discovery signals."
-          : servicesCount + productsCount > 0
-          ? "Published profile with live marketplace listings and clear business identity."
-          : "Published profile with enough identity to start a confident conversation.";
+            ? `${reviewsCount} real reviews with a ${rating.toFixed(1)} average and active nearby visibility.`
+            : profileCompletion >= 80
+              ? "Strong profile completeness and consistent local discovery signals."
+              : servicesCount + productsCount > 0
+                ? "Published profile with live marketplace listings and clear business identity."
+                : "Published profile with enough identity to start a confident conversation.";
 
-      const displayName = getProfileDisplayName(profile) || roleLabel || "Community member";
+      const displayName =
+        getProfileDisplayName(profile) || roleLabel || "Community member";
       const media = (mediaMap.get(profile.id) || []).slice(0, 6);
       const searchDocument = [
         displayName,
@@ -781,7 +1046,12 @@ const createProviderCards = (params: {
         normalizeText(profile.location),
         primarySkill,
         resolvedTags.join(" "),
-        finalOfferings.map((offering) => `${offering.title} ${offering.category} ${offering.description}`).join(" "),
+        finalOfferings
+          .map(
+            (offering) =>
+              `${offering.title} ${offering.category} ${offering.description}`,
+          )
+          .join(" "),
       ]
         .join(" ")
         .toLowerCase();
@@ -801,7 +1071,8 @@ const createProviderCards = (params: {
         role: roleLabel,
         bio,
         location:
-          normalizeText(profile.location) && !looksLikePlaceholderText(profile.location)
+          normalizeText(profile.location) &&
+          !looksLikePlaceholderText(profile.location)
             ? normalizeText(profile.location)
             : "Nearby",
         website: normalizeText(profile.website) || null,
@@ -816,8 +1087,12 @@ const createProviderCards = (params: {
         responseMinutes,
         primarySkill,
         tags: resolvedTags,
-        completedJobs: completedJobsMap.has(profile.id) ? completedJobsMap.get(profile.id) ?? 0 : null,
-        openLeads: openLeadsMap.has(profile.id) ? openLeadsMap.get(profile.id) ?? 0 : null,
+        completedJobs: completedJobsMap.has(profile.id)
+          ? (completedJobsMap.get(profile.id) ?? 0)
+          : null,
+        openLeads: openLeadsMap.has(profile.id)
+          ? (openLeadsMap.get(profile.id) ?? 0)
+          : null,
         profileCompletion,
         rankScore,
         joinedAt: profile.created_at || null,
@@ -839,7 +1114,10 @@ const createProviderCards = (params: {
     })
     .filter((card): card is ProviderCardModel => Boolean(card));
 
-  cards.sort((left, right) => right.rankScore - left.rankScore || left.distanceKm - right.distanceKm);
+  cards.sort(
+    (left, right) =>
+      right.rankScore - left.rankScore || left.distanceKm - right.distanceKm,
+  );
   return cards;
 };
 export default function PeoplePage() {
@@ -861,7 +1139,9 @@ export default function PeoplePage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
-  const [trustPanelProviderId, setTrustPanelProviderId] = useState<string | null>(null);
+  const [trustPanelProviderId, setTrustPanelProviderId] = useState<
+    string | null
+  >(null);
   const [chatBusyUserId, setChatBusyUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -870,14 +1150,21 @@ export default function PeoplePage() {
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [noticeBanner, setNoticeBanner] = useState<PeopleBanner | null>(null);
-  const [realtimeToast, setRealtimeToast] = useState<RealtimeToast | null>(null);
+  const [realtimeToast, setRealtimeToast] = useState<RealtimeToast | null>(
+    null,
+  );
   const [savedCardIds, setSavedCardIds] = useState<Set<string>>(new Set());
   const [savingCardIds, setSavingCardIds] = useState<Set<string>>(new Set());
   const [sharingCardIds, setSharingCardIds] = useState<Set<string>>(new Set());
-  const [viewerCompletionPercent, setViewerCompletionPercent] = useState<number | null>(null);
+  const [viewerCompletionPercent, setViewerCompletionPercent] = useState<
+    number | null
+  >(null);
   const [profileBannerDismissed, setProfileBannerDismissed] = useState(false);
 
-  const [deepLinkContext] = useState<{ providerId: string | null; panel: string | null }>(() => {
+  const [deepLinkContext] = useState<{
+    providerId: string | null;
+    panel: string | null;
+  }>(() => {
     if (typeof window === "undefined") {
       return { providerId: null, panel: null };
     }
@@ -918,102 +1205,126 @@ export default function PeoplePage() {
     return () => window.clearTimeout(timerId);
   }, [realtimeToast]);
 
-  const loadProviders = useCallback(
-    async (soft = false) => {
-      if (soft) {
-        setSyncing(true);
-      } else {
-        setLoading(true);
-      }
-      setErrorMessage("");
+  const loadProviders = useCallback(async (soft = false) => {
+    if (soft) {
+      setSyncing(true);
+    } else {
+      setLoading(true);
+    }
+    setErrorMessage("");
 
+    try {
+      const browserCoordinatesPromise = getBrowserCoordinates(
+        GEO_LOOKUP_TIMEOUT_MS,
+      );
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error(authError?.message || "Login required.");
+      }
+
+      setCurrentUserId(user.id);
+      await ensureClientProfile(user).catch(() => false);
+
+      let peoplePayload: CommunityPeopleSuccessPayload;
       try {
-        const browserCoordinatesPromise = getBrowserCoordinates(GEO_LOOKUP_TIMEOUT_MS);
-
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-          throw new Error(authError?.message || "Login required.");
+        const payload = await fetchAuthedJson<CommunityPeopleResponse>(
+          supabase,
+          "/api/community/people",
+        );
+        if (!payload.ok) {
+          throw new Error(
+            payload.message || "Unable to load people directory.",
+          );
         }
-
-        setCurrentUserId(user.id);
-        await ensureClientProfile(user).catch(() => false);
-
-        let peoplePayload: CommunityPeopleSuccessPayload;
-        try {
-          const payload = await fetchAuthedJson<CommunityPeopleResponse>(supabase, "/api/community/people");
-          if (!payload.ok) {
-            throw new Error(payload.message || "Unable to load people directory.");
-          }
-          peoplePayload = payload;
-        } catch (routeError) {
-          peoplePayload = await loadPeopleSnapshotDirect(user.id).catch((fallbackError) => {
+        peoplePayload = payload;
+      } catch (routeError) {
+        peoplePayload = await loadPeopleSnapshotDirect(user.id).catch(
+          (fallbackError) => {
             const primaryMessage =
-              routeError instanceof Error ? routeError.message : "Unable to load people directory.";
+              routeError instanceof Error
+                ? routeError.message
+                : "Unable to load people directory.";
             const fallbackMessage =
-              fallbackError instanceof Error ? fallbackError.message : "Fallback people load failed.";
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : "Fallback people load failed.";
             throw new Error(primaryMessage || fallbackMessage);
-          });
-        }
-
-        const viewerId = peoplePayload.currentUserId || user.id;
-        setCurrentUserId(viewerId);
-
-        const viewerProfile = ((peoplePayload.profiles || []) as ProfileRow[]).find(
-          (profile) => profile.id === viewerId
+          },
         );
-        if (viewerProfile) {
-          const pct = viewerProfile.profile_completion_percent ?? calculateProfileCompletion(viewerProfile);
-          setViewerCompletionPercent(pct);
-        }
-        const browserCoordinates = await browserCoordinatesPromise;
-        const viewerProfileCoordinates = viewerProfile
-          ? resolveCoordinates({
-              row: viewerProfile as unknown as Record<string, unknown>,
-              location: viewerProfile.location || "",
-              seed: viewerProfile.id,
-            })
-          : null;
-        const effectiveViewerCoordinates = browserCoordinates || viewerProfileCoordinates || defaultMarketCoordinates();
-        const providerIdsForDetails = Array.from(
-          new Set(
-            [
-              ...((peoplePayload.profiles || []) as ProfileRow[]).map((profile) => normalizeText(profile.id)),
-              ...(peoplePayload.services || []).map((row) => normalizeText((row as ServiceRow).provider_id)),
-              ...(peoplePayload.products || []).map((row) => normalizeText((row as ProductRow).provider_id)),
-            ].filter((providerId) => providerId && providerId !== viewerId)
-          )
-        );
-
-        const { serviceDetails, productDetails } = await loadProviderDetails(providerIdsForDetails).catch(() => ({
-          serviceDetails: [] as ServiceDetailRow[],
-          productDetails: [] as ProductDetailRow[],
-        }));
-
-        const cards = createProviderCards({
-          payload: peoplePayload,
-          viewerId,
-          viewerCoordinates: effectiveViewerCoordinates,
-          serviceDetails,
-          productDetails,
-        });
-
-        setProviders(cards);
-        setLastSyncedAt(new Date().toISOString());
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to load people.";
-        setProviders([]);
-        setErrorMessage(message);
-      } finally {
-        setLoading(false);
-        setSyncing(false);
       }
-    },
-    []
-  );
+
+      const viewerId = peoplePayload.currentUserId || user.id;
+      setCurrentUserId(viewerId);
+
+      const viewerProfile = (
+        (peoplePayload.profiles || []) as ProfileRow[]
+      ).find((profile) => profile.id === viewerId);
+      if (viewerProfile) {
+        const pct =
+          viewerProfile.profile_completion_percent ??
+          calculateProfileCompletion(viewerProfile);
+        setViewerCompletionPercent(pct);
+      }
+      const browserCoordinates = await browserCoordinatesPromise;
+      const viewerProfileCoordinates = viewerProfile
+        ? resolveCoordinates({
+            row: viewerProfile as unknown as Record<string, unknown>,
+            location: viewerProfile.location || "",
+            seed: viewerProfile.id,
+          })
+        : null;
+      const effectiveViewerCoordinates =
+        browserCoordinates ||
+        viewerProfileCoordinates ||
+        defaultMarketCoordinates();
+      const providerIdsForDetails = Array.from(
+        new Set(
+          [
+            ...((peoplePayload.profiles || []) as ProfileRow[]).map((profile) =>
+              normalizeText(profile.id),
+            ),
+            ...(peoplePayload.services || []).map((row) =>
+              normalizeText((row as ServiceRow).provider_id),
+            ),
+            ...(peoplePayload.products || []).map((row) =>
+              normalizeText((row as ProductRow).provider_id),
+            ),
+          ].filter((providerId) => providerId && providerId !== viewerId),
+        ),
+      );
+
+      const { serviceDetails, productDetails } = await loadProviderDetails(
+        providerIdsForDetails,
+      ).catch(() => ({
+        serviceDetails: [] as ServiceDetailRow[],
+        productDetails: [] as ProductDetailRow[],
+      }));
+
+      const cards = createProviderCards({
+        payload: peoplePayload,
+        viewerId,
+        viewerCoordinates: effectiveViewerCoordinates,
+        serviceDetails,
+        productDetails,
+      });
+
+      setProviders(cards);
+      setLastSyncedAt(new Date().toISOString());
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to load people.";
+      setProviders([]);
+      setErrorMessage(message);
+    } finally {
+      setLoading(false);
+      setSyncing(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadProviders(false);
@@ -1046,7 +1357,9 @@ export default function PeoplePage() {
         return;
       }
 
-      const cardIds = nextProviders.map((provider) => buildProfileCardId(provider.id));
+      const cardIds = nextProviders.map((provider) =>
+        buildProfileCardId(provider.id),
+      );
       const { data, error } = await supabase
         .from("feed_card_saves")
         .select("card_id")
@@ -1056,7 +1369,9 @@ export default function PeoplePage() {
       if (error) {
         if (isMissingRelationError(error.message || "")) {
           const nextSavedIds = new Set(
-            getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId))
+            getPendingFeedCardIds(viewerId).filter((cardId) =>
+              cardIds.includes(cardId),
+            ),
           );
           setSavedCardIds(nextSavedIds);
           return;
@@ -1064,16 +1379,20 @@ export default function PeoplePage() {
         throw new Error(error.message);
       }
 
-      const persistedCardIds = ((data as SavedCardRow[] | null) || []).map((row) => row.card_id);
+      const persistedCardIds = ((data as SavedCardRow[] | null) || []).map(
+        (row) => row.card_id,
+      );
       prunePendingFeedCardSaves(viewerId, persistedCardIds);
       const nextSavedIds = new Set([
         ...persistedCardIds,
-        ...getPendingFeedCardIds(viewerId).filter((cardId) => cardIds.includes(cardId)),
+        ...getPendingFeedCardIds(viewerId).filter((cardId) =>
+          cardIds.includes(cardId),
+        ),
       ]);
       setSavedCardIds(nextSavedIds);
       void syncPendingFeedCardSaves(supabase, viewerId, persistedCardIds);
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -1084,12 +1403,20 @@ export default function PeoplePage() {
     });
   }, [currentUserId, loadSavedProfiles, providers]);
 
-  const providerById = useMemo(() => new Map(providers.map((provider) => [provider.id, provider])), [providers]);
+  const providerById = useMemo(
+    () => new Map(providers.map((provider) => [provider.id, provider])),
+    [providers],
+  );
 
   const persistProfileShare = useCallback(
-    async (provider: ProviderCardModel, channel: "native" | "clipboard", activeViewerId: string | null) => {
+    async (
+      provider: ProviderCardModel,
+      channel: "native" | "clipboard",
+      activeViewerId: string | null,
+    ) => {
       if (!activeViewerId) return;
-      const profilePath = provider.publicProfilePath || provider.fullProfilePath;
+      const profilePath =
+        provider.publicProfilePath || provider.fullProfilePath;
 
       const { error } = await supabase.from("feed_card_shares").insert({
         user_id: activeViewerId,
@@ -1102,7 +1429,9 @@ export default function PeoplePage() {
           kind: "people_profile",
           image: provider.media[0]?.url || provider.avatar,
           mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
-          priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
+          priceLabel: provider.minPriceLabel
+            ? `From ${provider.minPriceLabel}`
+            : null,
           audienceName: provider.location,
           tags: provider.tags.slice(0, 3),
           actionPath: profilePath,
@@ -1114,7 +1443,7 @@ export default function PeoplePage() {
         console.warn("Failed to persist profile share:", error.message);
       }
     },
-    []
+    [],
   );
 
   const handleConnect = useCallback(
@@ -1122,7 +1451,9 @@ export default function PeoplePage() {
       setNoticeBanner(null);
       try {
         if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
+          throw new Error(
+            connectionSchemaMessage || "Connections are not configured yet.",
+          );
         }
 
         if (!isUuid(providerId)) {
@@ -1147,11 +1478,20 @@ export default function PeoplePage() {
       } catch (error) {
         setNoticeBanner({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unable to send connection request.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to send connection request.",
         });
       }
     },
-    [connectionSchemaMessage, connectionSchemaReady, ensureViewerId, getConnectionState, sendRequest]
+    [
+      connectionSchemaMessage,
+      connectionSchemaReady,
+      ensureViewerId,
+      getConnectionState,
+      sendRequest,
+    ],
   );
 
   const handleConnectionDecision = useCallback(
@@ -1159,7 +1499,9 @@ export default function PeoplePage() {
       setNoticeBanner(null);
       try {
         if (!connectionSchemaReady) {
-          throw new Error(connectionSchemaMessage || "Connections are not configured yet.");
+          throw new Error(
+            connectionSchemaMessage || "Connections are not configured yet.",
+          );
         }
 
         await respond(requestId, decision);
@@ -1169,17 +1511,20 @@ export default function PeoplePage() {
             decision === "accepted"
               ? "Connection accepted."
               : decision === "rejected"
-              ? "Connection request declined."
-              : "Connection request cancelled.",
+                ? "Connection request declined."
+                : "Connection request cancelled.",
         });
       } catch (error) {
         setNoticeBanner({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unable to update connection request.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to update connection request.",
         });
       }
     },
-    [connectionSchemaMessage, connectionSchemaReady, respond]
+    [connectionSchemaMessage, connectionSchemaReady, respond],
   );
   const openChatThread = useCallback(
     async (providerId: string) => {
@@ -1195,18 +1540,25 @@ export default function PeoplePage() {
           throw new Error("This is your own profile.");
         }
 
-        const conversationId = await getOrCreateDirectConversationId(supabase, viewerId, providerId);
-        router.push(`/dashboard/chat?open=${encodeURIComponent(conversationId)}`);
+        const conversationId = await getOrCreateDirectConversationId(
+          supabase,
+          viewerId,
+          providerId,
+        );
+        router.push(
+          `/dashboard/chat?open=${encodeURIComponent(conversationId)}`,
+        );
       } catch (error) {
         setNoticeBanner({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unable to open chat.",
+          message:
+            error instanceof Error ? error.message : "Unable to open chat.",
         });
       } finally {
         setChatBusyUserId(null);
       }
     },
-    [ensureViewerId, router]
+    [ensureViewerId, router],
   );
 
   const handleToggleSave = useCallback(
@@ -1231,7 +1583,8 @@ export default function PeoplePage() {
 
       try {
         const viewerId = await ensureViewerId();
-        const profilePath = provider.publicProfilePath || provider.fullProfilePath;
+        const profilePath =
+          provider.publicProfilePath || provider.fullProfilePath;
         const savePayload = {
           card_id: cardId,
           focus_id: provider.id,
@@ -1243,7 +1596,9 @@ export default function PeoplePage() {
             kind: "people_profile",
             image: provider.media[0]?.url || provider.avatar,
             mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
-            priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
+            priceLabel: provider.minPriceLabel
+              ? `From ${provider.minPriceLabel}`
+              : null,
             audienceName: provider.location,
             tags: provider.tags.slice(0, 3),
             role: provider.role,
@@ -1266,7 +1621,8 @@ export default function PeoplePage() {
       } catch (error) {
         try {
           const viewerId = await ensureViewerId();
-          const profilePath = provider.publicProfilePath || provider.fullProfilePath;
+          const profilePath =
+            provider.publicProfilePath || provider.fullProfilePath;
           const rollbackPayload = {
             card_id: cardId,
             focus_id: provider.id,
@@ -1277,8 +1633,12 @@ export default function PeoplePage() {
             metadata: {
               kind: "people_profile",
               image: provider.media[0]?.url || provider.avatar,
-              mediaGallery: provider.media.map((entry) => entry.url).slice(0, 3),
-              priceLabel: provider.minPriceLabel ? `From ${provider.minPriceLabel}` : null,
+              mediaGallery: provider.media
+                .map((entry) => entry.url)
+                .slice(0, 3),
+              priceLabel: provider.minPriceLabel
+                ? `From ${provider.minPriceLabel}`
+                : null,
               audienceName: provider.location,
               tags: provider.tags.slice(0, 3),
               role: provider.role,
@@ -1307,7 +1667,10 @@ export default function PeoplePage() {
 
         setNoticeBanner({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unable to update saved state.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to update saved state.",
         });
       } finally {
         setSavingCardIds((current) => {
@@ -1317,7 +1680,7 @@ export default function PeoplePage() {
         });
       }
     },
-    [ensureViewerId, providerById, savedCardIds]
+    [ensureViewerId, providerById, savedCardIds],
   );
 
   const handleShareProvider = useCallback(
@@ -1355,7 +1718,9 @@ export default function PeoplePage() {
           throw new Error("This browser does not support clipboard sharing.");
         }
 
-        await navigator.clipboard.writeText(`${provider.name}\n${shareText}\n${shareUrl}`);
+        await navigator.clipboard.writeText(
+          `${provider.name}\n${shareText}\n${shareUrl}`,
+        );
         await persistProfileShare(provider, "clipboard", activeViewerId);
         setNoticeBanner({ kind: "success", message: "Profile link copied." });
       } catch (error) {
@@ -1365,7 +1730,10 @@ export default function PeoplePage() {
 
         setNoticeBanner({
           kind: "error",
-          message: error instanceof Error ? error.message : "Unable to share right now.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to share right now.",
         });
       } finally {
         setSharingCardIds((current) => {
@@ -1375,41 +1743,52 @@ export default function PeoplePage() {
         });
       }
     },
-    [ensureViewerId, persistProfileShare, providerById]
+    [ensureViewerId, persistProfileShare, providerById],
   );
 
   const getPresenceTone = useCallback(
     (provider: ProviderCardModel): PresenceTone => {
       if (onlineUserIds.has(provider.id) || provider.online) return "online";
       const availability = normalizeText(provider.availability).toLowerCase();
-      if (availability.includes("away") || availability.includes("busy") || availability.includes("idle")) {
+      if (
+        availability.includes("away") ||
+        availability.includes("busy") ||
+        availability.includes("idle")
+      ) {
         return "away";
       }
       return "offline";
     },
-    [onlineUserIds]
+    [onlineUserIds],
   );
 
   const filteredProviders = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
     if (!query) return providers;
 
-    return providers.filter((provider) => provider.searchDocument.includes(query));
+    return providers.filter((provider) =>
+      provider.searchDocument.includes(query),
+    );
   }, [deferredSearchQuery, providers]);
 
   const discoveryProviders = useMemo(() => {
-    const presenceWeight = (tone: PresenceTone) => (tone === "online" ? 2 : tone === "away" ? 1 : 0);
+    const presenceWeight = (tone: PresenceTone) =>
+      tone === "online" ? 2 : tone === "away" ? 1 : 0;
 
     return [...filteredProviders].sort((left, right) => {
       const leftPresence = presenceWeight(getPresenceTone(left));
       const rightPresence = presenceWeight(getPresenceTone(right));
-      return right.rankScore - left.rankScore || rightPresence - leftPresence || left.distanceKm - right.distanceKm;
+      return (
+        right.rankScore - left.rankScore ||
+        rightPresence - leftPresence ||
+        left.distanceKm - right.distanceKm
+      );
     });
   }, [filteredProviders, getPresenceTone]);
 
   const visibleProviders = useMemo(
     () => discoveryProviders.slice(0, Math.max(PAGE_SIZE, visibleCount)),
-    [discoveryProviders, visibleCount]
+    [discoveryProviders, visibleCount],
   );
   const hasMoreProviders = visibleCount < discoveryProviders.length;
 
@@ -1445,12 +1824,14 @@ export default function PeoplePage() {
         }
 
         loadMoreTimerRef.current = window.setTimeout(() => {
-          setVisibleCount((previous) => Math.min(previous + PAGE_SIZE, discoveryProviders.length));
+          setVisibleCount((previous) =>
+            Math.min(previous + PAGE_SIZE, discoveryProviders.length),
+          );
           setLoadingMore(false);
           loadMoreTimerRef.current = null;
         }, 220);
       },
-      { rootMargin: "240px 0px" }
+      { rootMargin: "240px 0px" },
     );
 
     observer.observe(sentinel);
@@ -1463,20 +1844,26 @@ export default function PeoplePage() {
       return;
     }
 
-    if (activeProviderId && visibleProviders.some((provider) => provider.id === activeProviderId)) {
+    if (
+      activeProviderId &&
+      visibleProviders.some((provider) => provider.id === activeProviderId)
+    ) {
       return;
     }
 
     setActiveProviderId(visibleProviders[0].id);
   }, [activeProviderId, visibleProviders]);
 
-  const setCardElement = useCallback((providerId: string, element: HTMLDivElement | null) => {
-    if (element) {
-      cardElementsRef.current.set(providerId, element);
-      return;
-    }
-    cardElementsRef.current.delete(providerId);
-  }, []);
+  const setCardElement = useCallback(
+    (providerId: string, element: HTMLDivElement | null) => {
+      if (element) {
+        cardElementsRef.current.set(providerId, element);
+        return;
+      }
+      cardElementsRef.current.delete(providerId);
+    },
+    [],
+  );
 
   const jumpToProviderCard = useCallback((providerId: string) => {
     setActiveProviderId(providerId);
@@ -1508,7 +1895,7 @@ export default function PeoplePage() {
       onValueChange: setSearchQuery,
       onSubmit: handlePeoplePromptSubmit,
     }),
-    [handlePeoplePromptSubmit, searchQuery]
+    [handlePeoplePromptSubmit, searchQuery],
   );
 
   useDashboardPrompt(peoplePromptConfig);
@@ -1520,16 +1907,19 @@ export default function PeoplePage() {
       (entries) => {
         const mostVisibleEntry = [...entries]
           .filter((entry) => entry.isIntersecting)
-          .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+          .sort(
+            (left, right) => right.intersectionRatio - left.intersectionRatio,
+          )[0];
 
-        const providerId = mostVisibleEntry?.target.getAttribute("data-provider-id");
+        const providerId =
+          mostVisibleEntry?.target.getAttribute("data-provider-id");
         if (!providerId) return;
         setActiveProviderId(providerId);
       },
       {
         threshold: [0.35, 0.55, 0.75],
         rootMargin: "-10% 0px -18% 0px",
-      }
+      },
     );
 
     visibleProviders.forEach((provider) => {
@@ -1544,7 +1934,12 @@ export default function PeoplePage() {
 
   useEffect(() => {
     if (!deepLinkContext.providerId || deepLinkHandledRef.current) return;
-    if (!visibleProviders.some((provider) => provider.id === deepLinkContext.providerId)) return;
+    if (
+      !visibleProviders.some(
+        (provider) => provider.id === deepLinkContext.providerId,
+      )
+    )
+      return;
 
     deepLinkHandledRef.current = true;
     jumpToProviderCard(deepLinkContext.providerId);
@@ -1589,19 +1984,34 @@ export default function PeoplePage() {
       }, 260);
     };
 
-    const handleConnectionRealtimeEvent = (payload: RealtimePostgresChangesPayload<RealtimeConnectionRow>) => {
+    const handleConnectionRealtimeEvent = (
+      payload: RealtimePostgresChangesPayload<RealtimeConnectionRow>,
+    ) => {
       const nextRow = (payload.new as RealtimeConnectionRow | null) || null;
       const previousRow = (payload.old as RealtimeConnectionRow | null) || null;
-      const requesterId = normalizeText(nextRow?.requester_id || previousRow?.requester_id);
-      const recipientId = normalizeText(nextRow?.recipient_id || previousRow?.recipient_id);
-      const status = normalizeText(nextRow?.status || previousRow?.status).toLowerCase();
-      const isRelevant = requesterId === currentUserId || recipientId === currentUserId;
+      const requesterId = normalizeText(
+        nextRow?.requester_id || previousRow?.requester_id,
+      );
+      const recipientId = normalizeText(
+        nextRow?.recipient_id || previousRow?.recipient_id,
+      );
+      const status = normalizeText(
+        nextRow?.status || previousRow?.status,
+      ).toLowerCase();
+      const isRelevant =
+        requesterId === currentUserId || recipientId === currentUserId;
       if (!isRelevant) return;
 
       scheduleReload();
 
-      if (payload.eventType === "INSERT" && recipientId === currentUserId && status === "pending") {
-        const requesterName = providerPreviewRef.current.get(requesterId)?.name || "A nearby member";
+      if (
+        payload.eventType === "INSERT" &&
+        recipientId === currentUserId &&
+        status === "pending"
+      ) {
+        const requesterName =
+          providerPreviewRef.current.get(requesterId)?.name ||
+          "A nearby member";
         setRealtimeToast({
           id: Date.now(),
           message: `${requesterName} just sent you a connection request.`,
@@ -1609,9 +2019,13 @@ export default function PeoplePage() {
       }
     };
 
-    const handleSavedRealtimeEvent = (payload: RealtimePostgresChangesPayload<{ card_id?: string | null }>) => {
-      const nextRow = (payload.new as { card_id?: string | null } | null) || null;
-      const previousRow = (payload.old as { card_id?: string | null } | null) || null;
+    const handleSavedRealtimeEvent = (
+      payload: RealtimePostgresChangesPayload<{ card_id?: string | null }>,
+    ) => {
+      const nextRow =
+        (payload.new as { card_id?: string | null } | null) || null;
+      const previousRow =
+        (payload.old as { card_id?: string | null } | null) || null;
       const cardId = normalizeText(nextRow?.card_id || previousRow?.card_id);
       if (!cardId.startsWith("people:")) return;
 
@@ -1656,14 +2070,46 @@ export default function PeoplePage() {
 
     let realtimeChannel = supabase
       .channel(`people-live-${currentUserId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "service_listings" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "product_catalog" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "provider_presence" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "help_requests" }, scheduleReload)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "service_listings" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "product_catalog" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "provider_presence" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reviews" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        scheduleReload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "help_requests" },
+        scheduleReload,
+      )
       .on(
         "postgres_changes",
         {
@@ -1672,14 +2118,14 @@ export default function PeoplePage() {
           table: "feed_card_saves",
           filter: `user_id=eq.${currentUserId}`,
         },
-        handleSavedRealtimeEvent
+        handleSavedRealtimeEvent,
       );
 
     if (connectionSchemaReady) {
       realtimeChannel = realtimeChannel.on(
         "postgres_changes",
         { event: "*", schema: "public", table: "connection_requests" },
-        handleConnectionRealtimeEvent
+        handleConnectionRealtimeEvent,
       );
     }
 
@@ -1712,8 +2158,10 @@ export default function PeoplePage() {
   }, [connectionSchemaReady, currentUserId, loadProviders]);
 
   const activeNow = useMemo(
-    () => providers.filter((provider) => getPresenceTone(provider) === "online").length,
-    [getPresenceTone, providers]
+    () =>
+      providers.filter((provider) => getPresenceTone(provider) === "online")
+        .length,
+    [getPresenceTone, providers],
   );
 
   return (
@@ -1738,11 +2186,27 @@ export default function PeoplePage() {
         providerPreviewMap={providerPreviewMap}
         busyRequestId={busyConnectionRequestId}
         busyActionKey={busyActionKey}
-        initialPanel={deepLinkContext.panel === "incoming" ? "incoming" : deepLinkContext.panel === "outgoing" ? "outgoing" : deepLinkContext.panel === "connected" ? "connected" : null}
-        onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
-        onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
-        onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
-        onDisconnect={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
+        initialPanel={
+          deepLinkContext.panel === "incoming"
+            ? "incoming"
+            : deepLinkContext.panel === "outgoing"
+              ? "outgoing"
+              : deepLinkContext.panel === "connected"
+                ? "connected"
+                : null
+        }
+        onAccept={(requestId) =>
+          void handleConnectionDecision(requestId, "accepted")
+        }
+        onDecline={(requestId) =>
+          void handleConnectionDecision(requestId, "rejected")
+        }
+        onCancel={(requestId) =>
+          void handleConnectionDecision(requestId, "cancelled")
+        }
+        onDisconnect={(requestId) =>
+          void handleConnectionDecision(requestId, "cancelled")
+        }
       />
 
       <PageContextStrip
@@ -1752,44 +2216,56 @@ export default function PeoplePage() {
         switchAction={{ label: "Open Welcome", href: "/dashboard/welcome" }}
       />
 
-      {viewerCompletionPercent !== null && viewerCompletionPercent < 70 && !profileBannerDismissed && (
-        <div className="rounded-[1.6rem] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-3 shadow-sm sm:px-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-indigo-900">Your profile is {viewerCompletionPercent}% complete</p>
-                <p className="mt-0.5 text-xs text-slate-600">A complete profile gets 3× more connection requests and quote inquiries.</p>
-                <div className="mt-2 h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-indigo-200">
-                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all" style={{ width: `${viewerCompletionPercent}%` }} />
+      {viewerCompletionPercent !== null &&
+        viewerCompletionPercent < 70 &&
+        !profileBannerDismissed && (
+          <div className="rounded-[1.6rem] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-sky-50 px-4 py-3 shadow-sm sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-indigo-900">
+                    Your profile is {viewerCompletionPercent}% complete
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    A complete profile gets 3× more connection requests and
+                    quote inquiries.
+                  </p>
+                  <div className="mt-2 h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-indigo-200">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all"
+                      style={{ width: `${viewerCompletionPercent}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/profile")}
-                className="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
-              >
-                Complete profile
-              </button>
-              <button
-                type="button"
-                onClick={() => setProfileBannerDismissed(true)}
-                className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-              >
-                Dismiss
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/profile")}
+                  className="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  Complete profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfileBannerDismissed(true)}
+                  className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {!connectionSchemaReady && !!connectionSchemaMessage && (
         <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm sm:px-5">
           <div className="flex items-start gap-3">
             <Bell className="mt-0.5 h-4 w-4 shrink-0" />
-            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">{connectionSchemaMessage}</p>
+            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">
+              {connectionSchemaMessage}
+            </p>
           </div>
         </div>
       )}
@@ -1818,8 +2294,8 @@ export default function PeoplePage() {
             noticeBanner.kind === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-700"
               : noticeBanner.kind === "error"
-              ? "border-rose-200 bg-rose-50 text-rose-700"
-              : "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-cyan-200 bg-cyan-50 text-[var(--brand-700)]"
           }`}
         >
           <div className="flex items-start gap-3">
@@ -1830,7 +2306,9 @@ export default function PeoplePage() {
             ) : (
               <Bell className="mt-0.5 h-4 w-4 shrink-0" />
             )}
-            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">{noticeBanner.message}</p>
+            <p className="min-w-0 leading-6 [overflow-wrap:anywhere]">
+              {noticeBanner.message}
+            </p>
           </div>
         </div>
       )}
@@ -1844,10 +2322,13 @@ export default function PeoplePage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                 <Users className="h-7 w-7" />
               </div>
-              <p className="mt-4 text-xl font-semibold text-slate-900">No business profiles are visible yet</p>
+              <p className="mt-4 text-xl font-semibold text-slate-900">
+                No business profiles are visible yet
+              </p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                ServiQ will populate this discovery feed automatically as nearby people publish their business profiles,
-                services, and trust details.
+                ServiQ will populate this discovery feed automatically as nearby
+                people publish their business profiles, services, and trust
+                details.
               </p>
               <button
                 type="button"
@@ -1864,7 +2345,9 @@ export default function PeoplePage() {
                 <Compass className="h-7 w-7" />
               </div>
               <p className="mt-4 text-xl font-semibold text-slate-900">
-                {searchQuery.trim() ? "No people match this search yet" : "No providers found yet"}
+                {searchQuery.trim()
+                  ? "No people match this search yet"
+                  : "No providers found yet"}
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 {searchQuery.trim()
@@ -1902,10 +2385,13 @@ export default function PeoplePage() {
                 className="grid grid-cols-2 items-start gap-3 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4"
               >
                 {visibleProviders.map((provider) => {
-                  const connectionState = getConnectionState(provider.id) || EMPTY_CONNECTION_STATE;
+                  const connectionState =
+                    getConnectionState(provider.id) || EMPTY_CONNECTION_STATE;
                   const connectionBusy =
                     busyConnectionTargetId === provider.id ||
-                    (connectionState.requestId ? busyConnectionRequestId === connectionState.requestId : false);
+                    (connectionState.requestId
+                      ? busyConnectionRequestId === connectionState.requestId
+                      : false);
                   const cardId = buildProfileCardId(provider.id);
 
                   return (
@@ -1916,7 +2402,11 @@ export default function PeoplePage() {
                       className="scroll-mt-28"
                       variants={{
                         hidden: { opacity: 0, y: 18 },
-                        show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+                        show: {
+                          opacity: 1,
+                          y: 0,
+                          transition: { duration: 0.3, ease: "easeOut" },
+                        },
                       }}
                     >
                       <ProviderCard
@@ -1932,16 +2422,31 @@ export default function PeoplePage() {
                         shareBusy={sharingCardIds.has(cardId)}
                         onActivate={setActiveProviderId}
                         onConnect={handleConnect}
-                        onAccept={(requestId) => void handleConnectionDecision(requestId, "accepted")}
-                        onDecline={(requestId) => void handleConnectionDecision(requestId, "rejected")}
-                        onCancel={(requestId) => void handleConnectionDecision(requestId, "cancelled")}
-                        onMessage={(providerId) => void openChatThread(providerId)}
-                        onToggleSave={(providerId) => void handleToggleSave(providerId)}
-                        onShare={(providerId) => void handleShareProvider(providerId)}
+                        onAccept={(requestId) =>
+                          void handleConnectionDecision(requestId, "accepted")
+                        }
+                        onDecline={(requestId) =>
+                          void handleConnectionDecision(requestId, "rejected")
+                        }
+                        onCancel={(requestId) =>
+                          void handleConnectionDecision(requestId, "cancelled")
+                        }
+                        onMessage={(providerId) =>
+                          void openChatThread(providerId)
+                        }
+                        onToggleSave={(providerId) =>
+                          void handleToggleSave(providerId)
+                        }
+                        onShare={(providerId) =>
+                          void handleShareProvider(providerId)
+                        }
                         onViewProfile={(providerId) => {
                           const selectedProvider = providerById.get(providerId);
                           if (!selectedProvider) return;
-                          router.push(selectedProvider.publicProfilePath || selectedProvider.fullProfilePath);
+                          router.push(
+                            selectedProvider.publicProfilePath ||
+                              selectedProvider.fullProfilePath,
+                          );
                         }}
                       />
                     </motion.div>
@@ -1950,14 +2455,19 @@ export default function PeoplePage() {
               </motion.section>
 
               {hasMoreProviders && (
-                <div ref={infiniteSentinelRef} className="flex justify-center py-2">
+                <div
+                  ref={infiniteSentinelRef}
+                  className="flex justify-center py-2"
+                >
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
                     {loadingMore ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Sparkles className="h-4 w-4 text-[var(--brand-700)]" />
                     )}
-                    {loadingMore ? "Loading more profiles..." : "Scroll for the next business showcase"}
+                    {loadingMore
+                      ? "Loading more profiles..."
+                      : "Scroll for the next business showcase"}
                   </div>
                 </div>
               )}
@@ -1978,8 +2488,12 @@ export default function PeoplePage() {
             <div className="flex items-start gap-3">
               <Bell className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">Incoming request</p>
-                <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">{realtimeToast.message}</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  Incoming request
+                </p>
+                <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">
+                  {realtimeToast.message}
+                </p>
               </div>
             </div>
           </motion.div>

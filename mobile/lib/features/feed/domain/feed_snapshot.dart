@@ -43,6 +43,19 @@ enum MobileFeedSource {
         return 'Product';
     }
   }
+
+  String get apiValue {
+    switch (this) {
+      case MobileFeedSource.helpRequest:
+        return 'help_request';
+      case MobileFeedSource.post:
+        return 'post';
+      case MobileFeedSource.serviceListing:
+        return 'service_listing';
+      case MobileFeedSource.productListing:
+        return 'product_listing';
+    }
+  }
 }
 
 class MobileFeedSnapshot {
@@ -50,6 +63,11 @@ class MobileFeedSnapshot {
     required this.currentUserId,
     required this.stats,
     required this.items,
+    this.acceptedConnectionIds = const <String>[],
+    this.savedCardIds = const <String>{},
+    this.viewerRoleFamily = 'seeker',
+    this.defaultHomeSurface = 'for_you',
+    this.defaultHomeReason = '',
   });
 
   factory MobileFeedSnapshot.fromJson(Map<String, dynamic> json) {
@@ -64,12 +82,37 @@ class MobileFeedSnapshot {
           .whereType<Map>()
           .map((item) => MobileFeedItem.fromJson(Map<String, dynamic>.from(item)))
           .toList(),
+      acceptedConnectionIds:
+          ((json['acceptedConnectionIds'] as List?) ?? const [])
+              .whereType<String>()
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toList(),
+      savedCardIds: ((json['savedCardIds'] as List?) ?? const [])
+          .whereType<String>()
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet(),
+      viewerRoleFamily: _readString(
+        json['viewerRoleFamily'],
+        fallback: 'seeker',
+      ),
+      defaultHomeSurface: _readString(
+        json['defaultHomeSurface'],
+        fallback: 'for_you',
+      ),
+      defaultHomeReason: _readString(json['defaultHomeReason']),
     );
   }
 
   final String currentUserId;
   final MobileFeedStats stats;
   final List<MobileFeedItem> items;
+  final List<String> acceptedConnectionIds;
+  final Set<String> savedCardIds;
+  final String viewerRoleFamily;
+  final String defaultHomeSurface;
+  final String defaultHomeReason;
 
   List<MobileFeedItem> get requests =>
       items.where((item) => item.type == MobileFeedItemType.demand).toList();
@@ -131,6 +174,20 @@ class MobileFeedItem {
     required this.listingCount,
     required this.urgent,
     required this.mediaCount,
+    this.cardId = '',
+    this.sourceType = 'nearby_public',
+    this.thumbnailUrl = '',
+    this.priorityScore = 0,
+    this.feedReason = '',
+    this.whyThisCard = '',
+    this.mutualConnectionsCount = 0,
+    this.responseEta = '',
+    this.viewerRoleFit = '',
+    this.activeNow = false,
+    this.lastActiveLabel = '',
+    this.responseReliability = '',
+    this.contactPhone = '',
+    this.canCall = false,
     this.status = 'open',
     this.acceptedProviderId,
     this.viewerMatchStatus,
@@ -138,7 +195,7 @@ class MobileFeedItem {
   });
 
   factory MobileFeedItem.fromJson(Map<String, dynamic> json) {
-    final type = _parseType(json['type'] as String?);
+    final type = _parseType(_readString(json['type']));
     final title = _readString(json['title'], fallback: _defaultTitle(type));
     final description = _readString(
       json['description'],
@@ -162,6 +219,7 @@ class MobileFeedItem {
         json['providerId'],
         fallback: _readString(json['provider_id']),
       ),
+      source: _parseSource(_readString(json['source'])),
       source: _parseSource(json['source'] as String?),
       helpRequestId: _nullableString(json['helpRequestId']),
       type: type,
@@ -173,7 +231,7 @@ class MobileFeedItem {
       locationLabel: location,
       statusLabel: displayStatus,
       priceLabel: _formatPrice(type: type, price: _toDouble(json['price'])),
-      timeLabel: _formatTimeAgo(json['createdAt'] as String?),
+      timeLabel: _formatTimeAgo(_readString(json['createdAt'])),
       distanceLabel: _formatDistance(
         _toDouble(json['distanceKm']),
         fallback: location,
@@ -191,6 +249,35 @@ class MobileFeedItem {
       listingCount: _toInt(json['listingCount']),
       urgent: json['urgent'] == true,
       mediaCount: mediaCount,
+      cardId: _readString(
+        json['cardId'] ?? json['card_id'],
+        fallback:
+            'dashboard:${_readString(json['source'], fallback: 'help_request')}:${_readString(json['type'], fallback: 'demand')}:${_readString(json['id'])}',
+      ),
+      sourceType: _readString(
+        json['sourceType'] ?? json['source_type'],
+        fallback: 'nearby_public',
+      ),
+      thumbnailUrl: _readString(json['thumbnailUrl'] ?? json['thumbnail_url']),
+      priorityScore: _toInt(json['priorityScore'] ?? json['priority_score']),
+      feedReason: _readString(json['feedReason'] ?? json['feed_reason']),
+      whyThisCard: _readString(json['whyThisCard'] ?? json['why_this_card']),
+      mutualConnectionsCount: _toInt(
+        json['mutualConnectionsCount'] ?? json['mutual_connections_count'],
+      ),
+      responseEta: _readString(json['responseEta'] ?? json['response_eta']),
+      viewerRoleFit: _readString(
+        json['viewerRoleFit'] ?? json['viewer_role_fit'],
+      ),
+      activeNow: json['activeNow'] == true || json['active_now'] == true,
+      lastActiveLabel: _readString(
+        json['lastActiveLabel'] ?? json['last_active_label'],
+      ),
+      responseReliability: _readString(
+        json['responseReliability'] ?? json['response_reliability'],
+      ),
+      contactPhone: _readString(json['contactPhone'] ?? json['contact_phone']),
+      canCall: json['canCall'] == true || json['can_call'] == true,
       status: status,
       acceptedProviderId: _nullableString(json['acceptedProviderId']),
       viewerMatchStatus: matchStatus,
@@ -223,6 +310,24 @@ class MobileFeedItem {
   final int listingCount;
   final bool urgent;
   final int mediaCount;
+  final String cardId;
+  final String sourceType;
+  final String thumbnailUrl;
+  final int priorityScore;
+  final String feedReason;
+  final String whyThisCard;
+  final int mutualConnectionsCount;
+  final String responseEta;
+  final String viewerRoleFit;
+  final bool activeNow;
+  final String lastActiveLabel;
+  final String responseReliability;
+  final String contactPhone;
+  final bool canCall;
+
+  bool get hasMedia => mediaCount > 0;
+  bool get hasPreviewImage => thumbnailUrl.trim().isNotEmpty;
+  bool get isVerified => verificationStatus == 'verified';
   final String status;
   final String? acceptedProviderId;
   final String? viewerMatchStatus;
@@ -232,7 +337,14 @@ class MobileFeedItem {
 
   bool get isVerified => verificationStatus.toLowerCase() == 'verified';
 
+  String get cardKey => cardId.trim().isNotEmpty
+      ? cardId
+      : 'dashboard:${source.apiValue}:${type.name}:$id';
+
   String get trustLabel {
+    if (sourceType == 'accepted_connection') {
+      return 'Accepted connection';
+    }
     if (isVerified) {
       return 'Verified';
     }
@@ -243,10 +355,47 @@ class MobileFeedItem {
   }
 
   String get responseLabel {
+    if (responseEta.trim().isNotEmpty) {
+      return responseEta;
+    }
     if (responseMinutes > 0) {
       return 'Replies in $responseMinutes min';
     }
     return 'Response time building';
+  }
+
+  String get sourceTypeLabel {
+    switch (sourceType.trim().toLowerCase()) {
+      case 'accepted_connection':
+        return 'Accepted connection';
+      case 'recommended':
+        return 'Recommended';
+      default:
+        return 'Nearby public';
+    }
+  }
+
+  String get roleFitLabel {
+    switch (viewerRoleFit.trim().toLowerCase()) {
+      case 'earn':
+        return 'Earn nearby';
+      case 'hire':
+        return 'Great to hire';
+      case 'benchmark':
+        return 'Good benchmark';
+      default:
+        return 'For you';
+    }
+  }
+
+  String get socialProofLabel {
+    if (mutualConnectionsCount > 0) {
+      return '$mutualConnectionsCount mutual${mutualConnectionsCount == 1 ? '' : 's'}';
+    }
+    if (completedJobs > 0) {
+      return '$completedJobs jobs completed';
+    }
+    return trustLabel;
   }
 
   String get ratingLabel {
