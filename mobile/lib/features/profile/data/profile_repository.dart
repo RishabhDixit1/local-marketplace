@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 import '../domain/mobile_profile_snapshot.dart';
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {

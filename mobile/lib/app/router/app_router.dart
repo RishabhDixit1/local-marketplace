@@ -2,26 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/constants/app_routes.dart';
 import '../../core/auth/auth_state_controller.dart';
+import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
-import '../../features/chat/presentation/chat_page.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/chat/presentation/chat_page.dart';
 import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/home/presentation/home_shell_page.dart';
-import '../../features/notifications/presentation/notifications_page.dart';
-import '../../features/people/presentation/people_page.dart';
-import '../../features/post_create/presentation/create_need_page.dart';
-import '../../features/provider/presentation/provider_onboarding_page.dart';
-import '../../features/provider/presentation/provider_profile_page.dart';
-import '../../features/profile/presentation/profile_page.dart';
-import '../../features/search/presentation/search_page.dart';
 import '../../features/inbox/presentation/inbox_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
+import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/provider/presentation/provider_onboarding_page.dart';
+import '../../features/provider/presentation/provider_profile_page.dart';
+import '../../features/search/presentation/search_page.dart';
 import '../../features/task_post/presentation/task_post_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
@@ -67,7 +64,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        builder: (context, state) => const SizedBox.shrink(),
+        builder: (context, state) => const _RouterPlaceholder(),
       ),
       GoRoute(
         path: AppRoutes.setup,
@@ -80,28 +77,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.createRequest,
         builder: (context, state) => const CreateNeedPage(),
+      ),
+      GoRoute(
         path: '/app/post-task',
         builder: (context, state) => const TaskPostPage(),
-      ),
-      GoRoute(
-        path: '/app/inbox',
-        builder: (context, state) => const InboxPage(),
-        routes: [
-          GoRoute(
-            path: ':conversationId',
-            builder: (context, state) => ChatThreadPage(
-              conversationId: state.pathParameters['conversationId']!,
-            ),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: '/app/notifications',
-        builder: (context, state) => const NotificationsPage(),
-      ),
-      GoRoute(
-        path: '/app/profile',
-        builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(
         path: AppRoutes.search,
@@ -125,10 +104,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProviderOnboardingPage(),
       ),
       GoRoute(
+        path: AppRoutes.control,
+        builder: (context, state) => const ControlPage(),
+      ),
+      GoRoute(
         path: '/app/provider/:providerId',
         builder: (context, state) => ProviderProfilePage(
           providerId: state.pathParameters['providerId'] ?? '',
         ),
+      ),
+      GoRoute(
+        path: '/app/inbox',
+        builder: (context, state) => const InboxPage(),
+        routes: [
+          GoRoute(
+            path: ':conversationId',
+            builder: (context, state) => ChatThreadPage(
+              conversationId: state.pathParameters['conversationId'] ?? '',
+            ),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -140,8 +135,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.home,
                 builder: (context, state) => const WelcomePage(),
-                builder: (context, state) =>
-                    const FeedPage(mode: FeedPageMode.welcome),
               ),
             ],
           ),
@@ -149,7 +142,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.explore,
-                builder: (context, state) => const FeedPage(),
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
               ),
@@ -176,8 +168,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfilePage(),
-                path: '/app/control',
-                builder: (context, state) => const ControlPage(),
               ),
             ],
           ),
@@ -186,3 +176,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _RouterPlaceholder extends StatelessWidget {
+  const _RouterPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: SizedBox.shrink());
+  }
+}

@@ -100,8 +100,8 @@ class MobilePeopleSnapshot {
       }
 
       addTag(requesterId, row['category']);
-      if (_readString(row['status'], fallback: 'open').toLowerCase() !=
-          'completed') {
+      final status = _readString(row['status'], fallback: 'open').toLowerCase();
+      if (status != 'completed' && status != 'closed') {
         liveRequestsByProfile.update(
           requesterId,
           (count) => count + 1,
@@ -168,7 +168,9 @@ class MobilePeopleSnapshot {
           final openLeads = _toInt(orderStats['open_leads']);
           final isOnline = presence['is_online'] == true;
           final responseMinutes = _toInt(presence['rolling_response_minutes']);
-          final verificationLevel = _humanize(_readString(profile['verification_level']));
+          final verificationLevel = _humanize(
+            _readString(profile['verification_level']),
+          );
           final locationLabel = _firstNonEmpty([
             _readString(profile['location']),
             'Nearby',
@@ -261,27 +263,6 @@ class MobilePersonCard {
     required this.averageRating,
     required this.reviewCount,
     required this.priceLabel,
-  final String currentUserId;
-  final List<MobilePersonItem> people;
-}
-
-class MobilePersonItem {
-  const MobilePersonItem({
-    required this.id,
-    required this.name,
-    required this.roleLabel,
-    required this.locationLabel,
-    required this.availabilityLabel,
-    required this.bio,
-    required this.serviceCount,
-    required this.productCount,
-    required this.postCount,
-    required this.completedJobs,
-    required this.openLeads,
-    required this.rating,
-    required this.reviewCount,
-    required this.online,
-    required this.isCurrentUser,
   });
 
   final String id;
@@ -318,10 +299,13 @@ class MobilePersonItem {
     if (openLeads > 0) {
       return '$openLeads live leads';
     }
-    if (openNeedsCount > 0) {
-      return '$openNeedsCount active needs';
+    if (postCount > 0) {
+      return '$postCount local posts';
     }
-    return '$postCount recent posts';
+    if (openNeedsCount > 0) {
+      return '$openNeedsCount nearby needs';
+    }
+    return 'Building local presence';
   }
 
   bool matchesQuery(String query) {
@@ -334,11 +318,11 @@ class MobilePersonItem {
       name,
       headline,
       locationLabel,
-      verificationLabel,
       activityLabel,
+      verificationLabel,
+      priceLabel,
       ...primaryTags,
     ].join(' ').toLowerCase();
-
     return haystack.contains(normalized);
   }
 }
@@ -348,11 +332,13 @@ double _sortScore(MobilePersonCard person) {
   if (person.isOnline) {
     score += 1000;
   }
-  score += person.completedJobs * 8;
-  score += person.openLeads * 2;
-  score += person.reviewCount * 3;
-  score += (person.averageRating ?? 0) * 25;
-  score += person.completionPercent.toDouble();
+  score += person.completedJobs * 10;
+  score += person.openLeads * 6;
+  score += person.postCount * 3;
+  score += person.openNeedsCount * 2;
+  score += (person.averageRating ?? 0) * 20;
+  score += person.reviewCount * 2;
+  score += person.completionPercent / 10;
   return score;
 }
 
@@ -399,57 +385,18 @@ double _toDouble(Object? value) {
   return 0;
 }
 
-String _humanize(String value) {
-  final normalized = value.trim().toLowerCase();
+String _humanize(String raw) {
+  final normalized = raw.trim().replaceAll('_', ' ');
   if (normalized.isEmpty) {
     return '';
   }
 
   return normalized
-      .split('_')
+      .split(' ')
+      .where((segment) => segment.isNotEmpty)
       .map(
-        (part) => part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}',
+        (segment) =>
+            '${segment[0].toUpperCase()}${segment.substring(1).toLowerCase()}',
       )
       .join(' ');
-  final String roleLabel;
-  final String locationLabel;
-  final String availabilityLabel;
-  final String bio;
-  final int serviceCount;
-  final int productCount;
-  final int postCount;
-  final int completedJobs;
-  final int openLeads;
-  final double rating;
-  final int reviewCount;
-  final bool online;
-  final bool isCurrentUser;
-
-  String get initials {
-    final parts = name
-        .split(RegExp(r'\s+'))
-        .map((entry) => entry.trim())
-        .where((entry) => entry.isNotEmpty)
-        .take(2)
-        .toList();
-    if (parts.isEmpty) {
-      return 'S';
-    }
-    return parts.map((entry) => entry[0].toUpperCase()).join();
-  }
-
-  String get ratingLabel =>
-      reviewCount == 0 ? 'No reviews yet' : rating.toStringAsFixed(1);
-
-  String get statsSummary {
-    final entries = <String>[
-      if (serviceCount > 0) '$serviceCount services',
-      if (productCount > 0) '$productCount products',
-      if (completedJobs > 0) '$completedJobs completed',
-    ];
-    if (entries.isEmpty) {
-      return 'Building presence in ServiQ';
-    }
-    return entries.join(' • ');
-  }
 }

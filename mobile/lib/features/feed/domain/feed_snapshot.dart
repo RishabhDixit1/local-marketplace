@@ -54,7 +54,7 @@ class MobileFeedSnapshot {
 
   factory MobileFeedSnapshot.fromJson(Map<String, dynamic> json) {
     return MobileFeedSnapshot(
-      currentUserId: (json['currentUserId'] as String?) ?? '',
+      currentUserId: _readString(json['currentUserId']),
       stats: MobileFeedStats.fromJson(
         Map<String, dynamic>.from(
           (json['feedStats'] as Map?) ?? const <String, dynamic>{},
@@ -62,9 +62,7 @@ class MobileFeedSnapshot {
       ),
       items: ((json['feedItems'] as List?) ?? const [])
           .whereType<Map>()
-          .map(
-            (item) => MobileFeedItem.fromJson(Map<String, dynamic>.from(item)),
-          )
+          .map((item) => MobileFeedItem.fromJson(Map<String, dynamic>.from(item)))
           .toList(),
     );
   }
@@ -111,7 +109,6 @@ class MobileFeedItem {
     required this.id,
     required this.providerId,
     required this.source,
-    this.providerId = '',
     this.helpRequestId,
     required this.type,
     required this.title,
@@ -154,12 +151,9 @@ class MobileFeedItem {
           : 'Local provider',
     );
     final location = _readString(json['locationLabel'], fallback: 'Nearby');
-    final status = _humanizeStatus(
-      _readString(
-        json['viewerMatchStatus'] ?? json['status'],
-        fallback: 'open',
-      ),
-    );
+    final status = _readString(json['status'], fallback: 'open');
+    final matchStatus = _nullableString(json['viewerMatchStatus']);
+    final displayStatus = _humanizeStatus(matchStatus ?? status);
     final mediaCount = ((json['media'] as List?) ?? const []).length;
 
     return MobileFeedItem(
@@ -169,7 +163,6 @@ class MobileFeedItem {
         fallback: _readString(json['provider_id']),
       ),
       source: _parseSource(json['source'] as String?),
-      providerId: _readString(json['providerId']),
       helpRequestId: _nullableString(json['helpRequestId']),
       type: type,
       title: title,
@@ -178,7 +171,7 @@ class MobileFeedItem {
       creatorName: creatorName,
       avatarUrl: _readString(json['avatarUrl'] ?? json['avatar_url']),
       locationLabel: location,
-      statusLabel: status,
+      statusLabel: displayStatus,
       priceLabel: _formatPrice(type: type, price: _toDouble(json['price'])),
       timeLabel: _formatTimeAgo(json['createdAt'] as String?),
       distanceLabel: _formatDistance(
@@ -198,9 +191,9 @@ class MobileFeedItem {
       listingCount: _toInt(json['listingCount']),
       urgent: json['urgent'] == true,
       mediaCount: mediaCount,
-      status: _readString(json['status'], fallback: 'open'),
+      status: status,
       acceptedProviderId: _nullableString(json['acceptedProviderId']),
-      viewerMatchStatus: _nullableString(json['viewerMatchStatus']),
+      viewerMatchStatus: matchStatus,
       viewerHasExpressedInterest: json['viewerHasExpressedInterest'] == true,
     );
   }
@@ -236,7 +229,8 @@ class MobileFeedItem {
   final bool viewerHasExpressedInterest;
 
   bool get hasMedia => mediaCount > 0;
-  bool get isVerified => verificationStatus == 'verified';
+
+  bool get isVerified => verificationStatus.toLowerCase() == 'verified';
 
   String get trustLabel {
     if (isVerified) {
@@ -261,11 +255,15 @@ class MobileFeedItem {
       return 'New to reviews';
     }
 
-      return '${rating.toStringAsFixed(1)} ($reviewCount)';
+    return '${rating.toStringAsFixed(1)} ($reviewCount)';
   }
+
   bool get isDemand => type == MobileFeedItemType.demand;
+
   bool get isOpen => _normalizeStatus(status) == 'open';
+
   bool get isAccepted => _normalizeStatus(status) == 'accepted';
+
   bool get isClosed => const {
     'completed',
     'cancelled',
@@ -398,7 +396,7 @@ String _formatDistance(double distanceKm, {required String fallback}) {
 }
 
 String _humanizeStatus(String raw) {
-  final normalized = raw.trim().toLowerCase();
+  final normalized = _normalizeStatus(raw);
   if (normalized.isEmpty) {
     return 'Open';
   }

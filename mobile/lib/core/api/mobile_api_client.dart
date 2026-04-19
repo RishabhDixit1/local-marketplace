@@ -4,11 +4,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
-import '../supabase/app_bootstrap.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
@@ -19,16 +17,6 @@ class ApiException implements Exception {
   @override
   String toString() => statusCode == null ? message : '[$statusCode] $message';
 }
-
-final mobileApiClientProvider = Provider<MobileApiClient>((ref) {
-  final bootstrap = ref.watch(appBootstrapProvider);
-  final client = MobileApiClient(
-    config: bootstrap.config,
-    supabaseClient: bootstrap.client,
-  );
-  ref.onDispose(client.dispose);
-  return client;
-});
 
 class MobileApiClient {
   static const Duration _requestTimeout = Duration(seconds: 15);
@@ -48,7 +36,7 @@ class MobileApiClient {
     String path, {
     Map<String, String>? queryParameters,
     bool authenticated = true,
-  }) async {
+  }) {
     return _sendJson(
       method: 'GET',
       path: path,
@@ -61,7 +49,7 @@ class MobileApiClient {
     String path, {
     Map<String, dynamic>? body,
     bool authenticated = true,
-  }) async {
+  }) {
     return _sendJson(
       method: 'POST',
       path: path,
@@ -74,7 +62,7 @@ class MobileApiClient {
     String path, {
     Map<String, dynamic>? body,
     bool authenticated = true,
-  }) async {
+  }) {
     return _sendJson(
       method: 'PATCH',
       path: path,
@@ -96,73 +84,44 @@ class MobileApiClient {
       );
     }
 
-    final uri = _resolveBaseUri()
-        .resolve(path)
-        .replace(
-          queryParameters: queryParameters?.map(
-            (key, value) => MapEntry(key, value),
-          ),
-        );
+    final uri = _resolveBaseUri().resolve(path).replace(
+      queryParameters: queryParameters,
+    );
 
     final headers = <String, String>{
       'Content-Type': 'application/json',
       if (authenticated) ..._buildAuthHeaders(),
     };
 
-    try {
-      late http.Response response;
     late http.Response response;
     try {
-      if (method == 'GET') {
-        response = await _httpClient
-            .get(uri, headers: headers)
-            .timeout(_requestTimeout);
-      } else if (method == 'POST') {
-        response = await _httpClient
-            .post(
-              uri,
-              headers: headers,
-              body: jsonEncode(body ?? const <String, dynamic>{}),
-            )
-            .timeout(_requestTimeout);
-      } else if (method == 'PATCH') {
-        response = await _httpClient
-            .patch(
-              uri,
-              headers: headers,
-              body: jsonEncode(body ?? const <String, dynamic>{}),
-            )
-            .timeout(_requestTimeout);
-      } else {
-        throw ApiException('Unsupported method: $method');
+      switch (method) {
+        case 'GET':
+          response = await _httpClient
+              .get(uri, headers: headers)
+              .timeout(_requestTimeout);
+        case 'POST':
+          response = await _httpClient
+              .post(
+                uri,
+                headers: headers,
+                body: jsonEncode(body ?? const <String, dynamic>{}),
+              )
+              .timeout(_requestTimeout);
+        case 'PATCH':
+          response = await _httpClient
+              .patch(
+                uri,
+                headers: headers,
+                body: jsonEncode(body ?? const <String, dynamic>{}),
+              )
+              .timeout(_requestTimeout);
+        default:
+          throw ApiException('Unsupported method: $method');
       }
-
-      final payload = _decodeBody(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException(
-          _extractMessage(payload) ?? 'Request failed.',
-          statusCode: response.statusCode,
-        );
-      }
-
-      return payload;
-    } on FormatException {
-      throw const ApiException('Unexpected response format from the server.');
-    } on SocketException {
-      throw const ApiException(
-        'Network connection failed. Check your internet and try again.',
-      );
-    } on TimeoutException {
-      throw const ApiException(
-        'The server took too long to respond. Please try again.',
-      );
-    } on http.ClientException {
-      throw const ApiException(
-        'Unable to reach the server right now. Please try again.',
     } on TimeoutException {
       throw ApiException(
-        'The API request timed out after '
-        '${_requestTimeout.inSeconds} seconds. '
+        'The API request timed out after ${_requestTimeout.inSeconds} seconds. '
         'Check that ${_describeBaseUrl()} is reachable from this device.',
       );
     } on SocketException catch (error) {
@@ -170,7 +129,7 @@ class MobileApiClient {
     } on http.ClientException catch (error) {
       throw ApiException(
         'The mobile client could not reach ${uri.origin}. '
-        'Check API_BASE_URL and confirm the local Next.js server is running. '
+        'Check API_BASE_URL and confirm the local server is running. '
         'Details: ${error.message}',
       );
     }
@@ -181,12 +140,15 @@ class MobileApiClient {
       statusCode: response.statusCode,
       requestUri: uri,
     );
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         _extractMessage(payload) ?? 'Request failed.',
         statusCode: response.statusCode,
       );
     }
+
+    return payload;
   }
 
   Uri _resolveBaseUri() {
@@ -214,10 +176,11 @@ class MobileApiClient {
   String _buildSocketErrorMessage(Uri uri, SocketException error) {
     final code = error.osError?.errorCode;
     final refused = code == 61 || code == 111;
+    final originalHost = Uri.parse(_config.apiBaseUrl.trim()).host;
     final androidLocalhostHint =
         !kIsWeb &&
             Platform.isAndroid &&
-            _isAndroidLocalhostAlias(Uri.parse(_config.apiBaseUrl.trim()).host)
+            _isAndroidLocalhostAlias(originalHost)
         ? ' Android emulators must use 10.0.2.2 instead of localhost.'
         : '';
 
@@ -284,7 +247,6 @@ class MobileApiClient {
       if (decoded is Map<String, dynamic>) {
         return decoded;
       }
-
       if (decoded is Map) {
         return decoded.map((key, value) => MapEntry(key.toString(), value));
       }
