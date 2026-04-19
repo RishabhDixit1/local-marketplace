@@ -8,6 +8,7 @@ class AppRoutes {
   static const people = '/app/people';
   static const tasks = '/app/tasks';
   static const profile = '/app/profile';
+  static const control = '/app/control';
   static const createRequest = '/app/create';
   static const search = '/app/search';
   static const notifications = '/app/notifications';
