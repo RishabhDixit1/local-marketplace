@@ -20,6 +20,7 @@ import 'package:serviq_mobile/features/provider/presentation/provider_profile_pa
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
+import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
 
 const _bootstrap = AppBootstrap(
   config: AppConfig(
@@ -75,6 +76,44 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Live local feed'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('welcome page renders the trust-first mobile home structure', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const WelcomePage(
+            snapshotOverride: AsyncData(_sampleSnapshot),
+            trustedSnapshotOverride: AsyncData(_sampleSnapshot),
+            peopleOverride: AsyncData(_samplePeopleSnapshot),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('What do you need nearby today?'), findsOneWidget);
+    expect(find.text('Post a Need'), findsAtLeastNWidgets(1));
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Trusted activity'),
+      240,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Trusted activity'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Live for today'),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Live for today'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -162,7 +201,9 @@ void main() {
           feedSnapshotProvider(
             MobileFeedScope.all,
           ).overrideWith((ref) async => _sampleSnapshot),
-          peopleSnapshotProvider.overrideWith((ref) async => _samplePeopleSnapshot),
+          peopleSnapshotProvider.overrideWith(
+            (ref) async => _samplePeopleSnapshot,
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -183,7 +224,9 @@ void main() {
       ProviderScope(
         overrides: [
           appBootstrapProvider.overrideWithValue(_bootstrap),
-          peopleSnapshotProvider.overrideWith((ref) async => _samplePeopleSnapshot),
+          peopleSnapshotProvider.overrideWith(
+            (ref) async => _samplePeopleSnapshot,
+          ),
           feedSnapshotProvider(
             MobileFeedScope.all,
           ).overrideWith((ref) async => _sampleSnapshot),
@@ -208,7 +251,9 @@ void main() {
       ProviderScope(
         overrides: [
           appBootstrapProvider.overrideWithValue(_bootstrap),
-          chatConversationsProvider.overrideWith((ref) async => _sampleConversations),
+          chatConversationsProvider.overrideWith(
+            (ref) async => _sampleConversations,
+          ),
           chatMessagesProvider(
             'conv-1',
           ).overrideWith((ref) async => _sampleMessages),
@@ -380,10 +425,7 @@ const _sampleProfile = MobileProfileSnapshot(
     ),
   ],
   reviews: [
-    MobileProfileReview(
-      rating: 4.9,
-      comment: 'Fast and careful work.',
-    ),
+    MobileProfileReview(rating: 4.9, comment: 'Fast and careful work.'),
   ],
   averageRating: 4.9,
   reviewCount: 18,

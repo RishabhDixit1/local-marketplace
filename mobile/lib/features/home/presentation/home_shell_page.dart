@@ -23,7 +23,7 @@ class HomeShellPage extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.createRequest),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Post'),
+        label: const Text('Post a Need'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: AppBottomNav(

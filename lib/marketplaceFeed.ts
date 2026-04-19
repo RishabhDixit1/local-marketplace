@@ -1,13 +1,32 @@
 import { createAvatarFallback } from "@/lib/avatarFallback";
-import { looksLikePlaceholderText, toDisplayText as cleanDisplayText } from "@/lib/contentQuality";
+import {
+  looksLikePlaceholderText,
+  toDisplayText as cleanDisplayText,
+} from "@/lib/contentQuality";
 import { canonicalizeStoredHelpRequestMatchStatus } from "@/lib/helpRequestMatchStatus";
 import { readMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
 import { resolvePostMediaUrl } from "@/lib/mediaUrl";
-import { formatServicePriceLabel, type ServicePricingType } from "@/lib/provider/listings";
+import {
+  formatServicePriceLabel,
+  type ServicePricingType,
+} from "@/lib/provider/listings";
 import { slugifyProfileName } from "@/lib/profile/utils";
 
 export type MarketplaceFeedItemType = "service" | "product" | "demand";
-export type MarketplaceFeedItemSource = "service_listing" | "product_listing" | "post" | "help_request";
+export type MarketplaceFeedItemSource =
+  | "service_listing"
+  | "product_listing"
+  | "post"
+  | "help_request";
+export type MarketplaceFeedSourceType =
+  | "accepted_connection"
+  | "nearby_public"
+  | "recommended";
+export type MarketplaceViewerRoleFit =
+  | "earn"
+  | "hire"
+  | "discover"
+  | "benchmark";
 
 export type MarketplaceFeedMedia = {
   mimeType: string;
@@ -26,7 +45,9 @@ export type MarketplaceNeedMatchStatus =
 
 export type MarketplaceFeedItem = {
   id: string;
+  cardId?: string;
   source: MarketplaceFeedItemSource;
+  sourceType?: MarketplaceFeedSourceType;
   helpRequestId: string | null;
   canonicalKey?: string;
   linkedPostId?: string | null;
@@ -48,9 +69,19 @@ export type MarketplaceFeedItem = {
   lng: number;
   coordinateAccuracy: "precise" | "approximate";
   media: MarketplaceFeedMedia[];
+  thumbnailUrl?: string | null;
   createdAt: string;
   urgent: boolean;
   rankScore: number;
+  priorityScore?: number;
+  feedReason?: string;
+  whyThisCard?: string;
+  mutualConnectionsCount?: number;
+  responseEta?: string;
+  viewerRoleFit?: MarketplaceViewerRoleFit;
+  activeNow?: boolean;
+  lastActiveLabel?: string;
+  responseReliability?: string;
   profileCompletion: number;
   responseMinutes: number;
   verificationStatus: "verified" | "pending" | "unclaimed";
@@ -59,6 +90,8 @@ export type MarketplaceFeedItem = {
   completedJobs?: number | null;
   listingCount?: number | null;
   publicProfilePath: string;
+  contactPhone?: string | null;
+  canCall?: boolean;
   status: string;
   acceptedProviderId: string | null;
   viewerMatchStatus?: MarketplaceNeedMatchStatus | null;
@@ -101,7 +134,12 @@ export type MarketplaceMapCenter = {
   lng: number;
 };
 
-export type MarketplaceRealtimeHealth = "connecting" | "connected" | "reconnecting" | "error" | "idle";
+export type MarketplaceRealtimeHealth =
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "error"
+  | "idle";
 
 type MarketplaceComposerMediaMetadata = {
   name: string;
@@ -109,7 +147,10 @@ type MarketplaceComposerMediaMetadata = {
   url: string;
 };
 
-const FALLBACK_AVATAR = createAvatarFallback({ label: "ServiQ", seed: "serviq-marketplace-feed" });
+const FALLBACK_AVATAR = createAvatarFallback({
+  label: "ServiQ",
+  seed: "serviq-marketplace-feed",
+});
 const MARKETPLACE_FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const mediaRegex = /\[([^\]]+)\]\s(https?:\/\/[^\s,]+)/g;
 
@@ -131,16 +172,17 @@ const CLOSED_STATUSES = new Set([
   "hidden",
 ]);
 
-export const DEFAULT_MARKETPLACE_FEED_FILTER_STATE: MarketplaceFeedFilterState = {
-  query: "",
-  type: "all",
-  category: "all",
-  maxDistanceKm: 0,
-  urgentOnly: false,
-  mediaOnly: false,
-  verifiedOnly: false,
-  freshOnly: false,
-};
+export const DEFAULT_MARKETPLACE_FEED_FILTER_STATE: MarketplaceFeedFilterState =
+  {
+    query: "",
+    type: "all",
+    category: "all",
+    maxDistanceKm: 0,
+    urgentOnly: false,
+    mediaOnly: false,
+    verifiedOnly: false,
+    freshOnly: false,
+  };
 
 export const MARKETPLACE_REALTIME_HEALTH_STYLES: Record<
   MarketplaceRealtimeHealth,
@@ -183,7 +225,9 @@ export const parseMarketplaceDateMs = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const normalizeMarketplaceFingerprintPart = (value: string | null | undefined) =>
+const normalizeMarketplaceFingerprintPart = (
+  value: string | null | undefined,
+) =>
   (value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
@@ -191,14 +235,16 @@ const normalizeMarketplaceFingerprintPart = (value: string | null | undefined) =
     .replace(/\s+/g, " ")
     .slice(0, 80);
 
-export const normalizeMarketplacePostKind = (value?: string | null): MarketplaceFeedItemType => {
+export const normalizeMarketplacePostKind = (
+  value?: string | null,
+): MarketplaceFeedItemType => {
   const normalized = (value || "").trim().toLowerCase();
   if (normalized === "service" || normalized === "product") return normalized;
   return "demand";
 };
 
 export const normalizeMarketplacePersonLabel = (value: string | undefined) =>
-  (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
+  typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 
 export const humanizeMarketplaceHandle = (value: string) =>
   value
@@ -210,11 +256,21 @@ export const humanizeMarketplaceHandle = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-export const fallbackMarketplaceCreatorLabel = (type: MarketplaceFeedItemType) =>
-  type === "demand" ? "Nearby requester" : type === "product" ? "Local seller" : "Local provider";
+export const fallbackMarketplaceCreatorLabel = (
+  type: MarketplaceFeedItemType,
+) =>
+  type === "demand"
+    ? "Nearby requester"
+    : type === "product"
+      ? "Local seller"
+      : "Local provider";
 
-export const resolveMarketplaceCreatorDisplayName = (value: string | undefined, type: MarketplaceFeedItemType) =>
-  normalizeMarketplacePersonLabel(value) || fallbackMarketplaceCreatorLabel(type);
+export const resolveMarketplaceCreatorDisplayName = (
+  value: string | undefined,
+  type: MarketplaceFeedItemType,
+) =>
+  normalizeMarketplacePersonLabel(value) ||
+  fallbackMarketplaceCreatorLabel(type);
 
 export const toMarketplaceCreatorUsername = (value: string | undefined) => {
   const normalized = normalizeMarketplacePersonLabel(value);
@@ -225,8 +281,10 @@ export const toMarketplaceCreatorUsername = (value: string | undefined) => {
 export const isGeneratedMarketplaceAvatar = (value: string | undefined) =>
   (value || "").startsWith("data:image/svg+xml");
 
-export const toMarketplaceDisplayText = (value: string | undefined, fallback: string) =>
-  cleanDisplayText(value, fallback);
+export const toMarketplaceDisplayText = (
+  value: string | undefined,
+  fallback: string,
+) => cleanDisplayText(value, fallback);
 
 export const formatMarketplaceRelativeAge = (value?: string) => {
   const createdAtMs = parseMarketplaceDateMs(value);
@@ -242,22 +300,32 @@ export const formatMarketplaceRelativeAge = (value?: string) => {
   return `${days}d ago`;
 };
 
-export const formatMarketplacePriceLabel = (item: Pick<MarketplaceFeedItem, "price" | "type" | "pricingType">) => {
+export const formatMarketplacePriceLabel = (
+  item: Pick<MarketplaceFeedItem, "price" | "type" | "pricingType">,
+) => {
   if (item.type === "service") {
     return formatServicePriceLabel(item.price, item.pricingType);
   }
-  if (item.price > 0) return `INR ${Math.round(item.price).toLocaleString("en-IN")}`;
+  if (item.price > 0)
+    return `INR ${Math.round(item.price).toLocaleString("en-IN")}`;
   if (item.type === "demand") return "Budget shared in chat";
   return "Price on request";
 };
 
-export const buildMarketplaceDistanceLabel = (item: Pick<MarketplaceFeedItem, "distanceKm" | "locationLabel">) =>
-  item.distanceKm > 0 ? `${item.distanceKm.toFixed(1)} km away` : item.locationLabel || "Nearby";
+export const buildMarketplaceDistanceLabel = (
+  item: Pick<MarketplaceFeedItem, "distanceKm" | "locationLabel">,
+) =>
+  item.distanceKm > 0
+    ? `${item.distanceKm.toFixed(1)} km away`
+    : item.locationLabel || "Nearby";
 
-export const buildMarketplaceFeedCardId = (item: Pick<MarketplaceFeedItem, "id" | "source" | "type">) =>
-  `dashboard:${item.source}:${item.type}:${item.id}`;
+export const buildMarketplaceFeedCardId = (
+  item: Pick<MarketplaceFeedItem, "id" | "source" | "type">,
+) => `dashboard:${item.source}:${item.type}:${item.id}`;
 
-export const mapMarketplaceRealtimeHealth = (status: string): MarketplaceRealtimeHealth => {
+export const mapMarketplaceRealtimeHealth = (
+  status: string,
+): MarketplaceRealtimeHealth => {
   if (status === "SUBSCRIBED") return "connected";
   if (status === "TIMED_OUT") return "reconnecting";
   if (status === "CHANNEL_ERROR") return "error";
@@ -277,18 +345,34 @@ export const normalizeMarketplaceStatusLabel = (status?: string | null) => {
     .join(" ");
 };
 
-export const normalizeMarketplaceNeedMatchStatus = (value?: string | null): MarketplaceNeedMatchStatus | null => {
-  return canonicalizeStoredHelpRequestMatchStatus(value) as MarketplaceNeedMatchStatus | null;
+export const normalizeMarketplaceNeedMatchStatus = (
+  value?: string | null,
+): MarketplaceNeedMatchStatus | null => {
+  return canonicalizeStoredHelpRequestMatchStatus(
+    value,
+  ) as MarketplaceNeedMatchStatus | null;
 };
 
-export const hasMarketplaceViewerInterest = (status?: MarketplaceNeedMatchStatus | null) =>
-  status === "interested" || status === "accepted" || status === "in_progress" || status === "completed";
+export const hasMarketplaceViewerInterest = (
+  status?: MarketplaceNeedMatchStatus | null,
+) =>
+  status === "interested" ||
+  status === "accepted" ||
+  status === "in_progress" ||
+  status === "completed";
 
 export const isUUIDLike = (value?: string | null) =>
-  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  !!value &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 
-export const isWeakMarketplaceContent = (title: string | undefined, description: string | undefined) =>
-  looksLikePlaceholderText(title) && (!description || looksLikePlaceholderText(description));
+export const isWeakMarketplaceContent = (
+  title: string | undefined,
+  description: string | undefined,
+) =>
+  looksLikePlaceholderText(title) &&
+  (!description || looksLikePlaceholderText(description));
 
 export const parseMarketplacePostText = (rawText: string) => {
   const fallback = {
@@ -317,7 +401,9 @@ export const parseMarketplacePostText = (rawText: string) => {
 
   const budgetMatch = budgetPart?.match(/(\d+(\.\d+)?)/);
   const budget = budgetMatch ? Number(budgetMatch[1]) : 0;
-  const kind = normalizeMarketplacePostKind(typePart?.replace("Type:", "").trim());
+  const kind = normalizeMarketplacePostKind(
+    typePart?.replace("Type:", "").trim(),
+  );
   const category =
     categoryPart?.replace("Category:", "").trim() ||
     (kind === "demand" ? "Need" : kind === "service" ? "Service" : "Product");
@@ -339,7 +425,9 @@ export const parseMarketplacePostText = (rawText: string) => {
   return { title, description, budget, category, location, kind, media };
 };
 
-export const mediaFromMarketplaceComposerMetadata = (value: unknown): MarketplaceFeedMedia[] => {
+export const mediaFromMarketplaceComposerMetadata = (
+  value: unknown,
+): MarketplaceFeedMedia[] => {
   const metadata = readMarketplaceComposerMetadata(value);
   if (!metadata) return [];
 
@@ -356,20 +444,25 @@ export const mediaFromMarketplaceComposerMetadata = (value: unknown): Marketplac
     .filter((entry): entry is MarketplaceFeedMedia => !!entry);
 };
 
-export const buildMarketplaceDisplayItem = (item: MarketplaceFeedItem): MarketplaceDisplayFeedItem => {
+export const buildMarketplaceDisplayItem = (
+  item: MarketplaceFeedItem,
+): MarketplaceDisplayFeedItem => {
   const defaultTitle =
     item.type === "demand"
       ? "Need local support"
       : item.type === "service"
-      ? `${item.category || "Local"} service`
-      : `${item.category || "Local"} product`;
+        ? `${item.category || "Local"} service`
+        : `${item.category || "Local"} product`;
 
   const defaultDescription =
     item.type === "demand"
       ? "Looking for quick nearby support."
       : "Trusted listing from your local marketplace.";
 
-  const displayCreator = resolveMarketplaceCreatorDisplayName(item.creatorName || item.creatorUsername, item.type);
+  const displayCreator = resolveMarketplaceCreatorDisplayName(
+    item.creatorName || item.creatorUsername,
+    item.type,
+  );
   const avatarUrl =
     item.avatarUrl && !isGeneratedMarketplaceAvatar(item.avatarUrl)
       ? item.avatarUrl
@@ -382,7 +475,10 @@ export const buildMarketplaceDisplayItem = (item: MarketplaceFeedItem): Marketpl
     ...item,
     avatarUrl: avatarUrl || FALLBACK_AVATAR,
     displayTitle: toMarketplaceDisplayText(item.title, defaultTitle),
-    displayDescription: toMarketplaceDisplayText(item.description, defaultDescription),
+    displayDescription: toMarketplaceDisplayText(
+      item.description,
+      defaultDescription,
+    ),
     displayCreator,
     timeLabel: formatMarketplaceRelativeAge(item.createdAt),
     priceLabel: formatMarketplacePriceLabel(item),
@@ -390,7 +486,9 @@ export const buildMarketplaceDisplayItem = (item: MarketplaceFeedItem): Marketpl
   };
 };
 
-export const buildMarketplaceFeedStats = (items: MarketplaceFeedItem[]): MarketplaceFeedStats => ({
+export const buildMarketplaceFeedStats = (
+  items: MarketplaceFeedItem[],
+): MarketplaceFeedStats => ({
   total: items.length,
   urgent: items.filter((item) => item.urgent).length,
   demand: items.filter((item) => item.type === "demand").length,
@@ -407,9 +505,14 @@ export const listingFingerprint = (item: MarketplaceFeedItem) => {
   ].join("|");
 };
 
-export const pickPreferredMarketplaceFeedItem = (current: MarketplaceFeedItem, incoming: MarketplaceFeedItem) => {
+export const pickPreferredMarketplaceFeedItem = (
+  current: MarketplaceFeedItem,
+  incoming: MarketplaceFeedItem,
+) => {
   if (sourcePriority[incoming.source] !== sourcePriority[current.source]) {
-    return sourcePriority[incoming.source] > sourcePriority[current.source] ? incoming : current;
+    return sourcePriority[incoming.source] > sourcePriority[current.source]
+      ? incoming
+      : current;
   }
 
   const incomingDate = parseMarketplaceDateMs(incoming.createdAt);
@@ -422,32 +525,36 @@ export const pickPreferredMarketplaceFeedItem = (current: MarketplaceFeedItem, i
     return incoming.rankScore > current.rankScore ? incoming : current;
   }
 
-  return incoming.responseMinutes < current.responseMinutes ? incoming : current;
+  return incoming.responseMinutes < current.responseMinutes
+    ? incoming
+    : current;
 };
 
 export const dedupeMarketplaceFeedItems = (items: MarketplaceFeedItem[]) => {
   const byId = new Map<string, MarketplaceFeedItem>();
   for (const item of items) {
     const existing = byId.get(item.id);
-    byId.set(item.id, existing ? pickPreferredMarketplaceFeedItem(existing, item) : item);
+    byId.set(
+      item.id,
+      existing ? pickPreferredMarketplaceFeedItem(existing, item) : item,
+    );
   }
 
   const byFingerprint = new Map<string, MarketplaceFeedItem>();
   for (const item of byId.values()) {
     const fingerprint = item.canonicalKey || listingFingerprint(item);
     const existing = byFingerprint.get(fingerprint);
-    byFingerprint.set(fingerprint, existing ? pickPreferredMarketplaceFeedItem(existing, item) : item);
+    byFingerprint.set(
+      fingerprint,
+      existing ? pickPreferredMarketplaceFeedItem(existing, item) : item,
+    );
   }
 
   return Array.from(byFingerprint.values());
 };
 
 export const normalizeMarketplaceSearchTokens = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  value.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
 export const isFreshMarketplaceItem = (value?: string) => {
   const createdAtMs = parseMarketplaceDateMs(value);
@@ -455,9 +562,13 @@ export const isFreshMarketplaceItem = (value?: string) => {
   return Date.now() - createdAtMs <= MARKETPLACE_FRESH_WINDOW_MS;
 };
 
-export const matchesMarketplaceFeedFilters = (item: MarketplaceFeedItem, state: MarketplaceFeedFilterState) => {
+export const matchesMarketplaceFeedFilters = (
+  item: MarketplaceFeedItem,
+  state: MarketplaceFeedFilterState,
+) => {
   const queryTokens = normalizeMarketplaceSearchTokens(state.query);
-  const haystack = `${item.title} ${item.description} ${item.category} ${item.creatorName} ${item.locationLabel} ${item.type}`.toLowerCase();
+  const haystack =
+    `${item.title} ${item.description} ${item.category} ${item.creatorName} ${item.locationLabel} ${item.type}`.toLowerCase();
   const matchesSearch = queryTokens.every((token) => haystack.includes(token));
 
   const normalizedCategory = state.category.toLowerCase();
@@ -468,11 +579,25 @@ export const matchesMarketplaceFeedFilters = (item: MarketplaceFeedItem, state: 
     item.type === normalizedCategory ||
     item.category.toLowerCase().includes(normalizedCategory);
 
-  const matchesDistance = state.maxDistanceKm > 0 ? item.distanceKm <= state.maxDistanceKm : true;
+  const matchesDistance =
+    state.maxDistanceKm > 0 ? item.distanceKm <= state.maxDistanceKm : true;
   const matchesUrgent = state.urgentOnly ? item.urgent : true;
   const matchesMedia = state.mediaOnly ? item.media.length > 0 : true;
-  const matchesVerified = state.verifiedOnly ? item.verificationStatus === "verified" : true;
-  const matchesFresh = state.freshOnly ? isFreshMarketplaceItem(item.createdAt) : true;
+  const matchesVerified = state.verifiedOnly
+    ? item.verificationStatus === "verified"
+    : true;
+  const matchesFresh = state.freshOnly
+    ? isFreshMarketplaceItem(item.createdAt)
+    : true;
 
-  return matchesSearch && matchesType && matchesCategory && matchesDistance && matchesUrgent && matchesMedia && matchesVerified && matchesFresh;
+  return (
+    matchesSearch &&
+    matchesType &&
+    matchesCategory &&
+    matchesDistance &&
+    matchesUrgent &&
+    matchesMedia &&
+    matchesVerified &&
+    matchesFresh
+  );
 };

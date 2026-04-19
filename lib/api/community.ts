@@ -109,9 +109,22 @@ export type CommunityOrderStatsRecord = {
   open_leads: number | string;
 };
 
+export type CommunityProfilePreview = {
+  imageUrl: string;
+  mediaCount: number;
+  title: string | null;
+  source: "service" | "product" | "post";
+};
+
 export type CommunityApiError = {
   ok: false;
-  code: "UNAUTHORIZED" | "CONFIG" | "DB" | "FORBIDDEN" | "INVALID_PAYLOAD" | "NOT_FOUND";
+  code:
+    | "UNAUTHORIZED"
+    | "CONFIG"
+    | "DB"
+    | "FORBIDDEN"
+    | "INVALID_PAYLOAD"
+    | "NOT_FOUND";
   message: string;
 };
 
@@ -121,6 +134,10 @@ export type CommunityFeedResponse =
       currentUserId: string;
       acceptedConnectionIds: string[];
       currentUserProfile: CommunityProfileRecord | null;
+      viewerRoleFamily?: "seeker" | "provider";
+      savedCardIds?: string[];
+      defaultHomeSurface?: "for_you" | "trusted" | "nearby" | "earn";
+      defaultHomeReason?: string;
       feedItems: MarketplaceFeedItem[];
       feedStats: MarketplaceFeedStats;
       mapCenter: MarketplaceMapCenter;
@@ -139,11 +156,52 @@ export type CommunityPeopleResponse =
   | {
       ok: true;
       currentUserId: string;
+      acceptedConnectionIds?: string[];
+      viewerRoleFamily?: "seeker" | "provider";
+      mutualConnectionsByProfileId?: Record<string, number>;
+      profileReasonsById?: Record<string, string>;
+      priorityScoreByProfileId?: Record<string, number>;
+      profilePreviewById?: Record<string, CommunityProfilePreview>;
       profiles: CommunityProfileRecord[];
-      services: Pick<CommunityServiceRecord, "provider_id" | "category" | "price">[];
-      products: Pick<CommunityProductRecord, "provider_id" | "category" | "price">[];
-      posts: Pick<CommunityPostRecord, "user_id" | "author_id" | "created_by" | "provider_id" | "category" | "status" | "state">[];
-      helpRequests: Pick<CommunityHelpRequestRecord, "requester_id" | "category" | "budget_min" | "budget_max" | "status">[];
+      services: Pick<
+        CommunityServiceRecord,
+        | "provider_id"
+        | "category"
+        | "price"
+        | "image_url"
+        | "metadata"
+        | "created_at"
+        | "title"
+      >[];
+      products: Pick<
+        CommunityProductRecord,
+        | "provider_id"
+        | "category"
+        | "price"
+        | "image_url"
+        | "metadata"
+        | "created_at"
+        | "title"
+      >[];
+      posts: Pick<
+        CommunityPostRecord,
+        | "user_id"
+        | "author_id"
+        | "created_by"
+        | "provider_id"
+        | "category"
+        | "status"
+        | "state"
+        | "metadata"
+        | "created_at"
+        | "title"
+        | "description"
+        | "type"
+      >[];
+      helpRequests: Pick<
+        CommunityHelpRequestRecord,
+        "requester_id" | "category" | "budget_min" | "budget_max" | "status"
+      >[];
       reviews: CommunityReviewRecord[];
       presence: CommunityPresenceRecord[];
       orderStats: CommunityOrderStatsRecord[];

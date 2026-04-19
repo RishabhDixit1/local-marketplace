@@ -27,10 +27,14 @@ class ChatPage extends ConsumerStatefulWidget {
     super.key,
     this.initialConversationId,
     this.recipientId,
+    this.initialDraft,
+    this.contextTitle,
   });
 
   final String? initialConversationId;
   final String? recipientId;
+  final String? initialDraft;
+  final String? contextTitle;
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -50,6 +54,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void initState() {
     super.initState();
     _selectedConversationId = widget.initialConversationId;
+    final initialDraft = widget.initialDraft?.trim() ?? '';
+    if (initialDraft.isNotEmpty) {
+      _composerController.value = TextEditingValue(
+        text: initialDraft,
+        selection: TextSelection.collapsed(offset: initialDraft.length),
+      );
+    }
     try {
       _client = ref.read(appBootstrapProvider).client;
     } catch (_) {
@@ -140,7 +151,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Future<void> _markConversationReadSafely(String conversationId) async {
     try {
-      await ref.read(chatRepositoryProvider).markConversationRead(conversationId);
+      await ref
+          .read(chatRepositoryProvider)
+          .markConversationRead(conversationId);
     } catch (_) {
       // Tests and preview states may not have a live Supabase client yet.
     }
@@ -166,9 +179,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
     } finally {
       if (mounted) {
         setState(() => _sending = false);
@@ -241,10 +254,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         }
 
                         final unread = filtered
-                            .where((conversation) => conversation.unreadCount > 0)
+                            .where(
+                              (conversation) => conversation.unreadCount > 0,
+                            )
                             .toList();
                         final recent = filtered
-                            .where((conversation) => conversation.unreadCount == 0)
+                            .where(
+                              (conversation) => conversation.unreadCount == 0,
+                            )
                             .toList();
 
                         return Column(
@@ -262,7 +279,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                               if (unread.isNotEmpty) const SizedBox(height: 16),
                               _ConversationSection(
                                 title: 'Recent',
-                                subtitle: 'Pick up where local conversations left off.',
+                                subtitle:
+                                    'Pick up where local conversations left off.',
                                 conversations: recent,
                                 onTapConversation: _openConversation,
                               ),
@@ -287,6 +305,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               conversationId: selectedConversationId,
               composerController: _composerController,
               sending: _sending,
+              contextTitle: widget.contextTitle,
               onSend: _sendMessage,
             ),
     );
@@ -342,12 +361,14 @@ class _ChatThread extends ConsumerWidget {
     required this.conversationId,
     required this.composerController,
     required this.sending,
+    required this.contextTitle,
     required this.onSend,
   });
 
   final String conversationId;
   final TextEditingController composerController;
   final bool sending;
+  final String? contextTitle;
   final VoidCallback onSend;
 
   @override
@@ -411,6 +432,32 @@ class _ChatThread extends ConsumerWidget {
                 ],
               ),
             ),
+          if ((contextTitle?.trim() ?? '').isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              color: AppColors.primarySoft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.local_offer_outlined,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'About ${(contextTitle ?? '').trim()}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
@@ -457,9 +504,12 @@ class _ChatThread extends ConsumerWidget {
                           children: [
                             Text(
                               message.content,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: isMine ? Colors.white : AppColors.ink,
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    color: isMine
+                                        ? Colors.white
+                                        : AppColors.ink,
+                                  ),
                             ),
                             const SizedBox(height: 8),
                             Row(
@@ -478,13 +528,12 @@ class _ChatThread extends ConsumerWidget {
                                     isMine: isMine,
                                     isLatestMine: index == lastMineIndex,
                                   ),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodySmall?.copyWith(
-                                    color: isMine
-                                        ? Colors.white70
-                                        : AppColors.inkMuted,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: isMine
+                                            ? Colors.white70
+                                            : AppColors.inkMuted,
+                                      ),
                                 ),
                               ],
                             ),
@@ -579,7 +628,9 @@ class _ChatThread extends ConsumerWidget {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Icon(Icons.send_rounded),
                         ),
@@ -597,10 +648,7 @@ class _ChatThread extends ConsumerWidget {
 }
 
 class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({
-    required this.conversation,
-    required this.onTap,
-  });
+  const _ConversationTile({required this.conversation, required this.onTap});
 
   final ChatConversation conversation;
   final Future<void> Function() onTap;
@@ -678,12 +726,13 @@ class _ConversationTile extends StatelessWidget {
                           conversation.lastMessage,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.ink,
-                            fontWeight: conversation.unreadCount > 0
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.ink,
+                                fontWeight: conversation.unreadCount > 0
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
                         ),
                       ),
                       if (conversation.unreadCount > 0) ...[
@@ -699,9 +748,8 @@ class _ConversationTile extends StatelessWidget {
                           ),
                           child: Text(
                             conversation.unreadCount.toString(),
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.primary,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: AppColors.primary),
                           ),
                         ),
                       ],

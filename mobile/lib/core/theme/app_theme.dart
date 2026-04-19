@@ -5,6 +5,7 @@ class AppColors {
   static const background = Color(0xFFF5F7FB);
   static const surface = Color(0xFFFFFFFF);
   static const surfaceMuted = Color(0xFFF1F4F8);
+  static const surfaceRaised = Color(0xFFFCFDFE);
   static const ink = Color(0xFF171A1F);
   static const inkMuted = Color(0xFF616B79);
   static const border = Color(0xFFE5EAF1);
@@ -42,6 +43,84 @@ class AppShadows {
       offset: Offset(0, 8),
     ),
   ];
+}
+
+@immutable
+class WelcomeThemeTokens extends ThemeExtension<WelcomeThemeTokens> {
+  const WelcomeThemeTokens({
+    required this.heroStart,
+    required this.heroEnd,
+    required this.heroAccent,
+    required this.heroStroke,
+    required this.trustedTint,
+    required this.nearbyTint,
+    required this.earnTint,
+    required this.warningTint,
+  });
+
+  static const light = WelcomeThemeTokens(
+    heroStart: Color(0xFFF3FBF7),
+    heroEnd: Color(0xFFF4F8FF),
+    heroAccent: Color(0xFF0F6E57),
+    heroStroke: Color(0xFFD8E8E0),
+    trustedTint: Color(0xFFE9F7F1),
+    nearbyTint: Color(0xFFEFF4FF),
+    earnTint: Color(0xFFFFF2E6),
+    warningTint: Color(0xFFFFF4DB),
+  );
+
+  final Color heroStart;
+  final Color heroEnd;
+  final Color heroAccent;
+  final Color heroStroke;
+  final Color trustedTint;
+  final Color nearbyTint;
+  final Color earnTint;
+  final Color warningTint;
+
+  @override
+  WelcomeThemeTokens copyWith({
+    Color? heroStart,
+    Color? heroEnd,
+    Color? heroAccent,
+    Color? heroStroke,
+    Color? trustedTint,
+    Color? nearbyTint,
+    Color? earnTint,
+    Color? warningTint,
+  }) {
+    return WelcomeThemeTokens(
+      heroStart: heroStart ?? this.heroStart,
+      heroEnd: heroEnd ?? this.heroEnd,
+      heroAccent: heroAccent ?? this.heroAccent,
+      heroStroke: heroStroke ?? this.heroStroke,
+      trustedTint: trustedTint ?? this.trustedTint,
+      nearbyTint: nearbyTint ?? this.nearbyTint,
+      earnTint: earnTint ?? this.earnTint,
+      warningTint: warningTint ?? this.warningTint,
+    );
+  }
+
+  @override
+  WelcomeThemeTokens lerp(
+    covariant ThemeExtension<WelcomeThemeTokens>? other,
+    double t,
+  ) {
+    if (other is! WelcomeThemeTokens) {
+      return this;
+    }
+
+    return WelcomeThemeTokens(
+      heroStart: Color.lerp(heroStart, other.heroStart, t) ?? heroStart,
+      heroEnd: Color.lerp(heroEnd, other.heroEnd, t) ?? heroEnd,
+      heroAccent: Color.lerp(heroAccent, other.heroAccent, t) ?? heroAccent,
+      heroStroke: Color.lerp(heroStroke, other.heroStroke, t) ?? heroStroke,
+      trustedTint: Color.lerp(trustedTint, other.trustedTint, t) ?? trustedTint,
+      nearbyTint: Color.lerp(nearbyTint, other.nearbyTint, t) ?? nearbyTint,
+      earnTint: Color.lerp(earnTint, other.earnTint, t) ?? earnTint,
+      warningTint: Color.lerp(warningTint, other.warningTint, t) ?? warningTint,
+    );
+  }
 }
 
 class AppTheme {
@@ -132,6 +211,9 @@ class AppTheme {
       colorScheme: colorScheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: AppColors.background,
+      extensions: const <ThemeExtension<dynamic>>[
+        WelcomeThemeTokens.light,
+      ],
       splashFactory: InkSparkle.splashFactory,
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,

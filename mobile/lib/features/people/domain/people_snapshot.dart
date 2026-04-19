@@ -2,10 +2,28 @@ class MobilePeopleSnapshot {
   const MobilePeopleSnapshot({
     required this.currentUserId,
     required this.people,
+    this.acceptedConnectionIds = const <String>[],
+    this.viewerRoleFamily = 'seeker',
   });
 
   factory MobilePeopleSnapshot.fromJson(Map<String, dynamic> json) {
     final currentUserId = _readString(json['currentUserId']);
+    final acceptedConnectionIds =
+        ((json['acceptedConnectionIds'] as List?) ?? const [])
+            .whereType<String>()
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+    final mutualConnectionsByProfileId = _readIntMap(
+      json['mutualConnectionsByProfileId'],
+    );
+    final profileReasonsById = _readStringMap(json['profileReasonsById']);
+    final priorityScoreByProfileId = _readIntMap(
+      json['priorityScoreByProfileId'],
+    );
+    final profilePreviewById = _readProfilePreviewMap(
+      json['profilePreviewById'],
+    );
     final profileRows = ((json['profiles'] as List?) ?? const [])
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
@@ -90,7 +108,11 @@ class MobilePeopleSnapshot {
       }
 
       addTag(providerId, row['category']);
-      postsByProvider.update(providerId, (count) => count + 1, ifAbsent: () => 1);
+      postsByProvider.update(
+        providerId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
     }
 
     for (final row in helpRequestRows) {
@@ -147,92 +169,124 @@ class MobilePeopleSnapshot {
       orderStatsByProvider[providerId] = row;
     }
 
-    final people = profileRows
-        .map((profile) {
-          final id = _readString(profile['id']);
-          if (id.isEmpty || id == currentUserId) {
-            return null;
-          }
+    final people =
+        profileRows
+            .map((profile) {
+              final id = _readString(profile['id']);
+              if (id.isEmpty || id == currentUserId) {
+                return null;
+              }
 
-          final completionPercent = _toInt(profile['profile_completion_percent']);
-          final reviewCount = reviewCountsByProvider[id] ?? 0;
-          final averageRating = reviewCount == 0
-              ? null
-              : (reviewSumsByProvider[id] ?? 0) / reviewCount;
-          final presence = presenceByProvider[id] ?? const <String, dynamic>{};
-          final orderStats = orderStatsByProvider[id] ?? const <String, dynamic>{};
-          final prices = List<double>.from(pricesByProvider[id] ?? const <double>[])
-            ..sort();
-          final tags = (tagsByProvider[id] ?? const <String>{}).toList()..sort();
-          final completedJobs = _toInt(orderStats['completed_jobs']);
-          final openLeads = _toInt(orderStats['open_leads']);
-          final isOnline = presence['is_online'] == true;
-          final responseMinutes = _toInt(presence['rolling_response_minutes']);
-          final verificationLevel = _humanize(_readString(profile['verification_level']));
-          final locationLabel = _firstNonEmpty([
-            _readString(profile['location']),
-            'Nearby',
-          ]);
-          final headline = _firstNonEmpty([
-            _readString(profile['bio']),
-            _humanize(_readString(profile['role'])),
-            'Serving nearby requests through ServiQ.',
-          ]);
+              final completionPercent = _toInt(
+                profile['profile_completion_percent'],
+              );
+              final reviewCount = reviewCountsByProvider[id] ?? 0;
+              final averageRating = reviewCount == 0
+                  ? null
+                  : (reviewSumsByProvider[id] ?? 0) / reviewCount;
+              final presence =
+                  presenceByProvider[id] ?? const <String, dynamic>{};
+              final orderStats =
+                  orderStatsByProvider[id] ?? const <String, dynamic>{};
+              final prices = List<double>.from(
+                pricesByProvider[id] ?? const <double>[],
+              )..sort();
+              final tags = (tagsByProvider[id] ?? const <String>{}).toList()
+                ..sort();
+              final completedJobs = _toInt(orderStats['completed_jobs']);
+              final openLeads = _toInt(orderStats['open_leads']);
+              final isOnline = presence['is_online'] == true;
+              final responseMinutes = _toInt(
+                presence['rolling_response_minutes'],
+              );
+              final verificationLevel = _humanize(
+                _readString(profile['verification_level']),
+              );
+              final locationLabel = _firstNonEmpty([
+                _readString(profile['location']),
+                'Nearby',
+              ]);
+              final headline = _firstNonEmpty([
+                _readString(profile['bio']),
+                _humanize(_readString(profile['role'])),
+                'Serving nearby requests through ServiQ.',
+              ]);
+              final preview = profilePreviewById[id];
 
-          return MobilePersonCard(
-            id: id,
-            name: _firstNonEmpty([
-              _readString(profile['name']),
-              _readString(profile['email']),
-              'Local provider',
-            ]),
-            avatarUrl: _readString(profile['avatar_url']),
-            headline: headline,
-            locationLabel: locationLabel,
-            isOnline: isOnline,
-            activityLabel: isOnline
-                ? 'Online now'
-                : responseMinutes > 0
-                ? 'Replies in about $responseMinutes min'
-                : _firstNonEmpty([
-                    _humanize(_readString(presence['availability'])),
-                    'Recently active',
-                  ]),
-            verificationLabel: verificationLevel.isNotEmpty
-                ? verificationLevel
-                : completionPercent >= 90
-                ? 'Profile complete'
-                : 'Growing profile',
-            completionPercent: completionPercent,
-            primaryTags: tags.take(3).toList(),
-            openNeedsCount: liveRequestsByProfile[id] ?? 0,
-            postCount: postsByProvider[id] ?? 0,
-            completedJobs: completedJobs,
-            openLeads: openLeads,
-            averageRating: averageRating,
-            reviewCount: reviewCount,
-            priceLabel: prices.isEmpty
-                ? 'Pricing in chat'
-                : 'From INR ${prices.first.round()}',
-          );
-        })
-        .whereType<MobilePersonCard>()
-        .toList()
-      ..sort((left, right) {
-        final leftScore = _sortScore(left);
-        final rightScore = _sortScore(right);
-        final scoreCompare = rightScore.compareTo(leftScore);
-        if (scoreCompare != 0) {
-          return scoreCompare;
-        }
-        return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-      });
+              return MobilePersonCard(
+                id: id,
+                name: _firstNonEmpty([
+                  _readString(profile['name']),
+                  _readString(profile['email']),
+                  'Local provider',
+                ]),
+                avatarUrl: _readString(profile['avatar_url']),
+                headline: headline,
+                locationLabel: locationLabel,
+                isOnline: isOnline,
+                activityLabel: isOnline
+                    ? 'Online now'
+                    : responseMinutes > 0
+                    ? 'Replies in about $responseMinutes min'
+                    : _firstNonEmpty([
+                        _humanize(_readString(presence['availability'])),
+                        'Recently active',
+                      ]),
+                verificationLabel: verificationLevel.isNotEmpty
+                    ? verificationLevel
+                    : completionPercent >= 90
+                    ? 'Profile complete'
+                    : 'Growing profile',
+                completionPercent: completionPercent,
+                primaryTags: tags.take(3).toList(),
+                openNeedsCount: liveRequestsByProfile[id] ?? 0,
+                postCount: postsByProvider[id] ?? 0,
+                completedJobs: completedJobs,
+                openLeads: openLeads,
+                averageRating: averageRating,
+                reviewCount: reviewCount,
+                priceLabel: prices.isEmpty
+                    ? 'Pricing in chat'
+                    : 'From INR ${prices.first.round()}',
+                isAcceptedConnection: acceptedConnectionIds.contains(id),
+                mutualConnectionsCount: mutualConnectionsByProfileId[id] ?? 0,
+                reason: profileReasonsById[id] ?? '',
+                priorityScore: priorityScoreByProfileId[id] ?? 0,
+                previewImageUrl: preview?.imageUrl ?? '',
+                previewMediaCount: preview?.mediaCount ?? 0,
+                previewTitle: preview?.title ?? '',
+                previewSource: preview?.source ?? '',
+                contactPhone: _readString(profile['phone']),
+                canCall: _readString(profile['phone']).isNotEmpty,
+              );
+            })
+            .whereType<MobilePersonCard>()
+            .toList()
+          ..sort((left, right) {
+            final leftScore = _sortScore(left);
+            final rightScore = _sortScore(right);
+            final scoreCompare = rightScore.compareTo(leftScore);
+            if (scoreCompare != 0) {
+              return scoreCompare;
+            }
+            return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+          });
 
-    return MobilePeopleSnapshot(currentUserId: currentUserId, people: people);
+    return MobilePeopleSnapshot(
+      currentUserId: currentUserId,
+      people: people,
+      acceptedConnectionIds: acceptedConnectionIds,
+      viewerRoleFamily: _readString(
+        json['viewerRoleFamily'],
+        fallback: 'seeker',
+      ),
+    );
   }
 
   final String currentUserId;
   final List<MobilePersonCard> people;
+  final List<String> acceptedConnectionIds;
+  final String viewerRoleFamily;
 
   int get totalCount => people.length;
 
@@ -261,6 +315,16 @@ class MobilePersonCard {
     required this.averageRating,
     required this.reviewCount,
     required this.priceLabel,
+    this.isAcceptedConnection = false,
+    this.mutualConnectionsCount = 0,
+    this.reason = '',
+    this.priorityScore = 0,
+    this.previewImageUrl = '',
+    this.previewMediaCount = 0,
+    this.previewTitle = '',
+    this.previewSource = '',
+    this.contactPhone = '',
+    this.canCall = false,
   });
 
   final String id;
@@ -280,6 +344,18 @@ class MobilePersonCard {
   final double? averageRating;
   final int reviewCount;
   final String priceLabel;
+  final bool isAcceptedConnection;
+  final int mutualConnectionsCount;
+  final String reason;
+  final int priorityScore;
+  final String previewImageUrl;
+  final int previewMediaCount;
+  final String previewTitle;
+  final String previewSource;
+  final String contactPhone;
+  final bool canCall;
+
+  bool get hasPreviewImage => previewImageUrl.trim().isNotEmpty;
 
   String get ratingLabel {
     final rating = averageRating;
@@ -303,6 +379,16 @@ class MobilePersonCard {
     return '$postCount recent posts';
   }
 
+  String get socialLabel {
+    if (isAcceptedConnection) {
+      return 'Accepted connection';
+    }
+    if (mutualConnectionsCount > 0) {
+      return '$mutualConnectionsCount mutual${mutualConnectionsCount == 1 ? '' : 's'}';
+    }
+    return 'Recommended nearby';
+  }
+
   bool matchesQuery(String query) {
     final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) {
@@ -315,6 +401,7 @@ class MobilePersonCard {
       locationLabel,
       verificationLabel,
       activityLabel,
+      reason,
       ...primaryTags,
     ].join(' ').toLowerCase();
 
@@ -322,17 +409,79 @@ class MobilePersonCard {
   }
 }
 
+class _MobileProfilePreview {
+  const _MobileProfilePreview({
+    required this.imageUrl,
+    required this.mediaCount,
+    required this.title,
+    required this.source,
+  });
+
+  final String imageUrl;
+  final int mediaCount;
+  final String title;
+  final String source;
+}
+
 double _sortScore(MobilePersonCard person) {
   var score = 0.0;
-  if (person.isOnline) {
-    score += 1000;
+  if (person.priorityScore > 0) {
+    score += person.priorityScore * 10;
   }
+  if (person.isAcceptedConnection) {
+    score += 600;
+  }
+  if (person.isOnline) {
+    score += 300;
+  }
+  score += person.mutualConnectionsCount * 40;
   score += person.completedJobs * 8;
   score += person.openLeads * 2;
   score += person.reviewCount * 3;
   score += (person.averageRating ?? 0) * 25;
   score += person.completionPercent.toDouble();
   return score;
+}
+
+Map<String, int> _readIntMap(Object? value) {
+  if (value is! Map) {
+    return const <String, int>{};
+  }
+
+  return value.map(
+    (key, rawValue) => MapEntry(key.toString(), _toInt(rawValue)),
+  );
+}
+
+Map<String, String> _readStringMap(Object? value) {
+  if (value is! Map) {
+    return const <String, String>{};
+  }
+
+  return value.map(
+    (key, rawValue) => MapEntry(key.toString(), _readString(rawValue)),
+  );
+}
+
+Map<String, _MobileProfilePreview> _readProfilePreviewMap(Object? value) {
+  if (value is! Map) {
+    return const <String, _MobileProfilePreview>{};
+  }
+
+  final results = <String, _MobileProfilePreview>{};
+  value.forEach((key, rawValue) {
+    if (rawValue is! Map) {
+      return;
+    }
+
+    results[key.toString()] = _MobileProfilePreview(
+      imageUrl: _readString(rawValue['imageUrl'] ?? rawValue['image_url']),
+      mediaCount: _toInt(rawValue['mediaCount'] ?? rawValue['media_count']),
+      title: _readString(rawValue['title']),
+      source: _readString(rawValue['source']),
+    );
+  });
+  return results;
 }
 
 String _readString(Object? value, {String fallback = ''}) {
@@ -387,7 +536,9 @@ String _humanize(String value) {
   return normalized
       .split('_')
       .map(
-        (part) => part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}',
+        (part) => part.isEmpty
+            ? part
+            : '${part[0].toUpperCase()}${part.substring(1)}',
       )
       .join(' ');
 }

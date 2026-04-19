@@ -77,9 +77,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.search,
-        builder: (context, state) => SearchPage(
-          initialQuery: state.uri.queryParameters['q'],
-        ),
+        builder: (context, state) =>
+            SearchPage(initialQuery: state.uri.queryParameters['q']),
       ),
       GoRoute(
         path: AppRoutes.notifications,
@@ -90,6 +89,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ChatPage(
           initialConversationId: state.uri.queryParameters['conversationId'],
           recipientId: state.uri.queryParameters['recipientId'],
+          initialDraft: state.uri.queryParameters['draft'],
+          contextTitle: state.uri.queryParameters['contextTitle'],
         ),
       ),
       GoRoute(

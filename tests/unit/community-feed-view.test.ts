@@ -107,11 +107,18 @@ describe("buildCommunityFeedView", () => {
           last_seen: "2026-03-24T11:00:00.000Z",
         },
       ],
-      orderStats: [{ provider_id: "provider-1", completed_jobs: 14, open_leads: 2 }],
+      orderStats: [
+        { provider_id: "provider-1", completed_jobs: 14, open_leads: 2 },
+      ],
     });
 
     expect(view.mapCenter).toEqual({ lat: 12.9716, lng: 77.5946 });
-    expect(view.feedItems.map((item) => item.id)).toEqual(["help-open", "post-1", "service-1", "help-taken"]);
+    expect(view.feedItems.map((item) => item.id)).toEqual([
+      "post-1",
+      "service-1",
+      "help-open",
+      "help-taken",
+    ]);
     expect(view.feedStats).toEqual({
       total: 4,
       urgent: 3,
@@ -120,7 +127,9 @@ describe("buildCommunityFeedView", () => {
       product: 0,
     });
 
-    expect(view.feedItems[0]).toMatchObject({
+    expect(
+      view.feedItems.find((item) => item.id === "help-open"),
+    ).toMatchObject({
       id: "help-open",
       source: "help_request",
       type: "demand",
@@ -130,7 +139,9 @@ describe("buildCommunityFeedView", () => {
       viewerHasExpressedInterest: true,
     });
 
-    expect(view.feedItems[2]).toMatchObject({
+    expect(
+      view.feedItems.find((item) => item.id === "service-1"),
+    ).toMatchObject({
       id: "service-1",
       source: "service_listing",
       creatorName: "Asha Repairs",
@@ -140,7 +151,9 @@ describe("buildCommunityFeedView", () => {
       responseMinutes: 9,
     });
 
-    expect(view.feedItems[3]).toMatchObject({
+    expect(
+      view.feedItems.find((item) => item.id === "help-taken"),
+    ).toMatchObject({
       id: "help-taken",
       status: "accepted",
       acceptedProviderId: "provider-9",
@@ -251,6 +264,7 @@ describe("buildCommunityFeedView", () => {
           id: "service-media",
           title: "AC servicing",
           description: "Metadata-backed listing",
+          price: 999,
           provider_id: "provider-1",
           category: "Repair",
           metadata: {
@@ -284,6 +298,7 @@ describe("buildCommunityFeedView", () => {
           id: "product-image",
           title: "Office chair",
           description: "Image-url fallback listing",
+          price: 1800,
           provider_id: "provider-2",
           category: "Furniture",
           image_url: "https://cdn.example.com/product/chair.jpg",
@@ -313,13 +328,17 @@ describe("buildCommunityFeedView", () => {
       orderStats: [],
     });
 
-    expect(view.feedItems.find((item) => item.id === "service-media")?.media).toEqual([
+    expect(
+      view.feedItems.find((item) => item.id === "service-media")?.media,
+    ).toEqual([
       {
         mimeType: "image/jpeg",
         url: "https://cdn.example.com/service/ac.jpg",
       },
     ]);
-    expect(view.feedItems.find((item) => item.id === "product-image")?.media).toEqual([
+    expect(
+      view.feedItems.find((item) => item.id === "product-image")?.media,
+    ).toEqual([
       {
         mimeType: "image/*",
         url: "https://cdn.example.com/product/chair.jpg",
@@ -365,7 +384,9 @@ describe("buildCommunityFeedView", () => {
       ],
       reviews: [],
       presence: [],
-      orderStats: [{ provider_id: "provider-1", completed_jobs: 9, open_leads: 0 }],
+      orderStats: [
+        { provider_id: "provider-1", completed_jobs: 9, open_leads: 0 },
+      ],
     });
 
     expect(view.feedItems[0]).toMatchObject({
