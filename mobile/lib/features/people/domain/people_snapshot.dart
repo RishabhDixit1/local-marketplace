@@ -281,90 +281,6 @@ class MobilePeopleSnapshot {
         fallback: 'seeker',
       ),
     );
-    final people = profileRows
-        .map((profile) {
-          final id = _readString(profile['id']);
-          if (id.isEmpty || id == currentUserId) {
-            return null;
-          }
-
-          final completionPercent = _toInt(profile['profile_completion_percent']);
-          final reviewCount = reviewCountsByProvider[id] ?? 0;
-          final averageRating = reviewCount == 0
-              ? null
-              : (reviewSumsByProvider[id] ?? 0) / reviewCount;
-          final presence = presenceByProvider[id] ?? const <String, dynamic>{};
-          final orderStats = orderStatsByProvider[id] ?? const <String, dynamic>{};
-          final prices = List<double>.from(pricesByProvider[id] ?? const <double>[])
-            ..sort();
-          final tags = (tagsByProvider[id] ?? const <String>{}).toList()..sort();
-          final completedJobs = _toInt(orderStats['completed_jobs']);
-          final openLeads = _toInt(orderStats['open_leads']);
-          final isOnline = presence['is_online'] == true;
-          final responseMinutes = _toInt(presence['rolling_response_minutes']);
-          final verificationLevel = _humanize(
-            _readString(profile['verification_level']),
-          );
-          final locationLabel = _firstNonEmpty([
-            _readString(profile['location']),
-            'Nearby',
-          ]);
-          final headline = _firstNonEmpty([
-            _readString(profile['bio']),
-            _humanize(_readString(profile['role'])),
-            'Serving nearby requests through ServiQ.',
-          ]);
-
-          return MobilePersonCard(
-            id: id,
-            name: _firstNonEmpty([
-              _readString(profile['name']),
-              _readString(profile['email']),
-              'Local provider',
-            ]),
-            avatarUrl: _readString(profile['avatar_url']),
-            headline: headline,
-            locationLabel: locationLabel,
-            isOnline: isOnline,
-            activityLabel: isOnline
-                ? 'Online now'
-                : responseMinutes > 0
-                ? 'Replies in about $responseMinutes min'
-                : _firstNonEmpty([
-                    _humanize(_readString(presence['availability'])),
-                    'Recently active',
-                  ]),
-            verificationLabel: verificationLevel.isNotEmpty
-                ? verificationLevel
-                : completionPercent >= 90
-                ? 'Profile complete'
-                : 'Growing profile',
-            completionPercent: completionPercent,
-            primaryTags: tags.take(3).toList(),
-            openNeedsCount: liveRequestsByProfile[id] ?? 0,
-            postCount: postsByProvider[id] ?? 0,
-            completedJobs: completedJobs,
-            openLeads: openLeads,
-            averageRating: averageRating,
-            reviewCount: reviewCount,
-            priceLabel: prices.isEmpty
-                ? 'Pricing in chat'
-                : 'From INR ${prices.first.round()}',
-          );
-        })
-        .whereType<MobilePersonCard>()
-        .toList()
-      ..sort((left, right) {
-        final leftScore = _sortScore(left);
-        final rightScore = _sortScore(right);
-        final scoreCompare = rightScore.compareTo(leftScore);
-        if (scoreCompare != 0) {
-          return scoreCompare;
-        }
-        return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-      });
-
-    return MobilePeopleSnapshot(currentUserId: currentUserId, people: people);
   }
 
   final String currentUserId;
@@ -631,9 +547,6 @@ String _humanize(String raw) {
       .split(' ')
       .where((segment) => segment.isNotEmpty)
       .map(
-        (part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}',
         (segment) =>
             '${segment[0].toUpperCase()}${segment.substring(1).toLowerCase()}',
       )

@@ -220,7 +220,6 @@ class MobileFeedItem {
         fallback: _readString(json['provider_id']),
       ),
       source: _parseSource(_readString(json['source'])),
-      source: _parseSource(json['source'] as String?),
       helpRequestId: _nullableString(json['helpRequestId']),
       type: type,
       title: title,
@@ -327,13 +326,10 @@ class MobileFeedItem {
 
   bool get hasMedia => mediaCount > 0;
   bool get hasPreviewImage => thumbnailUrl.trim().isNotEmpty;
-  bool get isVerified => verificationStatus == 'verified';
   final String status;
   final String? acceptedProviderId;
   final String? viewerMatchStatus;
   final bool viewerHasExpressedInterest;
-
-  bool get hasMedia => mediaCount > 0;
 
   bool get isVerified => verificationStatus.toLowerCase() == 'verified';
 
