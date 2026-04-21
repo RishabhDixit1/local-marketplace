@@ -197,7 +197,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       case _TaskRoleFilter.all:
         return items;
       case _TaskRoleFilter.requester:
-        return items.where((item) => item.role == MobileTaskRole.posted).toList();
+        return items
+            .where((item) => item.role == MobileTaskRole.posted)
+            .toList();
       case _TaskRoleFilter.provider:
         return items
             .where((item) => item.role == MobileTaskRole.accepted)
@@ -284,10 +286,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                       child: EmptyStateView(
                         title:
                             'Nothing in ${_selectedStatus.label.toLowerCase()}',
-                        message:
-                            _selectedRole == _TaskRoleFilter.all
-                                ? 'Switch lanes to check the rest of your queue.'
-                                : 'Try another lane or switch roles to see the rest of your work.',
+                        message: _selectedRole == _TaskRoleFilter.all
+                            ? 'Switch lanes to check the rest of your queue.'
+                            : 'Try another lane or switch roles to see the rest of your work.',
                       ),
                     );
                   }
@@ -319,10 +320,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 },
                 loading: () => const _TasksLoadingState(),
                 error: (error, stackTrace) => SectionCard(
-                  child: _TasksErrorState(
-                    error: error,
-                    onRetry: _refresh,
-                  ),
+                  child: _TasksErrorState(error: error, onRetry: _refresh),
                 ),
               ),
             ],
@@ -347,17 +345,18 @@ class _TasksHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeCount = snapshot?.countFor(MobileTaskStatus.active) ?? 0;
-    final inProgressCount = snapshot?.countFor(MobileTaskStatus.inProgress) ?? 0;
+    final inProgressCount =
+        snapshot?.countFor(MobileTaskStatus.inProgress) ?? 0;
     final requesterCount = snapshot == null
         ? 0
         : snapshot!.items
-            .where((item) => item.role == MobileTaskRole.posted)
-            .length;
+              .where((item) => item.role == MobileTaskRole.posted)
+              .length;
     final providerCount = snapshot == null
         ? 0
         : snapshot!.items
-            .where((item) => item.role == MobileTaskRole.accepted)
-            .length;
+              .where((item) => item.role == MobileTaskRole.accepted)
+              .length;
 
     return Container(
       decoration: BoxDecoration(
@@ -392,7 +391,10 @@ class _TasksHero extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _HeroBadge(icon: Icons.flash_on_rounded, label: '$activeCount active'),
+              _HeroBadge(
+                icon: Icons.flash_on_rounded,
+                label: '$activeCount active',
+              ),
               _HeroBadge(
                 icon: Icons.route_rounded,
                 label: '$inProgressCount in progress',
@@ -670,9 +672,9 @@ class _TaskCard extends StatelessWidget {
                 ),
                 child: Text(
                   task.role.summary,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.ink,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: AppColors.ink),
                 ),
               ),
             ],
@@ -705,6 +707,9 @@ class _TaskCard extends StatelessWidget {
               children: [
                 Text(
                   task.isProviderTask ? 'Provider view' : 'Requester view',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.ink,
                   ),
@@ -788,10 +793,7 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _TrackerStep extends StatelessWidget {
-  const _TrackerStep({
-    required this.step,
-    required this.showConnector,
-  });
+  const _TrackerStep({required this.step, required this.showConnector});
 
   final MobileTaskTrackerStep step;
   final bool showConnector;
@@ -820,7 +822,10 @@ class _TrackerStep extends StatelessWidget {
                 Container(
                   width: 28,
                   height: 28,
-                  decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: fill,
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(
                     isDone ? Icons.check_rounded : Icons.circle,
                     color: foreground,
@@ -940,10 +945,7 @@ class _TasksLoadingState extends StatelessWidget {
 }
 
 class _TasksErrorState extends StatelessWidget {
-  const _TasksErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _TasksErrorState({required this.error, required this.onRetry});
 
   final Object error;
   final Future<void> Function() onRetry;

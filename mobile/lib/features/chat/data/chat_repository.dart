@@ -58,9 +58,9 @@ class ChatRepository {
           .from('conversation_participants')
           .select('conversation_id,user_id')
           .eq('user_id', userId);
-      myParticipantRows = _rows(rows)
-          .map((row) => {...row, 'last_read_at': null})
-          .toList();
+      myParticipantRows = _rows(
+        rows,
+      ).map((row) => {...row, 'last_read_at': null}).toList();
     }
 
     if (myParticipantRows.isEmpty) {
@@ -72,10 +72,7 @@ class ChatRepository {
         .where((id) => id.isNotEmpty)
         .toList();
 
-    final messageScanLimit = min(
-      1000,
-      max(200, conversationIds.length * 40),
-    );
+    final messageScanLimit = min(1000, max(200, conversationIds.length * 40));
 
     final results = await Future.wait<Object?>([
       client
@@ -142,61 +139,66 @@ class ChatRepository {
       lastMessageByConversation.putIfAbsent(conversationId, () => row);
     }
 
-    final conversations = conversationIds.map((conversationId) {
-      final members = participantRows
-          .where((row) => _readString(row['conversation_id']) == conversationId)
-          .toList();
-      final otherUser = members.firstWhere(
-        (row) => _readString(row['user_id']) != userId,
-        orElse: () => const <String, dynamic>{},
-      );
-      final otherUserId = _readString(otherUser['user_id']);
-      final profile = profilesById[otherUserId] ?? const <String, dynamic>{};
-      final presence = presenceById[otherUserId] ?? const <String, dynamic>{};
-      final lastMessage = lastMessageByConversation[conversationId];
-      final lastReadAt = lastReadAtByConversation[conversationId];
-      final conversationMessages = messagesByConversation[conversationId] ?? const [];
+    final conversations =
+        conversationIds.map((conversationId) {
+          final members = participantRows
+              .where(
+                (row) => _readString(row['conversation_id']) == conversationId,
+              )
+              .toList();
+          final otherUser = members.firstWhere(
+            (row) => _readString(row['user_id']) != userId,
+            orElse: () => const <String, dynamic>{},
+          );
+          final otherUserId = _readString(otherUser['user_id']);
+          final profile =
+              profilesById[otherUserId] ?? const <String, dynamic>{};
+          final presence =
+              presenceById[otherUserId] ?? const <String, dynamic>{};
+          final lastMessage = lastMessageByConversation[conversationId];
+          final lastReadAt = lastReadAtByConversation[conversationId];
+          final conversationMessages =
+              messagesByConversation[conversationId] ?? const [];
 
-      final unreadCount = supportsReadReceipts
-          ? conversationMessages.fold<int>(0, (count, message) {
-              final senderId = _readString(message['sender_id']);
-              if (senderId == userId) {
-                return count;
-              }
-              final createdAt = _parseDate(message['created_at']);
-              if (lastReadAt == null || createdAt == null) {
-                return count + 1;
-              }
-              return createdAt.isAfter(lastReadAt) ? count + 1 : count;
-            })
-          : 0;
+          final unreadCount = supportsReadReceipts
+              ? conversationMessages.fold<int>(0, (count, message) {
+                  final senderId = _readString(message['sender_id']);
+                  if (senderId == userId) {
+                    return count;
+                  }
+                  final createdAt = _parseDate(message['created_at']);
+                  if (lastReadAt == null || createdAt == null) {
+                    return count + 1;
+                  }
+                  return createdAt.isAfter(lastReadAt) ? count + 1 : count;
+                })
+              : 0;
 
-      return ChatConversation(
-        id: conversationId,
-        name: _readString(profile['name'], fallback: 'Local member'),
-        avatarUrl: _readString(profile['avatar_url']),
-        otherUserId: otherUserId.isEmpty ? null : otherUserId,
-        lastMessage: _readString(
-          lastMessage?['content'],
-          fallback: 'Start the conversation',
-        ),
-        lastMessageAt: _parseDate(lastMessage?['created_at']),
-        unreadCount: unreadCount,
-        isOnline: presence['is_online'] == true,
-        subtitle: _readString(
-          profile['bio'],
-          fallback: _readString(
-            presence['availability'],
-            fallback: _readString(profile['location'], fallback: 'Nearby'),
-          ),
-        ),
-      );
-    }).toList()
-      ..sort((left, right) {
-        final leftTime = left.lastMessageAt?.millisecondsSinceEpoch ?? 0;
-        final rightTime = right.lastMessageAt?.millisecondsSinceEpoch ?? 0;
-        return rightTime.compareTo(leftTime);
-      });
+          return ChatConversation(
+            id: conversationId,
+            name: _readString(profile['name'], fallback: 'Local member'),
+            avatarUrl: _readString(profile['avatar_url']),
+            otherUserId: otherUserId.isEmpty ? null : otherUserId,
+            lastMessage: _readString(
+              lastMessage?['content'],
+              fallback: 'Start the conversation',
+            ),
+            lastMessageAt: _parseDate(lastMessage?['created_at']),
+            unreadCount: unreadCount,
+            isOnline: presence['is_online'] == true,
+            subtitle: _readString(
+              profile['bio'],
+              fallback: _readString(
+                presence['availability'],
+                fallback: _readString(profile['location'], fallback: 'Nearby'),
+              ),
+            ),
+          );
+        }).toList()..sort((left, right) {
+          final leftTime = left.lastMessageAt?.millisecondsSinceEpoch ?? 0;
+          final rightTime = right.lastMessageAt?.millisecondsSinceEpoch ?? 0;
+          return rightTime.compareTo(leftTime);
+        });
 
     return conversations;
   }
@@ -244,10 +246,7 @@ class ChatRepository {
   }) async {
     final payload = await _apiClient.postJson(
       '/api/chat/messages',
-      body: {
-        'conversationId': conversationId,
-        'content': content.trim(),
-      },
+      body: {'conversationId': conversationId, 'content': content.trim()},
     );
     if (payload['ok'] != true) {
       throw ApiException(
@@ -311,7 +310,10 @@ class ChatRepository {
 
   static List<Map<String, dynamic>> _rows(Object? value) {
     final list = value as List? ?? const [];
-    return list.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+    return list
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   static String _readString(Object? value, {String fallback = ''}) {

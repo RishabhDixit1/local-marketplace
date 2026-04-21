@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -71,6 +73,67 @@ class MobileApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required String filePath,
+    required String fileName,
+    required String mediaType,
+    String fieldName = 'file',
+    Map<String, String>? fields,
+    bool authenticated = true,
+  }) async {
+    if (!_config.hasApiConfig) {
+      throw const ApiException(
+        'API base URL is missing. Add API_BASE_URL with --dart-define or mobile/config/local.json.',
+      );
+    }
+
+    final uri = _buildUri(path);
+    final request = http.MultipartRequest('POST', uri);
+    if (authenticated) {
+      request.headers.addAll(_buildAuthHeaders());
+    }
+    if (fields != null && fields.isNotEmpty) {
+      request.fields.addAll(fields);
+    }
+
+    try {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          fieldName,
+          filePath,
+          filename: fileName,
+          contentType: _safeMediaType(mediaType),
+        ),
+      );
+
+      final streamed = await request.send().timeout(_requestTimeout);
+      final response = await http.Response.fromStream(streamed);
+      final payload = _decodeBody(response.body);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(
+          _extractMessage(payload) ?? 'Upload failed.',
+          statusCode: response.statusCode,
+        );
+      }
+
+      return payload;
+    } on SocketException {
+      throw const ApiException(
+        'Network connection failed. Check your internet and try again.',
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'The server took too long to respond. Please try again.',
+      );
+    } on http.ClientException {
+      throw const ApiException(
+        'Unable to reach the server right now. Please try again.',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> _sendJson({
     required String method,
     required String path,
@@ -84,6 +147,7 @@ class MobileApiClient {
       );
     }
 
+    final uri = _buildUri(path, queryParameters: queryParameters);
     final uri = _resolveBaseUri().resolve(path).replace(
       queryParameters: queryParameters,
     );
@@ -291,6 +355,29 @@ class MobileApiClient {
     }
 
     return null;
+  }
+
+  Uri _buildUri(String path, {Map<String, String>? queryParameters}) {
+    return Uri.parse(_config.apiBaseUrl)
+        .resolve(path)
+        .replace(
+          queryParameters: queryParameters?.map(
+            (key, value) => MapEntry(key, value),
+          ),
+        );
+  }
+
+  MediaType _safeMediaType(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      return MediaType('application', 'octet-stream');
+    }
+
+    try {
+      return MediaType.parse(normalized);
+    } on FormatException {
+      return MediaType('application', 'octet-stream');
+    }
   }
 
   void dispose() {

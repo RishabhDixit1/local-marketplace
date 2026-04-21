@@ -68,9 +68,7 @@ class DebugNetworkTrust {
   }
 
   static Set<String>? _allowedHosts(AppConfig config) {
-    if (!kDebugMode ||
-        !Platform.isAndroid ||
-        !config.allowBadCertificates) {
+    if (!kDebugMode || !Platform.isAndroid || !config.allowBadCertificates) {
       return null;
     }
 

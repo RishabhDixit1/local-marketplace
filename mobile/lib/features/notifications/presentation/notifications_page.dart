@@ -18,6 +18,7 @@ import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
+enum _NotificationFilter { all, unread, messages, orders, trust }
 enum _NotificationFilter {
   all,
   unread,
@@ -240,6 +241,24 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (data.demoMode || (data.notice ?? '').isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningSoft,
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            border: Border.all(color: AppColors.warning),
+                          ),
+                          child: Text(
+                            data.notice ??
+                                'Notifications are currently running in demo mode.',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.warning),
+                          ),
+                        ),
+                      _NotificationSummary(snapshot: data),
                       _NotificationSummary(
                         items: items,
                         filteredCount: filtered.length,
@@ -290,6 +309,95 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 }
 
+  bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return true;
+      case _NotificationFilter.unread:
+        return item.unread;
+      case _NotificationFilter.messages:
+        return item.kind == MobileNotificationKind.message;
+      case _NotificationFilter.orders:
+        return item.kind == MobileNotificationKind.order;
+      case _NotificationFilter.trust:
+        return item.kind == MobileNotificationKind.review ||
+            item.kind == MobileNotificationKind.connection;
+    }
+  }
+
+  String _labelForFilter(_NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return 'All';
+      case _NotificationFilter.unread:
+        return 'Unread';
+      case _NotificationFilter.messages:
+        return 'Messages';
+      case _NotificationFilter.orders:
+        return 'Orders';
+      case _NotificationFilter.trust:
+        return 'Trust';
+    }
+  }
+
+  List<_NotificationGroup> _groupNotifications(
+    List<MobileNotificationItem> items,
+  ) {
+    final unread = items.where((item) => item.unread).toList();
+    final read = items.where((item) => !item.unread).toList();
+    final groups = <_NotificationGroup>[];
+
+    if (unread.isNotEmpty) {
+      groups.add(
+        _NotificationGroup(
+          title: 'Needs attention',
+          subtitle: 'Unread updates that can move a conversation or task.',
+          items: unread,
+        ),
+      );
+    }
+
+    final buckets = <MobileNotificationKind, List<MobileNotificationItem>>{};
+    for (final item in read) {
+      buckets.putIfAbsent(item.kind, () => []).add(item);
+    }
+
+    for (final kind in [
+      MobileNotificationKind.message,
+      MobileNotificationKind.order,
+      MobileNotificationKind.review,
+      MobileNotificationKind.connection,
+      MobileNotificationKind.system,
+    ]) {
+      final bucket = buckets[kind];
+      if (bucket == null || bucket.isEmpty) {
+        continue;
+      }
+      groups.add(
+        _NotificationGroup(
+          title: kind.label,
+          subtitle: _groupSubtitle(kind),
+          items: bucket,
+        ),
+      );
+    }
+
+    return groups;
+  }
+
+  String _groupSubtitle(MobileNotificationKind kind) {
+    switch (kind) {
+      case MobileNotificationKind.message:
+        return 'Conversation handoffs and fresh replies.';
+      case MobileNotificationKind.order:
+        return 'Nearby request and task movement.';
+      case MobileNotificationKind.review:
+        return 'Trust, ratings, and reputation signals.';
+      case MobileNotificationKind.connection:
+        return 'People, intros, and local network updates.';
+      case MobileNotificationKind.system:
+        return 'Account and platform updates.';
+    }
 bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
   switch (filter) {
     case _NotificationFilter.all:

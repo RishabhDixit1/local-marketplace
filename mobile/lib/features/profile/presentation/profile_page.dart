@@ -236,10 +236,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ],
                 ),
                 loading: () => const _ProfileLoadingState(),
-                error: (error, stackTrace) => _ProfileErrorState(
-                  error: error,
-                  onRetry: _refresh,
-                ),
+                error: (error, stackTrace) =>
+                    _ProfileErrorState(error: error, onRetry: _refresh),
               ),
             ],
           ),
@@ -434,10 +432,8 @@ class _HistorySection extends StatelessWidget {
           emptyState:
               'No portfolio entries yet. Add showcased work from the web profile next.',
           items: snapshot.portfolio.take(4).toList(),
-          itemBuilder: (entry) => _PreviewRow(
-            title: entry.title,
-            subtitle: entry.category,
-          ),
+          itemBuilder: (entry) =>
+              _PreviewRow(title: entry.title, subtitle: entry.category),
         ),
         const SizedBox(height: 14),
         _CollectionCard<MobileProfileWorkHistoryItem>(
@@ -581,11 +577,7 @@ class _SettingsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        _AccountCard(
-          snapshot: snapshot,
-          user: user,
-          onSignOut: onSignOut,
-        ),
+        _AccountCard(snapshot: snapshot, user: user, onSignOut: onSignOut),
       ],
     );
   }
@@ -649,9 +641,9 @@ class _ProfileHero extends StatelessWidget {
                 child: profile.avatarUrl.isEmpty
                     ? Text(
                         initials,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: Colors.white),
                       )
                     : null,
               ),
@@ -662,8 +654,9 @@ class _ProfileHero extends StatelessWidget {
                   children: [
                     Text(
                       snapshot.displayName,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(color: Colors.white),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(color: Colors.white),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -714,9 +707,9 @@ class _HeroChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Colors.white,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(color: Colors.white),
       ),
     );
   }
@@ -856,7 +849,10 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Profile summary', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Profile summary',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 10),
           Text(
             profile.bio.isEmpty
@@ -898,7 +894,10 @@ class _TrustSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Trust and completion', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Trust and completion',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 10),
           Text(
             'This is the part of your profile that affects credibility, repeat sign-in confidence, and how comfortably people reach out.',
@@ -961,7 +960,10 @@ class _LocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Settings and location', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Settings and location',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 10),
           Text(
             'Keep your contact details and service area clear so the mobile experience stays grounded in local intent.',
@@ -970,7 +972,9 @@ class _LocationCard extends StatelessWidget {
           const SizedBox(height: 14),
           _InfoRow(
             label: 'Location',
-            value: profile.location.isEmpty ? 'Not added yet' : profile.location,
+            value: profile.location.isEmpty
+                ? 'Not added yet'
+                : profile.location,
           ),
           _InfoRow(
             label: 'Phone',
@@ -1260,10 +1264,7 @@ class _AccountCard extends StatelessWidget {
           Text('Account', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           _InfoRow(label: 'User ID', value: snapshot.userId),
-          _InfoRow(
-            label: 'Email',
-            value: user?.email ?? snapshot.email,
-          ),
+          _InfoRow(label: 'Email', value: user?.email ?? snapshot.email),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onSignOut,
@@ -1291,16 +1292,16 @@ class _InfoRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: const Color(0xFF64748B),
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: const Color(0xFF64748B)),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -1339,10 +1340,7 @@ class _ProfileLoadingState extends StatelessWidget {
 }
 
 class _ProfileErrorState extends StatelessWidget {
-  const _ProfileErrorState({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ProfileErrorState({required this.error, required this.onRetry});
 
   final Object error;
   final Future<void> Function() onRetry;

@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 class FilterOption<T> {
-  const FilterOption({
-    required this.value,
-    required this.label,
-    this.icon,
-  });
+  const FilterOption({required this.value, required this.label, this.icon});
 
   final T value;
   final String label;
@@ -50,9 +46,7 @@ class FilterChipGroup<T> extends StatelessWidget {
             }
             onChanged(next);
           },
-          avatar: option.icon == null
-              ? null
-              : Icon(option.icon, size: 16),
+          avatar: option.icon == null ? null : Icon(option.icon, size: 16),
           label: Text(option.label),
         );
       }).toList(),

@@ -5,7 +5,9 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../domain/notification_item.dart';
 
-final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((
+  ref,
+) {
   final bootstrap = ref.watch(appBootstrapProvider);
   return NotificationsRepository(client: bootstrap.client);
 });
@@ -90,7 +92,8 @@ class NotificationsRepository {
     }
 
     final result = await client.rpc('mark_all_notifications_read');
-    if (result.error != null && !_isMissingFunctionError(result.error!.message)) {
+    if (result.error != null &&
+        !_isMissingFunctionError(result.error!.message)) {
       final fallback = await client
           .from('notifications')
           .update({'read_at': DateTime.now().toIso8601String()})
@@ -121,7 +124,8 @@ class NotificationsRepository {
 
   static bool _isMissingTableError(String message) {
     return message.contains('notifications') &&
-        (message.contains('does not exist') || message.contains('schema cache'));
+        (message.contains('does not exist') ||
+            message.contains('schema cache'));
   }
 
   static bool _isMissingFunctionError(String message) {
@@ -179,7 +183,8 @@ class NotificationsRepository {
         id: 'demo-order',
         kind: MobileNotificationKind.order,
         title: 'Order accepted',
-        message: 'A nearby provider accepted your request and started preparing.',
+        message:
+            'A nearby provider accepted your request and started preparing.',
         entityType: 'order',
         entityId: null,
         metadata: const {},

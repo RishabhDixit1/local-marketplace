@@ -148,30 +148,31 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     children: [
                       if (providerResults.isNotEmpty &&
                           (_scope == _SearchScope.all ||
-                              _scope == _SearchScope.providers))
-                        ...[
-                          SectionHeader(
-                            title: 'Providers',
-                            subtitle:
-                                '${providerResults.length} nearby people match your search.',
-                          ),
-                          const SizedBox(height: 12),
-                          ...providerResults.take(6).map(
-                            (person) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: ProviderCard(
-                                person: person,
-                                onOpenProfile: () => context.push(
-                                  AppRoutes.provider(person.id),
-                                ),
-                                onMessage: () => context.push(
-                                  '${AppRoutes.chat}?recipientId=${person.id}',
+                              _scope == _SearchScope.providers)) ...[
+                        SectionHeader(
+                          title: 'Providers',
+                          subtitle:
+                              '${providerResults.length} nearby people match your search.',
+                        ),
+                        const SizedBox(height: 12),
+                        ...providerResults
+                            .take(6)
+                            .map(
+                              (person) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: ProviderCard(
+                                  person: person,
+                                  onOpenProfile: () => context.push(
+                                    AppRoutes.provider(person.id),
+                                  ),
+                                  onMessage: () => context.push(
+                                    '${AppRoutes.chat}?recipientId=${person.id}',
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                        const SizedBox(height: 12),
+                      ],
                       if (feedResults.isNotEmpty &&
                           _scope != _SearchScope.providers) ...[
                         SectionHeader(
@@ -180,24 +181,26 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                               '${feedResults.length} results near your current network.',
                         ),
                         const SizedBox(height: 12),
-                        ...feedResults.take(8).map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: RequestCard(
-                              item: item,
-                              onOpen: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                        AppRoutes.provider(item.providerId),
-                                      ),
-                              onMessage: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                        '${AppRoutes.chat}?recipientId=${item.providerId}',
-                                      ),
+                        ...feedResults
+                            .take(8)
+                            .map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: RequestCard(
+                                  item: item,
+                                  onOpen: item.providerId.trim().isEmpty
+                                      ? null
+                                      : () => context.push(
+                                          AppRoutes.provider(item.providerId),
+                                        ),
+                                  onMessage: item.providerId.trim().isEmpty
+                                      ? null
+                                      : () => context.push(
+                                          '${AppRoutes.chat}?recipientId=${item.providerId}',
+                                        ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
                       ],
                     ],
                   );
@@ -245,13 +248,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   List<MobileFeedItem> _filterFeed(List<MobileFeedItem> items) {
     return items.where((item) {
-      if (_scope == _SearchScope.requests && item.type != MobileFeedItemType.demand) {
+      if (_scope == _SearchScope.requests &&
+          item.type != MobileFeedItemType.demand) {
         return false;
       }
-      if (_scope == _SearchScope.services && item.type != MobileFeedItemType.service) {
+      if (_scope == _SearchScope.services &&
+          item.type != MobileFeedItemType.service) {
         return false;
       }
-      if (_scope == _SearchScope.products && item.type != MobileFeedItemType.product) {
+      if (_scope == _SearchScope.products &&
+          item.type != MobileFeedItemType.product) {
         return false;
       }
       if (_flags.contains('verified') && !item.isVerified) {

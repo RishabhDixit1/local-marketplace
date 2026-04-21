@@ -34,7 +34,10 @@ class MobileProfileSnapshot {
     return MobileProfileSnapshot(
       userId: _readString(account['userId']),
       email: _readString(account['email']),
-      displayName: _readString(account['displayName'], fallback: 'ServiQ member'),
+      displayName: _readString(
+        account['displayName'],
+        fallback: 'ServiQ member',
+      ),
       publicPath: _readString(account['publicPath']),
       linkedProviders: ((account['linkedProviders'] as List?) ?? const [])
           .whereType<String>()
@@ -49,31 +52,56 @@ class MobileProfileSnapshot {
       ),
       services: ((json['services'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfileService.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) =>
+                MobileProfileService.fromJson(Map<String, dynamic>.from(row)),
+          )
           .toList(),
       products: ((json['products'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfileProduct.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) =>
+                MobileProfileProduct.fromJson(Map<String, dynamic>.from(row)),
+          )
           .toList(),
       portfolio: ((json['portfolio'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfilePortfolioItem.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) => MobileProfilePortfolioItem.fromJson(
+              Map<String, dynamic>.from(row),
+            ),
+          )
           .toList(),
       workHistory: ((json['workHistory'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfileWorkHistoryItem.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) => MobileProfileWorkHistoryItem.fromJson(
+              Map<String, dynamic>.from(row),
+            ),
+          )
           .toList(),
       availability: ((json['availability'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfileAvailabilityItem.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) => MobileProfileAvailabilityItem.fromJson(
+              Map<String, dynamic>.from(row),
+            ),
+          )
           .toList(),
       paymentMethods: ((json['paymentMethods'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfilePaymentMethod.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) => MobileProfilePaymentMethod.fromJson(
+              Map<String, dynamic>.from(row),
+            ),
+          )
           .toList(),
       reviews: ((json['reviews'] as List?) ?? const [])
           .whereType<Map>()
-          .map((row) => MobileProfileReview.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) =>
+                MobileProfileReview.fromJson(Map<String, dynamic>.from(row)),
+          )
           .toList(),
       averageRating: _toDouble(json['averageRating']),
       reviewCount: _toInt(json['reviewCount']),
@@ -113,9 +141,8 @@ class MobileProfileSnapshot {
   final int completionPercent;
   final int trustScore;
 
-  String get roleLabel => roleFamily == 'provider'
-      ? 'Marketplace provider'
-      : 'Local member';
+  String get roleLabel =>
+      roleFamily == 'provider' ? 'Marketplace provider' : 'Local member';
 }
 
 class MobileProfileRecord {
@@ -235,7 +262,10 @@ class MobileProfileWorkHistoryItem {
   factory MobileProfileWorkHistoryItem.fromJson(Map<String, dynamic> json) {
     return MobileProfileWorkHistoryItem(
       roleTitle: _readString(json['role_title'], fallback: 'Independent work'),
-      companyName: _readString(json['company_name'], fallback: 'ServiQ network'),
+      companyName: _readString(
+        json['company_name'],
+        fallback: 'ServiQ network',
+      ),
       isCurrent: json['is_current'] == true,
     );
   }
@@ -302,10 +332,7 @@ class MobileProfilePaymentMethod {
 }
 
 class MobileProfileReview {
-  const MobileProfileReview({
-    required this.rating,
-    required this.comment,
-  });
+  const MobileProfileReview({required this.rating, required this.comment});
 
   factory MobileProfileReview.fromJson(Map<String, dynamic> json) {
     return MobileProfileReview(

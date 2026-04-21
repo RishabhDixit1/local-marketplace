@@ -86,7 +86,10 @@ class FeedCard extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _MetaItem(icon: Icons.person_outline_rounded, label: item.creatorName),
+              _MetaItem(
+                icon: Icons.person_outline_rounded,
+                label: item.creatorName,
+              ),
               _MetaItem(icon: Icons.place_outlined, label: item.distanceLabel),
               _MetaItem(icon: Icons.payments_outlined, label: item.priceLabel),
               _MetaItem(icon: Icons.history_rounded, label: item.timeLabel),
@@ -165,9 +168,9 @@ class _Tag extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: foregroundColor,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.labelMedium?.copyWith(color: foregroundColor),
       ),
     );
   }
@@ -194,10 +197,7 @@ class _MetaItem extends StatelessWidget {
           Icon(icon, size: 14, color: AppColors.inkMuted),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
       ),
