@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 import '../domain/feed_snapshot.dart';
 
 final feedRepositoryProvider = Provider<FeedRepository>((ref) {
@@ -30,5 +31,31 @@ class FeedRepository {
     }
 
     return MobileFeedSnapshot.fromJson(payload);
+  }
+
+  Future<void> expressInterest(String helpRequestId) async {
+    final payload = await _apiClient.postJson(
+      '/api/needs/express-interest',
+      body: {'helpRequestId': helpRequestId},
+    );
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ??
+            'Unable to send interest for this task.',
+      );
+    }
+  }
+
+  Future<void> withdrawInterest(String helpRequestId) async {
+    final payload = await _apiClient.postJson(
+      '/api/needs/withdraw-interest',
+      body: {'helpRequestId': helpRequestId},
+    );
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ??
+            'Unable to withdraw interest right now.',
+      );
+    }
   }
 }

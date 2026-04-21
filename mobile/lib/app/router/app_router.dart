@@ -24,6 +24,21 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/tasks/presentation/task_detail_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../presentation/app_shell.dart';
+import '../../features/chat/presentation/chat_page.dart';
+import '../../features/control/presentation/control_page.dart';
+import '../../features/feed/presentation/feed_page.dart';
+import '../../features/home/presentation/home_shell_page.dart';
+import '../../features/inbox/presentation/inbox_page.dart';
+import '../../features/notifications/presentation/notifications_page.dart';
+import '../../features/people/presentation/people_page.dart';
+import '../../features/post_create/presentation/create_need_page.dart';
+import '../../features/profile/presentation/profile_page.dart';
+import '../../features/provider/presentation/provider_onboarding_page.dart';
+import '../../features/provider/presentation/provider_profile_page.dart';
+import '../../features/search/presentation/search_page.dart';
+import '../../features/task_post/presentation/task_post_page.dart';
+import '../../features/tasks/presentation/tasks_page.dart';
+import '../../features/welcome/presentation/welcome_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
@@ -66,7 +81,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        builder: (context, state) => const SizedBox.shrink(),
+        builder: (context, state) => const _RouterPlaceholder(),
       ),
       GoRoute(
         path: AppRoutes.setup,
@@ -79,6 +94,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.createNeed,
         builder: (context, state) => const CreateNeedPage(),
+      ),
+      GoRoute(
+        path: '/app/post-task',
+        builder: (context, state) => const TaskPostPage(),
       ),
       GoRoute(
         path: AppRoutes.search,
@@ -110,6 +129,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProviderOnboardingPage(),
       ),
       GoRoute(
+        path: AppRoutes.control,
+        builder: (context, state) => const ControlPage(),
+      ),
+      GoRoute(
         path: '/app/provider/:providerId',
         builder: (context, state) => ProviderProfilePage(
           providerId: state.pathParameters['providerId'] ?? '',
@@ -124,6 +147,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/app/chat/thread/:threadId',
         builder: (context, state) =>
             ChatThreadScreen(threadId: state.pathParameters['threadId'] ?? ''),
+        path: '/app/inbox',
+        builder: (context, state) => const InboxPage(),
+        routes: [
+          GoRoute(
+            path: ':conversationId',
+            builder: (context, state) => ChatThreadPage(
+              conversationId: state.pathParameters['conversationId'] ?? '',
+            ),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -143,6 +176,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.people,
                 builder: (context, state) => const PeopleScreen(),
+                path: AppRoutes.explore,
+                builder: (context, state) =>
+                    const FeedPage(mode: FeedPageMode.explore),
               ),
             ],
           ),
@@ -175,3 +211,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _RouterPlaceholder extends StatelessWidget {
+  const _RouterPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: SizedBox.shrink());
+  }
+}

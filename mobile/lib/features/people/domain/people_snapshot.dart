@@ -122,8 +122,8 @@ class MobilePeopleSnapshot {
       }
 
       addTag(requesterId, row['category']);
-      if (_readString(row['status'], fallback: 'open').toLowerCase() !=
-          'completed') {
+      final status = _readString(row['status'], fallback: 'open').toLowerCase();
+      if (status != 'completed' && status != 'closed') {
         liveRequestsByProfile.update(
           requesterId,
           (count) => count + 1,
@@ -373,10 +373,13 @@ class MobilePersonCard {
     if (openLeads > 0) {
       return '$openLeads live leads';
     }
-    if (openNeedsCount > 0) {
-      return '$openNeedsCount active needs';
+    if (postCount > 0) {
+      return '$postCount local posts';
     }
-    return '$postCount recent posts';
+    if (openNeedsCount > 0) {
+      return '$openNeedsCount nearby needs';
+    }
+    return 'Building local presence';
   }
 
   String get socialLabel {
@@ -399,12 +402,12 @@ class MobilePersonCard {
       name,
       headline,
       locationLabel,
-      verificationLabel,
       activityLabel,
       reason,
+      verificationLabel,
+      priceLabel,
       ...primaryTags,
     ].join(' ').toLowerCase();
-
     return haystack.contains(normalized);
   }
 }
@@ -440,6 +443,13 @@ double _sortScore(MobilePersonCard person) {
   score += person.reviewCount * 3;
   score += (person.averageRating ?? 0) * 25;
   score += person.completionPercent.toDouble();
+  score += person.completedJobs * 10;
+  score += person.openLeads * 6;
+  score += person.postCount * 3;
+  score += person.openNeedsCount * 2;
+  score += (person.averageRating ?? 0) * 20;
+  score += person.reviewCount * 2;
+  score += person.completionPercent / 10;
   return score;
 }
 
@@ -527,18 +537,18 @@ double _toDouble(Object? value) {
   return 0;
 }
 
-String _humanize(String value) {
-  final normalized = value.trim().toLowerCase();
+String _humanize(String raw) {
+  final normalized = raw.trim().replaceAll('_', ' ');
   if (normalized.isEmpty) {
     return '';
   }
 
   return normalized
-      .split('_')
+      .split(' ')
+      .where((segment) => segment.isNotEmpty)
       .map(
-        (part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}',
+        (segment) =>
+            '${segment[0].toUpperCase()}${segment.substring(1).toLowerCase()}',
       )
       .join(' ');
 }

@@ -12,6 +12,8 @@ class AppRoutes {
   static const profile = '/app/profile';
   static const createNeed = '/app/create-need';
   static const createRequest = createNeed;
+  static const control = '/app/control';
+  static const createRequest = '/app/create';
   static const search = '/app/search';
   static const notifications = '/app/notifications';
   static const settings = '/app/settings';

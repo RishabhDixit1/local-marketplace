@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/api/mobile_api_client.dart';
+import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
@@ -17,20 +20,42 @@ import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/section_header.dart';
+import '../../inbox/data/chat_repository.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
+
+enum FeedPageMode {
+  welcome,
+  explore;
+
+  MobileFeedScope get scope =>
+      this == FeedPageMode.welcome ? MobileFeedScope.connected : MobileFeedScope.all;
+
+  String get title =>
+      this == FeedPageMode.welcome ? 'Your network feed' : 'Explore';
+
+  String get searchHint => this == FeedPageMode.welcome
+      ? 'Search your network feed'
+      : 'Search the live marketplace';
+
+  String get heroTitle => this == FeedPageMode.welcome
+      ? 'Stay close to the people already around you.'
+      : 'Local Help Marketplace for Everyday Needs.';
+
+  String get heroMessage => this == FeedPageMode.welcome
+      ? 'Track nearby needs, trusted providers, and fast follow-up across your connected ServiQ network.'
+      : 'Browse fresh requests, services, and products with the same mobile workflow powering the marketplace.';
+}
 
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({
     super.key,
+    this.mode = FeedPageMode.explore,
     this.snapshotOverride,
-    this.pageTitle = 'Explore',
-    this.initialScope = MobileFeedScope.all,
   });
 
+  final FeedPageMode mode;
   final AsyncValue<MobileFeedSnapshot>? snapshotOverride;
-  final String pageTitle;
-  final MobileFeedScope initialScope;
 
   @override
   ConsumerState<FeedPage> createState() => _FeedPageState();
@@ -42,13 +67,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   String _query = '';
   late MobileFeedScope _scope;
   final Set<String> _filters = <String>{};
+  String? _busyFeedActionId;
   RealtimeChannel? _feedChannel;
   SupabaseClient? _client;
 
   @override
   void initState() {
     super.initState();
-    _scope = widget.initialScope;
+    _scope = widget.mode.scope;
     try {
       _client = ref.read(appBootstrapProvider).client;
     } catch (_) {
@@ -116,23 +142,151 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 220), () {
       if (mounted) {
-        setState(() => _query = value.trim().toLowerCase());
+        setState(() => _query = value.trim());
       }
     });
+  }
+
+  Future<void> _openPostTask() async {
+    final posted = await context.push<bool>('/app/post-task');
+    if (posted == true && mounted) {
+      await _refresh();
+    }
+  }
+
+  Future<void> _sendInterest(MobileFeedItem item) async {
+    final helpRequestId = item.helpRequestId;
+    if (helpRequestId == null || _busyFeedActionId != null) {
+      return;
+    }
+
+    setState(() => _busyFeedActionId = item.id);
+    try {
+      if (item.viewerHasExpressedInterest) {
+        await ref.read(feedRepositoryProvider).withdrawInterest(helpRequestId);
+      } else {
+        await ref.read(feedRepositoryProvider).expressInterest(helpRequestId);
+      }
+
+      ref.invalidate(feedSnapshotProvider(_scope));
+      await ref.read(feedSnapshotProvider(_scope).future);
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            item.viewerHasExpressedInterest
+                ? 'Interest withdrawn.'
+                : 'Interest sent. The requester will review it shortly.',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() => _busyFeedActionId = null);
+      }
+    }
+  }
+
+  Future<void> _openChat(MobileFeedItem item) async {
+    if (_busyFeedActionId != null || item.providerId.trim().isEmpty) {
+      return;
+    }
+
+    final currentUserId =
+        ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
+    if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('This is your own post.')));
+      return;
+    }
+
+    setState(() => _busyFeedActionId = item.id);
+    try {
+      final conversationId = await ref
+          .read(chatRepositoryProvider)
+          .getOrCreateDirectConversation(recipientId: item.providerId);
+      if (!mounted) {
+        return;
+      }
+      context.push('/app/inbox/$conversationId');
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() => _busyFeedActionId = null);
+      }
+    }
+  }
+
+  List<MobileFeedItem> _filterItems(List<MobileFeedItem> items) {
+    return items.where((item) {
+      if (_filters.contains('verified') && !item.isVerified) {
+        return false;
+      }
+      if (_filters.contains('urgent') && !item.urgent) {
+        return false;
+      }
+      if (_filters.contains('media') && !item.hasMedia) {
+        return false;
+      }
+      if (_filters.contains('top_rated') &&
+          ((item.averageRating ?? 0) < 4.5 || item.reviewCount < 1)) {
+        return false;
+      }
+
+      final query = _query.trim().toLowerCase();
+      if (query.isEmpty) {
+        return true;
+      }
+
+      final haystack = [
+        item.title,
+        item.description,
+        item.category,
+        item.creatorName,
+        item.locationLabel,
+        item.priceLabel,
+      ].join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<MobileFeedSnapshot> snapshot =
-        widget.snapshotOverride ?? ref.watch(feedSnapshotProvider(_scope));
+        widget.snapshotOverride ??
+        ref.watch(feedSnapshotProvider(_scope));
+    final previewData = snapshot.asData?.value;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.pageTitle),
+        title: Text(widget.mode.title),
         actions: [
           IconButton(
             onPressed: () => context.push(AppRoutes.people),
             icon: const Icon(Icons.people_alt_outlined),
+            onPressed: () => context.push(AppRoutes.search),
+            icon: const Icon(Icons.search_rounded),
+          ),
+          IconButton(
+            onPressed: () => context.push(AppRoutes.notifications),
+            icon: const Icon(Icons.notifications_none_rounded),
           ),
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
@@ -144,8 +298,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
+              _FeedHero(
+                mode: widget.mode,
+                onPrimaryAction: _openPostTask,
+                onSecondaryAction: () => context.push(AppRoutes.search),
+              ),
+              const SizedBox(height: 16),
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +322,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     const SizedBox(height: 16),
                     AppSearchField(
                       controller: _searchController,
-                      hintText: 'Search by title, category, or locality',
+                      hintText: widget.mode.searchHint,
                       onChanged: _onQueryChanged,
                     ),
                     const SizedBox(height: 12),
@@ -209,6 +369,28 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           ..addAll(next);
                       }),
                     ),
+                    if (previewData != null && previewData.items.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Live local feed',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Marketplace feed',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        previewData.items.first.title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        previewData.items.first.category,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -242,50 +424,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ].join(' ').toLowerCase();
                     return haystack.contains(_query);
                   }).toList();
+                  final items = _filterItems(data.items);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final width = (constraints.maxWidth - 12) / 2;
-                          return Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              SizedBox(
-                                width: width,
-                                child: MetricTile(
-                                  label: 'Total',
-                                  value: data.stats.total.toString(),
-                                  icon: Icons.public_rounded,
-                                ),
-                              ),
-                              SizedBox(
-                                width: width,
-                                child: MetricTile(
-                                  label: 'Urgent',
-                                  value: data.stats.urgent.toString(),
-                                  icon: Icons.priority_high_rounded,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                      _FeedMetrics(snapshot: data),
                       const SizedBox(height: 16),
                       SectionHeader(
-                        title: 'Live local feed',
+                        title: widget.mode == FeedPageMode.welcome
+                            ? 'Connected feed'
+                            : 'Live local feed',
                         subtitle:
-                            '${items.length} results matched your current view.',
+                            'Marketplace feed with ${items.length} items matching your current search and filters.',
                       ),
                       const SizedBox(height: 12),
                       if (items.isEmpty)
                         const SectionCard(
                           child: EmptyStateView(
-                            title: 'No matches in this view',
+                            title: 'No matching posts',
                             message:
-                                'Try removing a filter or widening from Connected to All.',
+                                'Try a broader term or clear one of the active filters to widen the nearby feed.',
                           ),
                         )
                       else
@@ -306,6 +465,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                     ),
                               primaryLabel: 'Open',
                               secondaryLabel: 'Contact',
+                              onPrimaryTap: item.helpRequestId == null
+                                  ? () {
+                                      if (item.providerId.trim().isEmpty) {
+                                        return;
+                                      }
+                                      context.push(
+                                        AppRoutes.provider(item.providerId),
+                                      );
+                                    }
+                                  : () => _sendInterest(item),
+                              onSecondaryTap: item.providerId.trim().isEmpty
+                                  ? null
+                                  : () => _openChat(item),
+                              primaryLabel: item.helpRequestId == null
+                                  ? 'Open profile'
+                                  : item.viewerHasExpressedInterest
+                                  ? 'Withdraw interest'
+                                  : 'Express interest',
+                              secondaryLabel: _busyFeedActionId == item.id
+                                  ? 'Working...'
+                                  : 'Message',
                             ),
                           ),
                         ),
@@ -329,6 +509,124 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 }
 
+class _FeedHero extends StatelessWidget {
+  const _FeedHero({
+    required this.mode,
+    required this.onPrimaryAction,
+    required this.onSecondaryAction,
+  });
+
+  final FeedPageMode mode;
+  final VoidCallback onPrimaryAction;
+  final VoidCallback onSecondaryAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B1F33), Color(0xFF1D4ED8), Color(0xFF0EA5A4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            mode.heroTitle,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            mode.heroMessage,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.84),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onPrimaryAction,
+                  icon: const Icon(Icons.bolt_rounded),
+                  label: const Text('Post a Need'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SecondaryButton(
+                  label: 'Search nearby',
+                  onPressed: onSecondaryAction,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedMetrics extends StatelessWidget {
+  const _FeedMetrics({required this.snapshot});
+
+  final MobileFeedSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 12.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Live requests',
+                value: snapshot.stats.demand.toString(),
+                icon: Icons.flash_on_rounded,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Urgent now',
+                value: snapshot.stats.urgent.toString(),
+                icon: Icons.warning_amber_rounded,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Services',
+                value: snapshot.stats.service.toString(),
+                icon: Icons.design_services_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Products',
+                value: snapshot.stats.product.toString(),
+                icon: Icons.inventory_2_outlined,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _FeedLoadingState extends StatelessWidget {
   const _FeedLoadingState();
 
@@ -337,17 +635,21 @@ class _FeedLoadingState extends StatelessWidget {
     return Column(
       children: List.generate(
         3,
-        (index) => Padding(
+        (_) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                LoadingShimmer(height: 18, width: 180),
+                LoadingShimmer(height: 16, width: 96),
+                SizedBox(height: 14),
+                LoadingShimmer(height: 22, width: 220),
                 SizedBox(height: 10),
                 LoadingShimmer(height: 14),
                 SizedBox(height: 8),
-                LoadingShimmer(height: 14, width: 220),
+                LoadingShimmer(height: 14, width: 260),
+                SizedBox(height: 16),
+                LoadingShimmer(height: 88),
               ],
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 
 final createNeedRepositoryProvider = Provider<CreateNeedRepository>((ref) {
   return CreateNeedRepository(ref.watch(mobileApiClientProvider));

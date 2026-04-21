@@ -232,14 +232,16 @@ class _PeopleLoading extends StatelessWidget {
     return Column(
       children: List.generate(
         3,
-        (index) => Padding(
+        (_) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: SectionCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                LoadingShimmer(height: 18, width: 140),
+                LoadingShimmer(height: 20, width: 180),
                 SizedBox(height: 10),
+                LoadingShimmer(height: 14, width: 240),
+                SizedBox(height: 16),
                 LoadingShimmer(height: 14),
                 SizedBox(height: 8),
                 LoadingShimmer(height: 14, width: 220),

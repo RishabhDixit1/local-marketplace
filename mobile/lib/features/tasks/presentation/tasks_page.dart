@@ -43,70 +43,95 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   MobileTaskStatus _selectedStatus = MobileTaskStatus.active;
   _TaskRoleFilter _selectedRole = _TaskRoleFilter.all;
   String? _busyTaskId;
-  RealtimeChannel? _tasksChannel;
-
-  AppBootstrap? _readBootstrap() {
-    try {
-      return ref.read(appBootstrapProvider);
-    } catch (_) {
-      return null;
-    }
-  }
+  RealtimeChannel? _ordersChannel;
+  RealtimeChannel? _helpRequestsChannel;
+  RealtimeChannel? _taskEventsChannel;
+  SupabaseClient? _client;
 
   @override
   void initState() {
     super.initState();
-    _subscribeToRealtime();
+    try {
+      _client = ref.read(appBootstrapProvider).client;
+    } catch (_) {
+      _client = null;
+    }
+    _bindRealtimeChannels();
   }
 
   @override
   void dispose() {
-    final client = _readBootstrap()?.client;
-    final channel = _tasksChannel;
-    if (client != null && channel != null) {
-      client.removeChannel(channel);
-    }
+    _disposeRealtimeChannels();
     super.dispose();
   }
 
-  void _subscribeToRealtime() {
-    final client = _readBootstrap()?.client;
+  void _bindRealtimeChannels() {
+    _disposeRealtimeChannels();
+
+    final client = _client;
     final userId = client?.auth.currentUser?.id ?? '';
     if (client == null || userId.isEmpty) {
       return;
     }
 
-    void invalidateTasks() {
+    void refresh() {
       ref.invalidate(taskSnapshotProvider);
     }
 
-    _tasksChannel = client
-        .channel('mobile-tasks-$userId')
+    _ordersChannel = client
+        .channel('mobile-tasks-orders-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'orders',
-          callback: (_) => invalidateTasks(),
+          callback: (_) => refresh(),
         )
+        .subscribe();
+
+    _helpRequestsChannel = client
+        .channel('mobile-tasks-help-requests-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'help_requests',
-          callback: (_) => invalidateTasks(),
+          callback: (_) => refresh(),
         )
+        .subscribe();
+
+    _taskEventsChannel = client
+        .channel('mobile-tasks-events-$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'task_events',
-          callback: (_) => invalidateTasks(),
+          callback: (_) => refresh(),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'notification_escalations',
-          callback: (_) => invalidateTasks(),
+          callback: (_) => refresh(),
         )
         .subscribe();
+  }
+
+  void _disposeRealtimeChannels() {
+    final client = _client;
+    if (client == null) {
+      return;
+    }
+    if (_ordersChannel != null) {
+      client.removeChannel(_ordersChannel!);
+      _ordersChannel = null;
+    }
+    if (_helpRequestsChannel != null) {
+      client.removeChannel(_helpRequestsChannel!);
+      _helpRequestsChannel = null;
+    }
+    if (_taskEventsChannel != null) {
+      client.removeChannel(_taskEventsChannel!);
+      _taskEventsChannel = null;
+    }
   }
 
   Future<void> _refresh() async {
@@ -247,7 +272,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   );
 
                   if (loaded.items.isEmpty) {
-                    return SectionCard(
+                    return const SectionCard(
                       child: EmptyStateView(
                         title: 'No live tasks yet',
                         message:
@@ -685,6 +710,9 @@ class _TaskCard extends StatelessWidget {
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppColors.ink,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
