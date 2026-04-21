@@ -433,7 +433,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     key: _emailFormKey,
                     child: TextFormField(
                       controller: _emailController,
-                      enabled: _otpEmail == null &&
+                      enabled:
+                          _otpEmail == null &&
                           !_emailCodeSubmitting &&
                           !_magicLinkSubmitting,
                       keyboardType: TextInputType.emailAddress,
@@ -480,7 +481,8 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _magicLinkSubmitting || _emailCodeSubmitting
+                          onPressed:
+                              _magicLinkSubmitting || _emailCodeSubmitting
                               ? null
                               : _sendMagicLink,
                           icon: _magicLinkSubmitting

@@ -19,10 +19,7 @@ import '../../../shared/components/section_header.dart';
 import '../../../shared/components/trust_badge.dart';
 
 class ProviderProfilePage extends ConsumerWidget {
-  const ProviderProfilePage({
-    super.key,
-    required this.providerId,
-  });
+  const ProviderProfilePage({super.key, required this.providerId});
 
   final String providerId;
 
@@ -56,16 +53,14 @@ class ProviderProfilePage extends ConsumerWidget {
               );
             }
 
-            final relatedItems = feedAsync.asData?.value.items
+            final relatedItems =
+                feedAsync.asData?.value.items
                     .where((item) => item.providerId == providerId)
                     .toList() ??
                 const <MobileFeedItem>[];
             final publicProfilePath = relatedItems
                 .map((item) => item.publicProfilePath)
-                .firstWhere(
-                  (path) => path.trim().isNotEmpty,
-                  orElse: () => '',
-                );
+                .firstWhere((path) => path.trim().isNotEmpty, orElse: () => '');
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -109,9 +104,9 @@ class ProviderProfilePage extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         '${provider.workLabel} • ${provider.priceLabel}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.ink,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -130,7 +125,8 @@ class ProviderProfilePage extends ConsumerWidget {
                           Expanded(
                             child: SecondaryButton(
                               label: 'Request quote',
-                              onPressed: () => context.push(AppRoutes.createRequest),
+                              onPressed: () =>
+                                  context.push(AppRoutes.createRequest),
                             ),
                           ),
                         ],
@@ -233,11 +229,15 @@ class ProviderProfilePage extends ConsumerWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.surfaceMuted,
-                                  borderRadius: BorderRadius.circular(AppRadii.md),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.md,
+                                  ),
                                 ),
                                 child: Text(
                                   tag,
-                                  style: Theme.of(context).textTheme.labelMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium,
                                 ),
                               ),
                             )
@@ -259,9 +259,7 @@ class ProviderProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (feedAsync.isLoading)
-                  const SectionCard(
-                    child: CircularProgressIndicator(),
-                  )
+                  const SectionCard(child: CircularProgressIndicator())
                 else if (relatedItems.isEmpty)
                   const SectionCard(
                     child: EmptyStateView(
@@ -271,31 +269,30 @@ class ProviderProfilePage extends ConsumerWidget {
                     ),
                   )
                 else
-                  ...relatedItems.take(3).map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: FeedCard(
-                        item: item,
-                        onPrimaryTap: () => context.push(AppRoutes.createRequest),
-                        onSecondaryTap: () => context.push(
-                          '${AppRoutes.chat}?recipientId=$providerId',
+                  ...relatedItems
+                      .take(3)
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: FeedCard(
+                            item: item,
+                            onPrimaryTap: () =>
+                                context.push(AppRoutes.createRequest),
+                            onSecondaryTap: () => context.push(
+                              '${AppRoutes.chat}?recipientId=$providerId',
+                            ),
+                            primaryLabel: 'Request service',
+                            secondaryLabel: 'Message',
+                          ),
                         ),
-                        primaryLabel: 'Request service',
-                        secondaryLabel: 'Message',
                       ),
-                    ),
-                  ),
               ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => ListView(
             padding: const EdgeInsets.all(16),
-            children: [
-              SectionCard(
-                child: Text(error.toString()),
-              ),
-            ],
+            children: [SectionCard(child: Text(error.toString()))],
           ),
         ),
       ),

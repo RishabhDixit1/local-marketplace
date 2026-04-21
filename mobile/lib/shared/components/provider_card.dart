@@ -40,7 +40,9 @@ class ProviderCard extends StatelessWidget {
               child: Text(
                 person.isOnline ? 'Active now' : 'Available later',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: person.isOnline ? AppColors.primary : AppColors.inkMuted,
+                  color: person.isOnline
+                      ? AppColors.primary
+                      : AppColors.inkMuted,
                 ),
               ),
             ),
@@ -70,9 +72,18 @@ class ProviderCard extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              _MetaLine(icon: Icons.place_outlined, label: person.locationLabel),
-              _MetaLine(icon: Icons.schedule_rounded, label: person.activityLabel),
-              _MetaLine(icon: Icons.payments_outlined, label: person.priceLabel),
+              _MetaLine(
+                icon: Icons.place_outlined,
+                label: person.locationLabel,
+              ),
+              _MetaLine(
+                icon: Icons.schedule_rounded,
+                label: person.activityLabel,
+              ),
+              _MetaLine(
+                icon: Icons.payments_outlined,
+                label: person.priceLabel,
+              ),
             ],
           ),
           if (person.primaryTags.isNotEmpty) ...[

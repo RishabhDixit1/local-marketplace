@@ -93,9 +93,7 @@ class ProviderOnboardingPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => ListView(
             padding: const EdgeInsets.all(16),
-            children: [
-              SectionCard(child: Text(error.toString())),
-            ],
+            children: [SectionCard(child: Text(error.toString()))],
           ),
         ),
       ),
@@ -130,13 +128,17 @@ class _ChecklistCard extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: item.done ? const Color(0xFFE7F4EF) : const Color(0xFFF1F4F8),
+              color: item.done
+                  ? const Color(0xFFE7F4EF)
+                  : const Color(0xFFF1F4F8),
               shape: BoxShape.circle,
             ),
             child: Icon(
               item.done ? Icons.check_rounded : Icons.circle_outlined,
               size: 16,
-              color: item.done ? const Color(0xFF146C53) : const Color(0xFF616B79),
+              color: item.done
+                  ? const Color(0xFF146C53)
+                  : const Color(0xFF616B79),
             ),
           ),
           const SizedBox(width: 12),
@@ -144,7 +146,10 @@ class _ChecklistCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  item.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 6),
                 Text(
                   item.description,
@@ -184,8 +189,10 @@ List<_ChecklistItemData> _buildChecklist(MobileProfileSnapshot snapshot) {
     ),
     _ChecklistItemData(
       title: 'Proof and trust',
-      description: 'Reviews, payment readiness, and portfolio build confidence.',
-      done: snapshot.reviewCount > 0 ||
+      description:
+          'Reviews, payment readiness, and portfolio build confidence.',
+      done:
+          snapshot.reviewCount > 0 ||
           snapshot.paymentMethodCount > 0 ||
           snapshot.portfolioCount > 0,
     ),

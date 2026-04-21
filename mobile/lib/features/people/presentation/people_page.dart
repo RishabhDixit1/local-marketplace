@@ -196,9 +196,8 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: ProviderCard(
                               person: person,
-                              onOpenProfile: () => context.push(
-                                AppRoutes.provider(person.id),
-                              ),
+                              onOpenProfile: () =>
+                                  context.push(AppRoutes.provider(person.id)),
                               onMessage: () => context.push(
                                 '${AppRoutes.chat}?recipientId=${person.id}',
                               ),

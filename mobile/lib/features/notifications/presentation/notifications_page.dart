@@ -16,13 +16,7 @@ import '../../../shared/components/trust_badge.dart';
 import '../data/notifications_repository.dart';
 import '../domain/notification_item.dart';
 
-enum _NotificationFilter {
-  all,
-  unread,
-  messages,
-  orders,
-  trust,
-}
+enum _NotificationFilter { all, unread, messages, orders, trust }
 
 class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
@@ -158,9 +152,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                           child: Text(
                             data.notice ??
                                 'Notifications are currently running in demo mode.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.warning,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.warning),
                           ),
                         ),
                       _NotificationSummary(snapshot: data),
@@ -199,10 +192,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     );
   }
 
-  bool _matchesFilter(
-    MobileNotificationItem item,
-    _NotificationFilter filter,
-  ) {
+  bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
     switch (filter) {
       case _NotificationFilter.all:
         return true;
@@ -233,7 +223,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     }
   }
 
-  List<_NotificationGroup> _groupNotifications(List<MobileNotificationItem> items) {
+  List<_NotificationGroup> _groupNotifications(
+    List<MobileNotificationItem> items,
+  ) {
     final unread = items.where((item) => item.unread).toList();
     final read = items.where((item) => !item.unread).toList();
     final groups = <_NotificationGroup>[];

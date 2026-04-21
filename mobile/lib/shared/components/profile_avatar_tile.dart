@@ -24,7 +24,9 @@ class ProfileAvatarTile extends StatelessWidget {
         CircleAvatar(
           radius: 24,
           backgroundColor: const Color(0xFFE7EEF6),
-          backgroundImage: avatarUrl.trim().isEmpty ? null : NetworkImage(avatarUrl),
+          backgroundImage: avatarUrl.trim().isEmpty
+              ? null
+              : NetworkImage(avatarUrl),
           child: avatarUrl.trim().isEmpty
               ? Text(AppFormatters.initials(name))
               : null,
@@ -40,10 +42,7 @@ class ProfileAvatarTile extends StatelessWidget {
             ],
           ),
         ),
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }

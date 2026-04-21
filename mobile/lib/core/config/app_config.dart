@@ -75,7 +75,8 @@ class AppConfig {
         authRedirectHost,
         fallback.authRedirectHost,
       ),
-      allowBadCertificates: allowBadCertificates || fallback.allowBadCertificates,
+      allowBadCertificates:
+          allowBadCertificates || fallback.allowBadCertificates,
     );
   }
 
