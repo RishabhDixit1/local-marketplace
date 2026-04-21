@@ -85,15 +85,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
-        path: AppRoutes.chat,
-        builder: (context, state) => ChatPage(
-          initialConversationId: state.uri.queryParameters['conversationId'],
-          recipientId: state.uri.queryParameters['recipientId'],
-          initialDraft: state.uri.queryParameters['draft'],
-          contextTitle: state.uri.queryParameters['contextTitle'],
-        ),
-      ),
-      GoRoute(
         path: AppRoutes.providerOnboarding,
         builder: (context, state) => const ProviderOnboardingPage(),
       ),
@@ -127,16 +118,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.people,
-                builder: (context, state) => const PeoplePage(),
+                path: AppRoutes.tasks,
+                builder: (context, state) => const TasksPage(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tasks,
-                builder: (context, state) => const TasksPage(),
+                path: AppRoutes.chat,
+                builder: (context, state) => ChatPage(
+                  initialConversationId:
+                      state.uri.queryParameters['conversationId'],
+                  recipientId: state.uri.queryParameters['recipientId'],
+                  initialDraft: state.uri.queryParameters['draft'],
+                  contextTitle: state.uri.queryParameters['contextTitle'],
+                ),
               ),
             ],
           ),
@@ -149,6 +146,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.people,
+        builder: (context, state) => const PeoplePage(),
       ),
     ],
   );

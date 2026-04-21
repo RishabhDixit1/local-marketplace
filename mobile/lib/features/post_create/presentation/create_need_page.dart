@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
@@ -51,6 +55,8 @@ const _budgetPresets = [
   _BudgetPreset(label: 'Flexible'),
 ];
 
+const _maxComposerMedia = 6;
+
 class CreateNeedPage extends ConsumerStatefulWidget {
   const CreateNeedPage({super.key});
 
@@ -65,12 +71,14 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   final _detailsController = TextEditingController();
   final _budgetController = TextEditingController();
   final _locationController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   int _step = 1;
   String _category = _categories.first;
   String _neededWithin = _neededWithinOptions[2];
   CreateNeedMode _mode = CreateNeedMode.urgent;
   double _radiusKm = 8;
+  List<_ComposerMediaItem> _media = <_ComposerMediaItem>[];
   bool _submitting = false;
   bool _draftRestored = false;
   String? _error;
@@ -120,6 +128,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _mode = cached.mode;
     _radiusKm = cached.radiusKm;
     _step = cached.step;
+    _media = cached.media
+        .map((item) => _ComposerMediaItem.fromSnapshot(item))
+        .toList();
     _draftRestored = cached.hasContent;
   }
 
@@ -141,6 +152,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       radiusKm: _radiusKm,
       mode: _mode,
       neededWithin: _neededWithin,
+      media: _media.map((item) => item.toSnapshot()).toList(),
     );
 
     if (snapshot.hasContent) {
@@ -301,7 +313,266 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       radiusKm: _radiusKm,
       mode: _mode,
       neededWithin: _neededWithin,
+      media: _uploadedMedia,
     );
+  }
+
+  Future<void> _openMediaOptions() async {
+    if (_submitting) {
+      return;
+    }
+
+    if (_media.length >= _maxComposerMedia) {
+      _showComposerSnack(
+        'You can upload up to $_maxComposerMedia attachments.',
+      );
+      return;
+    }
+
+    final action = await showModalBottomSheet<_ComposerMediaAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add media',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Photos and short videos help nearby providers trust the request faster.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 18),
+                _MediaActionTile(
+                  icon: Icons.photo_library_outlined,
+                  title: 'Choose photos',
+                  subtitle: 'Pick one or more images from your gallery.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ComposerMediaAction.galleryPhotos),
+                ),
+                _MediaActionTile(
+                  icon: Icons.videocam_outlined,
+                  title: 'Choose video',
+                  subtitle: 'Add one short video clip.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ComposerMediaAction.galleryVideo),
+                ),
+                _MediaActionTile(
+                  icon: Icons.photo_camera_outlined,
+                  title: 'Use camera',
+                  subtitle: 'Capture one photo right now.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ComposerMediaAction.cameraPhoto),
+                ),
+                _MediaActionTile(
+                  icon: Icons.video_call_outlined,
+                  title: 'Record video',
+                  subtitle: 'Capture one video right now.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ComposerMediaAction.cameraVideo),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (action == null) {
+      return;
+    }
+
+    await _pickMedia(action);
+  }
+
+  Future<void> _pickMedia(_ComposerMediaAction action) async {
+    try {
+      switch (action) {
+        case _ComposerMediaAction.galleryPhotos:
+          final files = await _imagePicker.pickMultiImage();
+          await _addPickedFiles(files);
+          return;
+        case _ComposerMediaAction.galleryVideo:
+          final file = await _imagePicker.pickVideo(
+            source: ImageSource.gallery,
+          );
+          await _addPickedFiles(file == null ? const [] : [file]);
+          return;
+        case _ComposerMediaAction.cameraPhoto:
+          final file = await _imagePicker.pickImage(source: ImageSource.camera);
+          await _addPickedFiles(file == null ? const [] : [file]);
+          return;
+        case _ComposerMediaAction.cameraVideo:
+          final file = await _imagePicker.pickVideo(source: ImageSource.camera);
+          await _addPickedFiles(file == null ? const [] : [file]);
+          return;
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = 'Unable to open media picker: $error';
+      });
+    }
+  }
+
+  Future<void> _addPickedFiles(List<XFile> files) async {
+    if (files.isEmpty) {
+      return;
+    }
+
+    final remaining = _maxComposerMedia - _media.length;
+    final nextFiles = files.take(remaining).toList();
+    if (nextFiles.isEmpty) {
+      _showComposerSnack(
+        'You can upload up to $_maxComposerMedia attachments.',
+      );
+      return;
+    }
+
+    final items = nextFiles.map(_ComposerMediaItem.fromXFile).toList();
+    setState(() {
+      _media = [..._media, ...items];
+      _error = null;
+      _draftRestored = false;
+    });
+    _cacheDraft();
+
+    for (final item in items) {
+      unawaited(_uploadMediaItem(item.id));
+    }
+
+    if (files.length > nextFiles.length) {
+      _showComposerSnack(
+        'Only the first $remaining attachment${remaining == 1 ? '' : 's'} were added.',
+      );
+    }
+  }
+
+  Future<void> _uploadMediaItem(String itemId) async {
+    final current = _mediaFor(itemId);
+    if (current == null ||
+        current.status == _ComposerMediaStatus.uploading ||
+        current.status == _ComposerMediaStatus.uploaded) {
+      return;
+    }
+
+    _updateMediaItem(
+      itemId,
+      (item) => item.copyWith(
+        status: _ComposerMediaStatus.uploading,
+        errorMessage: null,
+      ),
+    );
+
+    try {
+      final uploaded = await ref
+          .read(createNeedRepositoryProvider)
+          .uploadMedia(
+            filePath: current.filePath,
+            fileName: current.fileName,
+            mediaType: current.mediaType,
+          );
+
+      if (!mounted || _mediaFor(itemId) == null) {
+        return;
+      }
+
+      _updateMediaItem(
+        itemId,
+        (item) => item.copyWith(
+          status: _ComposerMediaStatus.uploaded,
+          uploadedMedia: uploaded,
+          errorMessage: null,
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted || _mediaFor(itemId) == null) {
+        return;
+      }
+
+      _updateMediaItem(
+        itemId,
+        (item) => item.copyWith(
+          status: _ComposerMediaStatus.failed,
+          errorMessage: error.message,
+        ),
+      );
+    } catch (error) {
+      if (!mounted || _mediaFor(itemId) == null) {
+        return;
+      }
+
+      _updateMediaItem(
+        itemId,
+        (item) => item.copyWith(
+          status: _ComposerMediaStatus.failed,
+          errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
+  void _retryMediaUpload(String itemId) {
+    unawaited(_uploadMediaItem(itemId));
+  }
+
+  void _removeMediaItem(String itemId) {
+    setState(() {
+      _media = _media.where((item) => item.id != itemId).toList();
+      _error = null;
+    });
+    _cacheDraft();
+  }
+
+  void _showComposerSnack(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  _ComposerMediaItem? _mediaFor(String itemId) {
+    for (final item in _media) {
+      if (item.id == itemId) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  void _updateMediaItem(
+    String itemId,
+    _ComposerMediaItem Function(_ComposerMediaItem current) transform,
+  ) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _media = _media.map((item) {
+        if (item.id != itemId) {
+          return item;
+        }
+        return transform(item);
+      }).toList();
+    });
+    _cacheDraft();
   }
 
   Future<void> _publishNeed() async {
@@ -311,6 +582,21 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     });
 
     if (!_validateBeforePublishing()) {
+      return;
+    }
+
+    if (_hasUploadingMedia) {
+      setState(() {
+        _error = 'Finish media uploads before posting this request.';
+      });
+      return;
+    }
+
+    if (_hasFailedMedia) {
+      setState(() {
+        _error =
+            'Retry or remove failed media uploads before posting this request.';
+      });
       return;
     }
 
@@ -372,6 +658,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       _neededWithin = _neededWithinOptions[2];
       _mode = CreateNeedMode.urgent;
       _radiusKm = 8;
+      _media = <_ComposerMediaItem>[];
       _error = null;
       _result = null;
       _lastPublishedDraft = null;
@@ -403,6 +690,20 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     return 'Nearby ${_category.toLowerCase()} providers within ${_radiusKm.round()} km of $area will see this in discovery, request matching, and provider alerts.';
   }
 
+  List<CreateNeedUploadedMedia> get _uploadedMedia => _media
+      .map((item) => item.uploadedMedia)
+      .whereType<CreateNeedUploadedMedia>()
+      .toList();
+
+  bool get _hasUploadingMedia => _media.any(
+    (item) =>
+        item.status == _ComposerMediaStatus.queued ||
+        item.status == _ComposerMediaStatus.uploading,
+  );
+
+  bool get _hasFailedMedia =>
+      _media.any((item) => item.status == _ComposerMediaStatus.failed);
+
   @override
   Widget build(BuildContext context) {
     final publishedDraft = _lastPublishedDraft;
@@ -413,12 +714,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       body: SafeArea(
         child: ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            _result == null ? 120 : 28,
-          ),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, _result == null ? 120 : 28),
           children: [
             _CreateNeedHero(step: _step),
             if (_draftRestored) ...[
@@ -478,7 +774,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       case 1:
         return StickyBottomCTA(
           title: 'Step 1 of 3',
-          subtitle: 'Clear local requests get faster, better replies.',
+          subtitle: _media.isEmpty
+              ? 'Clear local requests get faster, better replies.'
+              : '${_uploadedMedia.length}/${_media.length} attachments ready for nearby discovery.',
           primaryLabel: 'Continue',
           onPrimary: _submitting ? null : _continueToStepTwo,
         );
@@ -499,8 +797,11 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       case 3:
         return StickyBottomCTA(
           title: 'Ready to post nearby',
-          subtitle:
-              'This request will reach providers within ${_radiusKm.round()} km of ${_locationController.text.trim().isEmpty ? 'your area' : _locationController.text.trim()}.',
+          subtitle: _hasUploadingMedia
+              ? 'Finishing media uploads before this request can go live.'
+              : _hasFailedMedia
+              ? 'Retry or remove failed media before posting.'
+              : 'This request will reach providers within ${_radiusKm.round()} km of ${_locationController.text.trim().isEmpty ? 'your area' : _locationController.text.trim()}.',
           primaryLabel: _submitting ? 'Posting...' : 'Post request',
           onPrimary: _submitting ? null : _publishNeed,
           secondaryLabel: 'Edit',
@@ -592,6 +893,14 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               ),
               validator: _validateDetails,
             ),
+            const SizedBox(height: 18),
+            _CreateNeedMediaSection(
+              items: _media,
+              maxItems: _maxComposerMedia,
+              onAddMedia: _openMediaOptions,
+              onRemove: _removeMediaItem,
+              onRetry: _retryMediaUpload,
+            ),
             const SizedBox(height: 10),
             Text('Need type', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
@@ -626,7 +935,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                     (value) => ChoiceChip(
                       label: Text(value),
                       selected: _neededWithin == value,
-                      onSelected: _submitting ? null : (_) => _selectUrgency(value),
+                      onSelected: _submitting
+                          ? null
+                          : (_) => _selectUrgency(value),
                     ),
                   )
                   .toList(),
@@ -699,7 +1010,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                     (preset) => ChoiceChip(
                       label: Text(preset.label),
                       selected: preset.matches(_budgetController.text),
-                      onSelected: _submitting ? null : (_) => _selectBudgetPreset(preset),
+                      onSelected: _submitting
+                          ? null
+                          : (_) => _selectBudgetPreset(preset),
                     ),
                   )
                   .toList(),
@@ -708,7 +1021,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
             TextFormField(
               controller: _budgetController,
               enabled: !_submitting,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
@@ -754,9 +1069,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 children: [
                   Text(
                     'Who will see this',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppColors.ink,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -802,10 +1117,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Preview',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text('Preview', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 10),
               Text(
                 'This is what nearby providers will judge in the first few seconds.',
@@ -862,6 +1174,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 label: 'Need type',
                 value: _mode == CreateNeedMode.urgent ? 'Urgent' : 'Scheduled',
               ),
+              if (_media.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _MediaPreviewSummary(
+                  items: _media,
+                  uploadedCount: _uploadedMedia.length,
+                ),
+              ],
             ],
           ),
         ),
@@ -904,6 +1223,16 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                           icon: Icons.flash_on_rounded,
                         ),
                       ),
+                      if (_media.isNotEmpty)
+                        SizedBox(
+                          width: tileWidth,
+                          child: MetricTile(
+                            label: 'Media',
+                            value:
+                                '${_uploadedMedia.length}/${_media.length} ready',
+                            icon: Icons.perm_media_outlined,
+                          ),
+                        ),
                     ],
                   );
                 },
@@ -944,7 +1273,7 @@ class _CreateNeedHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Step $step of 3. Shape the request, tune nearby discovery, then preview what your local market will see.',
+            'Step $step of 3. Shape the request, add photos or video, tune nearby discovery, then preview what your local market will see.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.84),
             ),
@@ -1082,9 +1411,9 @@ class _PreviewRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -1177,6 +1506,13 @@ class _PublishedState extends StatelessWidget {
                 backgroundColor: AppColors.accentSoft,
                 foregroundColor: AppColors.accent,
               ),
+              if (draft.media.isNotEmpty)
+                TrustBadge(
+                  label: '${draft.media.length} media',
+                  icon: Icons.perm_media_outlined,
+                  backgroundColor: AppColors.surfaceMuted,
+                  foregroundColor: AppColors.ink,
+                ),
             ],
           ),
           const SizedBox(height: 18),
@@ -1189,6 +1525,13 @@ class _PublishedState extends StatelessWidget {
             'Providers in ${draft.category.toLowerCase()} around ${draft.locationLabel} can now see this in the local feed, request alerts, and matching queue.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          if (draft.media.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Attached photos and videos are already part of the live request, which helps providers judge scope much faster on mobile.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -1254,6 +1597,579 @@ class _PublishedState extends StatelessWidget {
   }
 }
 
+const Object _composerMediaSentinel = Object();
+
+enum _ComposerMediaAction {
+  galleryPhotos,
+  galleryVideo,
+  cameraPhoto,
+  cameraVideo,
+}
+
+enum _ComposerMediaStatus { queued, uploading, uploaded, failed }
+
+class _ComposerMediaItem {
+  const _ComposerMediaItem({
+    required this.id,
+    required this.filePath,
+    required this.fileName,
+    required this.mediaType,
+    required this.status,
+    this.errorMessage,
+    this.uploadedMedia,
+  });
+
+  factory _ComposerMediaItem.fromXFile(XFile file) {
+    final fileName = file.name.trim().isEmpty
+        ? file.path.split(Platform.pathSeparator).last
+        : file.name.trim();
+
+    return _ComposerMediaItem(
+      id: 'media-${DateTime.now().microsecondsSinceEpoch}-${file.path.hashCode}',
+      filePath: file.path,
+      fileName: fileName,
+      mediaType: _guessMediaType(fileName, fallbackPath: file.path),
+      status: _ComposerMediaStatus.queued,
+    );
+  }
+
+  factory _ComposerMediaItem.fromSnapshot(_CreateNeedDraftMediaSnapshot value) {
+    return _ComposerMediaItem(
+      id: value.id,
+      filePath: value.filePath,
+      fileName: value.fileName,
+      mediaType: value.mediaType,
+      status: value.status,
+      errorMessage: value.errorMessage,
+      uploadedMedia: value.uploadedMedia,
+    );
+  }
+
+  final String id;
+  final String filePath;
+  final String fileName;
+  final String mediaType;
+  final _ComposerMediaStatus status;
+  final String? errorMessage;
+  final CreateNeedUploadedMedia? uploadedMedia;
+
+  bool get isImage => mediaType.startsWith('image/');
+  bool get isVideo => mediaType.startsWith('video/');
+
+  String get statusLabel {
+    switch (status) {
+      case _ComposerMediaStatus.queued:
+        return 'Queued';
+      case _ComposerMediaStatus.uploading:
+        return 'Uploading';
+      case _ComposerMediaStatus.uploaded:
+        return 'Ready';
+      case _ComposerMediaStatus.failed:
+        return 'Retry needed';
+    }
+  }
+
+  _ComposerMediaItem copyWith({
+    _ComposerMediaStatus? status,
+    Object? errorMessage = _composerMediaSentinel,
+    Object? uploadedMedia = _composerMediaSentinel,
+  }) {
+    return _ComposerMediaItem(
+      id: id,
+      filePath: filePath,
+      fileName: fileName,
+      mediaType: mediaType,
+      status: status ?? this.status,
+      errorMessage: errorMessage == _composerMediaSentinel
+          ? this.errorMessage
+          : errorMessage as String?,
+      uploadedMedia: uploadedMedia == _composerMediaSentinel
+          ? this.uploadedMedia
+          : uploadedMedia as CreateNeedUploadedMedia?,
+    );
+  }
+
+  _CreateNeedDraftMediaSnapshot toSnapshot() {
+    return _CreateNeedDraftMediaSnapshot(
+      id: id,
+      filePath: filePath,
+      fileName: fileName,
+      mediaType: mediaType,
+      status: status,
+      errorMessage: errorMessage,
+      uploadedMedia: uploadedMedia,
+    );
+  }
+}
+
+class _CreateNeedMediaSection extends StatelessWidget {
+  const _CreateNeedMediaSection({
+    required this.items,
+    required this.maxItems,
+    required this.onAddMedia,
+    required this.onRemove,
+    required this.onRetry,
+  });
+
+  final List<_ComposerMediaItem> items;
+  final int maxItems;
+  final VoidCallback onAddMedia;
+  final ValueChanged<String> onRemove;
+  final ValueChanged<String> onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final readyCount = items
+        .where((item) => item.status == _ComposerMediaStatus.uploaded)
+        .length;
+    final uploadingCount = items
+        .where((item) => item.status == _ComposerMediaStatus.uploading)
+        .length;
+    final failedCount = items
+        .where((item) => item.status == _ComposerMediaStatus.failed)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Photos and video',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Add up to $maxItems attachments so providers can judge scope faster on mobile.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: onAddMedia,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: Text(
+              items.isEmpty
+                  ? 'Add media'
+                  : '${items.length}/$maxItems attached',
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            TrustBadge(
+              label: '$readyCount ready',
+              icon: Icons.cloud_done_outlined,
+              backgroundColor: AppColors.primarySoft,
+              foregroundColor: AppColors.primary,
+            ),
+            if (uploadingCount > 0)
+              TrustBadge(
+                label: '$uploadingCount uploading',
+                icon: Icons.cloud_upload_outlined,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+            if (failedCount > 0)
+              TrustBadge(
+                label: '$failedCount retry needed',
+                icon: Icons.error_outline_rounded,
+                backgroundColor: AppColors.dangerSoft,
+                foregroundColor: AppColors.danger,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceRaised,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No attachments yet',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Before-and-after photos, broken parts, access points, or a short walk-through video can improve response quality a lot.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 172,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return _ComposerMediaCard(
+                  item: item,
+                  onRemove: () => onRemove(item.id),
+                  onRetry: item.status == _ComposerMediaStatus.failed
+                      ? () => onRetry(item.id)
+                      : null,
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ComposerMediaCard extends StatelessWidget {
+  const _ComposerMediaCard({
+    required this.item,
+    required this.onRemove,
+    required this.onRetry,
+  });
+
+  final _ComposerMediaItem item;
+  final VoidCallback onRemove;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = switch (item.status) {
+      _ComposerMediaStatus.uploaded => AppColors.primary,
+      _ComposerMediaStatus.failed => AppColors.danger,
+      _ => AppColors.accent,
+    };
+    final background = switch (item.status) {
+      _ComposerMediaStatus.uploaded => AppColors.primarySoft,
+      _ComposerMediaStatus.failed => AppColors.dangerSoft,
+      _ => AppColors.accentSoft,
+    };
+
+    return SizedBox(
+      width: 144,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
+              child: SizedBox(
+                height: 96,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _ComposerMediaThumbnail(item: item),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: onRemove,
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (item.status == _ComposerMediaStatus.uploading ||
+                        item.status == _ComposerMediaStatus.queued)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: const LinearProgressIndicator(minHeight: 4),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      item.statusLabel,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: foreground),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.isVideo ? 'Video clip' : 'Image',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (item.status == _ComposerMediaStatus.failed &&
+                      item.errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      item.errorMessage!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.danger),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: onRetry,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Retry upload'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposerMediaThumbnail extends StatelessWidget {
+  const _ComposerMediaThumbnail({required this.item});
+
+  final _ComposerMediaItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    if (item.isImage) {
+      return Image.file(
+        File(item.filePath),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) {
+          return _FallbackMediaSurface(
+            icon: Icons.image_outlined,
+            label: 'Preview unavailable',
+          );
+        },
+      );
+    }
+
+    return _FallbackMediaSurface(
+      icon: item.isVideo ? Icons.movie_creation_outlined : Icons.attach_file,
+      label: item.isVideo ? 'Video ready to upload' : 'Media attachment',
+    );
+  }
+}
+
+class _FallbackMediaSurface extends StatelessWidget {
+  const _FallbackMediaSurface({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surfaceMuted,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: AppColors.inkMuted),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MediaPreviewSummary extends StatelessWidget {
+  const _MediaPreviewSummary({
+    required this.items,
+    required this.uploadedCount,
+  });
+
+  final List<_ComposerMediaItem> items;
+  final int uploadedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Media preview',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$uploadedCount/${items.length} ready',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 96,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _ComposerMediaThumbnail(item: item),
+                      Positioned(
+                        left: 8,
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.52),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            item.statusLabel,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MediaActionTile extends StatelessWidget {
+  const _MediaActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BudgetPreset {
   const _BudgetPreset({required this.label, this.amount});
 
@@ -1280,6 +2196,7 @@ class _CreateNeedDraftSnapshot {
     required this.radiusKm,
     required this.mode,
     required this.neededWithin,
+    required this.media,
   });
 
   final int step;
@@ -1291,18 +2208,40 @@ class _CreateNeedDraftSnapshot {
   final double radiusKm;
   final CreateNeedMode mode;
   final String neededWithin;
+  final List<_CreateNeedDraftMediaSnapshot> media;
 
   bool get hasContent {
     return title.trim().isNotEmpty ||
         details.trim().isNotEmpty ||
         budgetText.trim().isNotEmpty ||
         locationLabel.trim().isNotEmpty ||
+        media.isNotEmpty ||
         category != _categories.first ||
         neededWithin != _neededWithinOptions[2] ||
         mode != CreateNeedMode.urgent ||
         radiusKm != 8 ||
         step > 1;
   }
+}
+
+class _CreateNeedDraftMediaSnapshot {
+  const _CreateNeedDraftMediaSnapshot({
+    required this.id,
+    required this.filePath,
+    required this.fileName,
+    required this.mediaType,
+    required this.status,
+    this.errorMessage,
+    this.uploadedMedia,
+  });
+
+  final String id;
+  final String filePath;
+  final String fileName;
+  final String mediaType;
+  final _ComposerMediaStatus status;
+  final String? errorMessage;
+  final CreateNeedUploadedMedia? uploadedMedia;
 }
 
 class _CreateNeedDraftCache {
@@ -1327,4 +2266,21 @@ bool _isUrgencyOptionUrgent(String value) {
 
 bool _looksLikeRawCoordinates(String value) {
   return RegExp(r'^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$').hasMatch(value.trim());
+}
+
+String _guessMediaType(String fileName, {String? fallbackPath}) {
+  final value = (fileName.trim().isNotEmpty ? fileName : (fallbackPath ?? ''))
+      .toLowerCase();
+
+  if (value.endsWith('.png')) return 'image/png';
+  if (value.endsWith('.webp')) return 'image/webp';
+  if (value.endsWith('.gif')) return 'image/gif';
+  if (value.endsWith('.heic') || value.endsWith('.heif')) return 'image/heic';
+  if (value.endsWith('.jpg') || value.endsWith('.jpeg')) return 'image/jpeg';
+  if (value.endsWith('.mp4')) return 'video/mp4';
+  if (value.endsWith('.mov')) return 'video/quicktime';
+  if (value.endsWith('.m4v')) return 'video/x-m4v';
+  if (value.endsWith('.webm')) return 'video/webm';
+
+  return 'application/octet-stream';
 }

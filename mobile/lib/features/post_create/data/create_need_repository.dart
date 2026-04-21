@@ -23,6 +23,7 @@ class CreateNeedDraft {
     required this.radiusKm,
     required this.mode,
     required this.neededWithin,
+    this.media = const <CreateNeedUploadedMedia>[],
   });
 
   final String title;
@@ -33,6 +34,7 @@ class CreateNeedDraft {
   final double radiusKm;
   final CreateNeedMode mode;
   final String neededWithin;
+  final List<CreateNeedUploadedMedia> media;
 
   Map<String, dynamic> toJson() {
     return {
@@ -48,10 +50,37 @@ class CreateNeedDraft {
       'scheduleDate': '',
       'scheduleTime': '',
       'flexibleTiming': true,
-      'media': const <Map<String, dynamic>>[],
+      'media': media.map((item) => item.toJson()).toList(),
       'latitude': null,
       'longitude': null,
     };
+  }
+}
+
+class CreateNeedUploadedMedia {
+  const CreateNeedUploadedMedia({
+    required this.name,
+    required this.url,
+    required this.type,
+  });
+
+  factory CreateNeedUploadedMedia.fromJson(Map<String, dynamic> json) {
+    return CreateNeedUploadedMedia(
+      name: _readString(json['name']),
+      url: _readString(json['url']),
+      type: _readString(json['type']),
+    );
+  }
+
+  final String name;
+  final String url;
+  final String type;
+
+  bool get isImage => type.startsWith('image/');
+  bool get isVideo => type.startsWith('video/');
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'url': url, 'type': type};
   }
 }
 
@@ -82,6 +111,30 @@ class CreateNeedRepository {
   const CreateNeedRepository(this._apiClient);
 
   final MobileApiClient _apiClient;
+
+  Future<CreateNeedUploadedMedia> uploadMedia({
+    required String filePath,
+    required String fileName,
+    required String mediaType,
+  }) async {
+    final payload = await _apiClient.uploadFile(
+      '/api/upload/post-media',
+      filePath: filePath,
+      fileName: fileName,
+      mediaType: mediaType,
+    );
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to upload this media.',
+      );
+    }
+
+    final media = Map<String, dynamic>.from(
+      (payload['media'] as Map?) ?? const <String, dynamic>{},
+    );
+    return CreateNeedUploadedMedia.fromJson(media);
+  }
 
   Future<CreateNeedResult> publishNeed(CreateNeedDraft draft) async {
     final payload = await _apiClient.postJson(
