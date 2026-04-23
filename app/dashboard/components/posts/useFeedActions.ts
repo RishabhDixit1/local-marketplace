@@ -422,7 +422,7 @@ export const useFeedActions = ({
         setChatOpeningProviderId((current) => (current === ownerId ? null : current));
       }
     },
-    [ensureViewerId, pushToast, router]
+    [buildFeedContextPath, ensureViewerId, pushToast, router]
   );
 
   const openAcceptDialog = useCallback(
