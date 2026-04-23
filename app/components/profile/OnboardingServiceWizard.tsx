@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, ArrowRight, CheckCircle, Briefcase, Package } from "lucide-react";
+import { ArrowRight, CheckCircle, Briefcase, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export type OnboardingStep = "welcome" | "service_or_product" | "form_redirect" | "complete";
@@ -9,10 +9,9 @@ export type OnboardingStep = "welcome" | "service_or_product" | "form_redirect" 
 interface OnboardingServiceWizardProps {
   open: boolean;
   onClose: () => void;
-  userId: string;
 }
 
-export function OnboardingServiceWizard({ open, onClose, userId }: OnboardingServiceWizardProps) {
+export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>("welcome");
 
@@ -69,7 +68,7 @@ export function OnboardingServiceWizard({ open, onClose, userId }: OnboardingSer
                 </div>
                 <h1 className="text-2xl font-bold text-slate-900">Welcome to your store!</h1>
                 <p className="mt-2 text-sm text-slate-600">
-                  Let's add your first service or product to start reaching customers.
+                  Let&apos;s add your first service or product to start reaching customers.
                 </p>
               </div>
 
@@ -106,7 +105,7 @@ export function OnboardingServiceWizard({ open, onClose, userId }: OnboardingSer
             <div className="space-y-4 p-6 sm:p-8">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">What do you offer?</h2>
-                <p className="mt-1 text-sm text-slate-600">Choose what you'd like to add first.</p>
+                <p className="mt-1 text-sm text-slate-600">Choose what you&apos;d like to add first.</p>
               </div>
 
               <div className="grid gap-3">
@@ -144,7 +143,7 @@ export function OnboardingServiceWizard({ open, onClose, userId }: OnboardingSer
                 onClick={handleSkip}
                 className="w-full text-sm font-semibold text-slate-600 transition hover:text-slate-900 py-2"
               >
-                I'll do this later
+                I&apos;ll do this later
               </button>
             </div>
           )}
@@ -157,7 +156,7 @@ export function OnboardingServiceWizard({ open, onClose, userId }: OnboardingSer
                   <CheckCircle className="h-8 w-8 text-emerald-600" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900">Ready to add!</h2>
-                <p className="mt-2 text-sm text-slate-600">We're opening the form for you now.</p>
+                <p className="mt-2 text-sm text-slate-600">We&apos;re opening the form for you now.</p>
               </div>
             </div>
           )}

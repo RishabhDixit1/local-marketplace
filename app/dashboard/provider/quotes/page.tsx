@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -122,40 +122,48 @@ export default function ProviderQuotesPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<QuoteDraftStatus | "all">("all");
 
-  const loadQuotes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const { data, error: dbError } = await supabase
-      .from("quote_drafts")
-      .select(
-        "id,order_id,help_request_id,consumer_id,status,summary,total,expires_at,sent_at,created_at,updated_at,metadata"
-      )
-      .eq("provider_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(120);
-
-    if (dbError) {
-      setError(dbError.message || "Unable to load quotes.");
-    } else {
-      setQuotes(((data as QuoteRow[] | null) || []).map(mapRow));
-    }
-
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
+    let active = true;
+
+    const loadQuotes = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!active) return;
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: dbError } = await supabase
+        .from("quote_drafts")
+        .select(
+          "id,order_id,help_request_id,consumer_id,status,summary,total,expires_at,sent_at,created_at,updated_at,metadata"
+        )
+        .eq("provider_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(120);
+
+      if (!active) return;
+
+      if (dbError) {
+        setError(dbError.message || "Unable to load quotes.");
+      } else {
+        setError(null);
+        setQuotes(((data as QuoteRow[] | null) || []).map(mapRow));
+      }
+
+      setLoading(false);
+    };
+
     void loadQuotes();
-  }, [loadQuotes]);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const grouped = useMemo(() => {
     const filtered =

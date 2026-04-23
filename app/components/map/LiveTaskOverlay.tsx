@@ -173,9 +173,11 @@ export default function LiveTaskOverlay({ active = true }: LiveTaskOverlayProps)
 
   // Clear all pending timeouts on unmount
   useEffect(() => {
+    const activeTimeouts = timeoutsRef.current;
+
     return () => {
-      timeoutsRef.current.forEach((t) => clearTimeout(t));
-      timeoutsRef.current.clear();
+      activeTimeouts.forEach((t) => clearTimeout(t));
+      activeTimeouts.clear();
     };
   }, []);
 

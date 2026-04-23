@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import {
   ArrowUpRight,
   Archive,
@@ -243,13 +242,11 @@ export default function FeedCard({
           className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
           aria-label={`Open ${item.displayCreator} profile`}
         >
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={item.avatarUrl}
             alt={`${item.displayCreator} avatar`}
-            width={40}
-            height={40}
             loading="lazy"
-            quality={70}
             className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
           />
         </button>

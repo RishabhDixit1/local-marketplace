@@ -23,6 +23,23 @@ type MockClientRequest = EventEmitter & {
   setTimeout: ReturnType<typeof vi.fn>;
 };
 
+type HttpsRequestOptionsSnapshot = {
+  path?: string;
+  hostname?: string;
+  servername?: string;
+  headers?: Record<string, string | string[] | undefined>;
+};
+
+type Resolve4Callback = (error: Error | null, addresses?: string[]) => void;
+
+const getHttpsRequestOptions = (value: unknown): HttpsRequestOptionsSnapshot => {
+  if (!value || typeof value !== "object" || value instanceof URL) {
+    throw new Error("Expected https.request to receive an options object.");
+  }
+
+  return value as HttpsRequestOptionsSnapshot;
+};
+
 const installHttpsRequestMock = (plans: MockHttpsPlan[]) => {
   const requests: MockClientRequest[] = [];
 
@@ -54,7 +71,8 @@ const installHttpsRequestMock = (plans: MockHttpsPlan[]) => {
 
         const response = new EventEmitter() as EventEmitter & { statusCode?: number };
         response.statusCode = plan.status;
-        callback?.(response as never);
+        const responseCallback = callback as ((message: EventEmitter & { statusCode?: number }) => void) | undefined;
+        responseCallback?.(response as never);
 
         if (plan.body) {
           response.emit("data", Buffer.from(plan.body));
@@ -144,7 +162,7 @@ describe("POST /api/auth/send-link", () => {
     expect(requestMock).toHaveBeenCalledTimes(1);
 
     const [options] = requestMock.mock.calls[0];
-    const otpUrl = new URL(`https://example.supabase.co${String((options as { path: string }).path)}`);
+    const otpUrl = new URL(`https://example.supabase.co${String(getHttpsRequestOptions(options).path ?? "")}`);
     const payload = JSON.parse(String(requests[0].write.mock.calls[0][0]));
 
     expect(otpUrl.searchParams.get("redirect_to")).toBe("http://localhost:3000/auth/callback");
@@ -172,7 +190,7 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
 
     const [options] = requestMock.mock.calls[0];
-    const otpUrl = new URL(`https://example.supabase.co${String((options as { path: string }).path)}`);
+    const otpUrl = new URL(`https://example.supabase.co${String(getHttpsRequestOptions(options).path ?? "")}`);
 
     expect(otpUrl.searchParams.get("redirect_to")).toBe("http://localhost:3000/auth/callback");
   });
@@ -227,7 +245,7 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
 
     const [options] = requestMock.mock.calls[0];
-    const otpUrl = new URL(`https://example.supabase.co${String((options as { path: string }).path)}`);
+    const otpUrl = new URL(`https://example.supabase.co${String(getHttpsRequestOptions(options).path ?? "")}`);
 
     expect(otpUrl.searchParams.get("redirect_to")).toBe("serviq://auth-callback");
   });
@@ -308,7 +326,7 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
 
     const [options] = requestMock.mock.calls[0];
-    const otpUrl = new URL(`https://example.supabase.co${String((options as { path: string }).path)}`);
+    const otpUrl = new URL(`https://example.supabase.co${String(getHttpsRequestOptions(options).path ?? "")}`);
 
     expect(otpUrl.searchParams.get("redirect_to")).toBe("http://localhost:3000/auth/callback");
   });
@@ -326,9 +344,10 @@ describe("POST /api/auth/send-link", () => {
     vi.spyOn(dnsPromises, "lookup").mockResolvedValue([
       { address: "1.1.1.1", family: 4 },
       { address: "2.2.2.2", family: 4 },
-    ]);
+    ] as never);
     vi.spyOn(Resolver.prototype, "resolve4").mockImplementation((_host, callback) => {
-      callback(null, ["2.2.2.2", "3.3.3.3"]);
+      const resolve4Callback = callback as unknown as Resolve4Callback;
+      resolve4Callback(null, ["2.2.2.2", "3.3.3.3"]);
       return {} as never;
     });
 
@@ -356,15 +375,15 @@ describe("POST /api/auth/send-link", () => {
     const [firstIpv4Options] = requestMock.mock.calls[1];
     const [secondIpv4Options] = requestMock.mock.calls[2];
 
-    expect((directOptions as { hostname: string }).hostname).toBe("example.supabase.co");
-    expect((firstIpv4Options as { hostname: string; servername: string; headers: { Host: string } }).hostname).toBe("1.1.1.1");
-    expect((firstIpv4Options as { hostname: string; servername: string; headers: { Host: string } }).servername).toBe(
+    expect(getHttpsRequestOptions(directOptions).hostname).toBe("example.supabase.co");
+    expect(getHttpsRequestOptions(firstIpv4Options).hostname).toBe("1.1.1.1");
+    expect(getHttpsRequestOptions(firstIpv4Options).servername).toBe(
       "example.supabase.co"
     );
-    expect((firstIpv4Options as { hostname: string; servername: string; headers: { Host: string } }).headers.Host).toBe(
+    expect(getHttpsRequestOptions(firstIpv4Options).headers?.Host).toBe(
       "example.supabase.co"
     );
-    expect((secondIpv4Options as { hostname: string }).hostname).toBe("2.2.2.2");
+    expect(getHttpsRequestOptions(secondIpv4Options).hostname).toBe("2.2.2.2");
   });
 
   it("returns a 503 when all network strategies fail", async () => {
@@ -375,7 +394,8 @@ describe("POST /api/auth/send-link", () => {
 
     vi.spyOn(dnsPromises, "lookup").mockRejectedValue(new Error("system DNS unavailable"));
     vi.spyOn(Resolver.prototype, "resolve4").mockImplementation((_host, callback) => {
-      callback(new Error("public DNS unavailable"));
+      const resolve4Callback = callback as unknown as Resolve4Callback;
+      resolve4Callback(new Error("public DNS unavailable"));
       return {} as never;
     });
 

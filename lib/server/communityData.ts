@@ -1124,15 +1124,27 @@ export const loadCommunityFeedSnapshot = async (
     ),
   };
 
-  const {
-    viewerMatchStatusByHelpRequestId: _viewerMatchStatusByHelpRequestId,
-    viewerRoleFamily: _viewerRoleFamily,
-    connectionGraph: _connectionGraph,
-    savedCardIds: _savedCardIds,
-    hiddenCardIds: _hiddenCardIds,
-    hiddenFocusIds: _hiddenFocusIds,
-    ...responseSnapshot
-  } = snapshot;
+  const responseSnapshot = Object.fromEntries(
+    Object.entries(snapshot).filter(
+      ([key]) =>
+        ![
+          "viewerMatchStatusByHelpRequestId",
+          "viewerRoleFamily",
+          "connectionGraph",
+          "savedCardIds",
+          "hiddenCardIds",
+          "hiddenFocusIds",
+        ].includes(key),
+    ),
+  ) as Omit<
+    typeof snapshot,
+    | "viewerMatchStatusByHelpRequestId"
+    | "viewerRoleFamily"
+    | "connectionGraph"
+    | "savedCardIds"
+    | "hiddenCardIds"
+    | "hiddenFocusIds"
+  >;
   const communityView = buildCommunityFeedView(
     snapshot,
     options.viewerOverride || null,

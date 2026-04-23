@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   startTransition,
   useCallback,
@@ -2456,11 +2455,10 @@ export default function TasksPage() {
           <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_220px]">
             <div className="min-w-0 space-y-3">
               <div className="flex min-w-0 items-start gap-3">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={creatorAvatar}
                   alt={creatorName}
-                  width={52}
-                  height={52}
                   className="h-12 w-12 shrink-0 rounded-2xl border border-slate-200 object-cover sm:h-14 sm:w-14"
                 />
 
@@ -2742,20 +2740,18 @@ export default function TasksPage() {
                 aria-label={`Open ${creatorName} profile`}
                 className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
               >
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={creatorAvatar}
                   alt={creatorName}
-                  width={56}
-                  height={56}
                   className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
                 />
               </button>
             ) : (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={creatorAvatar}
                 alt={creatorName}
-                width={56}
-                height={56}
                 className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
               />
             )}
@@ -2947,20 +2943,18 @@ export default function TasksPage() {
                 aria-label={`Open ${creatorName} profile`}
                 className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
               >
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={creatorAvatar}
                   alt={creatorName}
-                  width={56}
-                  height={56}
                   className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
                 />
               </button>
             ) : (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={creatorAvatar}
                 alt={creatorName}
-                width={56}
-                height={56}
                 className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover"
               />
             )}

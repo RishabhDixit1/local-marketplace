@@ -14,17 +14,34 @@ load_env_file() {
   fi
 }
 
-enable_system_ca_for_local_node() {
-  local current_options="${NODE_OPTIONS:-}"
+resolve_supported_ca_node_option() {
+  if node --help 2>/dev/null | grep -q -- "--use-system-ca"; then
+    printf '%s' "--use-system-ca"
+    return
+  fi
 
-  if [[ " ${current_options} " == *" --use-system-ca "* ]]; then
+  if node --help 2>/dev/null | grep -q -- "--use-openssl-ca"; then
+    printf '%s' "--use-openssl-ca"
+  fi
+}
+
+enable_supported_ca_for_local_node() {
+  local current_options="${NODE_OPTIONS:-}"
+  local ca_option
+
+  ca_option="$(resolve_supported_ca_node_option)"
+  if [[ -z "$ca_option" ]]; then
+    return
+  fi
+
+  if [[ " ${current_options} " == *" ${ca_option} "* ]]; then
     return
   fi
 
   if [[ -n "$current_options" ]]; then
-    export NODE_OPTIONS="--use-system-ca ${current_options}"
+    export NODE_OPTIONS="${ca_option} ${current_options}"
   else
-    export NODE_OPTIONS="--use-system-ca"
+    export NODE_OPTIONS="${ca_option}"
   fi
 }
 
@@ -88,7 +105,7 @@ load_env_file ".env"
 load_env_file ".env.local"
 load_env_file ".env.e2e.local"
 
-enable_system_ca_for_local_node
+enable_supported_ca_for_local_node
 
 if [[ -z "${PLAYWRIGHT_BASE_URL:-}" ]]; then
   SERVER_PORT="$(resolve_free_port)"
