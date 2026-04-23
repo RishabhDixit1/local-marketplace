@@ -41,13 +41,17 @@ const images: NonNullable<NextConfig["images"]> = {
   ],
   minimumCacheTTL: 31536000,
   formats: ["image/avif", "image/webp"],
+  qualities: [70, 72, 75],
   deviceSizes: [320, 420, 640, 750, 828, 1080, 1200, 1600],
   imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
 };
 
 const createNextConfig = (phase: string): NextConfig => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
-  images,
+  images: {
+    ...images,
+    dangerouslyAllowLocalIP: phase === PHASE_DEVELOPMENT_SERVER,
+  },
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,

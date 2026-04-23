@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { ChevronLeft, ChevronRight, Music2, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Music2 } from "lucide-react";
 import type { MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 
 type FeedMediaCarouselProps = {
@@ -22,7 +21,6 @@ export default function FeedMediaCarousel({
 }: FeedMediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
-  const [loadedMediaUrls, setLoadedMediaUrls] = useState<Set<string>>(new Set());
 
   if (!media.length) {
     return null;
@@ -31,16 +29,6 @@ export default function FeedMediaCarousel({
   const safeIndex = Math.min(activeIndex, media.length - 1);
   const current = media[safeIndex];
   const canNavigate = media.length > 1;
-  const isLoadedMedia = loadedMediaUrls.has(current.url);
-  const isRemoteImage = /^https?:\/\//i.test(current.url);
-
-  const loadCurrentMedia = () => {
-    setLoadedMediaUrls((currentSet) => {
-      const nextSet = new Set(currentSet);
-      nextSet.add(current.url);
-      return nextSet;
-    });
-  };
 
   const goNext = () => {
     setImgError(false);
@@ -68,17 +56,6 @@ export default function FeedMediaCarousel({
             <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
               <p className="text-xs font-semibold text-slate-500">Image unavailable</p>
             </div>
-          ) : isRemoteImage ? (
-            <Image
-              src={current.url}
-              alt={title}
-              fill
-              sizes="(max-width: 640px) 94vw, (max-width: 1024px) 48vw, 36vw"
-              quality={72}
-              loading="lazy"
-              className="object-cover"
-              onError={() => setImgError(true)}
-            />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -90,41 +67,18 @@ export default function FeedMediaCarousel({
               onError={() => setImgError(true)}
             />
           )
-        ) : current.mimeType.startsWith("video/") && isLoadedMedia ? (
-          <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("video/") ? (
-          <button
-            type="button"
-            onClick={loadCurrentMedia}
-            className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-950 px-4 text-center text-white"
-            aria-label={`Load video for ${title}`}
-          >
-            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-xl">
-              <Play className="ml-1 h-7 w-7 fill-current" />
-            </span>
-            <span className="text-sm font-semibold">Tap to load video</span>
-            <span className="text-xs text-white/70">Media loads only when you open it.</span>
-          </button>
-        ) : current.mimeType.startsWith("audio/") && isLoadedMedia ? (
+          <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
+        ) : current.mimeType.startsWith("audio/") ? (
           <div className="grid h-full place-items-center bg-slate-900 p-4 text-center">
             <div className="w-full max-w-xs space-y-2">
+              <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-xl">
+                <Music2 className="h-6 w-6" />
+              </span>
               <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Audio Attachment</p>
               <audio src={current.url} controls className="w-full" preload="metadata" />
             </div>
           </div>
-        ) : current.mimeType.startsWith("audio/") ? (
-          <button
-            type="button"
-            onClick={loadCurrentMedia}
-            className="flex h-full w-full flex-col items-center justify-center gap-3 bg-slate-950 px-4 text-center text-white"
-            aria-label={`Load audio for ${title}`}
-          >
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-slate-950 shadow-xl">
-              <Music2 className="h-6 w-6" />
-            </span>
-            <span className="text-sm font-semibold">Tap to load audio</span>
-            <span className="text-xs text-white/70">Media loads only when you open it.</span>
-          </button>
         ) : (
           <div className="grid h-full place-items-center bg-gradient-to-br from-cyan-50 via-white to-slate-100 p-4 text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Media Preview</p>
