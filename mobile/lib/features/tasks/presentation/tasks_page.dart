@@ -710,9 +710,6 @@ class _TaskCard extends StatelessWidget {
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.ink,
-                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(

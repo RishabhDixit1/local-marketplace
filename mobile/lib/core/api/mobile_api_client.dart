@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -147,10 +146,9 @@ class MobileApiClient {
       );
     }
 
-    final uri = _buildUri(path, queryParameters: queryParameters);
-    final uri = _resolveBaseUri().resolve(path).replace(
-      queryParameters: queryParameters,
-    );
+    final uri = _resolveBaseUri()
+        .resolve(path)
+        .replace(queryParameters: queryParameters);
 
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -242,9 +240,7 @@ class MobileApiClient {
     final refused = code == 61 || code == 111;
     final originalHost = Uri.parse(_config.apiBaseUrl.trim()).host;
     final androidLocalhostHint =
-        !kIsWeb &&
-            Platform.isAndroid &&
-            _isAndroidLocalhostAlias(originalHost)
+        !kIsWeb && Platform.isAndroid && _isAndroidLocalhostAlias(originalHost)
         ? ' Android emulators must use 10.0.2.2 instead of localhost.'
         : '';
 

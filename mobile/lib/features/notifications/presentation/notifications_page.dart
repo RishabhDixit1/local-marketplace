@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +16,6 @@ import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
-enum _NotificationFilter { all, unread, messages, orders, trust }
 enum _NotificationFilter {
   all,
   unread,
@@ -167,9 +164,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationListProvider);
-    final unreadCount = notificationsAsync.asData?.value
-            .where((item) => item.unread)
-            .length ??
+    final unreadCount =
+        notificationsAsync.asData?.value.where((item) => item.unread).length ??
         0;
     final query = _searchController.text.trim().toLowerCase();
 
@@ -241,24 +237,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (data.demoMode || (data.notice ?? '').isNotEmpty)
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.warningSoft,
-                            borderRadius: BorderRadius.circular(AppRadii.md),
-                            border: Border.all(color: AppColors.warning),
-                          ),
-                          child: Text(
-                            data.notice ??
-                                'Notifications are currently running in demo mode.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.warning),
-                          ),
-                        ),
-                      _NotificationSummary(snapshot: data),
                       _NotificationSummary(
                         items: items,
                         filteredCount: filtered.length,
@@ -279,6 +257,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                             child: _NotificationCard(
                               item: item,
                               busy: _busy,
+                              actionLabel: resolveMobileNotificationAction(
+                                item,
+                              ).label,
                               onOpen: () => _openNotification(item),
                               onClear: () => _runAction(
                                 () => ref
@@ -309,95 +290,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 }
 
-  bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
-    switch (filter) {
-      case _NotificationFilter.all:
-        return true;
-      case _NotificationFilter.unread:
-        return item.unread;
-      case _NotificationFilter.messages:
-        return item.kind == MobileNotificationKind.message;
-      case _NotificationFilter.orders:
-        return item.kind == MobileNotificationKind.order;
-      case _NotificationFilter.trust:
-        return item.kind == MobileNotificationKind.review ||
-            item.kind == MobileNotificationKind.connection;
-    }
-  }
-
-  String _labelForFilter(_NotificationFilter filter) {
-    switch (filter) {
-      case _NotificationFilter.all:
-        return 'All';
-      case _NotificationFilter.unread:
-        return 'Unread';
-      case _NotificationFilter.messages:
-        return 'Messages';
-      case _NotificationFilter.orders:
-        return 'Orders';
-      case _NotificationFilter.trust:
-        return 'Trust';
-    }
-  }
-
-  List<_NotificationGroup> _groupNotifications(
-    List<MobileNotificationItem> items,
-  ) {
-    final unread = items.where((item) => item.unread).toList();
-    final read = items.where((item) => !item.unread).toList();
-    final groups = <_NotificationGroup>[];
-
-    if (unread.isNotEmpty) {
-      groups.add(
-        _NotificationGroup(
-          title: 'Needs attention',
-          subtitle: 'Unread updates that can move a conversation or task.',
-          items: unread,
-        ),
-      );
-    }
-
-    final buckets = <MobileNotificationKind, List<MobileNotificationItem>>{};
-    for (final item in read) {
-      buckets.putIfAbsent(item.kind, () => []).add(item);
-    }
-
-    for (final kind in [
-      MobileNotificationKind.message,
-      MobileNotificationKind.order,
-      MobileNotificationKind.review,
-      MobileNotificationKind.connection,
-      MobileNotificationKind.system,
-    ]) {
-      final bucket = buckets[kind];
-      if (bucket == null || bucket.isEmpty) {
-        continue;
-      }
-      groups.add(
-        _NotificationGroup(
-          title: kind.label,
-          subtitle: _groupSubtitle(kind),
-          items: bucket,
-        ),
-      );
-    }
-
-    return groups;
-  }
-
-  String _groupSubtitle(MobileNotificationKind kind) {
-    switch (kind) {
-      case MobileNotificationKind.message:
-        return 'Conversation handoffs and fresh replies.';
-      case MobileNotificationKind.order:
-        return 'Nearby request and task movement.';
-      case MobileNotificationKind.review:
-        return 'Trust, ratings, and reputation signals.';
-      case MobileNotificationKind.connection:
-        return 'People, intros, and local network updates.';
-      case MobileNotificationKind.system:
-        return 'Account and platform updates.';
-    }
 bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
   switch (filter) {
     case _NotificationFilter.all:
@@ -411,6 +303,36 @@ bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
     case _NotificationFilter.trust:
       return item.kind == MobileNotificationKind.review ||
           item.kind == MobileNotificationKind.connection;
+  }
+}
+
+String _kindLabel(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.order:
+      return 'Order';
+    case MobileNotificationKind.message:
+      return 'Message';
+    case MobileNotificationKind.review:
+      return 'Review';
+    case MobileNotificationKind.system:
+      return 'System';
+    case MobileNotificationKind.connection:
+      return 'Connection';
+  }
+}
+
+IconData _kindIcon(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.order:
+      return Icons.assignment_outlined;
+    case MobileNotificationKind.message:
+      return Icons.chat_bubble_outline_rounded;
+    case MobileNotificationKind.review:
+      return Icons.star_outline_rounded;
+    case MobileNotificationKind.system:
+      return Icons.notifications_none_rounded;
+    case MobileNotificationKind.connection:
+      return Icons.people_outline_rounded;
   }
 }
 
@@ -495,25 +417,19 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.item,
     required this.busy,
+    required this.actionLabel,
     required this.onOpen,
     required this.onClear,
   });
 
   final MobileNotificationItem item;
   final bool busy;
+  final String actionLabel;
   final VoidCallback onOpen;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (item.kind) {
-      MobileNotificationKind.message => Icons.chat_bubble_outline_rounded,
-      MobileNotificationKind.order => Icons.assignment_outlined,
-      MobileNotificationKind.review => Icons.star_outline_rounded,
-      MobileNotificationKind.connection => Icons.people_outline_rounded,
-      MobileNotificationKind.system => Icons.notifications_none_rounded,
-    };
-
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,14 +444,20 @@ class _NotificationCard extends StatelessWidget {
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: const Color(0xFF0B1F33)),
+                child: Icon(
+                  _kindIcon(item.kind),
+                  color: const Color(0xFF0B1F33),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title, style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       item.message,
@@ -556,7 +478,7 @@ class _NotificationCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              TrustBadge(label: item.kind.name.toUpperCase()),
+              TrustBadge(label: _kindLabel(item.kind)),
               TrustBadge(
                 label: item.timeLabel,
                 icon: Icons.schedule_rounded,
@@ -580,7 +502,7 @@ class _NotificationCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: busy ? null : onOpen,
                   icon: const Icon(Icons.open_in_new_rounded),
-                  label: const Text('Open'),
+                  label: Text(actionLabel),
                 ),
               ),
             ],

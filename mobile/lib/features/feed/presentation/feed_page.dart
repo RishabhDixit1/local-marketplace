@@ -28,8 +28,9 @@ enum FeedPageMode {
   welcome,
   explore;
 
-  MobileFeedScope get scope =>
-      this == FeedPageMode.welcome ? MobileFeedScope.connected : MobileFeedScope.all;
+  MobileFeedScope get scope => this == FeedPageMode.welcome
+      ? MobileFeedScope.connected
+      : MobileFeedScope.all;
 
   String get title =>
       this == FeedPageMode.welcome ? 'Your network feed' : 'Explore';
@@ -270,8 +271,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   @override
   Widget build(BuildContext context) {
     final AsyncValue<MobileFeedSnapshot> snapshot =
-        widget.snapshotOverride ??
-        ref.watch(feedSnapshotProvider(_scope));
+        widget.snapshotOverride ?? ref.watch(feedSnapshotProvider(_scope));
     final previewData = snapshot.asData?.value;
 
     return Scaffold(
@@ -279,14 +279,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         title: Text(widget.mode.title),
         actions: [
           IconButton(
-            onPressed: () => context.push(AppRoutes.people),
-            icon: const Icon(Icons.people_alt_outlined),
             onPressed: () => context.push(AppRoutes.search),
             icon: const Icon(Icons.search_rounded),
-          ),
-          IconButton(
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: const Icon(Icons.notifications_none_rounded),
           ),
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
@@ -369,15 +363,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           ..addAll(next);
                       }),
                     ),
-                    if (previewData != null && previewData.items.isNotEmpty) ...[
+                    if (previewData != null &&
+                        previewData.items.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Text(
                         'Live local feed',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Marketplace feed',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
@@ -397,33 +387,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               const SizedBox(height: 16),
               snapshot.when(
                 data: (data) {
-                  final items = data.items.where((item) {
-                    if (_filters.contains('verified') && !item.isVerified) {
-                      return false;
-                    }
-                    if (_filters.contains('urgent') && !item.urgent) {
-                      return false;
-                    }
-                    if (_filters.contains('media') && !item.hasMedia) {
-                      return false;
-                    }
-                    if (_filters.contains('top_rated') &&
-                        ((item.averageRating ?? 0) < 4.5 ||
-                            item.reviewCount < 1)) {
-                      return false;
-                    }
-                    if (_query.isEmpty) {
-                      return true;
-                    }
-                    final haystack = [
-                      item.title,
-                      item.description,
-                      item.category,
-                      item.creatorName,
-                      item.locationLabel,
-                    ].join(' ').toLowerCase();
-                    return haystack.contains(_query);
-                  }).toList();
                   final items = _filterItems(data.items);
 
                   return Column(
@@ -453,27 +416,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: FeedCard(
                               item: item,
-                              onPrimaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                      AppRoutes.provider(item.providerId),
-                                    ),
-                              onSecondaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                      '${AppRoutes.chat}?recipientId=${item.providerId}',
-                                    ),
-                              primaryLabel: 'Open',
-                              secondaryLabel: 'Contact',
                               onPrimaryTap: item.helpRequestId == null
-                                  ? () {
-                                      if (item.providerId.trim().isEmpty) {
-                                        return;
-                                      }
-                                      context.push(
-                                        AppRoutes.provider(item.providerId),
-                                      );
-                                    }
+                                  ? item.providerId.trim().isEmpty
+                                        ? null
+                                        : () => context.push(
+                                            AppRoutes.provider(item.providerId),
+                                          )
                                   : () => _sendInterest(item),
                               onSecondaryTap: item.providerId.trim().isEmpty
                                   ? null

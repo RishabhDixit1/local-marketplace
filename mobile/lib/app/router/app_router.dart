@@ -5,29 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
-import '../../features/auth/presentation/setup_page.dart';
-import '../../features/auth/presentation/sign_in_page.dart';
-import '../../features/chat/presentation/chat_list_screen.dart';
-import '../../features/chat/presentation/chat_thread_screen.dart';
-import '../../features/explore/presentation/explore_screen.dart';
-import '../../features/notifications/presentation/notifications_screen.dart';
-import '../../features/people/presentation/people_screen.dart';
-import '../../features/post_create/presentation/create_need_page.dart';
-import '../../features/profile/presentation/edit_profile_screen.dart';
-import '../../features/profile/presentation/profile_screen.dart';
-import '../../features/provider/presentation/provider_onboarding_page.dart';
-import '../../features/provider/presentation/provider_profile_page.dart';
-import '../../features/search/presentation/global_search_screen.dart';
-import '../../features/settings/presentation/notification_settings_screen.dart';
-import '../../features/settings/presentation/privacy_settings_screen.dart';
-import '../../features/settings/presentation/settings_screen.dart';
-import '../../features/tasks/presentation/task_detail_screen.dart';
-import '../../features/tasks/presentation/tasks_screen.dart';
-import '../presentation/app_shell.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/chat/presentation/chat_thread_screen.dart';
 import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
-import '../../features/home/presentation/home_shell_page.dart';
 import '../../features/inbox/presentation/inbox_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
@@ -39,6 +20,14 @@ import '../../features/search/presentation/search_page.dart';
 import '../../features/task_post/presentation/task_post_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
+import '../../features/auth/presentation/setup_page.dart';
+import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/settings/presentation/notification_settings_screen.dart';
+import '../../features/settings/presentation/privacy_settings_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/tasks/presentation/task_detail_screen.dart';
+import '../presentation/app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
@@ -100,13 +89,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const TaskPostPage(),
       ),
       GoRoute(
+        path: AppRoutes.welcome,
+        builder: (context, state) => const WelcomePage(),
+      ),
+      GoRoute(
         path: AppRoutes.search,
         builder: (context, state) =>
-            GlobalSearchScreen(initialQuery: state.uri.queryParameters['q']),
+            SearchPage(initialQuery: state.uri.queryParameters['q']),
       ),
       GoRoute(
         path: AppRoutes.notifications,
-        builder: (context, state) => const NotificationsScreen(),
+        builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
         path: AppRoutes.settings,
@@ -147,6 +140,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/app/chat/thread/:threadId',
         builder: (context, state) =>
             ChatThreadScreen(threadId: state.pathParameters['threadId'] ?? ''),
+      ),
+      GoRoute(
         path: '/app/inbox',
         builder: (context, state) => const InboxPage(),
         routes: [
@@ -167,16 +162,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.explore,
-                builder: (context, state) => const ExploreScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.people,
-                builder: (context, state) => const PeopleScreen(),
-                path: AppRoutes.explore,
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
               ),
@@ -185,8 +170,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.people,
+                builder: (context, state) => const PeoplePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.tasks,
-                builder: (context, state) => const TasksScreen(),
+                builder: (context, state) => const TasksPage(),
               ),
             ],
           ),
@@ -194,7 +187,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.chat,
-                builder: (context, state) => const ChatListScreen(),
+                builder: (context, state) => ChatPage(
+                  recipientId: state.uri.queryParameters['recipientId'],
+                  initialDraft: state.uri.queryParameters['draft'],
+                  contextTitle: state.uri.queryParameters['contextTitle'],
+                ),
               ),
             ],
           ),
@@ -202,7 +199,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
-                builder: (context, state) => const ProfileScreen(),
+                builder: (context, state) => const ProfilePage(),
               ),
             ],
           ),
