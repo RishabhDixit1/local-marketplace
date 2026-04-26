@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
@@ -14,13 +16,6 @@ import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/chat_repository.dart';
 import '../domain/chat_models.dart';
-
-const _quickReplies = [
-  'I can help today.',
-  'Can you share the exact location?',
-  'Sending a quote shortly.',
-  'I am on the way.',
-];
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({
@@ -244,11 +239,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         }).toList();
 
                         if (filtered.isEmpty) {
-                          return const SectionCard(
+                          return SectionCard(
                             child: EmptyStateView(
-                              title: 'No conversations yet',
-                              message:
-                                  'Start from provider discovery, requests, or notifications and your conversations will show up here.',
+                              title: query.isEmpty
+                                  ? 'No conversations yet'
+                                  : 'No conversations match',
+                              message: query.isEmpty
+                                  ? 'Post a need or message a provider. Replies, quotes, and timing follow-up will collect here.'
+                                  : 'Try a broader search term or clear the field to see recent local follow-up.',
+                              actionLabel: query.isEmpty ? 'Post a Need' : null,
+                              onAction: query.isEmpty
+                                  ? () => context.push(AppRoutes.createNeed)
+                                  : null,
                             ),
                           );
                         }
@@ -356,6 +358,28 @@ class _ConversationSection extends StatelessWidget {
   }
 }
 
+List<String> _quickRepliesFor(String? contextTitle) {
+  final rawTitle = contextTitle?.trim() ?? '';
+  if (rawTitle.isEmpty) {
+    return const [
+      'I can help today.',
+      'Can you share the exact location?',
+      'Sending a quote shortly.',
+      'I am on the way.',
+    ];
+  }
+
+  final title = rawTitle.length > 34
+      ? '${rawTitle.substring(0, 31)}...'
+      : rawTitle;
+  return [
+    'I can help with "$title".',
+    'Can you share timing and access details?',
+    'I will send a quote shortly.',
+    'Let us confirm the next step here.',
+  ];
+}
+
 class _ChatThread extends ConsumerWidget {
   const _ChatThread({
     required this.conversationId,
@@ -447,12 +471,24 @@ class _ChatThread extends ConsumerWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      'About ${(contextTitle ?? '').trim()}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'About ${(contextTitle ?? '').trim()}',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Keep timing, quote, and the next practical step tied to this request.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.primaryDeep),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -462,13 +498,14 @@ class _ChatThread extends ConsumerWidget {
             child: messagesAsync.when(
               data: (messages) {
                 if (messages.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
                     child: SectionCard(
                       child: EmptyStateView(
                         title: 'No messages yet',
-                        message:
-                            'Send the first message to start the conversation.',
+                        message: (contextTitle?.trim() ?? '').isEmpty
+                            ? 'Send the first message to confirm timing, scope, or pricing.'
+                            : 'Send the first message while the request context is still fresh.',
                       ),
                     ),
                   );
@@ -580,7 +617,7 @@ class _ChatThread extends ConsumerWidget {
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: _quickReplies
+                        children: _quickRepliesFor(contextTitle)
                             .map(
                               (reply) => Padding(
                                 padding: const EdgeInsets.only(right: 8),

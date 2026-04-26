@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
-import '../../../core/supabase/app_bootstrap.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/app_search_field.dart';
@@ -19,8 +18,11 @@ import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
 import '../../inbox/data/chat_repository.dart';
+import '../../people/data/people_repository.dart';
+import '../../people/domain/people_snapshot.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
 
@@ -28,8 +30,9 @@ enum FeedPageMode {
   welcome,
   explore;
 
-  MobileFeedScope get scope =>
-      this == FeedPageMode.welcome ? MobileFeedScope.connected : MobileFeedScope.all;
+  MobileFeedScope get scope => this == FeedPageMode.welcome
+      ? MobileFeedScope.connected
+      : MobileFeedScope.all;
 
   String get title =>
       this == FeedPageMode.welcome ? 'Your network feed' : 'Explore';
@@ -52,10 +55,12 @@ class FeedPage extends ConsumerStatefulWidget {
     super.key,
     this.mode = FeedPageMode.explore,
     this.snapshotOverride,
+    this.peopleOverride,
   });
 
   final FeedPageMode mode;
   final AsyncValue<MobileFeedSnapshot>? snapshotOverride;
+  final AsyncValue<MobilePeopleSnapshot>? peopleOverride;
 
   @override
   ConsumerState<FeedPage> createState() => _FeedPageState();
@@ -68,69 +73,18 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   late MobileFeedScope _scope;
   final Set<String> _filters = <String>{};
   String? _busyFeedActionId;
-  RealtimeChannel? _feedChannel;
-  SupabaseClient? _client;
 
   @override
   void initState() {
     super.initState();
     _scope = widget.mode.scope;
-    try {
-      _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
-      _client = null;
-    }
-    _subscribeToRealtime();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
-    if (_client != null && _feedChannel != null) {
-      _client!.removeChannel(_feedChannel!);
-    }
     super.dispose();
-  }
-
-  void _subscribeToRealtime() {
-    final client = _client;
-    if (client == null) {
-      return;
-    }
-
-    void invalidateFeed() {
-      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
-      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
-    }
-
-    _feedChannel = client
-        .channel('mobile-explore-feed')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'posts',
-          callback: (_) => invalidateFeed(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'help_requests',
-          callback: (_) => invalidateFeed(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'service_listings',
-          callback: (_) => invalidateFeed(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'product_catalog',
-          callback: (_) => invalidateFeed(),
-        )
-        .subscribe();
   }
 
   Future<void> _refresh() async {
@@ -148,7 +102,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   Future<void> _openPostTask() async {
-    final posted = await context.push<bool>('/app/post-task');
+    final posted = await context.push<bool>(AppRoutes.createNeed);
     if (posted == true && mounted) {
       await _refresh();
     }
@@ -267,11 +221,64 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     }).toList();
   }
 
+  List<MobilePersonCard> _filterPeople(List<MobilePersonCard> people) {
+    return people.where((person) {
+      if (_filters.contains('verified') && person.completionPercent < 80) {
+        return false;
+      }
+      if (_filters.contains('top_rated') &&
+          ((person.averageRating ?? 0) < 4.5 || person.reviewCount < 1)) {
+        return false;
+      }
+
+      return person.matchesQuery(_query);
+    }).toList();
+  }
+
+  VoidCallback? _primaryActionFor(MobileFeedItem item) {
+    if (item.helpRequestId == null) {
+      if (item.providerId.trim().isEmpty) {
+        return null;
+      }
+      return () => context.push(AppRoutes.provider(item.providerId));
+    }
+
+    return () => _sendInterest(item);
+  }
+
+  VoidCallback? _messageActionFor(MobileFeedItem item) {
+    if (item.providerId.trim().isEmpty) {
+      return null;
+    }
+
+    return () => _openChat(item);
+  }
+
+  String _primaryLabelFor(MobileFeedItem item) {
+    if (item.helpRequestId == null) {
+      return 'Open profile';
+    }
+    if (item.viewerHasExpressedInterest) {
+      return 'Withdraw interest';
+    }
+    return 'Express interest';
+  }
+
+  String _secondaryLabelFor(MobileFeedItem item) {
+    if (_busyFeedActionId == item.id) {
+      return 'Working...';
+    }
+    return 'Message';
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<MobileFeedSnapshot> snapshot =
-        widget.snapshotOverride ??
-        ref.watch(feedSnapshotProvider(_scope));
+        widget.snapshotOverride ?? ref.watch(feedSnapshotProvider(_scope));
+    final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot =
+        widget.mode == FeedPageMode.explore
+        ? widget.peopleOverride ?? ref.watch(peopleSnapshotProvider)
+        : widget.peopleOverride;
     final previewData = snapshot.asData?.value;
 
     return Scaffold(
@@ -279,14 +286,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         title: Text(widget.mode.title),
         actions: [
           IconButton(
-            onPressed: () => context.push(AppRoutes.people),
-            icon: const Icon(Icons.people_alt_outlined),
             onPressed: () => context.push(AppRoutes.search),
             icon: const Icon(Icons.search_rounded),
-          ),
-          IconButton(
-            onPressed: () => context.push(AppRoutes.notifications),
-            icon: const Icon(Icons.notifications_none_rounded),
           ),
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
@@ -311,12 +312,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Local discovery with stronger trust cues.',
+                      widget.mode == FeedPageMode.explore
+                          ? 'Explore the live marketplace by intent.'
+                          : 'Local discovery with stronger trust cues.',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Find nearby needs, services, and products without losing local context.',
+                      widget.mode == FeedPageMode.explore
+                          ? 'Requests, trusted providers, services, products, and urgent work stay separated so the next action is obvious.'
+                          : 'Find nearby needs, services, and products without losing local context.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),
@@ -369,26 +374,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           ..addAll(next);
                       }),
                     ),
-                    if (previewData != null && previewData.items.isNotEmpty) ...[
+                    if (previewData != null &&
+                        widget.mode == FeedPageMode.explore) ...[
                       const SizedBox(height: 16),
-                      Text(
-                        'Live local feed',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Marketplace feed',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        previewData.items.first.title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        previewData.items.first.category,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      _ExploreLaneSummary(
+                        stats: previewData.stats,
+                        providerCount:
+                            peopleSnapshot?.asData?.value.people.length ?? 0,
                       ),
                     ],
                   ],
@@ -397,34 +389,38 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               const SizedBox(height: 16),
               snapshot.when(
                 data: (data) {
-                  final items = data.items.where((item) {
-                    if (_filters.contains('verified') && !item.isVerified) {
-                      return false;
-                    }
-                    if (_filters.contains('urgent') && !item.urgent) {
-                      return false;
-                    }
-                    if (_filters.contains('media') && !item.hasMedia) {
-                      return false;
-                    }
-                    if (_filters.contains('top_rated') &&
-                        ((item.averageRating ?? 0) < 4.5 ||
-                            item.reviewCount < 1)) {
-                      return false;
-                    }
-                    if (_query.isEmpty) {
-                      return true;
-                    }
-                    final haystack = [
-                      item.title,
-                      item.description,
-                      item.category,
-                      item.creatorName,
-                      item.locationLabel,
-                    ].join(' ').toLowerCase();
-                    return haystack.contains(_query);
-                  }).toList();
                   final items = _filterItems(data.items);
+                  final people = _filterPeople(
+                    peopleSnapshot?.asData?.value.people ??
+                        const <MobilePersonCard>[],
+                  );
+
+                  if (widget.mode == FeedPageMode.explore) {
+                    return _ExploreMarketplaceLanes(
+                      items: items,
+                      people: people,
+                      peopleSnapshot: peopleSnapshot,
+                      onOpenPeople: () => context.go(AppRoutes.people),
+                      onRetryPeople: () {
+                        ref.invalidate(peopleSnapshotProvider);
+                      },
+                      feedCardBuilder: (item) => FeedCard(
+                        item: item,
+                        onPrimaryTap: _primaryActionFor(item),
+                        onSecondaryTap: _messageActionFor(item),
+                        primaryLabel: _primaryLabelFor(item),
+                        secondaryLabel: _secondaryLabelFor(item),
+                      ),
+                      providerCardBuilder: (person) => ProviderCard(
+                        person: person,
+                        onOpenProfile: () =>
+                            context.push(AppRoutes.provider(person.id)),
+                        onMessage: () => context.push(
+                          '${AppRoutes.chat}?recipientId=${person.id}',
+                        ),
+                      ),
+                    );
+                  }
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,39 +449,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: FeedCard(
                               item: item,
-                              onPrimaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                      AppRoutes.provider(item.providerId),
-                                    ),
-                              onSecondaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => context.push(
-                                      '${AppRoutes.chat}?recipientId=${item.providerId}',
-                                    ),
-                              primaryLabel: 'Open',
-                              secondaryLabel: 'Contact',
-                              onPrimaryTap: item.helpRequestId == null
-                                  ? () {
-                                      if (item.providerId.trim().isEmpty) {
-                                        return;
-                                      }
-                                      context.push(
-                                        AppRoutes.provider(item.providerId),
-                                      );
-                                    }
-                                  : () => _sendInterest(item),
-                              onSecondaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => _openChat(item),
-                              primaryLabel: item.helpRequestId == null
-                                  ? 'Open profile'
-                                  : item.viewerHasExpressedInterest
-                                  ? 'Withdraw interest'
-                                  : 'Express interest',
-                              secondaryLabel: _busyFeedActionId == item.id
-                                  ? 'Working...'
-                                  : 'Message',
+                              onPrimaryTap: _primaryActionFor(item),
+                              onSecondaryTap: _messageActionFor(item),
+                              primaryLabel: _primaryLabelFor(item),
+                              secondaryLabel: _secondaryLabelFor(item),
                             ),
                           ),
                         ),
@@ -623,6 +590,324 @@ class _FeedMetrics extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ExploreLaneSummary extends StatelessWidget {
+  const _ExploreLaneSummary({required this.stats, required this.providerCount});
+
+  final MobileFeedStats stats;
+  final int providerCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Requests',
+                value: stats.demand.toString(),
+                icon: Icons.handyman_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Providers',
+                value: providerCount.toString(),
+                icon: Icons.people_outline_rounded,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Services',
+                value: stats.service.toString(),
+                icon: Icons.design_services_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: MetricTile(
+                label: 'Urgent',
+                value: stats.urgent.toString(),
+                icon: Icons.flash_on_rounded,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ExploreMarketplaceLanes extends StatelessWidget {
+  const _ExploreMarketplaceLanes({
+    required this.items,
+    required this.people,
+    required this.peopleSnapshot,
+    required this.onOpenPeople,
+    required this.onRetryPeople,
+    required this.feedCardBuilder,
+    required this.providerCardBuilder,
+  });
+
+  final List<MobileFeedItem> items;
+  final List<MobilePersonCard> people;
+  final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot;
+  final VoidCallback onOpenPeople;
+  final VoidCallback onRetryPeople;
+  final Widget Function(MobileFeedItem item) feedCardBuilder;
+  final Widget Function(MobilePersonCard person) providerCardBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final urgent = items.where((item) => item.urgent).take(2).toList();
+    final requests = items
+        .where((item) => item.type == MobileFeedItemType.demand && !item.urgent)
+        .take(4)
+        .toList();
+    final services = items
+        .where((item) => item.type == MobileFeedItemType.service)
+        .take(3)
+        .toList();
+    final products = items
+        .where((item) => item.type == MobileFeedItemType.product)
+        .take(3)
+        .toList();
+    final visiblePeople = people.take(3).toList();
+    final hasAnyFeed =
+        urgent.isNotEmpty ||
+        requests.isNotEmpty ||
+        services.isNotEmpty ||
+        products.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionCard(child: _ExploreRankingContext()),
+        const SizedBox(height: 16),
+        if (!hasAnyFeed && visiblePeople.isEmpty)
+          const SectionCard(
+            child: EmptyStateView(
+              title: 'No matching marketplace lanes',
+              message:
+                  'Broaden the search or clear a filter to bring requests, providers, services, and products back into view.',
+            ),
+          )
+        else ...[
+          if (urgent.isNotEmpty) ...[
+            _ExploreFeedLane(
+              title: 'Urgent nearby',
+              subtitle:
+                  'Open requests with stronger time pressure and fast follow-up potential.',
+              items: urgent,
+              cardBuilder: feedCardBuilder,
+            ),
+            const SizedBox(height: 18),
+          ],
+          _ExploreFeedLane(
+            title: 'Requests',
+            subtitle:
+                'People nearby who need help, ranked by local fit and trust context.',
+            items: requests,
+            cardBuilder: feedCardBuilder,
+            emptyTitle: 'No open requests in this view',
+          ),
+          const SizedBox(height: 18),
+          _ExploreProviderLane(
+            people: visiblePeople,
+            peopleSnapshot: peopleSnapshot,
+            onOpenPeople: onOpenPeople,
+            onRetryPeople: onRetryPeople,
+            providerCardBuilder: providerCardBuilder,
+          ),
+          const SizedBox(height: 18),
+          _ExploreFeedLane(
+            title: 'Services',
+            subtitle:
+                'Provider offers you can compare by response speed, proof, and distance.',
+            items: services,
+            cardBuilder: feedCardBuilder,
+            emptyTitle: 'No services match these filters',
+          ),
+          const SizedBox(height: 18),
+          _ExploreFeedLane(
+            title: 'Products',
+            subtitle:
+                'Local products with provider identity and marketplace trust signals attached.',
+            items: products,
+            cardBuilder: feedCardBuilder,
+            emptyTitle: 'No products match these filters',
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ExploreRankingContext extends StatelessWidget {
+  const _ExploreRankingContext();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: const Icon(
+            Icons.verified_user_outlined,
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Trust-first marketplace',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Each lane favors nearby relevance, urgent intent, profile proof, response speed, and trusted network activity.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExploreFeedLane extends StatelessWidget {
+  const _ExploreFeedLane({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+    required this.cardBuilder,
+    this.emptyTitle,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<MobileFeedItem> items;
+  final Widget Function(MobileFeedItem item) cardBuilder;
+  final String? emptyTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: title, subtitle: subtitle),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          SectionCard(
+            child: EmptyStateView(
+              title: emptyTitle ?? 'Nothing here yet',
+              message:
+                  'Clear a filter or search a broader category to widen this lane.',
+            ),
+          )
+        else
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: cardBuilder(item),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ExploreProviderLane extends StatelessWidget {
+  const _ExploreProviderLane({
+    required this.people,
+    required this.peopleSnapshot,
+    required this.onOpenPeople,
+    required this.onRetryPeople,
+    required this.providerCardBuilder,
+  });
+
+  final List<MobilePersonCard> people;
+  final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot;
+  final VoidCallback onOpenPeople;
+  final VoidCallback onRetryPeople;
+  final Widget Function(MobilePersonCard person) providerCardBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = peopleSnapshot;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Providers',
+          subtitle:
+              'Nearby people with trust, availability, proof, and service context.',
+          actionLabel: 'People',
+          onAction: onOpenPeople,
+        ),
+        const SizedBox(height: 12),
+        if (snapshot?.isLoading == true)
+          const SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LoadingShimmer(height: 18, width: 180),
+                SizedBox(height: 10),
+                LoadingShimmer(height: 14),
+                SizedBox(height: 8),
+                LoadingShimmer(height: 14, width: 220),
+              ],
+            ),
+          )
+        else if (snapshot?.hasError == true)
+          SectionCard(
+            child: ErrorStateView(
+              title: 'Provider lane is delayed',
+              message:
+                  'Requests, services, and products are still available while provider discovery catches up.',
+              onRetry: onRetryPeople,
+            ),
+          )
+        else if (people.isEmpty)
+          SectionCard(
+            child: EmptyStateView(
+              title: 'No providers match these filters',
+              message:
+                  'Open People to browse the wider local provider directory.',
+              actionLabel: 'Open People',
+              onAction: onOpenPeople,
+            ),
+          )
+        else
+          ...people.map(
+            (person) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: providerCardBuilder(person),
+            ),
+          ),
+      ],
     );
   }
 }

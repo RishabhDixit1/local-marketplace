@@ -783,6 +783,17 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                       draft: publishedDraft,
                       onCreateAnother: _resetComposer,
                       onViewFeed: () => context.go(AppRoutes.home),
+                      onOpenChat: () => context.go(AppRoutes.chat),
+                      onViewTask: () => context.go(
+                        Uri(
+                          path: AppRoutes.tasks,
+                          queryParameters: {
+                            if (_result!.helpRequestId.isNotEmpty)
+                              'focus': _result!.helpRequestId,
+                            'source': 'post_success',
+                          },
+                        ).toString(),
+                      ),
                     )
                   : _buildStepContent(context),
             ),
@@ -1478,12 +1489,16 @@ class _PublishedState extends StatelessWidget {
     required this.draft,
     required this.onCreateAnother,
     required this.onViewFeed,
+    required this.onOpenChat,
+    required this.onViewTask,
   });
 
   final CreateNeedResult result;
   final CreateNeedDraft draft;
   final VoidCallback onCreateAnother;
   final VoidCallback onViewFeed;
+  final VoidCallback onOpenChat;
+  final VoidCallback onViewTask;
 
   @override
   Widget build(BuildContext context) {
@@ -1572,6 +1587,30 @@ class _PublishedState extends StatelessWidget {
             'Providers in ${draft.category.toLowerCase()} around ${draft.locationLabel} can now see this in the local feed, request alerts, and matching queue.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 18),
+          Text(
+            'What happens next',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 10),
+          const _NextStepRow(
+            icon: Icons.person_search_outlined,
+            title: 'Providers review the request',
+            message:
+                'Matched providers can express interest, message you, or wait for more detail.',
+          ),
+          const _NextStepRow(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'Replies land in Chat',
+            message:
+                'Use chat to confirm timing, location details, and the next practical step.',
+          ),
+          const _NextStepRow(
+            icon: Icons.assignment_outlined,
+            title: 'Status stays in Tasks',
+            message:
+                'Track accepted work, in-progress updates, completion, and follow-up from one place.',
+          ),
           if (draft.media.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -1629,14 +1668,66 @@ class _PublishedState extends StatelessWidget {
             runSpacing: 10,
             children: [
               FilledButton(
-                onPressed: onViewFeed,
-                child: const Text('View feed'),
+                onPressed: onViewTask,
+                child: const Text('Track task'),
               ),
               OutlinedButton(
+                onPressed: onOpenChat,
+                child: const Text('Open chat'),
+              ),
+              OutlinedButton(
+                onPressed: onViewFeed,
+                child: const Text('View home'),
+              ),
+              TextButton(
                 onPressed: onCreateAnother,
                 child: const Text('Create another'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextStepRow extends StatelessWidget {
+  const _NextStepRow({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+            ),
+            child: Icon(icon, size: 17, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 3),
+                Text(message, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
           ),
         ],
       ),

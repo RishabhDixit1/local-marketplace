@@ -25,6 +25,7 @@ class FeedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDemand = item.type == MobileFeedItemType.demand;
+    final reason = _decisionReason(item);
 
     return SectionCard(
       child: Column(
@@ -49,6 +50,8 @@ class FeedCard extends StatelessWidget {
           Text(item.title, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(item.description, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          _DecisionReason(reason: reason),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,6 +150,64 @@ class FeedCard extends StatelessWidget {
   }
 }
 
+String _decisionReason(MobileFeedItem item) {
+  if (item.whyThisCard.trim().isNotEmpty) {
+    return item.whyThisCard.trim();
+  }
+  if (item.feedReason.trim().isNotEmpty) {
+    return item.feedReason.trim();
+  }
+  if (item.sourceType == 'accepted_connection') {
+    return 'Shown first because this comes from your trusted network.';
+  }
+  if (item.urgent) {
+    return 'Urgent nearby request with stronger response intent.';
+  }
+  if (item.type == MobileFeedItemType.demand) {
+    return 'Ranked by local relevance, urgency, trust, and distance.';
+  }
+  return 'Ranked by trust signals, response speed, and nearby fit.';
+}
+
+class _DecisionReason extends StatelessWidget {
+  const _DecisionReason({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.auto_awesome_outlined,
+            size: 16,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              reason,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.primaryDeep,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Tag extends StatelessWidget {
   const _Tag({
     required this.label,
@@ -160,17 +221,22 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(color: foregroundColor),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: foregroundColor),
+        ),
       ),
     );
   }
@@ -184,22 +250,30 @@ class _MetaItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.inkMuted),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ),
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.inkMuted),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

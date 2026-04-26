@@ -12,13 +12,10 @@ import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
-import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
-enum _NotificationFilter { all, unread, messages, orders, trust }
 enum _NotificationFilter {
   all,
   unread,
@@ -94,9 +91,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) {
-            ref.invalidate(notificationListProvider);
-          },
+          callback: (_) => ref.invalidate(notificationListProvider),
         )
         .subscribe();
   }
@@ -145,7 +140,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         await ref.read(notificationRepositoryProvider).markAsRead(item.id);
       }
     } catch (_) {
-      // Let navigation continue even if read state fails.
+      // Keep navigation usable even if the read state fails.
     }
 
     ref.invalidate(notificationListProvider);
@@ -164,12 +159,27 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     );
   }
 
+  bool _matchesFilter(MobileNotificationItem item) {
+    switch (_filter) {
+      case _NotificationFilter.all:
+        return true;
+      case _NotificationFilter.unread:
+        return item.unread;
+      case _NotificationFilter.messages:
+        return item.kind == MobileNotificationKind.message;
+      case _NotificationFilter.orders:
+        return item.kind == MobileNotificationKind.order;
+      case _NotificationFilter.trust:
+        return item.kind == MobileNotificationKind.review ||
+            item.kind == MobileNotificationKind.connection;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationListProvider);
-    final unreadCount = notificationsAsync.asData?.value
-            .where((item) => item.unread)
-            .length ??
+    final unreadCount =
+        notificationsAsync.asData?.value.where((item) => item.unread).length ??
         0;
     final query = _searchController.text.trim().toLowerCase();
 
@@ -226,7 +236,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               notificationsAsync.when(
                 data: (items) {
                   final filtered = items.where((item) {
-                    if (!_matchesFilter(item, _filter)) {
+                    if (!_matchesFilter(item)) {
                       return false;
                     }
                     if (query.isEmpty) {
@@ -241,24 +251,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (data.demoMode || (data.notice ?? '').isNotEmpty)
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.warningSoft,
-                            borderRadius: BorderRadius.circular(AppRadii.md),
-                            border: Border.all(color: AppColors.warning),
-                          ),
-                          child: Text(
-                            data.notice ??
-                                'Notifications are currently running in demo mode.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: AppColors.warning),
-                          ),
-                        ),
-                      _NotificationSummary(snapshot: data),
                       _NotificationSummary(
                         items: items,
                         filteredCount: filtered.length,
@@ -292,7 +284,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ],
                   );
                 },
-                loading: () => const _NotificationsLoadingState(),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => SectionCard(
                   child: ErrorStateView(
                     title: 'Unable to load notifications',
@@ -306,111 +298,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ),
       ),
     );
-  }
-}
-
-  bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
-    switch (filter) {
-      case _NotificationFilter.all:
-        return true;
-      case _NotificationFilter.unread:
-        return item.unread;
-      case _NotificationFilter.messages:
-        return item.kind == MobileNotificationKind.message;
-      case _NotificationFilter.orders:
-        return item.kind == MobileNotificationKind.order;
-      case _NotificationFilter.trust:
-        return item.kind == MobileNotificationKind.review ||
-            item.kind == MobileNotificationKind.connection;
-    }
-  }
-
-  String _labelForFilter(_NotificationFilter filter) {
-    switch (filter) {
-      case _NotificationFilter.all:
-        return 'All';
-      case _NotificationFilter.unread:
-        return 'Unread';
-      case _NotificationFilter.messages:
-        return 'Messages';
-      case _NotificationFilter.orders:
-        return 'Orders';
-      case _NotificationFilter.trust:
-        return 'Trust';
-    }
-  }
-
-  List<_NotificationGroup> _groupNotifications(
-    List<MobileNotificationItem> items,
-  ) {
-    final unread = items.where((item) => item.unread).toList();
-    final read = items.where((item) => !item.unread).toList();
-    final groups = <_NotificationGroup>[];
-
-    if (unread.isNotEmpty) {
-      groups.add(
-        _NotificationGroup(
-          title: 'Needs attention',
-          subtitle: 'Unread updates that can move a conversation or task.',
-          items: unread,
-        ),
-      );
-    }
-
-    final buckets = <MobileNotificationKind, List<MobileNotificationItem>>{};
-    for (final item in read) {
-      buckets.putIfAbsent(item.kind, () => []).add(item);
-    }
-
-    for (final kind in [
-      MobileNotificationKind.message,
-      MobileNotificationKind.order,
-      MobileNotificationKind.review,
-      MobileNotificationKind.connection,
-      MobileNotificationKind.system,
-    ]) {
-      final bucket = buckets[kind];
-      if (bucket == null || bucket.isEmpty) {
-        continue;
-      }
-      groups.add(
-        _NotificationGroup(
-          title: kind.label,
-          subtitle: _groupSubtitle(kind),
-          items: bucket,
-        ),
-      );
-    }
-
-    return groups;
-  }
-
-  String _groupSubtitle(MobileNotificationKind kind) {
-    switch (kind) {
-      case MobileNotificationKind.message:
-        return 'Conversation handoffs and fresh replies.';
-      case MobileNotificationKind.order:
-        return 'Nearby request and task movement.';
-      case MobileNotificationKind.review:
-        return 'Trust, ratings, and reputation signals.';
-      case MobileNotificationKind.connection:
-        return 'People, intros, and local network updates.';
-      case MobileNotificationKind.system:
-        return 'Account and platform updates.';
-    }
-bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
-  switch (filter) {
-    case _NotificationFilter.all:
-      return true;
-    case _NotificationFilter.unread:
-      return item.unread;
-    case _NotificationFilter.messages:
-      return item.kind == MobileNotificationKind.message;
-    case _NotificationFilter.orders:
-      return item.kind == MobileNotificationKind.order;
-    case _NotificationFilter.trust:
-      return item.kind == MobileNotificationKind.review ||
-          item.kind == MobileNotificationKind.connection;
   }
 }
 
@@ -521,51 +408,55 @@ class _NotificationCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: const Color(0xFF0B1F33)),
+              CircleAvatar(
+                backgroundColor: item.unread
+                    ? const Color(0xFFE0F2FE)
+                    : const Color(0xFFF1F5F9),
+                foregroundColor: item.unread
+                    ? const Color(0xFF0369A1)
+                    : const Color(0xFF475569),
+                child: Icon(icon),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title, style: Theme.of(context).textTheme.titleLarge),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        if (item.unread)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0284C7),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       item.message,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.timeLabel,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
-              if (item.unread)
-                const TrustBadge(
-                  label: 'Unread',
-                  icon: Icons.fiber_manual_record_rounded,
-                ),
             ],
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TrustBadge(label: item.kind.name.toUpperCase()),
-              TrustBadge(
-                label: item.timeLabel,
-                icon: Icons.schedule_rounded,
-                backgroundColor: const Color(0xFFE0F2FE),
-                foregroundColor: const Color(0xFF0B1F33),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -579,43 +470,13 @@ class _NotificationCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: busy ? null : onOpen,
-                  icon: const Icon(Icons.open_in_new_rounded),
+                  icon: const Icon(Icons.arrow_forward_rounded),
                   label: const Text('Open'),
                 ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _NotificationsLoadingState extends StatelessWidget {
-  const _NotificationsLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        3,
-        (_) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                LoadingShimmer(height: 20, width: 180),
-                SizedBox(height: 10),
-                LoadingShimmer(height: 14),
-                SizedBox(height: 8),
-                LoadingShimmer(height: 14, width: 220),
-                SizedBox(height: 16),
-                LoadingShimmer(height: 42),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

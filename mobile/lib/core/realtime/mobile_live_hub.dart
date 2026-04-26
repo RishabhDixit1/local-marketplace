@@ -4,11 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/feed/data/feed_repository.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
-import '../../features/notifications/data/notifications_repository.dart';
+import '../../features/notifications/data/notification_repository.dart';
 import '../../features/people/data/people_repository.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
-import '../../features/tasks/domain/task_snapshot.dart';
 import '../supabase/app_bootstrap.dart';
 
 final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
@@ -33,7 +32,7 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
   }
 
   void invalidateNotifications() {
-    ref.invalidate(notificationsSnapshotProvider);
+    ref.invalidate(notificationListProvider);
   }
 
   void invalidateChat() {
@@ -161,55 +160,8 @@ final mobileLiveHubProvider = Provider<MobileLiveHub?>((ref) {
   return MobileLiveHub(channel: channel);
 });
 
-final mobileShellBadgeCountsProvider = Provider<MobileShellBadgeCounts>((ref) {
-  ref.watch(mobileLiveHubProvider);
-
-  final chatConversations = ref.watch(chatConversationsProvider);
-  final taskSnapshot = ref.watch(taskSnapshotProvider);
-  final notificationsSnapshot = ref.watch(notificationsSnapshotProvider);
-
-  final unreadChatCount = chatConversations.maybeWhen(
-    data: (conversations) => conversations.fold<int>(
-      0,
-      (count, conversation) => count + conversation.unreadCount,
-    ),
-    orElse: () => 0,
-  );
-
-  final activeTaskCount = taskSnapshot.maybeWhen(
-    data: (snapshot) => snapshot.items.where((item) {
-      return item.status == MobileTaskStatus.active ||
-          item.status == MobileTaskStatus.inProgress;
-    }).length,
-    orElse: () => 0,
-  );
-
-  final unreadNotificationCount = notificationsSnapshot.maybeWhen(
-    data: (snapshot) => snapshot.unreadCount,
-    orElse: () => 0,
-  );
-
-  return MobileShellBadgeCounts(
-    unreadChatCount: unreadChatCount,
-    activeTaskCount: activeTaskCount,
-    unreadNotificationCount: unreadNotificationCount,
-  );
-});
-
 class MobileLiveHub {
   const MobileLiveHub({required this.channel});
 
   final RealtimeChannel channel;
-}
-
-class MobileShellBadgeCounts {
-  const MobileShellBadgeCounts({
-    required this.unreadChatCount,
-    required this.activeTaskCount,
-    required this.unreadNotificationCount,
-  });
-
-  final int unreadChatCount;
-  final int activeTaskCount;
-  final int unreadNotificationCount;
 }

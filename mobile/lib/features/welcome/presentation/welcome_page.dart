@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -42,8 +42,6 @@ class WelcomePage extends ConsumerStatefulWidget {
 }
 
 class _WelcomePageState extends ConsumerState<WelcomePage> {
-  RealtimeChannel? _feedChannel;
-  SupabaseClient? _client;
   _WelcomeSurface _surface = _WelcomeSurface.forYou;
   _WelcomeSurface _resolvedSurface = _WelcomeSurface.forYou;
   bool _surfaceManuallyChanged = false;
@@ -57,12 +55,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   @override
   void initState() {
     super.initState();
-    try {
-      _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
-      _client = null;
-    }
-    _subscribeToRealtime();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(analyticsServiceProvider)
@@ -71,55 +63,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             extras: {'surface': _resolvedSurface.analyticsValue},
           );
     });
-  }
-
-  @override
-  void dispose() {
-    if (_client != null && _feedChannel != null) {
-      _client!.removeChannel(_feedChannel!);
-    }
-    super.dispose();
-  }
-
-  void _subscribeToRealtime() {
-    final client = _client;
-    if (client == null) {
-      return;
-    }
-
-    void invalidateAll() {
-      ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
-      ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
-      ref.invalidate(peopleSnapshotProvider);
-    }
-
-    _feedChannel = client
-        .channel('mobile-home-snapshot-v2')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'posts',
-          callback: (_) => invalidateAll(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'help_requests',
-          callback: (_) => invalidateAll(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'service_listings',
-          callback: (_) => invalidateAll(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'product_catalog',
-          callback: (_) => invalidateAll(),
-        )
-        .subscribe();
   }
 
   Future<void> _refresh() async {
@@ -554,7 +497,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   }
 
   String _resolveViewerName() {
-    final user = _client?.auth.currentUser;
+    final user = ref.read(currentSessionProvider).asData?.value?.user;
     final metadata = user?.userMetadata;
     final dynamic rawName =
         metadata?['full_name'] ?? metadata?['name'] ?? metadata?['first_name'];

@@ -23,9 +23,9 @@ class MainBottomNav extends StatelessWidget {
       onDestinationSelected: onTap,
       destinations: [
         const NavigationDestination(
-          icon: Icon(Icons.explore_outlined),
-          selectedIcon: Icon(Icons.explore_rounded),
-          label: 'Explore',
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home_rounded),
+          label: 'Home',
         ),
         const NavigationDestination(
           icon: Icon(Icons.people_outline_rounded),

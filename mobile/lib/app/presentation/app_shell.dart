@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_routes.dart';
 import '../../core/services/analytics_service.dart';
-import '../../features/chat/data/chat_hub_repository.dart';
-import '../../features/notifications/data/notifications_center_repository.dart';
-import '../../features/tasks/data/tasks_repository.dart';
+import '../../core/realtime/mobile_live_hub.dart';
+import '../../features/chat/data/chat_repository.dart';
+import '../../features/tasks/data/task_repository.dart';
 import 'main_bottom_nav.dart';
 
 class AppShell extends ConsumerWidget {
@@ -27,22 +27,21 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chatThreads = ref.watch(chatThreadsProvider);
-    final taskBoard = ref.watch(tasksBoardProvider);
-    ref.watch(notificationsCenterProvider);
+    ref.watch(mobileLiveHubProvider);
+    final chatConversations = ref.watch(chatConversationsProvider);
+    final taskSnapshot = ref.watch(taskSnapshotProvider);
 
-    final unreadChatCount = chatThreads.maybeWhen(
-      data: (threads) =>
-          threads.fold<int>(0, (count, thread) => count + thread.unreadCount),
+    final unreadChatCount = chatConversations.maybeWhen(
+      data: (conversations) => conversations.fold<int>(
+        0,
+        (count, conversation) => count + conversation.unreadCount,
+      ),
       orElse: () => 0,
     );
-    final activeTaskCount = taskBoard.maybeWhen(
-      data: (board) => board.items
-          .where(
-            (item) =>
-                item.status.name == 'open' || item.status.name == 'inProgress',
-          )
-          .length,
+    final activeTaskCount = taskSnapshot.maybeWhen(
+      data: (snapshot) => snapshot.items.where((item) {
+        return item.status.name == 'active' || item.status.name == 'inProgress';
+      }).length,
       orElse: () => 0,
     );
 
@@ -51,7 +50,7 @@ class AppShell extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.createNeed),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Post need'),
+        label: const Text('Post a Need'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: MainBottomNav(
