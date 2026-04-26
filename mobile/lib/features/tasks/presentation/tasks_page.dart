@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -33,7 +31,10 @@ enum _TaskRoleFilter {
 }
 
 class TasksPage extends ConsumerStatefulWidget {
-  const TasksPage({super.key});
+  const TasksPage({super.key, this.focusTaskId, this.focusSource});
+
+  final String? focusTaskId;
+  final String? focusSource;
 
   @override
   ConsumerState<TasksPage> createState() => _TasksPageState();
@@ -43,96 +44,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   MobileTaskStatus _selectedStatus = MobileTaskStatus.active;
   _TaskRoleFilter _selectedRole = _TaskRoleFilter.all;
   String? _busyTaskId;
-  RealtimeChannel? _ordersChannel;
-  RealtimeChannel? _helpRequestsChannel;
-  RealtimeChannel? _taskEventsChannel;
-  SupabaseClient? _client;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
-      _client = null;
-    }
-    _bindRealtimeChannels();
-  }
-
-  @override
-  void dispose() {
-    _disposeRealtimeChannels();
-    super.dispose();
-  }
-
-  void _bindRealtimeChannels() {
-    _disposeRealtimeChannels();
-
-    final client = _client;
-    final userId = client?.auth.currentUser?.id ?? '';
-    if (client == null || userId.isEmpty) {
-      return;
-    }
-
-    void refresh() {
-      ref.invalidate(taskSnapshotProvider);
-    }
-
-    _ordersChannel = client
-        .channel('mobile-tasks-orders-$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'orders',
-          callback: (_) => refresh(),
-        )
-        .subscribe();
-
-    _helpRequestsChannel = client
-        .channel('mobile-tasks-help-requests-$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'help_requests',
-          callback: (_) => refresh(),
-        )
-        .subscribe();
-
-    _taskEventsChannel = client
-        .channel('mobile-tasks-events-$userId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'task_events',
-          callback: (_) => refresh(),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'notification_escalations',
-          callback: (_) => refresh(),
-        )
-        .subscribe();
-  }
-
-  void _disposeRealtimeChannels() {
-    final client = _client;
-    if (client == null) {
-      return;
-    }
-    if (_ordersChannel != null) {
-      client.removeChannel(_ordersChannel!);
-      _ordersChannel = null;
-    }
-    if (_helpRequestsChannel != null) {
-      client.removeChannel(_helpRequestsChannel!);
-      _helpRequestsChannel = null;
-    }
-    if (_taskEventsChannel != null) {
-      client.removeChannel(_taskEventsChannel!);
-      _taskEventsChannel = null;
-    }
-  }
+  String? _appliedFocusTaskId;
 
   Future<void> _refresh() async {
     ref.invalidate(taskSnapshotProvider);
@@ -226,10 +138,45 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
   }
 
+  void _applyFocusIfNeeded(MobileTaskSnapshot snapshot) {
+    final focusTaskId = widget.focusTaskId?.trim() ?? '';
+    if (focusTaskId.isEmpty || _appliedFocusTaskId == focusTaskId) {
+      return;
+    }
+
+    _appliedFocusTaskId = focusTaskId;
+
+    MobileTaskItem? match;
+    for (final item in snapshot.items) {
+      if (item.id == focusTaskId) {
+        match = item;
+        break;
+      }
+    }
+    if (match == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _selectedStatus = match!.status;
+        _selectedRole = match.isProviderTask
+            ? _TaskRoleFilter.provider
+            : _TaskRoleFilter.requester;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
     final data = snapshot.asData?.value;
+    if (data != null) {
+      _applyFocusIfNeeded(data);
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tasks')),
@@ -243,6 +190,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 snapshot: data,
                 selectedRole: _selectedRole,
                 roleCount: data == null ? 0 : _roleCount(data, _selectedRole),
+                focusTaskId: widget.focusTaskId,
+                focusSource: widget.focusSource,
               ),
               const SizedBox(height: 16),
               if (data != null) ...[
@@ -311,6 +260,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                                 onPrimaryAction: task.primaryAction == null
                                     ? null
                                     : () => _runPrimaryAction(task),
+                                focused: task.id == widget.focusTaskId,
                               ),
                             ),
                           ),
@@ -336,11 +286,15 @@ class _TasksHero extends StatelessWidget {
     required this.snapshot,
     required this.selectedRole,
     required this.roleCount,
+    this.focusTaskId,
+    this.focusSource,
   });
 
   final MobileTaskSnapshot? snapshot;
   final _TaskRoleFilter selectedRole;
   final int roleCount;
+  final String? focusTaskId;
+  final String? focusSource;
 
   @override
   Widget build(BuildContext context) {
@@ -386,6 +340,15 @@ class _TasksHero extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.84),
             ),
           ),
+          if ((focusTaskId ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _HeroBadge(
+              icon: Icons.push_pin_outlined,
+              label: focusSource == 'notification'
+                  ? 'Focused from notification'
+                  : 'Focused task view',
+            ),
+          ],
           const SizedBox(height: 18),
           Wrap(
             spacing: 10,
@@ -599,11 +562,13 @@ class _TaskCard extends StatelessWidget {
     required this.task,
     required this.busy,
     required this.onPrimaryAction,
+    this.focused = false,
   });
 
   final MobileTaskItem task;
   final bool busy;
   final VoidCallback? onPrimaryAction;
+  final bool focused;
 
   @override
   Widget build(BuildContext context) {
@@ -612,7 +577,7 @@ class _TaskCard extends StatelessWidget {
         task.isProviderTask || task.status != MobileTaskStatus.active;
     final timelineLabel = _timelineSummary(task);
 
-    return SectionCard(
+    final card = SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -785,6 +750,25 @@ class _TaskCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    if (!focused) {
+      return card;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x291D4ED8),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: card,
     );
   }
 }

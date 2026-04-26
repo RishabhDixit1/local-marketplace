@@ -21,7 +21,7 @@ class FeedRepository {
   Future<MobileFeedSnapshot> fetchFeed({required MobileFeedScope scope}) async {
     final payload = await _apiClient.getJson(
       '/api/community/feed',
-      queryParameters: {'scope': scope.queryValue},
+      queryParameters: {'scope': scope.queryValue, 'imageProxy': 'next'},
     );
 
     if (payload['ok'] != true) {

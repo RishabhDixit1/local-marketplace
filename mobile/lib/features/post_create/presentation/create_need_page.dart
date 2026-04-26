@@ -55,7 +55,15 @@ const _budgetPresets = [
   _BudgetPreset(label: 'Flexible'),
 ];
 
-const _maxComposerMedia = 6;
+const _kb = 1024;
+const _mb = 1024 * _kb;
+const _maxComposerMedia = 4;
+const _maxImageBytes = 768 * _kb;
+const _maxVideoBytes = 6 * _mb;
+const _maxAudioBytes = 3 * _mb;
+const _imagePickerMaxDimension = 1280.0;
+const _imagePickerQuality = 72;
+const _videoPickerMaxDuration = Duration(seconds: 20);
 
 class CreateNeedPage extends ConsumerStatefulWidget {
   const CreateNeedPage({super.key});
@@ -400,21 +408,34 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     try {
       switch (action) {
         case _ComposerMediaAction.galleryPhotos:
-          final files = await _imagePicker.pickMultiImage();
+          final files = await _imagePicker.pickMultiImage(
+            maxWidth: _imagePickerMaxDimension,
+            maxHeight: _imagePickerMaxDimension,
+            imageQuality: _imagePickerQuality,
+          );
           await _addPickedFiles(files);
           return;
         case _ComposerMediaAction.galleryVideo:
           final file = await _imagePicker.pickVideo(
             source: ImageSource.gallery,
+            maxDuration: _videoPickerMaxDuration,
           );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
         case _ComposerMediaAction.cameraPhoto:
-          final file = await _imagePicker.pickImage(source: ImageSource.camera);
+          final file = await _imagePicker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: _imagePickerMaxDimension,
+            maxHeight: _imagePickerMaxDimension,
+            imageQuality: _imagePickerQuality,
+          );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
         case _ComposerMediaAction.cameraVideo:
-          final file = await _imagePicker.pickVideo(source: ImageSource.camera);
+          final file = await _imagePicker.pickVideo(
+            source: ImageSource.camera,
+            maxDuration: _videoPickerMaxDuration,
+          );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
       }
@@ -434,15 +455,35 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     final remaining = _maxComposerMedia - _media.length;
-    final nextFiles = files.take(remaining).toList();
-    if (nextFiles.isEmpty) {
+    final candidateFiles = files.take(remaining).toList();
+    if (candidateFiles.isEmpty) {
       _showComposerSnack(
         'You can upload up to $_maxComposerMedia attachments.',
       );
       return;
     }
 
-    final items = nextFiles.map(_ComposerMediaItem.fromXFile).toList();
+    final items = <_ComposerMediaItem>[];
+    var rejectedForSize = 0;
+
+    for (final file in candidateFiles) {
+      final item = _ComposerMediaItem.fromXFile(file);
+      final limitBytes = _maxBytesForMediaType(item.mediaType);
+      final fileSize = await file.length();
+      if (limitBytes > 0 && fileSize > limitBytes) {
+        rejectedForSize += 1;
+        continue;
+      }
+      items.add(item);
+    }
+
+    if (items.isEmpty) {
+      _showComposerSnack(
+        'Media is too large. Images max ${_formatByteLimit(_maxImageBytes)}, videos max ${_formatByteLimit(_maxVideoBytes)}.',
+      );
+      return;
+    }
+
     setState(() {
       _media = [..._media, ...items];
       _error = null;
@@ -454,7 +495,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       unawaited(_uploadMediaItem(item.id));
     }
 
-    if (files.length > nextFiles.length) {
+    if (rejectedForSize > 0) {
+      _showComposerSnack(
+        '$rejectedForSize attachment${rejectedForSize == 1 ? '' : 's'} skipped for size. Images max ${_formatByteLimit(_maxImageBytes)}.',
+      );
+    }
+
+    if (files.length > candidateFiles.length) {
       _showComposerSnack(
         'Only the first $remaining attachment${remaining == 1 ? '' : 's'} were added.',
       );
@@ -736,6 +783,17 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                       draft: publishedDraft,
                       onCreateAnother: _resetComposer,
                       onViewFeed: () => context.go(AppRoutes.home),
+                      onOpenChat: () => context.go(AppRoutes.chat),
+                      onViewTask: () => context.go(
+                        Uri(
+                          path: AppRoutes.tasks,
+                          queryParameters: {
+                            if (_result!.helpRequestId.isNotEmpty)
+                              'focus': _result!.helpRequestId,
+                            'source': 'post_success',
+                          },
+                        ).toString(),
+                      ),
                     )
                   : _buildStepContent(context),
             ),
@@ -1431,12 +1489,16 @@ class _PublishedState extends StatelessWidget {
     required this.draft,
     required this.onCreateAnother,
     required this.onViewFeed,
+    required this.onOpenChat,
+    required this.onViewTask,
   });
 
   final CreateNeedResult result;
   final CreateNeedDraft draft;
   final VoidCallback onCreateAnother;
   final VoidCallback onViewFeed;
+  final VoidCallback onOpenChat;
+  final VoidCallback onViewTask;
 
   @override
   Widget build(BuildContext context) {
@@ -1525,6 +1587,30 @@ class _PublishedState extends StatelessWidget {
             'Providers in ${draft.category.toLowerCase()} around ${draft.locationLabel} can now see this in the local feed, request alerts, and matching queue.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 18),
+          Text(
+            'What happens next',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 10),
+          const _NextStepRow(
+            icon: Icons.person_search_outlined,
+            title: 'Providers review the request',
+            message:
+                'Matched providers can express interest, message you, or wait for more detail.',
+          ),
+          const _NextStepRow(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'Replies land in Chat',
+            message:
+                'Use chat to confirm timing, location details, and the next practical step.',
+          ),
+          const _NextStepRow(
+            icon: Icons.assignment_outlined,
+            title: 'Status stays in Tasks',
+            message:
+                'Track accepted work, in-progress updates, completion, and follow-up from one place.',
+          ),
           if (draft.media.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -1582,14 +1668,66 @@ class _PublishedState extends StatelessWidget {
             runSpacing: 10,
             children: [
               FilledButton(
-                onPressed: onViewFeed,
-                child: const Text('View feed'),
+                onPressed: onViewTask,
+                child: const Text('Track task'),
               ),
               OutlinedButton(
+                onPressed: onOpenChat,
+                child: const Text('Open chat'),
+              ),
+              OutlinedButton(
+                onPressed: onViewFeed,
+                child: const Text('View home'),
+              ),
+              TextButton(
                 onPressed: onCreateAnother,
                 child: const Text('Create another'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextStepRow extends StatelessWidget {
+  const _NextStepRow({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+            ),
+            child: Icon(icon, size: 17, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 3),
+                Text(message, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
           ),
         ],
       ),
@@ -2283,4 +2421,22 @@ String _guessMediaType(String fileName, {String? fallbackPath}) {
   if (value.endsWith('.webm')) return 'video/webm';
 
   return 'application/octet-stream';
+}
+
+int _maxBytesForMediaType(String mediaType) {
+  if (mediaType.startsWith('image/')) return _maxImageBytes;
+  if (mediaType.startsWith('video/')) return _maxVideoBytes;
+  if (mediaType.startsWith('audio/')) return _maxAudioBytes;
+  return 0;
+}
+
+String _formatByteLimit(int bytes) {
+  if (bytes < _mb) {
+    return '${(bytes / _kb).round()} KB';
+  }
+
+  final value = bytes / _mb;
+  return value == value.roundToDouble()
+      ? '${value.round()} MB'
+      : '${value.toStringAsFixed(1)} MB';
 }

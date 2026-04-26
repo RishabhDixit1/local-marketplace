@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -146,6 +146,7 @@ class MobileApiClient {
       );
     }
 
+    final uri = _buildUri(path, queryParameters: queryParameters);
     final uri = _resolveBaseUri()
         .resolve(path)
         .replace(queryParameters: queryParameters);
@@ -354,7 +355,7 @@ class MobileApiClient {
   }
 
   Uri _buildUri(String path, {Map<String, String>? queryParameters}) {
-    return Uri.parse(_config.apiBaseUrl)
+    return _resolveBaseUri()
         .resolve(path)
         .replace(
           queryParameters: queryParameters?.map(

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
@@ -97,6 +98,8 @@ const isClosedStatus = (status?: string | null) =>
 const isUUIDLike = (value?: string | null) =>
   !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
+const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
+
 function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; title: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -119,7 +122,18 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
       <div className="relative aspect-[16/9]">
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
-          <img src={current.url} alt={title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          isBrowserLocalImageUrl(current.url) ? (
+            <img src={current.url} alt={title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          ) : (
+            <Image
+              src={current.url}
+              alt={title}
+              fill
+              quality={70}
+              sizes="(max-width: 640px) 92vw, (max-width: 1024px) 50vw, 420px"
+              className="object-cover"
+            />
+          )
         ) : current.mimeType.startsWith("video/") ? (
           <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("audio/") ? (
@@ -731,12 +745,24 @@ export default function PublicProfilePostsGrid({
             >
               <header className="flex items-start gap-3">
                 <div className="relative shrink-0 rounded-full">
-                  <img
-                    src={resolvedAvatar}
-                    alt={`${displayName} avatar`}
-                    loading="lazy"
-                    className="h-10 w-10 rounded-full border border-slate-200 object-cover"
-                  />
+                  {isBrowserLocalImageUrl(resolvedAvatar) ? (
+                    <img
+                      src={resolvedAvatar}
+                      alt={`${displayName} avatar`}
+                      loading="lazy"
+                      className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={resolvedAvatar}
+                      alt={`${displayName} avatar`}
+                      width={40}
+                      height={40}
+                      quality={60}
+                      sizes="40px"
+                      className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                    />
+                  )}
                 </div>
 
                 <div className="min-w-0 flex-1">

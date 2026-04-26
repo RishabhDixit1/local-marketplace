@@ -58,13 +58,17 @@ void main() {
 
     expect(find.text('Explore'), findsOneWidget);
     expect(
-      find.text('Local discovery with stronger trust cues.'),
+      find.text('Explore the live marketplace by intent.'),
       findsOneWidget,
     );
     expect(find.text('Verified'), findsAtLeastNWidgets(1));
     expect(find.text('Connected'), findsOneWidget);
-    expect(find.text('Local Help Marketplace for Everyday Needs.'), findsOneWidget);
-    expect(find.textContaining('Marketplace feed'), findsOneWidget);
+    expect(
+      find.text('Local Help Marketplace for Everyday Needs.'),
+      findsOneWidget,
+    );
+    expect(find.text('Requests'), findsAtLeastNWidgets(1));
+    expect(find.text('Providers'), findsAtLeastNWidgets(1));
     expect(find.text('Post a Need'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -75,13 +79,48 @@ void main() {
     await _pumpFeedPage(tester, const Size(390, 844));
 
     expect(find.text('Explore'), findsOneWidget);
-    expect(find.text('Local Help Marketplace for Everyday Needs.'), findsOneWidget);
+    expect(
+      find.text('Local Help Marketplace for Everyday Needs.'),
+      findsOneWidget,
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Urgent nearby'),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
     expect(
       find.text('Emergency multi-room electrical rewiring support'),
       findsAtLeastNWidgets(1),
     );
-    expect(find.text('Live local feed'), findsOneWidget);
+    expect(find.text('Urgent nearby'), findsOneWidget);
     expect(find.text('Electrical and safety inspection'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feed page tolerates larger mobile text scaling', (
+    WidgetTester tester,
+  ) async {
+    await _pumpFeedPage(tester, const Size(390, 844), textScaleFactor: 1.3);
+
+    expect(find.text('Explore'), findsOneWidget);
+    expect(
+      find.text('Explore the live marketplace by intent.'),
+      findsOneWidget,
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Urgent nearby'),
+      240,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Urgent nearby'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -247,6 +286,15 @@ void main() {
 
     expect(find.text('Provider profile'), findsOneWidget);
     expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Services and signals'),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('Services and signals'), findsOneWidget);
   });
 
@@ -277,12 +325,18 @@ void main() {
   });
 }
 
-Future<void> _pumpFeedPage(WidgetTester tester, Size size) async {
+Future<void> _pumpFeedPage(
+  WidgetTester tester,
+  Size size, {
+  double textScaleFactor = 1.0,
+}) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
+  tester.binding.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+    tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
   });
 
   await tester.pumpWidget(
@@ -290,7 +344,10 @@ Future<void> _pumpFeedPage(WidgetTester tester, Size size) async {
       overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const FeedPage(snapshotOverride: AsyncData(_sampleSnapshot)),
+        home: const FeedPage(
+          snapshotOverride: AsyncData(_sampleSnapshot),
+          peopleOverride: AsyncData(_samplePeopleSnapshot),
+        ),
       ),
     ),
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, Music2 } from "lucide-react";
 import type { MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 
@@ -11,6 +12,8 @@ type FeedMediaCarouselProps = {
   aspectClassName?: string;
   className?: string;
 };
+
+const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
 
 export default function FeedMediaCarousel({
   media,
@@ -56,7 +59,7 @@ export default function FeedMediaCarousel({
             <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
               <p className="text-xs font-semibold text-slate-500">Image unavailable</p>
             </div>
-          ) : (
+          ) : isBrowserLocalImageUrl(current.url) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={current.url}
@@ -64,6 +67,16 @@ export default function FeedMediaCarousel({
               loading="lazy"
               decoding="async"
               className="h-full w-full object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <Image
+              src={current.url}
+              alt={title}
+              fill
+              quality={70}
+              sizes="(max-width: 640px) 94vw, (max-width: 1024px) 48vw, 420px"
+              className="object-cover"
               onError={() => setImgError(true)}
             />
           )

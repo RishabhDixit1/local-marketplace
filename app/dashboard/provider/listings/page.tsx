@@ -24,7 +24,7 @@ import { deleteProviderListing, fetchProviderListings, updateProviderListing } f
 import { supabase } from "@/lib/supabase";
 import type { ProfileAvailability } from "@/lib/profile/types";
 import { compressImageFile } from "@/lib/clientImageCompression";
-import { LISTING_IMAGE_MAX_BYTES, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
+import { LISTING_IMAGE_MAX_BYTES, LISTING_IMAGE_MAX_DIMENSION, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
 import type {
   ProductDeliveryMethod,
   ProviderProductListing,
@@ -325,7 +325,10 @@ export default function ListingsPage() {
     if (!editingProduct || !providerId) return;
     setBusyId(editingProduct.id);
     try {
-      const preparedImage = (await compressImageFile(file, { maxBytes: LISTING_IMAGE_MAX_BYTES })).file;
+      const preparedImage = (await compressImageFile(file, {
+        maxBytes: LISTING_IMAGE_MAX_BYTES,
+        maxDimension: LISTING_IMAGE_MAX_DIMENSION,
+      })).file;
       if (preparedImage.size > LISTING_IMAGE_MAX_BYTES) {
         throw new Error(`Image must be ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)} or smaller after compression.`);
       }
@@ -698,5 +701,4 @@ export default function ListingsPage() {
     </div>
   );
 }
-
 

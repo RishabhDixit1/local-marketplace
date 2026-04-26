@@ -10,9 +10,7 @@ import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
-import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
-import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
@@ -91,9 +89,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             column: 'user_id',
             value: userId,
           ),
-          callback: (_) {
-            ref.invalidate(notificationListProvider);
-          },
+          callback: (_) => ref.invalidate(notificationListProvider),
         )
         .subscribe();
   }
@@ -142,7 +138,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         await ref.read(notificationRepositoryProvider).markAsRead(item.id);
       }
     } catch (_) {
-      // Let navigation continue even if read state fails.
+      // Keep navigation usable even if the read state fails.
     }
 
     ref.invalidate(notificationListProvider);
@@ -159,6 +155,22 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             : action.queryParameters,
       ).toString(),
     );
+  }
+
+  bool _matchesFilter(MobileNotificationItem item) {
+    switch (_filter) {
+      case _NotificationFilter.all:
+        return true;
+      case _NotificationFilter.unread:
+        return item.unread;
+      case _NotificationFilter.messages:
+        return item.kind == MobileNotificationKind.message;
+      case _NotificationFilter.orders:
+        return item.kind == MobileNotificationKind.order;
+      case _NotificationFilter.trust:
+        return item.kind == MobileNotificationKind.review ||
+            item.kind == MobileNotificationKind.connection;
+    }
   }
 
   @override
@@ -222,7 +234,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               notificationsAsync.when(
                 data: (items) {
                   final filtered = items.where((item) {
-                    if (!_matchesFilter(item, _filter)) {
+                    if (!_matchesFilter(item)) {
                       return false;
                     }
                     if (query.isEmpty) {
@@ -273,7 +285,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ],
                   );
                 },
-                loading: () => const _NotificationsLoadingState(),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => SectionCard(
                   child: ErrorStateView(
                     title: 'Unable to load notifications',
@@ -437,6 +449,14 @@ class _NotificationCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              CircleAvatar(
+                backgroundColor: item.unread
+                    ? const Color(0xFFE0F2FE)
+                    : const Color(0xFFF1F5F9),
+                foregroundColor: item.unread
+                    ? const Color(0xFF0369A1)
+                    : const Color(0xFF475569),
+                child: Icon(icon),
               Container(
                 width: 42,
                 height: 42,
@@ -454,6 +474,24 @@ class _NotificationCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        if (item.unread)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0284C7),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
                     Text(
                       item.title,
                       style: Theme.of(context).textTheme.titleLarge,
@@ -463,16 +501,17 @@ class _NotificationCard extends StatelessWidget {
                       item.message,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.timeLabel,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
-              if (item.unread)
-                const TrustBadge(
-                  label: 'Unread',
-                  icon: Icons.fiber_manual_record_rounded,
-                ),
             ],
           ),
+          const SizedBox(height: 12),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -501,6 +540,8 @@ class _NotificationCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: busy ? null : onOpen,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Open'),
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: Text(actionLabel),
                 ),
@@ -508,36 +549,6 @@ class _NotificationCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _NotificationsLoadingState extends StatelessWidget {
-  const _NotificationsLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        3,
-        (_) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                LoadingShimmer(height: 20, width: 180),
-                SizedBox(height: 10),
-                LoadingShimmer(height: 14),
-                SizedBox(height: 8),
-                LoadingShimmer(height: 14, width: 220),
-                SizedBox(height: 16),
-                LoadingShimmer(height: 42),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

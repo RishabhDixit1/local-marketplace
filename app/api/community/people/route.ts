@@ -3,10 +3,15 @@ import type { CommunityPeopleResponse } from "@/lib/api/community";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { loadCommunityPeopleSnapshot } from "@/lib/server/communityData";
+import { proxyCommunityPeopleImages } from "@/lib/server/imageProxy";
+import { resolveRequestOrigin } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const requestUrl = new URL(request.url);
+  const shouldProxyImages = requestUrl.searchParams.get("imageProxy") === "next";
+
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -35,7 +40,11 @@ export async function GET(request: Request) {
 
   try {
     const snapshot = await loadCommunityPeopleSnapshot(dbClient, authResult.auth.userId);
-    return NextResponse.json(snapshot satisfies CommunityPeopleResponse, {
+    const responseSnapshot = shouldProxyImages
+      ? proxyCommunityPeopleImages(snapshot, resolveRequestOrigin(request) || requestUrl.origin)
+      : snapshot;
+
+    return NextResponse.json(responseSnapshot satisfies CommunityPeopleResponse, {
       headers: {
         "Cache-Control": "no-store",
       },

@@ -3,11 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
-import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -30,57 +28,12 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   Timer? _debounce;
   String _query = '';
   final Set<String> _filters = <String>{};
-  RealtimeChannel? _peopleChannel;
-  SupabaseClient? _client;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      _client = ref.read(appBootstrapProvider).client;
-    } catch (_) {
-      _client = null;
-    }
-    _subscribe();
-  }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
-    if (_client != null && _peopleChannel != null) {
-      _client!.removeChannel(_peopleChannel!);
-    }
     super.dispose();
-  }
-
-  void _subscribe() {
-    final client = _client;
-    if (client == null) {
-      return;
-    }
-
-    _peopleChannel = client
-        .channel('mobile-people-directory')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'profiles',
-          callback: (_) => ref.invalidate(peopleSnapshotProvider),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'provider_presence',
-          callback: (_) => ref.invalidate(peopleSnapshotProvider),
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'reviews',
-          callback: (_) => ref.invalidate(peopleSnapshotProvider),
-        )
-        .subscribe();
   }
 
   Future<void> _refresh() async {

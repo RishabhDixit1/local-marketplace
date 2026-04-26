@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
+import '../../features/auth/presentation/setup_page.dart';
+import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/chat/presentation/chat_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/chat/presentation/chat_thread_screen.dart';
 import '../../features/control/presentation/control_page.dart';
@@ -17,7 +20,6 @@ import '../../features/profile/presentation/profile_page.dart';
 import '../../features/provider/presentation/provider_onboarding_page.dart';
 import '../../features/provider/presentation/provider_profile_page.dart';
 import '../../features/search/presentation/search_page.dart';
-import '../../features/task_post/presentation/task_post_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
 import '../../features/auth/presentation/setup_page.dart';
@@ -86,7 +88,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/app/post-task',
-        builder: (context, state) => const TaskPostPage(),
+        redirect: (context, state) => AppRoutes.createNeed,
       ),
       GoRoute(
         path: AppRoutes.welcome,
@@ -122,21 +124,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProviderOnboardingPage(),
       ),
       GoRoute(
-        path: AppRoutes.control,
-        builder: (context, state) => const ControlPage(),
-      ),
-      GoRoute(
-        path: '/app/provider/:providerId',
+        path: AppRoutes.provider(':providerId'),
         builder: (context, state) => ProviderProfilePage(
           providerId: state.pathParameters['providerId'] ?? '',
         ),
       ),
       GoRoute(
-        path: '/app/tasks/:taskId',
+        path: AppRoutes.chatThread(':threadId'),
         builder: (context, state) =>
-            TaskDetailScreen(taskId: state.pathParameters['taskId'] ?? ''),
+            ChatPage(initialConversationId: state.pathParameters['threadId']),
       ),
       GoRoute(
+        path: AppRoutes.inbox,
         path: '/app/chat/thread/:threadId',
         builder: (context, state) =>
             ChatThreadScreen(threadId: state.pathParameters['threadId'] ?? ''),
@@ -153,6 +152,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      GoRoute(
+        path: '${AppRoutes.tasks}/:taskId',
+        redirect: (context, state) {
+          final taskId = state.pathParameters['taskId']?.trim() ?? '';
+          if (taskId.isEmpty) {
+            return AppRoutes.tasks;
+          }
+
+          return Uri(
+            path: AppRoutes.tasks,
+            queryParameters: {'focus': taskId, 'source': 'legacy_task_route'},
+          ).toString();
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return AppShell(navigationShell: navigationShell);
@@ -160,6 +173,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: AppRoutes.welcome,
+                builder: (context, state) => const WelcomePage(),
+              ),
               GoRoute(
                 path: AppRoutes.explore,
                 builder: (context, state) =>
@@ -179,6 +196,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.tasks,
+                builder: (context, state) => TasksPage(
+                  focusTaskId: state.uri.queryParameters['focus'],
+                  focusSource: state.uri.queryParameters['source'],
+                ),
                 builder: (context, state) => const TasksPage(),
               ),
             ],
@@ -190,6 +211,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => ChatPage(
                   recipientId: state.uri.queryParameters['recipientId'],
                   initialDraft: state.uri.queryParameters['draft'],
+                  contextTitle: state.uri.queryParameters['title'],
                   contextTitle: state.uri.queryParameters['contextTitle'],
                 ),
               ),

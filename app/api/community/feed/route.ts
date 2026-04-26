@@ -4,6 +4,8 @@ import type { CommunityFeedResponse } from "@/lib/api/community";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { loadCommunityFeedSnapshot } from "@/lib/server/communityData";
+import { proxyCommunityFeedImages } from "@/lib/server/imageProxy";
+import { resolveRequestOrigin } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
 
@@ -11,6 +13,7 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const viewerCoordinates = getCoordinates(requestUrl.searchParams.get("lat"), requestUrl.searchParams.get("lng"));
   const scope = requestUrl.searchParams.get("scope") === "connected" ? "connected" : "all";
+  const shouldProxyImages = requestUrl.searchParams.get("imageProxy") === "next";
 
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
@@ -43,7 +46,11 @@ export async function GET(request: Request) {
       viewerOverride: viewerCoordinates ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude } : null,
       scope,
     });
-    return NextResponse.json(snapshot satisfies CommunityFeedResponse, {
+    const responseSnapshot = shouldProxyImages
+      ? proxyCommunityFeedImages(snapshot, resolveRequestOrigin(request) || requestUrl.origin)
+      : snapshot;
+
+    return NextResponse.json(responseSnapshot satisfies CommunityFeedResponse, {
       headers: {
         "Cache-Control": "no-store",
       },

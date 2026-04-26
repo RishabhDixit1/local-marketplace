@@ -619,6 +619,46 @@ alter table public.payment_methods enable row level security;
 alter table public.trust_scores enable row level security;
 alter table public.profile_sections enable row level security;
 
+drop policy if exists services_select_authenticated on public.services;
+drop policy if exists services_insert_own on public.services;
+drop policy if exists services_update_own on public.services;
+drop policy if exists services_delete_own on public.services;
+
+drop policy if exists products_select_authenticated on public.products;
+drop policy if exists products_insert_own on public.products;
+drop policy if exists products_update_own on public.products;
+drop policy if exists products_delete_own on public.products;
+
+drop policy if exists portfolio_select_authenticated on public.portfolio;
+drop policy if exists portfolio_insert_own on public.portfolio;
+drop policy if exists portfolio_update_own on public.portfolio;
+drop policy if exists portfolio_delete_own on public.portfolio;
+
+drop policy if exists work_history_select_authenticated on public.work_history;
+drop policy if exists work_history_insert_own on public.work_history;
+drop policy if exists work_history_update_own on public.work_history;
+drop policy if exists work_history_delete_own on public.work_history;
+
+drop policy if exists availability_select_authenticated on public.availability;
+drop policy if exists availability_insert_own on public.availability;
+drop policy if exists availability_update_own on public.availability;
+drop policy if exists availability_delete_own on public.availability;
+
+drop policy if exists payment_methods_select_authenticated on public.payment_methods;
+drop policy if exists payment_methods_insert_own on public.payment_methods;
+drop policy if exists payment_methods_update_own on public.payment_methods;
+drop policy if exists payment_methods_delete_own on public.payment_methods;
+
+drop policy if exists trust_scores_select_authenticated on public.trust_scores;
+drop policy if exists trust_scores_insert_own on public.trust_scores;
+drop policy if exists trust_scores_update_own on public.trust_scores;
+drop policy if exists trust_scores_delete_own on public.trust_scores;
+
+drop policy if exists profile_sections_select_authenticated on public.profile_sections;
+drop policy if exists profile_sections_insert_own on public.profile_sections;
+drop policy if exists profile_sections_update_own on public.profile_sections;
+drop policy if exists profile_sections_delete_own on public.profile_sections;
+
 create policy services_select_authenticated
 on public.services
 for select

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/chat_repository.dart';
 import '../domain/chat_models.dart';
@@ -519,6 +520,12 @@ class _EmptyInboxState extends StatelessWidget {
         Text(
           'When you start chatting with nearby providers or requesters, those conversations will appear here in realtime.',
           style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: () => context.push(AppRoutes.createNeed),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Post a Need'),
         ),
       ],
     );
