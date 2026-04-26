@@ -381,6 +381,21 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         stats: previewData.stats,
                         providerCount:
                             peopleSnapshot?.asData?.value.people.length ?? 0,
+                        previewData.items.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Live local feed',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        previewData.items.first.title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        previewData.items.first.category,
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ],
@@ -453,6 +468,24 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                               onSecondaryTap: _messageActionFor(item),
                               primaryLabel: _primaryLabelFor(item),
                               secondaryLabel: _secondaryLabelFor(item),
+                              onPrimaryTap: item.helpRequestId == null
+                                  ? item.providerId.trim().isEmpty
+                                        ? null
+                                        : () => context.push(
+                                            AppRoutes.provider(item.providerId),
+                                          )
+                                  : () => _sendInterest(item),
+                              onSecondaryTap: item.providerId.trim().isEmpty
+                                  ? null
+                                  : () => _openChat(item),
+                              primaryLabel: item.helpRequestId == null
+                                  ? 'Open profile'
+                                  : item.viewerHasExpressedInterest
+                                  ? 'Withdraw interest'
+                                  : 'Express interest',
+                              secondaryLabel: _busyFeedActionId == item.id
+                                  ? 'Working...'
+                                  : 'Message',
                             ),
                           ),
                         ),

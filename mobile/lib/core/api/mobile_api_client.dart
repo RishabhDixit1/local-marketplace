@@ -147,6 +147,9 @@ class MobileApiClient {
     }
 
     final uri = _buildUri(path, queryParameters: queryParameters);
+    final uri = _resolveBaseUri()
+        .resolve(path)
+        .replace(queryParameters: queryParameters);
 
     final headers = <String, String>{
       'Content-Type': 'application/json',

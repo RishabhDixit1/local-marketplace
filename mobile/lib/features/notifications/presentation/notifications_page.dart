@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -271,6 +269,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                             child: _NotificationCard(
                               item: item,
                               busy: _busy,
+                              actionLabel: resolveMobileNotificationAction(
+                                item,
+                              ).label,
                               onOpen: () => _openNotification(item),
                               onClear: () => _runAction(
                                 () => ref
@@ -298,6 +299,52 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ),
       ),
     );
+  }
+}
+
+bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
+  switch (filter) {
+    case _NotificationFilter.all:
+      return true;
+    case _NotificationFilter.unread:
+      return item.unread;
+    case _NotificationFilter.messages:
+      return item.kind == MobileNotificationKind.message;
+    case _NotificationFilter.orders:
+      return item.kind == MobileNotificationKind.order;
+    case _NotificationFilter.trust:
+      return item.kind == MobileNotificationKind.review ||
+          item.kind == MobileNotificationKind.connection;
+  }
+}
+
+String _kindLabel(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.order:
+      return 'Order';
+    case MobileNotificationKind.message:
+      return 'Message';
+    case MobileNotificationKind.review:
+      return 'Review';
+    case MobileNotificationKind.system:
+      return 'System';
+    case MobileNotificationKind.connection:
+      return 'Connection';
+  }
+}
+
+IconData _kindIcon(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.order:
+      return Icons.assignment_outlined;
+    case MobileNotificationKind.message:
+      return Icons.chat_bubble_outline_rounded;
+    case MobileNotificationKind.review:
+      return Icons.star_outline_rounded;
+    case MobileNotificationKind.system:
+      return Icons.notifications_none_rounded;
+    case MobileNotificationKind.connection:
+      return Icons.people_outline_rounded;
   }
 }
 
@@ -382,25 +429,19 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.item,
     required this.busy,
+    required this.actionLabel,
     required this.onOpen,
     required this.onClear,
   });
 
   final MobileNotificationItem item;
   final bool busy;
+  final String actionLabel;
   final VoidCallback onOpen;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (item.kind) {
-      MobileNotificationKind.message => Icons.chat_bubble_outline_rounded,
-      MobileNotificationKind.order => Icons.assignment_outlined,
-      MobileNotificationKind.review => Icons.star_outline_rounded,
-      MobileNotificationKind.connection => Icons.people_outline_rounded,
-      MobileNotificationKind.system => Icons.notifications_none_rounded,
-    };
-
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,6 +457,17 @@ class _NotificationCard extends StatelessWidget {
                     ? const Color(0xFF0369A1)
                     : const Color(0xFF475569),
                 child: Icon(icon),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _kindIcon(item.kind),
+                  color: const Color(0xFF0B1F33),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -440,6 +492,9 @@ class _NotificationCard extends StatelessWidget {
                             ),
                           ),
                       ],
+                    Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -457,6 +512,21 @@ class _NotificationCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(label: _kindLabel(item.kind)),
+              TrustBadge(
+                label: item.timeLabel,
+                icon: Icons.schedule_rounded,
+                backgroundColor: const Color(0xFFE0F2FE),
+                foregroundColor: const Color(0xFF0B1F33),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -472,6 +542,8 @@ class _NotificationCard extends StatelessWidget {
                   onPressed: busy ? null : onOpen,
                   icon: const Icon(Icons.arrow_forward_rounded),
                   label: const Text('Open'),
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: Text(actionLabel),
                 ),
               ),
             ],
