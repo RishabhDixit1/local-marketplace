@@ -8,6 +8,9 @@ import '../../core/supabase/app_bootstrap.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/chat/presentation/chat_page.dart';
+import '../../features/chat/presentation/chat_thread_screen.dart';
+import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
@@ -18,6 +21,13 @@ import '../../features/provider/presentation/provider_profile_page.dart';
 import '../../features/search/presentation/search_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
+import '../../features/auth/presentation/setup_page.dart';
+import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
+import '../../features/settings/presentation/notification_settings_screen.dart';
+import '../../features/settings/presentation/privacy_settings_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/tasks/presentation/task_detail_screen.dart';
 import '../presentation/app_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -80,6 +90,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) => AppRoutes.createNeed,
       ),
       GoRoute(
+        path: AppRoutes.welcome,
+        builder: (context, state) => const WelcomePage(),
+      ),
+      GoRoute(
         path: AppRoutes.search,
         builder: (context, state) =>
             SearchPage(initialQuery: state.uri.queryParameters['q']),
@@ -87,6 +101,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.privacySettings,
+        builder: (context, state) => const PrivacySettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notificationSettings,
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editProfile,
+        builder: (context, state) => const EditProfileScreen(),
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,
@@ -111,6 +141,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ? AppRoutes.chat
               : AppRoutes.chatThread(conversationId);
         },
+        path: AppRoutes.inbox,
+        path: '/app/chat/thread/:threadId',
+        builder: (context, state) =>
+            ChatThreadScreen(threadId: state.pathParameters['threadId'] ?? ''),
+      ),
+      GoRoute(
+        path: '/app/inbox',
+        builder: (context, state) => const InboxPage(),
+        routes: [
+          GoRoute(
+            path: ':conversationId',
+            builder: (context, state) => ChatThreadPage(
+              conversationId: state.pathParameters['conversationId'] ?? '',
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '${AppRoutes.tasks}/:taskId',
@@ -160,6 +206,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   focusTaskId: state.uri.queryParameters['focus'],
                   focusSource: state.uri.queryParameters['source'],
                 ),
+                builder: (context, state) => const TasksPage(),
               ),
             ],
           ),
@@ -178,6 +225,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       state.uri.queryParameters['helpRequestId'],
                   contextStatus: state.uri.queryParameters['status'],
                   contextSource: state.uri.queryParameters['source'],
+                  contextTitle: state.uri.queryParameters['title'],
+                  contextTitle: state.uri.queryParameters['contextTitle'],
                 ),
                 routes: [
                   GoRoute(
