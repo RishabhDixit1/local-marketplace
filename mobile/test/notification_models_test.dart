@@ -4,7 +4,7 @@ import 'package:serviq_mobile/core/constants/app_routes.dart';
 import 'package:serviq_mobile/features/notifications/domain/notification_models.dart';
 
 void main() {
-  test('message notifications deep link into the inbox thread', () {
+  test('message notifications deep link into the unified chat thread', () {
     final action = resolveMobileNotificationAction(
       _buildNotification(
         kind: MobileNotificationKind.message,
@@ -14,7 +14,8 @@ void main() {
     );
 
     expect(action.label, 'Open chat');
-    expect(action.route, AppRoutes.inboxThread('conversation-42'));
+    expect(action.route, AppRoutes.chatThread('conversation-42'));
+    expect(action.queryParameters, {'source': 'notification'});
   });
 
   test('order notifications focus the tasks board', () {

@@ -166,7 +166,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                     AppRoutes.provider(person.id),
                                   ),
                                   onMessage: () => context.push(
-                                    '${AppRoutes.chat}?recipientId=${person.id}',
+                                    AppRoutes.chatDirect(
+                                      recipientId: person.id,
+                                      contextTitle: person.name,
+                                      source: 'search_provider',
+                                    ),
                                   ),
                                 ),
                               ),
@@ -196,7 +200,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                   onMessage: item.providerId.trim().isEmpty
                                       ? null
                                       : () => context.push(
-                                          '${AppRoutes.chat}?recipientId=${item.providerId}',
+                                          AppRoutes.chatDirect(
+                                            recipientId: item.providerId,
+                                            contextTitle: item.title,
+                                            contextTaskId: item.id,
+                                            contextStatus: item.statusLabel,
+                                            source: 'search_result',
+                                          ),
                                         ),
                                 ),
                               ),

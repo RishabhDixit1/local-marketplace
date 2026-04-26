@@ -24,12 +24,18 @@ class ChatPage extends ConsumerStatefulWidget {
     this.recipientId,
     this.initialDraft,
     this.contextTitle,
+    this.contextTaskId,
+    this.contextStatus,
+    this.contextSource,
   });
 
   final String? initialConversationId;
   final String? recipientId;
   final String? initialDraft;
   final String? contextTitle;
+  final String? contextTaskId;
+  final String? contextStatus;
+  final String? contextSource;
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -184,11 +190,139 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
+  bool get _openedFromRouteContext {
+    return (widget.initialConversationId?.trim().isNotEmpty ?? false) ||
+        (widget.recipientId?.trim().isNotEmpty ?? false);
+  }
+
+  void _handleThreadBack() {
+    if (_openedFromRouteContext) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRoutes.chat);
+      }
+      return;
+    }
+
+    setState(() => _selectedConversationId = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(chatConversationsProvider);
     final selectedConversationId = _selectedConversationId;
     final query = _searchController.text.trim().toLowerCase();
+
+    final body = selectedConversationId == null
+        ? SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _refreshConversations,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  AppSearchField(
+                    controller: _searchController,
+                    hintText: 'Search people or messages',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_openingConversation)
+                    const SectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LoadingShimmer(height: 18, width: 140),
+                          SizedBox(height: 10),
+                          LoadingShimmer(height: 14),
+                        ],
+                      ),
+                    ),
+                  conversationsAsync.when(
+                    data: (conversations) {
+                      final filtered = conversations.where((conversation) {
+                        if (query.isEmpty) {
+                          return true;
+                        }
+                        final haystack =
+                            '${conversation.name} ${conversation.lastMessage} ${conversation.subtitle}'
+                                .toLowerCase();
+                        return haystack.contains(query);
+                      }).toList();
+
+                      if (filtered.isEmpty) {
+                        return SectionCard(
+                          child: EmptyStateView(
+                            title: query.isEmpty
+                                ? 'No conversations yet'
+                                : 'No conversations match',
+                            message: query.isEmpty
+                                ? 'Post a need or message a provider. Replies, quotes, and timing follow-up will collect here.'
+                                : 'Try a broader search term or clear the field to see recent local follow-up.',
+                            actionLabel: query.isEmpty ? 'Post a Need' : null,
+                            onAction: query.isEmpty
+                                ? () => context.push(AppRoutes.createNeed)
+                                : null,
+                          ),
+                        );
+                      }
+
+                      final unread = filtered
+                          .where((conversation) => conversation.unreadCount > 0)
+                          .toList();
+                      final recent = filtered
+                          .where(
+                            (conversation) => conversation.unreadCount == 0,
+                          )
+                          .toList();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (unread.isNotEmpty)
+                            _ConversationSection(
+                              title: 'Unread',
+                              subtitle:
+                                  '${unread.length} conversation${unread.length == 1 ? '' : 's'} need attention.',
+                              conversations: unread,
+                              onTapConversation: _openConversation,
+                            ),
+                          if (recent.isNotEmpty) ...[
+                            if (unread.isNotEmpty) const SizedBox(height: 16),
+                            _ConversationSection(
+                              title: 'Recent',
+                              subtitle:
+                                  'Pick up where local conversations left off.',
+                              conversations: recent,
+                              onTapConversation: _openConversation,
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                    loading: () => const _ConversationListLoading(),
+                    error: (error, _) => SectionCard(
+                      child: ErrorStateView(
+                        title: 'Unable to load chat',
+                        message: AppErrorMapper.toMessage(error),
+                        onRetry: _refreshConversations,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : _ChatThread(
+            conversationId: selectedConversationId,
+            composerController: _composerController,
+            sending: _sending,
+            contextTitle: widget.contextTitle,
+            contextTaskId: widget.contextTaskId,
+            contextStatus: widget.contextStatus,
+            contextSource: widget.contextSource,
+            onSend: _sendMessage,
+          );
 
     return Scaffold(
       appBar: AppBar(
@@ -196,120 +330,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         leading: selectedConversationId == null
             ? null
             : IconButton(
-                onPressed: () {
-                  setState(() => _selectedConversationId = null);
-                },
+                onPressed: _handleThreadBack,
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
       ),
-      body: selectedConversationId == null
-          ? SafeArea(
-              child: RefreshIndicator(
-                onRefresh: _refreshConversations,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  children: [
-                    AppSearchField(
-                      controller: _searchController,
-                      hintText: 'Search people or messages',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_openingConversation)
-                      const SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            LoadingShimmer(height: 18, width: 140),
-                            SizedBox(height: 10),
-                            LoadingShimmer(height: 14),
-                          ],
-                        ),
-                      ),
-                    conversationsAsync.when(
-                      data: (conversations) {
-                        final filtered = conversations.where((conversation) {
-                          if (query.isEmpty) {
-                            return true;
-                          }
-                          final haystack =
-                              '${conversation.name} ${conversation.lastMessage} ${conversation.subtitle}'
-                                  .toLowerCase();
-                          return haystack.contains(query);
-                        }).toList();
-
-                        if (filtered.isEmpty) {
-                          return SectionCard(
-                            child: EmptyStateView(
-                              title: query.isEmpty
-                                  ? 'No conversations yet'
-                                  : 'No conversations match',
-                              message: query.isEmpty
-                                  ? 'Post a need or message a provider. Replies, quotes, and timing follow-up will collect here.'
-                                  : 'Try a broader search term or clear the field to see recent local follow-up.',
-                              actionLabel: query.isEmpty ? 'Post a Need' : null,
-                              onAction: query.isEmpty
-                                  ? () => context.push(AppRoutes.createNeed)
-                                  : null,
-                            ),
-                          );
-                        }
-
-                        final unread = filtered
-                            .where(
-                              (conversation) => conversation.unreadCount > 0,
-                            )
-                            .toList();
-                        final recent = filtered
-                            .where(
-                              (conversation) => conversation.unreadCount == 0,
-                            )
-                            .toList();
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (unread.isNotEmpty)
-                              _ConversationSection(
-                                title: 'Unread',
-                                subtitle:
-                                    '${unread.length} conversation${unread.length == 1 ? '' : 's'} need attention.',
-                                conversations: unread,
-                                onTapConversation: _openConversation,
-                              ),
-                            if (recent.isNotEmpty) ...[
-                              if (unread.isNotEmpty) const SizedBox(height: 16),
-                              _ConversationSection(
-                                title: 'Recent',
-                                subtitle:
-                                    'Pick up where local conversations left off.',
-                                conversations: recent,
-                                onTapConversation: _openConversation,
-                              ),
-                            ],
-                          ],
-                        );
-                      },
-                      loading: () => const _ConversationListLoading(),
-                      error: (error, _) => SectionCard(
-                        child: ErrorStateView(
-                          title: 'Unable to load chat',
-                          message: AppErrorMapper.toMessage(error),
-                          onRetry: _refreshConversations,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : _ChatThread(
-              conversationId: selectedConversationId,
-              composerController: _composerController,
-              sending: _sending,
-              contextTitle: widget.contextTitle,
-              onSend: _sendMessage,
-            ),
+      body: PopScope(
+        canPop: selectedConversationId == null || _openedFromRouteContext,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop || _selectedConversationId == null) {
+            return;
+          }
+          setState(() => _selectedConversationId = null);
+        },
+        child: body,
+      ),
     );
   }
 
@@ -358,14 +392,40 @@ class _ConversationSection extends StatelessWidget {
   }
 }
 
-List<String> _quickRepliesFor(String? contextTitle) {
+List<String> _quickRepliesFor({
+  required String? contextTitle,
+  required String? contextStatus,
+}) {
   final rawTitle = contextTitle?.trim() ?? '';
+  final normalizedStatus = (contextStatus ?? '').trim().toLowerCase();
+  if (normalizedStatus.contains('progress') ||
+      normalizedStatus.contains('accepted') ||
+      normalizedStatus.contains('travel') ||
+      normalizedStatus.contains('work')) {
+    return const [
+      'I will update the task status now.',
+      'Can you confirm the current timing?',
+      'I am on the way.',
+      'Work has started.',
+    ];
+  }
+
+  if (normalizedStatus.contains('complete') ||
+      normalizedStatus.contains('closed')) {
+    return const [
+      'Thanks, this is complete.',
+      'Can you share any final notes?',
+      'I will keep the receipt here.',
+      'Happy to help again.',
+    ];
+  }
+
   if (rawTitle.isEmpty) {
     return const [
       'I can help today.',
       'Can you share the exact location?',
-      'Sending a quote shortly.',
-      'I am on the way.',
+      'Can we confirm timing first?',
+      'I will send a quote shortly.',
     ];
   }
 
@@ -376,8 +436,198 @@ List<String> _quickRepliesFor(String? contextTitle) {
     'I can help with "$title".',
     'Can you share timing and access details?',
     'I will send a quote shortly.',
-    'Let us confirm the next step here.',
+    'Let us confirm the next step before sharing contact details.',
   ];
+}
+
+class _ChatRequestContext {
+  const _ChatRequestContext({
+    required this.title,
+    required this.taskId,
+    required this.status,
+    required this.source,
+  });
+
+  final String? title;
+  final String? taskId;
+  final String? status;
+  final String? source;
+
+  String get titleText => title?.trim() ?? '';
+  String get taskIdText => taskId?.trim() ?? '';
+  String get statusText => status?.trim() ?? '';
+  String get sourceText => source?.trim() ?? '';
+
+  bool get visible =>
+      titleText.isNotEmpty ||
+      taskIdText.isNotEmpty ||
+      statusText.isNotEmpty ||
+      sourceText.isNotEmpty;
+
+  String get sourceLabel {
+    switch (sourceText) {
+      case 'notification':
+        return 'From notification';
+      case 'feed_card':
+      case 'home_feed_card':
+        return 'From request card';
+      case 'search_result':
+        return 'From search';
+      case 'provider_profile_card':
+        return 'From profile card';
+      default:
+        return 'Request context';
+    }
+  }
+}
+
+class _RequestContextCard extends StatelessWidget {
+  const _RequestContextCard({required this.contextData});
+
+  final _ChatRequestContext contextData;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = contextData.titleText.isEmpty
+        ? 'Local request follow-up'
+        : contextData.titleText;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.assignment_outlined,
+              size: 18,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  contextData.sourceLabel,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: AppColors.primary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Confirm scope, timing, and the next task update before moving off-platform.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.primaryDeep),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TrustBadge(
+                      label: contextData.statusText.isEmpty
+                          ? 'Status in Tasks'
+                          : contextData.statusText,
+                      icon: Icons.flag_outlined,
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                    ),
+                    if (contextData.taskIdText.isNotEmpty)
+                      TrustBadge(
+                        label: 'Task linked',
+                        icon: Icons.link_rounded,
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.ink,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThreadEmptyState extends StatelessWidget {
+  const _ThreadEmptyState({required this.contextData});
+
+  final _ChatRequestContext contextData;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasContext = contextData.visible;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          EmptyStateView(
+            icon: Icons.chat_bubble_outline_rounded,
+            title: 'No messages in this thread yet',
+            message: hasContext
+                ? 'Start with timing, access, and scope so this request stays easy to track in Tasks.'
+                : 'Send the first message to confirm timing, scope, or pricing before sharing sensitive details.',
+          ),
+          const SizedBox(height: 14),
+          _SafetyNote(
+            icon: Icons.rule_rounded,
+            text:
+                'Keep quotes, timing changes, and acceptance decisions in this thread.',
+          ),
+          const SizedBox(height: 8),
+          _SafetyNote(
+            icon: Icons.assignment_turned_in_outlined,
+            text:
+                'Use Tasks for live status after a provider accepts the work.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SafetyNote extends StatelessWidget {
+  const _SafetyNote({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: AppColors.inkMuted),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+        ),
+      ],
+    );
+  }
 }
 
 class _ChatThread extends ConsumerWidget {
@@ -386,6 +636,9 @@ class _ChatThread extends ConsumerWidget {
     required this.composerController,
     required this.sending,
     required this.contextTitle,
+    required this.contextTaskId,
+    required this.contextStatus,
+    required this.contextSource,
     required this.onSend,
   });
 
@@ -393,6 +646,9 @@ class _ChatThread extends ConsumerWidget {
   final TextEditingController composerController;
   final bool sending;
   final String? contextTitle;
+  final String? contextTaskId;
+  final String? contextStatus;
+  final String? contextSource;
   final VoidCallback onSend;
 
   @override
@@ -406,6 +662,13 @@ class _ChatThread extends ConsumerWidget {
         .cast<ChatConversation?>()
         .firstOrNull;
     final messagesAsync = ref.watch(chatMessagesProvider(conversationId));
+    final requestContext = _ChatRequestContext(
+      title: contextTitle,
+      taskId: contextTaskId,
+      status: contextStatus,
+      source: contextSource,
+    );
+    final hasMessages = messagesAsync.asData?.value.isNotEmpty ?? false;
 
     return SafeArea(
       child: Column(
@@ -456,58 +719,15 @@ class _ChatThread extends ConsumerWidget {
                 ],
               ),
             ),
-          if ((contextTitle?.trim() ?? '').isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              color: AppColors.primarySoft,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.local_offer_outlined,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'About ${(contextTitle ?? '').trim()}',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Keep timing, quote, and the next practical step tied to this request.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.primaryDeep),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (requestContext.visible)
+            _RequestContextCard(contextData: requestContext),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
                 if (messages.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(16),
-                    child: SectionCard(
-                      child: EmptyStateView(
-                        title: 'No messages yet',
-                        message: (contextTitle?.trim() ?? '').isEmpty
-                            ? 'Send the first message to confirm timing, scope, or pricing.'
-                            : 'Send the first message while the request context is still fresh.',
-                      ),
-                    ),
+                    child: _ThreadEmptyState(contextData: requestContext),
                   );
                 }
 
@@ -614,26 +834,54 @@ class _ChatThread extends ConsumerWidget {
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _quickRepliesFor(contextTitle)
-                            .map(
-                              (reply) => Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ActionChip(
-                                  label: Text(reply),
-                                  onPressed: sending
-                                      ? null
-                                      : () {
-                                          composerController.text = reply;
-                                          onSend();
-                                        },
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!hasMessages)
+                          Text(
+                            'Suggested first replies',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          )
+                        else
+                          Text(
+                            'Quick replies',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children:
+                                _quickRepliesFor(
+                                      contextTitle: contextTitle,
+                                      contextStatus: contextStatus,
+                                    )
+                                    .map(
+                                      (reply) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 8,
+                                        ),
+                                        child: ActionChip(
+                                          label: Text(reply),
+                                          onPressed: sending
+                                              ? null
+                                              : () {
+                                                  composerController
+                                                      .value = TextEditingValue(
+                                                    text: reply,
+                                                    selection:
+                                                        TextSelection.collapsed(
+                                                          offset: reply.length,
+                                                        ),
+                                                  );
+                                                },
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),

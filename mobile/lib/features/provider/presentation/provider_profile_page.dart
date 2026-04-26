@@ -116,7 +116,11 @@ class ProviderProfilePage extends ConsumerWidget {
                               label: 'Contact',
                               onPressed: () {
                                 context.push(
-                                  '${AppRoutes.chat}?recipientId=${provider.id}',
+                                  AppRoutes.chatDirect(
+                                    recipientId: provider.id,
+                                    contextTitle: provider.name,
+                                    source: 'provider_profile',
+                                  ),
                                 );
                               },
                             ),
@@ -279,7 +283,13 @@ class ProviderProfilePage extends ConsumerWidget {
                             onPrimaryTap: () =>
                                 context.push(AppRoutes.createRequest),
                             onSecondaryTap: () => context.push(
-                              '${AppRoutes.chat}?recipientId=$providerId',
+                              AppRoutes.chatDirect(
+                                recipientId: providerId,
+                                contextTitle: item.title,
+                                contextTaskId: item.id,
+                                contextStatus: item.statusLabel,
+                                source: 'provider_profile_card',
+                              ),
                             ),
                             primaryLabel: 'Request service',
                             secondaryLabel: 'Message',

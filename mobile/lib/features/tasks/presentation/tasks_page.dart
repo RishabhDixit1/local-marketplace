@@ -23,9 +23,9 @@ enum _TaskRoleFilter {
       case _TaskRoleFilter.all:
         return 'All';
       case _TaskRoleFilter.requester:
-        return 'Requester';
+        return 'Requested';
       case _TaskRoleFilter.provider:
-        return 'Provider';
+        return 'Helping';
     }
   }
 }
@@ -138,6 +138,21 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
   }
 
+  MobileTaskItem? _focusedTaskFor(MobileTaskSnapshot? snapshot) {
+    final focusTaskId = widget.focusTaskId?.trim() ?? '';
+    if (snapshot == null || focusTaskId.isEmpty) {
+      return null;
+    }
+
+    for (final item in snapshot.items) {
+      if (item.id == focusTaskId) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
   void _applyFocusIfNeeded(MobileTaskSnapshot snapshot) {
     final focusTaskId = widget.focusTaskId?.trim() ?? '';
     if (focusTaskId.isEmpty || _appliedFocusTaskId == focusTaskId) {
@@ -174,6 +189,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
     final data = snapshot.asData?.value;
+    final focusedTask = _focusedTaskFor(data);
     if (data != null) {
       _applyFocusIfNeeded(data);
     }
@@ -193,6 +209,13 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 focusTaskId: widget.focusTaskId,
                 focusSource: widget.focusSource,
               ),
+              if ((widget.focusTaskId ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _FocusedTaskBanner(
+                  task: focusedTask,
+                  focusSource: widget.focusSource,
+                ),
+              ],
               const SizedBox(height: 16),
               if (data != null) ...[
                 _TasksFilters(
@@ -364,11 +387,11 @@ class _TasksHero extends StatelessWidget {
               ),
               _HeroBadge(
                 icon: Icons.person_outline_rounded,
-                label: '$requesterCount requester',
+                label: '$requesterCount requested',
               ),
               _HeroBadge(
                 icon: Icons.storefront_outlined,
-                label: '$providerCount provider',
+                label: '$providerCount helping',
               ),
             ],
           ),
@@ -402,6 +425,93 @@ class _HeroBadge extends StatelessWidget {
             style: Theme.of(
               context,
             ).textTheme.labelLarge?.copyWith(color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusedTaskBanner extends StatelessWidget {
+  const _FocusedTaskBanner({required this.task, this.focusSource});
+
+  final MobileTaskItem? task;
+  final String? focusSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final fromPostSuccess = focusSource == 'post_success';
+    final fromNotification = focusSource == 'notification';
+    final currentTask = task;
+    final title = fromPostSuccess
+        ? 'Your request is live. Track it here.'
+        : fromNotification
+        ? 'Opened from notification'
+        : 'Focused task';
+    final message = currentTask == null
+        ? 'Loading the latest task details, status, and next step for this request.'
+        : currentTask.isProviderTask
+        ? 'You are the provider on "${currentTask.title}". Keep the requester updated from this task timeline.'
+        : 'You requested "${currentTask.title}". Watch provider replies in Chat and accepted work in this timeline.';
+
+    return SectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              fromPostSuccess
+                  ? Icons.task_alt_rounded
+                  : Icons.push_pin_outlined,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 5),
+                Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                if (currentTask != null) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      TrustBadge(
+                        label: currentTask.statusLabel,
+                        icon: Icons.flag_outlined,
+                        backgroundColor: _statusTint(currentTask.status),
+                        foregroundColor: _statusInk(currentTask.status),
+                      ),
+                      TrustBadge(
+                        label: currentTask.role.summary,
+                        icon: currentTask.isProviderTask
+                            ? Icons.handshake_outlined
+                            : Icons.person_outline_rounded,
+                        backgroundColor: AppColors.surfaceMuted,
+                        foregroundColor: AppColors.ink,
+                      ),
+                      TrustBadge(
+                        label: _nextStepShortLabel(currentTask),
+                        icon: Icons.arrow_forward_rounded,
+                        backgroundColor: AppColors.accentSoft,
+                        foregroundColor: AppColors.accent,
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -468,7 +578,7 @@ class _TasksFilters extends StatelessWidget {
           },
         ),
         const SizedBox(height: 18),
-        Text('Role', style: Theme.of(context).textTheme.titleMedium),
+        Text('Your role', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -573,9 +683,8 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final action = task.primaryAction;
-    final showTracker =
-        task.isProviderTask || task.status != MobileTaskStatus.active;
     final timelineLabel = _timelineSummary(task);
+    final timelineSteps = _statusTimelineFor(task);
 
     final card = SectionCard(
       child: Column(
@@ -671,7 +780,7 @@ class _TaskCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  task.isProviderTask ? 'Provider view' : 'Requester view',
+                  task.isProviderTask ? 'Provider role' : 'Requester role',
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
@@ -693,47 +802,10 @@ class _TaskCard extends StatelessWidget {
               ],
             ),
           ),
-          if (showTracker) ...[
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Progress timeline',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      if (task.isProviderTask)
-                        TrustBadge(
-                          label: 'Live updates',
-                          icon: Icons.bolt_rounded,
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  ...task.trackerSteps.asMap().entries.map(
-                    (entry) => _TrackerStep(
-                      step: entry.value,
-                      showConnector: entry.key != task.trackerSteps.length - 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          const SizedBox(height: 18),
+          _TaskTimelinePanel(task: task, steps: timelineSteps),
+          const SizedBox(height: 14),
+          _TaskNextStepPanel(task: task, action: action),
           if (action != null) ...[
             const SizedBox(height: 18),
             FilledButton.icon(
@@ -773,10 +845,129 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
+class _TaskTimelinePanel extends StatelessWidget {
+  const _TaskTimelinePanel({required this.task, required this.steps});
+
+  final MobileTaskItem task;
+  final List<_TaskTimelineStep> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Status timeline',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TrustBadge(
+                label: task.isProviderTask
+                    ? 'Provider updates'
+                    : 'Requester view',
+                icon: task.isProviderTask
+                    ? Icons.handshake_outlined
+                    : Icons.visibility_outlined,
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...steps.asMap().entries.map(
+            (entry) => _TrackerStep(
+              step: entry.value,
+              showConnector: entry.key != steps.length - 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskNextStepPanel extends StatelessWidget {
+  const _TaskNextStepPanel({required this.task, required this.action});
+
+  final MobileTaskItem task;
+  final MobileTaskPrimaryAction? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.auto_awesome_motion_outlined,
+            color: AppColors.accent,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What happens next',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _nextStepMessage(task),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (action != null) ...[
+                  const SizedBox(height: 10),
+                  TrustBadge(
+                    label: 'Next action: ${action!.label}',
+                    icon: Icons.touch_app_outlined,
+                    backgroundColor: AppColors.primarySoft,
+                    foregroundColor: AppColors.primary,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskTimelineStep {
+  const _TaskTimelineStep({
+    required this.title,
+    required this.message,
+    required this.state,
+  });
+
+  final String title;
+  final String message;
+  final MobileTaskTrackerStepState state;
+}
+
 class _TrackerStep extends StatelessWidget {
   const _TrackerStep({required this.step, required this.showConnector});
 
-  final MobileTaskTrackerStep step;
+  final _TaskTimelineStep step;
   final bool showConnector;
 
   @override
@@ -827,12 +1018,26 @@ class _TrackerStep extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 12),
-                child: Text(
-                  step.label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                    color: isActive ? const Color(0xFF0B1F33) : null,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      step.title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: isActive
+                            ? FontWeight.w800
+                            : FontWeight.w700,
+                        color: isActive ? AppColors.ink : null,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      step.message,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isActive ? AppColors.ink : AppColors.inkMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -944,6 +1149,169 @@ class _TasksErrorState extends StatelessWidget {
       onRetry: onRetry,
     );
   }
+}
+
+List<_TaskTimelineStep> _statusTimelineFor(MobileTaskItem task) {
+  if (task.isProviderTask) {
+    return task.trackerSteps
+        .map(
+          (step) => _TaskTimelineStep(
+            title: step.label,
+            message: _providerTimelineMessage(step.label, step.state),
+            state: step.state,
+          ),
+        )
+        .toList();
+  }
+
+  switch (task.status) {
+    case MobileTaskStatus.active:
+      return const [
+        _TaskTimelineStep(
+          title: 'Request posted',
+          message: 'Your need is live for matching providers nearby.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Providers review',
+          message: 'Replies, interest, and questions should move into Chat.',
+          state: MobileTaskTrackerStepState.active,
+        ),
+        _TaskTimelineStep(
+          title: 'Provider accepted',
+          message: 'Once someone takes the job, this task moves forward.',
+          state: MobileTaskTrackerStepState.upcoming,
+        ),
+        _TaskTimelineStep(
+          title: 'Complete and close',
+          message: 'Completion and follow-up stay attached to this task.',
+          state: MobileTaskTrackerStepState.upcoming,
+        ),
+      ];
+    case MobileTaskStatus.inProgress:
+      return const [
+        _TaskTimelineStep(
+          title: 'Request posted',
+          message: 'Your need was shared with nearby providers.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Provider accepted',
+          message: 'A provider has taken responsibility for the work.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Work in progress',
+          message: 'Watch travel, start, and completion updates here.',
+          state: MobileTaskTrackerStepState.active,
+        ),
+        _TaskTimelineStep(
+          title: 'Complete and close',
+          message: 'Wrap the job and leave the final trust signal.',
+          state: MobileTaskTrackerStepState.upcoming,
+        ),
+      ];
+    case MobileTaskStatus.completed:
+      return const [
+        _TaskTimelineStep(
+          title: 'Request posted',
+          message: 'The request entered the local marketplace.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Provider accepted',
+          message: 'The job had a confirmed provider.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Work completed',
+          message: 'The service was marked complete.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'History updated',
+          message: 'This now contributes to marketplace trust history.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+      ];
+    case MobileTaskStatus.cancelled:
+      return const [
+        _TaskTimelineStep(
+          title: 'Request posted',
+          message: 'The request was visible in the local marketplace.',
+          state: MobileTaskTrackerStepState.done,
+        ),
+        _TaskTimelineStep(
+          title: 'Request cancelled',
+          message: 'Matching and provider follow-up are paused for now.',
+          state: MobileTaskTrackerStepState.active,
+        ),
+      ];
+  }
+}
+
+String _providerTimelineMessage(
+  String label,
+  MobileTaskTrackerStepState state,
+) {
+  if (state == MobileTaskTrackerStepState.done) {
+    return 'This update has been shared with the requester.';
+  }
+
+  switch (label) {
+    case 'Task accepted':
+      return 'Confirm the task so both sides know the handoff is real.';
+    case 'Travel started':
+      return 'Start travel when you are heading to the job.';
+    case 'Work started':
+      return 'Mark the work start when you arrive or begin remotely.';
+    case 'Work completed':
+      return 'Close the loop when the job is wrapped.';
+    default:
+      return 'Keep this step current so the requester is not guessing.';
+  }
+}
+
+String _nextStepShortLabel(MobileTaskItem task) {
+  if (task.primaryAction != null) {
+    return task.primaryAction!.label;
+  }
+
+  return switch (task.status) {
+    MobileTaskStatus.active =>
+      task.isProviderTask ? 'Confirm handoff' : 'Watch Chat',
+    MobileTaskStatus.inProgress => 'Track progress',
+    MobileTaskStatus.completed => 'Review history',
+    MobileTaskStatus.cancelled => 'No action needed',
+  };
+}
+
+String _nextStepMessage(MobileTaskItem task) {
+  if (task.isProviderTask) {
+    return switch (task.progressStage) {
+      MobileTaskProgressStage.pendingAcceptance =>
+        'Confirm the handoff, then keep travel and work updates fresh for the requester.',
+      MobileTaskProgressStage.accepted =>
+        'Start travel when you are on the way, or message the requester if timing changes.',
+      MobileTaskProgressStage.travelStarted =>
+        'Start work when you arrive so the requester can follow the live state.',
+      MobileTaskProgressStage.workStarted =>
+        'Mark completion once the work is wrapped and any final notes are shared.',
+      MobileTaskProgressStage.completed =>
+        'The task is complete. Keep any receipt, review, or follow-up in the thread.',
+    };
+  }
+
+  return switch (task.status) {
+    MobileTaskStatus.active =>
+      'Keep an eye on Chat for provider questions. When someone accepts, this card becomes your live tracker.',
+    MobileTaskStatus.inProgress =>
+      'Use Chat for coordination and this timeline for status. The provider should update each field step.',
+    MobileTaskStatus.completed =>
+      'The work is complete. Use the history and chat thread for reviews, receipts, or follow-up.',
+    MobileTaskStatus.cancelled =>
+      'This request is no longer being matched. Create a new request if the need comes back.',
+  };
 }
 
 String _timelineSummary(MobileTaskItem task) {

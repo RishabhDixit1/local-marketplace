@@ -107,19 +107,19 @@ class AppTheme {
       displayLarge: display.displayLarge?.copyWith(
         fontSize: 34,
         fontWeight: FontWeight.w700,
-        letterSpacing: -1.2,
+        letterSpacing: 0,
         color: AppColors.ink,
       ),
       headlineLarge: display.headlineLarge?.copyWith(
         fontSize: 30,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.9,
+        letterSpacing: 0,
         color: AppColors.ink,
       ),
       headlineMedium: display.headlineMedium?.copyWith(
         fontSize: 24,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.6,
+        letterSpacing: 0,
         color: AppColors.ink,
       ),
       headlineSmall: display.headlineSmall?.copyWith(

@@ -10,17 +10,17 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
-import '../../inbox/data/chat_repository.dart';
+import '../../chat/data/chat_repository.dart';
 import '../../people/data/people_repository.dart';
 import '../../people/domain/people_snapshot.dart';
 import '../data/feed_repository.dart';
@@ -169,11 +169,19 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     try {
       final conversationId = await ref
           .read(chatRepositoryProvider)
-          .getOrCreateDirectConversation(recipientId: item.providerId);
+          .ensureConversation(item.providerId);
       if (!mounted) {
         return;
       }
-      context.push('/app/inbox/$conversationId');
+      context.push(
+        AppRoutes.chatThreadWithContext(
+          conversationId,
+          contextTitle: item.title,
+          contextTaskId: item.id,
+          contextStatus: item.statusLabel,
+          source: 'feed_card',
+        ),
+      );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -301,12 +309,33 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              _FeedHero(
-                mode: widget.mode,
-                onPrimaryAction: _openPostTask,
-                onSecondaryAction: () => context.push(AppRoutes.search),
+              MarketplaceLoopHero(
+                title: widget.mode.heroTitle,
+                message: widget.mode.heroMessage,
+                searchLabel: widget.mode.searchHint,
+                primaryLabel: 'Post a Need',
+                signalLabels: _exploreHeroSignals(
+                  snapshot: previewData,
+                  providerCount:
+                      peopleSnapshot?.asData?.value.people.length ?? 0,
+                ),
+                onPrimaryTap: _openPostTask,
+                onSearchTap: () => context.push(AppRoutes.search),
               ),
               const SizedBox(height: 16),
+              _ExploreIntentPanel(
+                mode: widget.mode,
+                searchController: _searchController,
+                scope: _scope,
+                filters: _filters,
+                onQueryChanged: _onQueryChanged,
+                onScopeChanged: (scope) => setState(() => _scope = scope),
+                onFiltersChanged: (next) => setState(() {
+                  _filters
+                    ..clear()
+                    ..addAll(next);
+                }),
+                onOpenPeople: () => context.push(AppRoutes.people),
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +460,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         onOpenProfile: () =>
                             context.push(AppRoutes.provider(person.id)),
                         onMessage: () => context.push(
-                          '${AppRoutes.chat}?recipientId=${person.id}',
+                          AppRoutes.chatDirect(
+                            recipientId: person.id,
+                            contextTitle: person.name,
+                            source: 'feed_provider_card',
+                          ),
                         ),
                       ),
                     );
@@ -509,63 +542,104 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 }
 
-class _FeedHero extends StatelessWidget {
-  const _FeedHero({
+List<String> _exploreHeroSignals({
+  required MobileFeedSnapshot? snapshot,
+  required int providerCount,
+}) {
+  final stats = snapshot?.stats;
+  if (stats == null) {
+    return const ['Search nearby', 'Post a Need', 'Track tasks'];
+  }
+
+  return [
+    '${stats.demand} requests',
+    '$providerCount providers',
+    '${stats.urgent} urgent',
+  ];
+}
+
+class _ExploreIntentPanel extends StatelessWidget {
+  const _ExploreIntentPanel({
     required this.mode,
-    required this.onPrimaryAction,
-    required this.onSecondaryAction,
+    required this.searchController,
+    required this.scope,
+    required this.filters,
+    required this.onQueryChanged,
+    required this.onScopeChanged,
+    required this.onFiltersChanged,
+    required this.onOpenPeople,
   });
 
   final FeedPageMode mode;
-  final VoidCallback onPrimaryAction;
-  final VoidCallback onSecondaryAction;
+  final TextEditingController searchController;
+  final MobileFeedScope scope;
+  final Set<String> filters;
+  final ValueChanged<String> onQueryChanged;
+  final ValueChanged<MobileFeedScope> onScopeChanged;
+  final ValueChanged<Set<String>> onFiltersChanged;
+  final VoidCallback onOpenPeople;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B1F33), Color(0xFF1D4ED8), Color(0xFF0EA5A4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      padding: const EdgeInsets.all(22),
+    return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            mode.heroTitle,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+            'Refine this view',
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Text(
-            mode.heroMessage,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.84),
-            ),
+            mode == FeedPageMode.explore
+                ? 'Keep the live marketplace focused without turning the first screen into a control panel.'
+                : 'Search and filter your trusted network without losing the local flow.',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.md),
+          AppSearchField(
+            controller: searchController,
+            hintText: 'Filter by service, provider, area, or request',
+            onChanged: onQueryChanged,
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: onPrimaryAction,
-                  icon: const Icon(Icons.bolt_rounded),
-                  label: const Text('Post a Need'),
+                child: Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: MobileFeedScope.values.map((nextScope) {
+                    return ChoiceChip(
+                      label: Text(nextScope.label),
+                      selected: scope == nextScope,
+                      onSelected: (_) => onScopeChanged(nextScope),
+                    );
+                  }).toList(),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Search nearby',
-                  onPressed: onSecondaryAction,
+              const SizedBox(width: AppSpacing.sm),
+              SizedBox(
+                width: 112,
+                child: OutlinedButton.icon(
+                  onPressed: onOpenPeople,
+                  icon: const Icon(Icons.people_outline_rounded),
+                  label: const Text('People'),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FilterChipGroup<String>(
+            options: const [
+              FilterOption(value: 'urgent', label: 'Urgent'),
+              FilterOption(value: 'verified', label: 'Verified'),
+              FilterOption(value: 'top_rated', label: 'Top rated'),
+              FilterOption(value: 'media', label: 'Media'),
+            ],
+            selectedValues: filters,
+            onChanged: onFiltersChanged,
           ),
         ],
       ),
@@ -627,61 +701,6 @@ class _FeedMetrics extends StatelessWidget {
   }
 }
 
-class _ExploreLaneSummary extends StatelessWidget {
-  const _ExploreLaneSummary({required this.stats, required this.providerCount});
-
-  final MobileFeedStats stats;
-  final int providerCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 10.0;
-        final width = (constraints.maxWidth - gap) / 2;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Requests',
-                value: stats.demand.toString(),
-                icon: Icons.handyman_outlined,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Providers',
-                value: providerCount.toString(),
-                icon: Icons.people_outline_rounded,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Services',
-                value: stats.service.toString(),
-                icon: Icons.design_services_outlined,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Urgent',
-                value: stats.urgent.toString(),
-                icon: Icons.flash_on_rounded,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
 class _ExploreMarketplaceLanes extends StatelessWidget {
   const _ExploreMarketplaceLanes({
     required this.items,
@@ -708,32 +727,19 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
         .where((item) => item.type == MobileFeedItemType.demand && !item.urgent)
         .take(4)
         .toList();
-    final services = items
-        .where((item) => item.type == MobileFeedItemType.service)
-        .take(3)
-        .toList();
-    final products = items
-        .where((item) => item.type == MobileFeedItemType.product)
-        .take(3)
-        .toList();
     final visiblePeople = people.take(3).toList();
     final hasAnyFeed =
-        urgent.isNotEmpty ||
-        requests.isNotEmpty ||
-        services.isNotEmpty ||
-        products.isNotEmpty;
+        urgent.isNotEmpty || requests.isNotEmpty || visiblePeople.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionCard(child: _ExploreRankingContext()),
-        const SizedBox(height: 16),
-        if (!hasAnyFeed && visiblePeople.isEmpty)
+        if (!hasAnyFeed)
           const SectionCard(
             child: EmptyStateView(
-              title: 'No matching marketplace lanes',
+              title: 'No matching local activity',
               message:
-                  'Broaden the search or clear a filter to bring requests, providers, services, and products back into view.',
+                  'Broaden the search or clear a filter to bring urgent requests, trusted providers, and nearby work back into view.',
             ),
           )
         else ...[
@@ -747,15 +753,6 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
             ),
             const SizedBox(height: 18),
           ],
-          _ExploreFeedLane(
-            title: 'Requests',
-            subtitle:
-                'People nearby who need help, ranked by local fit and trust context.',
-            items: requests,
-            cardBuilder: feedCardBuilder,
-            emptyTitle: 'No open requests in this view',
-          ),
-          const SizedBox(height: 18),
           _ExploreProviderLane(
             people: visiblePeople,
             peopleSnapshot: peopleSnapshot,
@@ -765,65 +762,14 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _ExploreFeedLane(
-            title: 'Services',
+            title: 'Requests you can act on',
             subtitle:
-                'Provider offers you can compare by response speed, proof, and distance.',
-            items: services,
+                'People nearby who need help, ranked by local fit and trust context.',
+            items: requests,
             cardBuilder: feedCardBuilder,
-            emptyTitle: 'No services match these filters',
-          ),
-          const SizedBox(height: 18),
-          _ExploreFeedLane(
-            title: 'Products',
-            subtitle:
-                'Local products with provider identity and marketplace trust signals attached.',
-            items: products,
-            cardBuilder: feedCardBuilder,
-            emptyTitle: 'No products match these filters',
+            emptyTitle: 'No open requests in this view',
           ),
         ],
-      ],
-    );
-  }
-}
-
-class _ExploreRankingContext extends StatelessWidget {
-  const _ExploreRankingContext();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-          ),
-          child: const Icon(
-            Icons.verified_user_outlined,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Trust-first marketplace',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Each lane favors nearby relevance, urgent intent, profile proof, response speed, and trusted network activity.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -894,9 +840,9 @@ class _ExploreProviderLane extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: 'Providers',
+          title: 'Trusted providers',
           subtitle:
-              'Nearby people with trust, availability, proof, and service context.',
+              'Nearby people with availability, proof, and service context.',
           actionLabel: 'People',
           onAction: onOpenPeople,
         ),
