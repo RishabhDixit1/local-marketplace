@@ -1,3 +1,5 @@
+import '../../../core/constants/app_routes.dart';
+
 enum MobileNotificationKind { order, message, review, system, connection }
 
 class MobileNotificationItem {
@@ -74,17 +76,38 @@ MobileNotificationAction resolveMobileNotificationAction(
   final conversationId =
       item.entityId ??
       _readMetadataString(item, ['conversation_id', 'conversationId']);
-  final orderId =
-      item.entityId ??
-      _readMetadataString(item, ['order_id', 'orderId', 'task_id']);
-  final helpRequestId =
-      item.entityId ??
-      _readMetadataString(item, [
-        'help_request_id',
-        'helpRequestId',
-        'target_help_request_id',
-        'targetHelpRequestId',
-      ]);
+  final contextTitle = _readMetadataString(item, [
+    'request_title',
+    'requestTitle',
+    'task_title',
+    'taskTitle',
+    'context_title',
+    'contextTitle',
+    'title',
+  ]);
+  final contextStatus = _readMetadataString(item, [
+    'status_label',
+    'statusLabel',
+    'status',
+  ]);
+  final metadataOrderId = _readMetadataString(item, [
+    'order_id',
+    'orderId',
+    'task_id',
+    'taskId',
+  ]);
+  final metadataHelpRequestId = _readMetadataString(item, [
+    'help_request_id',
+    'helpRequestId',
+    'target_help_request_id',
+    'targetHelpRequestId',
+  ]);
+  final orderId = _orderEntityTypes.contains(entityType)
+      ? item.entityId ?? metadataOrderId
+      : metadataOrderId;
+  final helpRequestId = _helpRequestEntityTypes.contains(entityType)
+      ? item.entityId ?? metadataHelpRequestId
+      : metadataHelpRequestId;
 
   if (explicitHref.startsWith('/app/')) {
     return MobileNotificationAction(label: 'Open', route: explicitHref);
@@ -95,7 +118,14 @@ MobileNotificationAction resolveMobileNotificationAction(
           conversationId.isNotEmpty)) {
     return MobileNotificationAction(
       label: 'Open chat',
-      route: '/app/inbox/$conversationId',
+      route: AppRoutes.chatThread(conversationId),
+      queryParameters: {
+        if (contextTitle.isNotEmpty) 'title': contextTitle,
+        if (helpRequestId.isNotEmpty || orderId.isNotEmpty)
+          'taskId': helpRequestId.isNotEmpty ? helpRequestId : orderId,
+        if (contextStatus.isNotEmpty) 'status': contextStatus,
+        'source': 'notification',
+      },
     );
   }
 

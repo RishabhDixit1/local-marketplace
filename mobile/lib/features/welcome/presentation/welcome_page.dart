@@ -23,6 +23,7 @@ import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/section_header.dart';
 
 class WelcomePage extends ConsumerStatefulWidget {
@@ -949,7 +950,14 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         ? 'Hi ${item.creatorName}, I can help with "${item.title}". What timing works best?'
         : 'Hi ${item.creatorName}, I am interested in "${item.title}". Can you share availability?';
     context.push(
-      '${AppRoutes.chat}?recipientId=${item.providerId}&draft=${Uri.encodeComponent(draft)}&contextTitle=${Uri.encodeComponent(item.title)}',
+      AppRoutes.chatDirect(
+        recipientId: item.providerId,
+        draft: draft,
+        contextTitle: item.title,
+        contextTaskId: item.id,
+        contextStatus: item.statusLabel,
+        source: 'home_feed_card',
+      ),
     );
   }
 
@@ -981,7 +989,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     final draft =
         'Hi ${person.name}, I found your profile on ServiQ and want to discuss a nearby job.';
     context.push(
-      '${AppRoutes.chat}?recipientId=${person.id}&draft=${Uri.encodeComponent(draft)}&contextTitle=${Uri.encodeComponent(person.name)}',
+      AppRoutes.chatDirect(
+        recipientId: person.id,
+        draft: draft,
+        contextTitle: person.name,
+        source: 'home_provider_card',
+      ),
     );
   }
 }
@@ -2098,7 +2111,7 @@ class _HeroSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start with a trusted live feed, then move into the strongest nearby matches without losing context.',
+            'Search nearby, post a need, message the right person, then track the task from the same local loop.',
             style: textTheme.bodyMedium?.copyWith(color: AppColors.ink),
           ),
           const SizedBox(height: 16),
@@ -2132,6 +2145,14 @@ class _HeroSection extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+          MarketplaceLoopSteps(
+            activeIndex: 0,
+            foregroundColor: tokens.heroAccent,
+            mutedColor: AppColors.inkMuted,
+            surfaceColor: Colors.white.withValues(alpha: 0.72),
+            borderColor: tokens.heroStroke,
           ),
           const SizedBox(height: 16),
           PrimaryButton(

@@ -9,7 +9,6 @@ import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
-import '../../features/inbox/presentation/inbox_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
@@ -100,21 +99,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: AppRoutes.chatThread(':threadId'),
-        builder: (context, state) =>
-            ChatPage(initialConversationId: state.pathParameters['threadId']),
+        path: AppRoutes.inbox,
+        redirect: (context, state) => AppRoutes.chat,
       ),
       GoRoute(
-        path: AppRoutes.inbox,
-        builder: (context, state) => const InboxPage(),
-        routes: [
-          GoRoute(
-            path: ':conversationId',
-            builder: (context, state) => ChatThreadPage(
-              conversationId: state.pathParameters['conversationId'] ?? '',
-            ),
-          ),
-        ],
+        path: '${AppRoutes.inbox}/:conversationId',
+        redirect: (context, state) {
+          final conversationId =
+              state.pathParameters['conversationId']?.trim() ?? '';
+          return conversationId.isEmpty
+              ? AppRoutes.chat
+              : AppRoutes.chatThread(conversationId);
+        },
       ),
       GoRoute(
         path: '${AppRoutes.tasks}/:taskId',
@@ -174,8 +170,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => ChatPage(
                   recipientId: state.uri.queryParameters['recipientId'],
                   initialDraft: state.uri.queryParameters['draft'],
-                  contextTitle: state.uri.queryParameters['title'],
+                  contextTitle:
+                      state.uri.queryParameters['title'] ??
+                      state.uri.queryParameters['contextTitle'],
+                  contextTaskId:
+                      state.uri.queryParameters['taskId'] ??
+                      state.uri.queryParameters['helpRequestId'],
+                  contextStatus: state.uri.queryParameters['status'],
+                  contextSource: state.uri.queryParameters['source'],
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'thread/:threadId',
+                    builder: (context, state) => ChatPage(
+                      initialConversationId: state.pathParameters['threadId'],
+                      initialDraft: state.uri.queryParameters['draft'],
+                      contextTitle:
+                          state.uri.queryParameters['title'] ??
+                          state.uri.queryParameters['contextTitle'],
+                      contextTaskId:
+                          state.uri.queryParameters['taskId'] ??
+                          state.uri.queryParameters['helpRequestId'],
+                      contextStatus: state.uri.queryParameters['status'],
+                      contextSource: state.uri.queryParameters['source'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

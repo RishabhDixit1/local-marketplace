@@ -10,7 +10,7 @@ enum MobileTaskRole {
   accepted;
 
   String get summary =>
-      this == MobileTaskRole.posted ? 'Created by you' : 'Assigned to you';
+      this == MobileTaskRole.posted ? 'You requested' : 'You are helping';
 }
 
 enum MobileTaskStatus {

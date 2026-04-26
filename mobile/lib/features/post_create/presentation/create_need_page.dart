@@ -11,11 +11,13 @@ import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../../feed/data/feed_repository.dart';
 import '../../feed/domain/feed_snapshot.dart';
+import '../../tasks/data/task_repository.dart';
 import '../data/create_need_repository.dart';
 
 const _categories = [
@@ -53,6 +55,29 @@ const _budgetPresets = [
   _BudgetPreset(label: '500 - 1500', amount: 1500),
   _BudgetPreset(label: '1500 - 3000', amount: 3000),
   _BudgetPreset(label: 'Flexible'),
+];
+
+const _requestPresets = [
+  _RequestPreset(
+    label: 'Fix today',
+    category: 'Electrician',
+    title: 'Need electrician for a repair today',
+  ),
+  _RequestPreset(
+    label: 'Home service',
+    category: 'Cleaning',
+    title: 'Need home cleaning help this week',
+  ),
+  _RequestPreset(
+    label: 'Appliance issue',
+    category: 'Appliance Repair',
+    title: 'Need appliance repair near me',
+  ),
+  _RequestPreset(
+    label: 'Delivery run',
+    category: 'Delivery',
+    title: 'Need a local delivery pickup',
+  ),
 ];
 
 const _kb = 1024;
@@ -249,6 +274,18 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           ? ''
           : preset.amount!.round().toString();
       _error = null;
+    });
+    _cacheDraft();
+  }
+
+  void _applyRequestPreset(_RequestPreset preset) {
+    setState(() {
+      _category = preset.category;
+      if (_titleController.text.trim().isEmpty) {
+        _titleController.text = preset.title;
+      }
+      _error = null;
+      _draftRestored = false;
     });
     _cacheDraft();
   }
@@ -662,6 +699,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           .publishNeed(draft);
       ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
       ref.invalidate(feedSnapshotProvider(MobileFeedScope.connected));
+      ref.invalidate(taskSnapshotProvider);
       _CreateNeedDraftCache.clear();
 
       if (!mounted) {
@@ -902,6 +940,25 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
             Text(
               'Tell nearby providers what you need, how urgent it is, and enough context to trust the request quickly.',
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Quick starts',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: _requestPresets.map((preset) {
+                return ActionChip(
+                  avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+                  label: Text(preset.label),
+                  onPressed: _submitting
+                      ? null
+                      : () => _applyRequestPreset(preset),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 18),
             DropdownButtonFormField<String>(
@@ -1182,6 +1239,36 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 18),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.visibility_outlined,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Shown in discovery with urgency, reach, media readiness, and the next action attached.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.primaryDeep,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1310,16 +1397,17 @@ class _CreateNeedHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens =
+        Theme.of(context).extension<ServiqThemeTokens>() ??
+        ServiqThemeTokens.light;
+    final progress = step / 3;
+
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B1F33), Color(0xFF11466A), Color(0xFF0EA5A4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        gradient: tokens.heroGradient,
       ),
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1331,12 +1419,22 @@ class _CreateNeedHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Step $step of 3. Shape the request, add photos or video, tune nearby discovery, then preview what your local market will see.',
+            'Step $step of 3. Shape the request, tune nearby discovery, then preview what providers will see before it goes live.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.84),
             ),
           ),
           const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.18),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -1593,6 +1691,8 @@ class _PublishedState extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 10),
+          const MarketplaceLoopSteps(activeIndex: 1),
+          const SizedBox(height: 14),
           const _NextStepRow(
             icon: Icons.person_search_outlined,
             title: 'Providers review the request',
@@ -2321,6 +2421,18 @@ class _BudgetPreset {
     }
     return normalized == amount!.round().toString();
   }
+}
+
+class _RequestPreset {
+  const _RequestPreset({
+    required this.label,
+    required this.category,
+    required this.title,
+  });
+
+  final String label;
+  final String category;
+  final String title;
 }
 
 class _CreateNeedDraftSnapshot {

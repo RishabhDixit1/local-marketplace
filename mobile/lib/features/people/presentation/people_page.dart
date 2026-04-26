@@ -152,7 +152,11 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                               onOpenProfile: () =>
                                   context.push(AppRoutes.provider(person.id)),
                               onMessage: () => context.push(
-                                '${AppRoutes.chat}?recipientId=${person.id}',
+                                AppRoutes.chatDirect(
+                                  recipientId: person.id,
+                                  contextTitle: person.name,
+                                  source: 'people_provider_card',
+                                ),
                               ),
                             ),
                           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'app_buttons.dart';
 
 class StickyBottomCTA extends StatelessWidget {
@@ -25,15 +26,9 @@ class StickyBottomCTA extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: const Color(0xFFE7EBF1))),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x140F172A),
-            blurRadius: 18,
-            offset: Offset(0, -8),
-          ),
-        ],
+        color: AppColors.surface,
+        border: const Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: AppShadows.floating,
       ),
       child: SafeArea(
         top: false,

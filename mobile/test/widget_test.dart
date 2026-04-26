@@ -57,19 +57,34 @@ void main() {
     await _pumpFeedPage(tester, const Size(320, 640));
 
     expect(find.text('Explore'), findsOneWidget);
-    expect(
-      find.text('Explore the live marketplace by intent.'),
-      findsOneWidget,
-    );
-    expect(find.text('Verified'), findsAtLeastNWidgets(1));
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Search the live marketplace'), findsOneWidget);
     expect(
       find.text('Local Help Marketplace for Everyday Needs.'),
       findsOneWidget,
     );
-    expect(find.text('Requests'), findsAtLeastNWidgets(1));
-    expect(find.text('Providers'), findsAtLeastNWidgets(1));
     expect(find.text('Post a Need'), findsOneWidget);
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Refine this view'),
+      180,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Refine this view'), findsOneWidget);
+    expect(find.text('Verified'), findsAtLeastNWidgets(1));
+    expect(find.text('Connected'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Requests you can act on'),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Requests you can act on'), findsAtLeastNWidgets(1));
+    expect(find.text('Trusted providers'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -107,10 +122,7 @@ void main() {
     await _pumpFeedPage(tester, const Size(390, 844), textScaleFactor: 1.3);
 
     expect(find.text('Explore'), findsOneWidget);
-    expect(
-      find.text('Explore the live marketplace by intent.'),
-      findsOneWidget,
-    );
+    expect(find.text('Refine this view'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
