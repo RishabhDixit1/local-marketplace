@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   ArrowUpRight,
   Archive,
@@ -95,6 +96,7 @@ const verificationLabels: Record<MarketplaceDisplayFeedItem["verificationStatus"
 };
 
 const formatTrustRating = (rating: number) => `${rating.toFixed(1)} stars`;
+const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
 type TrustItem = {
   label: string;
   tone: "neutral" | "good" | "caution";
@@ -124,6 +126,7 @@ export default function FeedCard({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
   const hasMedia = item.media.length > 0;
+  const useBrowserAvatar = isBrowserLocalImageUrl(item.avatarUrl);
 
   useEffect(() => {
     if (!ownerMenuOpen) return;
@@ -242,13 +245,25 @@ export default function FeedCard({
           className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
           aria-label={`Open ${item.displayCreator} profile`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.avatarUrl}
-            alt={`${item.displayCreator} avatar`}
-            loading="lazy"
-            className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
-          />
+          {useBrowserAvatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.avatarUrl}
+              alt={`${item.displayCreator} avatar`}
+              loading="lazy"
+              className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
+            />
+          ) : (
+            <Image
+              src={item.avatarUrl}
+              alt={`${item.displayCreator} avatar`}
+              width={40}
+              height={40}
+              quality={60}
+              sizes="40px"
+              className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
+            />
+          )}
         </button>
 
         <div className="min-w-0 flex-1">

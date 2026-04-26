@@ -5,7 +5,7 @@ import { ImageIcon, Loader2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getAccessToken } from "@/lib/clientApi";
 import { compressImageFile } from "@/lib/clientImageCompression";
-import { LISTING_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
+import { LISTING_IMAGE_MAX_BYTES, LISTING_IMAGE_MAX_DIMENSION, formatUploadLimit } from "@/lib/mediaLimits";
 
 type Props = {
   value: string;
@@ -22,7 +22,10 @@ export default function ImageUploadField({ value, onChange, className }: Props) 
     setUploading(true);
     setError("");
     try {
-      const prepared = (await compressImageFile(file, { maxBytes: LISTING_IMAGE_MAX_BYTES })).file;
+      const prepared = (await compressImageFile(file, {
+        maxBytes: LISTING_IMAGE_MAX_BYTES,
+        maxDimension: LISTING_IMAGE_MAX_DIMENSION,
+      })).file;
       if (prepared.size > LISTING_IMAGE_MAX_BYTES) {
         throw new Error(`Photo must be ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)} or smaller after compression.`);
       }

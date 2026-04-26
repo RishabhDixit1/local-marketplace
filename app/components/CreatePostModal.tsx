@@ -20,6 +20,7 @@ import { compressImageFile, isCompressibleImageFile } from "@/lib/clientImageCom
 import {
   POST_MEDIA_LIMIT_COPY,
   POST_MEDIA_MAX_ATTACHMENTS,
+  POST_MEDIA_IMAGE_MAX_DIMENSION,
   getPostMediaLimitBytes,
 } from "@/lib/mediaLimits";
 
@@ -287,7 +288,10 @@ export default function CreatePostModal({
 
         const prepared =
           isCompressibleImageFile(file)
-            ? (await compressImageFile(file, { maxBytes: getPostMediaLimitBytes(file.type) })).file
+            ? (await compressImageFile(file, {
+                maxBytes: getPostMediaLimitBytes(file.type),
+                maxDimension: POST_MEDIA_IMAGE_MAX_DIMENSION,
+              })).file
             : file;
 
         const limitBytes = getPostMediaLimitBytes(prepared.type || file.type);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
@@ -65,6 +66,8 @@ const typeBadgeLabel: Record<FeedCardType, string> = {
   service: "Service",
   product: "Product",
 };
+
+const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
 
 const readMetaString = (metadata: Record<string, unknown> | null, key: string) => {
   if (!metadata) return null;
@@ -963,13 +966,25 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                     aria-label={`Open ${displayCreator} profile`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={avatarUrl}
-                      alt={`${displayCreator} avatar`}
-                      loading="lazy"
-                      className="h-11 w-11 rounded-full border border-slate-200 object-cover"
-                    />
+                    {isBrowserLocalImageUrl(avatarUrl) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={avatarUrl}
+                        alt={`${displayCreator} avatar`}
+                        loading="lazy"
+                        className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={avatarUrl}
+                        alt={`${displayCreator} avatar`}
+                        width={44}
+                        height={44}
+                        quality={60}
+                        sizes="44px"
+                        className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                      />
+                    )}
                   </button>
 
                   <div className="min-w-0 flex-1">

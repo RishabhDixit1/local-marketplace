@@ -55,7 +55,15 @@ const _budgetPresets = [
   _BudgetPreset(label: 'Flexible'),
 ];
 
-const _maxComposerMedia = 6;
+const _kb = 1024;
+const _mb = 1024 * _kb;
+const _maxComposerMedia = 4;
+const _maxImageBytes = 768 * _kb;
+const _maxVideoBytes = 6 * _mb;
+const _maxAudioBytes = 3 * _mb;
+const _imagePickerMaxDimension = 1280.0;
+const _imagePickerQuality = 72;
+const _videoPickerMaxDuration = Duration(seconds: 20);
 
 class CreateNeedPage extends ConsumerStatefulWidget {
   const CreateNeedPage({super.key});
@@ -400,21 +408,34 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     try {
       switch (action) {
         case _ComposerMediaAction.galleryPhotos:
-          final files = await _imagePicker.pickMultiImage();
+          final files = await _imagePicker.pickMultiImage(
+            maxWidth: _imagePickerMaxDimension,
+            maxHeight: _imagePickerMaxDimension,
+            imageQuality: _imagePickerQuality,
+          );
           await _addPickedFiles(files);
           return;
         case _ComposerMediaAction.galleryVideo:
           final file = await _imagePicker.pickVideo(
             source: ImageSource.gallery,
+            maxDuration: _videoPickerMaxDuration,
           );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
         case _ComposerMediaAction.cameraPhoto:
-          final file = await _imagePicker.pickImage(source: ImageSource.camera);
+          final file = await _imagePicker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: _imagePickerMaxDimension,
+            maxHeight: _imagePickerMaxDimension,
+            imageQuality: _imagePickerQuality,
+          );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
         case _ComposerMediaAction.cameraVideo:
-          final file = await _imagePicker.pickVideo(source: ImageSource.camera);
+          final file = await _imagePicker.pickVideo(
+            source: ImageSource.camera,
+            maxDuration: _videoPickerMaxDuration,
+          );
           await _addPickedFiles(file == null ? const [] : [file]);
           return;
       }
@@ -434,15 +455,35 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     final remaining = _maxComposerMedia - _media.length;
-    final nextFiles = files.take(remaining).toList();
-    if (nextFiles.isEmpty) {
+    final candidateFiles = files.take(remaining).toList();
+    if (candidateFiles.isEmpty) {
       _showComposerSnack(
         'You can upload up to $_maxComposerMedia attachments.',
       );
       return;
     }
 
-    final items = nextFiles.map(_ComposerMediaItem.fromXFile).toList();
+    final items = <_ComposerMediaItem>[];
+    var rejectedForSize = 0;
+
+    for (final file in candidateFiles) {
+      final item = _ComposerMediaItem.fromXFile(file);
+      final limitBytes = _maxBytesForMediaType(item.mediaType);
+      final fileSize = await file.length();
+      if (limitBytes > 0 && fileSize > limitBytes) {
+        rejectedForSize += 1;
+        continue;
+      }
+      items.add(item);
+    }
+
+    if (items.isEmpty) {
+      _showComposerSnack(
+        'Media is too large. Images max ${_formatByteLimit(_maxImageBytes)}, videos max ${_formatByteLimit(_maxVideoBytes)}.',
+      );
+      return;
+    }
+
     setState(() {
       _media = [..._media, ...items];
       _error = null;
@@ -454,7 +495,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       unawaited(_uploadMediaItem(item.id));
     }
 
-    if (files.length > nextFiles.length) {
+    if (rejectedForSize > 0) {
+      _showComposerSnack(
+        '$rejectedForSize attachment${rejectedForSize == 1 ? '' : 's'} skipped for size. Images max ${_formatByteLimit(_maxImageBytes)}.',
+      );
+    }
+
+    if (files.length > candidateFiles.length) {
       _showComposerSnack(
         'Only the first $remaining attachment${remaining == 1 ? '' : 's'} were added.',
       );
@@ -2283,4 +2330,22 @@ String _guessMediaType(String fileName, {String? fallbackPath}) {
   if (value.endsWith('.webm')) return 'video/webm';
 
   return 'application/octet-stream';
+}
+
+int _maxBytesForMediaType(String mediaType) {
+  if (mediaType.startsWith('image/')) return _maxImageBytes;
+  if (mediaType.startsWith('video/')) return _maxVideoBytes;
+  if (mediaType.startsWith('audio/')) return _maxAudioBytes;
+  return 0;
+}
+
+String _formatByteLimit(int bytes) {
+  if (bytes < _mb) {
+    return '${(bytes / _kb).round()} KB';
+  }
+
+  final value = bytes / _mb;
+  return value == value.roundToDouble()
+      ? '${value.round()} MB'
+      : '${value.toStringAsFixed(1)} MB';
 }

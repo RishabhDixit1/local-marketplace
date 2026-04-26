@@ -13,7 +13,7 @@ import {
 } from "@/lib/provider/listings";
 import { supabase } from "@/lib/supabase";
 import { compressImageFile } from "@/lib/clientImageCompression";
-import { LISTING_IMAGE_MAX_BYTES, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
+import { LISTING_IMAGE_MAX_BYTES, LISTING_IMAGE_MAX_DIMENSION, STORAGE_CACHE_SECONDS, formatUploadLimit } from "@/lib/mediaLimits";
 
 const deliveryOptions = PRODUCT_DELIVERY_METHODS.map((value) => ({
   value,
@@ -66,7 +66,10 @@ export default function AddProductPage() {
       let imagePath = form.imageUrl;
       if (imageFile) {
         setUploadingImage(true);
-        const preparedImage = (await compressImageFile(imageFile, { maxBytes: LISTING_IMAGE_MAX_BYTES })).file;
+        const preparedImage = (await compressImageFile(imageFile, {
+          maxBytes: LISTING_IMAGE_MAX_BYTES,
+          maxDimension: LISTING_IMAGE_MAX_DIMENSION,
+        })).file;
         if (preparedImage.size > LISTING_IMAGE_MAX_BYTES) {
           throw new Error(`Image must be ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)} or smaller after compression.`);
         }
