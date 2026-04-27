@@ -14,7 +14,6 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import {
-  Activity,
   AlertCircle,
   ArrowUpRight,
   BarChart3,
@@ -46,6 +45,13 @@ import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPro
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import RouteObservability from "@/app/components/RouteObservability";
+import {
+  TaskCard,
+  TaskStatusTabs,
+  type NextActionPanelProps,
+  type TaskBoardStatusTabValue,
+  type TaskTimelineStep,
+} from "@/app/dashboard/tasks/components/TaskBoardComponents";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
@@ -95,7 +101,7 @@ import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/
 
 type RealtimeState = "connecting" | "live" | "offline";
 type TaskSortOption = "updated" | "newest" | "oldest";
-type TaskViewTab = "inbox" | "in-progress" | "completed" | "cancelled";
+type TaskViewTab = TaskBoardStatusTabValue;
 type InboxHelpRequest = {
   id: string;
   title: string | null;
@@ -163,32 +169,7 @@ type TaskReviewDraft = {
 };
 
 const stageOrder: TaskStatus[] = ["active", "in-progress", "completed", "cancelled"];
-const statusProgressMap: Record<TaskStatus, number> = {
-  active: 25,
-  "in-progress": 65,
-  completed: 100,
-  cancelled: 100,
-};
-
 const demoNow = Date.now();
-const formatTaskStatus = (status: TaskStatus) => {
-  if (status === "in-progress") return "IN PROGRESS";
-  return status.toUpperCase();
-};
-
-const getStatusColor = (status: TaskStatus) => {
-  if (status === "active") return "bg-blue-100 text-blue-700";
-  if (status === "in-progress") return "bg-yellow-100 text-yellow-700";
-  if (status === "completed") return "bg-green-100 text-green-700";
-  return "bg-red-100 text-red-700";
-};
-
-const getStatusTextClass = (status: TaskStatus) => {
-  if (status === "active") return "text-sky-700";
-  if (status === "in-progress") return "text-violet-700";
-  if (status === "completed") return "text-emerald-700";
-  return "text-rose-700";
-};
 
 const getStatusAccentClass = (status: TaskStatus) => {
   if (status === "active") return "from-sky-500 to-blue-600";
@@ -254,13 +235,6 @@ const isTaskPersonPlaceholder = (value: string | null | undefined) =>
   ["you", "provider", "requester", "customer", "user", "member", "serviq member", "local member"].includes(
     value.trim().toLowerCase()
   );
-const getTaskParticipantCopy = (task: Task) =>
-  task.type === "posted"
-    ? task.assignedTo?.name && !isTaskPersonPlaceholder(task.assignedTo.name)
-      ? `Assigned provider: ${task.assignedTo.name}`
-      : "Assigned provider pending"
-    : `Assigned to you`;
-
 const realtimeStateMeta: Record<
   RealtimeState,
   { label: string; className: string; icon: typeof Loader2 | typeof Wifi | typeof WifiOff }
@@ -469,16 +443,11 @@ const isHistoryTask = (task: OperationalTask) => {
   return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
 };
 
-const isActiveTaskStatus = (status: CanonicalOrderStatus) =>
-  status === "new_lead" ||
-  status === "quoted" ||
-  status === "accepted" ||
-  status === "in_progress";
-
 const resolveTaskViewForStatus = (status: CanonicalOrderStatus): TaskViewTab => {
-  if (status === "completed" || status === "closed") return "completed";
-  if (status === "cancelled" || status === "rejected") return "cancelled";
-  return "in-progress";
+  if (status === "completed" || status === "closed" || status === "cancelled" || status === "rejected") return "done";
+  if (status === "in_progress") return "in-progress";
+  if (status === "new_lead" || status === "quoted" || status === "accepted") return "active";
+  return "active";
 };
 
 export default function TasksPage() {
@@ -497,12 +466,13 @@ export default function TasksPage() {
   const [sharingTaskId, setSharingTaskId] = useState<string | null>(null);
   const [supportBusyTaskId, setSupportBusyTaskId] = useState<string | null>(null);
   const [selectedTaskView, setSelectedTaskView] = useState<TaskViewTab>(() => {
-    if (typeof window === "undefined") return "in-progress";
+    if (typeof window === "undefined") return "active";
     const tab = new URLSearchParams(window.location.search).get("tab");
     if (tab === "inbox") return "inbox";
-    if (tab === "completed") return "completed";
-    if (tab === "cancelled") return "cancelled";
-    return "in-progress";
+    if (tab === "active") return "active";
+    if (tab === "in-progress") return "in-progress";
+    if (tab === "completed" || tab === "cancelled" || tab === "done") return "done";
+    return "active";
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(() => {
@@ -1246,27 +1216,26 @@ export default function TasksPage() {
         count: inboxMatches.length,
       },
       {
-        value: "in-progress" as const,
+        value: "active" as const,
         label: "Active",
         count: filteredTasks.filter((task) => {
           const canonical = getCanonicalTaskStatus(task);
-          return isActiveTaskStatus(canonical);
+          return canonical === "new_lead" || canonical === "quoted" || canonical === "accepted";
         }).length,
       },
       {
-        value: "completed" as const,
-        label: "Completed",
+        value: "in-progress" as const,
+        label: "In Progress",
         count: filteredTasks.filter((task) => {
-          const canonical = getCanonicalTaskStatus(task);
-          return canonical === "completed" || canonical === "closed";
+          return getCanonicalTaskStatus(task) === "in_progress";
         }).length,
       },
       {
-        value: "cancelled" as const,
-        label: "Cancelled",
+        value: "done" as const,
+        label: "Done",
         count: filteredTasks.filter((task) => {
           const canonical = getCanonicalTaskStatus(task);
-          return canonical === "cancelled" || canonical === "rejected";
+          return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
         }).length,
       },
     ],
@@ -1279,23 +1248,20 @@ export default function TasksPage() {
       return [] as OperationalTask[];
     }
 
-    if (selectedTaskView === "completed") {
+    if (selectedTaskView === "done") {
       return filteredTasks.filter((task) => {
         const canonical = getCanonicalTaskStatus(task);
-        return canonical === "completed" || canonical === "closed";
+        return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
       });
     }
 
-    if (selectedTaskView === "cancelled") {
-      return filteredTasks.filter((task) => {
-        const canonical = getCanonicalTaskStatus(task);
-        return canonical === "cancelled" || canonical === "rejected";
-      });
+    if (selectedTaskView === "in-progress") {
+      return filteredTasks.filter((task) => getCanonicalTaskStatus(task) === "in_progress");
     }
 
     return filteredTasks.filter((task) => {
       const canonical = getCanonicalTaskStatus(task);
-      return isActiveTaskStatus(canonical);
+      return canonical === "new_lead" || canonical === "quoted" || canonical === "accepted";
     });
   }, [filteredTasks, selectedTaskView]);
 
@@ -1717,7 +1683,7 @@ export default function TasksPage() {
       if (focusedInboxId) params.set("focus", focusedInboxId);
       else params.delete("focus");
     } else {
-      if (selectedTaskView === "in-progress") params.delete("tab");
+      if (selectedTaskView === "active") params.delete("tab");
       else params.set("tab", selectedTaskView);
 
       if (expandedTaskId) params.set("focus", expandedTaskId);
@@ -1894,7 +1860,7 @@ export default function TasksPage() {
       setSelectedTaskView(nextView);
       setExpandedTaskId(task.orderId);
 
-      if (nextView === "completed" && getTaskReviewTargetId(task)) {
+      if (nextView === "done" && getTaskReviewTargetId(task)) {
         setCommentComposerTaskId(task.orderId);
         return;
       }
@@ -2321,7 +2287,7 @@ export default function TasksPage() {
     if (selectedTaskView === "inbox") {
       return {
         title: "No nearby requests yet",
-        copy: "When someone posts a request that matches your profile and location, it will appear here so you can accept it.",
+        copy: "Matched requests will appear here.",
         actionLabel: "Open marketplace",
         onAction: () => router.push("/dashboard"),
       };
@@ -2330,7 +2296,7 @@ export default function TasksPage() {
     if (tasks.length === 0) {
       return {
         title: "No live tasks yet",
-        copy: "Posted requests and accepted work will appear here automatically once they exist in ServiQ.",
+        copy: "Post or accept work to start tracking.",
         actionLabel: "Open marketplace",
         onAction: () => router.push("/dashboard"),
       };
@@ -2338,8 +2304,8 @@ export default function TasksPage() {
 
     if (searchQuery.trim()) {
       return {
-        title: "No results for this search",
-        copy: "Try a different title, task ID, person, category, location, or status.",
+        title: "No results",
+        copy: "Try another title, person, or status.",
         actionLabel: "Clear search",
         onAction: () => setSearchQuery(""),
       };
@@ -2347,214 +2313,151 @@ export default function TasksPage() {
 
     return {
       title: "No tasks found",
-      copy: "Try a different search or reopen the marketplace to create or accept more work.",
+      copy: "Clear filters or open the marketplace to create or accept work.",
       actionLabel: "Clear search",
       onAction: clearSearch,
     };
   })();
 
-  const renderTaskCardPremium = (task: OperationalTask, options?: { history?: boolean }) => {
+  const renderTaskCardPremium = (task: OperationalTask) => {
     const latestEvent = latestEventByOrderId.get(task.orderId);
     const taskActivity = getPremiumTaskActivity(task);
     const flowLabels = getPremiumTaskFlowLabels(task);
     const supportEntries = supportRequestsByTaskId.get(task.orderId) || [];
     const openSupport = supportEntries.find((request) => isSupportOpen(request.status));
-    const progress = statusProgressMap[task.status];
-    const nextAction = getPremiumTaskNextAction(task);
+    const nextActionCopy = getPremiumTaskNextAction(task);
     const isExpanded = expandedTaskId === task.orderId;
-    const supportAvailability = getSupportAvailability(task);
-    const supportSummaryClassName = openSupport
-      ? "border-amber-200 bg-amber-50 text-amber-800"
-      : supportEntries.length > 0
-        ? "border-slate-200 bg-slate-50 text-slate-700"
-        : supportAvailability.allowed
-          ? "border-slate-200 bg-white text-slate-700"
-          : "border-slate-200 bg-slate-50 text-slate-500";
-    const cardToneClassName = options?.history
-      ? "border-slate-200/90 bg-white"
-      : "border-slate-200 bg-white shadow-[0_22px_60px_-42px_rgba(15,23,42,0.3)]";
     const creatorName = getTaskCreatorName(task);
     const creatorAvatar = getTaskCreatorAvatar(task);
     const creatorSummary = getTaskCreatorSummary(task);
-    const participantCopy = getTaskParticipantCopy(task);
     const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
-    const supportHeadline = openSupport
-      ? formatSupportRequestStatus(openSupport.status)
-      : supportEntries.length > 0
-        ? `${supportEntries.length} support item${supportEntries.length === 1 ? "" : "s"}`
-        : supportAvailability.allowed
-          ? "No issues raised"
-          : "Support unavailable";
-    const supportCopy = openSupport
-      ? `Opened ${formatAgo(openSupport.updatedAtRaw || openSupport.createdAtRaw, clockMs)}`
-      : supportEntries.length > 0
-        ? "Support history is linked to this task."
-        : supportAvailability.allowed
-          ? "Raise an issue if this workflow needs intervention."
-          : supportAvailability.reason;
-    const nextActionTone = getToneClassNames(
-      openSupport
-        ? "amber"
-        : task.status === "in-progress"
-          ? "violet"
-          : task.status === "completed"
-            ? "emerald"
-            : task.status === "cancelled"
-              ? "rose"
-              : "sky"
-    );
+    const canonical = getCanonicalTaskStatus(task);
+    const transitions = getTaskTransitions(task);
+    const busy = updatingOrderId === task.orderId;
+    const chatBusy = chatLoadingOrderId === task.orderId;
+    const canQuote = canManageQuote(task);
+    const canView = canViewQuote(task);
     const summaryItems = [
-      { icon: DollarSign, value: task.budget || "Price on request" },
-      { icon: MapPin, value: task.location },
-      { icon: Clock, value: task.timeline || "Open" },
-      { icon: Calendar, value: latestUpdateAt },
-    ] as const;
-    const visibleFlowLabels = flowLabels.slice(0, 2);
+      { icon: DollarSign, label: task.budget || "Price on request" },
+      { icon: MapPin, label: task.location },
+      { icon: Clock, label: task.timeline || "Open" },
+      { icon: Calendar, label: latestUpdateAt },
+    ];
+    const timelineLabels = flowLabels.length ? flowLabels : [getTaskStatusLabel(task)];
+    const timelineSteps: TaskTimelineStep[] = timelineLabels.map((label, index) => {
+      const last = index === timelineLabels.length - 1;
+      const history = isHistoryTask(task);
+      return {
+        id: `${task.orderId}-${label}-${index}`,
+        label,
+        helper: last && latestEvent ? latestEvent.description : undefined,
+        state:
+          canonical === "cancelled" || canonical === "rejected"
+            ? last
+              ? "cancelled"
+              : "done"
+            : history
+              ? "done"
+              : last
+                ? "active"
+                : "done",
+      };
+    });
+    const openQuoteEditor = () => {
+      setExpandedTaskId(task.orderId);
+      setQuoteEditorTaskId((current) => (current === task.orderId ? null : task.orderId));
+    };
+    const nextAction: NextActionPanelProps = (() => {
+      if (canQuote || canView) {
+        return {
+          title: canView ? "Review the quote" : nextActionCopy.title,
+          helper: canView ? "Check scope and price before accepting." : nextActionCopy.helper,
+          actionLabel: canView ? "View quote" : getQuoteActionLabel(task),
+          actionIcon: DollarSign,
+          onAction: openQuoteEditor,
+          tone: "progress",
+        };
+      }
+
+      if (transitions.includes("completed")) {
+        return {
+          title: canonical === "in_progress" ? "Finish and mark complete" : nextActionCopy.title,
+          helper: canonical === "in_progress" ? "Close the task when the work is wrapped." : nextActionCopy.helper,
+          actionLabel: "Complete",
+          actionIcon: CheckCircle2,
+          onAction: () => void confirmAndRefreshTaskStatus(task, "completed"),
+          busy,
+          tone: "success",
+        };
+      }
+
+      const forwardTransition = transitions.find((status) => status !== "cancelled" && status !== "rejected");
+      if (forwardTransition) {
+        return {
+          title: nextActionCopy.title,
+          helper: nextActionCopy.helper,
+          actionLabel: getTaskTransitionLabel(task, forwardTransition),
+          actionIcon: TrendingUp,
+          onAction: () => void confirmAndRefreshTaskStatus(task, forwardTransition),
+          busy,
+          tone: "progress",
+        };
+      }
+
+      if (!isHistoryTask(task) && task.counterpartyId) {
+        return {
+          title: nextActionCopy.title,
+          helper: nextActionCopy.helper,
+          actionLabel: "Chat",
+          actionIcon: MessageCircle,
+          onAction: () => void startChat(task),
+          busy: chatBusy,
+          tone: "default",
+        };
+      }
+
+      if (isHistoryTask(task)) {
+        return {
+          title: nextActionCopy.title,
+          helper: nextActionCopy.helper,
+          actionLabel: "Repeat",
+          actionIcon: Repeat2,
+          onAction: () => repeatTaskFromHistory(task),
+          tone: canonical === "cancelled" || canonical === "rejected" ? "danger" : "success",
+        };
+      }
+
+      return {
+        title: nextActionCopy.title,
+        helper: nextActionCopy.helper,
+        tone: openSupport ? "warning" : "default",
+      };
+    })();
 
     return (
-      <article
+      <TaskCard
         key={task.id}
-        ref={(node) => {
+        id={`task-${task.orderId}`}
+        setNode={(node) => {
           taskCardRefs.current.set(task.orderId, node);
         }}
-        className={`group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.25rem] border p-3 transition hover:border-slate-300 hover:shadow-[0_20px_45px_-38px_rgba(15,23,42,0.28)] sm:p-4 ${cardToneClassName}`}
+        title={task.title}
+        description={task.description || "No additional details"}
+        avatarUrl={creatorAvatar}
+        avatarAlt={creatorName}
+        ownerName={creatorName}
+        ownerSummary={creatorSummary}
+        statusLabel={getTaskStatusLabel(task)}
+        statusClassName={getOrderStatusPillClass(task.rawStatus)}
+        accentClassName={getStatusAccentClass(task.status)}
+        sourceLabel={getListingTypeLabel(task.listingType)}
+        referenceLabel={`#${task.orderId.slice(0, 8)}`}
+        meta={summaryItems}
+        nextAction={nextAction}
+        timelineSteps={timelineSteps}
+        actions={renderPremiumTaskActions(task)}
+        expanded={isExpanded}
       >
-        <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${getStatusAccentClass(task.status)}`} />
-
-        <div className="flex h-full flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                {getListingTypeLabel(task.listingType)}
-              </span>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(task.rawStatus)}`}>
-                {getTaskStatusLabel(task)}
-              </span>
-              {openSupport ? (
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                  Support open
-                </span>
-              ) : null}
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                #{task.orderId.slice(0, 8)}
-              </span>
-            </div>
-
-            <span
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusColor(task.status)}`}
-            >
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  getToneClassNames(task.status === "completed" ? "emerald" : task.status === "cancelled" ? "rose" : task.status === "in-progress" ? "violet" : "sky").dot
-                }`}
-              />
-              {formatTaskStatus(task.status)}
-            </span>
-          </div>
-
-          <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_220px]">
-            <div className="min-w-0 space-y-3">
-              <div className="flex min-w-0 items-start gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={creatorAvatar}
-                  alt={creatorName}
-                  className="h-12 w-12 shrink-0 rounded-2xl border border-slate-200 object-cover sm:h-14 sm:w-14"
-                />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                    <span className="font-semibold uppercase tracking-[0.16em] text-slate-500">Creator</span>
-                    <span>{creatorSummary}</span>
-                  </div>
-                  <p className="mt-1 truncate text-base font-semibold text-slate-900">{creatorName}</p>
-                  <p className="mt-1 truncate text-sm text-slate-500">{participantCopy}</p>
-                  <h3 className="mt-1 break-words text-[1.05rem] font-semibold leading-tight text-slate-950 sm:text-[1.14rem]">
-                    {task.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-2 break-words text-sm leading-6 text-slate-600">{task.description}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {summaryItems.map((item, index) => (
-                  <span
-                    key={`${task.orderId}-${index}`}
-                    className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
-                  >
-                    <item.icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                    <span className="truncate">{item.value}</span>
-                  </span>
-                ))}
-                <span className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${nextActionTone.card}`}>
-                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{nextAction.title}</span>
-                </span>
-              </div>
-
-              {latestEvent ? (
-                <div className={`rounded-[1rem] border px-3 py-2.5 ${getToneClassNames(latestEvent.tone).card}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${getToneClassNames(latestEvent.tone).dot}`} />
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Latest update</p>
-                      {latestEvent.statusLabel ? (
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getToneClassNames(latestEvent.tone).pill}`}>
-                          {latestEvent.statusLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-500">{formatAgo(latestEvent.createdAtRaw, clockMs)}</span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{latestEvent.title}</p>
-                  <p className="mt-0.5 line-clamp-2 text-sm text-slate-700">{latestEvent.description}</p>
-                </div>
-              ) : null}
-
-              {visibleFlowLabels.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {visibleFlowLabels.map((label) => (
-                    <span
-                      key={`${task.orderId}-${label}`}
-                      className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 lg:grid-cols-1">
-              <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    <Activity className="h-3.5 w-3.5 shrink-0" />
-                    Progress
-                  </span>
-                  <span className={`text-xs font-semibold ${getStatusTextClass(task.status)}`}>{progress}%</span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
-                  <div className={`h-full rounded-full bg-gradient-to-r ${getStatusAccentClass(task.status)}`} style={{ width: `${progress}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-slate-500">Updated {latestUpdateAt}</p>
-              </div>
-
-              <div className={`rounded-[1rem] border px-3 py-2.5 ${supportSummaryClassName}`}>
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  Support
-                </div>
-                <p className="mt-1 text-sm font-semibold">{supportHeadline}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-5">{supportCopy}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-3">{renderPremiumTaskActions(task)}</div>
-
-          {isExpanded ? (
-            <div className="rounded-[1.55rem] border border-slate-200 bg-slate-50/90 p-4 sm:p-5">
               <div className="space-y-4">
                 {(canManageQuote(task) || canViewQuote(task)) && quoteEditorTaskId === task.orderId ? (
                   <QuoteDraftEditor
@@ -2621,10 +2524,7 @@ export default function TasksPage() {
                   })}
                 </div>
               </div>
-            </div>
-          ) : null}
-        </div>
-      </article>
+      </TaskCard>
     );
   };
 
@@ -3100,7 +3000,7 @@ export default function TasksPage() {
 
       <PageContextStrip
         label="Tasks"
-        description="Keep every matched lead, accepted request, active job, and completed order in one operating queue."
+        description="Track requests, handoffs, and next actions."
         action={{ label: "Open Control", href: "/dashboard/provider" }}
         switchAction={{ label: "Open Explore", href: "/dashboard" }}
       />
@@ -3131,7 +3031,7 @@ export default function TasksPage() {
                   Track requests, accepted work, and the next actions that need your attention.
                 </p>
                 <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-slate-600 sm:block">
-                  Order-history style tracking for posted requests, accepted work, support follow-up, and completed history.
+                  Live queue for posted requests, accepted work, support follow-up, and history.
                 </p>
               </div>
 
@@ -3214,29 +3114,7 @@ export default function TasksPage() {
             className="space-y-4 rounded-[1.55rem] border border-white/70 bg-white/90 p-3.5 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.44)] backdrop-blur sm:space-y-5 sm:rounded-[1.9rem] sm:p-5"
           >
             <div className="space-y-3 border-b border-slate-200 pb-3 sm:space-y-4 sm:pb-4">
-              <div className="-mx-3.5 flex items-end gap-4 overflow-x-auto px-3.5 [scrollbar-width:none] sm:mx-0 sm:gap-6 sm:px-0 sm:[scrollbar-width:auto]">
-                {taskTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setSelectedTaskView(tab.value)}
-                    className={`inline-flex shrink-0 border-b-[3px] pb-2.5 text-sm font-semibold transition sm:text-base sm:pb-4 ${
-                      selectedTaskView === tab.value
-                        ? "border-[#0a66c2] text-[#0a66c2]"
-                        : "border-transparent text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count > 0 && (
-                      <span className={`ml-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
-                        selectedTaskView === tab.value ? "bg-[#0a66c2]/15 text-[#0a66c2]" : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {tab.count > 99 ? "99+" : tab.count}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+              <TaskStatusTabs tabs={taskTabs} selected={selectedTaskView} onSelect={setSelectedTaskView} />
 
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -3277,20 +3155,20 @@ export default function TasksPage() {
                 <h2 className="text-[1.75rem] font-semibold leading-tight text-slate-950 sm:text-2xl">
                   {selectedTaskView === "inbox"
                     ? "Nearby Requests"
-                    : selectedTaskView === "cancelled"
-                      ? "Cancelled requests"
-                    : selectedTaskView === "completed"
-                      ? "Completed requests"
-                      : "Active requests"}
+                    : selectedTaskView === "done"
+                      ? "Done"
+                      : selectedTaskView === "in-progress"
+                        ? "In Progress"
+                        : "Active"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedTaskView === "inbox"
-                    ? "Help requests matched to your profile. Send interest to join the shortlist."
-                    : selectedTaskView === "cancelled"
-                      ? "Requests that were cancelled or declined and are no longer active."
-                      : selectedTaskView === "completed"
-                      ? "Completed work that has already been closed out."
-                      : "Open requests, quotes, and accepted work that still need action or follow-through."}
+                    ? "Send interest to join the shortlist."
+                    : selectedTaskView === "done"
+                      ? "Closed, completed, and declined work."
+                      : selectedTaskView === "in-progress"
+                        ? "Work that is actively moving."
+                        : "Open requests, quotes, and accepted work."}
                 </p>
               </div>
               <p className="text-sm text-slate-500">
@@ -3428,7 +3306,7 @@ export default function TasksPage() {
               </div>
             ) : visibleTasks.length > 0 ? (
               <div className="space-y-3">
-                {selectedTaskView === "completed" && pendingReviewCount > 0 ? (
+                {selectedTaskView === "done" && pendingReviewCount > 0 ? (
                   <div className="flex items-start gap-3 rounded-[1.3rem] border border-amber-200 bg-amber-50/70 px-4 py-3">
                     <Star className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
                     <div className="min-w-0 flex-1">
@@ -3444,19 +3322,11 @@ export default function TasksPage() {
                   </div>
                 ) : null}
                 {visibleTasks.map((task) =>
-                  selectedTaskView === "in-progress" &&
-                  (() => {
-                    const canonical = getCanonicalTaskStatus(task);
-                    return canonical === "accepted" || canonical === "in_progress";
-                  })()
+                  selectedTaskView === "in-progress"
                     ? renderTrackedHelpRequestRow(task)
-                    : selectedTaskView === "completed"
+                    : selectedTaskView === "done" && getCanonicalTaskStatus(task) !== "cancelled" && getCanonicalTaskStatus(task) !== "rejected"
                       ? renderCompletedTaskRow(task)
-                    : selectedTaskView === "cancelled" && task.source === "help_request"
-                      ? renderTrackedHelpRequestRow(task, { cancelledHistory: true })
-                    : renderTaskCardPremium(task, {
-                        history: selectedTaskView === "cancelled",
-                      })
+                      : renderTaskCardPremium(task)
                 )}
               </div>
             ) : null}

@@ -18,7 +18,7 @@ class ProviderOnboardingPage extends ConsumerWidget {
     final snapshot = ref.watch(profileSnapshotProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Provider onboarding')),
+      appBar: AppBar(title: const Text('Provider setup')),
       body: SafeArea(
         child: snapshot.when(
           data: (data) => ListView(
@@ -30,13 +30,13 @@ class ProviderOnboardingPage extends ConsumerWidget {
                   children: [
                     Text(
                       data.roleFamily == 'provider'
-                          ? 'Keep building trust locally'
-                          : 'Become a provider on ServiQ',
+                          ? 'Launch provider profile'
+                          : 'Become a provider',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Use this checklist to move from a basic profile to a provider identity that nearby users can trust.',
+                      'Complete identity, offers, location, and publish readiness.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),
@@ -77,9 +77,8 @@ class ProviderOnboardingPage extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               const SectionHeader(
-                title: 'Readiness checklist',
-                subtitle:
-                    'Every completed step improves local discovery and response confidence.',
+                title: 'Setup flow',
+                subtitle: 'Four steps to become discoverable.',
               ),
               const SizedBox(height: 12),
               ..._buildChecklist(data).map(
@@ -168,33 +167,26 @@ List<_ChecklistItemData> _buildChecklist(MobileProfileSnapshot snapshot) {
   final profile = snapshot.profile;
   return [
     _ChecklistItemData(
-      title: 'Business identity',
-      description: 'Name, headline, and intro that make local intent clear.',
+      title: 'Step 1: Identity',
+      description: 'Name, headline, and intro.',
       done: profile.fullName.isNotEmpty && profile.headline.isNotEmpty,
     ),
     _ChecklistItemData(
-      title: 'Area served',
-      description: 'A clear service area helps nearby buyers trust the match.',
-      done: profile.location.isNotEmpty,
-    ),
-    _ChecklistItemData(
-      title: 'Services and products',
-      description: 'Give people a fast way to understand what you offer.',
+      title: 'Step 2: Services / products',
+      description: 'Add at least one offer.',
       done: snapshot.serviceCount + snapshot.productCount > 0,
     ),
     _ChecklistItemData(
-      title: 'Availability',
-      description: 'Show when you can respond and take work.',
-      done: snapshot.availabilityCount > 0,
+      title: 'Step 3: Location / availability',
+      description: 'Set area and response availability.',
+      done: profile.location.isNotEmpty && snapshot.availabilityCount > 0,
     ),
     _ChecklistItemData(
-      title: 'Proof and trust',
-      description:
-          'Reviews, payment readiness, and portfolio build confidence.',
+      title: 'Step 4: Publish',
+      description: 'Review profile and go live.',
       done:
-          snapshot.reviewCount > 0 ||
-          snapshot.paymentMethodCount > 0 ||
-          snapshot.portfolioCount > 0,
+          snapshot.serviceCount + snapshot.productCount > 0 &&
+          profile.location.isNotEmpty,
     ),
   ];
 }

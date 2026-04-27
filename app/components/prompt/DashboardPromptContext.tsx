@@ -52,7 +52,7 @@ const matchesPromptRoute = (pathname: string) =>
   );
 
 const getRoutePlaceholder = (pathname: string) => {
-  if (pathname === "/dashboard") return "Search posts, services, products, or nearby needs";
+  if (pathname === "/dashboard") return "Search requests, services, products, or people";
   if (pathname === "/dashboard/people") return "Search people by name, role, location, or expertise";
   if (pathname === "/dashboard/tasks") return "Search tasks by title, status, category, or owner";
   if (pathname === "/dashboard/chat") return "Search chats by member name or message keyword";
@@ -60,7 +60,7 @@ const getRoutePlaceholder = (pathname: string) => {
   if (pathname === "/dashboard/provider" || pathname.startsWith("/dashboard/provider/")) {
     return "Search listings, orders, inventory, pricing, or business setup";
   }
-  if (pathname === "/dashboard/welcome") return "Ask what to do next in ServiQ";
+  if (pathname === "/dashboard/welcome") return "What do you need?";
   return DEFAULT_PLACEHOLDER;
 };
 

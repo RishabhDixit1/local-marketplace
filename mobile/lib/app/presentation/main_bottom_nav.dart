@@ -30,7 +30,7 @@ class MainBottomNav extends StatelessWidget {
         const NavigationDestination(
           icon: Icon(Icons.people_outline_rounded),
           selectedIcon: Icon(Icons.people_alt_rounded),
-          label: 'People',
+          label: 'Find',
         ),
         NavigationDestination(
           icon: _DestinationIcon(
@@ -52,12 +52,12 @@ class MainBottomNav extends StatelessWidget {
             icon: Icons.chat_bubble_rounded,
             badgeCount: chatCount,
           ),
-          label: 'Chat',
+          label: 'Inbox',
         ),
         const NavigationDestination(
           icon: Icon(Icons.person_outline_rounded),
           selectedIcon: Icon(Icons.person_rounded),
-          label: 'Profile',
+          label: 'You',
         ),
       ],
     );

@@ -56,25 +56,21 @@ void main() {
   ) async {
     await _pumpFeedPage(tester, const Size(320, 640));
 
-    expect(find.text('Explore'), findsOneWidget);
-    expect(find.text('Search the live marketplace'), findsOneWidget);
-    expect(
-      find.text('Local Help Marketplace for Everyday Needs.'),
-      findsOneWidget,
-    );
-    expect(find.text('Post a Need'), findsOneWidget);
+    expect(find.text('Find Help'), findsOneWidget);
+    expect(find.text('Search services, requests, or areas'), findsOneWidget);
+    expect(find.text('Find local help nearby.'), findsOneWidget);
+    expect(find.text('Post Need'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Refine this view'),
+      find.text('Search and filters'),
       180,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Refine this view'), findsOneWidget);
+    expect(find.text('Search and filters'), findsOneWidget);
     expect(find.text('Verified'), findsAtLeastNWidgets(1));
-    expect(find.text('Connected'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Requests you can act on'),
@@ -93,11 +89,8 @@ void main() {
   ) async {
     await _pumpFeedPage(tester, const Size(390, 844));
 
-    expect(find.text('Explore'), findsOneWidget);
-    expect(
-      find.text('Local Help Marketplace for Everyday Needs.'),
-      findsOneWidget,
-    );
+    expect(find.text('Find Help'), findsOneWidget);
+    expect(find.text('Find local help nearby.'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -121,8 +114,8 @@ void main() {
   ) async {
     await _pumpFeedPage(tester, const Size(390, 844), textScaleFactor: 1.3);
 
-    expect(find.text('Explore'), findsOneWidget);
-    expect(find.text('Refine this view'), findsOneWidget);
+    expect(find.text('Find Help'), findsOneWidget);
+    expect(find.text('Search and filters'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -155,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('What do you need nearby today?'), findsOneWidget);
-    expect(find.text('Post a Need'), findsAtLeastNWidgets(1));
+    expect(find.text('Post Need'), findsAtLeastNWidgets(1));
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
       find.text('Trusted activity'),

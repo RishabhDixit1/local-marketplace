@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_card.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
 import 'app_buttons.dart';
-import 'trust_badge.dart';
 
 class FeedCard extends StatelessWidget {
   const FeedCard({
@@ -24,116 +23,70 @@ class FeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDemand = item.type == MobileFeedItemType.demand;
-    final reason = _decisionReason(item);
+    final statusLabel = item.urgent ? 'Urgent' : item.statusLabel;
 
     return SectionCard(
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Tag(label: item.type.label),
-              _Tag(label: item.category),
-              if (item.urgent)
-                const _Tag(
-                  label: 'Urgent',
-                  backgroundColor: AppColors.dangerSoft,
-                  foregroundColor: AppColors.danger,
-                ),
-              if (item.hasMedia) _Tag(label: '${item.mediaCount} media'),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(item.title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(item.description, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 12),
-          _DecisionReason(reason: reason),
-          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TrustBadge(
-                      label: item.trustLabel,
-                      icon: item.isVerified
-                          ? Icons.verified_rounded
-                          : Icons.shield_outlined,
+                    Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    TrustBadge(
-                      label: item.responseLabel,
-                      icon: Icons.schedule_rounded,
-                      backgroundColor: AppColors.accentSoft,
-                      foregroundColor: AppColors.accent,
-                    ),
-                    TrustBadge(
-                      label: item.ratingLabel,
-                      icon: Icons.star_rounded,
-                      backgroundColor: AppColors.warningSoft,
-                      foregroundColor: AppColors.warning,
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _MetaPill(
+                          icon: Icons.person_outline_rounded,
+                          label: item.creatorName,
+                        ),
+                        _MetaPill(
+                          icon: Icons.place_outlined,
+                          label: item.distanceLabel,
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 10),
+              _StatusPill(label: statusLabel, urgent: item.urgent),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Text(
+            item.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _MetaItem(
-                icon: Icons.person_outline_rounded,
-                label: item.creatorName,
-              ),
-              _MetaItem(icon: Icons.place_outlined, label: item.distanceLabel),
-              _MetaItem(icon: Icons.payments_outlined, label: item.priceLabel),
-              _MetaItem(icon: Icons.history_rounded, label: item.timeLabel),
-              if (item.completedJobs > 0)
-                _MetaItem(
-                  icon: Icons.task_alt_rounded,
-                  label: '${item.completedJobs} completed',
-                ),
+              _InfoPill(label: item.type.label),
+              _InfoPill(label: item.category),
+              _InfoPill(label: item.priceLabel),
+              _InfoPill(label: item.timeLabel),
             ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              isDemand
-                  ? 'Nearby people can act on this quickly. Status: ${item.statusLabel}'
-                  : 'Built for local discovery. Status: ${item.statusLabel}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
-            ),
           ),
           if (onPrimaryTap != null || onSecondaryTap != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Row(
               children: [
-                if (onSecondaryTap != null) ...[
-                  Expanded(
-                    child: SecondaryButton(
-                      label: secondaryLabel,
-                      onPressed: onSecondaryTap,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
                 if (onPrimaryTap != null)
                   Expanded(
                     child: PrimaryButton(
@@ -141,6 +94,16 @@ class FeedCard extends StatelessWidget {
                       onPressed: onPrimaryTap,
                     ),
                   ),
+                if (onSecondaryTap != null) ...[
+                  const SizedBox(width: 10),
+                  Tooltip(
+                    message: secondaryLabel,
+                    child: IconButton.outlined(
+                      onPressed: onSecondaryTap,
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -150,56 +113,54 @@ class FeedCard extends StatelessWidget {
   }
 }
 
-String _decisionReason(MobileFeedItem item) {
-  if (item.whyThisCard.trim().isNotEmpty) {
-    return item.whyThisCard.trim();
-  }
-  if (item.feedReason.trim().isNotEmpty) {
-    return item.feedReason.trim();
-  }
-  if (item.sourceType == 'accepted_connection') {
-    return 'Shown first because this comes from your trusted network.';
-  }
-  if (item.urgent) {
-    return 'Urgent nearby request with stronger response intent.';
-  }
-  if (item.type == MobileFeedItemType.demand) {
-    return 'Ranked by local relevance, urgency, trust, and distance.';
-  }
-  return 'Ranked by trust signals, response speed, and nearby fit.';
-}
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, required this.urgent});
 
-class _DecisionReason extends StatelessWidget {
-  const _DecisionReason({required this.reason});
-
-  final String reason;
+  final String label;
+  final bool urgent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(maxWidth: 112),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
+        color: urgent ? AppColors.dangerSoft : AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: urgent ? AppColors.danger : AppColors.ink,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.auto_awesome_outlined,
-            size: 16,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
+          Icon(icon, size: 14, color: AppColors.inkMuted),
+          const SizedBox(width: 5),
+          Flexible(
             child: Text(
-              reason,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppColors.primaryDeep,
-                fontWeight: FontWeight.w700,
-              ),
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
         ],
@@ -208,71 +169,26 @@ class _DecisionReason extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  const _Tag({
-    required this.label,
-    this.backgroundColor = AppColors.surfaceMuted,
-    this.foregroundColor = AppColors.ink,
-  });
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.label});
 
   final String label;
-  final Color backgroundColor;
-  final Color foregroundColor;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 240),
+      constraints: const BoxConstraints(maxWidth: 180),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(AppRadii.md),
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
         child: Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: foregroundColor),
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaItem extends StatelessWidget {
-  const _MetaItem({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 220),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.inkMuted),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          ],
+          style: Theme.of(context).textTheme.labelMedium,
         ),
       ),
     );

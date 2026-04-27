@@ -34,20 +34,19 @@ enum FeedPageMode {
       ? MobileFeedScope.connected
       : MobileFeedScope.all;
 
-  String get title =>
-      this == FeedPageMode.welcome ? 'Your network feed' : 'Explore';
+  String get title => this == FeedPageMode.welcome ? 'Home' : 'Find Help';
 
   String get searchHint => this == FeedPageMode.welcome
-      ? 'Search your network feed'
-      : 'Search the live marketplace';
+      ? 'What do you need?'
+      : 'Search services, requests, or areas';
 
   String get heroTitle => this == FeedPageMode.welcome
-      ? 'Stay close to the people already around you.'
-      : 'Local Help Marketplace for Everyday Needs.';
+      ? 'What do you need?'
+      : 'Find local help nearby.';
 
   String get heroMessage => this == FeedPageMode.welcome
-      ? 'Track nearby needs, trusted providers, and fast follow-up across your connected ServiQ network.'
-      : 'Browse fresh requests, services, and products with the same mobile workflow powering the marketplace.';
+      ? 'Post a need, find providers, and track active work.'
+      : 'Browse requests, services, products, and trusted providers.';
 }
 
 class FeedPage extends ConsumerStatefulWidget {
@@ -313,7 +312,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 title: widget.mode.heroTitle,
                 message: widget.mode.heroMessage,
                 searchLabel: widget.mode.searchHint,
-                primaryLabel: 'Post a Need',
+                primaryLabel: 'Post Need',
                 signalLabels: _exploreHeroSignals(
                   snapshot: previewData,
                   providerCount:
@@ -437,7 +436,7 @@ List<String> _exploreHeroSignals({
 }) {
   final stats = snapshot?.stats;
   if (stats == null) {
-    return const ['Search nearby', 'Post a Need', 'Track tasks'];
+    return const ['Find help', 'Post need', 'Track tasks'];
   }
 
   return [
@@ -475,15 +474,8 @@ class _ExploreIntentPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Refine this view',
+            'Search and filters',
             style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            mode == FeedPageMode.explore
-                ? 'Keep the live marketplace focused without turning the first screen into a control panel.'
-                : 'Search and filter your trusted network without losing the local flow.',
-            style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.md),
           AppSearchField(
@@ -514,7 +506,7 @@ class _ExploreIntentPanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onOpenPeople,
                   icon: const Icon(Icons.people_outline_rounded),
-                  label: const Text('People'),
+                  label: const Text('Find'),
                 ),
               ),
             ],
@@ -635,8 +627,7 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
           if (urgent.isNotEmpty) ...[
             _ExploreFeedLane(
               title: 'Urgent nearby',
-              subtitle:
-                  'Open requests with stronger time pressure and fast follow-up potential.',
+              subtitle: 'Open requests that need a fast response.',
               items: urgent,
               cardBuilder: feedCardBuilder,
             ),
@@ -652,8 +643,7 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
           const SizedBox(height: 18),
           _ExploreFeedLane(
             title: 'Requests you can act on',
-            subtitle:
-                'People nearby who need help, ranked by local fit and trust context.',
+            subtitle: 'Nearby needs matched to your area.',
             items: requests,
             cardBuilder: feedCardBuilder,
             emptyTitle: 'No open requests in this view',
@@ -690,8 +680,7 @@ class _ExploreFeedLane extends StatelessWidget {
           SectionCard(
             child: EmptyStateView(
               title: emptyTitle ?? 'Nothing here yet',
-              message:
-                  'Clear a filter or search a broader category to widen this lane.',
+              message: 'Clear a filter or search a broader category.',
             ),
           )
         else
@@ -730,9 +719,8 @@ class _ExploreProviderLane extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Trusted providers',
-          subtitle:
-              'Nearby people with availability, proof, and service context.',
-          actionLabel: 'People',
+          subtitle: 'Nearby providers with trust signals.',
+          actionLabel: 'Find',
           onAction: onOpenPeople,
         ),
         const SizedBox(height: 12),
@@ -753,8 +741,7 @@ class _ExploreProviderLane extends StatelessWidget {
           SectionCard(
             child: ErrorStateView(
               title: 'Provider lane is delayed',
-              message:
-                  'Requests, services, and products are still available while provider discovery catches up.',
+              message: 'Requests and services are still available.',
               onRetry: onRetryPeople,
             ),
           )
@@ -762,9 +749,8 @@ class _ExploreProviderLane extends StatelessWidget {
           SectionCard(
             child: EmptyStateView(
               title: 'No providers match these filters',
-              message:
-                  'Open People to browse the wider local provider directory.',
-              actionLabel: 'Open People',
+              message: 'Open Find to browse the wider provider directory.',
+              actionLabel: 'Open Find',
               onAction: onOpenPeople,
             ),
           )

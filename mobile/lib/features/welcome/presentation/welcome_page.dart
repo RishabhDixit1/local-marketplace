@@ -23,7 +23,6 @@ import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
-import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/section_header.dart';
 
 class WelcomePage extends ConsumerStatefulWidget {
@@ -728,8 +727,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                       const SizedBox(height: 20),
                       SectionHeader(
                         title: 'Popular nearby',
-                        subtitle:
-                            'Intent shortcuts that map to what people are actively posting around you.',
+                        subtitle: 'Quick ways to start.',
                       ),
                       const SizedBox(height: 12),
                       _QuickCategoryRow(
@@ -2111,7 +2109,7 @@ class _HeroSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Search nearby, post a need, message the right person, then track the task from the same local loop.',
+            'Find help, post a need, or continue active work.',
             style: textTheme.bodyMedium?.copyWith(color: AppColors.ink),
           ),
           const SizedBox(height: 16),
@@ -2147,16 +2145,8 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          MarketplaceLoopSteps(
-            activeIndex: 0,
-            foregroundColor: tokens.heroAccent,
-            mutedColor: AppColors.inkMuted,
-            surfaceColor: Colors.white.withValues(alpha: 0.72),
-            borderColor: tokens.heroStroke,
-          ),
-          const SizedBox(height: 16),
           PrimaryButton(
-            label: 'Post a Need',
+            label: 'Post Need',
             icon: const Icon(Icons.add_rounded),
             onPressed: onPrimaryTap,
           ),
@@ -2165,7 +2155,7 @@ class _HeroSection extends StatelessWidget {
             children: [
               Expanded(
                 child: SecondaryButton(
-                  label: 'Earn Nearby',
+                  label: 'Grow Business',
                   icon: const Icon(Icons.workspace_premium_outlined),
                   onPressed: onEarnTap,
                 ),
@@ -2173,7 +2163,7 @@ class _HeroSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: SecondaryButton(
-                  label: 'People',
+                  label: 'Find Help',
                   icon: const Icon(Icons.people_outline_rounded),
                   onPressed: onPeopleTap,
                 ),

@@ -3,7 +3,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check, Loader2, MapPin, Phone } from "lucide-react";
+import Link from "next/link";
+import { Camera, Check, Loader2, MapPin, PackageCheck, Phone, Send, User } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
@@ -189,7 +190,29 @@ export default function EditProfilePage() {
       {/* page title */}
       <div className="mb-6 px-4 sm:px-0">
         <h1 className="text-2xl font-bold text-slate-900">Edit Profile</h1>
-        <p className="mt-1 text-sm text-slate-500">Your info is private. Only name, photo, and role show on the marketplace.</p>
+        <p className="mt-1 text-sm text-slate-500">Step 1 of provider setup: identity.</p>
+      </div>
+
+      <div className="mb-6 grid gap-2 px-4 sm:grid-cols-4 sm:px-0">
+        {[
+          { label: "Identity", icon: User, active: true, href: "/dashboard/profile" },
+          { label: "Services / products", icon: PackageCheck, active: false, href: "/dashboard/launchpad" },
+          { label: "Location", icon: MapPin, active: false, href: "/dashboard/profile#edit-location" },
+          { label: "Publish", icon: Send, active: false, href: "/dashboard/launchpad" },
+        ].map((step) => (
+          <Link
+            key={step.label}
+            href={step.href}
+            className={`rounded-[var(--radius-card)] border px-3 py-3 text-sm font-semibold transition ${
+              step.active
+                ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                : "border-slate-200 bg-white text-slate-600 hover:border-[var(--brand-500)]/35"
+            }`}
+          >
+            <step.icon className="mb-2 h-4 w-4" />
+            {step.label}
+          </Link>
+        ))}
       </div>
 
       {/*  avatar  */}
