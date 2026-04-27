@@ -335,100 +335,19 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ..addAll(next);
                 }),
                 onOpenPeople: () => context.push(AppRoutes.people),
-              SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.mode == FeedPageMode.explore
-                          ? 'Explore the live marketplace by intent.'
-                          : 'Local discovery with stronger trust cues.',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.mode == FeedPageMode.explore
-                          ? 'Requests, trusted providers, services, products, and urgent work stay separated so the next action is obvious.'
-                          : 'Find nearby needs, services, and products without losing local context.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    AppSearchField(
-                      controller: _searchController,
-                      hintText: widget.mode.searchHint,
-                      onChanged: _onQueryChanged,
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Marketplace'),
-                          selected: true,
-                          onSelected: (_) {},
-                        ),
-                        ChoiceChip(
-                          label: const Text('People'),
-                          selected: false,
-                          onSelected: (_) => context.push(AppRoutes.people),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: MobileFeedScope.values.map((scope) {
-                        return ChoiceChip(
-                          label: Text(scope.label),
-                          selected: _scope == scope,
-                          onSelected: (_) => setState(() => _scope = scope),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    FilterChipGroup<String>(
-                      options: const [
-                        FilterOption(value: 'verified', label: 'Verified'),
-                        FilterOption(value: 'urgent', label: 'Urgent'),
-                        FilterOption(value: 'media', label: 'Media'),
-                        FilterOption(value: 'top_rated', label: 'Top rated'),
-                      ],
-                      selectedValues: _filters,
-                      onChanged: (next) => setState(() {
-                        _filters
-                          ..clear()
-                          ..addAll(next);
-                      }),
-                    ),
-                    if (previewData != null &&
-                        widget.mode == FeedPageMode.explore) ...[
-                      const SizedBox(height: 16),
-                      _ExploreLaneSummary(
-                        stats: previewData.stats,
-                        providerCount:
-                            peopleSnapshot?.asData?.value.people.length ?? 0,
-                        previewData.items.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'Live local feed',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        previewData.items.first.title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        previewData.items.first.category,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ],
-                ),
               ),
+              if (previewData != null &&
+                  widget.mode == FeedPageMode.explore) ...[
+                const SizedBox(height: 16),
+                _ExploreLaneSummary(
+                  stats: previewData.stats,
+                  providerCount:
+                      peopleSnapshot?.asData?.value.people.length ?? 0,
+                  featuredItem: previewData.items.isNotEmpty
+                      ? previewData.items.first
+                      : null,
+                ),
+              ],
               const SizedBox(height: 16),
               snapshot.when(
                 data: (data) {
@@ -500,24 +419,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                               onSecondaryTap: _messageActionFor(item),
                               primaryLabel: _primaryLabelFor(item),
                               secondaryLabel: _secondaryLabelFor(item),
-                              onPrimaryTap: item.helpRequestId == null
-                                  ? item.providerId.trim().isEmpty
-                                        ? null
-                                        : () => context.push(
-                                            AppRoutes.provider(item.providerId),
-                                          )
-                                  : () => _sendInterest(item),
-                              onSecondaryTap: item.providerId.trim().isEmpty
-                                  ? null
-                                  : () => _openChat(item),
-                              primaryLabel: item.helpRequestId == null
-                                  ? 'Open profile'
-                                  : item.viewerHasExpressedInterest
-                                  ? 'Withdraw interest'
-                                  : 'Express interest',
-                              secondaryLabel: _busyFeedActionId == item.id
-                                  ? 'Working...'
-                                  : 'Message',
                             ),
                           ),
                         ),
@@ -633,6 +534,85 @@ class _ExploreIntentPanel extends StatelessWidget {
             selectedValues: filters,
             onChanged: onFiltersChanged,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExploreLaneSummary extends StatelessWidget {
+  const _ExploreLaneSummary({
+    required this.stats,
+    required this.providerCount,
+    this.featuredItem,
+  });
+
+  final MobileFeedStats stats;
+  final int providerCount;
+  final MobileFeedItem? featuredItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = featuredItem;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Explore the live marketplace by intent.',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Requests, trusted providers, services, products, and urgent work stay separated so the next action stays obvious.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 12.0;
+              final width = (constraints.maxWidth - gap) / 2;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  SizedBox(
+                    width: width,
+                    child: MetricTile(
+                      label: 'Open requests',
+                      value: stats.demand.toString(),
+                      icon: Icons.flash_on_rounded,
+                    ),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: MetricTile(
+                      label: 'Trusted providers',
+                      value: providerCount.toString(),
+                      icon: Icons.people_outline_rounded,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          if (item != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Featured nearby',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              item.title,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(item.category, style: Theme.of(context).textTheme.bodySmall),
+          ],
         ],
       ),
     );

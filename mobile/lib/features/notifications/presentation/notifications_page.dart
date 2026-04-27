@@ -11,6 +11,7 @@ import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
@@ -302,22 +303,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   }
 }
 
-bool _matchesFilter(MobileNotificationItem item, _NotificationFilter filter) {
-  switch (filter) {
-    case _NotificationFilter.all:
-      return true;
-    case _NotificationFilter.unread:
-      return item.unread;
-    case _NotificationFilter.messages:
-      return item.kind == MobileNotificationKind.message;
-    case _NotificationFilter.orders:
-      return item.kind == MobileNotificationKind.order;
-    case _NotificationFilter.trust:
-      return item.kind == MobileNotificationKind.review ||
-          item.kind == MobileNotificationKind.connection;
-  }
-}
-
 String _kindLabel(MobileNotificationKind kind) {
   switch (kind) {
     case MobileNotificationKind.order:
@@ -442,6 +427,8 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = _kindIcon(item.kind);
+
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,24 +436,20 @@ class _NotificationCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundColor: item.unread
-                    ? const Color(0xFFE0F2FE)
-                    : const Color(0xFFF1F5F9),
-                foregroundColor: item.unread
-                    ? const Color(0xFF0369A1)
-                    : const Color(0xFF475569),
-                child: Icon(icon),
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: item.unread
+                      ? const Color(0xFFE0F2FE)
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  _kindIcon(item.kind),
-                  color: const Color(0xFF0B1F33),
+                  icon,
+                  color: item.unread
+                      ? const Color(0xFF0369A1)
+                      : const Color(0xFF475569),
                 ),
               ),
               const SizedBox(width: 12),
@@ -492,11 +475,7 @@ class _NotificationCard extends StatelessWidget {
                             ),
                           ),
                       ],
-                    Text(
-                      item.title,
-                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 4),
                     Text(
                       item.message,
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -511,7 +490,6 @@ class _NotificationCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -540,8 +518,6 @@ class _NotificationCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: busy ? null : onOpen,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Open'),
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: Text(actionLabel),
                 ),
