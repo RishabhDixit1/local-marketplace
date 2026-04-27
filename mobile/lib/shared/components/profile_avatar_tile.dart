@@ -9,12 +9,14 @@ class ProfileAvatarTile extends StatelessWidget {
     required this.subtitle,
     this.avatarUrl = '',
     this.trailing,
+    this.subtitleMaxLines = 2,
   });
 
   final String name;
   final String subtitle;
   final String avatarUrl;
   final Widget? trailing;
+  final int subtitleMaxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +38,19 @@ class ProfileAvatarTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                subtitle,
+                maxLines: subtitleMaxLines,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ],
           ),
         ),

@@ -21,6 +21,7 @@ import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.da
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
+import 'package:serviq_mobile/shared/components/provider_card.dart';
 
 const _bootstrap = AppBootstrap(
   config: AppConfig(
@@ -265,6 +266,57 @@ void main() {
 
     expect(find.text('Search nearby'), findsOneWidget);
     expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('provider cards clamp long profile intros on narrow widths', (
+    WidgetTester tester,
+  ) async {
+    const longIntro =
+        'As a Marketing Executive at 1X Sportz, I manage campaigns, '
+        'partner coordination, performance reporting, and every operational '
+        'detail needed to keep the local provider workflow moving.';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 360,
+              child: ProviderCard(
+                person: MobilePersonCard(
+                  id: 'provider-long-bio',
+                  name: 'Vivek Singh',
+                  avatarUrl: '',
+                  headline: longIntro,
+                  locationLabel: 'Crossing Republik, Ghaziabad',
+                  isOnline: false,
+                  activityLabel: 'Recently active',
+                  verificationLabel: 'Growing profile',
+                  completionPercent: 64,
+                  primaryTags: ['CCTV', 'Delivery', 'Electrician'],
+                  openNeedsCount: 0,
+                  postCount: 0,
+                  completedJobs: 0,
+                  openLeads: 0,
+                  averageRating: null,
+                  reviewCount: 0,
+                  priceLabel: 'Pricing in chat',
+                ),
+                onOpenProfile: () {},
+                onMessage: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final intro = tester.widget<Text>(find.text(longIntro));
+    expect(intro.maxLines, 2);
+    expect(intro.overflow, TextOverflow.ellipsis);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('provider profile opens with related local posts', (
