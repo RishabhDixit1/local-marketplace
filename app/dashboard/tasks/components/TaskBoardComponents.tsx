@@ -175,7 +175,7 @@ export function NextActionPanel({
             className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-slate-950 px-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActionIcon className="h-4 w-4" />}
-            {busy ? "Updating..." : actionLabel}
+            <span className="truncate">{busy ? "Updating..." : actionLabel}</span>
           </button>
         ) : null}
       </div>

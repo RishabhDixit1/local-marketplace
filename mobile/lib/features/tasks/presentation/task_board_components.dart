@@ -277,65 +277,104 @@ class NextActionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: task.isProviderTask
-            ? AppColors.primarySoft
-            : AppColors.accentSoft,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(
-          color: task.isProviderTask
-              ? AppColors.primarySoft
-              : AppColors.accentSoft,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            action == null
-                ? Icons.arrow_forward_rounded
-                : _actionIconData(action!.kind),
-            color: task.isProviderTask ? AppColors.primary : AppColors.accent,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  action?.label ?? _nextStepShortLabel(task),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _nextStepMessage(task),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-          if (action != null) ...[
+    final panelColor = task.isProviderTask
+        ? AppColors.primarySoft
+        : AppColors.accentSoft;
+    final accentColor = task.isProviderTask
+        ? AppColors.primary
+        : AppColors.accent;
+    final icon = action == null
+        ? Icons.arrow_forward_rounded
+        : _actionIconData(action!.kind);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < AppBreakpoints.regular;
+
+        final copy = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: accentColor),
             const SizedBox(width: 10),
-            FilledButton(
-              onPressed: busy ? null : onPrimaryAction,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 40),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    action?.label ?? _nextStepShortLabel(task),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _nextStepMessage(task),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
               ),
-              child: busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(action!.label),
             ),
           ],
-        ],
-      ),
+        );
+
+        final actionButton = action == null
+            ? null
+            : FilledButton(
+                onPressed: busy ? null : onPrimaryAction,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        action!.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+              );
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: panelColor,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(color: panelColor),
+          ),
+          child: compact || actionButton == null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    copy,
+                    if (actionButton != null) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(width: double.infinity, child: actionButton),
+                    ],
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: copy),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      flex: 0,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 180),
+                        child: actionButton,
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
     );
   }
 }

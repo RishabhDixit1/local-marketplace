@@ -9,6 +9,9 @@ import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import 'main_bottom_nav.dart';
 
+@visibleForTesting
+bool shouldShowPostActionForBranch(int index) => index == 0 || index == 1;
+
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -30,6 +33,9 @@ class AppShell extends ConsumerWidget {
     ref.watch(mobileLiveHubProvider);
     final chatConversations = ref.watch(chatConversationsProvider);
     final taskSnapshot = ref.watch(taskSnapshotProvider);
+    final showPostAction = shouldShowPostActionForBranch(
+      navigationShell.currentIndex,
+    );
 
     final unreadChatCount = chatConversations.maybeWhen(
       data: (conversations) => conversations.fold<int>(
@@ -47,12 +53,14 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.createNeed),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Post'),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: showPostAction
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(AppRoutes.createNeed),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Post'),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: MainBottomNav(
         currentIndex: navigationShell.currentIndex,
         onTap: (index) => _onDestinationSelected(context, ref, index),
