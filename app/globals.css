@@ -9,8 +9,15 @@
   --brand-900: #0b1f33;
   --brand-700: #11466a;
   --brand-500: #0ea5a4;
+  --brand-400: #22c7c5;
   --brand-300: #67e8f9;
+  --brand-50: #ecfeff;
   --brand-ring: rgba(14, 165, 164, 0.24);
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-card-lg: 1.25rem;
+  --shadow-soft: 0 10px 26px -22px rgba(15, 23, 42, 0.52);
+  --shadow-card: 0 18px 46px -36px rgba(15, 23, 42, 0.38);
   --layer-mobile-nav: 40;
   --layer-floating-action: 50;
   --layer-popover-backdrop: 59;
@@ -40,7 +47,7 @@ h2,
 h3,
 .brand-display {
   font-family: var(--font-display), "Segoe UI", sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 ::selection {

@@ -25,7 +25,6 @@ import type {
 } from "@/lib/marketplaceCardActions";
 import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedMediaCarousel from "@/app/dashboard/components/posts/FeedMediaCarousel";
-import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 
 type ActionBusyState = Record<MarketplacePrimaryActionKind | MarketplaceSecondaryActionKind, boolean>;
 
@@ -89,18 +88,7 @@ const secondaryActionMeta = {
   }
 >;
 
-const verificationLabels: Record<MarketplaceDisplayFeedItem["verificationStatus"], string> = {
-  verified: "Verified profile",
-  pending: "Checks in progress",
-  unclaimed: "Unclaimed profile",
-};
-
-const formatTrustRating = (rating: number) => `${rating.toFixed(1)} stars`;
 const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
-type TrustItem = {
-  label: string;
-  tone: "neutral" | "good" | "caution";
-};
 
 export default function FeedCard({
   item,
@@ -147,46 +135,10 @@ export default function FeedCard({
   const sendQuoteButton = buttons.find((button) => button.kind === "send_quote");
   const openButton = buttons.find((button) => button.kind === "view_profile");
   const discardButton = buttons.find((button) => button.kind === "discard");
-  const reviewCount = item.reviewCount ?? 0;
-  const completedJobs = item.completedJobs ?? 0;
-  const responseMin = item.responseMinutes ?? 0;
+  const primaryButton = acceptButton || sendQuoteButton || openButton || discardButton;
   const ownerCanEdit = typeof onOwnerEdit === "function";
   const ownerCanArchive = typeof onOwnerArchive === "function";
   const ownerCanDelete = typeof onOwnerDelete === "function";
-  const responseSignal =
-    responseMin > 0 && responseMin < 60
-      ? { label: "Replies within 1 hr", tone: "good" as const }
-      : responseMin >= 60 && responseMin < 1440
-      ? { label: "Same-day replies", tone: "neutral" as const }
-      : null;
-  const trustItems = [
-    item.verificationStatus === "verified"
-      ? {
-          label: verificationLabels[item.verificationStatus],
-          tone: "good" as const,
-        }
-      : item.verificationStatus === "pending"
-      ? {
-          label: verificationLabels[item.verificationStatus],
-          tone: "neutral" as const,
-        }
-      : null,
-    reviewCount > 0 && typeof item.averageRating === "number" && Number.isFinite(item.averageRating)
-      ? {
-          label: `${formatTrustRating(item.averageRating)} (${reviewCount})`,
-          tone: "good" as const,
-        }
-      : completedJobs > 0
-      ? {
-          label: `${completedJobs} completed job${completedJobs === 1 ? "" : "s"}`,
-          tone: completedJobs >= 5 ? ("good" as const) : ("neutral" as const),
-        }
-      : {
-          label: "New to marketplace",
-          tone: "neutral" as const,
-        },
-    responseSignal,
-  ].filter(Boolean) as TrustItem[];
 
   const detailPills = [
     {
@@ -222,8 +174,7 @@ export default function FeedCard({
   const shouldShowDetailsToggle =
     item.displayDescription.length > (hasMedia ? 120 : 160) ||
     metaPills.length > 2 ||
-    !!item.locationLabel ||
-    trustItems.length > 2;
+    !!item.locationLabel;
 
   return (
     <article
@@ -434,16 +385,9 @@ export default function FeedCard({
           </button>
         ) : null}
 
-        <TrustSnapshot
-          items={trustItems}
-          compact
-          className="mt-2.5 sm:mt-3"
-          mobileItemLimit={detailsExpanded ? trustItems.length : 2}
-        />
-
         {item.locationLabel ? (
           <p
-            className={`mt-2 items-start gap-1.5 text-[11px] text-slate-400 sm:text-xs ${
+            className={`mt-2 items-start gap-1.5 text-[11px] text-slate-500 sm:text-xs ${
               detailsExpanded ? "flex" : "hidden sm:flex"
             }`}
           >
@@ -457,73 +401,31 @@ export default function FeedCard({
 
       <div className="mt-3 flex flex-col gap-2 sm:mt-3.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          {acceptButton ? (
+          {primaryButton ? (
             <button
               type="button"
-              onClick={() => void onPrimaryAction(acceptButton.kind)}
-              disabled={acceptButton.disabled || actionBusyState[acceptButton.kind]}
-              aria-label={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-              title={actionBusyState[acceptButton.kind] ? buttonBusyLabels[acceptButton.kind] : acceptButton.label}
-              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
-                buttonToneClassNames[acceptButton.tone]
+              onClick={() => void onPrimaryAction(primaryButton.kind)}
+              disabled={primaryButton.disabled || actionBusyState[primaryButton.kind]}
+              aria-label={actionBusyState[primaryButton.kind] ? buttonBusyLabels[primaryButton.kind] : primaryButton.label}
+              title={actionBusyState[primaryButton.kind] ? buttonBusyLabels[primaryButton.kind] : primaryButton.label}
+              className={`inline-flex h-10 min-w-[8rem] items-center justify-center gap-1.5 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                buttonToneClassNames[primaryButton.tone]
               }`}
             >
-              {actionBusyState[acceptButton.kind] ? (
+              {actionBusyState[primaryButton.kind] ? (
                 <Loader2 size={16} className="animate-spin" />
-              ) : acceptButton.kind === "decline" || acceptButton.kind === "withdraw" ? (
+              ) : primaryButton.kind === "send_quote" ? (
+                <MessageCircle size={16} />
+              ) : primaryButton.kind === "view_profile" ? (
+                <ArrowUpRight size={16} />
+              ) : primaryButton.kind === "discard" ? (
+                <Trash2 size={16} />
+              ) : primaryButton.kind === "decline" || primaryButton.kind === "withdraw" ? (
                 <X size={16} />
               ) : (
                 <Check size={16} />
               )}
-              <span className="hidden truncate sm:inline">{acceptButton.label}</span>
-            </button>
-          ) : null}
-
-          {sendQuoteButton ? (
-            <button
-              type="button"
-              onClick={() => void onPrimaryAction("send_quote")}
-              disabled={sendQuoteButton.disabled || actionBusyState.send_quote}
-              aria-label={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-              title={actionBusyState.send_quote ? buttonBusyLabels.send_quote : sendQuoteButton.label}
-              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
-                buttonToneClassNames[sendQuoteButton.tone]
-              }`}
-            >
-              {actionBusyState.send_quote ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-              <span className="hidden truncate sm:inline">{sendQuoteButton.label}</span>
-            </button>
-          ) : null}
-
-          {openButton ? (
-            <button
-              type="button"
-              onClick={() => void onPrimaryAction("view_profile")}
-              disabled={openButton.disabled || actionBusyState.view_profile}
-              aria-label={actionBusyState.view_profile ? buttonBusyLabels.view_profile : openButton.label}
-              title={actionBusyState.view_profile ? buttonBusyLabels.view_profile : openButton.label}
-              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
-                buttonToneClassNames[openButton.tone]
-              }`}
-            >
-              {actionBusyState.view_profile ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpRight size={16} />}
-              <span className="hidden truncate sm:inline">{openButton.label}</span>
-            </button>
-          ) : null}
-
-          {discardButton ? (
-            <button
-              type="button"
-              onClick={() => void onPrimaryAction("discard")}
-              disabled={discardButton.disabled || actionBusyState.discard}
-              aria-label={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-              title={actionBusyState.discard ? buttonBusyLabels.discard : discardButton.label}
-              className={`inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 max-sm:w-9 max-sm:px-0 max-sm:py-0 sm:h-10 sm:min-h-10 sm:rounded-2xl sm:px-4 sm:text-sm ${
-                buttonToneClassNames[discardButton.tone]
-              }`}
-            >
-              {actionBusyState.discard ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-              <span className="hidden truncate sm:inline">{discardButton.label}</span>
+              <span className="truncate">{primaryButton.label}</span>
             </button>
           ) : null}
         </div>

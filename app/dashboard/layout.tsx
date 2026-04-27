@@ -19,7 +19,6 @@ import {
   ProfileProvider,
   useProfileContext,
 } from "@/app/components/profile/ProfileContext";
-import { useCart } from "@/app/components/store/CartContext";
 import { appName } from "@/lib/branding";
 import { scheduleClientIdleTask } from "@/lib/clientIdle";
 import useUnreadChatCount from "@/lib/hooks/useUnreadChatCount";
@@ -37,15 +36,12 @@ import {
   ChevronsRight,
   Home,
   LogOut,
-  Map,
   MessageCircle,
   Newspaper,
   Pencil,
   Plus,
   Settings,
-  ShoppingBag,
   User,
-  Users,
 } from "lucide-react";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -65,17 +61,11 @@ const CartDrawer = dynamic(
   { ssr: false },
 );
 
-const GlobalMapView = dynamic(
-  () => import("@/app/dashboard/components/GlobalMapView"),
-  { ssr: false },
-);
-
 const baseNavigationTabs = [
-  { name: "Welcome", path: "/dashboard/welcome", icon: Home },
-  { name: "Explore", path: "/dashboard", icon: Newspaper },
-  { name: "People", path: "/dashboard/people", icon: Users },
-  { name: "Tasks", path: "/dashboard/tasks", icon: ClipboardList },
-  { name: "Control", path: "/dashboard/provider", icon: BriefcaseBusiness },
+  { name: "Home", path: "/dashboard/welcome", icon: Home },
+  { name: "Find Help", path: "/dashboard", icon: Newspaper },
+  { name: "Manage Tasks", path: "/dashboard/tasks", icon: ClipboardList },
+  { name: "Grow Business", path: "/dashboard/provider", icon: BriefcaseBusiness },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
@@ -150,11 +140,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     string[]
   >([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showGlobalMap, setShowGlobalMap] = useState(false);
-  const { totalItems: cartCount, openCart } = useCart();
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
-  const [openQuickActions, setOpenQuickActions] = useState(false);
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const currentUserId = user?.id ?? null;
   const chatUnreadCount = useUnreadChatCount(
@@ -181,8 +168,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const isChatRouteActive = pathname === "/dashboard/chat";
   const isFeedLandingRoute =
     pathname === "/dashboard" || pathname === "/dashboard/welcome";
-  const hideFloatingQuickActions =
+  const hideFloatingPostAction =
     pathname.startsWith("/dashboard/chat") ||
+    pathname.startsWith("/dashboard/people") ||
+    pathname.startsWith("/dashboard/tasks") ||
+    pathname.startsWith("/dashboard/provider") ||
     pathname.startsWith("/dashboard/notifications") ||
     pathname.startsWith("/dashboard/create_post") ||
     pathname.startsWith("/dashboard/launchpad") ||
@@ -390,7 +380,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timerId = window.setTimeout(() => {
       setShowUserMenu(false);
-      setOpenQuickActions(false);
     }, 0);
 
     return () => {
@@ -620,7 +609,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => {
-                      setOpenQuickActions(false);
                       setShowUserMenu((current) => !current);
                     }}
                     aria-label="Open account menu"
@@ -752,112 +740,19 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {!hideFloatingQuickActions && (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              setShowUserMenu(false);
-              setOpenQuickActions((current) => !current);
-            }}
-            aria-label="Open quick actions"
-            aria-expanded={openQuickActions}
-            className={`fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-[var(--brand-900)] text-white shadow-[0_20px_44px_-24px_rgba(15,23,42,0.8)] transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:h-14 md:w-14 md:rounded-[1.65rem] ${
-              openQuickActions ? "rotate-45 bg-[var(--brand-700)]" : ""
-            }`}
-          >
-            <Plus className="h-5 w-5 md:h-6 md:w-6" />
-          </button>
-
-          {openQuickActions ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setOpenQuickActions(false)}
-                aria-hidden
-                className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/15"
-              />
-              <div className="fixed inset-x-3 bottom-[calc(6.2rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] rounded-[1.75rem] border border-slate-200 bg-white p-2.5 shadow-2xl shadow-slate-900/15 lg:bottom-24 lg:right-6 lg:left-auto lg:w-[260px] lg:rounded-2xl lg:p-2">
-                <div className="px-1 pb-2 lg:hidden">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Quick actions
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Post a local need or let AI set up your business inventory
-                    without creating a feed post.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    setOpenCreatePost(true);
-                  }}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:rounded-xl lg:border-transparent"
-                >
-                  <span className="block text-sm font-semibold text-slate-900">
-                    Post a Need
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Create a live request for Welcome and Explore.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    router.push("/dashboard/launchpad");
-                  }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
-                >
-                  <span className="block text-sm font-semibold text-slate-900">
-                    Business AI
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Use AI to draft your services, products, pricing, and
-                    inventory privately.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    setShowGlobalMap(true);
-                  }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
-                >
-                  <span className="block text-sm font-semibold text-slate-900">
-                    <span className="inline-flex items-center gap-2">
-                      <Map className="h-4 w-4" />
-                      Open Map
-                    </span>
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Jump into the live nearby map across Explore and People.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenQuickActions(false);
-                    openCart();
-                  }}
-                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-3 py-3 text-left transition hover:bg-slate-50 lg:mt-1 lg:rounded-xl lg:border-transparent"
-                >
-                  <span className="block text-sm font-semibold text-slate-900">
-                    <span className="inline-flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4" />
-                      Open Cart
-                    </span>
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Review saved store items{cartCount > 0 ? ` (${cartCount})` : ""} without leaving your flow.
-                  </span>
-                </button>
-              </div>
-            </>
-          ) : null}
-        </>
+      {!hideFloatingPostAction && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowUserMenu(false);
+            setOpenCreatePost(true);
+          }}
+          aria-label="Post a need"
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:min-h-12 md:px-5"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Post Need</span>
+        </button>
       )}
       {openCreatePost && (
         <CreatePostModal
@@ -878,10 +773,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       <CartDrawer />
-
-      {showGlobalMap ? (
-        <GlobalMapView open onClose={() => setShowGlobalMap(false)} />
-      ) : null}
 
       {/* ── Mobile bottom navigation bar ───────────────────────────── */}
       <nav

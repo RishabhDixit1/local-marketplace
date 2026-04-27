@@ -50,7 +50,7 @@ class AppShell extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.createNeed),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Post a Need'),
+        label: const Text('Post'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: MainBottomNav(

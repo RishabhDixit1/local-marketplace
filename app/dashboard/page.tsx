@@ -358,10 +358,10 @@ export default function MarketplacePage() {
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
         <PageContextStrip
-          label="Explore"
-          description="See every nearby post in one live stream, then open, chat, save, or act on the ones that matter now."
-          action={{ label: "Post a Need", href: "/dashboard/create_post" }}
-          switchAction={{ label: "Open Welcome", href: "/dashboard/welcome" }}
+          label="Find Help"
+          description="Browse nearby needs, services, products, and providers."
+          action={{ label: "Post Need", href: "/dashboard/create_post" }}
+          switchAction={{ label: "Home", href: "/dashboard/welcome" }}
         />
 
         {showAdvancedFilters && (

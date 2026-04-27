@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Loader2, MapPin, Rocket, Sparkles } from "lucide-react";
+import { CalendarCheck, ChevronDown, ChevronUp, Loader2, MapPin, PackageCheck, Rocket, Send, Sparkles, User } from "lucide-react";
 import RouteObservability from "@/app/components/RouteObservability";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
@@ -50,6 +50,12 @@ const TONE_OPTIONS: { value: LaunchpadBrandTone; label: string; emoji: string }[
 ];
 
 const GPS_TIMEOUT = 3000;
+const SETUP_STEPS = [
+  { label: "Identity", icon: User },
+  { label: "Services / products", icon: PackageCheck },
+  { label: "Location / availability", icon: CalendarCheck },
+  { label: "Publish", icon: Send },
+] as const;
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -168,7 +174,7 @@ export default function LaunchpadPage() {
 
   // ─── render ───────────────────────────────
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-3xl">
       <RouteObservability route="launchpad" />
 
       {/* header */}
@@ -178,19 +184,32 @@ export default function LaunchpadPage() {
             <Rocket className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Business AI</h1>
-            <p className="text-sm text-slate-500">
-              Let AI draft your profile, services, products, pricing, and inventory without creating a feed post.
-            </p>
+            <h1 className="text-xl font-bold text-slate-900">Provider setup</h1>
+            <p className="text-sm text-slate-500">Build your identity, catalog, area, and publish-ready draft.</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-6">
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+          <div className="grid gap-2 sm:grid-cols-4">
+            {SETUP_STEPS.map((step, index) => (
+              <div key={step.label} className="rounded-[var(--radius-card)] border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] bg-[var(--brand-900)] text-white">
+                    <step.icon className="h-4 w-4" />
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Step {index + 1}</span>
+                </div>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{step.label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ── Section 1: Your Business ────────────────── */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Your Business</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 1: Identity</h2>
           <div className="space-y-4">
 
             {/* Business name */}
@@ -265,8 +284,8 @@ export default function LaunchpadPage() {
         </section>
 
         {/* ── Section 2: What You Offer ───────────────── */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">What You Offer</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 2: Services / products</h2>
           <div className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-offerings">
@@ -286,8 +305,8 @@ export default function LaunchpadPage() {
         </section>
 
         {/* ── Section 3: Location ─────────────────────── */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Where You Work</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 3: Location / availability</h2>
           <div className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="lp-location">
@@ -359,8 +378,8 @@ export default function LaunchpadPage() {
         </section>
 
         {/* ── Section 4: Your Brand ───────────────────── */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Your Brand</h2>
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">Step 4: Publish</h2>
           <div className="space-y-4">
             <div>
               <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="lp-desc">
@@ -481,26 +500,30 @@ export default function LaunchpadPage() {
 
         {/* error */}
         {error ? (
-          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</p>
+          <p className="rounded-[var(--radius-card)] bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</p>
         ) : null}
 
         {/* CTA */}
-        <button
-          type="button"
-          onClick={() => void handleGenerate()}
-          disabled={submitting}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] py-4 text-base font-bold text-white shadow-md transition hover:bg-[var(--brand-700)] disabled:opacity-60 active:scale-[0.98]"
-        >
-          {submitting ? (
-            <><Loader2 className="h-5 w-5 animate-spin" /> Generating pack…</>
-          ) : (
-            <><Sparkles className="h-5 w-5" /> Generate Business AI Pack</>
-          )}
-        </button>
-
-        <p className="pb-6 text-center text-xs text-slate-400">
-          Your profile, service listings, and FAQ will be drafted for review before publishing.
-        </p>
+        <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Ready for review</p>
+              <p className="mt-1 text-sm text-slate-500">Generate a draft, review it, then publish.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleGenerate()}
+              disabled={submitting}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--brand-900)] px-5 text-base font-bold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
+            >
+              {submitting ? (
+                <><Loader2 className="h-5 w-5 animate-spin" /> Generating...</>
+              ) : (
+                <><Sparkles className="h-5 w-5" /> Generate draft</>
+              )}
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

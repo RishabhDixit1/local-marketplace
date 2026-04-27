@@ -6,12 +6,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeIndianRupee,
   BriefcaseBusiness,
+  CheckCircle2,
   ClipboardList,
   Loader2,
+  MapPin,
   Package,
   Plus,
   RefreshCw,
   Sparkles,
+  User,
 } from "lucide-react";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -293,6 +296,36 @@ export default function ProviderControlPage() {
       tone: "bg-amber-50 text-amber-700",
     },
   ] as const;
+  const setupSteps = [
+    {
+      label: "Identity",
+      helper: displayName && displayName !== "Provider" ? displayName : "Add profile details",
+      done: displayName !== "Provider",
+      icon: User,
+      href: "/dashboard/profile",
+    },
+    {
+      label: "Services / products",
+      helper: liveListings > 0 ? `${liveListings} live listing${liveListings === 1 ? "" : "s"}` : "Add your first offer",
+      done: liveListings > 0,
+      icon: Package,
+      href: "/dashboard/launchpad",
+    },
+    {
+      label: "Location / availability",
+      helper: activeServices > 0 || activeProducts > 0 ? "Availability is visible" : "Set where and when you work",
+      done: activeServices > 0 || activeProducts > 0,
+      icon: MapPin,
+      href: "/dashboard/launchpad",
+    },
+    {
+      label: "Publish",
+      helper: liveListings > 0 ? "Storefront is discoverable" : "Review and publish",
+      done: liveListings > 0,
+      icon: Sparkles,
+      href: "/dashboard/launchpad",
+    },
+  ] as const;
 
   if (!providerId && !loading) {
     return (
@@ -376,6 +409,40 @@ export default function ProviderControlPage() {
               <span className="hidden md:inline">Refresh</span>
             </button>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[var(--radius-card-lg)] border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Setup flow</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Launch provider profile</h2>
+          </div>
+          <Link
+            href="/dashboard/launchpad"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--brand-900)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+          >
+            <Sparkles className="h-4 w-4" />
+            Continue setup
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-2 md:grid-cols-4">
+          {setupSteps.map((step, index) => (
+            <Link
+              key={step.label}
+              href={step.href}
+              className="rounded-[var(--radius-card)] border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-[var(--brand-500)]/35 hover:bg-white"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-control)] bg-white text-slate-700">
+                  <step.icon className="h-4 w-4" />
+                </span>
+                {step.done ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <span className="text-xs font-semibold text-slate-400">Step {index + 1}</span>}
+              </div>
+              <p className="mt-2 text-sm font-semibold text-slate-950">{step.label}</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{step.helper}</p>
+            </Link>
+          ))}
         </div>
       </section>
 

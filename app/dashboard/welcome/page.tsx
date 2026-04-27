@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
 import AcceptConfirmDialog from "@/app/dashboard/components/posts/AcceptConfirmDialog";
 import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
@@ -12,7 +11,6 @@ import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPro
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import type { CommunityFeedResponse } from "@/lib/api/community";
 import { createAvatarFallback } from "@/lib/avatarFallback";
-import { appTagline } from "@/lib/branding";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import type { FeedCardSavePayload } from "@/lib/feedCardSaves";
 import {
@@ -37,7 +35,7 @@ import {
 } from "@/lib/marketplaceCardActions";
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
-import { Loader2, UsersRound, Zap } from "lucide-react";
+import { BriefcaseBusiness, ClipboardList, Loader2, Search, UsersRound, Zap } from "lucide-react";
 
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
@@ -102,12 +100,6 @@ const routes = {
 
 const providerRoles = new Set(["provider", "seller", "service_provider", "business"]);
 const FEED_PAGE_SIZE = 8;
-const HERO_TAGLINES = [
-  "Where Neighbours Help and Earn in Real Time.",
-  "Small Tasks. Real People. Instant Help.",
-  "Post What You Need. Someone Nearby Will Help.",
-] as const;
-
 const buildWelcomeDistanceLabel = (distanceKm: number) => (distanceKm > 0 ? `${distanceKm.toFixed(1)} km away` : "Nearby");
 const isUrgentWelcomeCard = (card: NearbyCard) => {
   const urgencySource = `${card.signalLabel} ${card.etaLabel}`.toLowerCase();
@@ -153,7 +145,6 @@ export default function WelcomePage() {
 
   const [openPostModal, setOpenPostModal] = useState(false);
   const [welcomePromptValue, setWelcomePromptValue] = useState("");
-  const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [isFeedLoading, setIsFeedLoading] = useState(true);
@@ -970,6 +961,10 @@ export default function WelcomePage() {
 
   const livePostCount = nearbyCards.length;
   const cardById = useMemo(() => new Map(enrichedCards.map((card) => [card.id, card])), [enrichedCards]);
+  const urgentHomeCount = useMemo(
+    () => enrichedCards.filter((card) => card.isUrgent).length,
+    [enrichedCards]
+  );
   const visibleFeedItems = useMemo(() => visibleCards.map((card) => toMarketplaceFeedItem(card)), [toMarketplaceFeedItem, visibleCards]);
 
   const resolveWelcomeActionModel = useCallback(
@@ -1067,13 +1062,6 @@ export default function WelcomePage() {
     },
     [acceptingCardId, messageCardId]
   );
-
-  useEffect(() => {
-    const t = window.setInterval(() => {
-      setHeroTaglineIndex((i) => (i + 1) % HERO_TAGLINES.length);
-    }, 3400);
-    return () => window.clearInterval(t);
-  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -1322,76 +1310,100 @@ export default function WelcomePage() {
               {loadError}
             </div>
           )}
-          <PageContextStrip
-            label="Welcome"
-            description="This feed only shows posts from accepted connections, so the next step is clearer when you already trust the people involved."
-            action={{ label: "Manage People", href: "/dashboard/people" }}
-            switchAction={{ label: "Open Explore", href: "/dashboard" }}
-          />
-
-          {/* ── Compact startup hero ── */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
           >
-            {/* subtle gradient mesh */}
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_0%_0%,rgba(14,165,164,0.12),transparent_55%),radial-gradient(ellipse_at_100%_100%,rgba(14,116,144,0.10),transparent_55%)]" />
-
-            <div className="relative flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3.5">
-              {/* left: brand copy */}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:items-stretch">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--brand-700)]">
-                    ServiQ
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full border border-[var(--brand-500)]/25 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-700)] shadow-sm backdrop-blur-sm ${
-                      acceptedConnectionCount > 0 ? "" : "opacity-70"
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        acceptedConnectionCount > 0 ? "animate-pulse bg-emerald-500" : "bg-amber-400"
-                      }`}
-                    />
-                    {isFeedLoading
-                      ? "Syncing…"
-                      : livePostCount > 0
-                      ? `${livePostCount} posts live`
-                      : acceptedConnectionCount > 0
-                      ? `${acceptedConnectionCount} connected`
-                      : "Connect to unlock"}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand-700)]">Home</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                    <span className={`h-1.5 w-1.5 rounded-full ${isFeedLoading ? "bg-amber-400" : "bg-emerald-500"}`} />
+                    {isFeedLoading ? "Syncing" : `${livePostCount} live`}
                   </span>
                 </div>
-                <h2 className="mt-0.5 text-[15px] font-semibold leading-snug text-slate-900 sm:text-base">
-                  Local Help Marketplace for Everyday Needs.
-                </h2>
-                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 sm:text-xs">{appTagline}</p>
-                <p className="mt-1 text-[10px] font-medium text-[var(--brand-600)]">
-                  {HERO_TAGLINES[heroTaglineIndex]}
-                </p>
+                <h1 className="mt-2 text-2xl font-semibold leading-tight text-slate-950 sm:text-3xl">
+                  What do you need?
+                </h1>
+                <form
+                  className="mt-4 flex flex-col gap-2 sm:flex-row"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    handleWelcomePromptSubmit();
+                  }}
+                >
+                  <label className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={welcomePromptValue}
+                      onChange={(event) => setWelcomePromptValue(event.target.value)}
+                      placeholder="Search requests, services, people, or areas"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setOpenPostModal(true)}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                  >
+                    <Zap size={16} />
+                    Post Need
+                  </button>
+                </form>
               </div>
 
-              {/* right: CTA pair */}
-              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setOpenPostModal(true)}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] active:scale-[.97] sm:w-auto"
+                  onClick={() => router.push("/dashboard")}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[var(--brand-500)]/40 hover:bg-white"
                 >
-                  <Zap size={13} />
-                  Post a Need
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Find Help</span>
+                  <span className="mt-1 block text-lg font-semibold text-slate-950">{urgentHomeCount}</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">urgent nearby</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push(isProvider ? `${routes.posts}?category=demand` : routes.people)}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 shadow-sm transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] active:scale-[.97] sm:w-auto"
+                  onClick={() => router.push("/dashboard/people")}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[var(--brand-500)]/40 hover:bg-white"
                 >
-                  <UsersRound size={13} />
-                  Earn Nearby
+                  <UsersRound size={16} className="text-[var(--brand-700)]" />
+                  <span className="mt-2 block text-sm font-semibold text-slate-950">Trusted providers</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">{acceptedConnectionCount} connected</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/tasks")}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[var(--brand-500)]/40 hover:bg-white"
+                >
+                  <ClipboardList size={16} className="text-[var(--brand-700)]" />
+                  <span className="mt-2 block text-sm font-semibold text-slate-950">Active tasks</span>
+                  <span className="mt-0.5 block text-xs text-slate-500">Track work</span>
+                </button>
+                {isProvider ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/launchpad")}
+                    className="rounded-2xl border border-slate-200 bg-slate-950 p-3 text-left text-white transition hover:bg-slate-800"
+                  >
+                    <BriefcaseBusiness size={16} />
+                    <span className="mt-2 block text-sm font-semibold">Grow Business</span>
+                    <span className="mt-0.5 block text-xs text-white/65">Set up services</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/provider")}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[var(--brand-500)]/40 hover:bg-white"
+                  >
+                    <BriefcaseBusiness size={16} className="text-[var(--brand-700)]" />
+                    <span className="mt-2 block text-sm font-semibold text-slate-950">Offer help</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">Become a provider</span>
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>
