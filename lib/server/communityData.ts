@@ -349,6 +349,7 @@ const normalizeProfile = (row: FlexibleRow): CommunityProfileRecord | null => {
       ) ||
       metadataDisplayName ||
       null,
+    headline: stringFromRow(row, ["headline", "tagline"], "") || null,
     avatar_url: avatarUrl,
     role: stringFromRow(row, ["role", "account_type"], "") || null,
     bio: stringFromRow(row, ["bio", "about"], "") || null,

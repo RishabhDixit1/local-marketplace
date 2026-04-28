@@ -3118,8 +3118,8 @@ export default function TasksPage() {
 
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Task workspace</p>
-                  <h2 className="mt-1 text-base font-semibold text-slate-950 sm:text-xl">Search and sort your live work</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Board controls</p>
+                  <h2 className="mt-1 text-base font-semibold text-slate-950 sm:text-xl">Find the next action</h2>
                 </div>
 
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
@@ -3301,7 +3301,7 @@ export default function TasksPage() {
                 ))}
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading task workspace...
+                  Loading tasks...
                 </div>
               </div>
             ) : visibleTasks.length > 0 ? (

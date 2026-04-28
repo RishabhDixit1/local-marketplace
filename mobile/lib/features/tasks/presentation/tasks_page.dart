@@ -700,7 +700,7 @@ class _TaskActionWrapper extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         alignment: Alignment.centerLeft,
         child: Row(
@@ -759,14 +759,9 @@ class _TasksErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final message = switch (error) {
-      ApiException apiError => apiError.message,
-      _ => error.toString(),
-    };
-
     return ErrorStateView(
-      title: 'Tasks did not load',
-      message: message,
+      title: 'Tasks unavailable',
+      message: 'Retry the board.',
       onRetry: onRetry,
     );
   }

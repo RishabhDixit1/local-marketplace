@@ -15,12 +15,14 @@ import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
 import 'package:serviq_mobile/features/feed/presentation/feed_page.dart';
 import 'package:serviq_mobile/features/people/data/people_repository.dart';
 import 'package:serviq_mobile/features/people/domain/people_snapshot.dart';
+import 'package:serviq_mobile/features/people/presentation/people_page.dart';
 import 'package:serviq_mobile/features/post_create/presentation/create_need_page.dart';
 import 'package:serviq_mobile/features/provider/presentation/provider_profile_page.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
+import 'package:serviq_mobile/shared/components/provider_card.dart';
 
 const _bootstrap = AppBootstrap(
   config: AppConfig(
@@ -267,6 +269,185 @@ void main() {
     expect(find.text('Priyanka Narayanan'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('provider cards clamp long profile intros on narrow widths', (
+    WidgetTester tester,
+  ) async {
+    const longIntro =
+        'As a Marketing Executive at 1X Sportz, I manage campaigns, '
+        'partner coordination, performance reporting, and every operational '
+        'detail needed to keep the local provider workflow moving.';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 360,
+              child: ProviderCard(
+                person: MobilePersonCard(
+                  id: 'provider-long-bio',
+                  name: 'Vivek Singh',
+                  avatarUrl: '',
+                  headline: longIntro,
+                  locationLabel: 'Crossing Republik, Ghaziabad',
+                  isOnline: false,
+                  activityLabel: 'Recently active',
+                  verificationLabel: 'Growing profile',
+                  completionPercent: 64,
+                  primaryTags: ['CCTV', 'Delivery', 'Electrician'],
+                  openNeedsCount: 0,
+                  postCount: 0,
+                  completedJobs: 0,
+                  openLeads: 0,
+                  averageRating: null,
+                  reviewCount: 0,
+                  priceLabel: 'Pricing in chat',
+                ),
+                onOpenProfile: () {},
+                onMessage: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final intro = tester.widget<Text>(find.text(longIntro));
+    expect(intro.maxLines, 2);
+    expect(intro.overflow, TextOverflow.ellipsis);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('find cards hide noisy metadata on narrow widths', (
+    WidgetTester tester,
+  ) async {
+    const longIntro =
+        'As a Marketing Executive at 1X Sportz, I manage campaigns, '
+        'partner coordination, performance reporting, and every operational '
+        'detail needed to keep the local provider workflow moving.';
+    const longName = 'Vivek Singh Local Services And Operations Partner';
+
+    _setTestSurface(tester, const Size(320, 640));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          peopleSnapshotProvider.overrideWith(
+            (ref) async => const MobilePeopleSnapshot(
+              currentUserId: 'viewer-1',
+              people: [
+                MobilePersonCard(
+                  id: 'provider-noisy',
+                  name: longName,
+                  avatarUrl: '',
+                  headline: longIntro,
+                  locationLabel:
+                      'Crossing Republik Extension, Ghaziabad Sector 14',
+                  isOnline: false,
+                  activityLabel: 'Recently active',
+                  verificationLabel: 'Growing profile',
+                  completionPercent: 64,
+                  primaryTags: [
+                    'CCTV',
+                    'Delivery',
+                    'Electrician',
+                    'Appliance repair',
+                  ],
+                  openNeedsCount: 0,
+                  postCount: 0,
+                  completedJobs: 0,
+                  openLeads: 0,
+                  averageRating: null,
+                  reviewCount: 0,
+                  priceLabel: 'Pricing in chat',
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const PeoplePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text(longName),
+      220,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProviderDirectoryCard), findsOneWidget);
+    expect(find.text('Pricing in chat'), findsNothing);
+    expect(find.text('New to reviews'), findsNothing);
+    expect(find.text('Growing profile'), findsNothing);
+    expect(find.text(longIntro), findsNothing);
+    expect(find.text('CCTV, Delivery'), findsOneWidget);
+    expect(find.text('CCTV'), findsOneWidget);
+    expect(find.text('Delivery'), findsOneWidget);
+    expect(find.text('Electrician'), findsNothing);
+
+    final name = tester.widget<Text>(find.text(longName));
+    final headline = tester.widget<Text>(find.text('CCTV, Delivery'));
+    expect(name.maxLines, 1);
+    expect(name.overflow, TextOverflow.ellipsis);
+    expect(headline.maxLines, 2);
+    expect(headline.overflow, TextOverflow.ellipsis);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('people snapshot prefers service headlines over long profile bios', () {
+    const longBio =
+        'As a Marketing Executive at 1X Sportz, I manage campaigns, '
+        'partner coordination, performance reporting, and every operational '
+        'detail needed to keep the local provider workflow moving.';
+
+    final snapshot = MobilePeopleSnapshot.fromJson({
+      'currentUserId': 'viewer-1',
+      'profiles': [
+        {
+          'id': 'provider-1',
+          'name': 'Vivek Singh',
+          'headline': longBio,
+          'role': 'provider',
+          'profile_completion_percent': 64,
+        },
+      ],
+      'services': [
+        {
+          'provider_id': 'provider-1',
+          'title': 'CCTV installation and repair',
+          'category': 'Security systems',
+        },
+      ],
+    });
+
+    expect(snapshot.people.single.headline, 'CCTV installation and repair');
+  });
+
+  test('people snapshot suppresses resume-style profile headlines', () {
+    final snapshot = MobilePeopleSnapshot.fromJson({
+      'currentUserId': 'viewer-1',
+      'profiles': [
+        {
+          'id': 'provider-1',
+          'name': 'Vivek Singh',
+          'headline':
+              'Business Development & Sponsorship Manager | Client Acquisition | LinkedIn',
+          'role': 'provider',
+          'profile_completion_percent': 64,
+          'services': ['All accessories', 'Delivery'],
+        },
+      ],
+    });
+
+    expect(snapshot.people.single.headline, 'All accessories, Delivery');
+  });
+
   testWidgets('provider profile opens with related local posts', (
     WidgetTester tester,
   ) async {
@@ -335,14 +516,7 @@ Future<void> _pumpFeedPage(
   Size size, {
   double textScaleFactor = 1.0,
 }) async {
-  tester.view.devicePixelRatio = 1.0;
-  tester.view.physicalSize = size;
-  tester.binding.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
-  addTearDown(() {
-    tester.view.resetPhysicalSize();
-    tester.view.resetDevicePixelRatio();
-    tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
-  });
+  _setTestSurface(tester, size, textScaleFactor: textScaleFactor);
 
   await tester.pumpWidget(
     ProviderScope(
@@ -357,6 +531,21 @@ Future<void> _pumpFeedPage(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+void _setTestSurface(
+  WidgetTester tester,
+  Size size, {
+  double textScaleFactor = 1.0,
+}) {
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  tester.binding.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+    tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
+  });
 }
 
 const _sampleSnapshot = MobileFeedSnapshot(

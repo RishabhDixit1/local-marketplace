@@ -96,24 +96,32 @@ class ProviderProfilePage extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        provider.locationLabel,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${provider.workLabel} • ${provider.priceLabel}',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+                      const SizedBox(height: 14),
+                      _ProviderSignalList(
+                        signals: [
+                          _ProviderSignal(
+                            icon: Icons.place_outlined,
+                            label: provider.locationLabel,
+                          ),
+                          _ProviderSignal(
+                            icon: Icons.task_alt_rounded,
+                            label: provider.workLabel,
+                          ),
+                          _ProviderSignal(
+                            icon: Icons.payments_outlined,
+                            label: provider.priceLabel,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             child: PrimaryButton(
-                              label: 'Contact',
+                              label: 'Message',
+                              icon: const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                              ),
                               onPressed: () {
                                 context.push(
                                   AppRoutes.chatDirect(
@@ -129,6 +137,7 @@ class ProviderProfilePage extends ConsumerWidget {
                           Expanded(
                             child: SecondaryButton(
                               label: 'Request quote',
+                              icon: const Icon(Icons.receipt_long_outlined),
                               onPressed: () =>
                                   context.push(AppRoutes.createRequest),
                             ),
@@ -306,6 +315,58 @@ class ProviderProfilePage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ProviderSignal {
+  const _ProviderSignal({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+}
+
+class _ProviderSignalList extends StatelessWidget {
+  const _ProviderSignalList({required this.signals});
+
+  final List<_ProviderSignal> signals;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: signals
+          .map(
+            (signal) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Row(
+                  children: [
+                    Icon(signal.icon, size: 18, color: AppColors.inkMuted),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        signal.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }

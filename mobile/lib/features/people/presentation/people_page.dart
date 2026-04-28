@@ -15,6 +15,7 @@ import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
 import '../data/people_repository.dart';
+import '../domain/people_snapshot.dart';
 
 class PeoplePage extends ConsumerStatefulWidget {
   const PeoplePage({super.key});
@@ -50,13 +51,22 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     });
   }
 
+  void _clearSearchAndFilters() {
+    _debounce?.cancel();
+    _searchController.clear();
+    setState(() {
+      _query = '';
+      _filters.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(peopleSnapshotProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('People'),
+        title: const Text('Find'),
         actions: [
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
@@ -68,33 +78,46 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
             children: [
               SectionCard(
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Nearby providers, trust first.',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      'Find nearby help',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
-                      'Search by skill, service area, response speed, and reputation.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    AppSearchField(
-                      controller: _searchController,
-                      hintText: 'Search name, skill, area, or trust signal',
-                      onChanged: _onQueryChanged,
+                      'Search by skill, area, speed, or reputation.',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 12),
+                    AppSearchField(
+                      controller: _searchController,
+                      hintText: 'Search name, skill, area',
+                      onChanged: _onQueryChanged,
+                    ),
+                    const SizedBox(height: 10),
                     FilterChipGroup<String>(
                       options: const [
-                        FilterOption(value: 'online', label: 'Online now'),
-                        FilterOption(value: 'verified', label: 'Verified'),
-                        FilterOption(value: 'top_rated', label: 'Top rated'),
+                        FilterOption(
+                          value: 'online',
+                          label: 'Online',
+                          icon: Icons.bolt_rounded,
+                        ),
+                        FilterOption(
+                          value: 'verified',
+                          label: 'Verified',
+                          icon: Icons.verified_user_outlined,
+                        ),
+                        FilterOption(
+                          value: 'top_rated',
+                          label: 'Top rated',
+                          icon: Icons.star_rounded,
+                        ),
                       ],
                       selectedValues: _filters,
                       onChanged: (next) => setState(() {
@@ -124,7 +147,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                     }
 
                     return person.matchesQuery(_query);
-                  }).toList();
+                  }).toList()..sort(_compareFindPeople);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,18 +159,21 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       ),
                       const SizedBox(height: 12),
                       if (filtered.isEmpty)
-                        const SectionCard(
+                        SectionCard(
                           child: EmptyStateView(
                             title: 'No matching providers',
                             message:
                                 'Broaden the search or clear a filter to widen the local network.',
+                            icon: Icons.search_off_rounded,
+                            actionLabel: 'Clear search',
+                            onAction: _clearSearchAndFilters,
                           ),
                         )
                       else
                         ...filtered.map(
                           (person) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: ProviderCard(
+                            child: ProviderDirectoryCard(
                               person: person,
                               onOpenProfile: () =>
                                   context.push(AppRoutes.provider(person.id)),
@@ -179,6 +205,40 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       ),
     );
   }
+}
+
+int _compareFindPeople(MobilePersonCard left, MobilePersonCard right) {
+  final scoreCompare = _findPeopleScore(
+    right,
+  ).compareTo(_findPeopleScore(left));
+  if (scoreCompare != 0) {
+    return scoreCompare;
+  }
+
+  return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+}
+
+int _findPeopleScore(MobilePersonCard person) {
+  var score = person.priorityScore;
+  if (person.isOnline) {
+    score += 160;
+  }
+  if (person.completionPercent >= 80) {
+    score += 90;
+  }
+  if (person.isAcceptedConnection) {
+    score += 80;
+  }
+  if ((person.averageRating ?? 0) >= 4.5 && person.reviewCount > 0) {
+    score += 70 + person.reviewCount.clamp(0, 20).toInt();
+  }
+  if (person.locationLabel.trim().isNotEmpty &&
+      person.locationLabel.trim().toLowerCase() != 'nearby') {
+    score += 18;
+  }
+  score += person.mutualConnectionsCount.clamp(0, 10).toInt() * 4;
+  score += person.completedJobs.clamp(0, 20).toInt();
+  return score;
 }
 
 class _PeopleLoading extends StatelessWidget {

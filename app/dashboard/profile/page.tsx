@@ -24,9 +24,9 @@ import { PROFILE_IMAGE_MAX_BYTES, formatUploadLimit } from "@/lib/mediaLimits";
 const BIO_MAX = 120;
 
 const roleOptions: { value: StoredProfileRole; label: string }[] = [
-  { value: "seeker", label: "Seeker  I'\''m looking for services" },
-  { value: "provider", label: "Provider  I offer services" },
-  { value: "business", label: "Both  I seek & provide" },
+  { value: "seeker", label: "Seeker - I need services" },
+  { value: "provider", label: "Provider - I offer services" },
+  { value: "business", label: "Both - I need and offer" },
 ];
 
 //  main component 
