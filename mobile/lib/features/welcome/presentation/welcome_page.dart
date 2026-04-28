@@ -22,7 +22,10 @@ import '../../../features/people/domain/people_snapshot.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
+import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
+import '../../../shared/components/marketplace_guidance.dart';
+import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
 
 class WelcomePage extends ConsumerStatefulWidget {
@@ -721,6 +724,19 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         onRetry: _refresh,
                       ),
                     ],
+                    if (model.isFirstRun) ...[
+                      const SizedBox(height: 16),
+                      _FirstRunGuidanceCard(
+                        onPostNeedTap: () {
+                          _trackFirstEngagement('first_run_post_need');
+                          context.push(AppRoutes.createRequest);
+                        },
+                        onPeopleTap: () {
+                          _trackFirstEngagement('first_run_people');
+                          context.go(AppRoutes.people);
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     _TrustSummarySection(metrics: model.metrics),
                     if (model.quickCategories.isNotEmpty) ...[
@@ -1205,6 +1221,7 @@ class _WelcomeViewModel {
     required this.trustedCountLabel,
     required this.liveStatusLabel,
     required this.hasTrustedNetwork,
+    required this.isFirstRun,
     required this.savedCardIds,
     required this.defaultSurface,
     required this.defaultSurfaceReason,
@@ -1353,6 +1370,10 @@ class _WelcomeViewModel {
           : '${_formatCompactCount(rankedTrusted.length)} trusted posts live',
       liveStatusLabel: _composeLiveStatus(allItems, providers),
       hasTrustedNetwork: rankedTrusted.isNotEmpty,
+      isFirstRun:
+          rankedTrusted.isEmpty &&
+          rankedNearby.isEmpty &&
+          rankedProviders.isEmpty,
       savedCardIds: savedCardIds,
       defaultSurface: _surfaceFromServer(
         allFeed.defaultHomeSurface.isNotEmpty
@@ -1378,6 +1399,7 @@ class _WelcomeViewModel {
   final String trustedCountLabel;
   final String liveStatusLabel;
   final bool hasTrustedNetwork;
+  final bool isFirstRun;
   final Set<String> savedCardIds;
   final _WelcomeSurface defaultSurface;
   final String defaultSurfaceReason;
@@ -2058,177 +2080,36 @@ class _HeroSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens =
-        Theme.of(context).extension<WelcomeThemeTokens>() ??
-        WelcomeThemeTokens.light;
-    final textTheme = Theme.of(context).textTheme;
+    final signals = <String>[
+      trustedCountLabel,
+      liveStatusLabel,
+      ...heroSignals,
+    ];
+    final dedupedSignals = <String>[];
+    for (final signal in signals) {
+      final normalized = signal.trim();
+      if (normalized.isEmpty || dedupedSignals.contains(normalized)) {
+        continue;
+      }
+      dedupedSignals.add(normalized);
+    }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [tokens.heroStart, tokens.heroEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: tokens.heroStroke),
-        boxShadow: AppShadows.card,
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _SignalPill(
-                icon: Icons.people_alt_rounded,
-                label: trustedCountLabel,
-                backgroundColor: Colors.white,
-              ),
-              _SignalPill(
-                icon: Icons.bolt_rounded,
-                label: liveStatusLabel,
-                backgroundColor: Colors.white,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            greeting,
-            style: textTheme.bodySmall?.copyWith(
-              color: tokens.heroAccent,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'What do you need nearby today?',
-            style: textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Find help, post a need, or continue active work.',
-            style: textTheme.bodyMedium?.copyWith(color: AppColors.ink),
-          ),
-          const SizedBox(height: 16),
-          InkWell(
-            onTap: onSearchTap,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            child: Ink(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                child: Row(
-                  children: [
-                    Icon(Icons.search_rounded, color: AppColors.inkMuted),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Search needs, providers, or categories',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.inkMuted,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: 'Post Need',
-            icon: const Icon(Icons.add_rounded),
-            onPressed: onPrimaryTap,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Grow Business',
-                  icon: const Icon(Icons.workspace_premium_outlined),
-                  onPressed: onEarnTap,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Find Help',
-                  icon: const Icon(Icons.people_outline_rounded),
-                  onPressed: onPeopleTap,
-                ),
-              ),
-            ],
-          ),
-          if (heroSignals.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: heroSignals
-                  .map(
-                    (signal) => _SignalPill(
-                      icon: Icons.circle,
-                      iconSize: 8,
-                      label: signal,
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SignalPill extends StatelessWidget {
-  const _SignalPill({
-    required this.icon,
-    required this.label,
-    required this.backgroundColor,
-    this.iconSize = 14,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color backgroundColor;
-  final double iconSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: iconSize, color: AppColors.ink),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+    return MarketplaceLoopHero(
+      title: '$greeting. Start with one clear action.',
+      message:
+          'Post a need, find trusted people nearby, or switch into earning mode from the same account.',
+      searchLabel: 'Search needs, providers, or categories',
+      primaryLabel: 'Post a Need',
+      secondaryLabel: 'Earn Nearby',
+      tertiaryLabel: 'People',
+      primaryIcon: const Icon(Icons.add_rounded),
+      secondaryIcon: const Icon(Icons.workspace_premium_outlined),
+      tertiaryIcon: const Icon(Icons.people_outline_rounded),
+      signalLabels: dedupedSignals,
+      onSearchTap: onSearchTap,
+      onPrimaryTap: onPrimaryTap,
+      onSecondaryTap: onEarnTap,
+      onTertiaryTap: onPeopleTap,
     );
   }
 }
@@ -2256,6 +2137,83 @@ class _InlineWarningCard extends StatelessWidget {
             ),
           ),
           TextButton(onPressed: () => onRetry(), child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+}
+
+class _FirstRunGuidanceCard extends StatelessWidget {
+  const _FirstRunGuidanceCard({
+    required this.onPostNeedTap,
+    required this.onPeopleTap,
+  });
+
+  final VoidCallback onPostNeedTap;
+  final VoidCallback onPeopleTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: const Icon(
+                  Icons.route_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your first useful move',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Post one real need, or add trusted people so Home can start ranking nearby work around you.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const MarketplaceLoopSteps(activeIndex: 1),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: PrimaryButton(
+                  label: 'Post a Need',
+                  icon: const Icon(Icons.add_rounded),
+                  onPressed: onPostNeedTap,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SecondaryButton(
+                  label: 'People',
+                  icon: const Icon(Icons.people_outline_rounded),
+                  onPressed: onPeopleTap,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -2670,142 +2628,28 @@ class _WelcomeRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _Badge(
-                      label: item.sourceTypeLabel,
-                      backgroundColor: fromTrustedNetwork
-                          ? AppColors.primarySoft
-                          : AppColors.surfaceMuted,
-                      foregroundColor: fromTrustedNetwork
-                          ? AppColors.primary
-                          : AppColors.ink,
-                    ),
-                    _Badge(
-                      label: item.category,
-                      backgroundColor: accentBackground,
-                      foregroundColor: accentColor,
-                    ),
-                    if (item.mutualConnectionsCount > 0)
-                      _Badge(
-                        label:
-                            '${item.mutualConnectionsCount} mutual${item.mutualConnectionsCount == 1 ? '' : 's'}',
-                        backgroundColor: AppColors.surfaceMuted,
-                        foregroundColor: AppColors.ink,
-                      ),
-                    if (item.urgent)
-                      const _Badge(
-                        label: 'Urgent',
-                        backgroundColor: AppColors.dangerSoft,
-                        foregroundColor: AppColors.danger,
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onMoreTap,
-                icon: const Icon(Icons.more_horiz_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(item.title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(
-            item.description,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          if (item.hasPreviewImage || item.hasMedia) ...[
-            const SizedBox(height: 14),
-            _CardPreviewMedia(
-              imageUrl: item.thumbnailUrl,
-              count: item.mediaCount,
-              title: item.category,
-            ),
-          ],
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _MetaPill(
-                icon: Icons.person_outline_rounded,
-                label: item.creatorName,
-              ),
-              _MetaPill(icon: Icons.place_outlined, label: item.distanceLabel),
-              _MetaPill(
-                icon: Icons.schedule_rounded,
-                label: item.responseLabel,
-              ),
-              _MetaPill(icon: Icons.payments_outlined, label: item.priceLabel),
-              _MetaPill(icon: Icons.history_rounded, label: item.timeLabel),
-              _MetaPill(
-                icon: Icons.verified_user_outlined,
-                label: item.trustLabel,
-              ),
-              if (item.lastActiveLabel.isNotEmpty)
-                _MetaPill(
-                  icon: item.activeNow
-                      ? Icons.circle
-                      : Icons.access_time_rounded,
-                  label: item.lastActiveLabel,
-                ),
-              if (item.responseReliability.isNotEmpty)
-                _MetaPill(
-                  icon: Icons.bolt_rounded,
-                  label: item.responseReliability,
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: accentBackground,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            child: Text(
-              reason,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: accentColor),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _SaveIconButton(isSaved: isSaved, onTap: onSaveTap),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SecondaryButton(
-                  label: secondaryLabel,
-                  onPressed: onSecondaryTap,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PrimaryButton(
-                  label: primaryLabel,
-                  onPressed: onPrimaryTap,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    final reasonBackground = fromTrustedNetwork
+        ? AppColors.primarySoft
+        : accentBackground;
+    final reasonForeground = fromTrustedNetwork
+        ? AppColors.primary
+        : accentColor;
+
+    return FeedCard(
+      item: item,
+      onPrimaryTap: onPrimaryTap,
+      onSecondaryTap: onSecondaryTap,
+      primaryLabel: primaryLabel,
+      secondaryLabel: secondaryLabel,
+      secondaryIcon: secondaryLabel.toLowerCase().contains('save')
+          ? Icons.bookmark_border_rounded
+          : Icons.chat_bubble_outline_rounded,
+      reason: reason,
+      reasonBackgroundColor: reasonBackground,
+      reasonForegroundColor: reasonForeground,
+      isSaved: isSaved,
+      onSaveTap: onSaveTap,
+      onMoreTap: onMoreTap,
     );
   }
 }
@@ -2867,172 +2711,14 @@ class _WelcomeProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: AppColors.primarySoft,
-                backgroundImage: person.avatarUrl.trim().isNotEmpty
-                    ? CachedNetworkImageProvider(person.avatarUrl)
-                    : null,
-                child: person.avatarUrl.trim().isNotEmpty
-                    ? null
-                    : Text(
-                        _initialsFor(person.name),
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: AppColors.primary,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      person.name,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      person.headline,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onMoreTap,
-                icon: const Icon(Icons.more_horiz_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (person.hasPreviewImage) ...[
-            _CardPreviewMedia(
-              imageUrl: person.previewImageUrl,
-              count: person.previewMediaCount,
-              title: person.previewTitle.isEmpty
-                  ? person.name
-                  : person.previewTitle,
-            ),
-            const SizedBox(height: 14),
-          ],
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Badge(
-                label: person.socialLabel,
-                backgroundColor: person.isAcceptedConnection
-                    ? AppColors.primarySoft
-                    : AppColors.surfaceMuted,
-                foregroundColor: person.isAcceptedConnection
-                    ? AppColors.primary
-                    : AppColors.ink,
-              ),
-              _Badge(
-                label: person.isOnline ? 'Active now' : person.activityLabel,
-                backgroundColor: person.isOnline
-                    ? AppColors.primarySoft
-                    : AppColors.surfaceMuted,
-                foregroundColor: person.isOnline
-                    ? AppColors.primary
-                    : AppColors.ink,
-              ),
-              _Badge(
-                label: person.verificationLabel,
-                backgroundColor: AppColors.accentSoft,
-                foregroundColor: AppColors.accent,
-              ),
-              _Badge(
-                label: person.ratingLabel,
-                backgroundColor: AppColors.warningSoft,
-                foregroundColor: AppColors.warning,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _MetaPill(
-                icon: Icons.place_outlined,
-                label: person.locationLabel,
-              ),
-              _MetaPill(icon: Icons.task_alt_rounded, label: person.workLabel),
-              _MetaPill(
-                icon: Icons.payments_outlined,
-                label: person.priceLabel,
-              ),
-              if (person.mutualConnectionsCount > 0)
-                _MetaPill(
-                  icon: Icons.people_alt_outlined,
-                  label:
-                      '${person.mutualConnectionsCount} mutual${person.mutualConnectionsCount == 1 ? '' : 's'}',
-                ),
-            ],
-          ),
-          if (person.primaryTags.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: person.primaryTags
-                  .map(
-                    (tag) => _Badge(
-                      label: tag,
-                      backgroundColor: AppColors.surfaceMuted,
-                      foregroundColor: AppColors.ink,
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            child: Text(
-              reason,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _SaveIconButton(isSaved: isSaved, onTap: onSaveTap),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Message',
-                  onPressed: onMessageTap,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PrimaryButton(
-                  label: 'View profile',
-                  onPressed: onOpenTap,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return ProviderCard(
+      person: person,
+      reason: reason,
+      isSaved: isSaved,
+      onSave: onSaveTap,
+      onMore: onMoreTap,
+      onMessage: onMessageTap,
+      onOpenProfile: onOpenTap,
     );
   }
 }
@@ -3270,31 +2956,6 @@ class _MetaPill extends StatelessWidget {
   }
 }
 
-class _SaveIconButton extends StatelessWidget {
-  const _SaveIconButton({required this.isSaved, required this.onTap});
-
-  final bool isSaved;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 44,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(
-          isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-        ),
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: AppColors.border),
-        ),
-      ),
-    );
-  }
-}
-
 class _WelcomeLoadingState extends StatelessWidget {
   const _WelcomeLoadingState();
 
@@ -3409,22 +3070,6 @@ IconData _categoryIcon(String category) {
     return Icons.format_paint_rounded;
   }
   return Icons.home_repair_service_rounded;
-}
-
-String _initialsFor(String value) {
-  final parts = value
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) {
-    return 'S';
-  }
-  if (parts.length == 1) {
-    return parts.first.substring(0, 1).toUpperCase();
-  }
-  return '${parts.first.substring(0, 1)}${parts[1].substring(0, 1)}'
-      .toUpperCase();
 }
 
 const _emptyFeedSnapshot = MobileFeedSnapshot(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_routes.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 
@@ -149,7 +150,9 @@ Windows
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: canContinue ? () => context.go('/sign-in') : null,
+              onPressed: canContinue
+                  ? () => context.go(AppRoutes.signIn)
+                  : null,
               icon: const Icon(Icons.arrow_forward_rounded),
               label: const Text('Continue to sign in'),
             ),

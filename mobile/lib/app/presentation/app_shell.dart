@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/realtime/mobile_live_hub.dart';
+import '../../core/theme/app_theme.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import 'main_bottom_nav.dart';
@@ -52,15 +53,19 @@ class AppShell extends ConsumerWidget {
     );
 
     return Scaffold(
+      extendBody: true,
       body: navigationShell,
       floatingActionButton: showPostAction
           ? FloatingActionButton.extended(
               onPressed: () => context.push(AppRoutes.createNeed),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Post'),
+              label: const Text('Post Need'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 6,
             )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: MainBottomNav(
         currentIndex: navigationShell.currentIndex,
         onTap: (index) => _onDestinationSelected(context, ref, index),

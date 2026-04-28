@@ -14,7 +14,13 @@ class MarketplaceLoopHero extends StatelessWidget {
     required this.onPrimaryTap,
     this.secondaryLabel,
     this.onSecondaryTap,
+    this.tertiaryLabel,
+    this.onTertiaryTap,
+    this.primaryIcon = const Icon(Icons.add_rounded),
+    this.secondaryIcon = const Icon(Icons.assignment_outlined),
+    this.tertiaryIcon = const Icon(Icons.people_outline_rounded),
     this.signalLabels = const <String>[],
+    this.showLoopSteps = true,
   });
 
   final String title;
@@ -25,7 +31,13 @@ class MarketplaceLoopHero extends StatelessWidget {
   final VoidCallback onPrimaryTap;
   final String? secondaryLabel;
   final VoidCallback? onSecondaryTap;
+  final String? tertiaryLabel;
+  final VoidCallback? onTertiaryTap;
+  final Widget primaryIcon;
+  final Widget secondaryIcon;
+  final Widget tertiaryIcon;
   final List<String> signalLabels;
+  final bool showLoopSteps;
 
   @override
   Widget build(BuildContext context) {
@@ -68,36 +80,46 @@ class MarketplaceLoopHero extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _HeroSearchButton(label: searchLabel, onTap: onSearchTap),
+          if (showLoopSteps) ...[
+            const SizedBox(height: AppSpacing.md),
+            MarketplaceLoopSteps(
+              activeIndex: 0,
+              foregroundColor: Colors.white,
+              mutedColor: Colors.white.withValues(alpha: 0.72),
+              surfaceColor: Colors.white.withValues(alpha: 0.12),
+              borderColor: Colors.white.withValues(alpha: 0.20),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
-          MarketplaceLoopSteps(
-            activeIndex: 0,
-            foregroundColor: Colors.white,
-            mutedColor: Colors.white.withValues(alpha: 0.72),
-            surfaceColor: Colors.white.withValues(alpha: 0.12),
-            borderColor: Colors.white.withValues(alpha: 0.20),
+          PrimaryButton(
+            label: primaryLabel,
+            icon: primaryIcon,
+            onPressed: onPrimaryTap,
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onPrimaryTap,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(primaryLabel),
-                ),
-              ),
-              if (secondaryLabel != null && onSecondaryTap != null) ...[
-                const SizedBox(width: AppSpacing.sm),
+          if (secondaryLabel != null && onSecondaryTap != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
                 Expanded(
                   child: SecondaryButton(
                     label: secondaryLabel!,
-                    icon: const Icon(Icons.assignment_outlined),
+                    icon: secondaryIcon,
                     onPressed: onSecondaryTap,
                   ),
                 ),
+                if (tertiaryLabel != null && onTertiaryTap != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: SecondaryButton(
+                      label: tertiaryLabel!,
+                      icon: tertiaryIcon,
+                      onPressed: onTertiaryTap,
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );

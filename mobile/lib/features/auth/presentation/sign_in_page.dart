@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_routes.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
@@ -245,6 +247,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
       setState(() {
         _emailCodeStatus = 'Signed in. Redirecting...';
       });
+      context.go(AppRoutes.home);
     } catch (error) {
       if (!mounted) {
         return;
@@ -332,6 +335,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         setState(() {
           _passwordStatus = 'Signed in. Redirecting...';
         });
+        context.go(AppRoutes.home);
       } else {
         final response = await authService.signUpWithPassword(
           email: email,
@@ -350,6 +354,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
               ? 'Account created. Redirecting into ServiQ...'
               : 'Account created. Check your email to confirm it, then sign in here or use the email code above.';
         });
+        if (response.session != null) {
+          context.go(AppRoutes.home);
+        }
       }
     } catch (error) {
       if (!mounted) {

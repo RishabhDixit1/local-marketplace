@@ -13,6 +13,13 @@ class FeedCard extends StatelessWidget {
     this.onSecondaryTap,
     this.primaryLabel = 'Open',
     this.secondaryLabel = 'Message',
+    this.secondaryIcon = Icons.chat_bubble_outline_rounded,
+    this.reason,
+    this.reasonBackgroundColor = AppColors.primarySoft,
+    this.reasonForegroundColor = AppColors.primary,
+    this.isSaved = false,
+    this.onSaveTap,
+    this.onMoreTap,
   });
 
   final MobileFeedItem item;
@@ -20,6 +27,13 @@ class FeedCard extends StatelessWidget {
   final VoidCallback? onSecondaryTap;
   final String primaryLabel;
   final String secondaryLabel;
+  final IconData secondaryIcon;
+  final String? reason;
+  final Color reasonBackgroundColor;
+  final Color reasonForegroundColor;
+  final bool isSaved;
+  final VoidCallback? onSaveTap;
+  final VoidCallback? onMoreTap;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +76,38 @@ class FeedCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              _StatusPill(label: statusLabel, urgent: item.urgent),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _StatusPill(label: statusLabel, urgent: item.urgent),
+                  if (onSaveTap != null || onMoreTap != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (onSaveTap != null)
+                          IconButton.outlined(
+                            tooltip: isSaved ? 'Saved' : 'Save',
+                            onPressed: onSaveTap,
+                            icon: Icon(
+                              isSaved
+                                  ? Icons.bookmark_rounded
+                                  : Icons.bookmark_border_rounded,
+                            ),
+                          ),
+                        if (onMoreTap != null) ...[
+                          if (onSaveTap != null) const SizedBox(width: 4),
+                          IconButton.outlined(
+                            tooltip: 'More actions',
+                            onPressed: onMoreTap,
+                            icon: const Icon(Icons.more_horiz_rounded),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -83,6 +128,23 @@ class FeedCard extends StatelessWidget {
               _InfoPill(label: item.timeLabel),
             ],
           ),
+          if ((reason ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: reasonBackgroundColor,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Text(
+                reason!.trim(),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: reasonForegroundColor),
+              ),
+            ),
+          ],
           if (onPrimaryTap != null || onSecondaryTap != null) ...[
             const SizedBox(height: 14),
             Row(
@@ -100,7 +162,7 @@ class FeedCard extends StatelessWidget {
                     message: secondaryLabel,
                     child: IconButton.outlined(
                       onPressed: onSecondaryTap,
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      icon: Icon(secondaryIcon),
                     ),
                   ),
                 ],
