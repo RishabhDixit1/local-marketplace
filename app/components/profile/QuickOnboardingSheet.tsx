@@ -21,8 +21,12 @@ import {
   isUsableLocationLabel,
   requestBrowserCoordinates,
 } from "@/lib/geo";
+import { saveCurrentUserProfile } from "@/lib/profile/client";
 import type { ProfileRecord } from "@/lib/profile/types";
-import { supabase } from "@/lib/supabase";
+import {
+  createQuickOnboardingProfileValues,
+  getQuickOnboardingStoredRole,
+} from "@/lib/profile/utils";
 
 type RoleChoice = "user" | "provider" | "both";
 type FlowStep = "intro" | "details" | "complete";
@@ -160,38 +164,50 @@ export default function QuickOnboardingSheet() {
       return;
     }
 
+    if (phone.replace(/\D/g, "").length !== 10) {
+      setError("Enter a 10-digit mobile number.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     try {
-      const storedRole = roleChoice === "user" ? "seeker" : roleChoice === "both" ? "business" : "provider";
-      const metadata = {
-        ...(profile.metadata || {}),
-        onboardingRoleChoice: roleChoice,
-      };
+      const buildValues = (includeFallbackBio = false) =>
+        createQuickOnboardingProfileValues({
+          profile,
+          email: user.email || "",
+          fullName: name,
+          location,
+          latitude,
+          longitude,
+          phone,
+          roleChoice,
+          includeFallbackBio,
+        });
 
-      const { data, error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: name.trim() || null,
-          name: name.trim() || null,
-          location: location.trim() || null,
-          latitude: typeof latitude === "number" && Number.isFinite(latitude) ? latitude : null,
-          longitude: typeof longitude === "number" && Number.isFinite(longitude) ? longitude : null,
-          phone: phone.trim() || null,
-          role: storedRole,
-          metadata,
-        })
-        .eq("id", user.id)
-        .select("*")
-        .maybeSingle();
+      const saveProfile = (includeFallbackBio = false) =>
+        saveCurrentUserProfile({
+          user,
+          values: buildValues(includeFallbackBio),
+          storedRole: getQuickOnboardingStoredRole(roleChoice),
+          metadataPatch: {
+            onboardingRoleChoice: roleChoice,
+          },
+        });
 
-      if (updateError) throw updateError;
+      let nextProfile = await saveProfile();
 
-      if (data) {
-        setProfile(data as typeof profile);
-        setFlowStep("complete");
+      if (!nextProfile.onboarding_completed) {
+        nextProfile = await saveProfile(true);
       }
+
+      if (!nextProfile.onboarding_completed) {
+        throw new Error("Your basics saved, but setup was not marked complete. Please try again.");
+      }
+
+      setProfile(nextProfile);
+      setFlowStep("complete");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save onboarding details.");
     } finally {

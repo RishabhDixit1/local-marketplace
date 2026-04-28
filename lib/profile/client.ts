@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import type { SaveProfileResponse, UploadProfileAvatarResponse } from "@/lib/api/profile";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
-import { type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
+import { type ProfileFormValues, type ProfileRecord, type StoredProfileRole } from "@/lib/profile/types";
 import {
   buildBootstrapProfilePatch,
   normalizeProfileRecord,
@@ -67,6 +67,8 @@ export const ensureClientProfile = async (user: User | null | undefined) => {
 export const saveCurrentUserProfile = async (params: {
   user: Pick<User, "id" | "email">;
   values: ProfileFormValues;
+  storedRole?: StoredProfileRole;
+  metadataPatch?: Record<string, unknown>;
 }) => {
   const payload = await fetchAuthedJson<SaveProfileResponse>(
     supabase,
@@ -75,6 +77,8 @@ export const saveCurrentUserProfile = async (params: {
       method: "POST",
       body: JSON.stringify({
         values: params.values,
+        storedRole: params.storedRole,
+        metadataPatch: params.metadataPatch,
       }),
     }
   );

@@ -56,6 +56,8 @@ export async function POST(request: Request) {
     userId: authResult.auth.userId,
     email: authResult.auth.email,
     values: body.values,
+    storedRole: body.storedRole,
+    metadataPatch: body.metadataPatch,
   });
 
   if (!result.ok || !result.profile) {

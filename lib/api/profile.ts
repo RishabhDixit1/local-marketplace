@@ -1,4 +1,4 @@
-import type { ProfileFormValues, ProfileRecord } from "@/lib/profile/types";
+import type { ProfileFormValues, ProfileRecord, StoredProfileRole } from "@/lib/profile/types";
 
 export type ProfileApiErrorCode =
   | "UNAUTHORIZED"
@@ -18,6 +18,8 @@ export type ProfileApiError = {
 
 export type SaveProfileRequest = {
   values: ProfileFormValues;
+  storedRole?: StoredProfileRole;
+  metadataPatch?: Record<string, unknown>;
 };
 
 export type SaveProfileSuccess = {

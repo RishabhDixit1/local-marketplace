@@ -67,6 +67,17 @@ export const normalizeStoredProfileRole = (value: string | null | undefined): St
 export const getProfileRoleFamily = (value: string | null | undefined): ProfileRoleFamily =>
   normalizeStoredProfileRole(value) === "seeker" ? "seeker" : "provider";
 
+export type QuickOnboardingRoleChoice = "user" | "provider" | "both";
+
+export const getQuickOnboardingStoredRole = (roleChoice: QuickOnboardingRoleChoice): StoredProfileRole => {
+  if (roleChoice === "user") return "seeker";
+  if (roleChoice === "both") return "business";
+  return "provider";
+};
+
+export const getQuickOnboardingRoleFamily = (roleChoice: QuickOnboardingRoleChoice): ProfileRoleFamily =>
+  roleChoice === "user" ? "seeker" : "provider";
+
 export const normalizeAvailability = (value: string | null | undefined): ProfileAvailability => {
   const normalized = trim(value).toLowerCase() as ProfileAvailability;
   return availabilityValues.has(normalized) ? normalized : "available";
@@ -317,6 +328,57 @@ export const toProfileFormValues = (profile: ProfileRecord | null | undefined): 
   availability: normalizeAvailability(profile?.availability),
 });
 
+export const createQuickOnboardingFallbackBio = (params: {
+  fullName: string;
+  location: string;
+  roleChoice: QuickOnboardingRoleChoice;
+}) => {
+  const nameLabel = trim(params.fullName) || "This ServiQ member";
+  const placeLabel = trim(params.location) ? ` around ${trim(params.location)}` : " nearby";
+  const roleIntent =
+    params.roleChoice === "user"
+      ? "find trusted local help"
+      : params.roleChoice === "provider"
+        ? "offer trusted local services"
+        : "find and offer trusted local services";
+
+  return `${nameLabel} uses the marketplace${placeLabel} to ${roleIntent} with clear coordination.`;
+};
+
+export const createQuickOnboardingProfileValues = (params: {
+  profile: ProfileRecord | null | undefined;
+  email?: string | null;
+  fullName: string;
+  location: string;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string;
+  roleChoice: QuickOnboardingRoleChoice;
+  includeFallbackBio?: boolean;
+}): ProfileFormValues => {
+  const baseValues = toProfileFormValues(params.profile);
+  const existingBio = trim(baseValues.bio);
+
+  return {
+    ...baseValues,
+    fullName: trim(params.fullName),
+    location: trim(params.location),
+    latitude: typeof params.latitude === "number" && Number.isFinite(params.latitude) ? params.latitude : null,
+    longitude: typeof params.longitude === "number" && Number.isFinite(params.longitude) ? params.longitude : null,
+    role: getQuickOnboardingRoleFamily(params.roleChoice),
+    bio:
+      existingBio.length >= PROFILE_BIO_MIN_LENGTH || !params.includeFallbackBio
+        ? existingBio
+        : createQuickOnboardingFallbackBio({
+            fullName: params.fullName,
+            location: params.location,
+            roleChoice: params.roleChoice,
+          }),
+    email: baseValues.email || trim(params.email),
+    phone: trim(params.phone),
+  };
+};
+
 export const normalizeProfileRecord = (
   row: Record<string, unknown> | null | undefined,
   user?: Pick<User, "id" | "email"> | null
@@ -440,11 +502,14 @@ export const createProfileSavePayload = (params: {
   user: Pick<User, "id" | "email">;
   values: ProfileFormValues;
   existingProfile: ProfileRecord | null;
+  storedRole?: StoredProfileRole;
+  metadataPatch?: Record<string, unknown>;
 }) => {
   const topics = normalizeTopics(params.values.interests);
   const displayName = toNullableString(params.values.fullName) || toNullableString(params.user.email || "") || params.user.id;
-  const storedRole =
-    params.values.role === "provider"
+  const storedRole = params.storedRole
+    ? normalizeStoredProfileRole(params.storedRole)
+    : params.values.role === "provider"
       ? params.existingProfile?.role === "business"
         ? "business"
         : "provider"
@@ -453,6 +518,7 @@ export const createProfileSavePayload = (params: {
   const normalizedWebsite = normalizeWebsite(params.values.website);
   const nextMetadata = {
     ...(params.existingProfile?.metadata || {}),
+    ...(params.metadataPatch || {}),
   };
   const normalizedBackgroundImageUrl = trim(params.values.backgroundImageUrl);
 

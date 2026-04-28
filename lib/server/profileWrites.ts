@@ -1,6 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { SaveProfileRequest } from "@/lib/api/profile";
-import { PROFILE_AVATAR_BUCKET, type ProfileFormValues, type ProfileRecord } from "@/lib/profile/types";
+import { PROFILE_AVATAR_BUCKET, type ProfileFormValues, type ProfileRecord, type StoredProfileRole } from "@/lib/profile/types";
 import { buildBootstrapProfilePatch, createProfileSavePayload, normalizeProfileRecord } from "@/lib/profile/utils";
 import { STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 
@@ -61,11 +61,20 @@ export const isProfileSaveRequest = (payload: unknown): payload is SaveProfileRe
   if (!payload || typeof payload !== "object") return false;
   const record = payload as Record<string, unknown>;
   const values = record.values;
+  const storedRole = record.storedRole;
+  const metadataPatch = record.metadataPatch;
 
   if (!values || typeof values !== "object") return false;
   const typedValues = values as Record<string, unknown>;
+  const hasValidStoredRole =
+    storedRole === undefined || storedRole === "seeker" || storedRole === "provider" || storedRole === "business";
+  const hasValidMetadataPatch =
+    metadataPatch === undefined ||
+    (typeof metadataPatch === "object" && metadataPatch !== null && !Array.isArray(metadataPatch));
 
   return (
+    hasValidStoredRole &&
+    hasValidMetadataPatch &&
     typeof typedValues.fullName === "string" &&
     typeof typedValues.location === "string" &&
     (typedValues.latitude === null || typedValues.latitude === undefined || typeof typedValues.latitude === "number") &&
@@ -87,6 +96,8 @@ export const saveProfileRow = async (params: {
   userId: string;
   email: string;
   values: ProfileFormValues;
+  storedRole?: StoredProfileRole;
+  metadataPatch?: Record<string, unknown>;
 }): Promise<ProfileWriteResult> => {
   const existingRead = await buildProfileRead(params.db, params.userId, params.email);
   const existingProfile = existingRead.profile || null;
@@ -99,6 +110,8 @@ export const saveProfileRow = async (params: {
       },
       values: params.values,
       existingProfile,
+      storedRole: params.storedRole,
+      metadataPatch: params.metadataPatch,
     }),
   };
 
