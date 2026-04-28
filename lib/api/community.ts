@@ -7,6 +7,7 @@ import type {
 export type CommunityProfileRecord = {
   id: string;
   name?: string | null;
+  headline?: string | null;
   avatar_url?: string | null;
   role?: string | null;
   bio?: string | null;

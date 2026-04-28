@@ -59,6 +59,9 @@ class MobilePeopleSnapshot {
 
     final tagsByProvider = <String, Set<String>>{};
     final pricesByProvider = <String, List<double>>{};
+    final listingTitlesByProvider = <String, List<String>>{};
+    final serviceCountByProvider = <String, int>{};
+    final productCountByProvider = <String, int>{};
     final postsByProvider = <String, int>{};
     final liveRequestsByProfile = <String, int>{};
     final reviewSumsByProvider = <String, double>{};
@@ -84,15 +87,44 @@ class MobilePeopleSnapshot {
       pricesByProvider.putIfAbsent(providerId, () => <double>[]).add(parsed);
     }
 
+    void addListingTitle(String providerId, Object? value) {
+      final normalized = _compactCardHeadline(_readString(value));
+      if (providerId.isEmpty || normalized.isEmpty) {
+        return;
+      }
+
+      listingTitlesByProvider
+          .putIfAbsent(providerId, () => <String>[])
+          .add(normalized);
+    }
+
     for (final row in serviceRows) {
       final providerId = _readString(row['provider_id']);
+      if (providerId.isEmpty) {
+        continue;
+      }
+      serviceCountByProvider.update(
+        providerId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
       addTag(providerId, row['category']);
+      addListingTitle(providerId, row['title']);
       addPrice(providerId, row['price']);
     }
 
     for (final row in productRows) {
       final providerId = _readString(row['provider_id']);
+      if (providerId.isEmpty) {
+        continue;
+      }
+      productCountByProvider.update(
+        providerId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
       addTag(providerId, row['category']);
+      addListingTitle(providerId, row['title']);
       addPrice(providerId, row['price']);
     }
 
@@ -191,8 +223,19 @@ class MobilePeopleSnapshot {
               final prices = List<double>.from(
                 pricesByProvider[id] ?? const <double>[],
               )..sort();
-              final tags = (tagsByProvider[id] ?? const <String>{}).toList()
-                ..sort();
+              final profileServices = _readStringList(profile['services'])
+                  .map(_cleanCardLabel)
+                  .where((value) => value.isNotEmpty)
+                  .toList();
+              final tags =
+                  <String>{
+                        ...(tagsByProvider[id] ?? const <String>{}),
+                        ...profileServices,
+                      }
+                      .map(_cleanCardLabel)
+                      .where((value) => value.isNotEmpty)
+                      .toList()
+                    ..sort();
               final completedJobs = _toInt(orderStats['completed_jobs']);
               final openLeads = _toInt(orderStats['open_leads']);
               final isOnline = presence['is_online'] == true;
@@ -206,11 +249,16 @@ class MobilePeopleSnapshot {
                 _readString(profile['location']),
                 'Nearby',
               ]);
-              final headline = _firstNonEmpty([
-                _readString(profile['bio']),
-                _humanize(_readString(profile['role'])),
-                'Serving nearby requests through ServiQ.',
-              ]);
+              final serviceCount = serviceCountByProvider[id] ?? 0;
+              final productCount = productCountByProvider[id] ?? 0;
+              final headline = _buildCardHeadline(
+                explicitHeadline: _readString(profile['headline']),
+                listingTitles: listingTitlesByProvider[id] ?? const <String>[],
+                tags: tags,
+                role: _readString(profile['role']),
+                hasProviderSignals:
+                    serviceCount + productCount + profileServices.length > 0,
+              );
               final preview = profilePreviewById[id];
 
               return MobilePersonCard(
@@ -497,6 +545,161 @@ Map<String, _MobileProfilePreview> _readProfilePreviewMap(Object? value) {
 String _readString(Object? value, {String fallback = ''}) {
   final text = value is String ? value.trim() : '';
   return text.isEmpty ? fallback : text;
+}
+
+List<String> _readStringList(Object? value) {
+  if (value is List) {
+    return value
+        .map(_readString)
+        .where((entry) => entry.trim().isNotEmpty)
+        .toList();
+  }
+
+  if (value is String) {
+    return value
+        .split(RegExp(r'[,;|]'))
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+  }
+
+  return const <String>[];
+}
+
+String _buildCardHeadline({
+  required String explicitHeadline,
+  required List<String> listingTitles,
+  required List<String> tags,
+  required String role,
+  required bool hasProviderSignals,
+}) {
+  for (final title in listingTitles) {
+    final compactTitle = _compactCardHeadline(title);
+    if (compactTitle.isNotEmpty) {
+      return compactTitle;
+    }
+  }
+
+  final headline = _compactCardHeadline(explicitHeadline);
+  final usableTags = tags
+      .map(_cleanCardLabel)
+      .where((value) => value.isNotEmpty)
+      .toList();
+  if (headline.isNotEmpty &&
+      headline.length <= 64 &&
+      !_looksLikePersonalBio(headline)) {
+    return headline;
+  }
+
+  if (usableTags.isNotEmpty) {
+    final visibleTags = usableTags.take(2).join(', ');
+    return usableTags.length == 1 ? '$visibleTags support nearby' : visibleTags;
+  }
+
+  if (headline.isNotEmpty) {
+    return headline;
+  }
+
+  final roleLabel = _cleanCardLabel(_humanize(role));
+  if (roleLabel.isNotEmpty && !_isGenericRoleLabel(roleLabel)) {
+    return roleLabel;
+  }
+
+  return hasProviderSignals
+      ? 'Local services available'
+      : 'Local member nearby';
+}
+
+String _compactCardHeadline(String raw) {
+  final cleaned = _cleanCardLabel(raw);
+  if (cleaned.isEmpty || _isNoisyProfileCopy(cleaned)) {
+    return '';
+  }
+
+  final firstSentence = cleaned.split(RegExp(r'(?<=[.!?])\s+')).first.trim();
+  final candidate = firstSentence.isNotEmpty ? firstSentence : cleaned;
+  if (candidate.length <= 82) {
+    return candidate;
+  }
+
+  final words = candidate.split(RegExp(r'\s+'));
+  final buffer = StringBuffer();
+  for (final word in words) {
+    final next = buffer.isEmpty ? word : '${buffer.toString()} $word';
+    if (next.length > 82) {
+      break;
+    }
+    buffer
+      ..clear()
+      ..write(next);
+  }
+
+  final compact = buffer.toString().trim();
+  return compact.isEmpty ? '' : compact;
+}
+
+String _cleanCardLabel(String raw) {
+  var text = raw
+      .replaceAll(RegExp(r'https?:\/\/\S+', caseSensitive: false), '')
+      .replaceAll(RegExp(r'www\.\S+', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b\S+@\S+\.\S+\b'), '')
+      .replaceAll(RegExp(r'\+?\d[\d\s().-]{7,}\d'), '')
+      .replaceAll(RegExp(r'[\r\n\t]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  text = text.replaceAll(RegExp(r'^[•\-:,\s]+|[•\-:,\s]+$'), '').trim();
+  if (text.length < 2 || looksLikePlaceholderCardText(text)) {
+    return '';
+  }
+  return text;
+}
+
+bool _isNoisyProfileCopy(String text) {
+  final normalized = text.toLowerCase();
+  return normalized.contains('third-party github application') ||
+      normalized.contains('authorized to access') ||
+      normalized.contains('security-log') ||
+      normalized.contains('permissions') ||
+      normalized.contains('mail.google.com') ||
+      normalized.contains('linkedin') ||
+      normalized.contains('client acquisition') ||
+      normalized.contains('sponsorship manager') ||
+      normalized.contains('unsubscribe') ||
+      normalized.contains('end-to-end support') && normalized.length > 120 ||
+      text.length > 180;
+}
+
+bool _looksLikePersonalBio(String text) {
+  final normalized = text.toLowerCase();
+  return normalized.startsWith('as a ') ||
+      normalized.startsWith('i am ') ||
+      normalized.startsWith("i'm ") ||
+      normalized.startsWith('my name is ') ||
+      normalized.contains('linkedin') ||
+      normalized.contains('client acquisition') ||
+      normalized.contains('sponsorship manager') ||
+      normalized.contains(' at ') && normalized.contains(' i ');
+}
+
+bool looksLikePlaceholderCardText(String text) {
+  final normalized = text.trim().toLowerCase();
+  return normalized == 'null' ||
+      normalized == 'undefined' ||
+      normalized == 'n/a' ||
+      normalized == 'none' ||
+      normalized == 'test' ||
+      normalized == 'profile' ||
+      normalized == 'user';
+}
+
+bool _isGenericRoleLabel(String label) {
+  final normalized = label.toLowerCase();
+  return normalized == 'provider' ||
+      normalized == 'seeker' ||
+      normalized == 'business' ||
+      normalized == 'service provider' ||
+      normalized == 'seller' ||
+      normalized == 'user';
 }
 
 String _firstNonEmpty(List<String> values) {
