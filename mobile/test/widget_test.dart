@@ -149,8 +149,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('What do you need nearby today?'), findsOneWidget);
-    expect(find.text('Post Need'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('Start with one clear action'), findsOneWidget);
+    expect(find.text('Post a Need'), findsAtLeastNWidgets(1));
+    expect(find.text('Earn Nearby'), findsOneWidget);
+    expect(find.text('People'), findsAtLeastNWidgets(1));
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
       find.text('Trusted activity'),

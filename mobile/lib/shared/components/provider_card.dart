@@ -12,11 +12,19 @@ class ProviderCard extends StatelessWidget {
     required this.person,
     this.onOpenProfile,
     this.onMessage,
+    this.reason,
+    this.isSaved = false,
+    this.onSave,
+    this.onMore,
   });
 
   final MobilePersonCard person;
   final VoidCallback? onOpenProfile;
   final VoidCallback? onMessage;
+  final String? reason;
+  final bool isSaved;
+  final VoidCallback? onSave;
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +37,14 @@ class ProviderCard extends StatelessWidget {
             name: person.name,
             subtitle: person.headline,
             avatarUrl: person.avatarUrl,
-            trailing: _AvailabilityPill(online: person.isOnline),
+            trailing: onSave == null && onMore == null
+                ? _AvailabilityPill(online: person.isOnline)
+                : _ProviderActions(
+                    online: person.isOnline,
+                    isSaved: isSaved,
+                    onSave: onSave,
+                    onMore: onMore,
+                  ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -55,6 +70,23 @@ class ProviderCard extends StatelessWidget {
               children: person.primaryTags.take(3).map((tag) {
                 return _TagPill(label: tag);
               }).toList(),
+            ),
+          ],
+          if ((reason ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Text(
+                reason!.trim(),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
+              ),
             ),
           ],
           if (onOpenProfile != null || onMessage != null) ...[
@@ -246,6 +278,54 @@ class _AvailabilityPill extends StatelessWidget {
           color: online ? AppColors.primary : AppColors.inkMuted,
         ),
       ),
+    );
+  }
+}
+
+class _ProviderActions extends StatelessWidget {
+  const _ProviderActions({
+    required this.online,
+    required this.isSaved,
+    this.onSave,
+    this.onMore,
+  });
+
+  final bool online;
+  final bool isSaved;
+  final VoidCallback? onSave;
+  final VoidCallback? onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _AvailabilityPill(online: online),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onSave != null)
+              IconButton.outlined(
+                tooltip: isSaved ? 'Saved' : 'Save',
+                onPressed: onSave,
+                icon: Icon(
+                  isSaved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                ),
+              ),
+            if (onMore != null) ...[
+              if (onSave != null) const SizedBox(width: 4),
+              IconButton.outlined(
+                tooltip: 'More actions',
+                onPressed: onMore,
+                icon: const Icon(Icons.more_horiz_rounded),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }
