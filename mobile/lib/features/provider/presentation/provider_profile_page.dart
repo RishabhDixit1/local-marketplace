@@ -289,8 +289,25 @@ class ProviderProfilePage extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: FeedCard(
                             item: item,
-                            onPrimaryTap: () =>
-                                context.push(AppRoutes.createRequest),
+                            onPrimaryTap: () {
+                              if (item.type == MobileFeedItemType.service ||
+                                  item.type == MobileFeedItemType.product) {
+                                context.push(
+                                  AppRoutes.checkoutItem(
+                                    providerId: providerId,
+                                    itemType:
+                                        item.type == MobileFeedItemType.product
+                                        ? 'product'
+                                        : 'service',
+                                    itemId: item.id,
+                                    title: item.title,
+                                    price: item.price,
+                                  ),
+                                );
+                              } else {
+                                context.push(AppRoutes.createRequest);
+                              }
+                            },
                             onSecondaryTap: () => context.push(
                               AppRoutes.chatDirect(
                                 recipientId: providerId,
@@ -300,7 +317,12 @@ class ProviderProfilePage extends ConsumerWidget {
                                 source: 'provider_profile_card',
                               ),
                             ),
-                            primaryLabel: 'Request service',
+                            primaryLabel:
+                                item.type == MobileFeedItemType.product
+                                ? 'Buy'
+                                : item.type == MobileFeedItemType.service
+                                ? 'Book'
+                                : 'Request service',
                             secondaryLabel: 'Message',
                           ),
                         ),

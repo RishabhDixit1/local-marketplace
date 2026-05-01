@@ -10,6 +10,31 @@ void main() {
     expect(AppRoutes.home, AppRoutes.welcome);
   });
 
+  test('marketplace engine routes carry native workflow context', () {
+    expect(AppRoutes.providerLaunchpad, '/app/provider-launchpad');
+    expect(AppRoutes.providerListings, '/app/provider-listings');
+    expect(AppRoutes.orders, '/app/orders');
+    expect(AppRoutes.orderDetail('order-1'), '/app/orders/order-1');
+    expect(
+      AppRoutes.quoteRoom(
+        mode: 'help_request',
+        targetId: 'need-1',
+        conversationId: 'chat-1',
+      ),
+      '/app/quote?mode=help_request&targetId=need-1&conversationId=chat-1',
+    );
+    expect(
+      AppRoutes.checkoutItem(
+        providerId: 'provider-1',
+        itemType: 'product',
+        itemId: 'product-1',
+        title: 'Water filter',
+        price: 2400,
+      ),
+      '/app/checkout?providerId=provider-1&itemType=product&itemId=product-1&title=Water+filter&price=2400.0&quantity=1',
+    );
+  });
+
   test('post action stays off workflow branches', () {
     expect(shouldShowPostActionForBranch(0), isTrue);
     expect(shouldShowPostActionForBranch(1), isTrue);

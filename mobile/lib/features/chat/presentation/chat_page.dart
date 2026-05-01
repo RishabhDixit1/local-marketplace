@@ -721,6 +721,11 @@ class _ChatThread extends ConsumerWidget {
             ),
           if (requestContext.visible)
             _RequestContextCard(contextData: requestContext),
+          if (requestContext.taskIdText.isNotEmpty)
+            _DealRoomShortcut(
+              contextData: requestContext,
+              conversationId: conversationId,
+            ),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
@@ -925,6 +930,52 @@ class _ChatThread extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DealRoomShortcut extends StatelessWidget {
+  const _DealRoomShortcut({
+    required this.contextData,
+    required this.conversationId,
+  });
+
+  final _ChatRequestContext contextData;
+  final String conversationId;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = contextData.sourceText.contains('order')
+        ? 'order'
+        : 'help_request';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Quote and acceptance',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => context.push(
+              AppRoutes.quoteRoom(
+                mode: mode,
+                targetId: contextData.taskIdText,
+                conversationId: conversationId,
+              ),
+            ),
+            icon: const Icon(Icons.request_quote_outlined),
+            label: const Text('Deal room'),
           ),
         ],
       ),

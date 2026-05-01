@@ -10,6 +10,10 @@ Flutter app for the ServiQ customer and provider experience.
 - Mobile auth with email OTP, Google via Supabase OAuth, and in-app password setup
 - Authenticated feed client calling the existing Next.js route at `/api/community/feed`
 - Intentional card layouts for media-rich vs text-only feed posts
+- Provider launchpad and listing manager for profile publishing, services, products, images, price, stock, and pause/resume
+- Deal room quote drafting/sending/acceptance from Tasks and Chat
+- Mobile checkout and order detail flows with COD/Razorpay order intent metadata, payment status, and fulfillment notes
+- Mobile CI workflow for Flutter analyze and tests
 
 ## Architecture
 
@@ -113,8 +117,7 @@ flutter test --no-pub test/widget_test.dart
 
 ## Next Product Work
 
-1. Verify the native auth callback flow on a real Android device and later on iOS/macOS.
-2. Connect realtime inbox and chat threads.
-3. Expand the mobile task board with requester-side completion and decline flows.
-4. Add the 2-step mobile composer for needs, services, and products.
-5. Integrate push notifications with Firebase.
+1. Verify provider launchpad, listing upload, quote, and checkout flows against staging data on Android and iOS.
+2. Add the native Razorpay SDK handoff and verification callback to move pending payments to paid inside the app.
+3. Integrate Firebase Messaging, Crashlytics, and Firebase Analytics once the app has committed Firebase project files.
+4. Add store screenshots, signing profiles, release bundle checks, and real-device accessibility/text-scale QA.

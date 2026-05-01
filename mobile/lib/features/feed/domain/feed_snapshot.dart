@@ -80,7 +80,9 @@ class MobileFeedSnapshot {
       ),
       items: ((json['feedItems'] as List?) ?? const [])
           .whereType<Map>()
-          .map((item) => MobileFeedItem.fromJson(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => MobileFeedItem.fromJson(Map<String, dynamic>.from(item)),
+          )
           .toList(),
       acceptedConnectionIds:
           ((json['acceptedConnectionIds'] as List?) ?? const [])
@@ -162,6 +164,7 @@ class MobileFeedItem {
     required this.locationLabel,
     required this.statusLabel,
     required this.priceLabel,
+    required this.price,
     required this.timeLabel,
     required this.distanceLabel,
     required this.publicProfilePath,
@@ -230,6 +233,7 @@ class MobileFeedItem {
       locationLabel: location,
       statusLabel: displayStatus,
       priceLabel: _formatPrice(type: type, price: _toDouble(json['price'])),
+      price: _toDouble(json['price']),
       timeLabel: _formatTimeAgo(_readString(json['createdAt'])),
       distanceLabel: _formatDistance(
         _toDouble(json['distanceKm']),
@@ -297,6 +301,7 @@ class MobileFeedItem {
   final String locationLabel;
   final String statusLabel;
   final String priceLabel;
+  final double price;
   final String timeLabel;
   final String distanceLabel;
   final String publicProfilePath;

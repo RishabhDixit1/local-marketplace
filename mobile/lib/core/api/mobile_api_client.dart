@@ -72,6 +72,19 @@ class MobileApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) {
+    return _sendJson(
+      method: 'DELETE',
+      path: path,
+      body: body,
+      authenticated: authenticated,
+    );
+  }
+
   Future<Map<String, dynamic>> uploadFile(
     String path, {
     required String filePath,
@@ -171,6 +184,14 @@ class MobileApiClient {
         case 'PATCH':
           response = await _httpClient
               .patch(
+                uri,
+                headers: headers,
+                body: jsonEncode(body ?? const <String, dynamic>{}),
+              )
+              .timeout(_requestTimeout);
+        case 'DELETE':
+          response = await _httpClient
+              .delete(
                 uri,
                 headers: headers,
                 body: jsonEncode(body ?? const <String, dynamic>{}),

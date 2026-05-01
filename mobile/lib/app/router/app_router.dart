@@ -10,11 +10,19 @@ import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
+import '../../features/orders/domain/order_models.dart';
+import '../../features/orders/presentation/checkout_page.dart';
+import '../../features/orders/presentation/order_detail_page.dart';
+import '../../features/orders/presentation/orders_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/provider/presentation/provider_onboarding_page.dart';
+import '../../features/provider/presentation/provider_launchpad_page.dart';
+import '../../features/provider/presentation/provider_listings_page.dart';
 import '../../features/provider/presentation/provider_profile_page.dart';
+import '../../features/quotes/domain/quote_models.dart';
+import '../../features/quotes/presentation/quote_room_page.dart';
 import '../../features/search/presentation/search_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
@@ -91,6 +99,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.providerOnboarding,
         builder: (context, state) => const ProviderOnboardingPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerLaunchpad,
+        builder: (context, state) => const ProviderLaunchpadPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerListings,
+        builder: (context, state) => const ProviderListingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.orders,
+        builder: (context, state) => const OrdersPage(),
+        routes: [
+          GoRoute(
+            path: ':orderId',
+            builder: (context, state) => OrderDetailPage(
+              orderId: state.pathParameters['orderId']?.trim() ?? '',
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.checkout,
+        builder: (context, state) =>
+            CheckoutPage(item: _checkoutItemFromQuery(state)),
+      ),
+      GoRoute(
+        path: AppRoutes.quote,
+        builder: (context, state) => QuoteRoomPage(
+          mode: quoteTargetModeFromSource(_queryParam(state, 'mode')),
+          targetId: _queryParam(state, 'targetId') ?? '',
+          conversationId: _queryParam(state, 'conversationId'),
+        ),
       ),
       GoRoute(
         path: AppRoutes.provider(':providerId'),
@@ -231,6 +272,31 @@ String? _firstQueryParam(GoRouterState state, List<String> keys) {
     }
   }
   return null;
+}
+
+MobileCheckoutItem? _checkoutItemFromQuery(GoRouterState state) {
+  final providerId = _queryParam(state, 'providerId') ?? '';
+  final itemType = _queryParam(state, 'itemType') ?? '';
+  final itemId = _queryParam(state, 'itemId') ?? '';
+  final title = _queryParam(state, 'title') ?? '';
+  final price = double.tryParse(_queryParam(state, 'price') ?? '') ?? 0;
+  final quantity = int.tryParse(_queryParam(state, 'quantity') ?? '') ?? 1;
+
+  if (providerId.isEmpty ||
+      itemType.isEmpty ||
+      itemId.isEmpty ||
+      title.isEmpty) {
+    return null;
+  }
+
+  return MobileCheckoutItem(
+    providerId: providerId,
+    itemType: itemType,
+    itemId: itemId,
+    title: title,
+    price: price,
+    quantity: quantity <= 0 ? 1 : quantity,
+  );
 }
 
 class _RouterPlaceholder extends StatelessWidget {

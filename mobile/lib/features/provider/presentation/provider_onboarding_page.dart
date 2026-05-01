@@ -69,8 +69,16 @@ class ProviderOnboardingPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     PrimaryButton(
-                      label: 'Open profile',
-                      onPressed: () => context.push(AppRoutes.profile),
+                      label: 'Open launchpad',
+                      icon: const Icon(Icons.rocket_launch_outlined),
+                      onPressed: () =>
+                          context.push(AppRoutes.providerLaunchpad),
+                    ),
+                    const SizedBox(height: 10),
+                    SecondaryButton(
+                      label: 'Manage listings',
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      onPressed: () => context.push(AppRoutes.providerListings),
                     ),
                   ],
                 ),
