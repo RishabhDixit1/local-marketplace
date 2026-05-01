@@ -2,14 +2,61 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import type { CanonicalOrderStatus, OrderActorRole } from "@/lib/orderWorkflow";
-import { canTransitionOrderStatus } from "@/lib/orderWorkflow";
+import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkflow";
 import { sendOrderEmail } from "@/lib/email";
+import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 export const runtime = "nodejs";
 
 const VALID_STATUSES = new Set<CanonicalOrderStatus>([
   "new_lead", "quoted", "accepted", "in_progress", "completed", "closed", "cancelled", "rejected",
 ]);
+
+const fulfillmentForStatus = (status: CanonicalOrderStatus) => {
+  switch (status) {
+    case "accepted":
+      return {
+        fulfillment_status: "confirmed",
+        fulfillment_status_label: "Confirmed by both sides",
+      };
+    case "in_progress":
+      return {
+        fulfillment_status: "in_progress",
+        fulfillment_status_label: "Fulfillment in progress",
+      };
+    case "completed":
+      return {
+        fulfillment_status: "completed",
+        fulfillment_status_label: "Completed, waiting to close",
+      };
+    case "closed":
+      return {
+        fulfillment_status: "closed",
+        fulfillment_status_label: "Closed",
+      };
+    case "cancelled":
+      return {
+        fulfillment_status: "cancelled",
+        fulfillment_status_label: "Cancelled",
+      };
+    case "rejected":
+      return {
+        fulfillment_status: "rejected",
+        fulfillment_status_label: "Rejected",
+      };
+    case "quoted":
+      return {
+        fulfillment_status: "quote_sent",
+        fulfillment_status_label: "Quote sent",
+      };
+    case "new_lead":
+    default:
+      return {
+        fulfillment_status: "provider_review_pending",
+        fulfillment_status_label: "Waiting for provider review",
+      };
+  }
+};
 
 // GET /api/orders/[id]
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -90,10 +137,65 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { error } = await admin
     .from("orders")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({
+      status,
+      metadata: {
+        ...(ex.metadata || {}),
+        ...fulfillmentForStatus(status as CanonicalOrderStatus),
+        fulfillment_updated_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
 
   if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+
+  const otherUserId = actor === "consumer" ? ex.provider_id : ex.consumer_id;
+  if (otherUserId) {
+    void (async () => {
+      try {
+        const itemTitle = (ex.metadata?.title as string | undefined) ?? "Order";
+        const statusLabel = getOrderStatusLabel(status);
+        const message =
+          actor === "consumer"
+            ? `The customer marked ${itemTitle} as ${statusLabel}.`
+            : `The provider marked ${itemTitle} as ${statusLabel}.`;
+
+        await admin.from("notifications").insert({
+          user_id: otherUserId,
+          kind: "order",
+          title: `Order ${statusLabel}`,
+          message,
+          entity_type: "order",
+          entity_id: id,
+          metadata: {
+            order_id: id,
+            status,
+            status_label: statusLabel,
+            title: itemTitle,
+            source: "order_status",
+          },
+        });
+
+        await sendPushToUser(admin, otherUserId, {
+          title: `Order ${statusLabel}`,
+          body: message,
+          data: {
+            kind: "order",
+            entity_type: "order",
+            entity_id: id,
+            order_id: id,
+            status,
+            status_label: statusLabel,
+            title: itemTitle,
+            source: "order_status",
+          },
+        });
+      } catch (err) {
+        console.error("[order-status-notification] failed for order", id, err);
+      }
+    })();
+  }
 
   // Fire-and-forget email notification (with error capture)
   void (async () => {

@@ -12,7 +12,15 @@ enum MobileOrderFulfillmentMethod {
   delivery,
   onsite;
 
-  String get apiValue => name;
+  String get apiValue {
+    switch (this) {
+      case MobileOrderFulfillmentMethod.pickup:
+        return 'self';
+      case MobileOrderFulfillmentMethod.delivery:
+      case MobileOrderFulfillmentMethod.onsite:
+        return 'provider';
+    }
+  }
 
   String get label {
     switch (this) {
@@ -75,6 +83,11 @@ class MobileOrderRecord {
       _readString(metadata['payment_status'], fallback: 'unpaid');
 
   String get fulfillmentMethod => _readString(metadata['fulfillment_method']);
+
+  String get fulfillmentStatus => _readString(metadata['fulfillment_status']);
+
+  String get fulfillmentStatusLabel =>
+      _readString(metadata['fulfillment_status_label']);
 
   int get quantity => _toInt(metadata['quantity'], fallback: 1);
 }

@@ -208,6 +208,14 @@ class _FulfillmentCard extends StatelessWidget {
                 : _humanize(order.fulfillmentMethod),
           ),
           _InfoRow(
+            label: 'Progress',
+            value: order.fulfillmentStatusLabel.isNotEmpty
+                ? order.fulfillmentStatusLabel
+                : order.fulfillmentStatus.isEmpty
+                ? 'Waiting for provider review'
+                : _humanize(order.fulfillmentStatus),
+          ),
+          _InfoRow(
             label: 'Address',
             value: order.address.isEmpty ? 'Not added' : order.address,
           ),

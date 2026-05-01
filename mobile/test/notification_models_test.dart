@@ -18,7 +18,7 @@ void main() {
     expect(action.queryParameters, {'source': 'notification'});
   });
 
-  test('order notifications focus the tasks board', () {
+  test('order notifications open the order detail', () {
     final action = resolveMobileNotificationAction(
       _buildNotification(
         kind: MobileNotificationKind.order,
@@ -27,10 +27,26 @@ void main() {
       ),
     );
 
-    expect(action.label, 'Open task');
-    expect(action.route, AppRoutes.tasks);
+    expect(action.label, 'Open order');
+    expect(action.route, AppRoutes.orderDetail('order-7'));
+    expect(action.queryParameters, {'source': 'notification'});
+  });
+
+  test('quote notifications open the quote room with task context', () {
+    final action = resolveMobileNotificationAction(
+      _buildNotification(
+        kind: MobileNotificationKind.order,
+        entityType: 'quote',
+        entityId: 'quote-7',
+        metadata: const {'order_id': 'order-7'},
+      ),
+    );
+
+    expect(action.label, 'Open quote');
+    expect(action.route, AppRoutes.quote);
     expect(action.queryParameters, {
-      'focus': 'order-7',
+      'mode': 'order',
+      'targetId': 'order-7',
       'source': 'notification',
     });
   });

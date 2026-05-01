@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_routes.dart';
-import '../../core/services/analytics_service.dart';
+import '../../core/firebase/mobile_push_notifications.dart';
 import '../../core/realtime/mobile_live_hub.dart';
+import '../../core/services/analytics_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
@@ -32,6 +33,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(mobileLiveHubProvider);
+    ref.watch(mobilePushNotificationServiceProvider).start();
     final chatConversations = ref.watch(chatConversationsProvider);
     final taskSnapshot = ref.watch(taskSnapshotProvider);
     final showPostAction = shouldShowPostActionForBranch(
