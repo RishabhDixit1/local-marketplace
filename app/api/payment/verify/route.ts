@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { normalizeOrderStatus } from "@/lib/orderWorkflow";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ type VerifyBody = {
 type OrderPaymentRow = {
   id: string;
   consumer_id: string;
+  provider_id: string | null;
+  price: number | string | null;
   status: string | null;
   metadata: Record<string, unknown> | null;
 };
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await admin
     .from("orders")
-    .select("id,consumer_id,status,metadata")
+    .select("id,consumer_id,provider_id,price,status,metadata")
     .in("id", normalizedBody.serviQOrderIds);
 
   if (error) {
@@ -190,6 +193,45 @@ export async function POST(request: Request) {
     }
 
     updatedOrders += 1;
+
+    const providerId = order.provider_id;
+    if (providerId && providerId !== authResult.auth.userId) {
+      void (async () => {
+        try {
+          const itemTitle = trimText(currentMetadata.title) || "Order";
+          await admin.from("notifications").insert({
+            user_id: providerId,
+            kind: "order",
+            title: "Payment received",
+            message: `Razorpay payment for ${itemTitle} is verified. You can continue fulfillment.`,
+            entity_type: "order",
+            entity_id: order.id,
+            metadata: {
+              order_id: order.id,
+              payment_status: "paid",
+              payment_method: "razorpay",
+              razorpay_order_id: normalizedBody.razorpayOrderId,
+              razorpay_payment_id: normalizedBody.razorpayPaymentId,
+              source: "payment_verify",
+            },
+          });
+          await sendPushToUser(admin, providerId, {
+            title: "Payment received",
+            body: `Razorpay payment for ${itemTitle} is verified.`,
+            data: {
+              kind: "order",
+              entity_type: "order",
+              entity_id: order.id,
+              order_id: order.id,
+              payment_status: "paid",
+              source: "payment_verify",
+            },
+          });
+        } catch (err) {
+          console.error("[payment-verify-notification] failed for order", order.id, err);
+        }
+      })();
+    }
   }
 
   return NextResponse.json({

@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { sendOrderEmail } from "@/lib/email";
 import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
+import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,43 @@ const clampText = (value: unknown, maxLength: number) => trimText(value).slice(0
 
 const isValidPaymentMethod = (value: unknown): value is NonNullable<OrderRequest["payment_method"]> =>
   value === "cod" || value === "razorpay";
+
+const getQuantity = (item: OrderRequest) =>
+  typeof item.quantity === "number" && Number.isFinite(item.quantity) && item.quantity > 0
+    ? Math.round(item.quantity)
+    : 1;
+
+const fulfillmentStatusForNewOrder = (method: OrderFulfillmentMethod | undefined) => {
+  if (method === "self") {
+    return {
+      fulfillment_status: "pickup_pending",
+      fulfillment_status_label: "Pickup or meetup pending",
+    };
+  }
+
+  if (method === "courier") {
+    return {
+      fulfillment_status: "courier_pending",
+      fulfillment_status_label: "Courier handoff pending",
+    };
+  }
+
+  if (method === "platform") {
+    return {
+      fulfillment_status: "platform_coordination_pending",
+      fulfillment_status_label: "ServiQ coordination pending",
+    };
+  }
+
+  return {
+    fulfillment_status: "provider_review_pending",
+    fulfillment_status_label: "Waiting for provider review",
+  };
+};
+
+const addQuantity = (totals: Map<string, number>, id: string, quantity: number) => {
+  totals.set(id, (totals.get(id) || 0) + quantity);
+};
 
 function isOrderRequest(body: unknown): body is OrderRequest {
   if (typeof body !== "object" || body === null) return false;
@@ -98,11 +136,18 @@ export async function POST(request: Request) {
   const requestedItems = isBulkOrderRequest(body) ? body.items : [body];
 
   // -- Input validation --
+  if (requestedItems.some((item) => item.providerId === authResult.auth.userId)) {
+    return NextResponse.json(
+      { ok: false, code: "BAD_REQUEST", message: "You cannot place an order with your own provider profile." },
+      { status: 400 }
+    );
+  }
+
   for (const item of requestedItems) {
     if (item.price < 0 || item.price > 999999) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid price. Must be between 0 and 999999." }, { status: 400 });
     }
-    const qty = typeof item.quantity === "number" ? item.quantity : 1;
+    const qty = getQuantity(item);
     if (qty < 1 || qty > 100) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid quantity. Must be between 1 and 100." }, { status: 400 });
     }
@@ -135,40 +180,88 @@ export async function POST(request: Request) {
   const uniqueProviderIds = [...new Set(requestedItems.map((i) => i.providerId))];
   const { data: providers, error: providerErr } = await admin
     .from("profiles")
-    .select("id")
+    .select("id,role")
     .in("id", uniqueProviderIds);
   if (providerErr || !providers || providers.length !== uniqueProviderIds.length) {
     return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more providers not found." }, { status: 400 });
+  }
+  const invalidProviderRole = (providers as Array<{ id: string; role?: string | null }>).some((provider) => {
+    const role = (provider.role || "").trim().toLowerCase();
+    return role.length > 0 && !["provider", "business", "seller", "service_provider"].includes(role);
+  });
+  if (invalidProviderRole) {
+    return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more selected profiles cannot receive orders." }, { status: 400 });
   }
 
   // -- Verify itemIds exist in the correct table --
   const serviceItems = requestedItems.filter((i) => i.itemType === "service");
   const productItems = requestedItems.filter((i) => i.itemType === "product");
   if (serviceItems.length > 0) {
+    const serviceIds = [...new Set(serviceItems.map((i) => i.itemId))];
     const { data: listings } = await admin
       .from("service_listings")
-      .select("id")
-      .in("id", serviceItems.map((i) => i.itemId));
-    if (!listings || listings.length !== serviceItems.length) {
+      .select("id,provider_id,availability")
+      .in("id", serviceIds);
+    if (!listings || listings.length !== serviceIds.length) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more service listings not found." }, { status: 400 });
     }
+    const listingById = new Map(
+      (listings as Array<{ id: string; provider_id: string | null; availability?: string | null }>).map((listing) => [
+        listing.id,
+        listing,
+      ])
+    );
+    for (const item of serviceItems) {
+      const listing = listingById.get(item.itemId);
+      if (!listing || listing.provider_id !== item.providerId) {
+        return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Service listing does not belong to this provider." }, { status: 400 });
+      }
+      if ((listing.availability || "available").toLowerCase() === "offline") {
+        return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "This service is currently unavailable." }, { status: 409 });
+      }
+    }
   }
+  const requestedProductQuantities = new Map<string, number>();
   if (productItems.length > 0) {
+    for (const item of productItems) {
+      addQuantity(requestedProductQuantities, item.itemId, getQuantity(item));
+    }
+    const productIds = [...requestedProductQuantities.keys()];
     const { data: products } = await admin
       .from("product_catalog")
-      .select("id")
-      .in("id", productItems.map((i) => i.itemId));
-    if (!products || products.length !== productItems.length) {
+      .select("id,provider_id,stock")
+      .in("id", productIds);
+    if (!products || products.length !== productIds.length) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more products not found." }, { status: 400 });
+    }
+    const productById = new Map(
+      (products as Array<{ id: string; provider_id: string | null; stock: number | null }>).map((product) => [
+        product.id,
+        product,
+      ])
+    );
+    for (const item of productItems) {
+      const product = productById.get(item.itemId);
+      if (!product || product.provider_id !== item.providerId) {
+        return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Product does not belong to this provider." }, { status: 400 });
+      }
+    }
+    for (const [productId, quantity] of requestedProductQuantities) {
+      const product = productById.get(productId);
+      if (!product || (product.stock || 0) < quantity) {
+        return NextResponse.json({ ok: false, code: "OUT_OF_STOCK", message: "One or more products are out of stock." }, { status: 409 });
+      }
     }
   }
 
   const rowsToInsert: Record<string, unknown>[] = requestedItems.map((item) => {
-    const quantity = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
+    const quantity = getQuantity(item);
+    const fulfillmentStatus = fulfillmentStatusForNewOrder(item.fulfillment_method);
     const metadata: Record<string, unknown> = {
       source: "cart",
       quantity,
       title: clampText(item.title, 160),
+      ...fulfillmentStatus,
     };
 
     const address = clampText(item.address, 500);
@@ -205,10 +298,43 @@ export async function POST(request: Request) {
     return insert;
   });
 
+  const decrementedProducts: Array<{ productId: string; quantity: number }> = [];
+  for (const [productId, quantity] of requestedProductQuantities) {
+    const { data: decremented, error: decrementError } = await admin.rpc("decrement_product_stock", {
+      target_product_id: productId,
+      decrement_by: quantity,
+    });
+
+    if (decrementError) {
+      console.error("[api/orders] stock decrement error:", decrementError.message);
+      return NextResponse.json(
+        { ok: false, code: "DB_ERROR", message: "Could not reserve product stock." },
+        { status: 500 }
+      );
+    }
+
+    if (decremented !== true) {
+      return NextResponse.json(
+        { ok: false, code: "OUT_OF_STOCK", message: "One or more products are out of stock." },
+        { status: 409 }
+      );
+    }
+
+    decrementedProducts.push({ productId, quantity });
+  }
+
   const { data, error } = await admin.from("orders").insert(rowsToInsert).select("id");
 
   if (error) {
     console.error("[api/orders] insert error:", error.message);
+    await Promise.all(
+      decrementedProducts.map((item) =>
+        admin.rpc("increment_product_stock", {
+          target_product_id: item.productId,
+          increment_by: item.quantity,
+        })
+      )
+    );
     return NextResponse.json(
       { ok: false, code: "DB_ERROR", message: "Could not create order." },
       { status: 500 }
@@ -216,6 +342,56 @@ export async function POST(request: Request) {
   }
 
   const orderIds = ((data as Array<{ id: string }> | null) || []).map((row) => row.id);
+
+  void (async () => {
+    try {
+      const notificationRows = requestedItems
+        .map((item, index) => {
+          const orderId = orderIds[index];
+          if (!orderId) return null;
+          return {
+            user_id: item.providerId,
+            kind: "order",
+            title: "New order received",
+            message: `${clampText(item.title, 120) || "A marketplace item"} was ordered. Open the order to confirm fulfillment.`,
+            entity_type: "order",
+            entity_id: orderId,
+            metadata: {
+              order_id: orderId,
+              item_type: item.itemType,
+              title: clampText(item.title, 160),
+              source: "checkout",
+            },
+          };
+        })
+        .filter(Boolean);
+
+      if (notificationRows.length > 0) {
+        await admin.from("notifications").insert(notificationRows);
+      }
+
+      await Promise.all(
+        requestedItems.map((item, index) => {
+          const orderId = orderIds[index];
+          if (!orderId) return Promise.resolve({ sent: 0, failed: 0 });
+          return sendPushToUser(admin, item.providerId, {
+            title: "New order received",
+            body: `${clampText(item.title, 120) || "A marketplace item"} was ordered.`,
+            data: {
+              kind: "order",
+              entity_type: "order",
+              entity_id: orderId,
+              order_id: orderId,
+              title: clampText(item.title, 160),
+              source: "checkout",
+            },
+          });
+        })
+      );
+    } catch (err) {
+      console.error("[order-provider-notification] failed", err);
+    }
+  })();
 
   // Fire-and-forget: email buyer confirmation (with error capture)
   void (async () => {

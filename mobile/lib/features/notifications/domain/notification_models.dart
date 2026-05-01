@@ -59,24 +59,48 @@ class MobileNotificationAction {
   final String label;
   final String route;
   final Map<String, String> queryParameters;
+
+  String get location {
+    if (queryParameters.isEmpty) {
+      return route;
+    }
+    return Uri(path: route, queryParameters: queryParameters).toString();
+  }
 }
 
 MobileNotificationAction resolveMobileNotificationAction(
   MobileNotificationItem item,
 ) {
-  final entityType = (item.entityType ?? '').trim().toLowerCase().replaceAll(
-    '-',
-    '_',
+  return resolveMobileNotificationActionFromData(
+    kind: item.kind.name,
+    entityType: item.entityType,
+    entityId: item.entityId,
+    metadata: item.metadata,
   );
-  final explicitHref = _readMetadataString(item, [
+}
+
+MobileNotificationAction resolveMobileNotificationActionFromData({
+  String? kind,
+  String? entityType,
+  String? entityId,
+  Map<String, dynamic> metadata = const <String, dynamic>{},
+}) {
+  final normalizedEntityType = (entityType ?? '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('-', '_');
+  final explicitHref = _readMetadataString(metadata, [
     'href',
     'path',
     'action_path',
+    'deep_link',
+    'deepLink',
+    'route',
   ]);
   final conversationId =
-      item.entityId ??
-      _readMetadataString(item, ['conversation_id', 'conversationId']);
-  final contextTitle = _readMetadataString(item, [
+      _entityIdFor(entityId, normalizedEntityType, _conversationEntityTypes) ??
+      _readMetadataString(metadata, ['conversation_id', 'conversationId']);
+  final contextTitle = _readMetadataString(metadata, [
     'request_title',
     'requestTitle',
     'task_title',
@@ -85,37 +109,44 @@ MobileNotificationAction resolveMobileNotificationAction(
     'contextTitle',
     'title',
   ]);
-  final contextStatus = _readMetadataString(item, [
+  final contextStatus = _readMetadataString(metadata, [
     'status_label',
     'statusLabel',
     'status',
   ]);
-  final metadataOrderId = _readMetadataString(item, [
+  final metadataOrderId = _readMetadataString(metadata, [
     'order_id',
     'orderId',
     'task_id',
     'taskId',
   ]);
-  final metadataHelpRequestId = _readMetadataString(item, [
+  final metadataHelpRequestId = _readMetadataString(metadata, [
     'help_request_id',
     'helpRequestId',
     'target_help_request_id',
     'targetHelpRequestId',
   ]);
-  final orderId = _orderEntityTypes.contains(entityType)
-      ? item.entityId ?? metadataOrderId
-      : metadataOrderId;
-  final helpRequestId = _helpRequestEntityTypes.contains(entityType)
-      ? item.entityId ?? metadataHelpRequestId
-      : metadataHelpRequestId;
+  final orderId =
+      _entityIdFor(entityId, normalizedEntityType, _orderEntityTypes) ??
+      metadataOrderId;
+  final helpRequestId =
+      _entityIdFor(entityId, normalizedEntityType, _helpRequestEntityTypes) ??
+      metadataHelpRequestId;
+  final quoteId = _readMetadataString(metadata, [
+    'quote_draft_id',
+    'quoteDraftId',
+    'quote_id',
+    'quoteId',
+  ]);
+  final normalizedKind = (kind ?? '').trim().toLowerCase().replaceAll('-', '_');
 
-  if (explicitHref.startsWith('/app/')) {
-    return MobileNotificationAction(label: 'Open', route: explicitHref);
+  final explicitAction = _actionFromExplicitHref(explicitHref);
+  if (explicitAction != null) {
+    return explicitAction;
   }
 
-  if (_conversationEntityTypes.contains(entityType) ||
-      (item.kind == MobileNotificationKind.message &&
-          conversationId.isNotEmpty)) {
+  if (_conversationEntityTypes.contains(normalizedEntityType) ||
+      (normalizedKind == 'message' && conversationId.isNotEmpty)) {
     return MobileNotificationAction(
       label: 'Open chat',
       route: AppRoutes.chatThread(conversationId),
@@ -129,22 +160,44 @@ MobileNotificationAction resolveMobileNotificationAction(
     );
   }
 
-  if (_orderEntityTypes.contains(entityType) ||
-      item.kind == MobileNotificationKind.order) {
+  if (_quoteEntityTypes.contains(normalizedEntityType) || quoteId.isNotEmpty) {
+    final quoteTargetId = orderId.isNotEmpty ? orderId : helpRequestId;
+    if (quoteTargetId.isNotEmpty) {
+      return MobileNotificationAction(
+        label: 'Open quote',
+        route: AppRoutes.quote,
+        queryParameters: {
+          'mode': orderId.isNotEmpty ? 'order' : 'help_request',
+          'targetId': quoteTargetId,
+          if (conversationId.isNotEmpty) 'conversationId': conversationId,
+          'source': 'notification',
+        },
+      );
+    }
+  }
+
+  if (_orderEntityTypes.contains(normalizedEntityType) ||
+      normalizedKind == 'order') {
+    if (orderId.isNotEmpty) {
+      return MobileNotificationAction(
+        label: 'Open order',
+        route: AppRoutes.orderDetail(orderId),
+        queryParameters: {'source': 'notification'},
+      );
+    }
+
     return MobileNotificationAction(
       label: 'Open task',
-      route: '/app/tasks',
-      queryParameters: {
-        if (orderId.isNotEmpty) 'focus': orderId,
-        'source': 'notification',
-      },
+      route: AppRoutes.tasks,
+      queryParameters: {'source': 'notification'},
     );
   }
 
-  if (_helpRequestEntityTypes.contains(entityType)) {
+  if (_taskEntityTypes.contains(normalizedEntityType) ||
+      _helpRequestEntityTypes.contains(normalizedEntityType)) {
     return MobileNotificationAction(
       label: 'View request',
-      route: '/app/tasks',
+      route: AppRoutes.tasks,
       queryParameters: {
         if (helpRequestId.isNotEmpty) 'focus': helpRequestId,
         'source': 'notification',
@@ -152,16 +205,16 @@ MobileNotificationAction resolveMobileNotificationAction(
     );
   }
 
-  if (item.kind == MobileNotificationKind.review) {
+  if (normalizedKind == 'review') {
     return const MobileNotificationAction(
       label: 'View profile',
-      route: '/app/profile',
+      route: AppRoutes.profile,
     );
   }
 
   return const MobileNotificationAction(
     label: 'View feed',
-    route: '/app/welcome',
+    route: AppRoutes.welcome,
   );
 }
 
@@ -172,13 +225,9 @@ const _conversationEntityTypes = {
   'conversation_message',
   'direct_message',
 };
-const _orderEntityTypes = {
-  'order',
-  'task',
-  'order_update',
-  'quote',
-  'quote_draft',
-};
+const _orderEntityTypes = {'order', 'order_update', 'checkout', 'payment'};
+const _quoteEntityTypes = {'quote', 'quote_draft', 'quote_update'};
+const _taskEntityTypes = {'task', 'task_update'};
 const _helpRequestEntityTypes = {'help_request', 'need', 'request'};
 
 Map<String, dynamic> _readMap(Object? value) {
@@ -201,14 +250,50 @@ String? _nullableString(Object? value) {
   return text.isEmpty ? null : text;
 }
 
-String _readMetadataString(MobileNotificationItem item, List<String> keys) {
+String _readMetadataString(Map<String, dynamic> metadata, List<String> keys) {
   for (final key in keys) {
-    final value = item.metadata[key];
+    final value = metadata[key];
     if (value is String && value.trim().isNotEmpty) {
       return value.trim();
     }
   }
   return '';
+}
+
+String? _entityIdFor(
+  String? entityId,
+  String entityType,
+  Set<String> matchingTypes,
+) {
+  final normalized = _readString(entityId);
+  if (normalized.isEmpty || !matchingTypes.contains(entityType)) {
+    return null;
+  }
+  return normalized;
+}
+
+MobileNotificationAction? _actionFromExplicitHref(String href) {
+  if (href.isEmpty) {
+    return null;
+  }
+
+  final uri = Uri.tryParse(href);
+  if (uri == null) {
+    return null;
+  }
+
+  final path = uri.scheme == 'serviq' && uri.host == 'app'
+      ? '/app${uri.path}'
+      : uri.path;
+  if (!path.startsWith('/app/')) {
+    return null;
+  }
+
+  return MobileNotificationAction(
+    label: 'Open',
+    route: path,
+    queryParameters: uri.queryParameters,
+  );
 }
 
 MobileNotificationKind _parseKind(Object? value) {

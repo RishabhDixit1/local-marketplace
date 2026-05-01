@@ -5,8 +5,10 @@ import { requireRequestAuth } from "@/lib/server/requestAuth";
 export const runtime = "nodejs";
 
 type SubscribeRequest = {
-  endpoint: string;
-  keys: {
+  endpoint?: string;
+  token?: string;
+  fcmToken?: string;
+  keys?: {
     p256dh: string;
     auth: string;
   };
@@ -40,25 +42,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "INVALID_PAYLOAD", message: "Invalid JSON payload." }, { status: 400 });
   }
 
+  const fcmToken = (body.token || body.fcmToken || "").trim();
   const endpoint = body.endpoint?.trim();
   const p256dh = body.keys?.p256dh?.trim();
   const auth = body.keys?.auth?.trim();
 
-  if (!endpoint || !p256dh || !auth) {
+  if (!fcmToken && (!endpoint || !p256dh || !auth)) {
     return NextResponse.json(
-      { ok: false, code: "INVALID_PAYLOAD", message: "Subscription endpoint and keys are required." },
+      { ok: false, code: "INVALID_PAYLOAD", message: "Send an FCM token or a web push subscription endpoint and keys." },
       { status: 400 }
     );
   }
 
+  const subscriptionEndpoint = fcmToken ? `fcm:${fcmToken}` : endpoint!;
   const { error } = await dbClient.from("provider_push_subscriptions").upsert(
     {
       provider_id: authResult.auth.userId,
-      endpoint,
-      p256dh,
-      auth,
+      endpoint: subscriptionEndpoint,
+      p256dh: p256dh || "",
+      auth: auth || "",
+      fcm_token: fcmToken || null,
       platform: body.platform?.trim() || null,
       user_agent: body.userAgent?.trim() || null,
+      updated_at: new Date().toISOString(),
     },
     { onConflict: "provider_id,endpoint" }
   );

@@ -5,6 +5,7 @@ import type { QuoteContextRecord, QuoteDraftInput, QuoteDraftRecord, QuoteLineIt
 import { normalizeOrderStatus } from "@/lib/orderWorkflow";
 import { calculateQuoteTotals } from "@/lib/quotes/calculations";
 import { getConversationContext } from "@/lib/server/chatGuards";
+import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 type FlexibleRecord = Record<string, unknown>;
 
@@ -147,6 +148,12 @@ const formatExpiryDate = (value: string | null) => {
   });
 };
 
+const isExpired = (value: string | null) => {
+  if (!value) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.getTime() < Date.now();
+};
+
 const normalizeExpiresAt = (value: string | null | undefined) => {
   const normalized = trim(value);
   if (!normalized) return null;
@@ -167,30 +174,35 @@ const toQuoteLineItemRecord = (row: QuoteLineItemRow): QuoteLineItemRecord => ({
   sortOrder: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
 });
 
-const buildQuoteDraftRecord = (row: QuoteDraftRow, lineItems: QuoteLineItemRow[]): QuoteDraftRecord => ({
-  id: row.id,
-  orderId: row.order_id,
-  helpRequestId: row.help_request_id,
-  providerId: row.provider_id,
-  consumerId: row.consumer_id,
-  status:
+const buildQuoteDraftRecord = (row: QuoteDraftRow, lineItems: QuoteLineItemRow[]): QuoteDraftRecord => {
+  const storedStatus =
     row.status === "sent" || row.status === "accepted" || row.status === "expired" || row.status === "cancelled"
       ? row.status
-      : "draft",
-  summary: trim(row.summary),
-  notes: trim(row.notes),
-  subtotal: Math.max(0, toFiniteNumber(row.subtotal) || 0),
-  taxAmount: Math.max(0, toFiniteNumber(row.tax_amount) || 0),
-  total: Math.max(0, toFiniteNumber(row.total) || 0),
-  expiresAt: row.expires_at,
-  sentAt: row.sent_at,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  lineItems: lineItems
-    .map(toQuoteLineItemRecord)
-    .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id)),
-  metadata: toMetadata(row.metadata),
-});
+      : "draft";
+  const status = storedStatus === "sent" && isExpired(row.expires_at) ? "expired" : storedStatus;
+
+  return {
+    id: row.id,
+    orderId: row.order_id,
+    helpRequestId: row.help_request_id,
+    providerId: row.provider_id,
+    consumerId: row.consumer_id,
+    status,
+    summary: trim(row.summary),
+    notes: trim(row.notes),
+    subtotal: Math.max(0, toFiniteNumber(row.subtotal) || 0),
+    taxAmount: Math.max(0, toFiniteNumber(row.tax_amount) || 0),
+    total: Math.max(0, toFiniteNumber(row.total) || 0),
+    expiresAt: row.expires_at,
+    sentAt: row.sent_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lineItems: lineItems
+      .map(toQuoteLineItemRecord)
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id)),
+    metadata: toMetadata(row.metadata),
+  };
+};
 
 const createMutationError = (
   message: string,
@@ -557,6 +569,20 @@ const validateDraftEditAccess = (context: QuoteContextRecord) => {
   return { ok: true as const };
 };
 
+const validateMutableDraftState = (draft: QuoteDraftRecord | null) => {
+  if (!draft) return { ok: true as const };
+  if (draft.status === "accepted") {
+    return createMutationError("Accepted quotes cannot be edited.", { invalid: true });
+  }
+  if (draft.status === "cancelled") {
+    return createMutationError("Cancelled quotes cannot be edited.", { invalid: true });
+  }
+  if (draft.status === "expired") {
+    return createMutationError("Expired quotes cannot be edited. Create a fresh quote window first.", { invalid: true });
+  }
+  return { ok: true as const };
+};
+
 const prepareDraftPayload = (params: {
   context: QuoteContextRecord;
   input: QuoteDraftInput;
@@ -577,6 +603,13 @@ const prepareDraftPayload = (params: {
 
   const summary = trim(params.input.summary) || buildDefaultQuoteSummary(params.context.taskTitle);
   const notes = trim(params.input.notes);
+  const expiresAt = normalizeExpiresAt(params.input.expiresAt);
+
+  if (params.status === "sent" && expiresAt && isExpired(expiresAt)) {
+    return createMutationError("Choose a future expiry before sending this quote.", {
+      invalid: true,
+    });
+  }
 
   return {
     ok: true as const,
@@ -591,7 +624,7 @@ const prepareDraftPayload = (params: {
       subtotal: totals.subtotal,
       tax_amount: totals.taxAmount,
       total: totals.total,
-      expires_at: normalizeExpiresAt(params.input.expiresAt),
+      expires_at: expiresAt,
       sent_at: params.sentAt || null,
       metadata: {
         source: "quote_flow",
@@ -775,6 +808,8 @@ export const saveQuoteDraft = async (params: {
 
   const existingDraftResult = await loadQuoteDraftByContext(params.db, contextResult.context);
   if (!existingDraftResult.ok) return existingDraftResult;
+  const draftStateResult = validateMutableDraftState(existingDraftResult.draft);
+  if (!draftStateResult.ok) return draftStateResult;
 
   const draftResult = await upsertQuoteDraft({
     db: params.db,
@@ -819,6 +854,8 @@ export const sendQuoteDraft = async (params: {
 
   const existingDraftResult = await loadQuoteDraftByContext(params.db, contextResult.context);
   if (!existingDraftResult.ok) return existingDraftResult;
+  const draftStateResult = validateMutableDraftState(existingDraftResult.draft);
+  if (!draftStateResult.ok) return draftStateResult;
 
   const draftResult = await upsertQuoteDraft({
     db: params.db,
@@ -943,14 +980,14 @@ export const sendQuoteDraft = async (params: {
       refreshedDraftResult.draft.total > 0
         ? ` · INR ${refreshedDraftResult.draft.total.toLocaleString("en-IN")}`
         : "";
-    await params.db
-      .from("notifications")
-      .insert({
+    const message = `A provider sent you a quote for ${taskTitle}${totalFormatted}. Open Tasks to review and accept.`;
+    try {
+      await params.db.from("notifications").insert({
         user_id: consumerId,
         kind: "order",
         title: "Quote received",
-        message: `A provider sent you a quote for ${taskTitle}${totalFormatted}. Open Tasks to review and accept.`,
-        entity_type: "order",
+        message,
+        entity_type: "quote",
         entity_id: orderId,
         metadata: {
           order_id: orderId,
@@ -960,7 +997,23 @@ export const sendQuoteDraft = async (params: {
           source: "quote_flow",
         },
       });
-    // Non-critical — do not block the response on notification failure
+      await sendPushToUser(params.db, consumerId, {
+        title: "Quote received",
+        body: message,
+        data: {
+          kind: "order",
+          entity_type: "quote",
+          entity_id: refreshedDraftResult.draft.id,
+          order_id: orderId,
+          quote_draft_id: refreshedDraftResult.draft.id,
+          task_title: taskTitle,
+          total: refreshedDraftResult.draft.total,
+          source: "quote_flow",
+        },
+      });
+    } catch (error) {
+      console.warn("Quote notification could not be delivered:", error instanceof Error ? error.message : error);
+    }
   }
 
   return {
@@ -1010,7 +1063,9 @@ export const acceptQuoteDraft = async (params: {
     return createMutationError(
       draft.status === "accepted"
         ? "This quote has already been accepted."
-        : "This quote cannot be accepted in its current state.",
+        : draft.status === "expired"
+          ? "This quote has expired. Ask the provider to send an updated quote."
+          : "This quote cannot be accepted in its current state.",
       { invalid: true }
     );
   }
@@ -1031,9 +1086,20 @@ export const acceptQuoteDraft = async (params: {
   // Sync the linked order to "accepted"
   const orderId = draft.orderId || "";
   if (orderId) {
+    const orderMetadataResult = await params.db.from("orders").select("metadata").eq("id", orderId).maybeSingle();
+    const orderMetadata = toMetadata((orderMetadataResult.data as { metadata?: FlexibleRecord | null } | null)?.metadata);
     await params.db
       .from("orders")
-      .update({ status: "accepted" })
+      .update({
+        status: "accepted",
+        metadata: {
+          ...orderMetadata,
+          quote_draft_id: params.quoteId,
+          quote_accepted_at: new Date().toISOString(),
+          fulfillment_status: "confirmed",
+          fulfillment_status_label: "Confirmed by accepted quote",
+        },
+      })
       .eq("id", orderId);
     // Non-critical — continue even if this fails
   }
@@ -1044,14 +1110,14 @@ export const acceptQuoteDraft = async (params: {
     const taskTitle = trim((draft.metadata as Record<string, unknown>)?.task_title as string) || "your quote";
     const totalFormatted =
       draft.total > 0 ? ` · INR ${draft.total.toLocaleString("en-IN")}` : "";
-    await params.db
-      .from("notifications")
-      .insert({
+    const message = `The customer accepted your quote for ${taskTitle}${totalFormatted}. Head to Tasks to start the job.`;
+    try {
+      await params.db.from("notifications").insert({
         user_id: providerId,
         kind: "order",
         title: "Quote accepted",
-        message: `The customer accepted your quote for ${taskTitle}${totalFormatted}. Head to Tasks to start the job.`,
-        entity_type: "order",
+        message,
+        entity_type: "quote",
         entity_id: orderId || null,
         metadata: {
           order_id: orderId || null,
@@ -1061,7 +1127,23 @@ export const acceptQuoteDraft = async (params: {
           source: "quote_flow",
         },
       });
-    // Non-critical — do not block the response on notification failure
+      await sendPushToUser(params.db, providerId, {
+        title: "Quote accepted",
+        body: message,
+        data: {
+          kind: "order",
+          entity_type: "quote",
+          entity_id: params.quoteId,
+          order_id: orderId || "",
+          quote_draft_id: params.quoteId,
+          task_title: taskTitle,
+          total: draft.total,
+          source: "quote_flow",
+        },
+      });
+    } catch (error) {
+      console.warn("Quote accepted notification could not be delivered:", error instanceof Error ? error.message : error);
+    }
   }
 
   return {

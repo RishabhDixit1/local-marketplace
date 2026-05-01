@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireRequestAuthMock = vi.fn();
 const createSupabaseAdminClientMock = vi.fn();
 const sendOrderEmailMock = vi.fn();
+const sendPushToUserMock = vi.fn();
 
 vi.mock("@/lib/server/requestAuth", () => ({
   requireRequestAuth: requireRequestAuthMock,
@@ -14,6 +15,10 @@ vi.mock("@/lib/server/supabaseClients", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendOrderEmail: sendOrderEmailMock,
+}));
+
+vi.mock("@/lib/server/pushNotifications", () => ({
+  sendPushToUser: sendPushToUserMock,
 }));
 
 const authContext = {
@@ -49,6 +54,8 @@ describe("POST /api/orders", () => {
     requireRequestAuthMock.mockReset();
     createSupabaseAdminClientMock.mockReset();
     sendOrderEmailMock.mockReset();
+    sendPushToUserMock.mockReset();
+    sendPushToUserMock.mockResolvedValue({ sent: 0, failed: 0 });
   });
 
   it("persists checkout address, notes, and payment references in order metadata", async () => {
@@ -60,13 +67,16 @@ describe("POST /api/orders", () => {
       error: null,
     });
     const servicesChain = makeLookupChain({
-      data: [{ id: "service-1" }],
+      data: [{ id: "service-1", provider_id: "provider-1", availability: "available" }],
       error: null,
     });
     const insertChain = makeInsertChain({
       data: [{ id: "order-1" }],
       error: null,
     });
+    const notificationsChain = {
+      insert: vi.fn(async () => ({ error: null })),
+    };
     const getUserByIdMock = vi.fn(async () => ({
       data: {
         user: {
@@ -83,6 +93,7 @@ describe("POST /api/orders", () => {
         if (table === "profiles") return profilesChain;
         if (table === "service_listings") return servicesChain;
         if (table === "orders") return insertChain;
+        if (table === "notifications") return notificationsChain;
         throw new Error(`Unexpected table lookup: ${table}`);
       }),
       auth: {
@@ -145,6 +156,8 @@ describe("POST /api/orders", () => {
           address: "221B Baker Street, Bengaluru",
           notes: "Call on arrival",
           fulfillment_method: "platform",
+          fulfillment_status: "platform_coordination_pending",
+          fulfillment_status_label: "ServiQ coordination pending",
           payment_method: "razorpay",
           payment_status: "processing",
           razorpay_order_id: "rzp_order_123",

@@ -1,19 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'core/config/app_config.dart';
+import 'core/firebase/app_firebase.dart';
+import 'core/firebase/mobile_push_notifications.dart';
 import 'core/supabase/app_bootstrap.dart';
 import 'core/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final firebaseState = await AppFirebase.initialize();
+  if (firebaseState.initialized) {
+    MobilePushNotificationService.registerBackgroundHandler();
+  }
 
-  runApp(const _BootstrapHost());
+  runZonedGuarded(() => runApp(_BootstrapHost(firebaseState: firebaseState)), (
+    error,
+    stackTrace,
+  ) {
+    unawaited(AppFirebase.recordError(error, stackTrace, fatal: true));
+  });
 }
 
 class _BootstrapHost extends StatefulWidget {
-  const _BootstrapHost();
+  const _BootstrapHost({required this.firebaseState});
+
+  final AppFirebaseState firebaseState;
 
   @override
   State<_BootstrapHost> createState() => _BootstrapHostState();
@@ -48,7 +63,10 @@ class _BootstrapHostState extends State<_BootstrapHost> {
             );
 
         return ProviderScope(
-          overrides: [appBootstrapProvider.overrideWithValue(bootstrap)],
+          overrides: [
+            appBootstrapProvider.overrideWithValue(bootstrap),
+            appFirebaseProvider.overrideWithValue(widget.firebaseState),
+          ],
           child: const ServiQApp(),
         );
       },

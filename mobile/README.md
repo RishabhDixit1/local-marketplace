@@ -12,7 +12,8 @@ Flutter app for the ServiQ customer and provider experience.
 - Intentional card layouts for media-rich vs text-only feed posts
 - Provider launchpad and listing manager for profile publishing, services, products, images, price, stock, and pause/resume
 - Deal room quote drafting/sending/acceptance from Tasks and Chat
-- Mobile checkout and order detail flows with COD/Razorpay order intent metadata, payment status, and fulfillment notes
+- Mobile checkout and order detail flows with COD/Razorpay SDK handoff, payment verification, payment status, and fulfillment notes
+- Firebase Messaging token registration, notification tap routing, Crashlytics, and Firebase Analytics hooks
 - Mobile CI workflow for Flutter analyze and tests
 
 ## Architecture
@@ -108,6 +109,19 @@ flutter run \
 
 For Android emulators, replace `http://localhost:3000` with `http://10.0.2.2:3000`.
 
+Firebase can be supplied either with normal platform files
+(`android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`)
+or with dart defines:
+
+```bash
+flutter run \
+  --dart-define=FIREBASE_API_KEY=... \
+  --dart-define=FIREBASE_PROJECT_ID=... \
+  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... \
+  --dart-define=FIREBASE_ANDROID_APP_ID=... \
+  --dart-define=FIREBASE_IOS_APP_ID=...
+```
+
 ## Verification Commands
 
 ```powershell
@@ -117,7 +131,6 @@ flutter test --no-pub test/widget_test.dart
 
 ## Next Product Work
 
-1. Verify provider launchpad, listing upload, quote, and checkout flows against staging data on Android and iOS.
-2. Add the native Razorpay SDK handoff and verification callback to move pending payments to paid inside the app.
-3. Integrate Firebase Messaging, Crashlytics, and Firebase Analytics once the app has committed Firebase project files.
-4. Add store screenshots, signing profiles, release bundle checks, and real-device accessibility/text-scale QA.
+1. Run the staging QA checklist in `release/qa_checklist.md` on real Android and iOS devices.
+2. Add production Firebase project files and release signing secrets outside git.
+3. Capture final store screenshots after staging QA passes.

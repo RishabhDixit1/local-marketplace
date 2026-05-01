@@ -148,14 +148,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       return;
     }
 
-    context.push(
-      Uri(
-        path: action.route,
-        queryParameters: action.queryParameters.isEmpty
-            ? null
-            : action.queryParameters,
-      ).toString(),
-    );
+    context.push(action.location);
   }
 
   bool _matchesFilter(MobileNotificationItem item) {
