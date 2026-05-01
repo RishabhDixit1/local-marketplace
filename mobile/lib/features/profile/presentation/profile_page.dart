@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/error_state_view.dart';
@@ -341,6 +343,8 @@ class _OverviewSection extends StatelessWidget {
         _CompletionCard(snapshot: snapshot),
         const SizedBox(height: 14),
         _SummaryCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        const _MarketplaceActionsCard(),
       ],
     );
   }
@@ -876,6 +880,92 @@ class _SummaryCard extends StatelessWidget {
                 : snapshot.publicPath,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MarketplaceActionsCard extends StatelessWidget {
+  const _MarketplaceActionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Marketplace controls',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Launch, list, quote, and track orders from the mobile loop.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          _ActionRow(
+            icon: Icons.rocket_launch_outlined,
+            label: 'Provider launchpad',
+            onTap: () => context.push(AppRoutes.providerLaunchpad),
+          ),
+          _ActionRow(
+            icon: Icons.inventory_2_outlined,
+            label: 'Listing manager',
+            onTap: () => context.push(AppRoutes.providerListings),
+          ),
+          _ActionRow(
+            icon: Icons.shopping_bag_outlined,
+            label: 'Orders',
+            onTap: () => context.push(AppRoutes.orders),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

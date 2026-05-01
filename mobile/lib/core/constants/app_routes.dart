@@ -17,11 +17,47 @@ class AppRoutes {
   static const search = '/app/search';
   static const notifications = '/app/notifications';
   static const providerOnboarding = '/app/provider-onboarding';
+  static const providerLaunchpad = '/app/provider-launchpad';
+  static const providerListings = '/app/provider-listings';
+  static const orders = '/app/orders';
+  static const checkout = '/app/checkout';
+  static const quote = '/app/quote';
 
   static String provider(String providerId) => '/app/provider/$providerId';
   static String chatThread(String threadId) => '/app/chat/thread/$threadId';
   static String inboxThread(String conversationId) =>
       chatThread(conversationId);
+  static String orderDetail(String orderId) => '/app/orders/$orderId';
+
+  static String checkoutItem({
+    required String providerId,
+    required String itemType,
+    required String itemId,
+    required String title,
+    required double price,
+    int quantity = 1,
+  }) {
+    return _withQuery(checkout, {
+      'providerId': providerId,
+      'itemType': itemType,
+      'itemId': itemId,
+      'title': title,
+      'price': price.toString(),
+      'quantity': quantity.toString(),
+    });
+  }
+
+  static String quoteRoom({
+    required String mode,
+    required String targetId,
+    String? conversationId,
+  }) {
+    return _withQuery(quote, {
+      'mode': mode,
+      'targetId': targetId,
+      'conversationId': conversationId,
+    });
+  }
 
   static String chatDirect({
     required String recipientId,

@@ -247,10 +247,37 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       if (item.providerId.trim().isEmpty) {
         return null;
       }
+      if (item.type == MobileFeedItemType.service ||
+          item.type == MobileFeedItemType.product) {
+        return () => _openCheckout(item);
+      }
       return () => context.push(AppRoutes.provider(item.providerId));
     }
 
     return () => _sendInterest(item);
+  }
+
+  void _openCheckout(MobileFeedItem item) {
+    final currentUserId =
+        ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
+    if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This is your own listing.')),
+      );
+      return;
+    }
+
+    context.push(
+      AppRoutes.checkoutItem(
+        providerId: item.providerId,
+        itemType: item.type == MobileFeedItemType.product
+            ? 'product'
+            : 'service',
+        itemId: item.id,
+        title: item.title,
+        price: item.price,
+      ),
+    );
   }
 
   VoidCallback? _messageActionFor(MobileFeedItem item) {
@@ -263,6 +290,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   String _primaryLabelFor(MobileFeedItem item) {
     if (item.helpRequestId == null) {
+      if (item.type == MobileFeedItemType.product) {
+        return 'Buy';
+      }
+      if (item.type == MobileFeedItemType.service) {
+        return 'Book';
+      }
       return 'Open profile';
     }
     if (item.viewerHasExpressedInterest) {

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -320,20 +322,25 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                         .map(
                           (task) => Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: _TaskActionWrapper(
-                              task: task,
-                              busy: _busyTaskId == task.id,
-                              onPrimaryAction: task.primaryAction == null
-                                  ? null
-                                  : () => _runPrimaryAction(task),
-                              child: TaskCard(
-                                task: task,
-                                busy: _busyTaskId == task.id,
-                                onPrimaryAction: task.primaryAction == null
-                                    ? null
-                                    : () => _runPrimaryAction(task),
-                                focused: task.id == widget.focusTaskId,
-                              ),
+                            child: Column(
+                              children: [
+                                _TaskActionWrapper(
+                                  task: task,
+                                  busy: _busyTaskId == task.id,
+                                  onPrimaryAction: task.primaryAction == null
+                                      ? null
+                                      : () => _runPrimaryAction(task),
+                                  child: TaskCard(
+                                    task: task,
+                                    busy: _busyTaskId == task.id,
+                                    onPrimaryAction: task.primaryAction == null
+                                        ? null
+                                        : () => _runPrimaryAction(task),
+                                    focused: task.id == widget.focusTaskId,
+                                  ),
+                                ),
+                                _TaskSecondaryActions(task: task),
+                              ],
                             ),
                           ),
                         )
@@ -348,6 +355,57 @@ class _TasksPageState extends ConsumerState<TasksPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TaskSecondaryActions extends StatelessWidget {
+  const _TaskSecondaryActions({required this.task});
+
+  final MobileTaskItem task;
+
+  @override
+  Widget build(BuildContext context) {
+    final quoteMode = task.source == MobileTaskSource.order
+        ? 'order'
+        : 'help_request';
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => context.push(
+                AppRoutes.quoteRoom(mode: quoteMode, targetId: task.id),
+              ),
+              icon: const Icon(Icons.request_quote_outlined),
+              label: const Text('Quote'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                if (task.source == MobileTaskSource.order) {
+                  context.push(AppRoutes.orderDetail(task.id));
+                  return;
+                }
+                context.push(
+                  Uri(
+                    path: AppRoutes.tasks,
+                    queryParameters: {
+                      'focus': task.id,
+                      'source': 'task_detail',
+                    },
+                  ).toString(),
+                );
+              },
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: const Text('Detail'),
+            ),
+          ),
+        ],
       ),
     );
   }
