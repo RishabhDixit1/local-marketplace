@@ -7,6 +7,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -44,6 +45,23 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (widget.item?.itemType == 'product') {
       _fulfillmentMethod = MobileOrderFulfillmentMethod.delivery;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final item = widget.item;
+      if (!mounted || item == null) {
+        return;
+      }
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'checkout_started',
+            extras: {
+              'item_type': item.itemType,
+              'provider_id': item.providerId,
+              'quantity': item.quantity,
+              'payment_method': _paymentMethod.apiValue,
+            },
+          );
+    });
   }
 
   @override
@@ -93,6 +111,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         return;
       }
       HapticFeedback.mediumImpact();
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'order_created',
+            extras: {
+              'item_type': item.itemType,
+              'order_count': result.orderIds.length,
+              'payment_method': _paymentMethod.apiValue,
+            },
+          );
       final orderId = result.orderIds.isEmpty ? '' : result.orderIds.first;
       if (_paymentMethod == MobileOrderPaymentMethod.razorpay &&
           paymentOrder != null &&
@@ -159,6 +187,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         return;
       }
       setState(() => _placing = false);
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'payment_failure',
+            extras: {'stage': 'open_razorpay', 'method': 'razorpay'},
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -186,6 +220,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         return;
       }
       setState(() => _placing = false);
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'payment_failure',
+            extras: {'stage': 'incomplete_response', 'method': 'razorpay'},
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Razorpay returned an incomplete payment response.'),
@@ -214,6 +254,15 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         return;
       }
       HapticFeedback.mediumImpact();
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'payment_success',
+            extras: {
+              'method': 'razorpay',
+              'order_count': pending.orderIds.length,
+            },
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment verified. Order marked paid.')),
       );
@@ -225,6 +274,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'payment_failure',
+            extras: {'stage': 'verify_api', 'method': 'razorpay'},
+          );
       _goToPendingOrder(pending);
     } catch (error) {
       if (!mounted) {
@@ -233,6 +288,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'payment_failure',
+            extras: {'stage': 'verify_unknown', 'method': 'razorpay'},
+          );
       _goToPendingOrder(pending);
     } finally {
       if (mounted) {
@@ -252,6 +313,16 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final message = rawMessage.isEmpty
         ? 'Payment was not completed.'
         : rawMessage;
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'payment_failure',
+          extras: {
+            'stage': 'razorpay_callback',
+            'method': 'razorpay',
+            'code': response.code ?? 0,
+          },
+        );
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -263,6 +334,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       return;
     }
     final wallet = _trim(response.walletName);
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'payment_external_wallet',
+          extras: {'wallet': wallet.isEmpty ? 'unknown' : wallet},
+        );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -387,9 +464,20 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         selected: {_paymentMethod},
                         onSelectionChanged: _placing
                             ? null
-                            : (selection) => setState(
-                                () => _paymentMethod = selection.first,
-                              ),
+                            : (selection) {
+                                setState(
+                                  () => _paymentMethod = selection.first,
+                                );
+                                ref
+                                    .read(analyticsServiceProvider)
+                                    .trackEvent(
+                                      'payment_method_selected',
+                                      extras: {
+                                        'payment_method':
+                                            _paymentMethod.apiValue,
+                                      },
+                                    );
+                              },
                       ),
                       const SizedBox(height: 18),
                       PrimaryButton(

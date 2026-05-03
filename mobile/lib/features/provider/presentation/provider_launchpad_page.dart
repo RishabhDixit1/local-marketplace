@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
@@ -11,10 +14,42 @@ import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/premium_primitives.dart';
 import '../data/launchpad_repository.dart';
 import '../data/provider_listing_repository.dart';
 import '../domain/launchpad_models.dart';
 import '../../profile/data/profile_repository.dart';
+
+enum _LaunchpadStep { basics, offers, aiDraft, publish }
+
+extension _LaunchpadStepDetails on _LaunchpadStep {
+  String get analyticsValue {
+    return switch (this) {
+      _LaunchpadStep.basics => 'basics',
+      _LaunchpadStep.offers => 'offers',
+      _LaunchpadStep.aiDraft => 'ai_draft',
+      _LaunchpadStep.publish => 'publish_readiness',
+    };
+  }
+
+  String get label {
+    return switch (this) {
+      _LaunchpadStep.basics => 'Basics',
+      _LaunchpadStep.offers => 'Offers',
+      _LaunchpadStep.aiDraft => 'AI Draft',
+      _LaunchpadStep.publish => 'Publish',
+    };
+  }
+
+  IconData get icon {
+    return switch (this) {
+      _LaunchpadStep.basics => Icons.storefront_outlined,
+      _LaunchpadStep.offers => Icons.inventory_2_outlined,
+      _LaunchpadStep.aiDraft => Icons.auto_awesome_rounded,
+      _LaunchpadStep.publish => Icons.rocket_launch_outlined,
+    };
+  }
+}
 
 class ProviderLaunchpadPage extends ConsumerStatefulWidget {
   const ProviderLaunchpadPage({super.key});
@@ -40,28 +75,52 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   final _phoneController = TextEditingController();
   final _websiteController = TextEditingController();
 
+  _LaunchpadStep _step = _LaunchpadStep.basics;
   String _offeringType = 'services';
   String _brandTone = 'friendly';
   String? _loadedDraftId;
   bool _saving = false;
+  bool _autosaving = false;
   bool _publishing = false;
+  bool _hydrating = false;
+  Timer? _autosaveTimer;
   String? _statusMessage;
+  String _draftStatus = 'Draft ready';
+  final Set<String> _trackedSteps = <String>{};
+  bool _trackedAiReview = false;
+  bool _trackedPublishReady = false;
+
+  List<TextEditingController> get _controllers => [
+    _businessNameController,
+    _businessTypeController,
+    _categoryController,
+    _locationController,
+    _serviceAreaController,
+    _radiusController,
+    _descriptionController,
+    _offeringsController,
+    _catalogController,
+    _pricingController,
+    _hoursController,
+    _phoneController,
+    _websiteController,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in _controllers) {
+      controller.addListener(_handleDraftChanged);
+    }
+  }
 
   @override
   void dispose() {
-    _businessNameController.dispose();
-    _businessTypeController.dispose();
-    _categoryController.dispose();
-    _locationController.dispose();
-    _serviceAreaController.dispose();
-    _radiusController.dispose();
-    _descriptionController.dispose();
-    _offeringsController.dispose();
-    _catalogController.dispose();
-    _pricingController.dispose();
-    _hoursController.dispose();
-    _phoneController.dispose();
-    _websiteController.dispose();
+    _autosaveTimer?.cancel();
+    for (final controller in _controllers) {
+      controller.removeListener(_handleDraftChanged);
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -74,6 +133,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     final draft = workspace.draft;
     final id = draft?.id ?? 'empty';
     if (_loadedDraftId == id) {
+      _trackCurrentStepAfterFrame();
       return;
     }
     _loadedDraftId = id;
@@ -83,6 +143,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       if (!mounted) {
         return;
       }
+      _hydrating = true;
       _businessNameController.text = answers.businessName;
       _businessTypeController.text = answers.businessType;
       _categoryController.text = answers.primaryCategory;
@@ -99,7 +160,21 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       setState(() {
         _offeringType = _validOfferingType(answers.offeringType);
         _brandTone = _validBrandTone(answers.brandTone);
+        _draftStatus = draft == null ? 'Draft ready' : 'Loaded saved draft';
       });
+      _hydrating = false;
+      _trackStepViewed(_step);
+    });
+  }
+
+  void _trackCurrentStepAfterFrame() {
+    if (_trackedSteps.contains(_step.analyticsValue)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _trackStepViewed(_step);
+      }
     });
   }
 
@@ -125,15 +200,51 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     );
   }
 
-  Future<MobileLaunchpadDraft?> _saveDraft({bool quiet = false}) async {
-    if (!_formKey.currentState!.validate()) {
+  bool get _hasDraftContent {
+    return _controllers.any((controller) => controller.text.trim().isNotEmpty);
+  }
+
+  _PublishReadiness get _readiness => _PublishReadiness.from(_readAnswers());
+
+  void _handleDraftChanged() {
+    if (_hydrating) {
+      return;
+    }
+
+    _autosaveTimer?.cancel();
+    if (mounted) {
+      setState(() => _draftStatus = 'Unsaved changes');
+    }
+    _autosaveTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted && _hasDraftContent && !_saving && !_publishing) {
+        unawaited(_saveDraft(quiet: true, validate: false));
+      }
+    });
+  }
+
+  void _handleDropdownChanged(VoidCallback update) {
+    setState(update);
+    _handleDraftChanged();
+  }
+
+  Future<MobileLaunchpadDraft?> _saveDraft({
+    bool quiet = false,
+    bool validate = false,
+  }) async {
+    if (validate && !(_formKey.currentState?.validate() ?? false)) {
+      return null;
+    }
+    if (!_hasDraftContent) {
       return null;
     }
 
     FocusScope.of(context).unfocus();
     setState(() {
-      _saving = true;
-      if (!quiet) {
+      if (quiet) {
+        _autosaving = true;
+        _draftStatus = 'Autosaving...';
+      } else {
+        _saving = true;
         _statusMessage = null;
       }
     });
@@ -142,26 +253,40 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       final draft = await ref
           .read(launchpadRepositoryProvider)
           .saveDraft(_readAnswers());
-      ref.invalidate(launchpadWorkspaceProvider);
       ref.invalidate(profileSnapshotProvider);
+      if (!quiet) {
+        ref.invalidate(launchpadWorkspaceProvider);
+      }
       if (!mounted) {
         return draft;
       }
-      if (!quiet) {
-        setState(
-          () => _statusMessage = 'Draft saved on your provider profile.',
-        );
-      }
+      setState(() {
+        _loadedDraftId = draft.id;
+        _draftStatus = quiet ? 'Autosaved just now' : 'Draft saved';
+        if (!quiet) {
+          _statusMessage = 'Draft saved on your provider profile.';
+        }
+      });
       return draft;
     } on ApiException catch (error) {
-      if (mounted) {
+      if (!mounted) {
+        return null;
+      }
+      if (quiet) {
+        setState(() => _draftStatus = 'Autosave paused');
+      } else {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
       return null;
     } catch (error) {
-      if (mounted) {
+      if (!mounted) {
+        return null;
+      }
+      if (quiet) {
+        setState(() => _draftStatus = 'Autosave paused');
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppErrorMapper.toMessage(error))),
         );
@@ -169,13 +294,34 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       return null;
     } finally {
       if (mounted) {
-        setState(() => _saving = false);
+        setState(() {
+          if (quiet) {
+            _autosaving = false;
+          } else {
+            _saving = false;
+          }
+        });
       }
     }
   }
 
   Future<void> _publish() async {
-    final draft = await _saveDraft(quiet: true);
+    final readiness = _readiness;
+    if (!readiness.ready) {
+      setState(() {
+        _statusMessage =
+            'Complete basics and at least one offer before publishing.';
+        _step = readiness.firstIncompleteStep;
+      });
+      _trackStepViewed(_step);
+      return;
+    }
+
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent('launchpad_publish_attempted', extras: _analyticsExtras());
+
+    final draft = await _saveDraft(quiet: true, validate: false);
     if (draft == null) {
       return;
     }
@@ -183,6 +329,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     setState(() {
       _publishing = true;
       _statusMessage = null;
+      _draftStatus = 'Publishing...';
     });
 
     try {
@@ -197,6 +344,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       }
       HapticFeedback.mediumImpact();
       setState(() {
+        _draftStatus = 'Published';
         _statusMessage =
             'Published ${result.publishedServices} services and ${result.publishedProducts} products.';
       });
@@ -219,12 +367,104 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     }
   }
 
+  void _trackStepViewed(_LaunchpadStep step) {
+    if (!_trackedSteps.add(step.analyticsValue)) {
+      return;
+    }
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'launchpad_step_viewed',
+          extras: _analyticsExtras(step: step),
+        );
+  }
+
+  void _trackAiReviewStarted() {
+    if (_trackedAiReview) {
+      return;
+    }
+    _trackedAiReview = true;
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent('launchpad_ai_review_started', extras: _analyticsExtras());
+  }
+
+  void _trackPublishReadyIfNeeded() {
+    if (_trackedPublishReady || !_readiness.ready) {
+      return;
+    }
+    _trackedPublishReady = true;
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent('launchpad_publish_ready', extras: _analyticsExtras());
+  }
+
+  Map<String, Object> _analyticsExtras({_LaunchpadStep? step}) {
+    final answers = _readAnswers();
+    return {
+      'step': (step ?? _step).analyticsValue,
+      'offering_type': _offeringType,
+      'tone': _brandTone,
+      'has_business_name': answers.businessName.isNotEmpty,
+      'has_category': answers.primaryCategory.isNotEmpty,
+      'has_location': answers.location.isNotEmpty,
+      'has_offerings': answers.coreOfferings.isNotEmpty,
+    };
+  }
+
+  bool _validateCurrentStep() {
+    return _formKey.currentState?.validate() ?? true;
+  }
+
+  void _goToStep(_LaunchpadStep step) {
+    if (step == _step) {
+      return;
+    }
+    setState(() => _step = step);
+    _trackStepViewed(step);
+    if (step == _LaunchpadStep.aiDraft) {
+      _trackAiReviewStarted();
+    }
+    if (step == _LaunchpadStep.publish) {
+      _trackPublishReadyIfNeeded();
+    }
+  }
+
+  void _continue() {
+    if (!_validateCurrentStep()) {
+      return;
+    }
+    switch (_step) {
+      case _LaunchpadStep.basics:
+        _goToStep(_LaunchpadStep.offers);
+      case _LaunchpadStep.offers:
+        _goToStep(_LaunchpadStep.aiDraft);
+      case _LaunchpadStep.aiDraft:
+        _goToStep(_LaunchpadStep.publish);
+      case _LaunchpadStep.publish:
+        unawaited(_publish());
+    }
+  }
+
+  void _back() {
+    switch (_step) {
+      case _LaunchpadStep.basics:
+        Navigator.of(context).maybePop();
+      case _LaunchpadStep.offers:
+        _goToStep(_LaunchpadStep.basics);
+      case _LaunchpadStep.aiDraft:
+        _goToStep(_LaunchpadStep.offers);
+      case _LaunchpadStep.publish:
+        _goToStep(_LaunchpadStep.aiDraft);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final workspaceAsync = ref.watch(launchpadWorkspaceProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Provider launchpad')),
+      appBar: AppBar(title: const Text('Business AI setup')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -236,162 +476,63 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
-                  _LaunchpadHero(workspace: workspace),
-                  const SizedBox(height: 16),
-                  _LaunchpadMetrics(workspace: workspace),
-                  const SizedBox(height: 16),
-                  SectionCard(
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Identity and area',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 12),
-                          _TextField(
-                            controller: _businessNameController,
-                            label: 'Business or provider name',
-                            validator: _required('Add a public name.'),
-                          ),
-                          _TextField(
-                            controller: _businessTypeController,
-                            label: 'Business type',
-                          ),
-                          _TextField(
-                            controller: _categoryController,
-                            label: 'Primary category',
-                            validator: _required('Add a category.'),
-                          ),
-                          _TextField(
-                            controller: _locationController,
-                            label: 'Base location',
-                            validator: _required('Add a location.'),
-                          ),
-                          _TextField(
-                            controller: _serviceAreaController,
-                            label: 'Service area',
-                          ),
-                          _TextField(
-                            controller: _radiusController,
-                            label: 'Service radius in km',
-                            keyboardType: TextInputType.number,
-                          ),
-                          const SizedBox(height: 8),
-                          _DropdownField(
-                            label: 'Offer type',
-                            value: _offeringType,
-                            values: const ['services', 'products', 'hybrid'],
-                            onChanged: (value) =>
-                                setState(() => _offeringType = value),
-                          ),
-                          const SizedBox(height: 12),
-                          _DropdownField(
-                            label: 'Tone',
-                            value: _brandTone,
-                            values: const [
-                              'professional',
-                              'friendly',
-                              'premium',
-                              'fast',
-                              'community',
-                            ],
-                            onChanged: (value) =>
-                                setState(() => _brandTone = value),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Services, products, and availability',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 12),
-                          _TextField(
-                            controller: _descriptionController,
-                            label: 'Short profile summary',
-                            maxLines: 3,
-                          ),
-                          _TextField(
-                            controller: _offeringsController,
-                            label: 'Core offerings',
-                            hint: 'One per line works well',
-                            maxLines: 4,
-                            validator: _required('Add at least one offer.'),
-                          ),
-                          _TextField(
-                            controller: _catalogController,
-                            label: 'Catalog details',
-                            hint: 'Paste products, packs, service variants',
-                            maxLines: 4,
-                          ),
-                          _TextField(
-                            controller: _pricingController,
-                            label: 'Pricing notes',
-                            maxLines: 3,
-                          ),
-                          _TextField(
-                            controller: _hoursController,
-                            label: 'Availability and hours',
-                          ),
-                          _TextField(
-                            controller: _phoneController,
-                            label: 'Phone',
-                            keyboardType: TextInputType.phone,
-                          ),
-                          _TextField(
-                            controller: _websiteController,
-                            label: 'Website',
-                            keyboardType: TextInputType.url,
-                          ),
-                          const SizedBox(height: 16),
-                          if ((_statusMessage ?? '').isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Text(
-                                _statusMessage!,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                            ),
-                          PrimaryButton(
-                            label: _publishing ? 'Publishing...' : 'Publish',
-                            icon: _publishing
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.rocket_launch_outlined),
-                            onPressed: _saving || _publishing ? null : _publish,
-                          ),
-                          const SizedBox(height: 10),
-                          SecondaryButton(
-                            label: _saving ? 'Saving...' : 'Save draft',
-                            icon: _saving
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
-                            onPressed: _saving || _publishing
-                                ? null
-                                : () => _saveDraft(),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _LaunchpadHero(
+                    workspace: workspace,
+                    draftStatus: _draftStatus,
+                    autosaving: _autosaving,
                   ),
                   const SizedBox(height: 16),
-                  _GeneratedPreview(workspace: workspace),
+                  _LaunchpadStepper(currentStep: _step, onTap: _goToStep),
+                  const SizedBox(height: 16),
+                  _LaunchpadMetrics(
+                    workspace: workspace,
+                    readiness: _readiness,
+                  ),
+                  const SizedBox(height: 16),
+                  Form(
+                    key: _formKey,
+                    child: _CurrentStepCard(
+                      step: _step,
+                      workspace: workspace,
+                      answers: _readAnswers(),
+                      readiness: _readiness,
+                      businessNameController: _businessNameController,
+                      businessTypeController: _businessTypeController,
+                      categoryController: _categoryController,
+                      locationController: _locationController,
+                      serviceAreaController: _serviceAreaController,
+                      radiusController: _radiusController,
+                      descriptionController: _descriptionController,
+                      offeringsController: _offeringsController,
+                      catalogController: _catalogController,
+                      pricingController: _pricingController,
+                      hoursController: _hoursController,
+                      phoneController: _phoneController,
+                      websiteController: _websiteController,
+                      offeringType: _offeringType,
+                      brandTone: _brandTone,
+                      onOfferingTypeChanged: (value) =>
+                          _handleDropdownChanged(() => _offeringType = value),
+                      onBrandToneChanged: (value) =>
+                          _handleDropdownChanged(() => _brandTone = value),
+                      onAiReviewStarted: _trackAiReviewStarted,
+                    ),
+                  ),
+                  if ((_statusMessage ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _StatusPanel(message: _statusMessage!),
+                  ],
+                  const SizedBox(height: 16),
+                  _LaunchpadActions(
+                    step: _step,
+                    saving: _saving,
+                    publishing: _publishing,
+                    onBack: _back,
+                    onContinue: _continue,
+                    onSave: _saving || _publishing
+                        ? null
+                        : () => _saveDraft(quiet: false, validate: false),
+                  ),
                 ],
               );
             },
@@ -416,36 +557,70 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
 }
 
 class _LaunchpadHero extends StatelessWidget {
-  const _LaunchpadHero({required this.workspace});
+  const _LaunchpadHero({
+    required this.workspace,
+    required this.draftStatus,
+    required this.autosaving,
+  });
 
   final MobileLaunchpadWorkspace workspace;
+  final String draftStatus;
+  final bool autosaving;
 
   @override
   Widget build(BuildContext context) {
     final draft = workspace.draft;
-    return SectionCard(
+
+    return PremiumSurface(
+      gradient: Theme.of(context).extension<ServiqThemeTokens>()?.heroGradient,
+      borderColor: Colors.white.withValues(alpha: 0.18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const PremiumPill(
+            label: 'Guided Business AI',
+            icon: Icons.auto_awesome_rounded,
+            backgroundColor: Color(0x22FFFFFF),
+            foregroundColor: Colors.white,
+            borderColor: Color(0x33FFFFFF),
+          ),
+          const SizedBox(height: 14),
           Text(
             draft == null
-                ? 'Create provider identity'
-                : 'Edit provider identity',
-            style: Theme.of(context).textTheme.headlineSmall,
+                ? 'Build your public business profile'
+                : 'Review your Business AI setup',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
-            'Use this phone-first launchpad to shape identity, location, catalog, availability, and publishing in one pass.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            'Move step by step from basics to offers, AI review, and publish readiness.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.84),
+            ),
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(label: Text(draft?.status ?? 'not started')),
-              if (workspace.summary.profilePath != null)
-                Chip(label: Text(workspace.summary.profilePath!)),
+              PremiumPill(
+                label: autosaving ? 'Autosaving...' : draftStatus,
+                icon: autosaving
+                    ? Icons.sync_rounded
+                    : Icons.cloud_done_outlined,
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                foregroundColor: Colors.white,
+                borderColor: Colors.white.withValues(alpha: 0.18),
+              ),
+              PremiumPill(
+                label: draft?.status ?? 'Not started',
+                icon: Icons.edit_note_rounded,
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                foregroundColor: Colors.white,
+                borderColor: Colors.white.withValues(alpha: 0.18),
+              ),
             ],
           ),
         ],
@@ -454,10 +629,124 @@ class _LaunchpadHero extends StatelessWidget {
   }
 }
 
+class _LaunchpadStepper extends StatelessWidget {
+  const _LaunchpadStepper({required this.currentStep, required this.onTap});
+
+  final _LaunchpadStep currentStep;
+  final ValueChanged<_LaunchpadStep> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 360;
+        final steps = _LaunchpadStep.values;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final step in steps)
+              SizedBox(
+                width: compact
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 8) / 2,
+                child: _StepTile(
+                  key: ValueKey('launchpad-step-${step.analyticsValue}'),
+                  step: step,
+                  selected: step == currentStep,
+                  number: steps.indexOf(step) + 1,
+                  onTap: () => onTap(step),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StepTile extends StatelessWidget {
+  const _StepTile({
+    super.key,
+    required this.step,
+    required this.selected,
+    required this.number,
+    required this.onTap,
+  });
+
+  final _LaunchpadStep step;
+  final bool selected;
+  final int number;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? Colors.white : AppColors.ink;
+    final background = selected ? AppColors.inkStrong : AppColors.surface;
+
+    return Material(
+      color: background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        side: BorderSide(
+          color: selected ? AppColors.inkStrong : AppColors.border,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(step.icon, size: 16, color: foreground),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Step $number',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.70)
+                            : AppColors.inkSubtle,
+                      ),
+                    ),
+                    Text(
+                      step.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge?.copyWith(color: foreground),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LaunchpadMetrics extends StatelessWidget {
-  const _LaunchpadMetrics({required this.workspace});
+  const _LaunchpadMetrics({required this.workspace, required this.readiness});
 
   final MobileLaunchpadWorkspace workspace;
+  final _PublishReadiness readiness;
 
   @override
   Widget build(BuildContext context) {
@@ -473,17 +762,17 @@ class _LaunchpadMetrics extends StatelessWidget {
             SizedBox(
               width: width,
               child: MetricTile(
-                label: 'Services',
-                value: summary.totalServices.toString(),
-                icon: Icons.design_services_outlined,
+                label: 'Readiness',
+                value: '${readiness.completedCount}/${readiness.totalCount}',
+                icon: Icons.fact_check_outlined,
               ),
             ),
             SizedBox(
               width: width,
               child: MetricTile(
-                label: 'Products',
-                value: summary.totalProducts.toString(),
-                icon: Icons.inventory_2_outlined,
+                label: 'Live offers',
+                value: '${summary.totalServices + summary.totalProducts}',
+                icon: Icons.storefront_outlined,
               ),
             ),
           ],
@@ -493,50 +782,516 @@ class _LaunchpadMetrics extends StatelessWidget {
   }
 }
 
-class _GeneratedPreview extends StatelessWidget {
-  const _GeneratedPreview({required this.workspace});
+class _CurrentStepCard extends StatelessWidget {
+  const _CurrentStepCard({
+    required this.step,
+    required this.workspace,
+    required this.answers,
+    required this.readiness,
+    required this.businessNameController,
+    required this.businessTypeController,
+    required this.categoryController,
+    required this.locationController,
+    required this.serviceAreaController,
+    required this.radiusController,
+    required this.descriptionController,
+    required this.offeringsController,
+    required this.catalogController,
+    required this.pricingController,
+    required this.hoursController,
+    required this.phoneController,
+    required this.websiteController,
+    required this.offeringType,
+    required this.brandTone,
+    required this.onOfferingTypeChanged,
+    required this.onBrandToneChanged,
+    required this.onAiReviewStarted,
+  });
 
+  final _LaunchpadStep step;
   final MobileLaunchpadWorkspace workspace;
+  final MobileLaunchpadAnswers answers;
+  final _PublishReadiness readiness;
+  final TextEditingController businessNameController;
+  final TextEditingController businessTypeController;
+  final TextEditingController categoryController;
+  final TextEditingController locationController;
+  final TextEditingController serviceAreaController;
+  final TextEditingController radiusController;
+  final TextEditingController descriptionController;
+  final TextEditingController offeringsController;
+  final TextEditingController catalogController;
+  final TextEditingController pricingController;
+  final TextEditingController hoursController;
+  final TextEditingController phoneController;
+  final TextEditingController websiteController;
+  final String offeringType;
+  final String brandTone;
+  final ValueChanged<String> onOfferingTypeChanged;
+  final ValueChanged<String> onBrandToneChanged;
+  final VoidCallback onAiReviewStarted;
 
   @override
   Widget build(BuildContext context) {
-    final draft = workspace.draft;
-    final offerings = [
-      ...(draft?.generatedServices ??
-          const <MobileLaunchpadGeneratedOffering>[]),
-      ...(draft?.generatedProducts ??
-          const <MobileLaunchpadGeneratedOffering>[]),
-    ];
-
-    if (draft == null || offerings.isEmpty) {
-      return const SectionCard(
-        child: EmptyStateView(
-          title: 'No generated preview yet',
-          message:
-              'Save and publish once your core offerings are clear. Generated listings will appear here when the backend creates them.',
-        ),
-      );
-    }
-
     return SectionCard(
+      child: switch (step) {
+        _LaunchpadStep.basics => _BasicsStep(
+          businessNameController: businessNameController,
+          businessTypeController: businessTypeController,
+          categoryController: categoryController,
+          locationController: locationController,
+          serviceAreaController: serviceAreaController,
+          radiusController: radiusController,
+          brandTone: brandTone,
+          onBrandToneChanged: onBrandToneChanged,
+        ),
+        _LaunchpadStep.offers => _OffersStep(
+          offeringType: offeringType,
+          offeringsController: offeringsController,
+          catalogController: catalogController,
+          pricingController: pricingController,
+          hoursController: hoursController,
+          phoneController: phoneController,
+          websiteController: websiteController,
+          onOfferingTypeChanged: onOfferingTypeChanged,
+        ),
+        _LaunchpadStep.aiDraft => _AiDraftStep(
+          answers: answers,
+          workspace: workspace,
+          descriptionController: descriptionController,
+          onAiReviewStarted: onAiReviewStarted,
+        ),
+        _LaunchpadStep.publish => _PublishStep(
+          answers: answers,
+          workspace: workspace,
+          readiness: readiness,
+        ),
+      },
+    );
+  }
+}
+
+class _BasicsStep extends StatelessWidget {
+  const _BasicsStep({
+    required this.businessNameController,
+    required this.businessTypeController,
+    required this.categoryController,
+    required this.locationController,
+    required this.serviceAreaController,
+    required this.radiusController,
+    required this.brandTone,
+    required this.onBrandToneChanged,
+  });
+
+  final TextEditingController businessNameController;
+  final TextEditingController businessTypeController;
+  final TextEditingController categoryController;
+  final TextEditingController locationController;
+  final TextEditingController serviceAreaController;
+  final TextEditingController radiusController;
+  final String brandTone;
+  final ValueChanged<String> onBrandToneChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'Basics',
+          subtitle:
+              'Tell Business AI who you are and where customers can find you.',
+        ),
+        _TextField(
+          controller: businessNameController,
+          label: 'Business or provider name',
+          validator: _required('Add a public name.'),
+        ),
+        _TextField(controller: businessTypeController, label: 'Business type'),
+        _TextField(
+          controller: categoryController,
+          label: 'Primary category',
+          validator: _required('Add a category.'),
+        ),
+        _TextField(
+          controller: locationController,
+          label: 'Base location',
+          validator: _required('Add a location.'),
+        ),
+        _TextField(controller: serviceAreaController, label: 'Service area'),
+        _TextField(
+          controller: radiusController,
+          label: 'Service radius in km',
+          keyboardType: TextInputType.number,
+        ),
+        _DropdownField(
+          label: 'Business tone',
+          value: brandTone,
+          values: const [
+            'professional',
+            'friendly',
+            'premium',
+            'fast',
+            'community',
+          ],
+          onChanged: onBrandToneChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _OffersStep extends StatelessWidget {
+  const _OffersStep({
+    required this.offeringType,
+    required this.offeringsController,
+    required this.catalogController,
+    required this.pricingController,
+    required this.hoursController,
+    required this.phoneController,
+    required this.websiteController,
+    required this.onOfferingTypeChanged,
+  });
+
+  final String offeringType;
+  final TextEditingController offeringsController;
+  final TextEditingController catalogController;
+  final TextEditingController pricingController;
+  final TextEditingController hoursController;
+  final TextEditingController phoneController;
+  final TextEditingController websiteController;
+  final ValueChanged<String> onOfferingTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'Offers',
+          subtitle:
+              'Add the services, products, pricing notes, and availability AI should shape.',
+        ),
+        _DropdownField(
+          label: 'Offer type',
+          value: offeringType,
+          values: const ['services', 'products', 'hybrid'],
+          onChanged: onOfferingTypeChanged,
+        ),
+        const SizedBox(height: 12),
+        _TextField(
+          controller: offeringsController,
+          label: 'Core offerings',
+          hint: 'One per line works well',
+          maxLines: 4,
+          validator: _required('Add at least one offer.'),
+        ),
+        _TextField(
+          controller: catalogController,
+          label: 'Catalog details',
+          hint: 'Paste products, packs, service variants',
+          maxLines: 4,
+        ),
+        _TextField(
+          controller: pricingController,
+          label: 'Pricing notes',
+          maxLines: 3,
+        ),
+        _TextField(
+          controller: hoursController,
+          label: 'Availability and hours',
+        ),
+        _TextField(
+          controller: phoneController,
+          label: 'Phone',
+          keyboardType: TextInputType.phone,
+        ),
+        _TextField(
+          controller: websiteController,
+          label: 'Website',
+          keyboardType: TextInputType.url,
+        ),
+      ],
+    );
+  }
+}
+
+class _AiDraftStep extends StatelessWidget {
+  const _AiDraftStep({
+    required this.answers,
+    required this.workspace,
+    required this.descriptionController,
+    required this.onAiReviewStarted,
+  });
+
+  final MobileLaunchpadAnswers answers;
+  final MobileLaunchpadWorkspace workspace;
+  final TextEditingController descriptionController;
+  final VoidCallback onAiReviewStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    final generated = _generatedOfferings(workspace);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'AI Draft',
+          subtitle:
+              'Review the public copy and listing direction before anything goes live.',
+        ),
+        PrimaryButton(
+          label: 'Review AI draft',
+          icon: const Icon(Icons.auto_awesome_rounded),
+          onPressed: onAiReviewStarted,
+        ),
+        const SizedBox(height: 14),
+        _TextField(
+          controller: descriptionController,
+          label: 'Short profile summary',
+          hint: 'What should customers know first?',
+          maxLines: 4,
+        ),
+        const SizedBox(height: 8),
+        _PublicProfilePreview(answers: answers),
+        const SizedBox(height: 12),
+        if (generated.isEmpty)
+          EmptyStateView(
+            title: 'Generated listings will appear after publish',
+            message:
+                'Business AI will use your offers, catalog, and pricing notes to create reviewable listings.',
+          )
+        else
+          _GeneratedPreview(offerings: generated),
+      ],
+    );
+  }
+}
+
+class _PublishStep extends StatelessWidget {
+  const _PublishStep({
+    required this.answers,
+    required this.workspace,
+    required this.readiness,
+  });
+
+  final MobileLaunchpadAnswers answers;
+  final MobileLaunchpadWorkspace workspace;
+  final _PublishReadiness readiness;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'Publish Readiness',
+          subtitle:
+              'Check what will go public before your profile and listings are published.',
+        ),
+        _ReadinessChecklist(readiness: readiness),
+        const SizedBox(height: 14),
+        Text(
+          'What will go public',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 10),
+        _PublicProfilePreview(answers: answers),
+        const SizedBox(height: 12),
+        _GeneratedPreview(offerings: _generatedOfferings(workspace)),
+      ],
+    );
+  }
+}
+
+class _StepHeader extends StatelessWidget {
+  const _StepHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Generated preview',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          ...offerings
-              .take(5)
-              .map(
-                (offering) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PreviewTile(offering: offering),
-                ),
-              ),
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
+    );
+  }
+}
+
+class _ReadinessChecklist extends StatelessWidget {
+  const _ReadinessChecklist({required this.readiness});
+
+  final _PublishReadiness readiness;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final item in readiness.items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ReadinessItemTile(item: item),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReadinessItemTile extends StatelessWidget {
+  const _ReadinessItemTile({required this.item});
+
+  final _ReadinessItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: item.done ? AppColors.successSoft : AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: item.done
+              ? AppColors.success.withValues(alpha: 0.14)
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            item.done
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: item.done ? AppColors.success : AppColors.inkSubtle,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 3),
+                Text(
+                  item.description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicProfilePreview extends StatelessWidget {
+  const _PublicProfilePreview({required this.answers});
+
+  final MobileLaunchpadAnswers answers;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = answers.businessName.isEmpty
+        ? 'Business name'
+        : answers.businessName;
+    final category = answers.primaryCategory.isEmpty
+        ? 'Primary category'
+        : answers.primaryCategory;
+    final location = answers.location.isEmpty
+        ? 'Base location'
+        : answers.location;
+    final summary = answers.shortDescription.isEmpty
+        ? _fallbackSummary(answers)
+        : answers.shortDescription;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            '$category / $location',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          Text(summary, style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              PremiumPill(
+                label: _humanize(answers.offeringType),
+                icon: Icons.inventory_2_outlined,
+              ),
+              PremiumPill(
+                label: _humanize(answers.brandTone),
+                icon: Icons.record_voice_over_outlined,
+              ),
+              if (answers.serviceArea.isNotEmpty)
+                PremiumPill(
+                  label: answers.serviceArea,
+                  icon: Icons.location_searching_rounded,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GeneratedPreview extends StatelessWidget {
+  const _GeneratedPreview({required this.offerings});
+
+  final List<MobileLaunchpadGeneratedOffering> offerings;
+
+  @override
+  Widget build(BuildContext context) {
+    if (offerings.isEmpty) {
+      return const EmptyStateView(
+        title: 'No generated listings yet',
+        message:
+            'Your saved answers are enough to start. Generated listings will appear here after Business AI publishes them.',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Generated listings',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 10),
+        ...offerings
+            .take(5)
+            .map(
+              (offering) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _PreviewTile(offering: offering),
+              ),
+            ),
+      ],
     );
   }
 }
@@ -553,8 +1308,9 @@ class _PreviewTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,6 +1323,116 @@ class _PreviewTile extends StatelessWidget {
               if (price != null && price > 0) 'INR ${price.round()}',
             ].join(' / '),
             style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (offering.description.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              offering.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LaunchpadActions extends StatelessWidget {
+  const _LaunchpadActions({
+    required this.step,
+    required this.saving,
+    required this.publishing,
+    required this.onBack,
+    required this.onContinue,
+    required this.onSave,
+  });
+
+  final _LaunchpadStep step;
+  final bool saving;
+  final bool publishing;
+  final VoidCallback onBack;
+  final VoidCallback onContinue;
+  final VoidCallback? onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryLabel = step == _LaunchpadStep.publish
+        ? (publishing ? 'Publishing...' : 'Publish profile')
+        : 'Continue';
+
+    return Column(
+      children: [
+        PrimaryButton(
+          key: const ValueKey('launchpad-primary-action'),
+          label: primaryLabel,
+          icon: publishing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  step == _LaunchpadStep.publish
+                      ? Icons.rocket_launch_outlined
+                      : Icons.arrow_forward_rounded,
+                ),
+          onPressed: publishing ? null : onContinue,
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: 'Back',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: publishing ? null : onBack,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SecondaryButton(
+                key: const ValueKey('launchpad-save-draft-action'),
+                label: saving ? 'Saving...' : 'Save draft',
+                icon: saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                onPressed: publishing ? null : onSave,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusPanel extends StatelessWidget {
+  const _StatusPanel({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.primaryDeep,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
@@ -623,6 +1489,7 @@ class _DropdownField extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: values
           .map(
@@ -670,6 +1537,78 @@ class _LaunchpadLoading extends StatelessWidget {
   }
 }
 
+class _PublishReadiness {
+  const _PublishReadiness({required this.items});
+
+  factory _PublishReadiness.from(MobileLaunchpadAnswers answers) {
+    final items = [
+      _ReadinessItem(
+        title: 'Business basics',
+        description: 'Public name, category, and base location are ready.',
+        done:
+            answers.businessName.isNotEmpty &&
+            answers.primaryCategory.isNotEmpty &&
+            answers.location.isNotEmpty,
+        step: _LaunchpadStep.basics,
+      ),
+      _ReadinessItem(
+        title: 'Offer catalog',
+        description: 'At least one service or product has enough detail.',
+        done: answers.coreOfferings.isNotEmpty,
+        step: _LaunchpadStep.offers,
+      ),
+      _ReadinessItem(
+        title: 'Customer-facing copy',
+        description: 'Profile summary or AI fallback copy can be shown.',
+        done:
+            answers.shortDescription.isNotEmpty ||
+            (answers.businessName.isNotEmpty &&
+                answers.coreOfferings.isNotEmpty),
+        step: _LaunchpadStep.aiDraft,
+      ),
+      _ReadinessItem(
+        title: 'Contact or availability',
+        description: 'Customers have a contact path or available hours.',
+        done: answers.phone.isNotEmpty || answers.hours.isNotEmpty,
+        step: _LaunchpadStep.offers,
+      ),
+    ];
+    return _PublishReadiness(items: items);
+  }
+
+  final List<_ReadinessItem> items;
+
+  int get totalCount => items.length;
+  int get completedCount => items.where((item) => item.done).length;
+  bool get ready => items.every((item) => item.done);
+  _LaunchpadStep get firstIncompleteStep =>
+      items.firstWhere((item) => !item.done, orElse: () => items.last).step;
+}
+
+class _ReadinessItem {
+  const _ReadinessItem({
+    required this.title,
+    required this.description,
+    required this.done,
+    required this.step,
+  });
+
+  final String title;
+  final String description;
+  final bool done;
+  final _LaunchpadStep step;
+}
+
+List<MobileLaunchpadGeneratedOffering> _generatedOfferings(
+  MobileLaunchpadWorkspace workspace,
+) {
+  final draft = workspace.draft;
+  return [
+    ...(draft?.generatedServices ?? const <MobileLaunchpadGeneratedOffering>[]),
+    ...(draft?.generatedProducts ?? const <MobileLaunchpadGeneratedOffering>[]),
+  ];
+}
+
 String? Function(String?) _required(String message) {
   return (value) {
     if ((value ?? '').trim().isEmpty) {
@@ -695,6 +1634,19 @@ String _validBrandTone(String value) {
       }.contains(value)
       ? value
       : 'friendly';
+}
+
+String _fallbackSummary(MobileLaunchpadAnswers answers) {
+  final business = answers.businessName.isEmpty
+      ? 'This provider'
+      : answers.businessName;
+  final category = answers.primaryCategory.isEmpty
+      ? 'local services'
+      : answers.primaryCategory;
+  final location = answers.location.isEmpty
+      ? 'nearby'
+      : 'in ${answers.location}';
+  return '$business offers trusted $category $location with clear availability, pricing context, and local follow-through.';
 }
 
 String _humanize(String raw) {

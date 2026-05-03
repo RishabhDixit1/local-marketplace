@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
@@ -64,6 +65,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final initial = widget.initialQuery?.trim() ?? '';
     _searchController.text = initial;
     _query = initial;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(analyticsServiceProvider).trackScreen('search');
+      _trackSearchSubmit(initial);
+    });
   }
 
   @override
@@ -77,9 +85,43 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 220), () {
       if (mounted) {
-        setState(() => _query = value.trim());
+        final nextQuery = value.trim();
+        setState(() => _query = nextQuery);
+        _trackSearchSubmit(nextQuery);
       }
     });
+  }
+
+  void _trackSearchSubmit(String query) {
+    final normalized = query.trim();
+    if (normalized.length < 2) {
+      return;
+    }
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'search_submit',
+          extras: {'query_length': normalized.length, 'scope': _scope.name},
+        );
+  }
+
+  void _trackSearchFilterChange() {
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'search_filter_changed',
+          extras: {'scope': _scope.name, 'filter_count': _flags.length},
+        );
+  }
+
+  void _openProvider(String providerId, {required String source}) {
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'provider_open',
+          extras: {'source': source, 'provider_id': providerId},
+        );
+    context.push(AppRoutes.provider(providerId));
   }
 
   @override
@@ -107,7 +149,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 return ChoiceChip(
                   label: Text(scope.label),
                   selected: _scope == scope,
-                  onSelected: (_) => setState(() => _scope = scope),
+                  onSelected: (_) {
+                    setState(() => _scope = scope);
+                    _trackSearchFilterChange();
+                  },
                 );
               }).toList(),
             ),
@@ -120,11 +165,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 FilterOption(value: 'top_rated', label: 'Top rated'),
               ],
               selectedValues: _flags,
-              onChanged: (next) => setState(() {
-                _flags
-                  ..clear()
-                  ..addAll(next);
-              }),
+              onChanged: (next) {
+                setState(() {
+                  _flags
+                    ..clear()
+                    ..addAll(next);
+                });
+                _trackSearchFilterChange();
+              },
             ),
             const SizedBox(height: 16),
             feedAsync.when(
@@ -162,8 +210,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: ProviderCard(
                                   person: person,
-                                  onOpenProfile: () => context.push(
-                                    AppRoutes.provider(person.id),
+                                  onOpenProfile: () => _openProvider(
+                                    person.id,
+                                    source: 'search_provider',
                                   ),
                                   onMessage: () => context.push(
                                     AppRoutes.chatDirect(
@@ -194,8 +243,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                   item: item,
                                   onOpen: item.providerId.trim().isEmpty
                                       ? null
-                                      : () => context.push(
-                                          AppRoutes.provider(item.providerId),
+                                      : () => _openProvider(
+                                          item.providerId,
+                                          source: 'search_result',
                                         ),
                                   onMessage: item.providerId.trim().isEmpty
                                       ? null

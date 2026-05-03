@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
@@ -46,6 +47,20 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
         return;
       }
       HapticFeedback.mediumImpact();
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'order_status_update',
+            extras: {'order_id': widget.orderId, 'status': status},
+          );
+      if (status == 'completed') {
+        ref
+            .read(analyticsServiceProvider)
+            .trackEvent(
+              'order_completed',
+              extras: {'order_id': widget.orderId},
+            );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order marked ${_humanize(status)}.')),
       );

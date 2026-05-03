@@ -126,11 +126,15 @@ flutter run \
 
 ```powershell
 flutter analyze --no-pub
-flutter test --no-pub test/widget_test.dart
+flutter test --no-pub
 ```
 
 ## Next Product Work
 
-1. Run the staging QA checklist in `release/qa_checklist.md` on real Android and iOS devices.
-2. Add production Firebase project files and release signing secrets outside git.
-3. Capture final store screenshots after staging QA passes.
+1. Treat `release/staging_scope_freeze.md` as the beta feature boundary.
+2. Run `release/qa_checklist.md` on real Android and iOS devices.
+3. Track every blocker or friction point in `release/friction_log.md`.
+4. Fix only issues that block the frozen money loops, trust/safety, analytics,
+   reliability, or release readiness.
+5. Add production Firebase project files and release signing secrets outside git.
+6. Capture final store screenshots after staging QA passes.

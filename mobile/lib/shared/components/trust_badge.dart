@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
+
 class TrustBadge extends StatelessWidget {
   const TrustBadge({
     super.key,
     required this.label,
     this.icon = Icons.verified_rounded,
-    this.backgroundColor = const Color(0xFFE8F6EF),
-    this.foregroundColor = const Color(0xFF0E7A58),
+    this.backgroundColor = AppColors.successSoft,
+    this.foregroundColor = AppColors.success,
   });
 
   final String label;
@@ -17,10 +19,11 @@ class TrustBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: foregroundColor.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

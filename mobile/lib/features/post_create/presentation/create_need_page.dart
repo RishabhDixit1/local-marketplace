@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/marketplace_guidance.dart';
@@ -685,6 +686,18 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     }
 
     final draft = _buildDraft();
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'post_need_start',
+          extras: {
+            'category': draft.category,
+            'mode': draft.mode.apiValue,
+            'media_count': draft.media.length,
+            'has_budget': draft.budget != null,
+            'radius_km': draft.radiusKm,
+          },
+        );
 
     FocusScope.of(context).unfocus();
     setState(() {
@@ -710,11 +723,28 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         _result = result;
         _lastPublishedDraft = draft;
       });
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'post_need_success',
+            extras: {
+              'category': draft.category,
+              'mode': draft.mode.apiValue,
+              'matched_count': result.matchedCount,
+              'notified_providers': result.notifiedProviders,
+            },
+          );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
 
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'post_need_failure',
+            extras: {'category': draft.category, 'error_type': 'api'},
+          );
       setState(() {
         _error = error.message;
       });
@@ -723,6 +753,12 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         return;
       }
 
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'post_need_failure',
+            extras: {'category': draft.category, 'error_type': 'unknown'},
+          );
       setState(() {
         _error = error.toString();
       });

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -176,10 +177,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       _composerController.clear();
       ref.invalidate(chatMessagesProvider(conversationId));
       ref.invalidate(chatConversationsProvider);
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'chat_send_success',
+            extras: {
+              'conversation_id': conversationId,
+              'content_length': content.length,
+              'has_context': widget.contextTaskId?.trim().isNotEmpty ?? false,
+            },
+          );
     } catch (error) {
       if (!mounted) {
         return;
       }
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'chat_send_failure',
+            extras: {'conversation_id': conversationId},
+          );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));

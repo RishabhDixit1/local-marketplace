@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
+import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
@@ -31,6 +32,7 @@ import '../presentation/app_shell.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
   final authState = ref.watch(authStateControllerProvider);
+  final onboardingHandoff = ref.watch(onboardingHandoffControllerProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.root,
@@ -57,7 +59,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!setupRequired &&
           signedIn &&
           (location == AppRoutes.root || location == AppRoutes.signIn)) {
-        return AppRoutes.home;
+        return onboardingHandoff.resolvePostAuthDestination();
       }
 
       if (!setupRequired && !signedIn && location == AppRoutes.root) {
