@@ -187,7 +187,10 @@ test("mobile shell navigation, overlays, and quick actions", async ({ page, cont
     await page.getByRole("link", { name: /Open chat inbox/i }).click();
     await page.waitForURL(/\/dashboard\/chat/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /^Messages$/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("link", { name: /Open chat inbox/i })).toHaveAttribute("aria-current", "page");
+    const activeChatShortcut = page.getByRole("link", { name: /Open chat inbox/i });
+    await expect(activeChatShortcut).toHaveAttribute("aria-current", "page");
+    await expect(activeChatShortcut).toHaveCSS("background-color", "rgb(11, 31, 51)");
+    await expect(activeChatShortcut.locator("svg")).toHaveCSS("color", "rgb(255, 255, 255)");
 
     await page.getByRole("link", { name: /^Tasks$/i }).click();
     await page.waitForURL(/\/dashboard\/tasks/, { timeout: 20_000 });

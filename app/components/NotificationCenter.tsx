@@ -104,6 +104,8 @@ type NotificationCenterContentProps = {
   userId?: string | null;
   renderMode?: "trigger" | "page";
   filterQuery?: string;
+  onOpenChange?: (isOpen: boolean) => void;
+  closeSignal?: number;
 };
 
 export default function NotificationCenter({
@@ -111,6 +113,8 @@ export default function NotificationCenter({
   userId = null,
   renderMode = "trigger",
   filterQuery = "",
+  onOpenChange,
+  closeSignal,
 }: NotificationCenterContentProps) {
   const router = useRouter();
   const isStandalonePage = renderMode === "page";
@@ -264,6 +268,15 @@ export default function NotificationCenter({
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
+
+  useEffect(() => {
+    if (closeSignal === undefined || isStandalonePage) return;
+    setIsOpen(false);
+  }, [closeSignal, isStandalonePage]);
 
   const scheduleLoadNotifications = useCallback(() => {
     if (refreshTimerRef.current) {
@@ -540,6 +553,7 @@ export default function NotificationCenter({
   const togglePanel = () => {
     if (!enabled) return;
     if (useMobileSheet) {
+      onOpenChange?.(true);
       router.push("/dashboard/notifications");
       return;
     }

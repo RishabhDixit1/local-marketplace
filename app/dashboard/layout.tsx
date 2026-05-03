@@ -3,7 +3,14 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { supabase } from "../../lib/supabase";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import { CartProvider } from "@/app/components/store/CartContext";
@@ -112,9 +119,13 @@ function DashboardChatShortcut({
       }
       aria-current={active ? "page" : undefined}
       title="Chat"
-      className={`relative ${className} ${active ? "border-[var(--brand-500)]/60 bg-[var(--brand-900)] text-white" : ""}`}
+      className={`relative ${className} ${
+        active
+          ? "!border-[var(--brand-500)]/60 !bg-[var(--brand-900)] !text-white hover:!border-[var(--brand-500)]/60 hover:!text-white"
+          : ""
+      }`}
     >
-      <MessageCircle className="h-4 w-4" />
+      <MessageCircle className={`h-4 w-4 ${active ? "text-white" : ""}`} />
       {badgeLabel ? (
         <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[9px] font-bold leading-none text-white ring-2 ring-white">
           {badgeLabel}
@@ -132,6 +143,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     useState(false);
   const [desktopNavAutoCollapsed, setDesktopNavAutoCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notificationCloseSignal, setNotificationCloseSignal] = useState(0);
   const [authReady, setAuthReady] = useState(false);
   const [shellEnhancementsPrimed, setShellEnhancementsPrimed] = useState(false);
   const [showStartupIssues, setShowStartupIssues] = useState(false);
@@ -142,6 +154,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
+  const userMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const userMenuPanelRef = useRef<HTMLDivElement | null>(null);
+  const [userMenuDesktopStyle, setUserMenuDesktopStyle] =
+    useState<CSSProperties>({
+      top: 0,
+      left: 0,
+      width: "16rem",
+    });
   const shellEnhancementsReady = authReady && shellEnhancementsPrimed;
   const currentUserId = user?.id ?? null;
   const chatUnreadCount = useUnreadChatCount(
@@ -159,6 +179,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const navigationTabs = baseNavigationTabs;
   const desktopNavCollapsed =
     desktopNavAutoCollapsed || desktopNavManuallyCollapsed;
+  const isDesktopUserMenu = !desktopNavAutoCollapsed;
+  const canUseDOM = typeof document !== "undefined";
   const chatBadgeLabel =
     chatUnreadCount > 9
       ? "9+"
@@ -179,6 +201,27 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     (desktopNavAutoCollapsed && isFeedLandingRoute);
   const shellIconButtonClassName =
     "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
+
+  const updateUserMenuPosition = useCallback((anchor?: HTMLElement | null) => {
+    if (typeof window === "undefined") return;
+
+    const trigger = anchor ?? userMenuTriggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const panelWidth = 256;
+    const viewportPadding = 12;
+    const left = Math.min(
+      Math.max(viewportPadding, rect.right - panelWidth),
+      Math.max(viewportPadding, window.innerWidth - panelWidth - viewportPadding),
+    );
+
+    setUserMenuDesktopStyle({
+      top: rect.bottom + 8,
+      left,
+      width: `${panelWidth}px`,
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -387,6 +430,65 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  useEffect(() => {
+    if (!showUserMenu || !isDesktopUserMenu) return;
+
+    const handleLayoutChange = () => {
+      updateUserMenuPosition();
+    };
+
+    window.addEventListener("resize", handleLayoutChange);
+    window.addEventListener("scroll", handleLayoutChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleLayoutChange);
+      window.removeEventListener("scroll", handleLayoutChange, true);
+    };
+  }, [isDesktopUserMenu, showUserMenu, updateUserMenuPosition]);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (
+        userMenuPanelRef.current?.contains(target) ||
+        userMenuTriggerRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setShowUserMenu(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showUserMenu]);
+
+  useEffect(() => {
+    if (!showUserMenu || isDesktopUserMenu) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isDesktopUserMenu, showUserMenu]);
+
   if (!authReady) {
     return (
       <div className="min-h-screen grid place-items-center bg-[var(--surface-app)]">
@@ -401,6 +503,99 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     router.push("/");
   };
+
+  const userMenu =
+    showUserMenu && canUseDOM
+      ? createPortal(
+          <>
+            {!isDesktopUserMenu ? (
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(false)}
+                className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/10"
+                aria-hidden
+              />
+            ) : null}
+            <div
+              ref={userMenuPanelRef}
+              className={`z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 ${
+                isDesktopUserMenu
+                  ? "fixed rounded-2xl"
+                  : "fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)]"
+              }`}
+              style={isDesktopUserMenu ? userMenuDesktopStyle : undefined}
+            >
+              <div className="border-b border-slate-100 px-4 py-3.5">
+                <p className="truncate text-sm font-bold text-slate-900">
+                  {profile?.full_name || profile?.name || appName}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">
+                  ServiQ account
+                </p>
+              </div>
+              <div className="p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push("/dashboard/saved");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
+                  Saved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push(myProfileHref);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                >
+                  <User className="h-4 w-4 shrink-0 text-slate-400" />
+                  {publicProfileMenuLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push("/dashboard/profile");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
+                  Edit Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    router.push("/dashboard/settings");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Settings className="h-4 w-4 shrink-0 text-slate-400" />
+                  Settings
+                </button>
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowLogoutConfirm(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-slate-900">
@@ -604,12 +799,24 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <NotificationCenter
                   enabled={shellEnhancementsReady}
                   userId={currentUserId}
+                  closeSignal={notificationCloseSignal}
+                  onOpenChange={(isOpen) => {
+                    if (isOpen) {
+                      setShowUserMenu(false);
+                    }
+                  }}
                 />
-                <div className="relative">
+                <div className="relative z-[var(--layer-popover)]">
                   <button
+                    ref={userMenuTriggerRef}
                     type="button"
-                    onClick={() => {
-                      setShowUserMenu((current) => !current);
+                    onClick={(event) => {
+                      const nextOpen = !showUserMenu;
+                      if (nextOpen) {
+                        updateUserMenuPosition(event.currentTarget);
+                        setNotificationCloseSignal((current) => current + 1);
+                      }
+                      setShowUserMenu(nextOpen);
                     }}
                     aria-label="Open account menu"
                     aria-expanded={showUserMenu}
@@ -622,86 +829,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   >
                     <User className="w-4 h-4" />
                   </button>
-
-                  {showUserMenu ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setShowUserMenu(false)}
-                        className="fixed inset-0 z-[var(--layer-popover-backdrop)] bg-slate-950/10 lg:bg-transparent"
-                        aria-hidden
-                      />
-                      <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[var(--layer-popover)] overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:absolute lg:right-0 lg:top-full lg:mt-2 lg:w-64 lg:rounded-2xl lg:inset-x-auto">
-                        <div className="border-b border-slate-100 px-4 py-3.5">
-                          <p className="truncate text-sm font-bold text-slate-900">
-                            {profile?.full_name || profile?.name || appName}
-                          </p>
-                          <p className="mt-0.5 truncate text-xs text-slate-500">
-                            ServiQ account
-                          </p>
-                        </div>
-                        <div className="p-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              router.push("/dashboard/saved");
-                            }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
-                            Saved
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              router.push(myProfileHref);
-                            }}
-                            className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-                          >
-                            <User className="h-4 w-4 shrink-0 text-slate-400" />
-                            {publicProfileMenuLabel}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              router.push("/dashboard/profile");
-                            }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
-                            Edit Profile
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              router.push("/dashboard/settings");
-                            }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Settings className="h-4 w-4 shrink-0 text-slate-400" />
-                            Settings
-                          </button>
-                          <div className="my-1 border-t border-slate-100" />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowUserMenu(false);
-                              setShowLogoutConfirm(true);
-                            }}
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-                          >
-                            <LogOut className="h-4 w-4 shrink-0" />
-                            Logout
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
                 </div>
+                {userMenu}
               </div>
             </div>
             {showPrompt ? (
