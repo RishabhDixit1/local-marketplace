@@ -204,10 +204,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Profile summary'), findsOneWidget);
-    expect(find.text('Saved / history'), findsOneWidget);
+    expect(find.text('Public profile preview'), findsOneWidget);
+    expect(find.text('View Profile'), findsOneWidget);
+    expect(find.text('Business Setup'), findsOneWidget);
+    expect(find.text('Listings'), findsOneWidget);
 
-    await tester.tap(find.text('Activity'));
+    await tester.tap(find.text('Listings'));
     await tester.pumpAndSettle();
 
     expect(find.text('Services'), findsAtLeastNWidgets(1));

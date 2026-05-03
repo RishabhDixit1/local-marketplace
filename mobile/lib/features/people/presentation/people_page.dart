@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
@@ -31,6 +32,16 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   final Set<String> _filters = <String>{};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(analyticsServiceProvider).trackScreen('people');
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
@@ -46,7 +57,19 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 220), () {
       if (mounted) {
-        setState(() => _query = value.trim());
+        final nextQuery = value.trim();
+        setState(() => _query = nextQuery);
+        if (nextQuery.length >= 2) {
+          ref
+              .read(analyticsServiceProvider)
+              .trackEvent(
+                'people_search',
+                extras: {
+                  'query_length': nextQuery.length,
+                  'filter_count': _filters.length,
+                },
+              );
+        }
       }
     });
   }
@@ -58,6 +81,25 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       _query = '';
       _filters.clear();
     });
+  }
+
+  void _trackPeopleFilterChange() {
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'people_filter_changed',
+          extras: {'filter_count': _filters.length},
+        );
+  }
+
+  void _openProvider(MobilePersonCard person) {
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'provider_open',
+          extras: {'source': 'people_provider_card', 'provider_id': person.id},
+        );
+    context.push(AppRoutes.provider(person.id));
   }
 
   @override
@@ -120,11 +162,14 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                         ),
                       ],
                       selectedValues: _filters,
-                      onChanged: (next) => setState(() {
-                        _filters
-                          ..clear()
-                          ..addAll(next);
-                      }),
+                      onChanged: (next) {
+                        setState(() {
+                          _filters
+                            ..clear()
+                            ..addAll(next);
+                        });
+                        _trackPeopleFilterChange();
+                      },
                     ),
                   ],
                 ),
@@ -175,8 +220,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: ProviderDirectoryCard(
                               person: person,
-                              onOpenProfile: () =>
-                                  context.push(AppRoutes.provider(person.id)),
+                              onOpenProfile: () => _openProvider(person),
                               onMessage: () => context.push(
                                 AppRoutes.chatDirect(
                                   recipientId: person.id,

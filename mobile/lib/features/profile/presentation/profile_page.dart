@@ -12,30 +12,45 @@ import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/premium_primitives.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/profile_repository.dart';
 import '../domain/mobile_profile_snapshot.dart';
 
 enum _ProfileSection {
-  overview,
-  activity,
-  history,
+  viewProfile,
+  editProfile,
+  businessSetup,
+  listings,
   trust,
   settings;
 
   String get label {
     switch (this) {
-      case _ProfileSection.overview:
-        return 'Overview';
-      case _ProfileSection.activity:
-        return 'Activity';
-      case _ProfileSection.history:
-        return 'Saved / history';
+      case _ProfileSection.viewProfile:
+        return 'View Profile';
+      case _ProfileSection.editProfile:
+        return 'Edit Profile';
+      case _ProfileSection.businessSetup:
+        return 'Business Setup';
+      case _ProfileSection.listings:
+        return 'Listings';
       case _ProfileSection.trust:
         return 'Trust';
       case _ProfileSection.settings:
         return 'Settings';
     }
+  }
+
+  IconData get icon {
+    return switch (this) {
+      _ProfileSection.viewProfile => Icons.badge_outlined,
+      _ProfileSection.editProfile => Icons.edit_outlined,
+      _ProfileSection.businessSetup => Icons.auto_awesome_rounded,
+      _ProfileSection.listings => Icons.inventory_2_outlined,
+      _ProfileSection.trust => Icons.verified_user_outlined,
+      _ProfileSection.settings => Icons.tune_rounded,
+    };
   }
 }
 
@@ -54,7 +69,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  _ProfileSection _selectedSection = _ProfileSection.overview;
+  _ProfileSection _selectedSection = _ProfileSection.viewProfile;
   bool _passwordSubmitting = false;
   String? _passwordStatus;
   String? _passwordError;
@@ -255,12 +270,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     required VoidCallback onSignOut,
   }) {
     switch (_selectedSection) {
-      case _ProfileSection.overview:
-        return _OverviewSection(snapshot: snapshot);
-      case _ProfileSection.activity:
-        return _ActivitySection(snapshot: snapshot);
-      case _ProfileSection.history:
-        return _HistorySection(snapshot: snapshot);
+      case _ProfileSection.viewProfile:
+        return _ViewProfileSection(snapshot: snapshot);
+      case _ProfileSection.editProfile:
+        return _EditProfileSection(snapshot: snapshot);
+      case _ProfileSection.businessSetup:
+        return _BusinessSetupSection(snapshot: snapshot);
+      case _ProfileSection.listings:
+        return _ListingsSection(snapshot: snapshot);
       case _ProfileSection.trust:
         return _TrustSection(
           snapshot: snapshot,
@@ -312,11 +329,13 @@ class _ProfileSectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: _ProfileSection.values
           .map(
             (section) => ChoiceChip(
+              key: ValueKey('profile-section-${section.name}'),
+              avatar: Icon(section.icon, size: 16),
               label: Text(section.label),
               selected: section == selectedSection,
               onSelected: (_) => onSelected(section),
@@ -327,22 +346,70 @@ class _ProfileSectionBar extends StatelessWidget {
   }
 }
 
-class _OverviewSection extends StatelessWidget {
-  const _OverviewSection({required this.snapshot});
+class _ViewProfileSection extends StatelessWidget {
+  const _ViewProfileSection({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('profile-overview'),
+      key: const ValueKey('profile-view-profile'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _PublicProfilePreviewCard(snapshot: snapshot, prominent: true),
+        const SizedBox(height: 16),
         _MetricsGrid(snapshot: snapshot),
         const SizedBox(height: 16),
         _CompletionCard(snapshot: snapshot),
         const SizedBox(height: 14),
+        _ProofAndReviewsCard(snapshot: snapshot),
+      ],
+    );
+  }
+}
+
+class _EditProfileSection extends StatelessWidget {
+  const _EditProfileSection({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-edit-profile'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionIntro(
+          title: 'Edit Profile',
+          message:
+              'Review the fields that shape your public identity. Business AI can refresh profile copy from Launchpad without changing the current API contract.',
+        ),
+        const SizedBox(height: 14),
+        _EditableProfileCard(snapshot: snapshot),
+        const SizedBox(height: 14),
         _SummaryCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _LocationCard(snapshot: snapshot),
+      ],
+    );
+  }
+}
+
+class _BusinessSetupSection extends StatelessWidget {
+  const _BusinessSetupSection({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('profile-business-setup'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _BusinessSetupReadinessCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _LaunchpadConnectionCard(snapshot: snapshot),
         const SizedBox(height: 14),
         const _MarketplaceActionsCard(),
       ],
@@ -350,21 +417,23 @@ class _OverviewSection extends StatelessWidget {
   }
 }
 
-class _ActivitySection extends StatelessWidget {
-  const _ActivitySection({required this.snapshot});
+class _ListingsSection extends StatelessWidget {
+  const _ListingsSection({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('profile-activity'),
+      key: const ValueKey('profile-listings'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _ListingsSummaryCard(snapshot: snapshot),
+        const SizedBox(height: 14),
         _SectionIntro(
-          title: 'Marketplace activity',
+          title: 'Published listings',
           message:
-              'Your live services, products, and availability stay together here so it is easier to spot what buyers can act on right now.',
+              'Services and products published from the web profile or Business AI setup are visible together here.',
         ),
         const SizedBox(height: 14),
         _CollectionCard<MobileProfileService>(
@@ -412,47 +481,367 @@ class _ActivitySection extends StatelessWidget {
   }
 }
 
-class _HistorySection extends StatelessWidget {
-  const _HistorySection({required this.snapshot});
+class _PublicProfilePreviewCard extends StatelessWidget {
+  const _PublicProfilePreviewCard({
+    required this.snapshot,
+    this.prominent = false,
+  });
+
+  final MobileProfileSnapshot snapshot;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+    final displayName = profile.fullName.isEmpty
+        ? snapshot.displayName
+        : profile.fullName;
+    final headline = profile.headline.isEmpty
+        ? snapshot.roleLabel
+        : profile.headline;
+    final firstService = snapshot.services.isEmpty
+        ? null
+        : snapshot.services.first.title;
+    final firstProduct = snapshot.products.isEmpty
+        ? null
+        : snapshot.products.first.title;
+    final previewOffer = firstService ?? firstProduct ?? 'Listings pending';
+
+    return PremiumSurface(
+      key: const ValueKey('profile-public-preview'),
+      padding: EdgeInsets.all(prominent ? 18 : 16),
+      backgroundColor: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: const [
+              PremiumPill(
+                label: 'Public profile preview',
+                icon: Icons.visibility_outlined,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primary,
+              ),
+              PremiumPill(
+                label: 'Mobile-ready',
+                icon: Icons.phone_iphone_rounded,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: prominent ? 34 : 28,
+                backgroundColor: AppColors.primarySoft,
+                backgroundImage: profile.avatarUrl.isEmpty
+                    ? null
+                    : NetworkImage(profile.avatarUrl),
+                child: profile.avatarUrl.isEmpty
+                    ? Text(
+                        _avatarFallback(displayName),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      headline,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.inkSubtle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            profile.bio.isEmpty
+                ? 'Profile copy is pending. Launchpad can draft a clearer public summary next.'
+                : profile.bio,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: _humanize(profile.verificationLevel),
+                icon: Icons.verified_user_outlined,
+                backgroundColor: AppColors.successSoft,
+                foregroundColor: AppColors.success,
+              ),
+              TrustBadge(
+                label: profile.location.isEmpty
+                    ? 'Location private'
+                    : profile.location,
+                icon: Icons.location_on_outlined,
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: AppColors.ink,
+              ),
+              TrustBadge(
+                label: previewOffer,
+                icon: Icons.storefront_outlined,
+                backgroundColor: AppColors.warningSoft,
+                foregroundColor: AppColors.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _InfoRow(
+            label: 'Public path',
+            value: snapshot.publicPath.isEmpty
+                ? 'Created when profile is published'
+                : snapshot.publicPath,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableProfileCard extends StatelessWidget {
+  const _EditableProfileCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+    final rows = [
+      (
+        'Public name',
+        profile.fullName.isNotEmpty || snapshot.displayName.isNotEmpty,
+        profile.fullName.isEmpty ? snapshot.displayName : profile.fullName,
+      ),
+      ('Headline', profile.headline.isNotEmpty, profile.headline),
+      ('Bio', profile.bio.isNotEmpty, profile.bio),
+      ('Location', profile.location.isNotEmpty, profile.location),
+      ('Phone', profile.phone.isNotEmpty, profile.phone),
+      ('Website', profile.website.isNotEmpty, profile.website),
+    ];
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Profile fields', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Use this as the owner-side checklist before editing copy in Launchpad or web profile tools.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          for (final row in rows)
+            _ReadinessRow(
+              label: row.$1,
+              detail: row.$2 ? row.$3 : 'Missing',
+              done: row.$2,
+            ),
+          const SizedBox(height: 10),
+          _ActionRow(
+            icon: Icons.auto_awesome_rounded,
+            label: 'Open Business AI Launchpad',
+            onTap: () => context.push(AppRoutes.providerLaunchpad),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BusinessSetupReadinessCard extends StatelessWidget {
+  const _BusinessSetupReadinessCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+    final hasListings = snapshot.serviceCount + snapshot.productCount > 0;
+    final rows = [
+      (
+        'Business identity',
+        profile.fullName.isNotEmpty && profile.headline.isNotEmpty,
+        profile.headline.isEmpty
+            ? 'Name and headline need review'
+            : profile.headline,
+      ),
+      (
+        'Service area',
+        profile.location.isNotEmpty,
+        profile.location.isEmpty ? 'Add a public location' : profile.location,
+      ),
+      (
+        'Offer catalog',
+        hasListings,
+        hasListings
+            ? '${snapshot.serviceCount} services / ${snapshot.productCount} products'
+            : 'Add at least one service or product',
+      ),
+      (
+        'Contact readiness',
+        profile.phone.isNotEmpty || profile.website.isNotEmpty,
+        profile.phone.isNotEmpty
+            ? 'Phone available'
+            : profile.website.isNotEmpty
+            ? 'Website available'
+            : 'Add phone or website',
+      ),
+    ];
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Business Setup', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Launchpad publishes into this profile, so readiness now checks the profile destination and live listing inventory.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: (snapshot.completionPercent / 100).clamp(0.0, 1.0),
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+          ),
+          const SizedBox(height: 14),
+          for (final row in rows)
+            _ReadinessRow(label: row.$1, detail: row.$3, done: row.$2),
+        ],
+      ),
+    );
+  }
+}
+
+class _LaunchpadConnectionCard extends StatelessWidget {
+  const _LaunchpadConnectionCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Launchpad output destination',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'AI-generated profile copy, listings, and trust language should land in the public profile preview before deeper marketplace surfaces reuse them.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          _InfoRow(
+            label: 'Current public path',
+            value: snapshot.publicPath.isEmpty
+                ? 'Created when profile is published'
+                : snapshot.publicPath,
+          ),
+          _InfoRow(
+            label: 'Published inventory',
+            value:
+                '${snapshot.serviceCount} services / ${snapshot.productCount} products',
+          ),
+          _ActionRow(
+            icon: Icons.rocket_launch_outlined,
+            label: 'Continue Business AI setup',
+            onTap: () => context.push(AppRoutes.providerLaunchpad),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ListingsSummaryCard extends StatelessWidget {
+  const _ListingsSummaryCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 360;
+        final tileWidth = narrow
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 10) / 2;
+
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: tileWidth,
+              child: MetricTile(
+                label: 'Live services',
+                value: snapshot.serviceCount.toString(),
+                caption: 'Visible from profile and discovery',
+                icon: Icons.design_services_outlined,
+              ),
+            ),
+            SizedBox(
+              width: tileWidth,
+              child: MetricTile(
+                label: 'Live products',
+                value: snapshot.productCount.toString(),
+                caption: 'Catalog items ready for buyers',
+                icon: Icons.inventory_2_outlined,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ProofAndReviewsCard extends StatelessWidget {
+  const _ProofAndReviewsCard({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('profile-history'),
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionIntro(
-          title: 'Saved and history',
-          message:
-              'Saved mobile collections are not connected yet, so this space currently keeps your proof, work history, and reviews together in one calmer view.',
-        ),
-        const SizedBox(height: 14),
         _CollectionCard<MobileProfilePortfolioItem>(
-          title: 'Portfolio',
+          title: 'Public proof',
           subtitle:
-              '${snapshot.portfolioCount} proof points and projects ready for buyer trust.',
+              '${snapshot.portfolioCount} portfolio items and ${snapshot.workHistoryCount} experience entries support the public profile.',
           emptyState:
-              'No portfolio entries yet. Add showcased work from the web profile next.',
-          items: snapshot.portfolio.take(4).toList(),
+              'No proof added yet. Add showcased work after the profile foundation is stable.',
+          items: snapshot.portfolio.take(3).toList(),
           itemBuilder: (entry) =>
               _PreviewRow(title: entry.title, subtitle: entry.category),
-        ),
-        const SizedBox(height: 14),
-        _CollectionCard<MobileProfileWorkHistoryItem>(
-          title: 'Work history',
-          subtitle:
-              '${snapshot.workHistoryCount} experience entries carried over from the profile bundle.',
-          emptyState:
-              'No work history added yet. This slot is ready for trust-building experience.',
-          items: snapshot.workHistory.take(4).toList(),
-          itemBuilder: (entry) => _PreviewRow(
-            title: entry.roleTitle,
-            subtitle: entry.isCurrent
-                ? '${entry.companyName} / Current'
-                : entry.companyName,
-          ),
         ),
         const SizedBox(height: 14),
         _CollectionCard<MobileProfileReview>(
@@ -461,13 +850,58 @@ class _HistorySection extends StatelessWidget {
               '${snapshot.reviewCount} reviews and a ${snapshot.averageRating.toStringAsFixed(1)} average now reach the app too.',
           emptyState:
               'No reviews yet. Completed jobs and follow-through will start building this section.',
-          items: snapshot.reviews.take(4).toList(),
+          items: snapshot.reviews.take(3).toList(),
           itemBuilder: (entry) => _PreviewRow(
             title: '${entry.rating.toStringAsFixed(1)} stars',
             subtitle: entry.comment.isEmpty ? 'No written note' : entry.comment,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReadinessRow extends StatelessWidget {
+  const _ReadinessRow({
+    required this.label,
+    required this.detail,
+    required this.done,
+  });
+
+  final String label;
+  final String detail;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.radio_button_off_rounded,
+            color: done ? AppColors.success : AppColors.inkMuted,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 3),
+                Text(
+                  detail.isEmpty ? 'Missing' : detail,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -520,6 +954,8 @@ class _TrustSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _TrustSummaryCard(snapshot: snapshot),
+        const SizedBox(height: 14),
+        _VerificationChecklistCard(snapshot: snapshot),
         const SizedBox(height: 14),
         _SignInMethodsCard(
           linkedProviders: snapshot.linkedProviders,
@@ -616,38 +1052,39 @@ class _ProfileHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = snapshot.profile;
-    final initials = _avatarFallback(
-      profile.fullName.isEmpty ? snapshot.displayName : profile.fullName,
-    );
+    final displayName = profile.fullName.isEmpty
+        ? snapshot.displayName
+        : profile.fullName;
+    final initials = _avatarFallback(displayName);
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B1F33), Color(0xFF11466A), Color(0xFF0EA5A4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+    return PremiumSurface(
+      padding: const EdgeInsets.all(18),
+      backgroundColor: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const PremiumPill(
+            label: 'Profile Hub',
+            icon: Icons.dashboard_customize_outlined,
+            backgroundColor: AppColors.surfaceAlt,
+          ),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: Colors.white.withValues(alpha: 0.18),
+                backgroundColor: AppColors.primarySoft,
                 backgroundImage: profile.avatarUrl.isEmpty
                     ? null
                     : NetworkImage(profile.avatarUrl),
                 child: profile.avatarUrl.isEmpty
                     ? Text(
                         initials,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       )
                     : null,
               ),
@@ -657,10 +1094,10 @@ class _ProfileHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      snapshot.displayName,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+                      displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -668,7 +1105,7 @@ class _ProfileHero extends StatelessWidget {
                           ? snapshot.roleLabel
                           : profile.headline,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.84),
+                        color: AppColors.inkSubtle,
                       ),
                     ),
                   ],
@@ -683,6 +1120,7 @@ class _ProfileHero extends StatelessWidget {
             children: [
               _HeroChip(label: snapshot.roleLabel),
               _HeroChip(label: '${snapshot.completionPercent}% complete'),
+              _HeroChip(label: '${snapshot.trustScore} trust score'),
               _HeroChip(
                 label: profile.location.isEmpty
                     ? 'Location pending'
@@ -706,14 +1144,16 @@ class _HeroChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(color: Colors.white),
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: AppColors.ink,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -900,13 +1340,13 @@ class _MarketplaceActionsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Launch, list, quote, and track orders from the mobile loop.',
+            'Move from Business AI setup into listings, orders, and provider operations without losing the profile context.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 14),
           _ActionRow(
             icon: Icons.rocket_launch_outlined,
-            label: 'Provider launchpad',
+            label: 'Business AI Launchpad',
             onTap: () => context.push(AppRoutes.providerLaunchpad),
           ),
           _ActionRow(
@@ -1030,6 +1470,75 @@ class _TrustSummaryCard extends StatelessWidget {
             value: snapshot.linkedProviders.isEmpty
                 ? 'Email'
                 : snapshot.linkedProviders.map(_providerLabel).join(', '),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerificationChecklistCard extends StatelessWidget {
+  const _VerificationChecklistCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+    final linkedProviders = snapshot.linkedProviders;
+    final hasPaymentVerification = snapshot.paymentMethods.any(
+      (method) => method.isVerified,
+    );
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Verification meaning',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'These signals explain what is already trusted and what still needs attention before more people rely on this profile.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          _ReadinessRow(
+            label: 'Email identity',
+            detail: snapshot.email.isEmpty
+                ? 'Email missing'
+                : 'Email attached to this account',
+            done:
+                snapshot.email.isNotEmpty || linkedProviders.contains('email'),
+          ),
+          _ReadinessRow(
+            label: 'Google sign-in',
+            detail: linkedProviders.contains('google')
+                ? 'Google is linked'
+                : 'Optional link for faster trusted sign-in',
+            done: linkedProviders.contains('google'),
+          ),
+          _ReadinessRow(
+            label: 'Public identity',
+            detail: profile.fullName.isNotEmpty && profile.headline.isNotEmpty
+                ? 'Name and headline are visible'
+                : 'Add name and headline',
+            done: profile.fullName.isNotEmpty && profile.headline.isNotEmpty,
+          ),
+          _ReadinessRow(
+            label: 'Location privacy',
+            detail: profile.location.isEmpty
+                ? 'Exact location stays private until added'
+                : 'Public location is ${profile.location}',
+            done: profile.location.isNotEmpty,
+          ),
+          _ReadinessRow(
+            label: 'Payment trust',
+            detail: hasPaymentVerification
+                ? 'Verified payout method available'
+                : 'No verified payout method shown yet',
+            done: hasPaymentVerification,
           ),
         ],
       ),

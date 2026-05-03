@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/config/app_config.dart';
@@ -9,26 +10,41 @@ import 'core/firebase/app_firebase.dart';
 import 'core/firebase/mobile_push_notifications.dart';
 import 'core/supabase/app_bootstrap.dart';
 import 'core/theme/app_theme.dart';
+import 'features/auth/data/onboarding_handoff.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final firebaseState = await AppFirebase.initialize();
+  final onboardingStore = SharedPreferencesOnboardingHandoffStore(
+    await SharedPreferences.getInstance(),
+  );
   if (firebaseState.initialized) {
     MobilePushNotificationService.registerBackgroundHandler();
   }
 
-  runZonedGuarded(() => runApp(_BootstrapHost(firebaseState: firebaseState)), (
-    error,
-    stackTrace,
-  ) {
-    unawaited(AppFirebase.recordError(error, stackTrace, fatal: true));
-  });
+  runZonedGuarded(
+    () {
+      runApp(
+        _BootstrapHost(
+          firebaseState: firebaseState,
+          onboardingStore: onboardingStore,
+        ),
+      );
+    },
+    (error, stackTrace) {
+      unawaited(AppFirebase.recordError(error, stackTrace, fatal: true));
+    },
+  );
 }
 
 class _BootstrapHost extends StatefulWidget {
-  const _BootstrapHost({required this.firebaseState});
+  const _BootstrapHost({
+    required this.firebaseState,
+    required this.onboardingStore,
+  });
 
   final AppFirebaseState firebaseState;
+  final OnboardingHandoffStore onboardingStore;
 
   @override
   State<_BootstrapHost> createState() => _BootstrapHostState();
@@ -66,6 +82,9 @@ class _BootstrapHostState extends State<_BootstrapHost> {
           overrides: [
             appBootstrapProvider.overrideWithValue(bootstrap),
             appFirebaseProvider.overrideWithValue(widget.firebaseState),
+            onboardingHandoffStoreProvider.overrideWithValue(
+              widget.onboardingStore,
+            ),
           ],
           child: const ServiQApp(),
         );

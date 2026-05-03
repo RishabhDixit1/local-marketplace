@@ -3,35 +3,53 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  static const background = Color(0xFFF5F7F4);
-  static const backgroundRaised = Color(0xFFEFF4F0);
+  static const background = Color(0xFFF7F8F4);
+  static const backgroundRaised = Color(0xFFEFF4F1);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceAlt = Color(0xFFF0F4F2);
-  static const surfaceTint = Color(0xFFE6F4EE);
-  static const ink = Color(0xFF14211D);
-  static const inkSubtle = Color(0xFF5D6C66);
+  static const surfaceAlt = Color(0xFFF1F6F4);
+  static const surfaceTint = Color(0xFFE6F7F4);
+  static const surfacePressed = Color(0xFFE9EFEC);
   static const surfaceMuted = surfaceAlt;
   static const surfaceRaised = backgroundRaised;
+
+  static const ink = Color(0xFF141A22);
+  static const inkStrong = Color(0xFF090F17);
+  static const inkSubtle = Color(0xFF55616B);
   static const inkMuted = inkSubtle;
-  static const border = Color(0xFFD7E3DD);
-  static const primary = Color(0xFF0F8A6C);
-  static const primaryDeep = Color(0xFF0A5F4A);
-  static const primarySoft = Color(0xFFE4F5EF);
-  static const accent = Color(0xFF0D6EFD);
-  static const accentSoft = Color(0xFFEAF2FF);
-  static const warning = Color(0xFFC77718);
-  static const warningSoft = Color(0xFFFFF2DF);
-  static const danger = Color(0xFFD14C5D);
-  static const dangerSoft = Color(0xFFFFE8EB);
-  static const success = Color(0xFF21926A);
-  static const successSoft = Color(0xFFE4F7EF);
-  static const verified = Color(0xFF1169D9);
-  static const verifiedSoft = Color(0xFFEAF2FF);
-  static const urgent = Color(0xFFB94C1C);
+  static const inkFaint = Color(0xFF7A858E);
+
+  static const border = Color(0xFFDCE5E1);
+  static const borderStrong = Color(0xFFC5D3CD);
+
+  static const primary = Color(0xFF0D9488);
+  static const primaryDeep = Color(0xFF075E59);
+  static const primarySoft = Color(0xFFDDF7F2);
+  static const primaryPressed = Color(0xFF0B7E74);
+
+  static const accent = Color(0xFF3557D5);
+  static const accentDeep = Color(0xFF253C99);
+  static const accentSoft = Color(0xFFEEF2FF);
+
+  static const warm = Color(0xFFB66B1E);
+  static const warmDeep = Color(0xFF7A4313);
+  static const warmSoft = Color(0xFFFFF0DA);
+
+  static const warning = Color(0xFFAD6B00);
+  static const warningSoft = Color(0xFFFFF4D8);
+  static const danger = Color(0xFFC2415A);
+  static const dangerSoft = Color(0xFFFFE6EC);
+  static const success = Color(0xFF158463);
+  static const successSoft = Color(0xFFE2F6EE);
+  static const verified = Color(0xFF2563EB);
+  static const verifiedSoft = Color(0xFFEFF6FF);
+  static const urgent = Color(0xFFB84A1C);
   static const urgentSoft = Color(0xFFFFEBDD);
-  static const premium = Color(0xFF7A5215);
-  static const premiumSoft = Color(0xFFFFF3E2);
-  static const shadow = Color(0x1414211D);
+  static const premium = Color(0xFF7147A8);
+  static const premiumSoft = Color(0xFFF4ECFF);
+
+  static const scrim = Color(0xA6141A22);
+  static const shadow = Color(0x15141A22);
+  static const glow = Color(0x220D9488);
 }
 
 class AppSpacing {
@@ -52,11 +70,11 @@ class AppSpacing {
 class AppRadii {
   const AppRadii._();
 
-  static const xs = 10.0;
-  static const sm = 14.0;
-  static const md = 18.0;
-  static const lg = 24.0;
-  static const xl = 30.0;
+  static const xs = 4.0;
+  static const sm = 6.0;
+  static const md = 8.0;
+  static const lg = 12.0;
+  static const xl = 16.0;
   static const pill = 999.0;
 }
 
@@ -80,11 +98,15 @@ class AppShadows {
   const AppShadows._();
 
   static const card = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 24, offset: Offset(0, 10)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 18, offset: Offset(0, 8)),
   ];
 
   static const floating = <BoxShadow>[
-    BoxShadow(color: AppColors.shadow, blurRadius: 36, offset: Offset(0, 18)),
+    BoxShadow(color: AppColors.shadow, blurRadius: 30, offset: Offset(0, 16)),
+  ];
+
+  static const glow = <BoxShadow>[
+    BoxShadow(color: AppColors.glow, blurRadius: 28, offset: Offset(0, 10)),
   ];
 }
 
@@ -95,37 +117,51 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
     required this.exploreGradient,
     required this.peopleGradient,
     required this.trustGradient,
+    required this.authGradient,
+    required this.actionGradient,
     required this.glassBorder,
   });
 
   static const light = ServiqThemeTokens(
     heroGradient: LinearGradient(
-      colors: [Color(0xFF0A5F4A), Color(0xFF178566), Color(0xFF4FA07F)],
+      colors: [Color(0xFF10262B), Color(0xFF0D5C58), Color(0xFF11A08F)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     exploreGradient: LinearGradient(
-      colors: [Color(0xFFE8F6F0), Color(0xFFFDF8EE)],
+      colors: [Color(0xFFE6F7F4), Color(0xFFFFF4D8)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     peopleGradient: LinearGradient(
-      colors: [Color(0xFFE9F2FF), Color(0xFFF2FBF8)],
+      colors: [Color(0xFFEEF2FF), Color(0xFFE8F7F1)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     trustGradient: LinearGradient(
-      colors: [Color(0xFFFFF0DD), Color(0xFFEAF2FF)],
+      colors: [Color(0xFFFFF0DA), Color(0xFFEFF6FF)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
-    glassBorder: Color(0x33FFFFFF),
+    authGradient: LinearGradient(
+      colors: [Color(0xFFF7F8F4), Color(0xFFE6F7F4), Color(0xFFFFF7E8)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomRight,
+    ),
+    actionGradient: LinearGradient(
+      colors: [Color(0xFF0D9488), Color(0xFF3557D5)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    glassBorder: Color(0x66FFFFFF),
   );
 
   final Gradient heroGradient;
   final Gradient exploreGradient;
   final Gradient peopleGradient;
   final Gradient trustGradient;
+  final Gradient authGradient;
+  final Gradient actionGradient;
   final Color glassBorder;
 
   @override
@@ -134,6 +170,8 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
     Gradient? exploreGradient,
     Gradient? peopleGradient,
     Gradient? trustGradient,
+    Gradient? authGradient,
+    Gradient? actionGradient,
     Color? glassBorder,
   }) {
     return ServiqThemeTokens(
@@ -141,6 +179,8 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
       exploreGradient: exploreGradient ?? this.exploreGradient,
       peopleGradient: peopleGradient ?? this.peopleGradient,
       trustGradient: trustGradient ?? this.trustGradient,
+      authGradient: authGradient ?? this.authGradient,
+      actionGradient: actionGradient ?? this.actionGradient,
       glassBorder: glassBorder ?? this.glassBorder,
     );
   }

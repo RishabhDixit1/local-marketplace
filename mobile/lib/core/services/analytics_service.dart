@@ -66,10 +66,13 @@ Map<String, Object> _safeAnalyticsParameters(Map<String, Object?> extras) {
     if (value == null) {
       continue;
     }
-    if (value is String || value is num || value is bool) {
+    if (value is String) {
+      safe[key] = value.length <= 100 ? value : value.substring(0, 100);
+    } else if (value is num || value is bool) {
       safe[key] = value;
     } else {
-      safe[key] = value.toString();
+      final text = value.toString();
+      safe[key] = text.length <= 100 ? text : text.substring(0, 100);
     }
   }
   return safe;

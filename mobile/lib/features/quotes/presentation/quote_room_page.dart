@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
@@ -149,6 +150,16 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
       if (!mounted) {
         return;
       }
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'quote_draft_saved',
+            extras: {
+              'mode': widget.mode.apiValue,
+              'target_id': widget.targetId,
+              'line_count': input.lineItems.length,
+            },
+          );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Quote draft saved.')));
@@ -185,6 +196,16 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
         return;
       }
       HapticFeedback.mediumImpact();
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'quote_sent',
+            extras: {
+              'mode': widget.mode.apiValue,
+              'target_id': widget.targetId,
+              'line_count': input.lineItems.length,
+            },
+          );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Quote sent.')));
@@ -217,6 +238,12 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
         return;
       }
       HapticFeedback.mediumImpact();
+      ref
+          .read(analyticsServiceProvider)
+          .trackEvent(
+            'quote_accepted',
+            extras: {'mode': widget.mode.apiValue, 'quote_id': draft.id},
+          );
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Quote accepted.')));
