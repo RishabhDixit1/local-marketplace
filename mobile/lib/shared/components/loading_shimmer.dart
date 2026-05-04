@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
+
 class LoadingShimmer extends StatefulWidget {
   const LoadingShimmer({
     super.key,
@@ -41,8 +43,8 @@ class _LoadingShimmerState extends State<LoadingShimmer>
       animation: _controller,
       builder: (context, child) {
         final value = Color.lerp(
-          const Color(0xFFE7EBF1),
-          const Color(0xFFF4F6FA),
+          AppColors.shimmerBase,
+          AppColors.shimmerHighlight,
           _controller.value,
         )!;
 

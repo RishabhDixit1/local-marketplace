@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
 import 'app_buttons.dart';
 
 class EmptyStateView extends StatelessWidget {
@@ -23,7 +24,15 @@ class EmptyStateView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 30, color: Theme.of(context).colorScheme.primary),
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.accentSoft,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: Icon(icon, size: 26, color: AppColors.accentDeep),
+        ),
         const SizedBox(height: 12),
         Text(title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),

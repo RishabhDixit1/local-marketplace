@@ -21,7 +21,11 @@ class AppRoutes {
   static const providerListings = '/app/provider-listings';
   static const orders = '/app/orders';
   static const checkout = '/app/checkout';
+  static const saved = '/app/saved';
+  static const providerLaunchpadReview = '/app/provider-launchpad-review';
   static const quote = '/app/quote';
+
+  static String get checkoutFromCart => '$checkout?source=cart';
 
   static String provider(String providerId) => '/app/provider/$providerId';
   static String chatThread(String threadId) => '/app/chat/thread/$threadId';

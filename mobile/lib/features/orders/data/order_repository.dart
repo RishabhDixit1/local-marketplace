@@ -42,6 +42,33 @@ class OrderRepository {
     return MobileCheckoutResult.fromJson(payload);
   }
 
+  Future<MobileCheckoutResult> createBulkOrder(
+    MobileBulkCheckoutRequest request,
+  ) async {
+    if (request.items.isEmpty) {
+      throw ApiException('Cart is empty.');
+    }
+    if (request.items.length == 1) {
+      final only = request.items.first;
+      return createOrder(
+        MobileCheckoutRequest(
+          item: only,
+          address: request.address,
+          notes: request.notes,
+          paymentMethod: request.paymentMethod,
+          fulfillmentMethod: request.fulfillmentMethod,
+          razorpayOrderId: request.razorpayOrderId,
+        ),
+      );
+    }
+    final payload = await _apiClient.postJson(
+      '/api/orders',
+      body: request.toJson(),
+    );
+    _expectOk(payload, 'Unable to place order.');
+    return MobileCheckoutResult.fromJson(payload);
+  }
+
   Future<void> updateStatus({
     required String orderId,
     required String status,

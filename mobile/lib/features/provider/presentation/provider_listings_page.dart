@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../data/provider_listing_repository.dart';
@@ -178,7 +178,13 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              listings.when(
+              ServiqAsyncBody<MobileProviderListingsSnapshot>(
+                value: listings,
+                errorTitle: 'Unable to load listings',
+                errorMessageFor: (error, _) =>
+                    AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _ListingsLoading(),
                 data: (snapshot) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -218,14 +224,6 @@ class _ProviderListingsPageState extends ConsumerState<ProviderListingsPage> {
                         ),
                       ),
                   ],
-                ),
-                loading: () => const _ListingsLoading(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load listings',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
                 ),
               ),
             ],

@@ -5,16 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
+import '../../connections/data/connections_repository.dart';
 import '../data/people_repository.dart';
 import '../domain/people_snapshot.dart';
 
@@ -30,6 +31,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   Timer? _debounce;
   String _query = '';
   final Set<String> _filters = <String>{};
+  String? _busyConnectId;
 
   @override
   void initState() {
@@ -100,6 +102,36 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
           extras: {'source': 'people_provider_card', 'provider_id': person.id},
         );
     context.push(AppRoutes.provider(person.id));
+  }
+
+  Future<void> _connect(MobilePersonCard person) async {
+    if (_busyConnectId != null) {
+      return;
+    }
+    setState(() => _busyConnectId = person.id);
+    try {
+      await ref
+          .read(connectionsRepositoryProvider)
+          .sendConnectionRequest(person.id);
+      ref.invalidate(peopleSnapshotProvider);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connection request sent.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppErrorMapper.toMessage(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busyConnectId = null);
+      }
+    }
   }
 
   @override
@@ -175,7 +207,12 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              snapshot.when(
+              ServiqAsyncBody<MobilePeopleSnapshot>(
+                value: snapshot,
+                errorTitle: 'Unable to load people',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _PeopleLoading(),
                 data: (data) {
                   final filtered = data.people.where((person) {
                     if (_filters.contains('online') && !person.isOnline) {
@@ -228,20 +265,16 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                                   source: 'people_provider_card',
                                 ),
                               ),
+                              onConnect: person.isAcceptedConnection
+                                  ? null
+                                  : () => _connect(person),
+                              connecting: _busyConnectId == person.id,
                             ),
                           ),
                         ),
                     ],
                   );
                 },
-                loading: () => const _PeopleLoading(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load people',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
-                ),
               ),
             ],
           ),

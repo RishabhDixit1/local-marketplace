@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
@@ -225,7 +226,15 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 }).toList(),
               ),
               const SizedBox(height: 16),
-              notificationsAsync.when(
+              ServiqAsyncBody<List<MobileNotificationItem>>(
+                value: notificationsAsync,
+                errorTitle: 'Unable to load notifications',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
                 data: (items) {
                   final filtered = items.where((item) {
                     if (!_matchesFilter(item)) {
@@ -279,14 +288,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ],
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load notifications',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
-                ),
               ),
             ],
           ),
@@ -434,15 +435,15 @@ class _NotificationCard extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: item.unread
-                      ? const Color(0xFFE0F2FE)
-                      : const Color(0xFFF1F5F9),
+                      ? AppColors.verifiedSoft
+                      : AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
                   color: item.unread
-                      ? const Color(0xFF0369A1)
-                      : const Color(0xFF475569),
+                      ? AppColors.verified
+                      : AppColors.inkSubtle,
                 ),
               ),
               const SizedBox(width: 12),
@@ -463,7 +464,7 @@ class _NotificationCard extends StatelessWidget {
                             width: 10,
                             height: 10,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF0284C7),
+                              color: AppColors.accent,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -492,8 +493,8 @@ class _NotificationCard extends StatelessWidget {
               TrustBadge(
                 label: item.timeLabel,
                 icon: Icons.schedule_rounded,
-                backgroundColor: const Color(0xFFE0F2FE),
-                foregroundColor: const Color(0xFF0B1F33),
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.inkStrong,
               ),
             ],
           ),

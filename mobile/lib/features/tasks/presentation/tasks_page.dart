@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/trust_badge.dart';
@@ -290,7 +291,12 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 ),
                 const SizedBox(height: 16),
               ],
-              snapshot.when(
+              ServiqAsyncBody<MobileTaskSnapshot>(
+                value: snapshot,
+                errorTitle: 'Tasks unavailable',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _TasksLoadingState(),
                 data: (loaded) {
                   final laneItems = _itemsForLane(loaded, _selectedLane);
 
@@ -347,10 +353,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                         .toList(),
                   );
                 },
-                loading: () => const _TasksLoadingState(),
-                error: (error, stackTrace) => SectionCard(
-                  child: _TasksErrorState(error: error, onRetry: _refresh),
-                ),
               ),
             ],
           ),
@@ -805,22 +807,6 @@ class _TasksLoadingState extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _TasksErrorState extends StatelessWidget {
-  const _TasksErrorState({required this.error, required this.onRetry});
-
-  final Object error;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ErrorStateView(
-      title: 'Tasks unavailable',
-      message: 'Retry the board.',
-      onRetry: onRetry,
     );
   }
 }

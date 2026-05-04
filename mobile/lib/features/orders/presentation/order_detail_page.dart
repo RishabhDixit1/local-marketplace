@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../quotes/domain/quote_models.dart';
 import '../../tasks/data/task_repository.dart';
@@ -95,7 +95,12 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              orderAsync.when(
+              ServiqAsyncBody<MobileOrderRecord>(
+                value: orderAsync,
+                errorTitle: 'Unable to load order',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _OrderDetailLoading(),
                 data: (order) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -111,14 +116,6 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       onUpdateStatus: _updateStatus,
                     ),
                   ],
-                ),
-                loading: () => const _OrderDetailLoading(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load order',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
                 ),
               ),
             ],

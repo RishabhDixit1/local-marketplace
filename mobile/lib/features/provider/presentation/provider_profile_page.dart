@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/feed/data/feed_repository.dart';
@@ -31,7 +33,14 @@ class ProviderProfilePage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Provider profile')),
       body: SafeArea(
-        child: peopleAsync.when(
+        child: ServiqAsyncBody<MobilePeopleSnapshot>(
+          value: peopleAsync,
+          errorTitle: 'Unable to load people',
+          errorMessageFor: (error, _) =>
+              AppErrorMapper.toMessage(error),
+          onRetry: () => ref.invalidate(peopleSnapshotProvider),
+          loadingBuilder: () =>
+              const Center(child: CircularProgressIndicator()),
           data: (peopleSnapshot) {
             final provider = peopleSnapshot.people
                 .where((person) => person.id == providerId)
@@ -330,11 +339,6 @@ class ProviderProfilePage extends ConsumerWidget {
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => ListView(
-            padding: const EdgeInsets.all(16),
-            children: [SectionCard(child: Text(error.toString()))],
-          ),
         ),
       ),
     );

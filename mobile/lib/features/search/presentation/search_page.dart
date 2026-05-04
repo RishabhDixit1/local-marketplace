@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
@@ -14,7 +15,6 @@ import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/request_card.dart';
@@ -175,8 +175,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               },
             ),
             const SizedBox(height: 16),
-            feedAsync.when(
-              data: (feed) => peopleAsync.when(
+            ServiqAsyncBody<MobileFeedSnapshot>(
+              value: feedAsync,
+              errorTitle: 'Unable to search',
+              errorMessageFor: (error, _) =>
+                  AppErrorMapper.toMessage(error),
+              onRetry: () =>
+                  ref.invalidate(feedSnapshotProvider(MobileFeedScope.all)),
+              loadingBuilder: () =>
+                  const Center(child: CircularProgressIndicator()),
+              data: (feed) => ServiqAsyncBody<MobilePeopleSnapshot>(
+                value: peopleAsync,
+                errorTitle: 'Unable to load people',
+                errorMessageFor: (error, _) =>
+                    AppErrorMapper.toMessage(error),
+                onRetry: () => ref.invalidate(peopleSnapshotProvider),
+                loadingBuilder: () =>
+                    const Center(child: CircularProgressIndicator()),
                 data: (people) {
                   final providerResults = _filterProviders(people.people);
                   final feedResults = _filterFeed(feed.items);
@@ -265,20 +280,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     ],
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load people',
-                    message: AppErrorMapper.toMessage(error),
-                  ),
-                ),
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => SectionCard(
-                child: ErrorStateView(
-                  title: 'Unable to search',
-                  message: AppErrorMapper.toMessage(error),
-                ),
               ),
             ),
           ],

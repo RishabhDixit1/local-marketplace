@@ -6,7 +6,6 @@ import '../../core/constants/app_routes.dart';
 import '../../core/firebase/mobile_push_notifications.dart';
 import '../../core/realtime/mobile_live_hub.dart';
 import '../../core/services/analytics_service.dart';
-import '../../core/theme/app_theme.dart';
 import '../../features/chat/data/chat_repository.dart';
 import '../../features/tasks/data/task_repository.dart';
 import 'main_bottom_nav.dart';
@@ -62,8 +61,8 @@ class AppShell extends ConsumerWidget {
               onPressed: () => context.push(AppRoutes.createNeed),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Post Need'),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               elevation: 6,
             )
           : null,

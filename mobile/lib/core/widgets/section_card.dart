@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../theme/design_tokens.dart';
+import '../design_system/serviq_surface.dart';
 
+/// Primary card surface for lists and forms — uses [ServiqSurface] tokens.
 class SectionCard extends StatelessWidget {
   const SectionCard({
     super.key,
@@ -14,17 +15,10 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Padding(padding: padding, child: child),
-      ),
+    return ServiqSurface(
+      variant: ServiqSurfaceVariant.flat,
+      padding: padding,
+      child: child,
     );
   }
 }

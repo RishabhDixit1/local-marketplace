@@ -242,7 +242,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceAlt,
-        selectedColor: AppColors.primarySoft,
+        selectedColor: AppColors.accentSoft,
         disabledColor: AppColors.surfacePressed,
         side: const BorderSide(color: AppColors.border),
         shape: RoundedRectangleBorder(
@@ -262,7 +262,7 @@ class AppTheme {
         hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
         labelStyle: textTheme.bodyMedium,
         floatingLabelStyle: textTheme.labelMedium?.copyWith(
-          color: AppColors.primaryDeep,
+          color: AppColors.accentDeep,
         ),
         border: inputBorder,
         enabledBorder: inputBorder,
@@ -310,7 +310,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primaryDeep,
+          foregroundColor: AppColors.accentDeep,
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -349,18 +349,20 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.primarySoft,
+        indicatorColor: AppColors.accentSoft,
         height: 74,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelMedium?.copyWith(
-            color: selected ? AppColors.ink : AppColors.inkSubtle,
+            color: selected ? AppColors.inkStrong : AppColors.inkSubtle,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? AppColors.primaryDeep : AppColors.inkSubtle,
+            color: selected ? AppColors.accentDeep : AppColors.inkSubtle,
+            size: 24,
           );
         }),
       ),
