@@ -6,19 +6,26 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
+import '../../cart/application/cart_notifier.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/order_repository.dart';
 import '../domain/order_models.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
-  const CheckoutPage({super.key, required this.item});
+  const CheckoutPage({
+    super.key,
+    required this.item,
+    this.fromCart = false,
+  });
 
   final MobileCheckoutItem? item;
+  final bool fromCart;
 
   @override
   ConsumerState<CheckoutPage> createState() => _CheckoutPageState();
@@ -34,6 +41,19 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       MobileOrderFulfillmentMethod.onsite;
   _PendingRazorpayCheckout? _pendingRazorpayCheckout;
   bool _placing = false;
+  String? _checkoutRecoveryMessage;
+
+  List<MobileCheckoutItem> _resolveLines() {
+    if (widget.item != null) {
+      return [widget.item!];
+    }
+    if (widget.fromCart) {
+      return (ref.read(cartProvider).value ?? [])
+          .map((e) => e.toCheckoutItem())
+          .toList();
+    }
+    return [];
+  }
 
   @override
   void initState() {
@@ -46,18 +66,30 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       _fulfillmentMethod = MobileOrderFulfillmentMethod.delivery;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final item = widget.item;
-      if (!mounted || item == null) {
+      if (!mounted) {
         return;
       }
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      final cartLines =
+          (ref.read(cartProvider).value ?? []).map((e) => e.toCheckoutItem());
+      if (widget.fromCart &&
+          cartLines.any((l) => l.itemType == 'product')) {
+        setState(() => _fulfillmentMethod = MobileOrderFulfillmentMethod.delivery);
+      }
+      final lines = widget.item != null ? [widget.item!] : cartLines;
+      if (lines.isEmpty) {
+        return;
+      }
+      ref.read(analyticsServiceProvider).trackEvent(
             'checkout_started',
             extras: {
-              'item_type': item.itemType,
-              'provider_id': item.providerId,
-              'quantity': item.quantity,
+              'source': widget.fromCart ? 'cart' : 'direct',
+              'line_count': lines.length,
+              'item_type': lines.first.itemType,
+              'provider_id': lines.first.providerId,
+              'quantity': lines.fold<int>(
+                0,
+                (a, b) => a + b.quantity,
+              ),
               'payment_method': _paymentMethod.apiValue,
             },
           );
@@ -72,51 +104,61 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     super.dispose();
   }
 
+  Future<void> _maybeClearCart() async {
+    if (widget.fromCart) {
+      await ref.read(cartProvider.notifier).clear();
+    }
+  }
+
   Future<void> _placeOrder() async {
-    final item = widget.item;
-    if (item == null || !_formKey.currentState!.validate()) {
+    final lines = _resolveLines();
+    if (lines.isEmpty || !_formKey.currentState!.validate()) {
       return;
     }
 
     FocusScope.of(context).unfocus();
-    setState(() => _placing = true);
+    setState(() {
+      _placing = true;
+      _checkoutRecoveryMessage = null;
+    });
     try {
       String? razorpayOrderId;
       MobileRazorpayOrder? paymentOrder;
       if (_paymentMethod == MobileOrderPaymentMethod.razorpay) {
-        final amountPaise = (item.price * item.quantity * 100).round();
-        paymentOrder = await ref
-            .read(orderRepositoryProvider)
-            .createRazorpayOrder(
-              amountPaise: amountPaise <= 0 ? 100 : amountPaise,
+        final amountPaise = lines
+            .fold<double>(
+              0,
+              (a, b) => a + b.price * b.quantity,
+            )
+            .clamp(0.0, 1e9);
+        final paise = (amountPaise * 100).round();
+        paymentOrder = await ref.read(orderRepositoryProvider).createRazorpayOrder(
+              amountPaise: paise <= 0 ? 100 : paise,
               receipt: 'serviq-${DateTime.now().millisecondsSinceEpoch}',
             );
         razorpayOrderId = paymentOrder.orderId;
       }
 
-      final result = await ref
-          .read(orderRepositoryProvider)
-          .createOrder(
-            MobileCheckoutRequest(
-              item: item,
-              address: _addressController.text.trim(),
-              notes: _notesController.text.trim(),
-              paymentMethod: _paymentMethod,
-              fulfillmentMethod: _fulfillmentMethod,
-              razorpayOrderId: razorpayOrderId,
-            ),
-          );
+      final bulk = MobileBulkCheckoutRequest(
+        items: lines,
+        address: _addressController.text.trim(),
+        notes: _notesController.text.trim(),
+        paymentMethod: _paymentMethod,
+        fulfillmentMethod: _fulfillmentMethod,
+        razorpayOrderId: razorpayOrderId,
+      );
+
+      final result =
+          await ref.read(orderRepositoryProvider).createBulkOrder(bulk);
       ref.invalidate(taskSnapshotProvider);
       if (!mounted) {
         return;
       }
       HapticFeedback.mediumImpact();
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      ref.read(analyticsServiceProvider).trackEvent(
             'order_created',
             extras: {
-              'item_type': item.itemType,
+              'source': widget.fromCart ? 'cart' : 'direct',
               'order_count': result.orderIds.length,
               'payment_method': _paymentMethod.apiValue,
             },
@@ -130,10 +172,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           orderIds: result.orderIds,
           fallbackOrderId: orderId,
         );
-        _openRazorpayCheckout(paymentOrder, item);
+        _openRazorpayCheckout(paymentOrder, lines);
         return;
       }
 
+      await _maybeClearCart();
+      if (!mounted) {
+        return;
+      }
       if (orderId.isNotEmpty) {
         context.go(AppRoutes.orderDetail(orderId));
       } else {
@@ -141,14 +187,17 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       }
     } on ApiException catch (error) {
       if (mounted) {
+        setState(() => _checkoutRecoveryMessage = error.message);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
       }
     } catch (error) {
       if (mounted) {
+        final mapped = AppErrorMapper.toMessage(error);
+        setState(() => _checkoutRecoveryMessage = mapped);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
+          SnackBar(content: Text(mapped)),
         );
       }
     } finally {
@@ -160,22 +209,28 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   void _openRazorpayCheckout(
     MobileRazorpayOrder paymentOrder,
-    MobileCheckoutItem item,
+    List<MobileCheckoutItem> lines,
   ) {
+    final primary = lines.isEmpty ? null : lines.first;
+    final description = lines.length <= 1
+        ? (primary?.title ?? 'ServiQ order')
+        : 'ServiQ order (${lines.length} items)';
+
     final options = <String, Object?>{
       'key': paymentOrder.keyId,
       'amount': paymentOrder.amount,
       'currency': paymentOrder.currency,
       'name': 'ServiQ',
-      'description': item.title,
+      'description': description,
       'order_id': paymentOrder.orderId,
       'timeout': 300,
       'retry': {'enabled': true, 'max_count': 1},
       'theme': {'color': '#2563EB'},
       'notes': {
         'source': 'serviq_mobile',
-        'item_id': item.itemId,
-        'item_type': item.itemType,
+        if (primary != null) 'item_id': primary.itemId,
+        if (primary != null) 'item_type': primary.itemType,
+        'line_count': lines.length,
       },
     };
 
@@ -186,19 +241,18 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _placing = false);
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      final mapped =
+          'Unable to open Razorpay: ${AppErrorMapper.toMessage(error)}';
+      setState(() {
+        _placing = false;
+        _checkoutRecoveryMessage = mapped;
+      });
+      ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'open_razorpay', 'method': 'razorpay'},
           );
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to open Razorpay: ${AppErrorMapper.toMessage(error)}',
-          ),
-        ),
+        SnackBar(content: Text(mapped)),
       );
     }
   }
@@ -220,9 +274,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         return;
       }
       setState(() => _placing = false);
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'incomplete_response', 'method': 'razorpay'},
           );
@@ -236,9 +288,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
     setState(() => _placing = true);
     try {
-      await ref
-          .read(orderRepositoryProvider)
-          .verifyRazorpayPayment(
+      await ref.read(orderRepositoryProvider).verifyRazorpayPayment(
             razorpayOrderId: orderId,
             razorpayPaymentId: paymentId,
             razorpaySignature: signature,
@@ -253,10 +303,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       if (!mounted) {
         return;
       }
+      await _maybeClearCart();
+      if (!mounted) {
+        return;
+      }
       HapticFeedback.mediumImpact();
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      ref.read(analyticsServiceProvider).trackEvent(
             'payment_success',
             extras: {
               'method': 'razorpay',
@@ -274,9 +326,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'verify_api', 'method': 'razorpay'},
           );
@@ -288,9 +338,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
+      ref.read(analyticsServiceProvider).trackEvent(
             'payment_failure',
             extras: {'stage': 'verify_unknown', 'method': 'razorpay'},
           );
@@ -313,9 +361,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final message = rawMessage.isEmpty
         ? 'Payment was not completed.'
         : rawMessage;
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
+    ref.read(analyticsServiceProvider).trackEvent(
           'payment_failure',
           extras: {
             'stage': 'razorpay_callback',
@@ -334,9 +380,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       return;
     }
     final wallet = _trim(response.walletName);
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
+    ref.read(analyticsServiceProvider).trackEvent(
           'payment_external_wallet',
           extras: {'wallet': wallet.isEmpty ? 'unknown' : wallet},
         );
@@ -364,22 +408,44 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
+    if (widget.fromCart) {
+      ref.watch(cartProvider);
+    }
+    final lines = _resolveLines();
+    final empty = lines.isEmpty;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Checkout')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
-            if (item == null)
-              const SectionCard(
+            if (empty)
+              SectionCard(
                 child: EmptyStateView(
-                  title: 'Checkout item missing',
-                  message: 'Open checkout from a live service or product card.',
+                  title: widget.fromCart ? 'Cart is empty' : 'Checkout item missing',
+                  message: widget.fromCart
+                      ? 'Add listings from the feed, then open checkout again.'
+                      : 'Open checkout from a live service or product card.',
+                  actionLabel: widget.fromCart ? 'Browse feed' : null,
+                  onAction: widget.fromCart
+                      ? () => context.go(AppRoutes.explore)
+                      : null,
                 ),
               )
             else ...[
-              _CheckoutSummary(item: item),
+              _CheckoutLinesSummary(lines: lines),
+              if ((_checkoutRecoveryMessage ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                ServiqRecoveryBanner(
+                  message: _checkoutRecoveryMessage!.trim(),
+                  tone: ServiqRecoveryTone.danger,
+                  icon: Icons.payments_outlined,
+                  actionLabel: 'Dismiss',
+                  onAction: () =>
+                      setState(() => _checkoutRecoveryMessage = null),
+                ),
+              ],
               const SizedBox(height: 16),
               SectionCard(
                 child: Form(
@@ -468,9 +534,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                                 setState(
                                   () => _paymentMethod = selection.first,
                                 );
-                                ref
-                                    .read(analyticsServiceProvider)
-                                    .trackEvent(
+                                ref.read(analyticsServiceProvider).trackEvent(
                                       'payment_method_selected',
                                       extras: {
                                         'payment_method':
@@ -505,35 +569,56 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   }
 }
 
-class _CheckoutSummary extends StatelessWidget {
-  const _CheckoutSummary({required this.item});
+class _CheckoutLinesSummary extends StatelessWidget {
+  const _CheckoutLinesSummary({required this.lines});
 
-  final MobileCheckoutItem item;
+  final List<MobileCheckoutItem> lines;
 
   @override
   Widget build(BuildContext context) {
-    final total = item.price * item.quantity;
+    final grandTotal =
+        lines.fold<double>(0, (a, b) => a + b.price * b.quantity);
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(item.title, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
           Text(
-            item.itemType == 'product'
-                ? 'Product order from a local provider.'
-                : 'Service booking from a local provider.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            lines.length > 1 ? 'Order summary (${lines.length})' : 'Order summary',
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Chip(label: Text(_humanize(item.itemType))),
-              Chip(label: Text('Qty ${item.quantity}')),
-              Chip(label: Text('INR ${total.round()}')),
-            ],
+          ...lines.map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    line.title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Chip(label: Text(_humanize(line.itemType))),
+                      Chip(label: Text('Qty ${line.quantity}')),
+                      Chip(
+                        label: Text(
+                          'INR ${(line.price * line.quantity).round()}',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(height: 24),
+          Text(
+            'Total · INR ${grandTotal.round()}',
+            style: Theme.of(context).textTheme.titleLarge,
           ),
         ],
       ),

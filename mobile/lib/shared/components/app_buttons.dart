@@ -64,6 +64,48 @@ class SecondaryButton extends StatelessWidget {
   }
 }
 
+/// Outlined destructive action (cancel order, remove item).
+class DangerButton extends StatelessWidget {
+  const DangerButton({
+    super.key,
+    required this.label,
+    this.icon,
+    this.onPressed,
+    this.expanded = true,
+  });
+
+  final String label;
+  final Widget? icon;
+  final VoidCallback? onPressed;
+  final bool expanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: Theme.of(context).colorScheme.error,
+      side: BorderSide(color: Theme.of(context).colorScheme.error),
+    );
+    final child = icon == null
+        ? OutlinedButton(
+            style: style,
+            onPressed: onPressed,
+            child: Text(label),
+          )
+        : OutlinedButton.icon(
+            style: style,
+            onPressed: onPressed,
+            icon: icon!,
+            label: Text(label),
+          );
+
+    if (!expanded) {
+      return child;
+    }
+
+    return SizedBox(width: double.infinity, child: child);
+  }
+}
+
 class GhostButton extends StatelessWidget {
   const GhostButton({
     super.key,

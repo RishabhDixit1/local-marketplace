@@ -50,6 +50,9 @@ ServiQ mobile should open as a trusted local commerce engine:
 
 Goal: establish the exact target before redesigning.
 
+**Canonical inventory (screens, API matrix, money-loop script, exit checklist):**
+[`docs/2026-05-04-phase-0-parity-inventory.md`](2026-05-04-phase-0-parity-inventory.md).
+
 Deliverables:
 
 - Screenshot Flutter screens at 320, 390, and 430 widths:

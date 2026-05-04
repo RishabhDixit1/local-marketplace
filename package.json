@@ -14,7 +14,8 @@
     "test:unit:watch": "vitest",
     "supabase:setup": "bash scripts/supabase_setup.sh",
     "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify",
-    "supabase:sql-editor": "bash scripts/supabase_copy_sql.sh"
+    "supabase:sql-editor": "bash scripts/supabase_copy_sql.sh",
+    "phase0:api-coverage": "bash scripts/phase0_verify_api_coverage.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

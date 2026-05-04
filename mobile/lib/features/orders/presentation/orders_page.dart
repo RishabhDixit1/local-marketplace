@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../quotes/domain/quote_models.dart';
@@ -33,7 +33,12 @@ class OrdersPage extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              snapshot.when(
+              ServiqAsyncBody<MobileTaskSnapshot>(
+                value: snapshot,
+                errorTitle: 'Unable to load orders',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: () => _refresh(ref),
+                loadingBuilder: () => const _OrdersLoading(),
                 data: (data) {
                   final orders = data.items
                       .where((item) => item.source == MobileTaskSource.order)
@@ -63,14 +68,6 @@ class OrdersPage extends ConsumerWidget {
                     ],
                   );
                 },
-                loading: () => const _OrdersLoading(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load orders',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: () => _refresh(ref),
-                  ),
-                ),
               ),
             ],
           ),

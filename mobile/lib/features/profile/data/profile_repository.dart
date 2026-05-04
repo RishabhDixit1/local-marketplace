@@ -28,4 +28,47 @@ class ProfileRepository {
 
     return MobileProfileSnapshot.fromJson(payload);
   }
+
+  /// Persists the current profile fields using the same contract as the web profile editor.
+  Future<void> saveProfileFromSnapshot(MobileProfileSnapshot snapshot) async {
+    final payload = await _apiClient.postJson(
+      '/api/profile/save',
+      body: _profileSavePayload(snapshot),
+    );
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to save profile.',
+      );
+    }
+  }
+
+  Map<String, dynamic> _profileSavePayload(MobileProfileSnapshot snapshot) {
+    final p = snapshot.profile;
+    final role = snapshot.roleFamily == 'provider' ? 'provider' : 'seeker';
+    final storedRole = role == 'provider' ? 'provider' : 'seeker';
+    final availability = p.availability.trim().toLowerCase();
+    final resolvedAvailability =
+        availability == 'busy' || availability == 'offline'
+            ? availability
+            : 'available';
+
+    return {
+      'values': {
+        'fullName': p.fullName.isNotEmpty ? p.fullName : snapshot.displayName,
+        'location': p.location,
+        'latitude': null,
+        'longitude': null,
+        'role': role,
+        'bio': p.bio,
+        'interests': <String>[],
+        'email': snapshot.email,
+        'phone': p.phone,
+        'website': p.website,
+        'avatarUrl': p.avatarUrl,
+        'backgroundImageUrl': '',
+        'availability': resolvedAvailability,
+      },
+      'storedRole': storedRole,
+    };
+  }
 }

@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  static const background = Color(0xFFF7F8F4);
-  static const backgroundRaised = Color(0xFFEFF4F1);
+  /// Canvas behind scrollable content (warm neutral, not pure gray).
+  static const background = Color(0xFFF6F7F9);
+  static const backgroundRaised = Color(0xFFECEFF4);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceAlt = Color(0xFFF1F6F4);
-  static const surfaceTint = Color(0xFFE6F7F4);
-  static const surfacePressed = Color(0xFFE9EFEC);
+  static const surfaceAlt = Color(0xFFF0F3F7);
+  static const surfaceTint = Color(0xFFE8EEF8);
+  static const surfacePressed = Color(0xFFE6EAEF);
   static const surfaceMuted = surfaceAlt;
   static const surfaceRaised = backgroundRaised;
 
@@ -18,14 +19,16 @@ class AppColors {
   static const inkMuted = inkSubtle;
   static const inkFaint = Color(0xFF7A858E);
 
-  static const border = Color(0xFFDCE5E1);
-  static const borderStrong = Color(0xFFC5D3CD);
+  static const border = Color(0xFFD8DEE6);
+  static const borderStrong = Color(0xFFC2CBD6);
 
-  static const primary = Color(0xFF0D9488);
-  static const primaryDeep = Color(0xFF075E59);
-  static const primarySoft = Color(0xFFDDF7F2);
-  static const primaryPressed = Color(0xFF0B7E74);
+  /// Primary commerce / success-adjacent action (calmer blue-teal vs generic green).
+  static const primary = Color(0xFF0F766E);
+  static const primaryDeep = Color(0xFF115E57);
+  static const primarySoft = Color(0xFFCCFBF1);
+  static const primaryPressed = Color(0xFF0D9488);
 
+  /// Trust & navigation emphasis — reduces “all-green” UI while keeping primary for CTAs.
   static const accent = Color(0xFF3557D5);
   static const accentDeep = Color(0xFF253C99);
   static const accentSoft = Color(0xFFEEF2FF);
@@ -49,7 +52,11 @@ class AppColors {
 
   static const scrim = Color(0xA6141A22);
   static const shadow = Color(0x15141A22);
-  static const glow = Color(0x220D9488);
+  static const glow = Color(0x220F766E);
+
+  /// Skeleton / shimmer tracks (tokenized — avoid one-off grays in loaders).
+  static const shimmerBase = Color(0xFFE7EBF1);
+  static const shimmerHighlight = Color(0xFFF4F6FA);
 }
 
 class AppSpacing {
@@ -110,6 +117,31 @@ class AppShadows {
   ];
 }
 
+/// Semantic tints for marketplace card types and surfaces (Phase 1 parity references).
+class AppRoleColors {
+  const AppRoleColors._();
+
+  static const helpRequestBg = Color(0xFFFFF7ED);
+  static const helpRequestFg = Color(0xFF9A3412);
+  static const serviceBg = AppColors.primarySoft;
+  static const serviceFg = AppColors.primaryDeep;
+  static const productBg = AppColors.warmSoft;
+  static const productFg = AppColors.warmDeep;
+  static const orderBg = AppColors.accentSoft;
+  static const orderFg = AppColors.accentDeep;
+  static const trustBg = AppColors.verifiedSoft;
+  static const trustFg = AppColors.verified;
+}
+
+/// Minimum interactive targets (accessibility / Phase 1 polish).
+class AppTouchTargets {
+  const AppTouchTargets._();
+
+  static const minimum = 48.0;
+  static const buttonHeight = 50.0;
+  static const iconButton = 44.0;
+}
+
 @immutable
 class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
   const ServiqThemeTokens({
@@ -124,12 +156,12 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
 
   static const light = ServiqThemeTokens(
     heroGradient: LinearGradient(
-      colors: [Color(0xFF10262B), Color(0xFF0D5C58), Color(0xFF11A08F)],
+      colors: [Color(0xFF10262B), Color(0xFF115E57), Color(0xFF14B8A6)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     exploreGradient: LinearGradient(
-      colors: [Color(0xFFE6F7F4), Color(0xFFFFF4D8)],
+      colors: [Color(0xFFE8F7F5), Color(0xFFFFF4D8)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -149,7 +181,7 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
       end: Alignment.bottomRight,
     ),
     actionGradient: LinearGradient(
-      colors: [Color(0xFF0D9488), Color(0xFF3557D5)],
+      colors: [Color(0xFF0F766E), Color(0xFF3557D5)],
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
     ),

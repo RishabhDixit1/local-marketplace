@@ -125,11 +125,15 @@ class ProviderDirectoryCard extends StatelessWidget {
     required this.person,
     this.onOpenProfile,
     this.onMessage,
+    this.onConnect,
+    this.connecting = false,
   });
 
   final MobilePersonCard person;
   final VoidCallback? onOpenProfile;
   final VoidCallback? onMessage;
+  final VoidCallback? onConnect;
+  final bool connecting;
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +254,23 @@ class ProviderDirectoryCard extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+            ),
+          ],
+          if (onConnect != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: connecting ? null : onConnect,
+                icon: connecting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.person_add_alt_1_outlined),
+                label: Text(connecting ? 'Sending…' : 'Connect'),
               ),
             ),
           ],

@@ -157,6 +157,7 @@ Important:
 - `npm run supabase:setup` - apply canonical Supabase migrations
 - `npm run supabase:migrate` - apply migrations + verification checks
 - `npm run supabase:sql-editor` - copy canonical migration SQL bundle for Supabase SQL Editor
+- `npm run phase0:api-coverage` - list `app/api` routes vs `mobile/lib` string usage (Phase 0 parity; see `docs/2026-05-04-phase-0-parity-inventory.md`)
 
 ## E2E Smoke Tests
 

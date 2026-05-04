@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -468,7 +469,25 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
-          child: workspaceAsync.when(
+          child: ServiqAsyncBody<MobileLaunchpadWorkspace>(
+            value: workspaceAsync,
+            errorTitle: 'Unable to load launchpad',
+            errorMessageFor: (error, _) =>
+                AppErrorMapper.toMessage(error),
+            onRetry: _refresh,
+            loadingBuilder: () => const _LaunchpadLoading(),
+            errorBuilder: (error, stackTrace) => ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                SectionCard(
+                  child: ErrorStateView(
+                    title: 'Unable to load launchpad',
+                    message: AppErrorMapper.toMessage(error),
+                    onRetry: _refresh,
+                  ),
+                ),
+              ],
+            ),
             data: (workspace) {
               _hydrate(workspace);
               return ListView(
@@ -536,19 +555,6 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
                 ],
               );
             },
-            loading: () => const _LaunchpadLoading(),
-            error: (error, _) => ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load launchpad',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

@@ -7,10 +7,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
+import '../../cart/application/cart_notifier.dart';
+import '../../cart/presentation/cart_sheet.dart';
+import '../../orders/domain/order_models.dart';
+import '../../profile/data/profile_repository.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
@@ -105,6 +110,87 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     if (posted == true && mounted) {
       await _refresh();
     }
+  }
+
+  MobileCheckoutItem _checkoutLineFromFeed(MobileFeedItem item) {
+    final type =
+        item.type == MobileFeedItemType.product ? 'product' : 'service';
+    return MobileCheckoutItem(
+      providerId: item.providerId,
+      itemType: type,
+      itemId: item.id,
+      title: item.title,
+      price: item.price,
+      quantity: 1,
+      providerName: item.creatorName,
+    );
+  }
+
+  void _showListingActionsSheet(MobileFeedItem item) {
+    final currentUserId =
+        ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
+    if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This is your own listing.')),
+      );
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add_shopping_cart_outlined),
+                title: const Text('Add to cart'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  final line = _checkoutLineFromFeed(item);
+                  await ref.read(cartProvider.notifier).addListing(
+                        line,
+                        providerName: item.creatorName,
+                      );
+                  if (!mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Added to cart')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.payments_outlined),
+                title: Text(_primaryLabelFor(item)),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _primaryActionFor(item)?.call();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline_rounded),
+                title: const Text('Message provider'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _messageActionFor(item)?.call();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  VoidCallback? _moreActionFor(MobileFeedItem item) {
+    if (item.type != MobileFeedItemType.service &&
+        item.type != MobileFeedItemType.product) {
+      return null;
+    }
+    return () => _showListingActionsSheet(item);
   }
 
   Future<void> _sendInterest(MobileFeedItem item) async {
@@ -320,6 +406,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         ? widget.peopleOverride ?? ref.watch(peopleSnapshotProvider)
         : widget.peopleOverride;
     final previewData = snapshot.asData?.value;
+    final profileSnapshot = ref.watch(profileSnapshotProvider);
+    final cartAsync = ref.watch(cartProvider);
+    final cartCount =
+        cartAsync.value == null ? 0 : cartTotalQuantity(cartAsync.value!);
 
     return Scaffold(
       appBar: AppBar(
@@ -328,6 +418,18 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           IconButton(
             onPressed: () => context.push(AppRoutes.search),
             icon: const Icon(Icons.search_rounded),
+          ),
+          IconButton(
+            onPressed: () => context.push(AppRoutes.saved),
+            icon: const Icon(Icons.bookmarks_outlined),
+          ),
+          IconButton(
+            onPressed: () => showServiqCartSheet(context),
+            icon: Badge(
+              isLabelVisible: cartCount > 0,
+              label: Text('$cartCount'),
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
           ),
           IconButton(
             onPressed: () => context.push(AppRoutes.notifications),
@@ -341,6 +443,35 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
+              ...profileSnapshot.maybeWhen(
+                data: (profile) {
+                  if (profile.completionPercent >= 50) {
+                    return <Widget>[];
+                  }
+                  return [
+                    SectionCard(
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.assignment_turned_in_outlined,
+                          color: AppColors.primary,
+                        ),
+                        title: const Text('Finish your public profile'),
+                        subtitle: Text(
+                          'You are at ${profile.completionPercent}% — add name, area, and contact so nearby customers trust you faster.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: FilledButton.tonal(
+                          onPressed: () => context.push(AppRoutes.profile),
+                          child: const Text('Go'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ];
+                },
+                orElse: () => <Widget>[],
+              ),
               MarketplaceLoopHero(
                 title: widget.mode.heroTitle,
                 message: widget.mode.heroMessage,
@@ -382,7 +513,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 ),
               ],
               const SizedBox(height: 16),
-              snapshot.when(
+              ServiqAsyncBody<MobileFeedSnapshot>(
+                value: snapshot,
+                errorTitle: 'Unable to load the feed',
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _FeedLoadingState(),
                 data: (data) {
                   final items = _filterItems(data.items);
                   final people = _filterPeople(
@@ -405,6 +541,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         onSecondaryTap: _messageActionFor(item),
                         primaryLabel: _primaryLabelFor(item),
                         secondaryLabel: _secondaryLabelFor(item),
+                        onMoreTap: _moreActionFor(item),
                       ),
                       providerCardBuilder: (person) => ProviderCard(
                         person: person,
@@ -452,20 +589,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                               onSecondaryTap: _messageActionFor(item),
                               primaryLabel: _primaryLabelFor(item),
                               secondaryLabel: _secondaryLabelFor(item),
+                              onMoreTap: _moreActionFor(item),
                             ),
                           ),
                         ),
                     ],
                   );
                 },
-                loading: () => const _FeedLoadingState(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load the feed',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
-                ),
               ),
             ],
           ),

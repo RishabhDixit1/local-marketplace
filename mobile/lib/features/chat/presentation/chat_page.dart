@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
@@ -11,7 +12,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/trust_badge.dart';
@@ -255,7 +255,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         ],
                       ),
                     ),
-                  conversationsAsync.when(
+                  ServiqAsyncBody<List<ChatConversation>>(
+                    value: conversationsAsync,
+                    errorTitle: 'Unable to load chat',
+                    errorMessageFor: (error, _) =>
+                        AppErrorMapper.toMessage(error),
+                    onRetry: _refreshConversations,
+                    loadingBuilder: () => const _ConversationListLoading(),
                     data: (conversations) {
                       final filtered = conversations.where((conversation) {
                         if (query.isEmpty) {
@@ -317,14 +323,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         ],
                       );
                     },
-                    loading: () => const _ConversationListLoading(),
-                    error: (error, _) => SectionCard(
-                      child: ErrorStateView(
-                        title: 'Unable to load chat',
-                        message: AppErrorMapper.toMessage(error),
-                        onRetry: _refreshConversations,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -523,7 +521,7 @@ class _RequestContextCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
@@ -567,14 +565,14 @@ class _RequestContextCard extends StatelessWidget {
                           ? 'Status in Tasks'
                           : contextData.statusText,
                       icon: Icons.flag_outlined,
-                      backgroundColor: Colors.white,
+                      backgroundColor: AppColors.surface,
                       foregroundColor: AppColors.primary,
                     ),
                     if (contextData.taskIdText.isNotEmpty)
                       TrustBadge(
                         label: 'Task linked',
                         icon: Icons.link_rounded,
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppColors.surface,
                         foregroundColor: AppColors.ink,
                       ),
                   ],
@@ -695,7 +693,7 @@ class _ChatThread extends ConsumerWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 border: Border(bottom: BorderSide(color: AppColors.border)),
               ),
               child: Column(
@@ -744,7 +742,16 @@ class _ChatThread extends ConsumerWidget {
               conversationId: conversationId,
             ),
           Expanded(
-            child: messagesAsync.when(
+            child: ServiqAsyncBody<List<ChatMessageItem>>(
+              value: messagesAsync,
+              errorTitle: 'Unable to load messages',
+              errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+              onRetry: () =>
+                  ref.invalidate(chatMessagesProvider(conversationId)),
+              loadingBuilder: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: _MessageListLoading(),
+              ),
               data: (messages) {
                 if (messages.isEmpty) {
                   return Padding(
@@ -823,19 +830,6 @@ class _ChatThread extends ConsumerWidget {
                   },
                 );
               },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(16),
-                child: _MessageListLoading(),
-              ),
-              error: (error, _) => Padding(
-                padding: const EdgeInsets.all(16),
-                child: SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load messages',
-                    message: AppErrorMapper.toMessage(error),
-                  ),
-                ),
-              ),
             ),
           ),
           Container(
@@ -846,7 +840,7 @@ class _ChatThread extends ConsumerWidget {
               16 + MediaQuery.viewInsetsOf(context).bottom,
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
             child: SafeArea(
@@ -972,7 +966,7 @@ class _DealRoomShortcut extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
@@ -1038,7 +1032,7 @@ class _ConversationTile extends StatelessWidget {
                           ? AppColors.primary
                           : AppColors.border,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: AppColors.surface, width: 2),
                     ),
                   ),
                 ),

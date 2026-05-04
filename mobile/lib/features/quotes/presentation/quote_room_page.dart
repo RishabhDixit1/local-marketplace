@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/quote_repository.dart';
@@ -289,7 +289,13 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             children: [
-              workspaceAsync.when(
+              ServiqAsyncBody<MobileQuoteWorkspace>(
+                value: workspaceAsync,
+                errorTitle: 'Unable to load quote',
+                errorMessageFor: (error, _) =>
+                    AppErrorMapper.toMessage(error),
+                onRetry: _refresh,
+                loadingBuilder: () => const _QuoteLoading(),
                 data: (workspace) {
                   _hydrate(workspace);
                   final draft = workspace.draft;
@@ -337,14 +343,6 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                     ],
                   );
                 },
-                loading: () => const _QuoteLoading(),
-                error: (error, _) => SectionCard(
-                  child: ErrorStateView(
-                    title: 'Unable to load quote',
-                    message: AppErrorMapper.toMessage(error),
-                    onRetry: _refresh,
-                  ),
-                ),
               ),
             ],
           ),

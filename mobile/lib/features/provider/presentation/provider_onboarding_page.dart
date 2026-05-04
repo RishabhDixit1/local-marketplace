@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/error/app_error_mapper.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/profile/data/profile_repository.dart';
 import '../../../features/profile/domain/mobile_profile_snapshot.dart';
@@ -20,7 +23,13 @@ class ProviderOnboardingPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Provider setup')),
       body: SafeArea(
-        child: snapshot.when(
+        child: ServiqAsyncBody<MobileProfileSnapshot>(
+          value: snapshot,
+          errorTitle: 'Unable to load profile',
+          errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
+          onRetry: () => ref.invalidate(profileSnapshotProvider),
+          loadingBuilder: () =>
+              const Center(child: CircularProgressIndicator()),
           data: (data) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
@@ -97,11 +106,6 @@ class ProviderOnboardingPage extends ConsumerWidget {
               ),
             ],
           ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => ListView(
-            padding: const EdgeInsets.all(16),
-            children: [SectionCard(child: Text(error.toString()))],
-          ),
         ),
       ),
     );
@@ -136,16 +140,14 @@ class _ChecklistCard extends StatelessWidget {
             height: 28,
             decoration: BoxDecoration(
               color: item.done
-                  ? const Color(0xFFE7F4EF)
-                  : const Color(0xFFF1F4F8),
+                  ? AppColors.successSoft
+                  : AppColors.surfaceMuted,
               shape: BoxShape.circle,
             ),
             child: Icon(
               item.done ? Icons.check_rounded : Icons.circle_outlined,
               size: 16,
-              color: item.done
-                  ? const Color(0xFF146C53)
-                  : const Color(0xFF616B79),
+              color: item.done ? AppColors.success : AppColors.inkMuted,
             ),
           ),
           const SizedBox(width: 12),

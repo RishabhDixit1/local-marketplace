@@ -15,6 +15,8 @@ import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
+import '../../features/provider/presentation/provider_launchpad_review_page.dart';
+import '../../features/saved/presentation/saved_feed_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
@@ -124,8 +126,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.checkout,
-        builder: (context, state) =>
-            CheckoutPage(item: _checkoutItemFromQuery(state)),
+        builder: (context, state) => CheckoutPage(
+          item: _checkoutItemFromQuery(state),
+          fromCart: state.uri.queryParameters['source'] == 'cart',
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.saved,
+        builder: (context, state) => const SavedFeedPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerLaunchpadReview,
+        builder: (context, state) => const ProviderLaunchpadReviewPage(),
       ),
       GoRoute(
         path: AppRoutes.quote,

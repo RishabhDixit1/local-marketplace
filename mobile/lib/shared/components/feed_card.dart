@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design_system/serviq_pills.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_card.dart';
 import '../../features/feed/domain/feed_snapshot.dart';
@@ -79,7 +80,7 @@ class FeedCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusPill(label: statusLabel, urgent: item.urgent),
+                  ServiqStatusPill(label: statusLabel, urgent: item.urgent),
                   if (onSaveTap != null || onMoreTap != null) ...[
                     const SizedBox(height: 6),
                     Row(
@@ -116,6 +117,15 @@ class FeedCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _InfoPill(label: item.ratingLabel),
+              _InfoPill(label: item.socialProofLabel),
+            ],
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -170,33 +180,6 @@ class FeedCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.urgent});
-
-  final String label;
-  final bool urgent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 112),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: urgent ? AppColors.dangerSoft : AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: urgent ? AppColors.danger : AppColors.ink,
-        ),
       ),
     );
   }

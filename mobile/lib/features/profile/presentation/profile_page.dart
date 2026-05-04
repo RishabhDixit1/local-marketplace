@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/error/app_error_mapper.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/premium_primitives.dart';
@@ -222,7 +223,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
-              snapshot.when(
+              ServiqAsyncBody<MobileProfileSnapshot>(
+                value: snapshot,
+                errorTitle: 'Unable to load your profile bundle',
+                errorMessageFor: (error, _) {
+                  if (error is ApiException) {
+                    return error.message;
+                  }
+                  return AppErrorMapper.toMessage(error);
+                },
+                onRetry: () {
+                  _refresh();
+                },
+                loadingBuilder: () => const _ProfileLoadingState(),
                 data: (data) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -252,9 +265,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ],
                 ),
-                loading: () => const _ProfileLoadingState(),
-                error: (error, stackTrace) =>
-                    _ProfileErrorState(error: error, onRetry: _refresh),
               ),
             ],
           ),
@@ -623,13 +633,13 @@ class _PublicProfilePreviewCard extends StatelessWidget {
   }
 }
 
-class _EditableProfileCard extends StatelessWidget {
+class _EditableProfileCard extends ConsumerWidget {
   const _EditableProfileCard({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final profile = snapshot.profile;
     final rows = [
       (
@@ -661,6 +671,31 @@ class _EditableProfileCard extends StatelessWidget {
               detail: row.$2 ? row.$3 : 'Missing',
               done: row.$2,
             ),
+          const SizedBox(height: 14),
+          FilledButton.tonal(
+            onPressed: () async {
+              try {
+                await ref
+                    .read(profileRepositoryProvider)
+                    .saveProfileFromSnapshot(snapshot);
+                ref.invalidate(profileSnapshotProvider);
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile saved to server.')),
+                );
+              } catch (error) {
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(AppErrorMapper.toMessage(error))),
+                );
+              }
+            },
+            child: const Text('Sync fields to server'),
+          ),
           const SizedBox(height: 10),
           _ActionRow(
             icon: Icons.auto_awesome_rounded,
@@ -769,6 +804,11 @@ class _LaunchpadConnectionCard extends StatelessWidget {
             label: 'Published inventory',
             value:
                 '${snapshot.serviceCount} services / ${snapshot.productCount} products',
+          ),
+          _ActionRow(
+            icon: Icons.fact_check_outlined,
+            label: 'View publish readiness',
+            onTap: () => context.push(AppRoutes.providerLaunchpadReview),
           ),
           _ActionRow(
             icon: Icons.rocket_launch_outlined,
@@ -1933,29 +1973,6 @@ class _ProfileLoadingState extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ProfileErrorState extends StatelessWidget {
-  const _ProfileErrorState({required this.error, required this.onRetry});
-
-  final Object error;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final message = switch (error) {
-      ApiException apiError => apiError.message,
-      _ => error.toString(),
-    };
-
-    return SectionCard(
-      child: ErrorStateView(
-        title: 'Unable to load your profile bundle',
-        message: message,
-        onRetry: onRetry,
       ),
     );
   }

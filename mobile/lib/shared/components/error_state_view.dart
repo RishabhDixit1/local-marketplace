@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
 import 'app_buttons.dart';
 
 class ErrorStateView extends StatelessWidget {
@@ -19,10 +20,18 @@ class ErrorStateView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.error_outline_rounded,
-          size: 30,
-          color: Theme.of(context).colorScheme.error,
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.dangerSoft,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: const Icon(
+            Icons.error_outline_rounded,
+            size: 26,
+            color: AppColors.danger,
+          ),
         ),
         const SizedBox(height: 12),
         Text(title, style: Theme.of(context).textTheme.titleLarge),

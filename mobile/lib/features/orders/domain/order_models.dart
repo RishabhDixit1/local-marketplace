@@ -100,6 +100,7 @@ class MobileCheckoutItem {
     required this.title,
     required this.price,
     this.quantity = 1,
+    this.providerName = '',
   });
 
   final String providerId;
@@ -108,6 +109,36 @@ class MobileCheckoutItem {
   final String title;
   final double price;
   final int quantity;
+  final String providerName;
+
+  /// Stable merge key aligned with web `CartItem.key`.
+  String get cartKey => '$itemType:$itemId';
+
+  Map<String, dynamic> toOrderRequestMap({
+    required String address,
+    required String notes,
+    required MobileOrderPaymentMethod paymentMethod,
+    required MobileOrderFulfillmentMethod fulfillmentMethod,
+    String? razorpayOrderId,
+  }) {
+    return {
+      'providerId': providerId,
+      'itemType': itemType,
+      'itemId': itemId,
+      'title': title,
+      'price': price,
+      'quantity': quantity,
+      'address': address,
+      'notes': notes,
+      'payment_method': paymentMethod.apiValue,
+      'payment_status': paymentMethod == MobileOrderPaymentMethod.cod
+          ? 'cod_due'
+          : 'pending',
+      'fulfillment_method': fulfillmentMethod.apiValue,
+      if ((razorpayOrderId ?? '').trim().isNotEmpty)
+        'razorpay_order_id': razorpayOrderId!.trim(),
+    };
+  }
 }
 
 class MobileCheckoutRequest {
@@ -128,22 +159,46 @@ class MobileCheckoutRequest {
   final String? razorpayOrderId;
 
   Map<String, dynamic> toJson() {
+    return item.toOrderRequestMap(
+      address: address,
+      notes: notes,
+      paymentMethod: paymentMethod,
+      fulfillmentMethod: fulfillmentMethod,
+      razorpayOrderId: razorpayOrderId,
+    );
+  }
+}
+
+class MobileBulkCheckoutRequest {
+  const MobileBulkCheckoutRequest({
+    required this.items,
+    required this.address,
+    required this.notes,
+    required this.paymentMethod,
+    required this.fulfillmentMethod,
+    this.razorpayOrderId,
+  });
+
+  final List<MobileCheckoutItem> items;
+  final String address;
+  final String notes;
+  final MobileOrderPaymentMethod paymentMethod;
+  final MobileOrderFulfillmentMethod fulfillmentMethod;
+  final String? razorpayOrderId;
+
+  Map<String, dynamic> toJson() {
     return {
-      'providerId': item.providerId,
-      'itemType': item.itemType,
-      'itemId': item.itemId,
-      'title': item.title,
-      'price': item.price,
-      'quantity': item.quantity,
-      'address': address,
-      'notes': notes,
-      'payment_method': paymentMethod.apiValue,
-      'payment_status': paymentMethod == MobileOrderPaymentMethod.cod
-          ? 'cod_due'
-          : 'pending',
-      'fulfillment_method': fulfillmentMethod.apiValue,
-      if ((razorpayOrderId ?? '').trim().isNotEmpty)
-        'razorpay_order_id': razorpayOrderId!.trim(),
+      'items': items
+          .map(
+            (item) => item.toOrderRequestMap(
+              address: address,
+              notes: notes,
+              paymentMethod: paymentMethod,
+              fulfillmentMethod: fulfillmentMethod,
+              razorpayOrderId: razorpayOrderId,
+            ),
+          )
+          .toList(),
     };
   }
 }
