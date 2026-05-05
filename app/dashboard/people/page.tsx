@@ -73,6 +73,7 @@ import {
 } from "@/lib/realtime";
 import { supabase } from "@/lib/supabase";
 import PeopleLiveHeader from "./components/PeopleLiveHeader";
+import PeopleMapPanel from "./components/PeopleMapPanel";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCardSkeleton from "./components/ProviderCardSkeleton";
 import type {
@@ -851,15 +852,24 @@ const createProviderCards = (params: {
       const hasProfilePresence =
         Boolean(normalizeText(profile.bio)) ||
         Boolean(normalizeText(profile.location)) ||
-        Boolean(normalizeText(profile.avatar_url));
+        Boolean(normalizeText(profile.avatar_url)) ||
+        Boolean(normalizeText(profile.email)) ||
+        Boolean(normalizeText(profile.phone));
       const hasDiscoverableOnboarding =
         hasCompletedOnboarding ||
         (profile.profile_completion_percent || 0) >= 60 ||
         hasProfilePresence;
+      const hasCommunityIdentity =
+        Boolean(getProfileDisplayName(profile)) ||
+        Boolean(normalizeText(profile.email)) ||
+        Boolean(normalizeText(profile.role));
 
       if (
         hasPlaceholderName ||
-        (!hasProviderSignals && !hasProviderRole && !hasDiscoverableOnboarding)
+        (!hasProviderSignals &&
+          !hasProviderRole &&
+          !hasDiscoverableOnboarding &&
+          !hasCommunityIdentity)
       ) {
         return null;
       }
@@ -1037,7 +1047,10 @@ const createProviderCards = (params: {
                 : "Published profile with enough identity to start a confident conversation.";
 
       const displayName =
-        getProfileDisplayName(profile) || roleLabel || "Community member";
+        getProfileDisplayName(profile) ||
+        normalizeText(profile.email)?.split("@")[0] ||
+        roleLabel ||
+        "Community member";
       const media = (mediaMap.get(profile.id) || []).slice(0, 6);
       const searchDocument = [
         displayName,
@@ -2157,6 +2170,61 @@ export default function PeoplePage() {
     };
   }, [connectionSchemaReady, currentUserId, loadProviders]);
 
+  const activeProvider = useMemo(
+    () =>
+      visibleProviders.find((provider) => provider.id === activeProviderId) ||
+      visibleProviders[0] ||
+      null,
+    [activeProviderId, visibleProviders],
+  );
+
+  const peopleMapItems = useMemo(
+    () =>
+      visibleProviders
+        .filter(
+          (provider) =>
+            typeof provider.latitude === "number" &&
+            Number.isFinite(provider.latitude) &&
+            typeof provider.longitude === "number" &&
+            Number.isFinite(provider.longitude),
+        )
+        .map((provider) => ({
+          id: provider.id,
+          title: provider.name,
+          lat: provider.latitude as number,
+          lng: provider.longitude as number,
+          creatorName: provider.name,
+          locationLabel: provider.location,
+          category: provider.primarySkill,
+          timeLabel: provider.recentActivityLabel,
+          priceLabel: provider.minPriceLabel || undefined,
+        })),
+    [visibleProviders],
+  );
+
+  const peopleMapCenter = useMemo(() => {
+    if (
+      activeProvider &&
+      typeof activeProvider.latitude === "number" &&
+      Number.isFinite(activeProvider.latitude) &&
+      typeof activeProvider.longitude === "number" &&
+      Number.isFinite(activeProvider.longitude)
+    ) {
+      return {
+        lat: activeProvider.latitude,
+        lng: activeProvider.longitude,
+      };
+    }
+
+    const firstMapItem = peopleMapItems[0];
+    return firstMapItem
+      ? {
+          lat: firstMapItem.lat,
+          lng: firstMapItem.lng,
+        }
+      : null;
+  }, [activeProvider, peopleMapItems]);
+
   const activeNow = useMemo(
     () =>
       providers.filter((provider) => getPresenceTone(provider) === "online")
@@ -2214,6 +2282,13 @@ export default function PeoplePage() {
         description="Find nearby providers, manage connection requests, and jump into profiles before you start the conversation."
         action={{ label: "Edit Profile", href: "/dashboard/profile" }}
         switchAction={{ label: "Open Welcome", href: "/dashboard/welcome" }}
+      />
+
+      <PeopleMapPanel
+        items={peopleMapItems}
+        center={peopleMapCenter}
+        activeProvider={activeProvider}
+        onSelectProvider={jumpToProviderCard}
       />
 
       {viewerCompletionPercent !== null &&

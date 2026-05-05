@@ -31,6 +31,7 @@ type ActionBusyState = Record<MarketplacePrimaryActionKind | MarketplaceSecondar
 type FeedCardProps = {
   item: MarketplaceDisplayFeedItem;
   index: number;
+  testId?: string;
   active: boolean;
   saved: boolean;
   buttons: MarketplaceCardActionButton<MarketplacePrimaryActionKind>[];
@@ -108,6 +109,7 @@ export default function FeedCard({
   onOwnerDelete,
   ownerDeleteLabel = "Delete post",
   ownerBusy,
+  testId = "feed-card",
 }: FeedCardProps) {
   void index;
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
@@ -178,7 +180,7 @@ export default function FeedCard({
 
   return (
     <article
-      data-testid="feed-card"
+      data-testid={testId}
       data-card-id={item.id}
       className={`h-full w-full min-w-0 overflow-hidden rounded-[1.35rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-[1.6rem] sm:p-3.5 ${
         active
@@ -311,13 +313,18 @@ export default function FeedCard({
 
       <div className="mt-2.5">
         {hasMedia ? (
-          <FeedMediaCarousel
-            media={item.media}
-            title={item.displayTitle}
-            aspectClassName="aspect-[16/11] sm:aspect-[16/10]"
-          />
+          <div data-testid="feed-card-main-image">
+            <FeedMediaCarousel
+              media={item.media}
+              title={item.displayTitle}
+              aspectClassName="aspect-[16/11] sm:aspect-[16/10]"
+            />
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3 sm:rounded-[1.35rem] sm:p-3.5">
+          <div
+            data-testid="feed-card-main-image"
+            className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(14,165,164,0.14),transparent_42%),linear-gradient(135deg,#ffffff_0%,#f8fafc_62%,#ecfeff_100%)] p-3 sm:rounded-[1.35rem] sm:p-3.5"
+          >
             <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold sm:gap-2 sm:text-[11px]">
               {heroPills.map((pill) => (
                 <span
@@ -404,6 +411,7 @@ export default function FeedCard({
           {primaryButton ? (
             <button
               type="button"
+              data-testid="feed-action-primary"
               onClick={() => void onPrimaryAction(primaryButton.kind)}
               disabled={primaryButton.disabled || actionBusyState[primaryButton.kind]}
               aria-label={actionBusyState[primaryButton.kind] ? buttonBusyLabels[primaryButton.kind] : primaryButton.label}
@@ -428,6 +436,40 @@ export default function FeedCard({
               <span className="truncate">{primaryButton.label}</span>
             </button>
           ) : null}
+
+          {sendQuoteButton ? (
+            <button
+              type="button"
+              data-testid="feed-action-message"
+              onClick={() => void onPrimaryAction(sendQuoteButton.kind)}
+              disabled={sendQuoteButton.disabled || actionBusyState[sendQuoteButton.kind]}
+              aria-label={actionBusyState[sendQuoteButton.kind] ? buttonBusyLabels[sendQuoteButton.kind] : sendQuoteButton.label}
+              title={actionBusyState[sendQuoteButton.kind] ? buttonBusyLabels[sendQuoteButton.kind] : sendQuoteButton.label}
+              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {actionBusyState[sendQuoteButton.kind] ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <MessageCircle size={16} />
+              )}
+              <span className="hidden sm:inline">{sendQuoteButton.label}</span>
+            </button>
+          ) : null}
+
+          {openButton ? (
+            <button
+              type="button"
+              data-testid="feed-action-network"
+              onClick={() => void onPrimaryAction(openButton.kind)}
+              disabled={openButton.disabled}
+              aria-label={openButton.label}
+              title={openButton.label}
+              className="inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <ArrowUpRight size={16} />
+              <span className="hidden sm:inline">{openButton.label}</span>
+            </button>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1.5 self-end sm:self-auto">
@@ -441,6 +483,7 @@ export default function FeedCard({
               <button
                 key={actionKind}
                 type="button"
+                data-testid={actionKind === "share" ? "feed-action-share" : "feed-action-save"}
                 onClick={() => void onSecondaryAction(actionKind)}
                 disabled={busy}
                 aria-label={label}
@@ -452,6 +495,7 @@ export default function FeedCard({
                 }`}
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}
+                <span className="sr-only">{label}</span>
               </button>
             );
           })}

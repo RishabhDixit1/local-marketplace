@@ -394,7 +394,7 @@ export default function CheckoutPage() {
           >
             <ArrowLeft className="h-4 w-4 text-slate-600" />
           </button>
-          <span className="font-semibold text-slate-900">Checkout</span>
+          <h1 className="font-semibold text-slate-900">Checkout</h1>
           <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length !== 1 ? "s" : ""}</span>
         </div>
       </div>

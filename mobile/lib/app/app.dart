@@ -78,7 +78,9 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
         ref
             .read(analyticsServiceProvider)
             .trackEvent('mobile_onboarding_started', extras: extras);
-        unawaited(handoff.completeAuthHandoff(startedRoute: destination));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(handoff.completeAuthHandoff(startedRoute: destination));
+        });
       });
     });
     ref.listen(notificationTapRouteStreamProvider, (previous, next) {

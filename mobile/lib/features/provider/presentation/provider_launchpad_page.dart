@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -472,8 +472,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
           child: ServiqAsyncBody<MobileLaunchpadWorkspace>(
             value: workspaceAsync,
             errorTitle: 'Unable to load launchpad',
-            errorMessageFor: (error, _) =>
-                AppErrorMapper.toMessage(error),
+            errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
             onRetry: _refresh,
             loadingBuilder: () => const _LaunchpadLoading(),
             errorBuilder: (error, stackTrace) => ListView(
@@ -643,107 +642,19 @@ class _LaunchpadStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 360;
-        final steps = _LaunchpadStep.values;
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final step in steps)
-              SizedBox(
-                width: compact
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - 8) / 2,
-                child: _StepTile(
-                  key: ValueKey('launchpad-step-${step.analyticsValue}'),
-                  step: step,
-                  selected: step == currentStep,
-                  number: steps.indexOf(step) + 1,
-                  onTap: () => onTap(step),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StepTile extends StatelessWidget {
-  const _StepTile({
-    super.key,
-    required this.step,
-    required this.selected,
-    required this.number,
-    required this.onTap,
-  });
-
-  final _LaunchpadStep step;
-  final bool selected;
-  final int number;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final foreground = selected ? Colors.white : AppColors.ink;
-    final background = selected ? AppColors.inkStrong : AppColors.surface;
-
-    return Material(
-      color: background,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(
-          color: selected ? AppColors.inkStrong : AppColors.border,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.14)
-                      : AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-                child: Icon(step.icon, size: 16, color: foreground),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Step $number',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: selected
-                            ? Colors.white.withValues(alpha: 0.70)
-                            : AppColors.inkSubtle,
-                      ),
-                    ),
-                    Text(
-                      step.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelLarge?.copyWith(color: foreground),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return ServiqStepper<_LaunchpadStep>(
+      value: currentStep,
+      onChanged: onTap,
+      steps: _LaunchpadStep.values
+          .map(
+            (step) => ServiqStepItem<_LaunchpadStep>(
+              key: ValueKey('launchpad-step-${step.analyticsValue}'),
+              value: step,
+              label: step.label,
+              icon: step.icon,
+            ),
+          )
+          .toList(),
     );
   }
 }

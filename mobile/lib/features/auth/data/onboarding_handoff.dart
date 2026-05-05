@@ -106,6 +106,7 @@ abstract class OnboardingHandoffStore {
   Future<void> writePendingAuthMethod(MobileAuthMethod method);
   Future<void> clearPendingAuthMethod();
   Future<void> writeLastRoute(String route);
+  Future<void> clearLastRoute();
 }
 
 class MemoryOnboardingHandoffStore implements OnboardingHandoffStore {
@@ -148,6 +149,11 @@ class MemoryOnboardingHandoffStore implements OnboardingHandoffStore {
   @override
   Future<void> writeLastRoute(String route) async {
     _lastRoute = _sanitizeRoute(route);
+  }
+
+  @override
+  Future<void> clearLastRoute() async {
+    _lastRoute = null;
   }
 }
 
@@ -200,6 +206,11 @@ class SharedPreferencesOnboardingHandoffStore
     final sanitized = _sanitizeRoute(route) ?? AppRoutes.home;
     return _preferences.setString(_lastRouteKey, sanitized);
   }
+
+  @override
+  Future<void> clearLastRoute() {
+    return _preferences.remove(_lastRouteKey);
+  }
 }
 
 class OnboardingHandoffController extends ChangeNotifier {
@@ -216,8 +227,7 @@ class OnboardingHandoffController extends ChangeNotifier {
   MobileOnboardingIntent get selectedIntent => _selectedIntent;
   MobileAuthMethod? get pendingAuthMethod => _pendingAuthMethod;
   String? get lastRoute => _lastRoute;
-  bool get hasStoredHandoff =>
-      _lastRoute != null || _store.readIntent() != null;
+  bool get hasStoredHandoff => _lastRoute != null || _pendingAuthMethod != null;
 
   String get postAuthDestination =>
       _lastRoute ?? _selectedIntent.destinationRoute;
@@ -237,18 +247,35 @@ class OnboardingHandoffController extends ChangeNotifier {
 
   Future<void> prepareForAuth(MobileAuthMethod method) async {
     _pendingAuthMethod = method;
-    _lastRoute = _selectedIntent.destinationRoute;
+    _lastRoute ??= _selectedIntent.destinationRoute;
     notifyListeners();
 
     await _store.writeIntent(_selectedIntent);
-    await _store.writeLastRoute(_selectedIntent.destinationRoute);
+    await _store.writeLastRoute(_lastRoute ?? _selectedIntent.destinationRoute);
     await _store.writePendingAuthMethod(method);
   }
 
-  Future<void> completeAuthHandoff({String? startedRoute}) async {
+  Future<void> rememberRoute(String route) async {
+    final sanitizedRoute = _sanitizeRoute(route);
+    if (sanitizedRoute == null) {
+      return;
+    }
+
+    _lastRoute = sanitizedRoute;
+    notifyListeners();
+    await _store.writeLastRoute(sanitizedRoute);
+  }
+
+  Future<void> completeAuthHandoff({
+    String? startedRoute,
+    bool clearStoredRoute = true,
+  }) async {
     _pendingAuthMethod = null;
     final sanitizedRoute = _sanitizeRoute(startedRoute);
-    if (sanitizedRoute != null) {
+    if (clearStoredRoute) {
+      _lastRoute = null;
+      await _store.clearLastRoute();
+    } else if (sanitizedRoute != null) {
       _lastRoute = sanitizedRoute;
       await _store.writeLastRoute(sanitizedRoute);
     }

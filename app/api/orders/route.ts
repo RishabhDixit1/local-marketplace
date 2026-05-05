@@ -180,17 +180,10 @@ export async function POST(request: Request) {
   const uniqueProviderIds = [...new Set(requestedItems.map((i) => i.providerId))];
   const { data: providers, error: providerErr } = await admin
     .from("profiles")
-    .select("id,role")
+    .select("id")
     .in("id", uniqueProviderIds);
   if (providerErr || !providers || providers.length !== uniqueProviderIds.length) {
     return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more providers not found." }, { status: 400 });
-  }
-  const invalidProviderRole = (providers as Array<{ id: string; role?: string | null }>).some((provider) => {
-    const role = (provider.role || "").trim().toLowerCase();
-    return role.length > 0 && !["provider", "business", "seller", "service_provider"].includes(role);
-  });
-  if (invalidProviderRole) {
-    return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "One or more selected profiles cannot receive orders." }, { status: 400 });
   }
 
   // -- Verify itemIds exist in the correct table --

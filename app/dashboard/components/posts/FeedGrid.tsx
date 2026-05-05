@@ -17,6 +17,7 @@ const feedGridClassName =
 
 type FeedGridProps = {
   items: MarketplaceDisplayFeedItem[];
+  cardTestId?: string;
   loading: boolean;
   hasAnyFeed: boolean;
   feedError: string | null;
@@ -52,6 +53,7 @@ type FeedGridProps = {
 
 export default function FeedGrid({
   items,
+  cardTestId = "feed-card",
   loading,
   hasAnyFeed,
   feedError,
@@ -359,6 +361,7 @@ export default function FeedGrid({
               <FeedCard
                 item={item}
                 index={index}
+                testId={cardTestId}
                 active={activeItemId === item.id || hoveredItemId === item.id}
                 saved={isSavedListing(item)}
                 buttons={actionModel.buttons}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Compass, MapPin, Navigation } from "lucide-react";
 import type { ProviderCard as ProviderCardModel } from "../types";
@@ -30,8 +31,44 @@ type Props = {
   onSelectProvider: (providerId: string) => void;
 };
 
+class PeopleMapErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+    console.warn("People map failed to initialize.", error, errorInfo.componentStack);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+const StaticMapFallback = ({ items }: { items: MapItem[] }) => (
+  <div className="grid h-[240px] place-items-center rounded-[1.3rem] border border-dashed border-slate-200 bg-slate-50 px-5 text-center sm:h-[340px] sm:rounded-[1.6rem] sm:px-6">
+    <div className="max-w-sm">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--brand-700)] shadow-sm">
+        <MapPin className="h-6 w-6" />
+      </div>
+      <p className="mt-4 text-base font-semibold text-slate-900">People are still listed below</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {items.length > 0
+          ? "Map rendering is unavailable in this browser session, but all nearby profiles remain available in the directory."
+          : "Location pins will appear here when profiles include usable location data."}
+      </p>
+    </div>
+  </div>
+);
+
 export default function PeopleMapPanel({ items, center, activeProvider, onSelectProvider }: Props) {
   const hasCenter = Boolean(center);
+  const fallback = <StaticMapFallback items={items} />;
 
   return (
     <section className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/[0.88] p-3 shadow-[0_24px_80px_-54px_rgba(15,23,42,0.48)] backdrop-blur sm:rounded-[2rem] sm:p-5">
@@ -59,27 +96,19 @@ export default function PeopleMapPanel({ items, center, activeProvider, onSelect
       {items.length > 0 ? (
         <div className="overflow-hidden rounded-[1.3rem] sm:rounded-[1.6rem]">
           <div className="h-[240px] sm:h-[340px]">
-            <MarketplaceMap
-              items={items}
-              center={center}
-              activeItemId={activeProvider?.id || null}
-              selectedItemId={activeProvider?.id || null}
-              onSelectItem={onSelectProvider}
-            />
+            <PeopleMapErrorBoundary fallback={fallback}>
+              <MarketplaceMap
+                items={items}
+                center={center}
+                activeItemId={activeProvider?.id || null}
+                selectedItemId={activeProvider?.id || null}
+                onSelectItem={onSelectProvider}
+              />
+            </PeopleMapErrorBoundary>
           </div>
         </div>
       ) : (
-        <div className="grid h-[240px] place-items-center rounded-[1.3rem] border border-dashed border-slate-200 bg-slate-50 px-5 text-center sm:h-[340px] sm:rounded-[1.6rem] sm:px-6">
-          <div className="max-w-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--brand-700)] shadow-sm">
-              <MapPin className="h-6 w-6" />
-            </div>
-            <p className="mt-4 text-base font-semibold text-slate-900">Location pins will appear here automatically</p>
-            <p className="mt-1 text-sm text-slate-500">
-              ServiQ uses precise coordinates when they exist and falls back to city-level placement when they do not.
-            </p>
-          </div>
-        </div>
+        fallback
       )}
     </section>
   );

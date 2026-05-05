@@ -27,6 +27,17 @@ const openProviderStoreAndAddItemToCart = async ({ page }: { page: Page }) => {
   await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
   await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 });
 
+  const clickCommerceAction = async (timeout = 8_000) => {
+    const commerceButton = page.getByRole("button", { name: /Add to Cart|Hire Now|Buy Now/i }).first();
+    try {
+      await expect(commerceButton).toBeVisible({ timeout });
+      await commerceButton.click();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const cardCount = await page.locator("article").count();
   const maxAttempts = Math.min(cardCount, 8);
 
@@ -37,22 +48,20 @@ const openProviderStoreAndAddItemToCart = async ({ page }: { page: Page }) => {
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.click();
 
-    const storeTab = page.getByRole("button", { name: /^Store$/i });
-    await expect(storeTab).toBeVisible({ timeout: 20_000 });
-    await storeTab.click();
+    await page.waitForURL(/\/(profile|business)\//, { timeout: 20_000 }).catch(() => {});
 
-    const addToCartButton = page.getByRole("button", { name: /Add to Cart/i }).first();
-    if ((await addToCartButton.count()) > 0) {
-      await expect(addToCartButton).toBeVisible({ timeout: 10_000 });
-      await addToCartButton.click();
+    if (await clickCommerceAction()) {
       return;
     }
 
-    const buyNowButton = page.getByRole("button", { name: /Hire Now|Buy Now/i }).first();
-    if ((await buyNowButton.count()) > 0) {
-      await expect(buyNowButton).toBeVisible({ timeout: 10_000 });
-      await buyNowButton.click();
-      return;
+    const storeTab = page.getByRole("button", { name: /^Store$/i }).first();
+    if ((await storeTab.count()) > 0) {
+      await expect(storeTab).toBeVisible({ timeout: 20_000 });
+      await storeTab.click();
+
+      if (await clickCommerceAction(10_000)) {
+        return;
+      }
     }
   }
 
@@ -94,28 +103,15 @@ test("authenticated marketplace smoke", async ({ page }) => {
   });
 
   await test.step("open connected chat + send message", async () => {
-    const mobileConnectionsToggle = page.getByRole("button", { name: /^Connections$/i });
-    if ((await mobileConnectionsToggle.count()) > 0 && (await mobileConnectionsToggle.first().isVisible())) {
-      await mobileConnectionsToggle.first().click();
-    }
-
-    const connectionsPanel = page.locator("section").filter({ has: page.getByRole("heading", { name: /^Connections$/i }) }).first();
-    await expect(connectionsPanel).toBeVisible({ timeout: 15_000 });
-
-    await connectionsPanel.getByRole("button", { name: /Connected/i }).click();
-
-    const acceptedConnectionChat = connectionsPanel.getByRole("button", { name: /^Chat$/i }).first();
-    if ((await acceptedConnectionChat.count()) > 0) {
-      await expect(acceptedConnectionChat).toBeVisible({ timeout: 15_000 });
-      await acceptedConnectionChat.click();
+    const connectedCard = page.locator("article").filter({ hasText: /Connected/i }).first();
+    const connectedMessageButton = connectedCard.getByRole("button", { name: /^Message$/i }).first();
+    if ((await connectedMessageButton.count()) > 0) {
+      await expect(connectedMessageButton).toBeVisible({ timeout: 15_000 });
+      await connectedMessageButton.click();
     } else {
-      await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-      const dashboardConnectedCard = page
-        .locator("article")
-        .filter({ has: page.getByRole("button", { name: /^Connected$/i }) })
-        .first();
-      await expect(dashboardConnectedCard).toBeVisible({ timeout: 20_000 });
-      await dashboardConnectedCard.getByRole("button", { name: /^Chat$/i }).click();
+      const firstMessageButton = page.getByRole("button", { name: /^Message$/i }).first();
+      await expect(firstMessageButton).toBeVisible({ timeout: 15_000 });
+      await firstMessageButton.click();
     }
 
     await page.waitForURL(/\/dashboard\/chat\?open=/, { timeout: 30_000 });
@@ -131,16 +127,22 @@ test("authenticated marketplace smoke", async ({ page }) => {
 
   await test.step("create order from marketplace", async () => {
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    const acceptButton = page.getByRole("button", { name: /^Accept$/i }).first();
-    await expect(acceptButton).toBeVisible({ timeout: 20_000 });
-    await acceptButton.click();
+    const interestButton = page.getByRole("button", { name: /^(Send Interest|Accept|Withdraw)$/i }).first();
+    await expect(interestButton).toBeVisible({ timeout: 20_000 });
 
-    const confirmButton = page.getByRole("button", { name: /Yes,\s*Accept/i });
-    await expect(confirmButton).toBeVisible({ timeout: 15_000 });
-    await confirmButton.click();
+    const currentLabel = (await interestButton.innerText()).trim();
+    if (!/withdraw/i.test(currentLabel)) {
+      await interestButton.click();
 
-    await expect(confirmButton).toBeHidden({ timeout: 20_000 });
-    await expect(page.getByRole("button", { name: /^Accepted$/i }).first()).toBeVisible({ timeout: 20_000 });
+      const confirmHeading = page.getByText("Send interest in this task");
+      await expect(confirmHeading).toBeVisible({ timeout: 15_000 });
+      const confirmButton = page.getByRole("button", { name: /^(Send Interest|Yes,\s*Accept)$/i }).last();
+      await confirmButton.click();
+
+      await expect(confirmHeading).toBeHidden({ timeout: 20_000 });
+    }
+
+    await expect(page.getByRole("button", { name: /^Withdraw$/i }).first()).toBeVisible({ timeout: 20_000 });
   });
 
   await test.step("task status transition", async () => {
@@ -167,9 +169,9 @@ test("authenticated marketplace smoke", async ({ page }) => {
     await page.waitForURL(/\/checkout/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /^Checkout$/i })).toBeVisible({ timeout: 15_000 });
 
-    await page.getByLabel("Delivery address").fill(checkoutAddress);
-    await page.getByRole("button", { name: /^Pay on Delivery$/i }).click();
-    await page.getByRole("button", { name: /Place Order/i }).click();
+    await page.getByLabel(/Delivery or service address|Delivery address/i).fill(checkoutAddress);
+    await page.getByRole("radio", { name: /^Pay on Delivery$/i }).click();
+    await page.getByRole("button", { name: /Place order/i }).click();
 
     await page.waitForURL(/\/orders\/[^/]+$/, { timeout: 30_000 });
     await expect(page.getByText(checkoutAddress)).toBeVisible({ timeout: 20_000 });

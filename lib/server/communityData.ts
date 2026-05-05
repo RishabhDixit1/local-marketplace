@@ -677,7 +677,15 @@ const shouldIncludeDiscoverableProfile = (
   if (profile.onboarding_completed) return true;
   if ((profile.profile_completion_percent || 0) >= 60) return true;
 
-  return Boolean(profile.name || profile.bio || profile.location);
+  return Boolean(
+    profile.name ||
+      profile.email ||
+      profile.phone ||
+      profile.role ||
+      profile.bio ||
+      profile.location ||
+      profile.avatar_url,
+  );
 };
 
 const resolveProfilePreview = (

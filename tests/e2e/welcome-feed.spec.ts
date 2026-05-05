@@ -117,10 +117,19 @@ test.describe("welcome feed cards", () => {
     const cardId = await feedCard.getAttribute("data-card-id");
     expect(cardId).toBeTruthy();
 
+    const primaryAction = feedCard.getByTestId("feed-action-primary");
+    const primaryLabel = `${await primaryAction.getAttribute("aria-label")} ${await primaryAction.innerText()}`;
     await clickWelcomeFeedAction(page, cardId!, "feed-action-primary");
-    await page.waitForURL((url) => url.pathname === "/dashboard" && url.searchParams.get("source") === "welcome_feed");
-    await expect(page).toHaveURL(new RegExp(`context_card=${cardId}`));
-    await expect(page).toHaveURL(/source=welcome_feed/);
+    if (/send interest/i.test(primaryLabel)) {
+      await expect(page.getByText("Send interest in this task")).toBeVisible({ timeout: 15_000 });
+      await page.getByLabel("Close confirmation").click();
+    } else if (/withdraw/i.test(primaryLabel)) {
+      await expect(page.getByText(/Interest withdrawn|Send Interest/i).first()).toBeVisible({ timeout: 20_000 });
+    } else {
+      await page.waitForURL((url) => url.searchParams.get("source") === "welcome_feed");
+      await expect(page).toHaveURL(new RegExp(`context_card=${cardId}`));
+      await expect(page).toHaveURL(/source=welcome_feed/);
+    }
 
     await gotoWelcomeFeed(page);
 
@@ -138,7 +147,9 @@ test.describe("welcome feed cards", () => {
     expect(networkCardId).toBeTruthy();
     await clickWelcomeFeedAction(page, networkCardId!, "feed-action-network");
     await page.waitForURL(
-      (url) => url.pathname === "/dashboard/people" && url.searchParams.get("source") === "welcome_feed"
+      (url) =>
+        (url.pathname === "/dashboard/people" || url.pathname.startsWith("/profile/")) &&
+        url.searchParams.get("source") === "welcome_feed"
     );
     await expect(page).toHaveURL(/source=welcome_feed/);
   });

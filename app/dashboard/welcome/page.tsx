@@ -1413,6 +1413,7 @@ export default function WelcomePage() {
               {isFeedLoading && enrichedCards.length === 0 ? (
                 <FeedGrid
                   items={[]}
+                  cardTestId="welcome-feed-card"
                   loading
                   hasAnyFeed={nearbyCards.length > 0}
                   feedError={loadError || null}
@@ -1488,6 +1489,7 @@ export default function WelcomePage() {
                 <div className="space-y-3">
                   <FeedGrid
                     items={visibleFeedItems}
+                    cardTestId="welcome-feed-card"
                     loading={false}
                     hasAnyFeed={nearbyCards.length > 0}
                     feedError={loadError || null}

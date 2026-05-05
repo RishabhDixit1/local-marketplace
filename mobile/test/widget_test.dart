@@ -22,6 +22,7 @@ import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.da
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
+import 'package:serviq_mobile/shared/components/feed_card.dart';
 import 'package:serviq_mobile/shared/components/provider_card.dart';
 
 const _bootstrap = AppBootstrap(
@@ -321,6 +322,108 @@ void main() {
     final intro = tester.widget<Text>(find.text(longIntro));
     expect(intro.maxLines, 2);
     expect(intro.overflow, TextOverflow.ellipsis);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('feed card exposes trust, save, more, and CTA actions', (
+    WidgetTester tester,
+  ) async {
+    var opened = 0;
+    var messaged = 0;
+    var saved = 0;
+    var more = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              FeedCard(
+                item: _sampleSnapshot.items[1],
+                primaryLabel: 'Book',
+                secondaryLabel: 'Message',
+                isSaved: false,
+                onPrimaryTap: () => opened += 1,
+                onSecondaryTap: () => messaged += 1,
+                onSaveTap: () => saved += 1,
+                onMoreTap: () => more += 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Service'), findsOneWidget);
+    expect(find.text('INR 1200'), findsOneWidget);
+    expect(find.text('7.4 km away'), findsOneWidget);
+    expect(find.text('12 jobs completed'), findsOneWidget);
+    expect(find.text('Replies in 34 min'), findsOneWidget);
+
+    await tester.tap(find.text('Book'));
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded).last);
+    await tester.tap(find.byIcon(Icons.bookmark_border_rounded));
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+
+    expect(opened, 1);
+    expect(messaged, 1);
+    expect(saved, 1);
+    expect(more, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('provider card shows trust snapshot and compact actions', (
+    WidgetTester tester,
+  ) async {
+    var opened = 0;
+    var messaged = 0;
+    var saved = 0;
+    var more = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              ProviderCard(
+                person: _samplePeopleSnapshot.people.first,
+                isSaved: true,
+                reason: 'Active now and ready for fast follow-up.',
+                onOpenProfile: () => opened += 1,
+                onMessage: () => messaged += 1,
+                onSave: () => saved += 1,
+                onMore: () => more += 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Priyanka Narayanan'), findsOneWidget);
+    expect(find.text('4.9 stars'), findsOneWidget);
+    expect(find.text('37 jobs completed'), findsOneWidget);
+    expect(find.text('Recommended nearby'), findsOneWidget);
+    expect(
+      find.text('Active now and ready for fast follow-up.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Open profile'));
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.tap(find.byIcon(Icons.bookmark_rounded));
+    await tester.tap(find.byIcon(Icons.more_horiz_rounded));
+
+    expect(opened, 1);
+    expect(messaged, 1);
+    expect(saved, 1);
+    expect(more, 1);
     expect(tester.takeException(), isNull);
   });
 

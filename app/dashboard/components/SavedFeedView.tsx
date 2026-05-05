@@ -1114,6 +1114,17 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
                     </button>
                   ) : null}
 
+                  <button
+                    type="button"
+                    onClick={() => router.push(buildSavedFeedPath(card))}
+                    data-testid="saved-feed-open"
+                    aria-label="Open saved post"
+                    title="Open saved post"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+
                   <div className="ml-auto flex items-center gap-1.5">
                     <button
                       type="button"
