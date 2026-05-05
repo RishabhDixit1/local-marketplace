@@ -63,7 +63,7 @@ describe("POST /api/orders", () => {
     sendOrderEmailMock.mockResolvedValue(undefined);
 
     const profilesChain = makeLookupChain({
-      data: [{ id: "provider-1" }],
+      data: [{ id: "provider-1", role: "customer" }],
       error: null,
     });
     const servicesChain = makeLookupChain({
@@ -140,6 +140,7 @@ describe("POST /api/orders", () => {
     });
 
     expect(insertChain.insert).toHaveBeenCalledTimes(1);
+    expect(profilesChain.select).toHaveBeenCalledWith("id");
     expect(insertChain.insert).toHaveBeenCalledWith([
       expect.objectContaining({
         consumer_id: "consumer-1",

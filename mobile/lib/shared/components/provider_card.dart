@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design_system/design_system.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_card.dart';
 import '../../features/people/domain/people_snapshot.dart';
-import 'app_buttons.dart';
 import 'profile_avatar_tile.dart';
 
 class ProviderCard extends StatelessWidget {
@@ -28,11 +28,17 @@ class ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reasonText = reason?.trim() ?? '';
+
     return SectionCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (person.hasPreviewImage) ...[
+            _ProviderPreview(person: person),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           ProfileAvatarTile(
             name: person.name,
             subtitle: person.headline,
@@ -46,43 +52,67 @@ class ProviderCard extends StatelessWidget {
                     onMore: onMore,
                   ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _InfoPill(
+          const SizedBox(height: AppSpacing.sm),
+          TrustSnapshot(
+            dense: true,
+            items: [
+              TrustSnapshotItem(
                 icon: Icons.place_outlined,
-                label: person.locationLabel,
+                label: 'Area',
+                value: person.locationLabel,
               ),
-              _InfoPill(icon: Icons.star_rounded, label: person.ratingLabel),
-              _InfoPill(
-                icon: Icons.payments_outlined,
-                label: person.priceLabel,
+              TrustSnapshotItem(
+                icon: Icons.star_rounded,
+                label: 'Rating',
+                value: person.ratingLabel,
+                tone: person.reviewCount > 0
+                    ? TrustSnapshotTone.warning
+                    : TrustSnapshotTone.neutral,
+              ),
+              TrustSnapshotItem(
+                icon: Icons.verified_user_outlined,
+                label: 'Trust',
+                value: person.socialLabel,
+                tone:
+                    person.isAcceptedConnection ||
+                        person.completionPercent >= 80
+                    ? TrustSnapshotTone.trust
+                    : TrustSnapshotTone.neutral,
+              ),
+              TrustSnapshotItem(
+                icon: Icons.work_outline_rounded,
+                label: 'Work',
+                value: person.workLabel,
+                tone: person.completedJobs > 0
+                    ? TrustSnapshotTone.success
+                    : TrustSnapshotTone.neutral,
               ),
             ],
           ),
           if (person.primaryTags.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: person.primaryTags.take(3).map((tag) {
                 return _TagPill(label: tag);
               }).toList(),
             ),
           ],
-          if ((reason ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
+          if (reasonText.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
                 borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: AppColors.border),
               ),
               child: Text(
-                reason!.trim(),
+                reasonText,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
@@ -90,30 +120,125 @@ class ProviderCard extends StatelessWidget {
             ),
           ],
           if (onOpenProfile != null || onMessage != null) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                if (onOpenProfile != null)
-                  Expanded(
-                    child: PrimaryButton(
-                      label: 'Open profile',
-                      onPressed: onOpenProfile,
-                    ),
-                  ),
-                if (onMessage != null) ...[
-                  const SizedBox(width: 10),
-                  Tooltip(
-                    message: 'Message',
-                    child: IconButton.outlined(
-                      onPressed: onMessage,
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: AppSpacing.sm),
+            ServiqActionBar(
+              primaryLabel: 'Open profile',
+              primaryIcon: Icons.person_outline_rounded,
+              onPrimary: onOpenProfile,
+              secondaryActions: [
+                ServiqCompactAction(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  tooltip: 'Message',
+                  onPressed: onMessage,
+                ),
               ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _ProviderPreview extends StatelessWidget {
+  const _ProviderPreview({required this.person});
+
+  final MobilePersonCard person;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = person.previewTitle.trim().isEmpty
+        ? person.primaryTags.take(2).join(', ')
+        : person.previewTitle;
+
+    return Container(
+      height: 118,
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            person.previewImageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, _, _) =>
+                _ProviderPreviewFallback(title: title),
+          ),
+          Positioned(
+            left: AppSpacing.sm,
+            right: AppSpacing.sm,
+            bottom: AppSpacing.sm,
+            child: Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                if (title.trim().isNotEmpty) _PreviewChip(label: title),
+                if (person.previewMediaCount > 1)
+                  _PreviewChip(label: '${person.previewMediaCount} photos'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderPreviewFallback extends StatelessWidget {
+  const _ProviderPreviewFallback({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surfaceMuted,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.photo_library_outlined, color: AppColors.inkMuted),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            title.trim().isEmpty ? 'Provider work preview' : title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewChip extends StatelessWidget {
+  const _PreviewChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium,
       ),
     );
   }
@@ -288,6 +413,7 @@ class _AvailabilityPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: online ? AppColors.primarySoft : AppColors.surfaceMuted,
@@ -327,21 +453,31 @@ class _ProviderActions extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (onSave != null)
-              IconButton.outlined(
-                tooltip: isSaved ? 'Saved' : 'Save',
-                onPressed: onSave,
-                icon: Icon(
-                  isSaved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
+              Tooltip(
+                message: isSaved ? 'Saved' : 'Save',
+                child: SizedBox.square(
+                  dimension: AppTouchTargets.minimum,
+                  child: IconButton.outlined(
+                    onPressed: onSave,
+                    icon: Icon(
+                      isSaved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                    ),
+                  ),
                 ),
               ),
             if (onMore != null) ...[
               if (onSave != null) const SizedBox(width: 4),
-              IconButton.outlined(
-                tooltip: 'More actions',
-                onPressed: onMore,
-                icon: const Icon(Icons.more_horiz_rounded),
+              Tooltip(
+                message: 'More actions',
+                child: SizedBox.square(
+                  dimension: AppTouchTargets.minimum,
+                  child: IconButton.outlined(
+                    onPressed: onMore,
+                    icon: const Icon(Icons.more_horiz_rounded),
+                  ),
+                ),
               ),
             ],
           ],
@@ -418,42 +554,6 @@ class _DirectoryTagPill extends StatelessWidget {
           style: Theme.of(
             context,
           ).textTheme.labelMedium?.copyWith(color: AppColors.inkSubtle),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 180),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.inkMuted),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          ],
         ),
       ),
     );

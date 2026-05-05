@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/design_tokens.dart';
 import '../../core/utils/app_formatters.dart';
 
 class ProfileAvatarTile extends StatelessWidget {
@@ -25,7 +26,7 @@ class ProfileAvatarTile extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 24,
-          backgroundColor: const Color(0xFFE7EEF6),
+          backgroundColor: AppColors.surfaceTint,
           backgroundImage: avatarUrl.trim().isEmpty
               ? null
               : NetworkImage(avatarUrl),

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -113,8 +113,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   MobileCheckoutItem _checkoutLineFromFeed(MobileFeedItem item) {
-    final type =
-        item.type == MobileFeedItemType.product ? 'product' : 'service';
+    final type = item.type == MobileFeedItemType.product
+        ? 'product'
+        : 'service';
     return MobileCheckoutItem(
       providerId: item.providerId,
       itemType: type,
@@ -130,58 +131,55 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final currentUserId =
         ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
     if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This is your own listing.')),
+      ServiqToast.show(
+        context,
+        message: 'This is your own listing.',
+        tone: ServiqToastTone.warning,
       );
       return;
     }
 
-    showModalBottomSheet<void>(
+    ServiqBottomSheet.show<void>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.add_shopping_cart_outlined),
-                title: const Text('Add to cart'),
-                onTap: () async {
-                  Navigator.of(sheetContext).pop();
-                  final line = _checkoutLineFromFeed(item);
-                  await ref.read(cartProvider.notifier).addListing(
-                        line,
-                        providerName: item.creatorName,
-                      );
-                  if (!mounted) {
-                    return;
-                  }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to cart')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.payments_outlined),
-                title: Text(_primaryLabelFor(item)),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _primaryActionFor(item)?.call();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.chat_bubble_outline_rounded),
-                title: const Text('Message provider'),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _messageActionFor(item)?.call();
-                },
-              ),
-            ],
-          ),
-        );
-      },
+      title: item.title,
+      subtitle: 'Choose how to continue with this listing.',
+      children: [
+        ListTile(
+          leading: const Icon(Icons.add_shopping_cart_outlined),
+          title: const Text('Add to cart'),
+          onTap: () async {
+            Navigator.of(context).pop();
+            final line = _checkoutLineFromFeed(item);
+            await ref
+                .read(cartProvider.notifier)
+                .addListing(line, providerName: item.creatorName);
+            if (!mounted) {
+              return;
+            }
+            ServiqToast.show(
+              context,
+              message: 'Added to cart.',
+              tone: ServiqToastTone.success,
+            );
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.payments_outlined),
+          title: Text(_primaryLabelFor(item)),
+          onTap: () {
+            Navigator.of(context).pop();
+            _primaryActionFor(item)?.call();
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.chat_bubble_outline_rounded),
+          title: const Text('Message provider'),
+          onTap: () {
+            Navigator.of(context).pop();
+            _messageActionFor(item)?.call();
+          },
+        ),
+      ],
     );
   }
 
@@ -213,22 +211,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            item.viewerHasExpressedInterest
-                ? 'Interest withdrawn.'
-                : 'Interest sent. The requester will review it shortly.',
-          ),
-        ),
+      ServiqToast.show(
+        context,
+        message: item.viewerHasExpressedInterest
+            ? 'Interest withdrawn.'
+            : 'Interest sent. The requester will review it shortly.',
+        tone: ServiqToastTone.success,
       );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) {
         setState(() => _busyFeedActionId = null);
@@ -244,9 +242,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final currentUserId =
         ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
     if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('This is your own post.')));
+        message: 'This is your own post.',
+        tone: ServiqToastTone.warning,
+      );
       return;
     }
 
@@ -271,9 +271,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) {
         setState(() => _busyFeedActionId = null);
@@ -347,8 +349,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final currentUserId =
         ref.read(currentSessionProvider).asData?.value?.user.id ?? '';
     if (currentUserId.isNotEmpty && item.providerId == currentUserId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This is your own listing.')),
+      ServiqToast.show(
+        context,
+        message: 'This is your own listing.',
+        tone: ServiqToastTone.warning,
       );
       return;
     }
@@ -408,8 +412,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final previewData = snapshot.asData?.value;
     final profileSnapshot = ref.watch(profileSnapshotProvider);
     final cartAsync = ref.watch(cartProvider);
-    final cartCount =
-        cartAsync.value == null ? 0 : cartTotalQuantity(cartAsync.value!);
+    final cartCount = cartAsync.value == null
+        ? 0
+        : cartTotalQuantity(cartAsync.value!);
 
     return Scaffold(
       appBar: AppBar(

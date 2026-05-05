@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
+import '../../features/profile/data/profile_repository.dart';
 import '../../features/provider/presentation/provider_launchpad_review_page.dart';
 import '../../features/saved/presentation/saved_feed_page.dart';
 import '../../features/people/presentation/people_page.dart';
@@ -30,45 +33,43 @@ import '../../features/search/presentation/search_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
 import '../presentation/app_shell.dart';
+import 'post_auth_route_resolver.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
   final authState = ref.watch(authStateControllerProvider);
   final onboardingHandoff = ref.watch(onboardingHandoffControllerProvider);
+  final profileReadiness = authState.isAuthenticated
+      ? ref
+            .watch(profileSnapshotProvider)
+            .maybeWhen(
+              data: MobileProfileReadiness.fromSnapshot,
+              orElse: () => null,
+            )
+      : null;
 
   return GoRouter(
     initialLocation: AppRoutes.root,
     debugLogDiagnostics: false,
-    refreshListenable: authState,
+    refreshListenable: Listenable.merge([authState, onboardingHandoff]),
     redirect: (context, state) {
       final location = state.matchedLocation;
-      final setupRequired = bootstrap.needsSetup;
-      final signedIn = authState.isAuthenticated;
-      final visitingApp = location.startsWith('/app');
-
-      if (setupRequired && location != AppRoutes.setup) {
-        return AppRoutes.setup;
+      if (!authState.isAuthenticated && location.startsWith('/app')) {
+        scheduleMicrotask(() {
+          unawaited(onboardingHandoff.rememberRoute(state.uri.toString()));
+        });
       }
 
-      if (!setupRequired && location == AppRoutes.setup) {
-        return signedIn ? AppRoutes.home : AppRoutes.signIn;
-      }
-
-      if (!setupRequired && !signedIn && visitingApp) {
-        return AppRoutes.signIn;
-      }
-
-      if (!setupRequired &&
-          signedIn &&
-          (location == AppRoutes.root || location == AppRoutes.signIn)) {
-        return onboardingHandoff.resolvePostAuthDestination();
-      }
-
-      if (!setupRequired && !signedIn && location == AppRoutes.root) {
-        return AppRoutes.signIn;
-      }
-
-      return null;
+      return resolveMobileAppRedirect(
+        location: location,
+        setupRequired: bootstrap.needsSetup,
+        signedIn: authState.isAuthenticated,
+        selectedIntent: onboardingHandoff.selectedIntent,
+        hasPendingHandoff: onboardingHandoff.pendingAuthMethod != null,
+        hasStoredHandoff: onboardingHandoff.hasStoredHandoff,
+        storedHandoffRoute: onboardingHandoff.lastRoute,
+        profileReadiness: profileReadiness,
+      );
     },
     routes: [
       GoRoute(

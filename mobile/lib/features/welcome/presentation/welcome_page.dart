@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
@@ -19,6 +20,8 @@ import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
+import '../../../features/profile/data/profile_repository.dart';
+import '../../../features/profile/domain/mobile_profile_snapshot.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
@@ -111,9 +114,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ServiqToast.show(context, message: message);
   }
 
   bool _isSavedCard(String cardId, Set<String> backendSavedIds) {
@@ -550,6 +551,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     final allFeed = allFeedAsync.asData?.value;
     final trustedFeed = trustedFeedAsync.asData?.value;
     final people = peopleAsync.asData?.value;
+    final signedIn = ref.watch(currentSessionProvider).asData?.value != null;
+    final AsyncValue<MobileProfileSnapshot>? profileAsync = signedIn
+        ? ref.watch(profileSnapshotProvider)
+        : null;
     final hasAnyData = allFeed != null || trustedFeed != null || people != null;
 
     if (!hasAnyData &&
@@ -724,6 +729,22 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         onRetry: _refresh,
                       ),
                     ],
+                    ...(profileAsync?.maybeWhen(
+                          data: (profile) {
+                            final prompt = _ReadinessPrompt.fromProfile(
+                              profile,
+                            );
+                            if (prompt == null) {
+                              return <Widget>[];
+                            }
+                            return [
+                              const SizedBox(height: 16),
+                              _ReadinessPromptCard(prompt: prompt),
+                            ];
+                          },
+                          orElse: () => <Widget>[],
+                        ) ??
+                        <Widget>[]),
                     if (model.isFirstRun) ...[
                       const SizedBox(height: 16),
                       _FirstRunGuidanceCard(
@@ -2139,6 +2160,78 @@ class _InlineWarningCard extends StatelessWidget {
           TextButton(onPressed: () => onRetry(), child: const Text('Retry')),
         ],
       ),
+    );
+  }
+}
+
+class _ReadinessPrompt {
+  const _ReadinessPrompt({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.route,
+    required this.icon,
+    required this.tone,
+  });
+
+  static _ReadinessPrompt? fromProfile(MobileProfileSnapshot profile) {
+    final role = profile.roleFamily.trim().toLowerCase();
+    final isProvider =
+        role == 'provider' || role == 'business' || role == 'seller';
+    final hasOfferings = profile.serviceCount + profile.productCount > 0;
+
+    if (profile.completionPercent < 50) {
+      return const _ReadinessPrompt(
+        title: 'Finish your public profile',
+        message:
+            'Add name, area, and contact details so nearby people can trust the next action.',
+        actionLabel: 'Update profile',
+        route: AppRoutes.profile,
+        icon: Icons.assignment_turned_in_outlined,
+        tone: ServiqRecoveryTone.warning,
+      );
+    }
+
+    if (isProvider && !hasOfferings) {
+      return const _ReadinessPrompt(
+        title: 'Publish your first offer',
+        message:
+            'Business AI can turn your services, products, and service area into a launch-ready listing.',
+        actionLabel: 'Open Launchpad',
+        route: AppRoutes.providerLaunchpad,
+        icon: Icons.rocket_launch_outlined,
+        tone: ServiqRecoveryTone.neutral,
+      );
+    }
+
+    return null;
+  }
+
+  final String title;
+  final String message;
+  final String actionLabel;
+  final String route;
+  final IconData icon;
+  final ServiqRecoveryTone tone;
+}
+
+class _ReadinessPromptCard extends StatelessWidget {
+  const _ReadinessPromptCard({required this.prompt});
+
+  final _ReadinessPrompt prompt;
+
+  @override
+  Widget build(BuildContext context) {
+    if (prompt.route.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ServiqRecoveryBanner(
+      icon: prompt.icon,
+      tone: prompt.tone,
+      message: '${prompt.title}. ${prompt.message}',
+      actionLabel: prompt.actionLabel,
+      onAction: () => context.push(prompt.route),
     );
   }
 }

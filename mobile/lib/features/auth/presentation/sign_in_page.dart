@@ -203,7 +203,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         );
       });
       unawaited(
-        ref.read(onboardingHandoffControllerProvider).completeAuthHandoff(),
+        ref
+            .read(onboardingHandoffControllerProvider)
+            .completeAuthHandoff(clearStoredRoute: false),
       );
     } finally {
       if (mounted) {
@@ -253,7 +255,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         );
       });
       unawaited(
-        ref.read(onboardingHandoffControllerProvider).completeAuthHandoff(),
+        ref
+            .read(onboardingHandoffControllerProvider)
+            .completeAuthHandoff(clearStoredRoute: false),
       );
     } finally {
       if (mounted) {
@@ -355,7 +359,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         );
       });
       unawaited(
-        ref.read(onboardingHandoffControllerProvider).completeAuthHandoff(),
+        ref
+            .read(onboardingHandoffControllerProvider)
+            .completeAuthHandoff(clearStoredRoute: false),
       );
     } finally {
       if (mounted) {
@@ -439,7 +445,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
         );
       });
       unawaited(
-        ref.read(onboardingHandoffControllerProvider).completeAuthHandoff(),
+        ref
+            .read(onboardingHandoffControllerProvider)
+            .completeAuthHandoff(clearStoredRoute: false),
       );
     } finally {
       if (mounted) {
