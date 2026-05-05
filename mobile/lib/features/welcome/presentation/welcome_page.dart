@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../features/chat/data/chat_repository.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
@@ -22,9 +24,9 @@ import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
 import '../../../features/profile/data/profile_repository.dart';
 import '../../../features/profile/domain/mobile_profile_snapshot.dart';
+import '../../../features/tasks/data/task_repository.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/marketplace_guidance.dart';
@@ -282,6 +284,26 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     } catch (error) {
       _showSnack(AppErrorMapper.toMessage(error));
     }
+  }
+
+  String? _debugRecoveryHint(String publicMessage) {
+    if (!kDebugMode) {
+      return null;
+    }
+
+    final bootstrap = ref.read(appBootstrapProvider);
+    final apiBaseUrl = bootstrap.config.apiBaseUrl.trim();
+    final bootstrapError = bootstrap.initializationError?.trim();
+    return [
+      if (apiBaseUrl.isEmpty)
+        'API_BASE_URL is missing.'
+      else
+        'API_BASE_URL: $apiBaseUrl',
+      if (bootstrapError != null && bootstrapError.isNotEmpty)
+        bootstrapError
+      else
+        publicMessage,
+    ].join(' ');
   }
 
   Future<void> _callEntry(_WelcomeFeedEntry entry) async {
@@ -547,6 +569,32 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         ref.watch(feedSnapshotProvider(MobileFeedScope.connected));
     final AsyncValue<MobilePeopleSnapshot> peopleAsync =
         widget.peopleOverride ?? ref.watch(peopleSnapshotProvider);
+    final shouldLoadShellCounts =
+        widget.snapshotOverride == null &&
+        widget.trustedSnapshotOverride == null &&
+        widget.peopleOverride == null;
+    final unreadChatCount = shouldLoadShellCounts
+        ? ref
+              .watch(chatConversationsProvider)
+              .maybeWhen(
+                data: (conversations) => conversations.fold<int>(
+                  0,
+                  (count, conversation) => count + conversation.unreadCount,
+                ),
+                orElse: () => 0,
+              )
+        : 0;
+    final activeTaskCount = shouldLoadShellCounts
+        ? ref
+              .watch(taskSnapshotProvider)
+              .maybeWhen(
+                data: (snapshot) => snapshot.items.where((item) {
+                  return item.status.name == 'active' ||
+                      item.status.name == 'inProgress';
+                }).length,
+                orElse: () => 0,
+              )
+        : 0;
 
     final allFeed = allFeedAsync.asData?.value;
     final trustedFeed = trustedFeedAsync.asData?.value;
@@ -576,20 +624,13 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           ? AppErrorMapper.toMessage(peopleAsync.error!)
           : 'Unable to load home right now.';
 
-      return Scaffold(
-        appBar: AppBar(title: const Text('ServiQ')),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SectionCard(
-              child: ErrorStateView(
-                title: 'Unable to load home',
-                message: message,
-                onRetry: _refresh,
-              ),
-            ),
-          ),
-        ),
+      return _WelcomeRecoveryScaffold(
+        message: message,
+        devHint: _debugRecoveryHint(message),
+        onRetry: _refresh,
+        onPostNeed: () => context.push(AppRoutes.createRequest),
+        onFindHelp: () => context.go(AppRoutes.people),
+        onEarnNearby: () => context.push(AppRoutes.providerOnboarding),
       );
     }
 
@@ -621,6 +662,8 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           edgeOffset: 12,
+          color: AppColors.primary,
+          backgroundColor: AppColors.surface,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
@@ -672,6 +715,9 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                       greeting: greeting,
                       trustedCountLabel: model.trustedCountLabel,
                       liveStatusLabel: model.liveStatusLabel,
+                      activeTaskCount: activeTaskCount,
+                      unreadChatCount: unreadChatCount,
+                      nearbyProviderCount: people?.people.length ?? 0,
                       onSearchTap: () {
                         _trackFirstEngagement('search');
                         ref
@@ -2083,6 +2129,9 @@ class _HeroSection extends StatelessWidget {
     required this.greeting,
     required this.trustedCountLabel,
     required this.liveStatusLabel,
+    required this.activeTaskCount,
+    required this.unreadChatCount,
+    required this.nearbyProviderCount,
     required this.onSearchTap,
     required this.onPrimaryTap,
     required this.onEarnTap,
@@ -2093,6 +2142,9 @@ class _HeroSection extends StatelessWidget {
   final String greeting;
   final String trustedCountLabel;
   final String liveStatusLabel;
+  final int activeTaskCount;
+  final int unreadChatCount;
+  final int nearbyProviderCount;
   final VoidCallback onSearchTap;
   final VoidCallback onPrimaryTap;
   final VoidCallback onEarnTap;
@@ -2115,22 +2167,315 @@ class _HeroSection extends StatelessWidget {
       dedupedSignals.add(normalized);
     }
 
-    return MarketplaceLoopHero(
-      title: '$greeting. Start with one clear action.',
-      message:
-          'Post a need, find trusted people nearby, or switch into earning mode from the same account.',
-      searchLabel: 'Search needs, providers, or categories',
-      primaryLabel: 'Post a Need',
-      secondaryLabel: 'Earn Nearby',
-      tertiaryLabel: 'People',
-      primaryIcon: const Icon(Icons.add_rounded),
-      secondaryIcon: const Icon(Icons.workspace_premium_outlined),
-      tertiaryIcon: const Icon(Icons.people_outline_rounded),
-      signalLabels: dedupedSignals,
-      onSearchTap: onSearchTap,
-      onPrimaryTap: onPrimaryTap,
-      onSecondaryTap: onEarnTap,
-      onTertiaryTap: onPeopleTap,
+    return SectionCard(
+      padding: EdgeInsets.zero,
+      variant: ServiqSurfaceVariant.raised,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: ServiqThemeTokens.light.heroGradient,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Text(
+                      'Today',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: Colors.white),
+                    ),
+                  ),
+                  const Spacer(),
+                  _HeroStatusDot(
+                    label: dedupedSignals.isEmpty
+                        ? 'Live'
+                        : dedupedSignals.first,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                greeting,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineMedium?.copyWith(color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Start with one clear action. Post a need, find trusted people nearby, or switch into earning mode.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.78),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _TodaySearchButton(onTap: onSearchTap),
+              const SizedBox(height: 14),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final tileWidth = (constraints.maxWidth - 8) / 2;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SizedBox(
+                        width: tileWidth,
+                        child: _TodaySignalTile(
+                          icon: Icons.assignment_turned_in_outlined,
+                          value: _formatCompactCount(activeTaskCount),
+                          label: 'Pending tasks',
+                        ),
+                      ),
+                      SizedBox(
+                        width: tileWidth,
+                        child: _TodaySignalTile(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          value: _formatCompactCount(unreadChatCount),
+                          label: 'Unread inbox',
+                        ),
+                      ),
+                      SizedBox(
+                        width: tileWidth,
+                        child: _TodaySignalTile(
+                          icon: Icons.people_alt_outlined,
+                          value: _formatCompactCount(nearbyProviderCount),
+                          label: 'Nearby providers',
+                        ),
+                      ),
+                      SizedBox(
+                        width: tileWidth,
+                        child: _TodaySignalTile(
+                          icon: Icons.bolt_rounded,
+                          value: liveStatusLabel,
+                          label: 'Live signal',
+                          compactValue: true,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: onPrimaryTap,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Post a Need'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primaryDeep,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _HeroTextAction(
+                      icon: Icons.people_outline_rounded,
+                      label: 'Find help',
+                      onPressed: onPeopleTap,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _HeroTextAction(
+                      icon: Icons.workspace_premium_outlined,
+                      label: 'Earn Nearby',
+                      onPressed: onEarnTap,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroStatusDot extends StatelessWidget {
+  const _HeroStatusDot({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 170),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: Color(0xFF5EEAD4),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodaySearchButton extends StatelessWidget {
+  const _TodaySearchButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.13),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search_rounded,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Search needs, providers, or categories',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.74),
+                  ),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodaySignalTile extends StatelessWidget {
+  const _TodaySignalTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    this.compactValue = false,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final bool compactValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 78),
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: Colors.white.withValues(alpha: 0.86)),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style:
+                (compactValue
+                        ? Theme.of(context).textTheme.labelLarge
+                        : Theme.of(context).textTheme.titleLarge)
+                    ?.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.68),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroTextAction extends StatelessWidget {
+  const _HeroTextAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+        backgroundColor: Colors.white.withValues(alpha: 0.1),
+      ),
     );
   }
 }
@@ -2143,23 +2488,11 @@ class _InlineWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded, color: AppColors.warning),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.ink),
-            ),
-          ),
-          TextButton(onPressed: () => onRetry(), child: const Text('Retry')),
-        ],
-      ),
+    return ServiqRecoveryBanner(
+      message: message,
+      icon: Icons.sync_problem_rounded,
+      actionLabel: 'Retry',
+      onAction: () => onRetry(),
     );
   }
 }
@@ -3049,6 +3382,180 @@ class _MetaPill extends StatelessWidget {
   }
 }
 
+class _WelcomeRecoveryScaffold extends StatelessWidget {
+  const _WelcomeRecoveryScaffold({
+    required this.message,
+    required this.onRetry,
+    required this.onPostNeed,
+    required this.onFindHelp,
+    required this.onEarnNearby,
+    this.devHint,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+  final VoidCallback onPostNeed;
+  final VoidCallback onFindHelp;
+  final VoidCallback onEarnNearby;
+  final String? devHint;
+
+  @override
+  Widget build(BuildContext context) {
+    final debugMessage = devHint?.trim();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('ServiQ')),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: onRetry,
+          color: AppColors.primary,
+          backgroundColor: AppColors.surface,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+            children: [
+              SectionCard(
+                padding: EdgeInsets.zero,
+                variant: ServiqSurfaceVariant.raised,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: ServiqThemeTokens.light.exploreGradient,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: AppColors.dangerSoft,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.wifi_tethering_error_rounded,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'ServiQ is reconnecting',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'We could not refresh Home just now. You can retry, or keep moving with the main marketplace actions below.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 14),
+                        ServiqRecoveryBanner(
+                          tone: ServiqRecoveryTone.neutral,
+                          icon: Icons.cloud_sync_outlined,
+                          message: message,
+                          actionLabel: 'Retry',
+                          onAction: () => onRetry(),
+                        ),
+                        if (debugMessage != null &&
+                            debugMessage.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(AppRadii.md),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(
+                              'Debug hint: $debugMessage',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'While we reconnect',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'These actions are available as soon as the local API responds again.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    PrimaryButton(
+                      label: 'Post a Need',
+                      icon: const Icon(Icons.add_rounded),
+                      onPressed: onPostNeed,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Find help',
+                            icon: const Icon(Icons.people_outline_rounded),
+                            onPressed: onFindHelp,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SecondaryButton(
+                            label: 'Earn nearby',
+                            icon: const Icon(Icons.workspace_premium_outlined),
+                            onPressed: onEarnNearby,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const _RecoveryFallbackSkeleton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecoveryFallbackSkeleton extends StatelessWidget {
+  const _RecoveryFallbackSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          LoadingShimmer(height: 16, width: 140),
+          SizedBox(height: 14),
+          LoadingShimmer(height: 118),
+          SizedBox(height: 12),
+          LoadingShimmer(height: 16, width: 240),
+          SizedBox(height: 8),
+          LoadingShimmer(height: 14),
+        ],
+      ),
+    );
+  }
+}
+
 class _WelcomeLoadingState extends StatelessWidget {
   const _WelcomeLoadingState();
 
@@ -3056,36 +3563,46 @@ class _WelcomeLoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
       children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LoadingShimmer(height: 18, width: 160),
-              SizedBox(height: 12),
-              LoadingShimmer(height: 28, width: 260),
-              SizedBox(height: 8),
-              LoadingShimmer(height: 14),
-              SizedBox(height: 6),
-              LoadingShimmer(height: 14, width: 220),
-              SizedBox(height: 18),
-              LoadingShimmer(height: 48),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: LoadingShimmer(height: 48)),
-                  SizedBox(width: 12),
-                  Expanded(child: LoadingShimmer(height: 48)),
-                ],
-              ),
-            ],
+        SectionCard(
+          padding: EdgeInsets.zero,
+          variant: ServiqSurfaceVariant.raised,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: ServiqThemeTokens.light.heroGradient,
+            ),
+            padding: const EdgeInsets.all(18),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LoadingShimmer(height: 18, width: 104),
+                SizedBox(height: 16),
+                LoadingShimmer(height: 28, width: 260),
+                SizedBox(height: 8),
+                LoadingShimmer(height: 14),
+                SizedBox(height: 6),
+                LoadingShimmer(height: 14, width: 220),
+                SizedBox(height: 18),
+                LoadingShimmer(height: 48),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: LoadingShimmer(height: 78)),
+                    SizedBox(width: 8),
+                    Expanded(child: LoadingShimmer(height: 78)),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: LoadingShimmer(height: 78)),
+                    SizedBox(width: 8),
+                    Expanded(child: LoadingShimmer(height: 78)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 18),

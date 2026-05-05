@@ -9,6 +9,15 @@ const transitionLabelRegex =
 const checkoutAddress = "221B Baker Street, Bengaluru";
 
 const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+  const dashboardAction = page.getByRole("button", { name: /Post a need|Post Need/i });
+  try {
+    await expect(dashboardAction).toBeVisible({ timeout: 10_000 });
+    return;
+  } catch {
+    // Fall back to a fresh magic link when storageState is unavailable or stale.
+  }
+
   const magicLinkUrl = await resolveMagicLinkUrl();
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -25,7 +34,8 @@ const authenticateWithMagicLink = async ({ page }: { page: Page }) => {
 
 const openProviderStoreAndAddItemToCart = async ({ page }: { page: Page }) => {
   await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("article").first()).toBeVisible({ timeout: 15_000 });
+  const providerCards = page.locator('article[data-provider-card="true"]');
+  await expect(providerCards.first()).toBeVisible({ timeout: 15_000 });
 
   const clickCommerceAction = async (timeout = 8_000) => {
     const commerceButton = page.getByRole("button", { name: /Add to Cart|Hire Now|Buy Now/i }).first();
@@ -38,13 +48,15 @@ const openProviderStoreAndAddItemToCart = async ({ page }: { page: Page }) => {
     }
   };
 
-  const cardCount = await page.locator("article").count();
+  const storeReadyCards = page.locator('article[data-provider-card="true"][data-has-store="true"]');
+  const cards = (await storeReadyCards.count()) > 0 ? storeReadyCards : providerCards;
+  const cardCount = await cards.count();
   const maxAttempts = Math.min(cardCount, 8);
 
   for (let index = 0; index < maxAttempts; index += 1) {
     await page.goto("/dashboard/people", { waitUntil: "domcontentloaded" });
 
-    const card = page.locator("article").nth(index);
+    const card = cards.nth(index);
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.click();
 
@@ -82,6 +94,8 @@ test("login request smoke", async ({ page }) => {
 });
 
 test("authenticated marketplace smoke", async ({ page }) => {
+  test.setTimeout(180_000);
+
   test.skip(
     !hasE2EAuthConfig,
     "Provide E2E_MAGIC_LINK_URL or (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + E2E_LOGIN_EMAIL)."

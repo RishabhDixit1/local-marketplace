@@ -31,6 +31,7 @@ class ProviderCard extends StatelessWidget {
     final reasonText = reason?.trim() ?? '';
 
     return SectionCard(
+      variant: ServiqSurfaceVariant.raised,
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,6 +54,8 @@ class ProviderCard extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          _ProviderSignalStrip(person: person),
+          const SizedBox(height: AppSpacing.sm),
           TrustSnapshot(
             dense: true,
             items: [
@@ -62,14 +65,6 @@ class ProviderCard extends StatelessWidget {
                 value: person.locationLabel,
               ),
               TrustSnapshotItem(
-                icon: Icons.star_rounded,
-                label: 'Rating',
-                value: person.ratingLabel,
-                tone: person.reviewCount > 0
-                    ? TrustSnapshotTone.warning
-                    : TrustSnapshotTone.neutral,
-              ),
-              TrustSnapshotItem(
                 icon: Icons.verified_user_outlined,
                 label: 'Trust',
                 value: person.socialLabel,
@@ -77,14 +72,6 @@ class ProviderCard extends StatelessWidget {
                     person.isAcceptedConnection ||
                         person.completionPercent >= 80
                     ? TrustSnapshotTone.trust
-                    : TrustSnapshotTone.neutral,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.work_outline_rounded,
-                label: 'Work',
-                value: person.workLabel,
-                tone: person.completedJobs > 0
-                    ? TrustSnapshotTone.success
                     : TrustSnapshotTone.neutral,
               ),
             ],
@@ -152,7 +139,7 @@ class _ProviderPreview extends StatelessWidget {
         : person.previewTitle;
 
     return Container(
-      height: 118,
+      height: 146,
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -168,6 +155,15 @@ class _ProviderPreview extends StatelessWidget {
             fit: BoxFit.cover,
             errorBuilder: (context, _, _) =>
                 _ProviderPreviewFallback(title: title),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Color(0x99090F17)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
           ),
           Positioned(
             left: AppSpacing.sm,
@@ -211,6 +207,114 @@ class _ProviderPreviewFallback extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderSignalStrip extends StatelessWidget {
+  const _ProviderSignalStrip({required this.person});
+
+  final MobilePersonCard person;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ProviderSignalValue(
+              icon: Icons.bolt_rounded,
+              label: 'Status',
+              value: person.isOnline ? 'Active now' : 'Available later',
+              emphasized: person.isOnline,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: _ProviderSignalValue(
+              icon: Icons.star_rounded,
+              label: 'Rating',
+              value: person.ratingLabel,
+              emphasized: person.reviewCount > 0,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: _ProviderSignalValue(
+              icon: Icons.work_outline_rounded,
+              label: 'Work',
+              value: person.workLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderSignalValue extends StatelessWidget {
+  const _ProviderSignalValue({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = emphasized ? AppColors.primaryDeep : AppColors.ink;
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: emphasized ? AppColors.primarySoft : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: foreground),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.inkMuted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: foreground),
           ),
         ],
       ),
@@ -267,6 +371,7 @@ class ProviderDirectoryCard extends StatelessWidget {
     final visibleTags = person.primaryTags.take(2).toList();
 
     return SectionCard(
+      variant: ServiqSurfaceVariant.raised,
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

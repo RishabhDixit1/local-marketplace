@@ -117,16 +117,16 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connection request sent.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Connection request sent.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppErrorMapper.toMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppErrorMapper.toMessage(error))));
     } finally {
       if (mounted) {
         setState(() => _busyConnectId = null);
@@ -151,6 +151,8 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
+          color: Theme.of(context).colorScheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
             children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_routes.dart';
@@ -19,6 +20,7 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   void _onDestinationSelected(BuildContext context, WidgetRef ref, int index) {
+    HapticFeedback.selectionClick();
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
@@ -56,17 +58,33 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       extendBody: true,
       body: navigationShell,
-      floatingActionButton: showPostAction
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push(AppRoutes.createNeed),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Post Need'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 6,
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: showPostAction
+            ? Padding(
+                key: const ValueKey('post-need-fab'),
+                padding: const EdgeInsets.only(bottom: 78),
+                child: FloatingActionButton.extended(
+                  heroTag: 'post-need-fab',
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.push(AppRoutes.createNeed);
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Post Need'),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  elevation: 3,
+                  extendedPadding: const EdgeInsetsDirectional.symmetric(
+                    horizontal: 18,
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(key: ValueKey('no-post-need-fab')),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: MainBottomNav(
         currentIndex: navigationShell.currentIndex,
         onTap: (index) => _onDestinationSelected(context, ref, index),

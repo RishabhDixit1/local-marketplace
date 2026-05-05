@@ -242,6 +242,11 @@ class MobileApiClient {
       return parsed.replace(host: '10.0.2.2');
     }
 
+    if ((Platform.isIOS || Platform.isMacOS) &&
+        _isAndroidEmulatorHostAlias(parsed.host)) {
+      return parsed.replace(host: '127.0.0.1');
+    }
+
     return parsed;
   }
 
@@ -250,6 +255,10 @@ class MobileApiClient {
     return normalized == 'localhost' ||
         normalized == '127.0.0.1' ||
         normalized == '0.0.0.0';
+  }
+
+  bool _isAndroidEmulatorHostAlias(String host) {
+    return host.trim().toLowerCase() == '10.0.2.2';
   }
 
   String _describeBaseUrl() => _resolveBaseUri().origin;
