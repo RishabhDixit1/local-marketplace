@@ -5,6 +5,29 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_PATH="$ROOT_DIR/.next-dev/dev/lock"
 ROOT_DIR_WIN="$(cygpath -w "$ROOT_DIR" 2>/dev/null || printf '%s' "$ROOT_DIR")"
+DEV_PORT="${PORT:-3000}"
+NEXT_DEV_ARGS=()
+
+while (($# > 0)); do
+  case "$1" in
+    --port)
+      if [[ -z "${2:-}" ]]; then
+        printf 'Missing value for --port.\n' >&2
+        exit 1
+      fi
+      DEV_PORT="$2"
+      shift 2
+      ;;
+    --port=*)
+      DEV_PORT="${1#--port=}"
+      shift
+      ;;
+    *)
+      NEXT_DEV_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -69,13 +92,14 @@ find_repo_next_pids() {
     }
   elif command_exists lsof; then
     pid_source() {
-      lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true
+      lsof -tiTCP:"$DEV_PORT" -sTCP:LISTEN 2>/dev/null || true
     }
   elif command_exists powershell.exe; then
     pid_source() {
-      CODEX_ROOT_DIR_WIN="$ROOT_DIR_WIN" powershell.exe -NoProfile -Command '
+      CODEX_ROOT_DIR_WIN="$ROOT_DIR_WIN" CODEX_DEV_PORT="$DEV_PORT" powershell.exe -NoProfile -Command '
         $root = [string]$env:CODEX_ROOT_DIR_WIN
-        $listeners = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
+        $port = [int]$env:CODEX_DEV_PORT
+        $listeners = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
           Select-Object -ExpandProperty OwningProcess -Unique
 
         foreach ($processId in $listeners) {
@@ -200,4 +224,4 @@ fi
 cd "$ROOT_DIR"
 ensure_node_available
 enable_supported_ca_for_local_node
-exec ./node_modules/.bin/next dev --webpack --port 3000
+exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT" "${NEXT_DEV_ARGS[@]}"

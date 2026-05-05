@@ -5,9 +5,9 @@
  */
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "orders@serviq.in";
+const FROM_EMAIL = process.env.EMAIL_FROM ?? "orders@serviqapp.com";
 const APP_NAME = "ServiQ";
-const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviq.in";
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
 type OrderEmailType = "placed" | "accepted" | "rejected" | "completed" | "cancelled";
 
