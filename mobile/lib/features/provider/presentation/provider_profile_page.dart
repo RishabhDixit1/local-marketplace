@@ -15,9 +15,12 @@ import '../../../features/people/domain/people_snapshot.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/feed_card.dart';
+import '../../../shared/components/loading_shimmer.dart';
 import '../../../shared/components/metric_tile.dart';
+import '../../../shared/components/premium_primitives.dart';
 import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/section_header.dart';
+import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
 
 class ProviderProfilePage extends ConsumerWidget {
@@ -29,27 +32,53 @@ class ProviderProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final peopleAsync = ref.watch(peopleSnapshotProvider);
     final feedAsync = ref.watch(feedSnapshotProvider(MobileFeedScope.all));
+    final providerForCta = _findProvider(peopleAsync.asData?.value);
+    final primaryOffer = _firstStoreOffer(feedAsync.asData?.value);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Provider profile')),
+      extendBody: true,
+      appBar: AppBar(
+        title: const Text('Provider profile'),
+        actions: [
+          IconButton(
+            tooltip: 'Copy provider',
+            onPressed: providerForCta == null
+                ? null
+                : () => _copyProvider(context, providerForCta, primaryOffer),
+            icon: const Icon(Icons.ios_share_rounded),
+          ),
+        ],
+      ),
+      bottomNavigationBar: providerForCta == null
+          ? null
+          : StickyBottomCTA(
+              title: providerForCta.priceLabel,
+              subtitle:
+                  '${providerForCta.activityLabel} · ${providerForCta.locationLabel}',
+              primaryLabel: _primaryOfferLabel(primaryOffer),
+              onPrimary: () {
+                HapticFeedback.mediumImpact();
+                _openPrimaryOffer(context, primaryOffer);
+              },
+              secondaryLabel: 'Message',
+              onSecondary: () {
+                HapticFeedback.selectionClick();
+                _messageProvider(context, providerForCta);
+              },
+            ),
       body: SafeArea(
         child: ServiqAsyncBody<MobilePeopleSnapshot>(
           value: peopleAsync,
-          errorTitle: 'Unable to load people',
-          errorMessageFor: (error, _) =>
-              AppErrorMapper.toMessage(error),
+          errorTitle: 'Unable to load storefront',
+          errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
           onRetry: () => ref.invalidate(peopleSnapshotProvider),
-          loadingBuilder: () =>
-              const Center(child: CircularProgressIndicator()),
+          loadingBuilder: () => const _StorefrontLoading(),
           data: (peopleSnapshot) {
-            final provider = peopleSnapshot.people
-                .where((person) => person.id == providerId)
-                .cast<MobilePersonCard?>()
-                .firstWhere((person) => person != null, orElse: () => null);
+            final provider = _findProvider(peopleSnapshot);
 
             if (provider == null) {
               return ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: const [
                   SectionCard(
                     child: EmptyStateView(
@@ -62,337 +91,1002 @@ class ProviderProfilePage extends ConsumerWidget {
               );
             }
 
-            final relatedItems =
-                feedAsync.asData?.value.items
-                    .where((item) => item.providerId == providerId)
-                    .toList() ??
-                const <MobileFeedItem>[];
-            final publicProfilePath = relatedItems
-                .map((item) => item.publicProfilePath)
-                .firstWhere((path) => path.trim().isNotEmpty, orElse: () => '');
+            final relatedItems = _relatedItems(feedAsync.asData?.value);
+            final offers = relatedItems
+                .where((item) => item.type != MobileFeedItemType.demand)
+                .toList();
+            final requests = relatedItems
+                .where((item) => item.type == MobileFeedItemType.demand)
+                .toList();
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                SectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ProfileAvatarTile(
-                        name: provider.name,
-                        subtitle: provider.headline,
-                        avatarUrl: provider.avatarUrl,
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          TrustBadge(label: provider.verificationLabel),
-                          TrustBadge(
-                            label: provider.ratingLabel,
-                            icon: Icons.star_rounded,
-                            backgroundColor: AppColors.warningSoft,
-                            foregroundColor: AppColors.warning,
-                          ),
-                          TrustBadge(
-                            label: provider.activityLabel,
-                            icon: provider.isOnline
-                                ? Icons.bolt_rounded
-                                : Icons.schedule_rounded,
-                            backgroundColor: AppColors.accentSoft,
-                            foregroundColor: AppColors.accent,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      _ProviderSignalList(
-                        signals: [
-                          _ProviderSignal(
-                            icon: Icons.place_outlined,
-                            label: provider.locationLabel,
-                          ),
-                          _ProviderSignal(
-                            icon: Icons.task_alt_rounded,
-                            label: provider.workLabel,
-                          ),
-                          _ProviderSignal(
-                            icon: Icons.payments_outlined,
-                            label: provider.priceLabel,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: PrimaryButton(
-                              label: 'Message',
-                              icon: const Icon(
-                                Icons.chat_bubble_outline_rounded,
-                              ),
-                              onPressed: () {
-                                context.push(
-                                  AppRoutes.chatDirect(
-                                    recipientId: provider.id,
-                                    contextTitle: provider.name,
-                                    source: 'provider_profile',
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SecondaryButton(
-                              label: 'Request quote',
-                              icon: const Icon(Icons.receipt_long_outlined),
-                              onPressed: () =>
-                                  context.push(AppRoutes.createRequest),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      GhostButton(
-                        label: publicProfilePath.trim().isEmpty
-                            ? 'Copy provider ID'
-                            : 'Copy public profile',
-                        onPressed: () async {
-                          await Clipboard.setData(
-                            ClipboardData(
-                              text: publicProfilePath.trim().isEmpty
-                                  ? provider.id
-                                  : publicProfilePath,
-                            ),
-                          );
-                          if (!context.mounted) {
-                            return;
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                publicProfilePath.trim().isEmpty
-                                    ? 'Provider ID copied.'
-                                    : 'Public profile path copied.',
-                              ),
-                            ),
-                          );
-                        },
-                        expanded: true,
-                      ),
-                    ],
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(peopleSnapshotProvider);
+                ref.invalidate(feedSnapshotProvider(MobileFeedScope.all));
+                await ref.read(peopleSnapshotProvider.future);
+              },
+              color: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 168),
+                children: [
+                  _StorefrontHero(
+                    provider: provider,
+                    primaryOffer: primaryOffer,
                   ),
-                ),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = (constraints.maxWidth - 12) / 2;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(
-                          width: width,
-                          child: MetricTile(
-                            label: 'Completed jobs',
-                            value: provider.completedJobs.toString(),
-                            icon: Icons.task_alt_rounded,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: MetricTile(
-                            label: 'Open leads',
-                            value: provider.openLeads.toString(),
-                            icon: Icons.flash_on_rounded,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: MetricTile(
-                            label: 'Profile readiness',
-                            value: '${provider.completionPercent}%',
-                            icon: Icons.shield_outlined,
-                          ),
-                        ),
-                        SizedBox(
-                          width: width,
-                          child: MetricTile(
-                            label: 'Nearby activity',
-                            value: provider.postCount.toString(),
-                            icon: Icons.public_rounded,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                SectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SectionHeader(
-                        title: 'Services and signals',
-                        subtitle:
-                            'Built to help nearby users trust the provider quickly.',
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: provider.primaryTags
-                            .map(
-                              (tag) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceMuted,
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadii.md,
-                                  ),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.labelMedium,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        provider.headline,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
+                  const SizedBox(height: 14),
+                  _StorefrontActionRow(
+                    provider: provider,
+                    primaryOffer: primaryOffer,
+                    onMessage: () => _messageProvider(context, provider),
+                    onPrimary: () => _openPrimaryOffer(context, primaryOffer),
+                    onCopy: () =>
+                        _copyProvider(context, provider, primaryOffer),
                   ),
-                ),
-                const SizedBox(height: 16),
-                SectionHeader(
-                  title: 'Related local posts',
-                  subtitle:
-                      'Recent listings and activity from the same provider in your area.',
-                ),
-                const SizedBox(height: 12),
-                if (feedAsync.isLoading)
-                  const SectionCard(child: CircularProgressIndicator())
-                else if (relatedItems.isEmpty)
-                  const SectionCard(
-                    child: EmptyStateView(
-                      title: 'No recent posts yet',
-                      message:
-                          'This provider is visible in the people directory, but recent feed activity has not loaded yet.',
-                    ),
-                  )
-                else
-                  ...relatedItems
-                      .take(3)
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: FeedCard(
-                            item: item,
-                            onPrimaryTap: () {
-                              if (item.type == MobileFeedItemType.service ||
-                                  item.type == MobileFeedItemType.product) {
-                                context.push(
-                                  AppRoutes.checkoutItem(
-                                    providerId: providerId,
-                                    itemType:
-                                        item.type == MobileFeedItemType.product
-                                        ? 'product'
-                                        : 'service',
-                                    itemId: item.id,
-                                    title: item.title,
-                                    price: item.price,
-                                  ),
-                                );
-                              } else {
-                                context.push(AppRoutes.createRequest);
-                              }
-                            },
-                            onSecondaryTap: () => context.push(
-                              AppRoutes.chatDirect(
-                                recipientId: providerId,
-                                contextTitle: item.title,
-                                contextTaskId: item.id,
-                                contextStatus: item.statusLabel,
-                                source: 'provider_profile_card',
-                              ),
-                            ),
-                            primaryLabel:
-                                item.type == MobileFeedItemType.product
-                                ? 'Buy'
-                                : item.type == MobileFeedItemType.service
-                                ? 'Book'
-                                : 'Request service',
-                            secondaryLabel: 'Message',
-                          ),
-                        ),
-                      ),
-              ],
+                  const SizedBox(height: 16),
+                  _StorefrontMetrics(
+                    provider: provider,
+                    offerCount: offers.length,
+                  ),
+                  const SizedBox(height: 16),
+                  _AvailabilityDistanceCard(
+                    provider: provider,
+                    primaryOffer: primaryOffer,
+                  ),
+                  const SizedBox(height: 16),
+                  _OfferShelf(
+                    offers: offers,
+                    providerId: provider.id,
+                    onOpenOffer: (item) => _openOfferCheckout(context, item),
+                    onRequestCustom: () =>
+                        context.push(AppRoutes.createRequest),
+                  ),
+                  const SizedBox(height: 16),
+                  _TrustProofCard(provider: provider),
+                  const SizedBox(height: 16),
+                  _ReviewsCard(provider: provider),
+                  const SizedBox(height: 16),
+                  _RelatedActivitySection(
+                    providerId: provider.id,
+                    requests: requests,
+                    offers: offers,
+                  ),
+                ],
+              ),
             );
           },
         ),
       ),
     );
   }
+
+  MobilePersonCard? _findProvider(MobilePeopleSnapshot? snapshot) {
+    if (snapshot == null) {
+      return null;
+    }
+    for (final person in snapshot.people) {
+      if (person.id == providerId) {
+        return person;
+      }
+    }
+    return null;
+  }
+
+  List<MobileFeedItem> _relatedItems(MobileFeedSnapshot? snapshot) {
+    if (snapshot == null) {
+      return const <MobileFeedItem>[];
+    }
+    return snapshot.items
+        .where((item) => item.providerId == providerId)
+        .toList();
+  }
+
+  MobileFeedItem? _firstStoreOffer(MobileFeedSnapshot? snapshot) {
+    for (final item in _relatedItems(snapshot)) {
+      if (item.type == MobileFeedItemType.service ||
+          item.type == MobileFeedItemType.product) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  void _messageProvider(BuildContext context, MobilePersonCard provider) {
+    context.push(
+      AppRoutes.chatDirect(
+        recipientId: provider.id,
+        contextTitle: provider.name,
+        source: 'provider_storefront',
+      ),
+    );
+  }
+
+  void _openPrimaryOffer(BuildContext context, MobileFeedItem? offer) {
+    if (offer == null) {
+      context.push(AppRoutes.createRequest);
+      return;
+    }
+    _openOfferCheckout(context, offer);
+  }
+
+  void _openOfferCheckout(BuildContext context, MobileFeedItem offer) {
+    if (offer.type == MobileFeedItemType.service ||
+        offer.type == MobileFeedItemType.product) {
+      context.push(
+        AppRoutes.checkoutItem(
+          providerId: providerId,
+          itemType: offer.type == MobileFeedItemType.product
+              ? 'product'
+              : 'service',
+          itemId: offer.id,
+          title: offer.title,
+          price: offer.price,
+        ),
+      );
+      return;
+    }
+
+    context.push(AppRoutes.createRequest);
+  }
+
+  Future<void> _copyProvider(
+    BuildContext context,
+    MobilePersonCard provider,
+    MobileFeedItem? offer,
+  ) async {
+    final publicPath = offer?.publicProfilePath.trim() ?? '';
+    await Clipboard.setData(
+      ClipboardData(text: publicPath.isEmpty ? provider.id : publicPath),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          publicPath.isEmpty ? 'Provider ID copied.' : 'Public profile copied.',
+        ),
+      ),
+    );
+  }
 }
 
-class _ProviderSignal {
-  const _ProviderSignal({required this.icon, required this.label});
+class _StorefrontHero extends StatelessWidget {
+  const _StorefrontHero({required this.provider, required this.primaryOffer});
 
-  final IconData icon;
-  final String label;
-}
-
-class _ProviderSignalList extends StatelessWidget {
-  const _ProviderSignalList({required this.signals});
-
-  final List<_ProviderSignal> signals;
+  final MobilePersonCard provider;
+  final MobileFeedItem? primaryOffer;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: signals
-          .map(
-            (signal) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+    final imageUrl = provider.previewImageUrl.trim().isNotEmpty
+        ? provider.previewImageUrl
+        : primaryOffer?.thumbnailUrl ?? '';
+    final offerTitle = primaryOffer?.title.trim() ?? provider.previewTitle;
+
+    return PremiumSurface(
+      padding: EdgeInsets.zero,
+      backgroundColor: AppColors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadii.md),
+            ),
+            child: AspectRatio(
+              aspectRatio: 16 / 10,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (imageUrl.trim().isNotEmpty)
+                    Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const _StorefrontHeroFallback(),
+                    )
+                  else
+                    const _StorefrontHeroFallback(),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.60),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    bottom: 14,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            PremiumPill(
+                              label: provider.isOnline
+                                  ? 'Available now'
+                                  : provider.activityLabel,
+                              icon: provider.isOnline
+                                  ? Icons.bolt_rounded
+                                  : Icons.schedule_rounded,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.94,
+                              ),
+                              foregroundColor: provider.isOnline
+                                  ? AppColors.primary
+                                  : AppColors.ink,
+                              borderColor: Colors.white.withValues(alpha: 0.32),
+                            ),
+                            PremiumPill(
+                              label: provider.ratingLabel,
+                              icon: Icons.star_rounded,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.94,
+                              ),
+                              foregroundColor: AppColors.warning,
+                              borderColor: Colors.white.withValues(alpha: 0.32),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          provider.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(color: Colors.white),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          offerTitle.trim().isEmpty
+                              ? provider.headline
+                              : offerTitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProfileAvatarTile(
+                  name: provider.name,
+                  subtitle: provider.headline,
+                  avatarUrl: provider.avatarUrl,
                 ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TrustBadge(label: provider.verificationLabel),
+                    TrustBadge(
+                      label: provider.locationLabel,
+                      icon: Icons.place_outlined,
+                      backgroundColor: AppColors.surfaceMuted,
+                      foregroundColor: AppColors.ink,
+                    ),
+                    TrustBadge(
+                      label: provider.priceLabel,
+                      icon: Icons.payments_outlined,
+                      backgroundColor: AppColors.warningSoft,
+                      foregroundColor: AppColors.warning,
+                    ),
+                  ],
+                ),
+                if (provider.primaryTags.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: provider.primaryTags
+                        .map(
+                          (tag) => PremiumPill(
+                            label: tag,
+                            backgroundColor: AppColors.surfaceAlt,
+                            foregroundColor: AppColors.ink,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorefrontHeroFallback extends StatelessWidget {
+  const _StorefrontHeroFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primarySoft, AppColors.warmSoft],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 74,
+          height: 74,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.76),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: const Icon(
+            Icons.storefront_rounded,
+            color: AppColors.primary,
+            size: 34,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StorefrontActionRow extends StatelessWidget {
+  const _StorefrontActionRow({
+    required this.provider,
+    required this.primaryOffer,
+    required this.onMessage,
+    required this.onPrimary,
+    required this.onCopy,
+  });
+
+  final MobilePersonCard provider;
+  final MobileFeedItem? primaryOffer;
+  final VoidCallback onMessage;
+  final VoidCallback onPrimary;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: PrimaryButton(
+            label: _primaryOfferLabel(primaryOffer),
+            icon: const Icon(Icons.shopping_bag_outlined),
+            onPressed: onPrimary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        _SquareStorefrontButton(
+          tooltip: 'Message',
+          icon: Icons.chat_bubble_outline_rounded,
+          onTap: onMessage,
+        ),
+        const SizedBox(width: 8),
+        _SquareStorefrontButton(
+          tooltip: 'Copy profile',
+          icon: Icons.ios_share_rounded,
+          onTap: onCopy,
+        ),
+      ],
+    );
+  }
+}
+
+class _SquareStorefrontButton extends StatelessWidget {
+  const _SquareStorefrontButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(icon, color: AppColors.ink),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StorefrontMetrics extends StatelessWidget {
+  const _StorefrontMetrics({required this.provider, required this.offerCount});
+
+  final MobilePersonCard provider;
+  final int offerCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      (
+        'Rating',
+        provider.reviewCount == 0
+            ? 'New'
+            : provider.averageRating!.toStringAsFixed(1),
+        '${provider.reviewCount} reviews',
+        Icons.star_rounded,
+      ),
+      (
+        'Jobs',
+        provider.completedJobs.toString(),
+        provider.workLabel,
+        Icons.task_alt_rounded,
+      ),
+      (
+        'Offers',
+        offerCount.toString(),
+        'Services and products',
+        Icons.store_mall_directory_outlined,
+      ),
+      (
+        'Trust',
+        '${provider.completionPercent}%',
+        provider.verificationLabel,
+        Icons.verified_user_outlined,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = constraints.maxWidth < 360
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: items
+              .map(
+                (item) => SizedBox(
+                  width: width,
+                  child: MetricTile(
+                    label: item.$1,
+                    value: item.$2,
+                    caption: item.$3,
+                    icon: item.$4,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _AvailabilityDistanceCard extends StatelessWidget {
+  const _AvailabilityDistanceCard({
+    required this.provider,
+    required this.primaryOffer,
+  });
+
+  final MobilePersonCard provider;
+  final MobileFeedItem? primaryOffer;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+            title: 'Availability nearby',
+            subtitle: 'Fast signals before you message or book.',
+          ),
+          const SizedBox(height: 14),
+          _SignalRow(
+            icon: provider.isOnline
+                ? Icons.bolt_rounded
+                : Icons.schedule_rounded,
+            label: provider.activityLabel,
+            detail: provider.isOnline
+                ? 'High intent provider currently reachable.'
+                : 'Message first to confirm exact timing.',
+          ),
+          _SignalRow(
+            icon: Icons.place_outlined,
+            label: provider.locationLabel,
+            detail: primaryOffer?.distanceLabel ?? 'Distance confirms in chat.',
+          ),
+          _SignalRow(
+            icon: Icons.payments_outlined,
+            label: provider.priceLabel,
+            detail: primaryOffer == null
+                ? 'Quote after scope is confirmed.'
+                : 'Checkout-ready listing attached.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferShelf extends StatelessWidget {
+  const _OfferShelf({
+    required this.offers,
+    required this.providerId,
+    required this.onOpenOffer,
+    required this.onRequestCustom,
+  });
+
+  final List<MobileFeedItem> offers;
+  final String providerId;
+  final ValueChanged<MobileFeedItem> onOpenOffer;
+  final VoidCallback onRequestCustom;
+
+  @override
+  Widget build(BuildContext context) {
+    if (offers.isEmpty) {
+      return SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              title: 'Services and signals',
+              subtitle: 'This storefront is ready for a custom request.',
+            ),
+            const SizedBox(height: 14),
+            const EmptyStateView(
+              icon: Icons.inventory_2_outlined,
+              title: 'No checkout listings yet',
+              message:
+                  'Message the provider or request a quote while their catalog is being filled in.',
+            ),
+            const SizedBox(height: 12),
+            SecondaryButton(
+              label: 'Request custom work',
+              icon: const Icon(Icons.receipt_long_outlined),
+              onPressed: onRequestCustom,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Services and signals',
+            subtitle:
+                '${offers.length} storefront item${offers.length == 1 ? '' : 's'} ready to inspect.',
+          ),
+          const SizedBox(height: 14),
+          ...offers
+              .take(4)
+              .map(
+                (offer) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _OfferTile(
+                    offer: offer,
+                    onTap: () => onOpenOffer(offer),
+                  ),
+                ),
+              ),
+          if (offers.length > 4)
+            Text(
+              '+${offers.length - 4} more listings in marketplace discovery.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferTile extends StatelessWidget {
+  const _OfferTile({required this.offer, required this.onTap});
+
+  final MobileFeedItem offer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceAlt,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 58,
+                height: 58,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadii.md),
                 ),
-                child: Row(
-                  children: [
-                    Icon(signal.icon, size: 18, color: AppColors.inkMuted),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        signal.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+                clipBehavior: Clip.antiAlias,
+                child: offer.thumbnailUrl.trim().isEmpty
+                    ? Icon(
+                        offer.type == MobileFeedItemType.product
+                            ? Icons.inventory_2_outlined
+                            : Icons.design_services_outlined,
+                        color: AppColors.primary,
+                      )
+                    : Image.network(
+                        offer.thumbnailUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                              Icons.storefront_outlined,
+                              color: AppColors.primary,
+                            ),
                       ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      offer.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      offer.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TrustBadge(
+                          label: offer.priceLabel,
+                          icon: Icons.payments_outlined,
+                          backgroundColor: AppColors.warningSoft,
+                          foregroundColor: AppColors.warning,
+                        ),
+                        TrustBadge(
+                          label: offer.distanceLabel,
+                          icon: Icons.route_rounded,
+                          backgroundColor: AppColors.surface,
+                          foregroundColor: AppColors.ink,
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-          )
-          .toList(),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
+}
+
+class _TrustProofCard extends StatelessWidget {
+  const _TrustProofCard({required this.provider});
+
+  final MobilePersonCard provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+            title: 'Trust proof',
+            subtitle: 'Why this provider is safer to contact.',
+          ),
+          const SizedBox(height: 14),
+          _SignalRow(
+            icon: Icons.verified_user_outlined,
+            label: provider.verificationLabel,
+            detail: '${provider.completionPercent}% profile readiness.',
+          ),
+          _SignalRow(
+            icon: Icons.task_alt_rounded,
+            label: provider.workLabel,
+            detail: provider.completedJobs > 0
+                ? 'Completed jobs are visible across the marketplace.'
+                : 'Early marketplace profile with growing activity.',
+          ),
+          _SignalRow(
+            icon: Icons.diversity_3_outlined,
+            label: provider.socialLabel,
+            detail: provider.reason.trim().isEmpty
+                ? 'Ranked by local availability and trust signals.'
+                : provider.reason,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewsCard extends StatelessWidget {
+  const _ReviewsCard({required this.provider});
+
+  final MobilePersonCard provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReviews =
+        provider.reviewCount > 0 && provider.averageRating != null;
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Reviews',
+            subtitle: hasReviews
+                ? '${provider.reviewCount} local review${provider.reviewCount == 1 ? '' : 's'} summarized for quick trust.'
+                : 'Review history will grow as marketplace work completes.',
+          ),
+          const SizedBox(height: 14),
+          if (hasReviews)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.warningSoft,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.star_rounded, color: AppColors.warning),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${provider.averageRating!.toStringAsFixed(1)} average from ${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}.',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            const EmptyStateView(
+              icon: Icons.rate_review_outlined,
+              title: 'No reviews yet',
+              message:
+                  'Ask for scope, timing, and quote details in chat before booking.',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RelatedActivitySection extends StatelessWidget {
+  const _RelatedActivitySection({
+    required this.providerId,
+    required this.requests,
+    required this.offers,
+  });
+
+  final String providerId;
+  final List<MobileFeedItem> requests;
+  final List<MobileFeedItem> offers;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = [...requests, ...offers].take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(
+          title: 'Recent marketplace activity',
+          subtitle: 'Latest cards linked to this storefront.',
+        ),
+        const SizedBox(height: 12),
+        if (visibleItems.isEmpty)
+          const SectionCard(
+            child: EmptyStateView(
+              icon: Icons.dynamic_feed_outlined,
+              title: 'No recent activity yet',
+              message:
+                  'The provider is visible in People, but no recent feed cards are attached.',
+            ),
+          )
+        else
+          ...visibleItems.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FeedCard(
+                item: item,
+                onPrimaryTap: () {
+                  if (item.type == MobileFeedItemType.service ||
+                      item.type == MobileFeedItemType.product) {
+                    context.push(
+                      AppRoutes.checkoutItem(
+                        providerId: providerId,
+                        itemType: item.type == MobileFeedItemType.product
+                            ? 'product'
+                            : 'service',
+                        itemId: item.id,
+                        title: item.title,
+                        price: item.price,
+                      ),
+                    );
+                  } else {
+                    context.push(AppRoutes.createRequest);
+                  }
+                },
+                onSecondaryTap: () => context.push(
+                  AppRoutes.chatDirect(
+                    recipientId: providerId,
+                    contextTitle: item.title,
+                    contextTaskId: item.id,
+                    contextStatus: item.statusLabel,
+                    source: 'provider_storefront_card',
+                  ),
+                ),
+                primaryLabel: item.type == MobileFeedItemType.product
+                    ? 'Buy'
+                    : item.type == MobileFeedItemType.service
+                    ? 'Book'
+                    : 'Request service',
+                secondaryLabel: 'Message',
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SignalRow extends StatelessWidget {
+  const _SignalRow({
+    required this.icon,
+    required this.label,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String label;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 3),
+                Text(detail, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StorefrontLoading extends StatelessWidget {
+  const _StorefrontLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        SectionCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              LoadingShimmer(height: 220),
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LoadingShimmer(height: 22, width: 220),
+                    SizedBox(height: 10),
+                    LoadingShimmer(height: 14),
+                    SizedBox(height: 14),
+                    LoadingShimmer(height: 34, width: 260),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        ...List.generate(
+          3,
+          (_) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  LoadingShimmer(height: 18, width: 180),
+                  SizedBox(height: 12),
+                  LoadingShimmer(height: 14),
+                  SizedBox(height: 8),
+                  LoadingShimmer(height: 14, width: 220),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _primaryOfferLabel(MobileFeedItem? offer) {
+  if (offer == null) {
+    return 'Request quote';
+  }
+  return offer.type == MobileFeedItemType.product ? 'Buy item' : 'Book service';
 }

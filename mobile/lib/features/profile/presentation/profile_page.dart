@@ -369,6 +369,8 @@ class _ViewProfileSection extends StatelessWidget {
       children: [
         _PublicProfilePreviewCard(snapshot: snapshot, prominent: true),
         const SizedBox(height: 16),
+        _LaunchReadinessCard(snapshot: snapshot),
+        const SizedBox(height: 16),
         _MetricsGrid(snapshot: snapshot),
         const SizedBox(height: 16),
         _CompletionCard(snapshot: snapshot),
@@ -1168,6 +1170,169 @@ class _ProfileHero extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LaunchReadinessCard extends StatelessWidget {
+  const _LaunchReadinessCard({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = snapshot.profile;
+    final isProvider = snapshot.roleFamily == 'provider';
+    final hasIdentity =
+        profile.fullName.isNotEmpty && profile.headline.isNotEmpty;
+    final hasLocation = profile.location.isNotEmpty;
+    final hasTrust =
+        snapshot.trustScore >= 50 ||
+        snapshot.linkedProviders.isNotEmpty ||
+        profile.verificationLevel.isNotEmpty;
+    final hasOfferCatalog = snapshot.serviceCount + snapshot.productCount > 0;
+    final hasProof =
+        snapshot.portfolioCount +
+            snapshot.workHistoryCount +
+            snapshot.reviewCount >
+        0;
+    final hasAvailability =
+        snapshot.availabilityCount > 0 ||
+        profile.availability.trim().isNotEmpty;
+    final providerRows = [
+      (
+        'Public identity',
+        hasIdentity,
+        hasIdentity ? profile.headline : 'Add name and headline',
+      ),
+      (
+        'Offer catalog',
+        hasOfferCatalog,
+        hasOfferCatalog
+            ? '${snapshot.serviceCount} services / ${snapshot.productCount} products'
+            : 'Publish at least one service or product',
+      ),
+      (
+        'Availability',
+        hasAvailability,
+        hasAvailability
+            ? _humanize(profile.availability)
+            : 'Add schedule or availability',
+      ),
+      (
+        'Trust proof',
+        hasProof,
+        hasProof
+            ? '${snapshot.portfolioCount + snapshot.workHistoryCount} proof items'
+            : 'Add work proof or reviews',
+      ),
+    ];
+    final seekerRows = [
+      (
+        'Profile identity',
+        profile.fullName.isNotEmpty || snapshot.displayName.isNotEmpty,
+        profile.fullName.isEmpty ? snapshot.displayName : profile.fullName,
+      ),
+      (
+        'Local area',
+        hasLocation,
+        hasLocation ? profile.location : 'Add your city or neighbourhood',
+      ),
+      (
+        'Trusted sign-in',
+        hasTrust,
+        hasTrust
+            ? '${snapshot.trustScore} trust score'
+            : 'Link a sign-in method',
+      ),
+      (
+        'Request readiness',
+        snapshot.completionPercent >= 50,
+        snapshot.completionPercent >= 50
+            ? '${snapshot.completionPercent}% complete'
+            : 'Complete basics before posting',
+      ),
+    ];
+    final rows = isProvider ? providerRows : seekerRows;
+    final completed = rows.where((row) => row.$2).length;
+    final progress = completed / rows.length;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(
+                  isProvider
+                      ? Icons.storefront_rounded
+                      : Icons.flag_circle_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isProvider
+                          ? 'Provider launch readiness'
+                          : 'Account readiness',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$completed of ${rows.length} essentials complete',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+          ),
+          const SizedBox(height: 14),
+          for (final row in rows)
+            _ReadinessRow(label: row.$1, detail: row.$3, done: row.$2),
+          const SizedBox(height: 8),
+          if (isProvider) ...[
+            _ActionRow(
+              icon: Icons.rocket_launch_outlined,
+              label: 'Continue launch setup',
+              onTap: () => context.push(AppRoutes.providerLaunchpad),
+            ),
+            _ActionRow(
+              icon: Icons.inventory_2_outlined,
+              label: 'Manage listings',
+              onTap: () => context.push(AppRoutes.providerListings),
+            ),
+          ] else ...[
+            _ActionRow(
+              icon: Icons.add_circle_outline_rounded,
+              label: 'Post a Need',
+              onTap: () => context.push(AppRoutes.createNeed),
+            ),
+            _ActionRow(
+              icon: Icons.person_search_outlined,
+              label: 'Find nearby help',
+              onTap: () => context.push(AppRoutes.people),
+            ),
+          ],
         ],
       ),
     );

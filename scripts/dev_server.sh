@@ -224,4 +224,9 @@ fi
 cd "$ROOT_DIR"
 ensure_node_available
 enable_supported_ca_for_local_node
-exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT" "${NEXT_DEV_ARGS[@]}"
+
+if ((${#NEXT_DEV_ARGS[@]} > 0)); then
+  exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT" "${NEXT_DEV_ARGS[@]}"
+fi
+
+exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT"

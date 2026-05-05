@@ -188,6 +188,9 @@ const ProviderCard = (props: Props) => {
 
   return (
     <article
+      data-provider-card="true"
+      data-provider-id={provider.id}
+      data-has-store={provider.listingCount > 0 ? "true" : undefined}
       role="link"
       tabIndex={0}
       onClick={handleOpenProfile}

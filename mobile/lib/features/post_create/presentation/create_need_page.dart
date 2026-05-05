@@ -304,6 +304,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     setState(() {
       _step = 2;
     });
+    HapticFeedback.selectionClick();
     _cacheDraft();
   }
 
@@ -321,6 +322,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     setState(() {
       _step = 3;
     });
+    HapticFeedback.selectionClick();
     _cacheDraft();
   }
 
@@ -811,6 +813,34 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     return 'Nearby ${_category.toLowerCase()} providers within ${_radiusKm.round()} km of $area will see this in discovery, request matching, and provider alerts.';
   }
 
+  int get _requestReadinessScore {
+    var score = 18;
+    if (_titleController.text.trim().length >= 8) {
+      score += 16;
+    }
+    if (_detailsController.text.trim().length >= 40) {
+      score += 18;
+    } else if (_detailsController.text.trim().length >= 20) {
+      score += 10;
+    }
+    if (_locationController.text.trim().isNotEmpty) {
+      score += 14;
+    }
+    if (_budgetController.text.trim().isNotEmpty) {
+      score += 10;
+    }
+    if (_media.isNotEmpty) {
+      score += 12;
+    }
+    if (_uploadedMedia.isNotEmpty && !_hasFailedMedia) {
+      score += 8;
+    }
+    if (_neededWithin.trim().isNotEmpty) {
+      score += 4;
+    }
+    return score.clamp(0, 100);
+  }
+
   List<CreateNeedUploadedMedia> get _uploadedMedia => _media
       .map((item) => item.uploadedMedia)
       .whereType<CreateNeedUploadedMedia>()
@@ -837,7 +867,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.fromLTRB(20, 12, 20, _result == null ? 120 : 28),
           children: [
-            _CreateNeedHero(step: _step),
+            _CreateNeedHero(
+              step: _step,
+              readinessScore: _requestReadinessScore,
+              category: _category,
+              locationLabel: _locationController.text.trim(),
+              mediaCount: _media.length,
+            ),
             if (_draftRestored) ...[
               const SizedBox(height: 14),
               _DraftRecoveredBanner(
@@ -997,25 +1033,17 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               }).toList(),
             ),
             const SizedBox(height: 18),
-            DropdownButtonFormField<String>(
-              key: ValueKey(_category),
-              initialValue: _category,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Category'),
-              items: _categories
-                  .map(
-                    (category) => DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category),
-                    ),
-                  )
-                  .toList(),
-              onChanged: _submitting
-                  ? null
-                  : (value) => setState(() {
-                      _category = value ?? _categories.first;
-                      _error = null;
-                    }),
+            _CategoryPicker(
+              selectedCategory: _category,
+              enabled: !_submitting,
+              onSelected: (value) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _category = value;
+                  _error = null;
+                });
+                _cacheDraft();
+              },
             ),
             const SizedBox(height: 14),
             TextFormField(
@@ -1253,6 +1281,14 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
+            _ProviderMatchPreview(
+              category: _category,
+              locationLabel: _locationController.text.trim(),
+              radiusKm: _radiusKm,
+              budgetSummary: _budgetSummary,
+              urgencyLabel: _neededWithin,
+            ),
           ],
         ),
       ),
@@ -1362,6 +1398,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   uploadedCount: _uploadedMedia.length,
                 ),
               ],
+              const SizedBox(height: 16),
+              _PublishChecklist(
+                hasTitle: _titleController.text.trim().length >= 8,
+                hasDetails: _detailsController.text.trim().length >= 20,
+                hasLocation: _locationController.text.trim().isNotEmpty,
+                hasCleanMedia: !_hasUploadingMedia && !_hasFailedMedia,
+              ),
             ],
           ),
         ),
@@ -1427,9 +1470,19 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
 }
 
 class _CreateNeedHero extends StatelessWidget {
-  const _CreateNeedHero({required this.step});
+  const _CreateNeedHero({
+    required this.step,
+    required this.readinessScore,
+    required this.category,
+    required this.locationLabel,
+    required this.mediaCount,
+  });
 
   final int step;
+  final int readinessScore;
+  final String category;
+  final String locationLabel;
+  final int mediaCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1486,8 +1539,131 @@ class _CreateNeedHero extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HeroSignal(
+                label: '$readinessScore% ready',
+                icon: Icons.speed_rounded,
+              ),
+              _HeroSignal(label: category, icon: Icons.category_outlined),
+              _HeroSignal(
+                label: locationLabel.isEmpty ? 'Area pending' : locationLabel,
+                icon: Icons.place_outlined,
+              ),
+              _HeroSignal(
+                label: mediaCount == 0 ? 'Media optional' : '$mediaCount media',
+                icon: Icons.perm_media_outlined,
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _HeroSignal extends StatelessWidget {
+  const _HeroSignal({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryPicker extends StatelessWidget {
+  const _CategoryPicker({
+    required this.selectedCategory,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final String selectedCategory;
+  final bool enabled;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = _categories.take(8).toList();
+    final remaining = _categories.skip(8).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Category', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: featured
+              .map(
+                (category) => ChoiceChip(
+                  avatar: Icon(_categoryIcon(category), size: 16),
+                  label: Text(category),
+                  selected: selectedCategory == category,
+                  onSelected: enabled ? (_) => onSelected(category) : null,
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          key: ValueKey('category-more-$selectedCategory'),
+          initialValue: _categories.contains(selectedCategory)
+              ? selectedCategory
+              : _categories.first,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'More categories',
+            prefixIcon: Icon(Icons.tune_rounded),
+          ),
+          items: [...featured, ...remaining]
+              .map(
+                (category) => DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                ),
+              )
+              .toList(),
+          onChanged: enabled
+              ? (value) {
+                  final next = value ?? _categories.first;
+                  onSelected(next);
+                }
+              : null,
+        ),
+      ],
     );
   }
 }
@@ -1609,6 +1785,160 @@ class _PreviewRow extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderMatchPreview extends StatelessWidget {
+  const _ProviderMatchPreview({
+    required this.category,
+    required this.locationLabel,
+    required this.radiusKm,
+    required this.budgetSummary,
+    required this.urgencyLabel,
+  });
+
+  final String category;
+  final String locationLabel;
+  final double radiusKm;
+  final String budgetSummary;
+  final String urgencyLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final area = locationLabel.isEmpty ? 'your area' : locationLabel;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  color: AppColors.accent,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Match preview',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '$category providers near $area will see $urgencyLabel timing, $budgetSummary, and a ${radiusKm.round()} km reach before they respond.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: 'Local feed',
+                icon: Icons.dynamic_feed_outlined,
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.ink,
+              ),
+              TrustBadge(
+                label: 'Provider alerts',
+                icon: Icons.notifications_active_outlined,
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.ink,
+              ),
+              TrustBadge(
+                label: 'Chat follow-up',
+                icon: Icons.chat_bubble_outline_rounded,
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.ink,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PublishChecklist extends StatelessWidget {
+  const _PublishChecklist({
+    required this.hasTitle,
+    required this.hasDetails,
+    required this.hasLocation,
+    required this.hasCleanMedia,
+  });
+
+  final bool hasTitle;
+  final bool hasDetails;
+  final bool hasLocation;
+  final bool hasCleanMedia;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [
+      ('Clear title', hasTitle),
+      ('Useful details', hasDetails),
+      ('Readable area', hasLocation),
+      ('Media ready', hasCleanMedia),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Publish readiness',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: rows
+                .map(
+                  (row) => TrustBadge(
+                    label: row.$1,
+                    icon: row.$2
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    backgroundColor: row.$2
+                        ? AppColors.primarySoft
+                        : AppColors.surface,
+                    foregroundColor: row.$2
+                        ? AppColors.primary
+                        : AppColors.inkMuted,
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -2469,6 +2799,28 @@ class _RequestPreset {
   final String label;
   final String category;
   final String title;
+}
+
+IconData _categoryIcon(String category) {
+  switch (category.toLowerCase()) {
+    case 'plumber':
+      return Icons.plumbing_rounded;
+    case 'electrician':
+      return Icons.electrical_services_rounded;
+    case 'ac repair':
+    case 'appliance repair':
+      return Icons.settings_input_component_outlined;
+    case 'carpenter':
+      return Icons.carpenter_outlined;
+    case 'cleaning':
+      return Icons.cleaning_services_outlined;
+    case 'delivery':
+      return Icons.local_shipping_outlined;
+    case 'tutor':
+      return Icons.school_outlined;
+    default:
+      return Icons.handyman_outlined;
+  }
 }
 
 class _CreateNeedDraftSnapshot {

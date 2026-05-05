@@ -41,6 +41,7 @@ class FeedCard extends StatelessWidget {
     final reasonText = reason?.trim() ?? '';
 
     return SectionCard(
+      variant: ServiqSurfaceVariant.raised,
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,6 +97,8 @@ class FeedCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
+          _MarketplaceSignalStrip(item: item),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
@@ -113,23 +116,6 @@ class FeedCard extends StatelessWidget {
             dense: true,
             items: [
               TrustSnapshotItem(
-                icon: item.type == MobileFeedItemType.demand
-                    ? Icons.account_balance_wallet_outlined
-                    : Icons.payments_outlined,
-                label: item.type == MobileFeedItemType.demand
-                    ? 'Budget'
-                    : 'Price',
-                value: item.priceLabel,
-                tone: item.type == MobileFeedItemType.demand
-                    ? TrustSnapshotTone.warning
-                    : TrustSnapshotTone.success,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.place_outlined,
-                label: 'Distance',
-                value: item.distanceLabel,
-              ),
-              TrustSnapshotItem(
                 icon: Icons.verified_user_outlined,
                 label: 'Trust',
                 value: item.socialProofLabel,
@@ -138,11 +124,11 @@ class FeedCard extends StatelessWidget {
                     : TrustSnapshotTone.neutral,
               ),
               TrustSnapshotItem(
-                icon: Icons.schedule_rounded,
-                label: 'Response',
-                value: item.responseLabel,
-                tone: item.activeNow
-                    ? TrustSnapshotTone.success
+                icon: Icons.update_rounded,
+                label: 'Status',
+                value: statusLabel,
+                tone: item.urgent
+                    ? TrustSnapshotTone.warning
                     : TrustSnapshotTone.neutral,
               ),
             ],
@@ -212,6 +198,15 @@ class _FeedPreview extends StatelessWidget {
             fit: BoxFit.cover,
             errorBuilder: (context, _, _) => _PreviewFallback(item: item),
           ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Color(0xAA090F17)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
           Positioned(
             left: AppSpacing.sm,
             right: AppSpacing.sm,
@@ -264,6 +259,119 @@ class _PreviewFallback extends StatelessWidget {
   }
 }
 
+class _MarketplaceSignalStrip extends StatelessWidget {
+  const _MarketplaceSignalStrip({required this.item});
+
+  final MobileFeedItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final moneyLabel = item.type == MobileFeedItemType.demand
+        ? 'Budget'
+        : 'Price';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SignalValue(
+              icon: item.type == MobileFeedItemType.demand
+                  ? Icons.account_balance_wallet_outlined
+                  : Icons.payments_outlined,
+              label: moneyLabel,
+              value: item.priceLabel,
+              emphasized: true,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: _SignalValue(
+              icon: Icons.place_outlined,
+              label: 'Distance',
+              value: item.distanceLabel,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: _SignalValue(
+              icon: Icons.schedule_rounded,
+              label: 'Response',
+              value: item.responseLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SignalValue extends StatelessWidget {
+  const _SignalValue({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = emphasized ? AppColors.primaryDeep : AppColors.ink;
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: emphasized ? AppColors.primarySoft : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: foreground),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppColors.inkMuted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(color: foreground),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TypePill extends StatelessWidget {
   const _TypePill({required this.type});
 
@@ -273,7 +381,7 @@ class _TypePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint = _typeTint(type);
     return Container(
-      constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
+      constraints: const BoxConstraints(minHeight: 36),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
@@ -310,7 +418,7 @@ class _InlinePill extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 210),
       child: Container(
-        constraints: const BoxConstraints(minHeight: AppTouchTargets.minimum),
+        constraints: const BoxConstraints(minHeight: 36),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.xs,
