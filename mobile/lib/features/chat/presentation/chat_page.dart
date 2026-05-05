@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
@@ -45,8 +47,10 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _searchController = TextEditingController();
   final _composerController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   String? _selectedConversationId;
+  List<_ChatPendingAttachment> _pendingAttachments = const [];
   bool _openingConversation = false;
   bool _sending = false;
   RealtimeChannel? _messagesChannel;
@@ -163,10 +167,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Future<void> _sendMessage() async {
     final conversationId = _selectedConversationId;
-    final content = _composerController.text.trim();
-    if (conversationId == null || content.isEmpty || _sending) {
+    final text = _composerController.text.trim();
+    final attachments = _pendingAttachments;
+    if (conversationId == null ||
+        (text.isEmpty && attachments.isEmpty) ||
+        _sending) {
       return;
     }
+    final content = _composeChatMessageContent(text, attachments);
 
     FocusScope.of(context).unfocus();
     setState(() => _sending = true);
@@ -175,6 +183,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           .read(chatRepositoryProvider)
           .sendMessage(conversationId: conversationId, content: content);
       _composerController.clear();
+      setState(() => _pendingAttachments = const []);
       ref.invalidate(chatMessagesProvider(conversationId));
       ref.invalidate(chatConversationsProvider);
       ref
@@ -185,6 +194,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               'conversation_id': conversationId,
               'content_length': content.length,
               'has_context': widget.contextTaskId?.trim().isNotEmpty ?? false,
+              'attachment_count': attachments.length,
             },
           );
     } catch (error) {
@@ -205,6 +215,129 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         setState(() => _sending = false);
       }
     }
+  }
+
+  Future<void> _openAttachmentOptions() async {
+    HapticFeedback.selectionClick();
+    final action = await showModalBottomSheet<_ChatAttachmentAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add to conversation',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Attach photos or short video context before sending the message.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                _AttachmentActionTile(
+                  icon: Icons.photo_library_outlined,
+                  title: 'Choose photo',
+                  subtitle: 'Add one image reference to this message.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ChatAttachmentAction.galleryPhoto),
+                ),
+                _AttachmentActionTile(
+                  icon: Icons.photo_camera_outlined,
+                  title: 'Take photo',
+                  subtitle: 'Capture quick scope or completion proof.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ChatAttachmentAction.cameraPhoto),
+                ),
+                _AttachmentActionTile(
+                  icon: Icons.videocam_outlined,
+                  title: 'Choose video',
+                  subtitle: 'Add a short walkthrough reference.',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(_ChatAttachmentAction.galleryVideo),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (action == null) {
+      return;
+    }
+
+    await _pickChatAttachment(action);
+  }
+
+  Future<void> _pickChatAttachment(_ChatAttachmentAction action) async {
+    try {
+      final XFile? file;
+      final String kind;
+      switch (action) {
+        case _ChatAttachmentAction.galleryPhoto:
+          file = await _imagePicker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1280,
+            maxHeight: 1280,
+            imageQuality: 72,
+          );
+          kind = 'Photo';
+          break;
+        case _ChatAttachmentAction.cameraPhoto:
+          file = await _imagePicker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: 1280,
+            maxHeight: 1280,
+            imageQuality: 72,
+          );
+          kind = 'Photo';
+          break;
+        case _ChatAttachmentAction.galleryVideo:
+          file = await _imagePicker.pickVideo(
+            source: ImageSource.gallery,
+            maxDuration: const Duration(seconds: 20),
+          );
+          kind = 'Video';
+          break;
+      }
+
+      if (file == null) {
+        return;
+      }
+      final pickedFile = file;
+
+      setState(() {
+        _pendingAttachments = [
+          ..._pendingAttachments,
+          _ChatPendingAttachment.fromXFile(pickedFile, kind: kind),
+        ].take(3).toList();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to add attachment: $error')),
+      );
+    }
+  }
+
+  void _removePendingAttachment(String id) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _pendingAttachments = _pendingAttachments
+          .where((attachment) => attachment.id != id)
+          .toList();
+    });
   }
 
   bool get _openedFromRouteContext {
@@ -331,11 +464,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         : _ChatThread(
             conversationId: selectedConversationId,
             composerController: _composerController,
+            pendingAttachments: _pendingAttachments,
             sending: _sending,
             contextTitle: widget.contextTitle,
             contextTaskId: widget.contextTaskId,
             contextStatus: widget.contextStatus,
             contextSource: widget.contextSource,
+            onAttach: _openAttachmentOptions,
+            onRemoveAttachment: _removePendingAttachment,
             onSend: _sendMessage,
           );
 
@@ -405,6 +541,194 @@ class _ConversationSection extends StatelessWidget {
       ],
     );
   }
+}
+
+enum _ChatAttachmentAction { galleryPhoto, cameraPhoto, galleryVideo }
+
+class _ChatPendingAttachment {
+  const _ChatPendingAttachment({
+    required this.id,
+    required this.fileName,
+    required this.kind,
+  });
+
+  factory _ChatPendingAttachment.fromXFile(XFile file, {required String kind}) {
+    final fallbackName = file.path.split(RegExp(r'[/\\]')).last;
+    final fileName = file.name.trim().isEmpty ? fallbackName : file.name.trim();
+    return _ChatPendingAttachment(
+      id: 'chat-attachment-${DateTime.now().microsecondsSinceEpoch}-${fileName.hashCode}',
+      fileName: fileName,
+      kind: kind,
+    );
+  }
+
+  final String id;
+  final String fileName;
+  final String kind;
+}
+
+class _AttachmentActionTile extends StatelessWidget {
+  const _AttachmentActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.inkMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingAttachmentRail extends StatelessWidget {
+  const _PendingAttachmentRail({
+    required this.attachments,
+    required this.onRemove,
+  });
+
+  final List<_ChatPendingAttachment> attachments;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: attachments.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final attachment = attachments[index];
+          return _PendingAttachmentChip(
+            attachment: attachment,
+            onRemove: () => onRemove(attachment.id),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PendingAttachmentChip extends StatelessWidget {
+  const _PendingAttachmentChip({
+    required this.attachment,
+    required this.onRemove,
+  });
+
+  final _ChatPendingAttachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            attachment.kind == 'Video'
+                ? Icons.movie_creation_outlined
+                : Icons.photo_outlined,
+            color: AppColors.primary,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: Text(
+              attachment.fileName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppColors.primary),
+            ),
+          ),
+          const SizedBox(width: 2),
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onRemove,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                Icons.close_rounded,
+                size: 14,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _composeChatMessageContent(
+  String text,
+  List<_ChatPendingAttachment> attachments,
+) {
+  final attachmentLines = attachments
+      .map(
+        (attachment) => '${attachment.kind} attachment: ${attachment.fileName}',
+      )
+      .toList();
+  if (attachmentLines.isEmpty) {
+    return text;
+  }
+  if (text.isEmpty) {
+    return attachmentLines.join('\n');
+  }
+  return '$text\n\n${attachmentLines.join('\n')}';
 }
 
 List<String> _quickRepliesFor({
@@ -649,21 +973,27 @@ class _ChatThread extends ConsumerWidget {
   const _ChatThread({
     required this.conversationId,
     required this.composerController,
+    required this.pendingAttachments,
     required this.sending,
     required this.contextTitle,
     required this.contextTaskId,
     required this.contextStatus,
     required this.contextSource,
+    required this.onAttach,
+    required this.onRemoveAttachment,
     required this.onSend,
   });
 
   final String conversationId;
   final TextEditingController composerController;
+  final List<_ChatPendingAttachment> pendingAttachments;
   final bool sending;
   final String? contextTitle;
   final String? contextTaskId;
   final String? contextStatus;
   final String? contextSource;
+  final VoidCallback onAttach;
+  final ValueChanged<String> onRemoveAttachment;
   final VoidCallback onSend;
 
   @override
@@ -901,8 +1231,23 @@ class _ChatThread extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  if (pendingAttachments.isNotEmpty) ...[
+                    _PendingAttachmentRail(
+                      attachments: pendingAttachments,
+                      onRemove: onRemoveAttachment,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Row(
                     children: [
+                      Tooltip(
+                        message: 'Attach photo or video',
+                        child: IconButton.outlined(
+                          onPressed: sending ? null : onAttach,
+                          icon: const Icon(Icons.add_photo_alternate_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: TextField(
                           controller: composerController,

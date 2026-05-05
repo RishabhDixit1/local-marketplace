@@ -292,8 +292,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
               ServiqAsyncBody<MobileQuoteWorkspace>(
                 value: workspaceAsync,
                 errorTitle: 'Unable to load quote',
-                errorMessageFor: (error, _) =>
-                    AppErrorMapper.toMessage(error),
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
                 onRetry: _refresh,
                 loadingBuilder: () => const _QuoteLoading(),
                 data: (workspace) {
@@ -304,6 +303,8 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _QuoteContextCard(workspace: workspace),
+                      const SizedBox(height: 16),
+                      _QuoteTimelineCard(workspace: workspace),
                       const SizedBox(height: 16),
                       if (draft != null)
                         _QuoteStatusCard(
@@ -452,6 +453,138 @@ class _QuoteStatusCard extends StatelessWidget {
   }
 }
 
+class _QuoteTimelineCard extends StatelessWidget {
+  const _QuoteTimelineCard({required this.workspace});
+
+  final MobileQuoteWorkspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = workspace.draft;
+    final status = draft?.status ?? MobileQuoteStatus.draft;
+    final steps = [
+      _TimelineStep(
+        label: 'Scope',
+        detail: workspace.context.currentStatus,
+        done: true,
+        active: draft == null,
+        icon: Icons.assignment_outlined,
+      ),
+      _TimelineStep(
+        label: 'Quote',
+        detail: draft == null ? 'Composer ready' : status.label,
+        done: draft != null,
+        active: draft?.status == MobileQuoteStatus.draft,
+        icon: Icons.request_quote_outlined,
+      ),
+      _TimelineStep(
+        label: 'Sent',
+        detail: draft?.sentAt == null
+            ? 'Not sent yet'
+            : _relativeTime(draft!.sentAt!),
+        done: draft?.sentAt != null || status == MobileQuoteStatus.accepted,
+        active: status == MobileQuoteStatus.sent,
+        icon: Icons.outgoing_mail,
+      ),
+      _TimelineStep(
+        label: 'Accepted',
+        detail: status == MobileQuoteStatus.accepted
+            ? 'Ready for task handoff'
+            : 'Waiting',
+        done: status == MobileQuoteStatus.accepted,
+        active: status == MobileQuoteStatus.accepted,
+        icon: Icons.verified_rounded,
+      ),
+    ];
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Deal timeline', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Scope, quote, acceptance, and task handoff stay visible together.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          ...steps.map(
+            (step) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _TimelineStepRow(step: step),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineStep {
+  const _TimelineStep({
+    required this.label,
+    required this.detail,
+    required this.done,
+    required this.active,
+    required this.icon,
+  });
+
+  final String label;
+  final String detail;
+  final bool done;
+  final bool active;
+  final IconData icon;
+}
+
+class _TimelineStepRow extends StatelessWidget {
+  const _TimelineStepRow({required this.step});
+
+  final _TimelineStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = step.done || step.active
+        ? AppColors.primary
+        : AppColors.inkMuted;
+    final background = step.done || step.active
+        ? AppColors.primarySoft
+        : AppColors.surfaceMuted;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: Icon(
+            step.done ? Icons.check_rounded : step.icon,
+            color: color,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(step.label, style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 3),
+              Text(
+                _humanize(step.detail),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _QuoteForm extends StatelessWidget {
   const _QuoteForm({
     required this.formKey,
@@ -498,7 +631,31 @@ class _QuoteForm extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Quote draft', style: Theme.of(context).textTheme.titleLarge),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quote composer',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        canEdit
+                            ? 'Build a clear price, scope, expiry, and next action.'
+                            : 'This quote is locked for review and acceptance.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Chip(label: Text('${lineItems.length} lines')),
+              ],
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: summaryController,
@@ -534,6 +691,8 @@ class _QuoteForm extends StatelessWidget {
                 icon: const Icon(Icons.add_rounded),
                 onPressed: onAddLine,
               ),
+            const SizedBox(height: 14),
+            const _QuoteAttachmentGuidance(),
             const SizedBox(height: 14),
             Row(
               children: [
@@ -618,6 +777,51 @@ class _LineItemCard extends StatefulWidget {
 
   @override
   State<_LineItemCard> createState() => _LineItemCardState();
+}
+
+class _QuoteAttachmentGuidance extends StatelessWidget {
+  const _QuoteAttachmentGuidance();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Attachment checklist',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              Chip(
+                avatar: Icon(Icons.photo_outlined, size: 16),
+                label: Text('Scope photos in chat'),
+              ),
+              Chip(
+                avatar: Icon(Icons.receipt_long_outlined, size: 16),
+                label: Text('Parts or receipt'),
+              ),
+              Chip(
+                avatar: Icon(Icons.verified_outlined, size: 16),
+                label: Text('Completion proof'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LineItemCardState extends State<_LineItemCard> {
