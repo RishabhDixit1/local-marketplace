@@ -128,10 +128,13 @@ cleanup() {
 
 trap cleanup EXIT
 
-if [[ -z "${E2E_MAGIC_LINK_URL:-}" ]]; then
-  echo "Generating E2E magic link URL via Supabase admin API..."
+if [[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" && -n "${E2E_LOGIN_EMAIL:-}" ]]; then
+  echo "Generating fresh E2E magic link URL via Supabase admin API for $PLAYWRIGHT_BASE_URL..."
   E2E_MAGIC_LINK_URL="$(node scripts/generate_e2e_magic_link.mjs)"
   export E2E_MAGIC_LINK_URL
+elif [[ -z "${E2E_MAGIC_LINK_URL:-}" ]]; then
+  echo "Missing E2E auth config. Provide E2E_MAGIC_LINK_URL or SUPABASE_SERVICE_ROLE_KEY + E2E_LOGIN_EMAIL." >&2
+  exit 1
 fi
 
 echo "Building app for authenticated Playwright suite..."

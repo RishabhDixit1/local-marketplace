@@ -213,7 +213,17 @@ const generateMagicLink = async () => {
 };
 
 export const resolveMagicLinkUrl = async () => {
-  if (staticMagicLinkUrl) return staticMagicLinkUrl;
+  if (staticMagicLinkUrl) {
+    try {
+      const url = new URL(staticMagicLinkUrl);
+      if (url.searchParams.has("redirect_to")) {
+        url.searchParams.set("redirect_to", redirectTo);
+      }
+      return url.toString();
+    } catch {
+      return staticMagicLinkUrl;
+    }
+  }
 
   const generatedLink = await generateMagicLink();
   if (generatedLink) return generatedLink;
