@@ -1245,18 +1245,19 @@ class _PublicProfilePreviewCard extends StatelessWidget {
               CircleAvatar(
                 radius: prominent ? 34 : 28,
                 backgroundColor: AppColors.primarySoft,
-                backgroundImage: profile.avatarUrl.isEmpty
+                foregroundImage: profile.avatarUrl.isEmpty
                     ? null
                     : NetworkImage(profile.avatarUrl),
-                child: profile.avatarUrl.isEmpty
-                    ? Text(
-                        _avatarFallback(displayName),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      )
-                    : null,
+                onForegroundImageError: profile.avatarUrl.isEmpty
+                    ? null
+                    : (_, _) {},
+                child: Text(
+                  _avatarFallback(displayName),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -1810,18 +1811,19 @@ class _ProfileHero extends StatelessWidget {
               CircleAvatar(
                 radius: 30,
                 backgroundColor: AppColors.primarySoft,
-                backgroundImage: profile.avatarUrl.isEmpty
+                foregroundImage: profile.avatarUrl.isEmpty
                     ? null
                     : NetworkImage(profile.avatarUrl),
-                child: profile.avatarUrl.isEmpty
-                    ? Text(
-                        initials,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      )
-                    : null,
+                onForegroundImageError: profile.avatarUrl.isEmpty
+                    ? null
+                    : (_, _) {},
+                child: Text(
+                  initials,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

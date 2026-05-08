@@ -176,15 +176,16 @@ class ProviderDirectoryCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: const Color(0xFFE7EEF6),
-                backgroundImage: person.avatarUrl.trim().isEmpty
+                foregroundImage: person.avatarUrl.trim().isEmpty
                     ? null
                     : NetworkImage(person.avatarUrl),
-                child: person.avatarUrl.trim().isEmpty
-                    ? Text(
-                        _initials(person.name),
-                        style: Theme.of(context).textTheme.labelLarge,
-                      )
-                    : null,
+                onForegroundImageError: person.avatarUrl.trim().isEmpty
+                    ? null
+                    : (_, _) {},
+                child: Text(
+                  _initials(person.name),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
