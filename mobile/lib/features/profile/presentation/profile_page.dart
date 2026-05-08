@@ -8,7 +8,7 @@ import '../../../core/error/app_error_mapper.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/auth/mobile_auth_service.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
@@ -241,6 +241,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   children: [
                     _ProfileHero(snapshot: data),
                     const SizedBox(height: 16),
+                    _BusinessCockpitCard(
+                      snapshot: data,
+                      onSelectSection: (section) {
+                        setState(() {
+                          _selectedSection = section;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     _ProfileSectionBar(
                       selectedSection: _selectedSection,
                       onSelected: (section) {
@@ -338,20 +347,33 @@ class _ProfileSectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _ProfileSection.values
-          .map(
-            (section) => ChoiceChip(
-              key: ValueKey('profile-section-${section.name}'),
-              avatar: Icon(section.icon, size: 16),
-              label: Text(section.label),
-              selected: section == selectedSection,
-              onSelected: (_) => onSelected(section),
-            ),
-          )
-          .toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Profile sections',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final section in _ProfileSection.values) ...[
+                ChoiceChip(
+                  key: ValueKey('profile-section-${section.name}'),
+                  avatar: Icon(section.icon, size: 16),
+                  label: Text(section.label),
+                  selected: section == selectedSection,
+                  onSelected: (_) => onSelected(section),
+                ),
+                if (section != _ProfileSection.values.last)
+                  const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -381,10 +403,156 @@ class _ViewProfileSection extends StatelessWidget {
   }
 }
 
-class _EditProfileSection extends StatelessWidget {
+class _EditProfileSection extends ConsumerStatefulWidget {
   const _EditProfileSection({required this.snapshot});
 
   final MobileProfileSnapshot snapshot;
+
+  @override
+  ConsumerState<_EditProfileSection> createState() =>
+      _EditProfileSectionState();
+}
+
+class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
+  final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _websiteController = TextEditingController();
+  final _avatarUrlController = TextEditingController();
+
+  String _availability = 'available';
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _seedFields(widget.snapshot);
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditProfileSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.snapshot != widget.snapshot && !_saving) {
+      _seedFields(widget.snapshot);
+    }
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _locationController.dispose();
+    _bioController.dispose();
+    _phoneController.dispose();
+    _websiteController.dispose();
+    _avatarUrlController.dispose();
+    super.dispose();
+  }
+
+  void _seedFields(MobileProfileSnapshot snapshot) {
+    final profile = snapshot.profile;
+    _fullNameController.text = profile.fullName.isNotEmpty
+        ? profile.fullName
+        : snapshot.displayName;
+    _locationController.text = profile.location;
+    _bioController.text = profile.bio;
+    _phoneController.text = profile.phone;
+    _websiteController.text = profile.website;
+    _avatarUrlController.text = profile.avatarUrl;
+    final availability = profile.availability.trim().toLowerCase();
+    _availability = availability == 'busy' || availability == 'offline'
+        ? availability
+        : 'available';
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate() || _saving) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .saveProfileFields(
+            widget.snapshot,
+            fullName: _fullNameController.text.trim(),
+            location: _locationController.text.trim(),
+            bio: _bioController.text.trim(),
+            phone: _phoneController.text.trim(),
+            website: _websiteController.text.trim(),
+            avatarUrl: _avatarUrlController.text.trim(),
+            availability: _availability,
+          );
+      ref.invalidate(profileSnapshotProvider);
+      if (!mounted) {
+        return;
+      }
+      ServiqToast.show(
+        context,
+        message: 'Profile updated.',
+        tone: ServiqToastTone.success,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ServiqToast.show(
+        context,
+        message: AppErrorMapper.toMessage(error),
+        tone: ServiqToastTone.danger,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  String? _validateName(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isNotEmpty && text.length < 2) {
+      return 'Use at least 2 characters.';
+    }
+    return null;
+  }
+
+  String? _validateLocation(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isNotEmpty && text.length < 2) {
+      return 'Location is too short.';
+    }
+    if (RegExp(r'^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$').hasMatch(text)) {
+      return 'Use a readable area, not raw GPS coordinates.';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return null;
+    }
+    final digits = text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length != 10) {
+      return 'Enter a 10-digit mobile number.';
+    }
+    return null;
+  }
+
+  String? _validateUrl(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(text);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return 'Enter a valid URL.';
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -395,15 +563,144 @@ class _EditProfileSection extends StatelessWidget {
         const _SectionIntro(
           title: 'Edit Profile',
           message:
-              'Review the fields that shape your public identity. Business AI can refresh profile copy from Launchpad without changing the current API contract.',
+              'Update the public details people see before they message, hire, or buy from you.',
         ),
         const SizedBox(height: 14),
-        _EditableProfileCard(snapshot: snapshot),
+        SectionCard(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Public details',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _fullNameController,
+                  label: 'Public name',
+                  icon: Icons.person_outline_rounded,
+                  validator: _validateName,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _locationController,
+                  label: 'Area or service location',
+                  icon: Icons.location_on_outlined,
+                  validator: _validateLocation,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _bioController,
+                  label: 'Bio',
+                  icon: Icons.notes_outlined,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _phoneController,
+                  label: 'Phone',
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                  validator: _validatePhone,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _websiteController,
+                  label: 'Website',
+                  icon: Icons.language_rounded,
+                  keyboardType: TextInputType.url,
+                  validator: _validateUrl,
+                ),
+                const SizedBox(height: 12),
+                _ProfileTextField(
+                  controller: _avatarUrlController,
+                  label: 'Avatar image URL',
+                  icon: Icons.image_outlined,
+                  keyboardType: TextInputType.url,
+                  validator: _validateUrl,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _availability,
+                  decoration: const InputDecoration(
+                    labelText: 'Availability',
+                    prefixIcon: Icon(Icons.event_available_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'available',
+                      child: Text('Available'),
+                    ),
+                    DropdownMenuItem(value: 'busy', child: Text('Busy')),
+                    DropdownMenuItem(value: 'offline', child: Text('Offline')),
+                  ],
+                  onChanged: _saving
+                      ? null
+                      : (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() => _availability = value);
+                        },
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(_saving ? 'Saving...' : 'Save profile'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _ActionRow(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Open Business AI Launchpad',
+                  onTap: () => context.push(AppRoutes.providerLaunchpad),
+                ),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 14),
-        _SummaryCard(snapshot: snapshot),
-        const SizedBox(height: 14),
-        _LocationCard(snapshot: snapshot),
+        _EditableProfileCard(snapshot: widget.snapshot),
       ],
+    );
+  }
+}
+
+class _ProfileTextField extends StatelessWidget {
+  const _ProfileTextField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.maxLines = 1,
+    this.keyboardType,
+    this.validator,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final FormFieldValidator<String>? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
     );
   }
 }
@@ -1176,6 +1473,157 @@ class _ProfileHero extends StatelessWidget {
   }
 }
 
+class _BusinessCockpitCard extends StatelessWidget {
+  const _BusinessCockpitCard({
+    required this.snapshot,
+    required this.onSelectSection,
+  });
+
+  final MobileProfileSnapshot snapshot;
+  final ValueChanged<_ProfileSection> onSelectSection;
+
+  @override
+  Widget build(BuildContext context) {
+    final offerCount = snapshot.serviceCount + snapshot.productCount;
+
+    return SectionCard(
+      variant: ServiqSurfaceVariant.highlight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Next actions',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Open Inbox',
+                onPressed: () => context.push(AppRoutes.chat),
+                icon: const Icon(Icons.chat_bubble_outline_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Business AI setup, profile edits, and inbox follow-up are always one tap away.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 10.0;
+              final width = (constraints.maxWidth - gap) / 2;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  SizedBox(
+                    width: width,
+                    child: _CockpitMetric(
+                      label: 'Profile',
+                      value: '${snapshot.completionPercent}%',
+                      caption: 'Completion',
+                      icon: Icons.person_outline_rounded,
+                    ),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: _CockpitMetric(
+                      label: 'Live offers',
+                      value: offerCount.toString(),
+                      caption: 'Services and products',
+                      icon: Icons.storefront_outlined,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          _ActionRow(
+            icon: Icons.auto_awesome_rounded,
+            label: 'Business AI setup',
+            onTap: () => context.push(AppRoutes.providerLaunchpad),
+          ),
+          _ActionRow(
+            icon: Icons.edit_outlined,
+            label: 'Edit public profile',
+            onTap: () => onSelectSection(_ProfileSection.editProfile),
+          ),
+          _ActionRow(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'Open Inbox',
+            onTap: () => context.push(AppRoutes.chat),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CockpitMetric extends StatelessWidget {
+  const _CockpitMetric({
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final String caption;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 118),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Icon(icon, size: 16, color: AppColors.primary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LaunchReadinessCard extends StatelessWidget {
   const _LaunchReadinessCard({required this.snapshot});
 
@@ -1478,51 +1926,6 @@ class _CompletionCard extends StatelessWidget {
                   foregroundColor: AppColors.ink,
                 ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.snapshot});
-
-  final MobileProfileSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final profile = snapshot.profile;
-
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Profile summary',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            profile.bio.isEmpty
-                ? 'Your profile summary is still blank. Fill this in next so nearby buyers and providers know what makes you trustworthy.'
-                : profile.bio,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 14),
-          _InfoRow(
-            label: 'Availability',
-            value: _humanize(profile.availability),
-          ),
-          _InfoRow(
-            label: 'Verification',
-            value: _humanize(profile.verificationLevel),
-          ),
-          _InfoRow(
-            label: 'Public profile',
-            value: snapshot.publicPath.isEmpty
-                ? 'Not ready yet'
-                : snapshot.publicPath,
           ),
         ],
       ),

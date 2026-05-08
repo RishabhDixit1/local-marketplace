@@ -42,29 +42,73 @@ class ProfileRepository {
     }
   }
 
-  Map<String, dynamic> _profileSavePayload(MobileProfileSnapshot snapshot) {
+  Future<void> saveProfileFields(
+    MobileProfileSnapshot snapshot, {
+    required String fullName,
+    required String location,
+    required String bio,
+    required String phone,
+    required String website,
+    required String avatarUrl,
+    required String availability,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/api/profile/save',
+      body: _profileSavePayload(
+        snapshot,
+        fullName: fullName,
+        location: location,
+        bio: bio,
+        phone: phone,
+        website: website,
+        avatarUrl: avatarUrl,
+        availability: availability,
+      ),
+    );
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to save profile.',
+      );
+    }
+  }
+
+  Map<String, dynamic> _profileSavePayload(
+    MobileProfileSnapshot snapshot, {
+    String? fullName,
+    String? location,
+    String? bio,
+    String? phone,
+    String? website,
+    String? avatarUrl,
+    String? availability,
+  }) {
     final p = snapshot.profile;
     final role = snapshot.roleFamily == 'provider' ? 'provider' : 'seeker';
     final storedRole = role == 'provider' ? 'provider' : 'seeker';
-    final availability = p.availability.trim().toLowerCase();
+    final nextAvailability = (availability ?? p.availability)
+        .trim()
+        .toLowerCase();
     final resolvedAvailability =
-        availability == 'busy' || availability == 'offline'
-            ? availability
-            : 'available';
+        nextAvailability == 'busy' || nextAvailability == 'offline'
+        ? nextAvailability
+        : 'available';
+    final nextFullName = fullName ?? p.fullName;
 
     return {
       'values': {
-        'fullName': p.fullName.isNotEmpty ? p.fullName : snapshot.displayName,
-        'location': p.location,
+        'fullName': nextFullName.isNotEmpty
+            ? nextFullName
+            : snapshot.displayName,
+        'location': location ?? p.location,
         'latitude': null,
         'longitude': null,
         'role': role,
-        'bio': p.bio,
+        'bio': bio ?? p.bio,
         'interests': <String>[],
         'email': snapshot.email,
-        'phone': p.phone,
-        'website': p.website,
-        'avatarUrl': p.avatarUrl,
+        'phone': phone ?? p.phone,
+        'website': website ?? p.website,
+        'avatarUrl': avatarUrl ?? p.avatarUrl,
         'backgroundImageUrl': '',
         'availability': resolvedAvailability,
       },

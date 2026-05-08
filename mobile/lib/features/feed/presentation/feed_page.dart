@@ -28,6 +28,8 @@ import '../../../shared/components/section_header.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../people/data/people_repository.dart';
 import '../../people/domain/people_snapshot.dart';
+import '../../tasks/data/task_repository.dart';
+import '../../tasks/domain/task_snapshot.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
 
@@ -405,16 +407,33 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   Widget build(BuildContext context) {
     final AsyncValue<MobileFeedSnapshot> snapshot =
         widget.snapshotOverride ?? ref.watch(feedSnapshotProvider(_scope));
-    final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot =
-        widget.mode == FeedPageMode.explore
-        ? widget.peopleOverride ?? ref.watch(peopleSnapshotProvider)
-        : widget.peopleOverride;
+    final AsyncValue<MobilePeopleSnapshot> peopleSnapshot =
+        widget.peopleOverride ?? ref.watch(peopleSnapshotProvider);
     final previewData = snapshot.asData?.value;
     final profileSnapshot = ref.watch(profileSnapshotProvider);
+    final taskSnapshot = ref.watch(taskSnapshotProvider);
+    final chatConversations = ref.watch(chatConversationsProvider);
     final cartAsync = ref.watch(cartProvider);
     final cartCount = cartAsync.value == null
         ? 0
         : cartTotalQuantity(cartAsync.value!);
+    final unreadChatCount = chatConversations.maybeWhen(
+      data: (conversations) => conversations.fold<int>(
+        0,
+        (count, conversation) => count + conversation.unreadCount,
+      ),
+      orElse: () => 0,
+    );
+    final activeTaskCount = taskSnapshot.maybeWhen(
+      data: (tasks) => tasks.items
+          .where(
+            (item) =>
+                item.status == MobileTaskStatus.active ||
+                item.status == MobileTaskStatus.inProgress,
+          )
+          .length,
+      orElse: () => 0,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -485,11 +504,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 signalLabels: _exploreHeroSignals(
                   snapshot: previewData,
                   providerCount:
-                      peopleSnapshot?.asData?.value.people.length ?? 0,
+                      peopleSnapshot.asData?.value.people.length ?? 0,
                 ),
                 onPrimaryTap: _openPostTask,
                 onSearchTap: () => context.push(AppRoutes.search),
               ),
+              if (widget.mode == FeedPageMode.welcome) ...[
+                const SizedBox(height: 16),
+                _HomeCommandCenter(
+                  snapshot: previewData,
+                  people: peopleSnapshot.asData?.value,
+                  profileCompletion:
+                      profileSnapshot.asData?.value.completionPercent,
+                  activeTaskCount: activeTaskCount,
+                  unreadChatCount: unreadChatCount,
+                  onPostNeed: _openPostTask,
+                  onReplyInbox: () => context.push(AppRoutes.chat),
+                  onOpenTasks: () => context.go(AppRoutes.tasks),
+                  onCompleteProfile: () => context.push(AppRoutes.profile),
+                  onFindProvider: () => context.go(AppRoutes.people),
+                ),
+              ],
               const SizedBox(height: 16),
               _ExploreIntentPanel(
                 mode: widget.mode,
@@ -511,7 +546,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 _ExploreLaneSummary(
                   stats: previewData.stats,
                   providerCount:
-                      peopleSnapshot?.asData?.value.people.length ?? 0,
+                      peopleSnapshot.asData?.value.people.length ?? 0,
                   featuredItem: previewData.items.isNotEmpty
                       ? previewData.items.first
                       : null,
@@ -527,7 +562,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 data: (data) {
                   final items = _filterItems(data.items);
                   final people = _filterPeople(
-                    peopleSnapshot?.asData?.value.people ??
+                    peopleSnapshot.asData?.value.people ??
                         const <MobilePersonCard>[],
                   );
 
@@ -536,6 +571,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       items: items,
                       people: people,
                       peopleSnapshot: peopleSnapshot,
+                      viewerRoleFamily: data.viewerRoleFamily,
                       onOpenPeople: () => context.go(AppRoutes.people),
                       onRetryPeople: () {
                         ref.invalidate(peopleSnapshotProvider);
@@ -787,6 +823,367 @@ class _ExploreLaneSummary extends StatelessWidget {
   }
 }
 
+class _HomeCommandCenter extends StatelessWidget {
+  const _HomeCommandCenter({
+    required this.snapshot,
+    required this.people,
+    required this.profileCompletion,
+    required this.activeTaskCount,
+    required this.unreadChatCount,
+    required this.onPostNeed,
+    required this.onReplyInbox,
+    required this.onOpenTasks,
+    required this.onCompleteProfile,
+    required this.onFindProvider,
+  });
+
+  final MobileFeedSnapshot? snapshot;
+  final MobilePeopleSnapshot? people;
+  final int? profileCompletion;
+  final int activeTaskCount;
+  final int unreadChatCount;
+  final VoidCallback onPostNeed;
+  final VoidCallback onReplyInbox;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onCompleteProfile;
+  final VoidCallback onFindProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    final urgentDemand = snapshot?.stats.urgent ?? 0;
+    final providerCount = people?.people.length ?? 0;
+    final completion = profileCompletion ?? 0;
+    final roleFamily = snapshot?.viewerRoleFamily ?? people?.viewerRoleFamily;
+    final isProvider = roleFamily == 'provider';
+    final action = _homePrimaryAction(
+      activeTaskCount: activeTaskCount,
+      unreadChatCount: unreadChatCount,
+      urgentDemand: urgentDemand,
+      completion: completion,
+      isProvider: isProvider,
+    );
+    final attentionItems = <Widget>[
+      if (unreadChatCount > 0)
+        _CommandMetricTile(
+          icon: Icons.mark_chat_unread_outlined,
+          value: unreadChatCount.toString(),
+          label: 'Inbox',
+        ),
+      if (activeTaskCount > 0)
+        _CommandMetricTile(
+          icon: Icons.assignment_turned_in_outlined,
+          value: activeTaskCount.toString(),
+          label: 'Work',
+        ),
+      if (urgentDemand > 0)
+        _CommandMetricTile(
+          icon: Icons.bolt_rounded,
+          value: urgentDemand.toString(),
+          label: 'Nearby',
+        ),
+    ];
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Needs attention',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.accentSoft,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  isProvider ? 'Provider mode' : 'Buyer mode',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppColors.accentDeep,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (attentionItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: attentionItems
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: SizedBox(width: 142, child: item),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ] else
+            const SizedBox(height: 12),
+          _HomeActionCard(
+            title: action.title,
+            message: action.message,
+            icon: action.icon,
+            onTap: switch (action.target) {
+              _HomeActionTarget.inbox => onReplyInbox,
+              _HomeActionTarget.tasks => onOpenTasks,
+              _HomeActionTarget.profile => onCompleteProfile,
+              _HomeActionTarget.people => onFindProvider,
+              _HomeActionTarget.postNeed => onPostNeed,
+            },
+          ),
+          if (providerCount == 0 || (snapshot?.items.isEmpty ?? false)) ...[
+            const SizedBox(height: 12),
+            _RoleAwareEmptyHint(
+              isProvider: isProvider,
+              onPostNeed: onPostNeed,
+              onFindProvider: onFindProvider,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CommandMetricTile extends StatelessWidget {
+  const _CommandMetricTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 1),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeActionCard extends StatelessWidget {
+  const _HomeActionCard({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.ink,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      message,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.74),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleAwareEmptyHint extends StatelessWidget {
+  const _RoleAwareEmptyHint({
+    required this.isProvider,
+    required this.onPostNeed,
+    required this.onFindProvider,
+  });
+
+  final bool isProvider;
+  final VoidCallback onPostNeed;
+  final VoidCallback onFindProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isProvider ? AppColors.warmSoft : AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isProvider
+                ? Icons.storefront_outlined
+                : Icons.person_search_outlined,
+            color: isProvider ? AppColors.warmDeep : AppColors.accentDeep,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isProvider
+                  ? 'No hot leads yet. Keep your listings fresh and watch urgent nearby demand.'
+                  : 'No strong matches yet. Post a specific need or browse trusted providers nearby.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          TextButton(
+            onPressed: isProvider ? onFindProvider : onPostNeed,
+            child: Text(isProvider ? 'People' : 'Post'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _HomeActionTarget { inbox, tasks, profile, people, postNeed }
+
+class _HomeAction {
+  const _HomeAction({
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.target,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final _HomeActionTarget target;
+}
+
+_HomeAction _homePrimaryAction({
+  required int activeTaskCount,
+  required int unreadChatCount,
+  required int urgentDemand,
+  required int completion,
+  required bool isProvider,
+}) {
+  if (unreadChatCount > 0) {
+    return const _HomeAction(
+      title: 'Reply to inbox',
+      message: 'Unread local work conversations need a response.',
+      icon: Icons.mark_chat_unread_outlined,
+      target: _HomeActionTarget.inbox,
+    );
+  }
+  if (activeTaskCount > 0) {
+    return const _HomeAction(
+      title: 'Open task board',
+      message: 'Track active work, quotes, and next status updates.',
+      icon: Icons.assignment_turned_in_outlined,
+      target: _HomeActionTarget.tasks,
+    );
+  }
+  if (completion > 0 && completion < 70) {
+    return const _HomeAction(
+      title: 'Complete profile',
+      message: 'Trust signals make hiring and earning feel safer.',
+      icon: Icons.verified_user_outlined,
+      target: _HomeActionTarget.profile,
+    );
+  }
+  if (isProvider && urgentDemand > 0) {
+    return const _HomeAction(
+      title: 'Find urgent demand',
+      message: 'Nearby requests are waiting for fast provider response.',
+      icon: Icons.bolt_rounded,
+      target: _HomeActionTarget.people,
+    );
+  }
+  return const _HomeAction(
+    title: 'Post a need',
+    message:
+        'Describe the job once and keep chat, tracking, and payment together.',
+    icon: Icons.add_circle_outline_rounded,
+    target: _HomeActionTarget.postNeed,
+  );
+}
+
 class _FeedMetrics extends StatelessWidget {
   const _FeedMetrics({required this.snapshot});
 
@@ -846,6 +1243,7 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
     required this.items,
     required this.people,
     required this.peopleSnapshot,
+    required this.viewerRoleFamily,
     required this.onOpenPeople,
     required this.onRetryPeople,
     required this.feedCardBuilder,
@@ -855,6 +1253,7 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
   final List<MobileFeedItem> items;
   final List<MobilePersonCard> people;
   final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot;
+  final String viewerRoleFamily;
   final VoidCallback onOpenPeople;
   final VoidCallback onRetryPeople;
   final Widget Function(MobileFeedItem item) feedCardBuilder;
@@ -862,50 +1261,110 @@ class _ExploreMarketplaceLanes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final urgent = items.where((item) => item.urgent).take(2).toList();
-    final requests = items
+    final nearbyRequests = items
         .where((item) => item.type == MobileFeedItemType.demand && !item.urgent)
         .take(4)
         .toList();
-    final visiblePeople = people.take(3).toList();
+    final urgentRequests = items.where((item) => item.urgent).take(2).toList();
+    final recommendedPeople = people.take(3).toList();
+    final fastResponders = people
+        .where(
+          (person) =>
+              person.isOnline ||
+              person.activityLabel.toLowerCase().contains('min'),
+        )
+        .take(3)
+        .toList();
+    final popularServices =
+        items.where((item) => item.type != MobileFeedItemType.demand).toList()
+          ..sort((left, right) {
+            final leftScore =
+                (left.averageRating ?? 0) * 10 +
+                left.reviewCount +
+                left.completedJobs +
+                left.listingCount;
+            final rightScore =
+                (right.averageRating ?? 0) * 10 +
+                right.reviewCount +
+                right.completedJobs +
+                right.listingCount;
+            return rightScore.compareTo(leftScore);
+          });
     final hasAnyFeed =
-        urgent.isNotEmpty || requests.isNotEmpty || visiblePeople.isNotEmpty;
+        nearbyRequests.isNotEmpty ||
+        urgentRequests.isNotEmpty ||
+        recommendedPeople.isNotEmpty ||
+        fastResponders.isNotEmpty ||
+        popularServices.isNotEmpty;
+    final isProvider = viewerRoleFamily == 'provider';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (!hasAnyFeed)
-          const SectionCard(
+          SectionCard(
             child: EmptyStateView(
-              title: 'No matching local activity',
-              message:
-                  'Broaden the search or clear a filter to bring urgent requests, trusted providers, and nearby work back into view.',
+              title: isProvider
+                  ? 'No matching demand yet'
+                  : 'No matching local activity',
+              message: isProvider
+                  ? 'Clear a filter or broaden the category to find nearby requests, fast buyers, and provider opportunities.'
+                  : 'Broaden the search or clear a filter to bring requests, trusted providers, and popular services back into view.',
             ),
           )
         else ...[
-          if (urgent.isNotEmpty) ...[
+          if (urgentRequests.isNotEmpty) ...[
             _ExploreFeedLane(
               title: 'Urgent nearby',
               subtitle: 'Open requests that need a fast response.',
-              items: urgent,
+              items: urgentRequests,
               cardBuilder: feedCardBuilder,
             ),
             const SizedBox(height: 18),
           ],
           _ExploreProviderLane(
-            people: visiblePeople,
+            title: 'Trusted providers',
+            subtitle:
+                'Recommended providers ranked by trust, response, proof, and local fit.',
+            people: recommendedPeople,
             peopleSnapshot: peopleSnapshot,
             onOpenPeople: onOpenPeople,
             onRetryPeople: onRetryPeople,
             providerCardBuilder: providerCardBuilder,
           ),
           const SizedBox(height: 18),
+          _ExploreProviderLane(
+            title: 'Fast responders',
+            subtitle: 'Available people who can keep a job moving today.',
+            people: fastResponders,
+            peopleSnapshot: peopleSnapshot,
+            onOpenPeople: onOpenPeople,
+            onRetryPeople: onRetryPeople,
+            providerCardBuilder: providerCardBuilder,
+            emptyTitle: 'No fast responders match',
+          ),
+          const SizedBox(height: 18),
           _ExploreFeedLane(
             title: 'Requests you can act on',
-            subtitle: 'Nearby needs matched to your area.',
-            items: requests,
+            subtitle: 'Nearby requests you can discuss, quote, and track.',
+            items: nearbyRequests,
             cardBuilder: feedCardBuilder,
-            emptyTitle: 'No open requests in this view',
+            emptyTitle: isProvider
+                ? 'No open requests in this view'
+                : 'No nearby requests in this view',
+            emptyMessage: isProvider
+                ? 'Clear a filter or check a broader category for provider demand.'
+                : 'Post your own need or clear a filter to widen the local feed.',
+          ),
+          const SizedBox(height: 18),
+          _ExploreFeedLane(
+            title: 'Popular services',
+            subtitle: 'Bookable listings with proof, pricing, and chat.',
+            items: popularServices.take(4).toList(),
+            cardBuilder: feedCardBuilder,
+            emptyTitle: 'No services match these filters',
+            emptyMessage:
+                'Clear search or open People to browse provider storefronts.',
           ),
         ],
       ],
@@ -920,6 +1379,7 @@ class _ExploreFeedLane extends StatelessWidget {
     required this.items,
     required this.cardBuilder,
     this.emptyTitle,
+    this.emptyMessage,
   });
 
   final String title;
@@ -927,6 +1387,7 @@ class _ExploreFeedLane extends StatelessWidget {
   final List<MobileFeedItem> items;
   final Widget Function(MobileFeedItem item) cardBuilder;
   final String? emptyTitle;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -939,7 +1400,9 @@ class _ExploreFeedLane extends StatelessWidget {
           SectionCard(
             child: EmptyStateView(
               title: emptyTitle ?? 'Nothing here yet',
-              message: 'Clear a filter or search a broader category.',
+              message:
+                  emptyMessage ??
+                  'Clear a filter or search a broader category.',
             ),
           )
         else
@@ -956,18 +1419,24 @@ class _ExploreFeedLane extends StatelessWidget {
 
 class _ExploreProviderLane extends StatelessWidget {
   const _ExploreProviderLane({
+    required this.title,
+    required this.subtitle,
     required this.people,
     required this.peopleSnapshot,
     required this.onOpenPeople,
     required this.onRetryPeople,
     required this.providerCardBuilder,
+    this.emptyTitle,
   });
 
+  final String title;
+  final String subtitle;
   final List<MobilePersonCard> people;
   final AsyncValue<MobilePeopleSnapshot>? peopleSnapshot;
   final VoidCallback onOpenPeople;
   final VoidCallback onRetryPeople;
   final Widget Function(MobilePersonCard person) providerCardBuilder;
+  final String? emptyTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -977,8 +1446,8 @@ class _ExploreProviderLane extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: 'Trusted providers',
-          subtitle: 'Nearby providers with trust signals.',
+          title: title,
+          subtitle: subtitle,
           actionLabel: 'Find',
           onAction: onOpenPeople,
         ),
@@ -1007,7 +1476,7 @@ class _ExploreProviderLane extends StatelessWidget {
         else if (people.isEmpty)
           SectionCard(
             child: EmptyStateView(
-              title: 'No providers match these filters',
+              title: emptyTitle ?? 'No providers match these filters',
               message: 'Open Find to browse the wider provider directory.',
               actionLabel: 'Open Find',
               onAction: onOpenPeople,

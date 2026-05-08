@@ -371,6 +371,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
+                  _InboxDealRoomHeader(
+                    conversations: conversationsAsync.asData?.value,
+                    onPostNeed: () => context.push(AppRoutes.createNeed),
+                  ),
+                  const SizedBox(height: 14),
                   AppSearchField(
                     controller: _searchController,
                     hintText: 'Search people or messages',
@@ -423,33 +428,52 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         );
                       }
 
-                      final unread = filtered
-                          .where((conversation) => conversation.unreadCount > 0)
-                          .toList();
-                      final recent = filtered
-                          .where(
-                            (conversation) => conversation.unreadCount == 0,
-                          )
-                          .toList();
+                      final grouped = _groupDealRoomConversations(filtered);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (unread.isNotEmpty)
+                          if (grouped.needsReply.isNotEmpty)
                             _ConversationSection(
-                              title: 'Unread',
+                              title: 'Needs reply',
                               subtitle:
-                                  '${unread.length} conversation${unread.length == 1 ? '' : 's'} need attention.',
-                              conversations: unread,
+                                  '${grouped.needsReply.length} conversation${grouped.needsReply.length == 1 ? '' : 's'} can move work forward.',
+                              conversations: grouped.needsReply,
                               onTapConversation: _openConversation,
                             ),
-                          if (recent.isNotEmpty) ...[
-                            if (unread.isNotEmpty) const SizedBox(height: 16),
+                          if (grouped.quotes.isNotEmpty) ...[
+                            if (grouped.needsReply.isNotEmpty)
+                              const SizedBox(height: 16),
                             _ConversationSection(
-                              title: 'Recent',
+                              title: 'Quotes',
                               subtitle:
-                                  'Pick up where local conversations left off.',
-                              conversations: recent,
+                                  'Pricing, scope, and payment follow-up in one place.',
+                              conversations: grouped.quotes,
+                              onTapConversation: _openConversation,
+                            ),
+                          ],
+                          if (grouped.activeTasks.isNotEmpty) ...[
+                            if (grouped.needsReply.isNotEmpty ||
+                                grouped.quotes.isNotEmpty)
+                              const SizedBox(height: 16),
+                            _ConversationSection(
+                              title: 'Active tasks',
+                              subtitle:
+                                  'Timing, arrival, start, and completion threads.',
+                              conversations: grouped.activeTasks,
+                              onTapConversation: _openConversation,
+                            ),
+                          ],
+                          if (grouped.archived.isNotEmpty) ...[
+                            if (grouped.needsReply.isNotEmpty ||
+                                grouped.quotes.isNotEmpty ||
+                                grouped.activeTasks.isNotEmpty)
+                              const SizedBox(height: 16),
+                            _ConversationSection(
+                              title: 'Archived',
+                              subtitle:
+                                  'Quiet conversations without an immediate next step.',
+                              conversations: grouped.archived,
                               onTapConversation: _openConversation,
                             ),
                           ],
@@ -477,7 +501,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(selectedConversationId == null ? 'Chat' : 'Conversation'),
+        title: Text(selectedConversationId == null ? 'Inbox' : 'Conversation'),
         leading: selectedConversationId == null
             ? null
             : IconButton(
@@ -504,6 +528,80 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     });
     _bindMessageStream(conversation.id);
     await _markConversationReadSafely(conversation.id);
+  }
+}
+
+class _InboxDealRoomHeader extends StatelessWidget {
+  const _InboxDealRoomHeader({
+    required this.conversations,
+    required this.onPostNeed,
+  });
+
+  final List<ChatConversation>? conversations;
+  final VoidCallback onPostNeed;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = conversations ?? const <ChatConversation>[];
+    final unreadCount = items.fold<int>(
+      0,
+      (count, conversation) => count + conversation.unreadCount,
+    );
+    final quoteCount = items.where(_conversationLooksLikeQuote).length;
+    final taskCount = items.where(_conversationLooksLikeTask).length;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Inbox',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: onPostNeed,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Need'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Messages, quotes, task timing, payment follow-up, and repeat hires stay together here.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: '$unreadCount unread',
+                icon: Icons.mark_chat_unread_outlined,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primary,
+              ),
+              TrustBadge(
+                label: '$quoteCount quote threads',
+                icon: Icons.request_quote_outlined,
+                backgroundColor: AppColors.warningSoft,
+                foregroundColor: AppColors.warning,
+              ),
+              TrustBadge(
+                label: '$taskCount task threads',
+                icon: Icons.assignment_turned_in_outlined,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1178,6 +1276,13 @@ class _ChatThread extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  _DealRoomActionRail(
+                    contextData: requestContext,
+                    conversationId: conversationId,
+                    composerController: composerController,
+                    sending: sending,
+                  ),
+                  const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Column(
@@ -1334,6 +1439,124 @@ class _DealRoomShortcut extends StatelessWidget {
             label: const Text('Deal room'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DealRoomActionRail extends StatelessWidget {
+  const _DealRoomActionRail({
+    required this.contextData,
+    required this.conversationId,
+    required this.composerController,
+    required this.sending,
+  });
+
+  final _ChatRequestContext contextData;
+  final String conversationId;
+  final TextEditingController composerController;
+  final bool sending;
+
+  void _setDraft(String value) {
+    composerController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = contextData.sourceText.contains('order')
+        ? 'order'
+        : 'help_request';
+    final hasTask = contextData.taskIdText.isNotEmpty;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Smart actions', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ActionChip(
+                    avatar: const Icon(Icons.request_quote_outlined, size: 18),
+                    label: const Text('Quote'),
+                    onPressed: sending
+                        ? null
+                        : () {
+                            if (hasTask) {
+                              context.push(
+                                AppRoutes.quoteRoom(
+                                  mode: mode,
+                                  targetId: contextData.taskIdText,
+                                  conversationId: conversationId,
+                                ),
+                              );
+                              return;
+                            }
+                            _setDraft('I will send a clear quote shortly.');
+                          },
+                  ),
+                ),
+                _DealActionChip(
+                  label: 'Share ETA',
+                  icon: Icons.schedule_send_outlined,
+                  disabled: sending,
+                  onPressed: () => _setDraft(
+                    'I can be there around [time]. Does that work?',
+                  ),
+                ),
+                _DealActionChip(
+                  label: 'Mark started',
+                  icon: Icons.play_circle_outline_rounded,
+                  disabled: sending,
+                  onPressed: () =>
+                      _setDraft('Work has started. I will keep updates here.'),
+                ),
+                _DealActionChip(
+                  label: 'Request payment',
+                  icon: Icons.payments_outlined,
+                  disabled: sending,
+                  onPressed: () => _setDraft(
+                    'The work is complete. Can you confirm payment next?',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DealActionChip extends StatelessWidget {
+  const _DealActionChip({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.disabled = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool disabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        avatar: Icon(icon, size: 18),
+        label: Text(label),
+        onPressed: disabled ? null : onPressed,
       ),
     );
   }
@@ -1510,6 +1733,74 @@ class _MessageListLoading extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ConversationGroups {
+  const _ConversationGroups({
+    required this.needsReply,
+    required this.quotes,
+    required this.activeTasks,
+    required this.archived,
+  });
+
+  final List<ChatConversation> needsReply;
+  final List<ChatConversation> quotes;
+  final List<ChatConversation> activeTasks;
+  final List<ChatConversation> archived;
+}
+
+_ConversationGroups _groupDealRoomConversations(
+  List<ChatConversation> conversations,
+) {
+  final needsReply = <ChatConversation>[];
+  final quotes = <ChatConversation>[];
+  final activeTasks = <ChatConversation>[];
+  final archived = <ChatConversation>[];
+
+  for (final conversation in conversations) {
+    if (conversation.unreadCount > 0) {
+      needsReply.add(conversation);
+    } else if (_conversationLooksLikeQuote(conversation)) {
+      quotes.add(conversation);
+    } else if (_conversationLooksLikeTask(conversation)) {
+      activeTasks.add(conversation);
+    } else {
+      archived.add(conversation);
+    }
+  }
+
+  return _ConversationGroups(
+    needsReply: needsReply,
+    quotes: quotes,
+    activeTasks: activeTasks,
+    archived: archived,
+  );
+}
+
+bool _conversationLooksLikeQuote(ChatConversation conversation) {
+  final haystack = '${conversation.lastMessage} ${conversation.subtitle}'
+      .toLowerCase();
+  return haystack.contains('quote') ||
+      haystack.contains('price') ||
+      haystack.contains('payment') ||
+      haystack.contains('pay') ||
+      haystack.contains('invoice') ||
+      haystack.contains('inr') ||
+      haystack.contains('rs ');
+}
+
+bool _conversationLooksLikeTask(ChatConversation conversation) {
+  final haystack = '${conversation.lastMessage} ${conversation.subtitle}'
+      .toLowerCase();
+  return haystack.contains('task') ||
+      haystack.contains('order') ||
+      haystack.contains('job') ||
+      haystack.contains('accepted') ||
+      haystack.contains('progress') ||
+      haystack.contains('started') ||
+      haystack.contains('complete') ||
+      haystack.contains('eta') ||
+      haystack.contains('timing');
 }
 
 String _messageStatusLabel(

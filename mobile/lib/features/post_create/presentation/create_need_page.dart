@@ -43,13 +43,7 @@ const _categories = [
   'Other',
 ];
 
-const _neededWithinOptions = [
-  'Within 2 hours',
-  'Today',
-  'Within 24 hours',
-  'This week',
-  'Flexible',
-];
+const _neededWithinOptions = ['Now', 'Today', 'This week', 'Flexible'];
 
 const _budgetPresets = [
   _BudgetPreset(label: 'Under 500', amount: 500),
@@ -57,6 +51,9 @@ const _budgetPresets = [
   _BudgetPreset(label: '1500 - 3000', amount: 3000),
   _BudgetPreset(label: 'Flexible'),
 ];
+
+const _totalSteps = 4;
+const _defaultNeededWithin = 'Today';
 
 const _requestPresets = [
   _RequestPreset(
@@ -91,6 +88,20 @@ const _imagePickerMaxDimension = 1280.0;
 const _imagePickerQuality = 72;
 const _videoPickerMaxDuration = Duration(seconds: 20);
 
+enum _ServiceDelivery {
+  inPerson,
+  remote;
+
+  String get label {
+    switch (this) {
+      case _ServiceDelivery.inPerson:
+        return 'In person';
+      case _ServiceDelivery.remote:
+        return 'Remote';
+    }
+  }
+}
+
 class CreateNeedPage extends ConsumerStatefulWidget {
   const CreateNeedPage({super.key});
 
@@ -101,6 +112,7 @@ class CreateNeedPage extends ConsumerStatefulWidget {
 class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   final _stepOneFormKey = GlobalKey<FormState>();
   final _stepTwoFormKey = GlobalKey<FormState>();
+  final _stepThreeFormKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _detailsController = TextEditingController();
   final _budgetController = TextEditingController();
@@ -109,8 +121,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
 
   int _step = 1;
   String _category = _categories.first;
-  String _neededWithin = _neededWithinOptions[2];
+  String _neededWithin = _defaultNeededWithin;
   CreateNeedMode _mode = CreateNeedMode.urgent;
+  _ServiceDelivery _delivery = _ServiceDelivery.inPerson;
   double _radiusKm = 8;
   List<_ComposerMediaItem> _media = <_ComposerMediaItem>[];
   bool _submitting = false;
@@ -160,6 +173,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _category = cached.category;
     _neededWithin = cached.neededWithin;
     _mode = cached.mode;
+    _delivery = cached.delivery;
     _radiusKm = cached.radiusKm;
     _step = cached.step;
     _media = cached.media
@@ -177,7 +191,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
 
   void _cacheDraft() {
     final snapshot = _CreateNeedDraftSnapshot(
-      step: _step.clamp(1, 3),
+      step: _step.clamp(1, _totalSteps),
       title: _titleController.text,
       details: _detailsController.text,
       category: _category,
@@ -185,6 +199,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       locationLabel: _locationController.text,
       radiusKm: _radiusKm,
       mode: _mode,
+      delivery: _delivery,
       neededWithin: _neededWithin,
       media: _media.map((item) => item.toSnapshot()).toList(),
     );
@@ -210,10 +225,10 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   String? _validateDetails(String? value) {
     final details = value?.trim() ?? '';
     if (details.isEmpty) {
-      return 'Add the job details so providers can respond well.';
+      return null;
     }
-    if (details.length < 20) {
-      return 'Add a few more details about the job.';
+    if (details.length < 12) {
+      return 'Add a little more detail or leave this blank.';
     }
     return null;
   }
@@ -242,28 +257,20 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     return null;
   }
 
-  void _selectMode(CreateNeedMode mode) {
-    setState(() {
-      _mode = mode;
-      _error = null;
-      if (mode == CreateNeedMode.urgent &&
-          !_isUrgencyOptionUrgent(_neededWithin)) {
-        _neededWithin = _neededWithinOptions[2];
-      }
-      if (mode == CreateNeedMode.schedule &&
-          _isUrgencyOptionUrgent(_neededWithin)) {
-        _neededWithin = _neededWithinOptions[3];
-      }
-    });
-    _cacheDraft();
-  }
-
   void _selectUrgency(String value) {
     setState(() {
       _neededWithin = value;
       _mode = _isUrgencyOptionUrgent(value)
           ? CreateNeedMode.urgent
           : CreateNeedMode.schedule;
+      _error = null;
+    });
+    _cacheDraft();
+  }
+
+  void _selectDelivery(_ServiceDelivery value) {
+    setState(() {
+      _delivery = value;
       _error = null;
     });
     _cacheDraft();
@@ -308,7 +315,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _cacheDraft();
   }
 
-  void _continueToPreview() {
+  void _continueToStepThree() {
     setState(() {
       _error = null;
       _draftRestored = false;
@@ -326,23 +333,49 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     _cacheDraft();
   }
 
+  void _continueToPreview() {
+    setState(() {
+      _error = null;
+      _draftRestored = false;
+    });
+
+    if (!_stepThreeFormKey.currentState!.validate()) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _step = 4;
+    });
+    HapticFeedback.selectionClick();
+    _cacheDraft();
+  }
+
   bool _validateBeforePublishing() {
     final titleError = _validateTitle(_titleController.text);
-    final detailsError = _validateDetails(_detailsController.text);
-    if (titleError != null || detailsError != null) {
+    if (titleError != null) {
       setState(() {
         _step = 1;
-        _error = titleError ?? detailsError;
+        _error = titleError;
       });
       return false;
     }
 
     final locationError = _validateLocation(_locationController.text);
-    final budgetError = _validateBudget(_budgetController.text);
-    if (locationError != null || budgetError != null) {
+    if (locationError != null) {
       setState(() {
         _step = 2;
-        _error = locationError ?? budgetError;
+        _error = locationError;
+      });
+      return false;
+    }
+
+    final detailsError = _validateDetails(_detailsController.text);
+    final budgetError = _validateBudget(_budgetController.text);
+    if (detailsError != null || budgetError != null) {
+      setState(() {
+        _step = 3;
+        _error = detailsError ?? budgetError;
       });
       return false;
     }
@@ -354,7 +387,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     final budgetText = _budgetController.text.trim();
     return CreateNeedDraft(
       title: _titleController.text,
-      details: _detailsController.text,
+      details: _publishDetails,
       category: _category,
       budget: budgetText.isEmpty ? null : double.parse(budgetText),
       locationLabel: _locationController.text,
@@ -363,6 +396,18 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
       neededWithin: _neededWithin,
       media: _uploadedMedia,
     );
+  }
+
+  String get _deliveryModeLabel => _delivery.label;
+
+  String get _publishDetails {
+    final title = _titleController.text.trim();
+    final details = _detailsController.text.trim();
+    final base = details.isEmpty ? 'Request: $title' : details;
+    if (_delivery == _ServiceDelivery.remote) {
+      return '$base\n\nMode: Remote.';
+    }
+    return base;
   }
 
   Future<void> _openMediaOptions() async {
@@ -736,6 +781,15 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               'notified_providers': result.notifiedProviders,
             },
           );
+      context.go(
+        Uri(
+          path: AppRoutes.tasks,
+          queryParameters: {
+            if (result.helpRequestId.isNotEmpty) 'focus': result.helpRequestId,
+            'source': 'post_success',
+          },
+        ).toString(),
+      );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
@@ -778,8 +832,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     setState(() {
       _step = 1;
       _category = _categories.first;
-      _neededWithin = _neededWithinOptions[2];
+      _neededWithin = _defaultNeededWithin;
       _mode = CreateNeedMode.urgent;
+      _delivery = _ServiceDelivery.inPerson;
       _radiusKm = 8;
       _media = <_ComposerMediaItem>[];
       _error = null;
@@ -813,34 +868,6 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     return 'Nearby ${_category.toLowerCase()} providers within ${_radiusKm.round()} km of $area will see this in discovery, request matching, and provider alerts.';
   }
 
-  int get _requestReadinessScore {
-    var score = 18;
-    if (_titleController.text.trim().length >= 8) {
-      score += 16;
-    }
-    if (_detailsController.text.trim().length >= 40) {
-      score += 18;
-    } else if (_detailsController.text.trim().length >= 20) {
-      score += 10;
-    }
-    if (_locationController.text.trim().isNotEmpty) {
-      score += 14;
-    }
-    if (_budgetController.text.trim().isNotEmpty) {
-      score += 10;
-    }
-    if (_media.isNotEmpty) {
-      score += 12;
-    }
-    if (_uploadedMedia.isNotEmpty && !_hasFailedMedia) {
-      score += 8;
-    }
-    if (_neededWithin.trim().isNotEmpty) {
-      score += 4;
-    }
-    return score.clamp(0, 100);
-  }
-
   List<CreateNeedUploadedMedia> get _uploadedMedia => _media
       .map((item) => item.uploadedMedia)
       .whereType<CreateNeedUploadedMedia>()
@@ -860,7 +887,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     final publishedDraft = _lastPublishedDraft;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create request')),
+      appBar: AppBar(title: const Text('Post Need')),
       bottomNavigationBar: _result == null ? _buildStickyCta() : null,
       body: SafeArea(
         child: ListView(
@@ -869,10 +896,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           children: [
             _CreateNeedHero(
               step: _step,
-              readinessScore: _requestReadinessScore,
               category: _category,
+              neededWithin: _neededWithin,
               locationLabel: _locationController.text.trim(),
-              mediaCount: _media.length,
             ),
             if (_draftRestored) ...[
               const SizedBox(height: 14),
@@ -941,19 +967,17 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
     switch (_step) {
       case 1:
         return StickyBottomCTA(
-          title: 'Step 1 of 3',
-          subtitle: _media.isEmpty
-              ? 'Clear local requests get faster, better replies.'
-              : '${_uploadedMedia.length}/${_media.length} attachments ready for nearby discovery.',
-          primaryLabel: 'Continue',
+          title: 'What do you need?',
+          subtitle: 'Draft saved automatically.',
+          primaryLabel: 'Next',
           onPrimary: _submitting ? null : _continueToStepTwo,
         );
       case 2:
         return StickyBottomCTA(
-          title: 'Step 2 of 3',
-          subtitle: 'Set the area, radius, and budget before previewing.',
-          primaryLabel: 'Preview request',
-          onPrimary: _submitting ? null : _continueToPreview,
+          title: 'When and where?',
+          subtitle: 'Set timing and area.',
+          primaryLabel: 'Next',
+          onPrimary: _submitting ? null : _continueToStepThree,
           secondaryLabel: 'Back',
           onSecondary: _submitting
               ? null
@@ -964,19 +988,37 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         );
       case 3:
         return StickyBottomCTA(
-          title: 'Ready to post nearby',
+          title: 'Budget and proof',
           subtitle: _hasUploadingMedia
-              ? 'Finishing media uploads before this request can go live.'
+              ? 'Uploading attachments.'
               : _hasFailedMedia
-              ? 'Retry or remove failed media before posting.'
-              : 'This request will reach providers within ${_radiusKm.round()} km of ${_locationController.text.trim().isEmpty ? 'your area' : _locationController.text.trim()}.',
-          primaryLabel: _submitting ? 'Posting...' : 'Post request',
+              ? 'Retry failed uploads.'
+              : 'Budget is optional.',
+          primaryLabel: 'Review',
+          onPrimary: _submitting ? null : _continueToPreview,
+          secondaryLabel: 'Back',
+          onSecondary: _submitting
+              ? null
+              : () => setState(() {
+                  _step = 2;
+                  _error = null;
+                }),
+        );
+      case 4:
+        return StickyBottomCTA(
+          title: 'Review',
+          subtitle: _hasUploadingMedia
+              ? 'Uploading attachments.'
+              : _hasFailedMedia
+              ? 'Retry failed uploads.'
+              : 'Ready to publish.',
+          primaryLabel: _submitting ? 'Posting...' : 'Post Need',
           onPrimary: _submitting ? null : _publishNeed,
           secondaryLabel: 'Edit',
           onSecondary: _submitting
               ? null
               : () => setState(() {
-                  _step = 2;
+                  _step = 3;
                   _error = null;
                 }),
         );
@@ -991,6 +1033,8 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
         return _buildStepOne(context);
       case 2:
         return _buildStepTwo(context);
+      case 3:
+        return _buildStepThree(context);
       default:
         return _buildPreview(context);
     }
@@ -1005,23 +1049,13 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Request basics',
+              'What do you need?',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 10),
-            Text(
-              'Tell nearby providers what you need, how urgent it is, and enough context to trust the request quickly.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Quick starts',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 8,
+              runSpacing: 8,
               children: _requestPresets.map((preset) {
                 return ActionChip(
                   avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
@@ -1032,7 +1066,7 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             _CategoryPicker(
               selectedCategory: _category,
               enabled: !_submitting,
@@ -1045,104 +1079,20 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 _cacheDraft();
               },
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _titleController,
               enabled: !_submitting,
+              minLines: 3,
+              maxLines: 5,
               maxLength: 160,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'Need electrician for switch repair today',
-              ),
-              validator: _validateTitle,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _detailsController,
-              enabled: !_submitting,
-              minLines: 5,
-              maxLines: 8,
-              maxLength: 1200,
               textInputAction: TextInputAction.newline,
               decoration: const InputDecoration(
-                labelText: 'Details',
-                hintText:
-                    'Share the issue, timing, landmarks, access notes, and anything that helps someone quote or respond fast.',
+                labelText: 'Need',
+                hintText: 'Need electrician for switch repair today',
+                alignLabelWithHint: true,
               ),
-              validator: _validateDetails,
-            ),
-            const SizedBox(height: 18),
-            _CreateNeedMediaSection(
-              items: _media,
-              maxItems: _maxComposerMedia,
-              onAddMedia: _openMediaOptions,
-              onRemove: _removeMediaItem,
-              onRetry: _retryMediaUpload,
-            ),
-            const SizedBox(height: 10),
-            Text('Need type', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                ChoiceChip(
-                  label: const Text('Urgent'),
-                  selected: _mode == CreateNeedMode.urgent,
-                  onSelected: _submitting
-                      ? null
-                      : (_) => _selectMode(CreateNeedMode.urgent),
-                ),
-                ChoiceChip(
-                  label: const Text('Scheduled'),
-                  selected: _mode == CreateNeedMode.schedule,
-                  onSelected: _submitting
-                      ? null
-                      : (_) => _selectMode(CreateNeedMode.schedule),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text('Urgency', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _neededWithinOptions
-                  .map(
-                    (value) => ChoiceChip(
-                      label: Text(value),
-                      selected: _neededWithin == value,
-                      onSelected: _submitting
-                          ? null
-                          : (_) => _selectUrgency(value),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.visibility_outlined, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Short, concrete titles and precise landmarks make it easier for local providers to trust the job and respond faster.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
+              validator: _validateTitle,
             ),
           ],
         ),
@@ -1159,15 +1109,26 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Location and budget',
+              'When and where?',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Keep the area readable and budget realistic so nearby providers can quickly decide if they can help.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _neededWithinOptions
+                  .map(
+                    (value) => ChoiceChip(
+                      label: Text(value),
+                      selected: _neededWithin == value,
+                      onSelected: _submitting
+                          ? null
+                          : (_) => _selectUrgency(value),
+                    ),
+                  )
+                  .toList(),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _locationController,
               enabled: !_submitting,
@@ -1179,11 +1140,70 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               validator: _validateLocation,
             ),
             const SizedBox(height: 16),
-            Text('Budget', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
+            SegmentedButton<_ServiceDelivery>(
+              segments: const [
+                ButtonSegment(
+                  value: _ServiceDelivery.inPerson,
+                  icon: Icon(Icons.location_on_outlined),
+                  label: Text('In person'),
+                ),
+                ButtonSegment(
+                  value: _ServiceDelivery.remote,
+                  icon: Icon(Icons.wifi_tethering_outlined),
+                  label: Text('Remote'),
+                ),
+              ],
+              selected: {_delivery},
+              onSelectionChanged: _submitting
+                  ? null
+                  : (values) => _selectDelivery(values.first),
+            ),
+            const SizedBox(height: 8),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text(
+                'Reach: ${_radiusKm.round()} km',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              children: [
+                Slider(
+                  value: _radiusKm,
+                  min: 2,
+                  max: 20,
+                  divisions: 9,
+                  label: '${_radiusKm.round()} km',
+                  onChanged: _submitting
+                      ? null
+                      : (value) => setState(() {
+                          _radiusKm = value;
+                          _error = null;
+                        }),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepThree(BuildContext context) {
+    return SectionCard(
+      key: const ValueKey('create-need-step-3'),
+      child: Form(
+        key: _stepThreeFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Budget and proof',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 14),
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 8,
+              runSpacing: 8,
               children: _budgetPresets
                   .map(
                     (preset) => ChoiceChip(
@@ -1208,86 +1228,37 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
               ],
               decoration: const InputDecoration(
                 labelText: 'Custom budget',
-                hintText: 'Optional amount in INR',
+                hintText: 'Optional INR amount',
               ),
               validator: _validateBudget,
             ),
-            const SizedBox(height: 18),
-            Text(
-              'Search radius',
-              style: Theme.of(context).textTheme.titleMedium,
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _detailsController,
+              enabled: !_submitting,
+              minLines: 3,
+              maxLines: 5,
+              maxLength: 1200,
+              textInputAction: TextInputAction.newline,
+              decoration: const InputDecoration(
+                labelText: 'Extra details',
+                hintText: 'Access notes, photos needed, exact issue...',
+                alignLabelWithHint: true,
+              ),
+              validator: _validateDetails,
             ),
-            const SizedBox(height: 4),
-            Slider(
-              value: _radiusKm,
-              min: 2,
-              max: 20,
-              divisions: 9,
-              label: '${_radiusKm.round()} km',
-              onChanged: _submitting
-                  ? null
-                  : (value) => setState(() {
-                      _radiusKm = value;
-                      _error = null;
-                    }),
+            const SizedBox(height: 12),
+            _CreateNeedMediaSection(
+              items: _media,
+              maxItems: _maxComposerMedia,
+              onAddMedia: _openMediaOptions,
+              onRemove: _removeMediaItem,
+              onRetry: _retryMediaUpload,
             ),
+            const SizedBox(height: 12),
             Text(
-              '${_radiusKm.round()} km around ${_locationController.text.trim().isEmpty ? 'your area' : _locationController.text.trim()}',
+              'Visible only after you post.',
               style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Who will see this',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleSmall?.copyWith(color: AppColors.ink),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TrustBadge(
-                        label: '${_radiusKm.round()} km reach',
-                        icon: Icons.route_rounded,
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
-                      ),
-                      TrustBadge(
-                        label: _mode == CreateNeedMode.urgent
-                            ? 'Urgent request'
-                            : 'Scheduled job',
-                        icon: Icons.schedule_rounded,
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.ink,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _previewAudienceCopy,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            _ProviderMatchPreview(
-              category: _category,
-              locationLabel: _locationController.text.trim(),
-              radiusKm: _radiusKm,
-              budgetSummary: _budgetSummary,
-              urgencyLabel: _neededWithin,
             ),
           ],
         ),
@@ -1296,51 +1267,18 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
   }
 
   Widget _buildPreview(BuildContext context) {
+    final details = _detailsController.text.trim();
+
     return Column(
-      key: const ValueKey('create-need-step-3'),
+      key: const ValueKey('create-need-step-4'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Preview', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 10),
-              Text(
-                'This is what nearby providers will judge in the first few seconds.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 18),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.visibility_outlined,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Shown in discovery with urgency, reach, media readiness, and the next action attached.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.primaryDeep,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
+              Text('Review', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1363,6 +1301,14 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                     backgroundColor: AppColors.accentSoft,
                     foregroundColor: AppColors.accent,
                   ),
+                  TrustBadge(
+                    label: _deliveryModeLabel,
+                    icon: _delivery == _ServiceDelivery.remote
+                        ? Icons.wifi_tethering_outlined
+                        : Icons.location_on_outlined,
+                    backgroundColor: AppColors.surfaceMuted,
+                    foregroundColor: AppColors.ink,
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
@@ -1370,11 +1316,10 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 _titleController.text.trim(),
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 8),
-              Text(
-                _detailsController.text.trim(),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              if (details.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(details, style: Theme.of(context).textTheme.bodyLarge),
+              ],
               const SizedBox(height: 18),
               _PreviewRow(
                 icon: Icons.location_on_outlined,
@@ -1382,14 +1327,9 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                 value: _locationController.text.trim(),
               ),
               _PreviewRow(
-                icon: Icons.route_rounded,
-                label: 'Reach',
-                value: '${_radiusKm.round()} km',
-              ),
-              _PreviewRow(
                 icon: Icons.access_time_rounded,
-                label: 'Need type',
-                value: _mode == CreateNeedMode.urgent ? 'Urgent' : 'Scheduled',
+                label: 'Timing',
+                value: _neededWithin,
               ),
               if (_media.isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -1398,68 +1338,23 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
                   uploadedCount: _uploadedMedia.length,
                 ),
               ],
-              const SizedBox(height: 16),
-              _PublishChecklist(
-                hasTitle: _titleController.text.trim().length >= 8,
-                hasDetails: _detailsController.text.trim().length >= 20,
-                hasLocation: _locationController.text.trim().isNotEmpty,
-                hasCleanMedia: !_hasUploadingMedia && !_hasFailedMedia,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nearby visibility',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _previewAudienceCopy,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
               const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  const gap = 10.0;
-                  final tileWidth = (constraints.maxWidth - gap) / 2;
-                  return Wrap(
-                    spacing: gap,
-                    runSpacing: gap,
-                    children: [
-                      SizedBox(
-                        width: tileWidth,
-                        child: MetricTile(
-                          label: 'Budget',
-                          value: _budgetSummary,
-                          icon: Icons.payments_outlined,
-                        ),
-                      ),
-                      SizedBox(
-                        width: tileWidth,
-                        child: MetricTile(
-                          label: 'Urgency',
-                          value: _neededWithin,
-                          icon: Icons.flash_on_rounded,
-                        ),
-                      ),
-                      if (_media.isNotEmpty)
-                        SizedBox(
-                          width: tileWidth,
-                          child: MetricTile(
-                            label: 'Media',
-                            value:
-                                '${_uploadedMedia.length}/${_media.length} ready',
-                            icon: Icons.perm_media_outlined,
-                          ),
-                        ),
-                    ],
-                  );
-                },
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                title: Text(
+                  'Visibility',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _previewAudienceCopy,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1472,90 +1367,88 @@ class _CreateNeedPageState extends ConsumerState<CreateNeedPage> {
 class _CreateNeedHero extends StatelessWidget {
   const _CreateNeedHero({
     required this.step,
-    required this.readinessScore,
     required this.category,
+    required this.neededWithin,
     required this.locationLabel,
-    required this.mediaCount,
   });
 
   final int step;
-  final int readinessScore;
   final String category;
+  final String neededWithin;
   final String locationLabel;
-  final int mediaCount;
 
   @override
   Widget build(BuildContext context) {
-    final tokens =
-        Theme.of(context).extension<ServiqThemeTokens>() ??
-        ServiqThemeTokens.light;
-    final progress = step / 3;
+    final progress = step / _totalSteps;
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        gradient: tokens.heroGradient,
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Post a local need',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Post a need',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              Text(
+                '$step/$_totalSteps',
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(color: AppColors.inkSubtle),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Step $step of 3. Shape the request, tune nearby discovery, then preview what providers will see before it goes live.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.84),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.pill),
             child: LinearProgressIndicator(
-              minHeight: 8,
+              minHeight: 5,
               value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.18),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              backgroundColor: AppColors.surfacePressed,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _StepIndicator(active: step == 1, label: 'Need'),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
               Expanded(
-                child: _StepIndicator(active: step == 2, label: 'Discovery'),
+                child: _StepIndicator(active: step == 2, label: 'Where'),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 6),
               Expanded(
-                child: _StepIndicator(active: step == 3, label: 'Preview'),
+                child: _StepIndicator(active: step == 3, label: 'Proof'),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _StepIndicator(active: step == 4, label: 'Review'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _HeroSignal(
-                label: '$readinessScore% ready',
-                icon: Icons.speed_rounded,
-              ),
               _HeroSignal(label: category, icon: Icons.category_outlined),
+              _HeroSignal(label: neededWithin, icon: Icons.flash_on_rounded),
               _HeroSignal(
                 label: locationLabel.isEmpty ? 'Area pending' : locationLabel,
                 icon: Icons.place_outlined,
-              ),
-              _HeroSignal(
-                label: mediaCount == 0 ? 'Media optional' : '$mediaCount media',
-                icon: Icons.perm_media_outlined,
               ),
             ],
           ),
@@ -1576,14 +1469,14 @@ class _HeroSignal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 14),
+          Icon(icon, color: AppColors.inkSubtle, size: 14),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -1591,8 +1484,8 @@ class _HeroSignal extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
+                color: AppColors.ink,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -1678,20 +1571,22 @@ class _StepIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: active ? 0.22 : 0.1),
-        borderRadius: BorderRadius.circular(18),
+        color: active ? AppColors.primarySoft : AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
-          color: Colors.white.withValues(alpha: active ? 0.32 : 0.14),
+          color: active ? AppColors.primarySoft : AppColors.border,
         ),
       ),
       child: Text(
         label,
         textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(color: Colors.white),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: active ? AppColors.primaryDeep : AppColors.inkSubtle,
+        ),
       ),
     );
   }
@@ -1785,160 +1680,6 @@ class _PreviewRow extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderMatchPreview extends StatelessWidget {
-  const _ProviderMatchPreview({
-    required this.category,
-    required this.locationLabel,
-    required this.radiusKm,
-    required this.budgetSummary,
-    required this.urgencyLabel,
-  });
-
-  final String category;
-  final String locationLabel;
-  final double radiusKm;
-  final String budgetSummary;
-  final String urgencyLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final area = locationLabel.isEmpty ? 'your area' : locationLabel;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.accentSoft,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-                child: const Icon(
-                  Icons.radar_rounded,
-                  color: AppColors.accent,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Match preview',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '$category providers near $area will see $urgencyLabel timing, $budgetSummary, and a ${radiusKm.round()} km reach before they respond.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TrustBadge(
-                label: 'Local feed',
-                icon: Icons.dynamic_feed_outlined,
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.ink,
-              ),
-              TrustBadge(
-                label: 'Provider alerts',
-                icon: Icons.notifications_active_outlined,
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.ink,
-              ),
-              TrustBadge(
-                label: 'Chat follow-up',
-                icon: Icons.chat_bubble_outline_rounded,
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.ink,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PublishChecklist extends StatelessWidget {
-  const _PublishChecklist({
-    required this.hasTitle,
-    required this.hasDetails,
-    required this.hasLocation,
-    required this.hasCleanMedia,
-  });
-
-  final bool hasTitle;
-  final bool hasDetails;
-  final bool hasLocation;
-  final bool hasCleanMedia;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = [
-      ('Clear title', hasTitle),
-      ('Useful details', hasDetails),
-      ('Readable area', hasLocation),
-      ('Media ready', hasCleanMedia),
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Publish readiness',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: rows
-                .map(
-                  (row) => TrustBadge(
-                    label: row.$1,
-                    icon: row.$2
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    backgroundColor: row.$2
-                        ? AppColors.primarySoft
-                        : AppColors.surface,
-                    foregroundColor: row.$2
-                        ? AppColors.primary
-                        : AppColors.inkMuted,
-                  ),
-                )
-                .toList(),
           ),
         ],
       ),
@@ -2336,16 +2077,8 @@ class _CreateNeedMediaSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Photos and video',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Add up to $maxItems attachments so providers can judge scope faster on mobile.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 12),
+        Text('Photos', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
         Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
@@ -2389,7 +2122,7 @@ class _CreateNeedMediaSection extends StatelessWidget {
         if (items.isEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: AppColors.surfaceRaised,
               borderRadius: BorderRadius.circular(AppRadii.md),
@@ -2398,13 +2131,10 @@ class _CreateNeedMediaSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'No attachments yet',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                Text('Optional', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 6),
                 Text(
-                  'Before-and-after photos, broken parts, access points, or a short walk-through video can improve response quality a lot.',
+                  'Add broken parts, access points, or a short clip.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -2833,6 +2563,7 @@ class _CreateNeedDraftSnapshot {
     required this.locationLabel,
     required this.radiusKm,
     required this.mode,
+    required this.delivery,
     required this.neededWithin,
     required this.media,
   });
@@ -2845,6 +2576,7 @@ class _CreateNeedDraftSnapshot {
   final String locationLabel;
   final double radiusKm;
   final CreateNeedMode mode;
+  final _ServiceDelivery delivery;
   final String neededWithin;
   final List<_CreateNeedDraftMediaSnapshot> media;
 
@@ -2855,8 +2587,9 @@ class _CreateNeedDraftSnapshot {
         locationLabel.trim().isNotEmpty ||
         media.isNotEmpty ||
         category != _categories.first ||
-        neededWithin != _neededWithinOptions[2] ||
+        neededWithin != _defaultNeededWithin ||
         mode != CreateNeedMode.urgent ||
+        delivery != _ServiceDelivery.inPerson ||
         radiusKm != 8 ||
         step > 1;
   }
@@ -2897,9 +2630,7 @@ class _CreateNeedDraftCache {
 }
 
 bool _isUrgencyOptionUrgent(String value) {
-  return value == _neededWithinOptions[0] ||
-      value == _neededWithinOptions[1] ||
-      value == _neededWithinOptions[2];
+  return value == _neededWithinOptions[0] || value == _neededWithinOptions[1];
 }
 
 bool _looksLikeRawCoordinates(String value) {

@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_card.dart';
 import '../../features/people/domain/people_snapshot.dart';
 import 'profile_avatar_tile.dart';
+import 'trust_badge.dart';
 
 class ProviderCard extends StatelessWidget {
   const ProviderCard({
@@ -28,7 +29,7 @@ class ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reasonText = reason?.trim() ?? '';
+    final signals = _providerSummarySignals(person);
 
     return SectionCard(
       variant: ServiqSurfaceVariant.raised,
@@ -36,10 +37,6 @@ class ProviderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (person.hasPreviewImage) ...[
-            _ProviderPreview(person: person),
-            const SizedBox(height: AppSpacing.sm),
-          ],
           ProfileAvatarTile(
             name: person.name,
             subtitle: person.headline,
@@ -54,62 +51,25 @@ class ProviderCard extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          _ProviderSignalStrip(person: person),
-          const SizedBox(height: AppSpacing.sm),
-          TrustSnapshot(
-            dense: true,
-            items: [
-              TrustSnapshotItem(
-                icon: Icons.place_outlined,
-                label: 'Area',
-                value: person.locationLabel,
-              ),
-              TrustSnapshotItem(
-                icon: Icons.verified_user_outlined,
-                label: 'Trust',
-                value: person.socialLabel,
-                tone:
-                    person.isAcceptedConnection ||
-                        person.completionPercent >= 80
-                    ? TrustSnapshotTone.trust
-                    : TrustSnapshotTone.neutral,
-              ),
-            ],
-          ),
-          if (person.primaryTags.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+          if (signals.isNotEmpty)
             Wrap(
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,
-              children: person.primaryTags.take(3).map((tag) {
-                return _TagPill(label: tag);
-              }).toList(),
+              children: signals
+                  .map(
+                    (signal) => TrustBadge(
+                      label: signal.label,
+                      icon: signal.icon,
+                      backgroundColor: signal.background,
+                      foregroundColor: signal.foreground,
+                    ),
+                  )
+                  .toList(),
             ),
-          ],
-          if (reasonText.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text(
-                reasonText,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
-              ),
-            ),
-          ],
           if (onOpenProfile != null || onMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
             ServiqActionBar(
-              primaryLabel: 'Open profile',
+              primaryLabel: 'View',
               primaryIcon: Icons.person_outline_rounded,
               onPrimary: onOpenProfile,
               secondaryActions: [
@@ -127,225 +87,55 @@ class ProviderCard extends StatelessWidget {
   }
 }
 
-class _ProviderPreview extends StatelessWidget {
-  const _ProviderPreview({required this.person});
+List<({IconData icon, String label, Color background, Color foreground})>
+_providerSummarySignals(MobilePersonCard person) {
+  final signals =
+      <({IconData icon, String label, Color background, Color foreground})>[];
 
-  final MobilePersonCard person;
+  signals.add((
+    icon: person.isOnline ? Icons.bolt_rounded : Icons.schedule_rounded,
+    label: person.isOnline ? 'Active' : 'Available',
+    background: person.isOnline
+        ? AppColors.primarySoft
+        : AppColors.surfaceMuted,
+    foreground: person.isOnline ? AppColors.primary : AppColors.inkMuted,
+  ));
 
-  @override
-  Widget build(BuildContext context) {
-    final title = person.previewTitle.trim().isEmpty
-        ? person.primaryTags.take(2).join(', ')
-        : person.previewTitle;
-
-    return Container(
-      height: 146,
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            person.previewImageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, _, _) =>
-                _ProviderPreviewFallback(title: title),
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.transparent, Color(0x99090F17)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          Positioned(
-            left: AppSpacing.sm,
-            right: AppSpacing.sm,
-            bottom: AppSpacing.sm,
-            child: Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                if (title.trim().isNotEmpty) _PreviewChip(label: title),
-                if (person.previewMediaCount > 1)
-                  _PreviewChip(label: '${person.previewMediaCount} photos'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  final rating = person.ratingLabel.trim();
+  if (rating.isNotEmpty && rating.toLowerCase() != 'new to reviews') {
+    signals.add((
+      icon: Icons.star_rounded,
+      label: rating,
+      background: AppColors.warningSoft,
+      foreground: AppColors.warning,
+    ));
+  } else if (person.socialLabel.trim().isNotEmpty) {
+    signals.add((
+      icon: Icons.verified_user_outlined,
+      label: person.socialLabel,
+      background: AppColors.verifiedSoft,
+      foreground: AppColors.verified,
+    ));
   }
+
+  if (_hasRealProviderPrice(person.priceLabel)) {
+    signals.add((
+      icon: Icons.payments_outlined,
+      label: person.priceLabel,
+      background: AppColors.surfaceMuted,
+      foreground: AppColors.ink,
+    ));
+  }
+
+  return signals.take(3).toList();
 }
 
-class _ProviderPreviewFallback extends StatelessWidget {
-  const _ProviderPreviewFallback({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surfaceMuted,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.photo_library_outlined, color: AppColors.inkMuted),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            title.trim().isEmpty ? 'Provider work preview' : title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
+bool _hasRealProviderPrice(String value) {
+  final label = value.trim().toLowerCase();
+  if (label.isEmpty || label == 'pricing in chat') {
+    return false;
   }
-}
-
-class _ProviderSignalStrip extends StatelessWidget {
-  const _ProviderSignalStrip({required this.person});
-
-  final MobilePersonCard person;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xs),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ProviderSignalValue(
-              icon: Icons.bolt_rounded,
-              label: 'Status',
-              value: person.isOnline ? 'Active now' : 'Available later',
-              emphasized: person.isOnline,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: _ProviderSignalValue(
-              icon: Icons.star_rounded,
-              label: 'Rating',
-              value: person.ratingLabel,
-              emphasized: person.reviewCount > 0,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: _ProviderSignalValue(
-              icon: Icons.work_outline_rounded,
-              label: 'Work',
-              value: person.workLabel,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderSignalValue extends StatelessWidget {
-  const _ProviderSignalValue({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.emphasized = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final foreground = emphasized ? AppColors.primaryDeep : AppColors.ink;
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: emphasized ? AppColors.primarySoft : AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 13, color: foreground),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppColors.inkMuted),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: foreground),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewChip extends StatelessWidget {
-  const _PreviewChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelMedium,
-      ),
-    );
-  }
+  return label.contains('inr') || label.startsWith('₹');
 }
 
 class ProviderDirectoryCard extends StatelessWidget {
@@ -355,6 +145,7 @@ class ProviderDirectoryCard extends StatelessWidget {
     this.onOpenProfile,
     this.onMessage,
     this.onConnect,
+    this.rankingReason,
     this.connecting = false,
   });
 
@@ -362,13 +153,16 @@ class ProviderDirectoryCard extends StatelessWidget {
   final VoidCallback? onOpenProfile;
   final VoidCallback? onMessage;
   final VoidCallback? onConnect;
+  final String? rankingReason;
   final bool connecting;
 
   @override
   Widget build(BuildContext context) {
     final headline = _directoryHeadline(person);
     final statusLabel = _directoryStatusLabel(person);
-    final visibleTags = person.primaryTags.take(2).toList();
+    final showPrice = _hasRealProviderPrice(person.priceLabel);
+    final showRating =
+        person.ratingLabel.trim().toLowerCase() != 'new to reviews';
 
     return SectionCard(
       variant: ServiqSurfaceVariant.raised,
@@ -438,16 +232,39 @@ class ProviderDirectoryCard extends StatelessWidget {
               ),
             ],
           ),
-          if (visibleTags.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: visibleTags.map((tag) {
-                return _DirectoryTagPill(label: tag);
-              }).toList(),
-            ),
-          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (showPrice)
+                TrustBadge(
+                  label: person.priceLabel,
+                  icon: Icons.payments_outlined,
+                  backgroundColor: AppColors.surfaceMuted,
+                  foregroundColor: AppColors.ink,
+                ),
+              if (showRating)
+                TrustBadge(
+                  label: person.ratingLabel,
+                  icon: Icons.star_rounded,
+                  backgroundColor: AppColors.warningSoft,
+                  foregroundColor: AppColors.warning,
+                ),
+              TrustBadge(
+                label: _availabilitySignal(person),
+                icon: person.isOnline
+                    ? Icons.event_available_outlined
+                    : Icons.schedule_rounded,
+                backgroundColor: person.isOnline
+                    ? AppColors.primarySoft
+                    : AppColors.surfaceMuted,
+                foregroundColor: person.isOnline
+                    ? AppColors.primary
+                    : AppColors.inkMuted,
+              ),
+            ],
+          ),
           if (onOpenProfile != null || onMessage != null) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -461,7 +278,7 @@ class ProviderDirectoryCard extends StatelessWidget {
                         onPressed: onOpenProfile,
                         icon: const Icon(Icons.person_outline_rounded),
                         label: const Text(
-                          'Open profile',
+                          'View',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -635,36 +452,6 @@ class _DirectoryMetaPill extends StatelessWidget {
   }
 }
 
-class _DirectoryTagPill extends StatelessWidget {
-  const _DirectoryTagPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 132),
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: AppColors.inkSubtle),
-        ),
-      ),
-    );
-  }
-}
-
 String _directoryHeadline(MobilePersonCard person) {
   final headline = person.headline.trim();
   if (headline.isEmpty && person.primaryTags.isNotEmpty) {
@@ -723,6 +510,21 @@ String _directoryStatusLabel(MobilePersonCard person) {
   return 'Available';
 }
 
+String _availabilitySignal(MobilePersonCard person) {
+  if (person.isOnline) {
+    return 'Available today';
+  }
+
+  final activity = person.activityLabel.trim();
+  if (activity.toLowerCase().contains('min')) {
+    return activity;
+  }
+  if (activity.isNotEmpty && activity.toLowerCase() != 'recently active') {
+    return activity;
+  }
+  return 'Usually replies soon';
+}
+
 String _tagSummary(List<String> tags) {
   final visibleTags = tags
       .map((tag) => tag.trim())
@@ -748,30 +550,4 @@ String _initials(String name) {
     return 'S';
   }
   return parts.take(2).map((part) => part[0].toUpperCase()).join();
-}
-
-class _TagPill extends StatelessWidget {
-  const _TagPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 180),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelMedium,
-        ),
-      ),
-    );
-  }
 }

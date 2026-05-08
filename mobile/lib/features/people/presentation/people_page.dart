@@ -342,6 +342,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: ProviderDirectoryCard(
                               person: person,
+                              rankingReason: _providerRankingReason(person),
                               onOpenProfile: () => _openProvider(person),
                               onMessage: () => context.push(
                                 AppRoutes.chatDirect(
@@ -426,6 +427,32 @@ int _findPeopleScore(MobilePersonCard person) {
   score += person.mutualConnectionsCount.clamp(0, 10).toInt() * 4;
   score += person.completedJobs.clamp(0, 20).toInt();
   return score;
+}
+
+String _providerRankingReason(MobilePersonCard person) {
+  final explicitReason = person.reason.trim();
+  if (explicitReason.isNotEmpty) {
+    return explicitReason;
+  }
+  if (person.isOnline) {
+    return 'Available today and ready for fast follow-up.';
+  }
+  if (person.completedJobs >= 3) {
+    return '${person.completedJobs} completed jobs nearby.';
+  }
+  if ((person.averageRating ?? 0) >= 4.5 && person.reviewCount > 0) {
+    return '${person.ratingLabel} from ${person.reviewCount} review${person.reviewCount == 1 ? '' : 's'}.';
+  }
+  if (person.completionPercent >= 80) {
+    return 'Verified profile with stronger trust signals.';
+  }
+  if (person.activityLabel.toLowerCase().contains('min')) {
+    return person.activityLabel;
+  }
+  if (person.priceLabel.toLowerCase() != 'pricing in chat') {
+    return '${person.priceLabel} with profile details ready to compare.';
+  }
+  return 'Matched by skill, local area, and marketplace activity.';
 }
 
 List<String> _topCategories(List<MobilePersonCard> people) {
@@ -600,22 +627,55 @@ class _ProviderComparePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionCard(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
-            title: 'Compare top matches',
-            subtitle: 'A quick side-by-side before opening a storefront.',
-          ),
-          const SizedBox(height: 14),
-          ...providers.map(
-            (person) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _CompareRow(
-                person: person,
-                onTap: () => onOpenProvider(person),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.ink, AppColors.accentDeep],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadii.md),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Trust comparison',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Compare price, proof, speed, and reputation before opening a storefront.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.76),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                for (final person in providers)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _CompareRow(
+                      person: person,
+                      onTap: () => onOpenProvider(person),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -694,7 +754,27 @@ class _CompareRow extends StatelessWidget {
                           backgroundColor: AppColors.primarySoft,
                           foregroundColor: AppColors.primary,
                         ),
+                        TrustBadge(
+                          label: person.completedJobs > 0
+                              ? '${person.completedJobs} jobs'
+                              : person.locationLabel,
+                          icon: person.completedJobs > 0
+                              ? Icons.task_alt_rounded
+                              : Icons.place_outlined,
+                          backgroundColor: AppColors.successSoft,
+                          foregroundColor: AppColors.success,
+                        ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _providerRankingReason(person),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.accentDeep,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
