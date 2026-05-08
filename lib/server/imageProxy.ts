@@ -55,7 +55,7 @@ export const buildNextImageProxyUrl = (
 };
 
 const proxyAvatarUrl = (value: string | null | undefined, origin: string) =>
-  buildNextImageProxyUrl(value, { origin, width: 96, quality: 60 });
+  buildNextImageProxyUrl(value, { origin, width: 96, quality: 70 });
 
 const proxyPreviewUrl = (value: string | null | undefined, origin: string) =>
   buildNextImageProxyUrl(value, { origin, width: 640, quality: 70 });

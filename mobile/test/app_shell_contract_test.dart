@@ -40,8 +40,8 @@ void main() {
     );
   });
 
-  test('post action stays off workflow branches', () {
-    expect(shouldShowPostActionForBranch(0), isTrue);
+  test('post action stays contextual and off dense workflow branches', () {
+    expect(shouldShowPostActionForBranch(0), isFalse);
     expect(shouldShowPostActionForBranch(1), isTrue);
     expect(shouldShowPostActionForBranch(2), isFalse);
     expect(shouldShowPostActionForBranch(3), isFalse);
