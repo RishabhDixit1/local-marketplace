@@ -16,6 +16,10 @@ class AppRoutes {
   static const control = '/app/control';
   static const search = '/app/search';
   static const notifications = '/app/notifications';
+  static const profilePublic = '/app/profile/public';
+  static const profileEdit = '/app/profile/edit';
+  static const profileTrust = '/app/profile/trust';
+  static const profileSettings = '/app/profile/settings';
   static const providerOnboarding = '/app/provider-onboarding';
   static const providerLaunchpad = '/app/provider-launchpad';
   static const providerListings = '/app/provider-listings';

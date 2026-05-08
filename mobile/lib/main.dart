@@ -13,17 +13,17 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/data/onboarding_handoff.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final firebaseState = await AppFirebase.initialize();
-  final onboardingStore = SharedPreferencesOnboardingHandoffStore(
-    await SharedPreferences.getInstance(),
-  );
-  if (firebaseState.initialized) {
-    MobilePushNotificationService.registerBackgroundHandler();
-  }
+  await runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      final firebaseState = await AppFirebase.initialize();
+      final onboardingStore = SharedPreferencesOnboardingHandoffStore(
+        await SharedPreferences.getInstance(),
+      );
+      if (firebaseState.initialized) {
+        MobilePushNotificationService.registerBackgroundHandler();
+      }
 
-  runZonedGuarded(
-    () {
       runApp(
         _BootstrapHost(
           firebaseState: firebaseState,

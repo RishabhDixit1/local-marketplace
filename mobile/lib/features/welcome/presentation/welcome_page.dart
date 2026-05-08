@@ -306,6 +306,14 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     ].join(' ');
   }
 
+  bool _isSessionRecoveryMessage(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('session is missing') ||
+        normalized.contains('sign in again') ||
+        normalized.contains('bearer token') ||
+        normalized.contains('expired session');
+  }
+
   Future<void> _callEntry(_WelcomeFeedEntry entry) async {
     final phone = entry.item?.contactPhone ?? entry.person?.contactPhone ?? '';
     if (phone.trim().isEmpty) {
@@ -623,11 +631,19 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           : peopleAsync.hasError
           ? AppErrorMapper.toMessage(peopleAsync.error!)
           : 'Unable to load home right now.';
+      final needsSignIn = _isSessionRecoveryMessage(message);
 
       return _WelcomeRecoveryScaffold(
         message: message,
         devHint: _debugRecoveryHint(message),
-        onRetry: _refresh,
+        actionLabel: needsSignIn ? 'Sign in' : 'Retry',
+        bodyTitle: needsSignIn ? 'Sign in to continue' : null,
+        bodyMessage: needsSignIn
+            ? 'Your account session is needed before Home, People, Work, and Inbox can load live marketplace data.'
+            : null,
+        onRetry: needsSignIn
+            ? () async => context.go(AppRoutes.signIn)
+            : _refresh,
         onPostNeed: () => context.push(AppRoutes.createRequest),
         onFindHelp: () => context.go(AppRoutes.people),
         onEarnNearby: () => context.push(AppRoutes.providerOnboarding),
@@ -3123,6 +3139,9 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
     required this.onPostNeed,
     required this.onFindHelp,
     required this.onEarnNearby,
+    this.actionLabel = 'Retry',
+    this.bodyTitle,
+    this.bodyMessage,
     this.devHint,
   });
 
@@ -3131,6 +3150,9 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
   final VoidCallback onPostNeed;
   final VoidCallback onFindHelp;
   final VoidCallback onEarnNearby;
+  final String actionLabel;
+  final String? bodyTitle;
+  final String? bodyMessage;
   final String? devHint;
 
   @override
@@ -3190,7 +3212,7 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                           tone: ServiqRecoveryTone.neutral,
                           icon: Icons.cloud_sync_outlined,
                           message: message,
-                          actionLabel: 'Retry',
+                          actionLabel: actionLabel,
                           onAction: () => onRetry(),
                         ),
                         if (debugMessage != null &&
@@ -3221,12 +3243,13 @@ class _WelcomeRecoveryScaffold extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'While we reconnect',
+                      bodyTitle ?? 'While we reconnect',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'These actions are available as soon as the local API responds again.',
+                      bodyMessage ??
+                          'These actions are available as soon as live ServiQ data responds again.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),

@@ -65,7 +65,7 @@ class MainBottomNav extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
           child: Row(
             children: [
               for (var index = 0; index < destinations.length; index += 1)
@@ -113,6 +113,9 @@ class _NavDestinationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final foreground = selected ? AppColors.primaryDeep : AppColors.inkSubtle;
     final icon = selected ? destination.selectedIcon : destination.icon;
+    final selectedBackground = selected
+        ? AppColors.primarySoft
+        : Colors.transparent;
 
     return Semantics(
       selected: selected,
@@ -126,38 +129,33 @@ class _NavDestinationButton extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            height: 54,
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+            height: 58,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            decoration: BoxDecoration(
+              color: selectedBackground,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: selected ? 20 : 0,
-                  height: 3,
-                  margin: const EdgeInsets.only(bottom: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                  ),
-                ),
                 SizedBox(
-                  width: 30,
-                  height: 22,
+                  width: 34,
+                  height: 26,
                   child: Stack(
                     clipBehavior: Clip.none,
                     alignment: Alignment.center,
                     children: [
-                      Icon(icon, size: selected ? 22 : 21, color: foreground),
+                      Icon(icon, size: selected ? 23 : 21, color: foreground),
                       Positioned(
-                        top: -10,
-                        right: -12,
+                        top: -6,
+                        right: -8,
                         child: CountBadge(count: destination.badgeCount),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   destination.label,
                   maxLines: 1,

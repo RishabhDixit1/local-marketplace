@@ -18,10 +18,7 @@ class PeopleRepository {
   final MobileApiClient _apiClient;
 
   Future<MobilePeopleSnapshot> fetchPeople() async {
-    final payload = await _apiClient.getJson(
-      '/api/community/people',
-      queryParameters: {'imageProxy': 'next'},
-    );
+    final payload = await _apiClient.getJson('/api/community/people');
     if (payload['ok'] != true) {
       throw ApiException(
         (payload['message'] as String?) ??

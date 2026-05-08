@@ -42,7 +42,9 @@ class AppFirebase {
       if (Firebase.apps.isEmpty) {
         final options = FirebaseRuntimeOptions.currentPlatform;
         if (options == null) {
-          await Firebase.initializeApp();
+          return const AppFirebaseState.disabled(
+            error: 'Firebase runtime options are not configured.',
+          );
         } else {
           await Firebase.initializeApp(options: options);
         }

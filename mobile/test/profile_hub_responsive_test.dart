@@ -32,12 +32,15 @@ void main() {
       await _pumpProfile(tester, Size(width, 844));
 
       expect(find.text('Profile Hub'), findsOneWidget);
-      expect(find.text('Public profile preview'), findsOneWidget);
-      expect(find.text('View Profile'), findsOneWidget);
-      expect(find.text('Edit Profile'), findsOneWidget);
-      expect(find.text('Business Setup'), findsOneWidget);
+      expect(find.text('Business Control'), findsOneWidget);
+      expect(find.text('Public Profile'), findsAtLeastNWidgets(1));
+      expect(find.text('Edit Profile'), findsAtLeastNWidgets(1));
       expect(find.text('Listings'), findsOneWidget);
-      expect(find.text('Trust'), findsOneWidget);
+      expect(find.text('Leads and Inbox'), findsOneWidget);
+      expect(find.text('Payments and Orders'), findsOneWidget);
+      expect(find.text('Trust and Verification'), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
+      expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -46,46 +49,68 @@ void main() {
   testWidgets('profile hub exposes setup, listings, trust, and settings', (
     tester,
   ) async {
-    await _pumpProfile(tester, const Size(390, 844));
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      initialSection: 'businessSetup',
+      showCommandHub: false,
+    );
 
-    await _tapSection(tester, 'businessSetup');
     expect(find.text('Launchpad output destination'), findsOneWidget);
     expect(find.text('Continue Business AI setup'), findsOneWidget);
 
-    await _tapSection(tester, 'listings');
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      initialSection: 'listings',
+      showCommandHub: false,
+    );
     expect(find.text('Published listings'), findsOneWidget);
     expect(find.text('Emergency electrical repair'), findsOneWidget);
 
-    await _tapSection(tester, 'trust');
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      initialSection: 'trust',
+      showCommandHub: false,
+    );
     expect(find.text('Verification meaning'), findsOneWidget);
     expect(find.text('Payment trust'), findsOneWidget);
 
-    await _tapSection(tester, 'settings');
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      initialSection: 'settings',
+      showCommandHub: false,
+    );
     expect(find.text('Payment methods'), findsOneWidget);
     expect(find.text('Account'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('profile hub tolerates 160 percent text scale', (tester) async {
-    await _pumpProfile(tester, const Size(390, 844), textScaleFactor: 1.6);
-
-    await _tapSection(tester, 'businessSetup');
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      textScaleFactor: 1.6,
+      initialSection: 'businessSetup',
+      showCommandHub: false,
+    );
     await _show(tester, find.text('Business Setup'));
     await _show(tester, find.text('Launchpad output destination'));
 
-    await _tapSection(tester, 'listings');
+    await _pumpProfile(
+      tester,
+      const Size(390, 844),
+      textScaleFactor: 1.6,
+      initialSection: 'listings',
+      showCommandHub: false,
+    );
     await _show(tester, find.text('Published listings'));
     await _show(tester, find.text('Emergency electrical repair'));
 
     expect(tester.takeException(), isNull);
   });
-}
-
-Future<void> _tapSection(WidgetTester tester, String sectionName) async {
-  final finder = find.byKey(ValueKey('profile-section-$sectionName'));
-  await _show(tester, finder);
-  await tester.tap(finder);
-  await tester.pumpAndSettle();
 }
 
 Future<void> _show(WidgetTester tester, Finder finder) async {
@@ -97,6 +122,8 @@ Future<void> _pumpProfile(
   WidgetTester tester,
   Size size, {
   double textScaleFactor = 1.0,
+  String initialSection = 'hub',
+  bool showCommandHub = true,
 }) async {
   _setTestSurface(tester, size, textScaleFactor: textScaleFactor);
 
@@ -105,7 +132,11 @@ Future<void> _pumpProfile(
       overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const ProfilePage(snapshotOverride: AsyncData(_sampleProfile)),
+        home: ProfilePage(
+          snapshotOverride: const AsyncData(_sampleProfile),
+          initialSection: initialSection,
+          showCommandHub: showCommandHub,
+        ),
       ),
     ),
   );

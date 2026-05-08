@@ -11,6 +11,7 @@ import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/orders/domain/order_models.dart';
@@ -100,6 +101,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.profilePublic,
+        builder: (context, state) => const ProfilePage(
+          title: 'Public Profile',
+          initialSection: 'viewProfile',
+          showCommandHub: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profileEdit,
+        builder: (context, state) => const ProfilePage(
+          title: 'Edit Profile',
+          initialSection: 'editProfile',
+          showCommandHub: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profileTrust,
+        builder: (context, state) => const ProfilePage(
+          title: 'Trust',
+          initialSection: 'trust',
+          showCommandHub: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.profileSettings,
+        builder: (context, state) => const ProfilePage(
+          title: 'Settings',
+          initialSection: 'settings',
+          showCommandHub: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.control,
+        builder: (context, state) => const ControlPage(),
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,

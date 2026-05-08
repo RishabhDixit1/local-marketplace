@@ -17,8 +17,16 @@ class AppErrorMapper {
       return error.message.trim();
     }
 
-    if (error is ApiException && error.message.trim().isNotEmpty) {
-      return error.message.trim();
+    if (error is ApiException) {
+      final message = error.message.trim();
+      if (error.statusCode == 401 ||
+          message.toLowerCase().contains('bearer token') ||
+          message.toLowerCase().contains('expired session token')) {
+        return 'Your mobile session is missing or expired. Sign in again to refresh live ServiQ data.';
+      }
+      if (message.isNotEmpty) {
+        return message;
+      }
     }
 
     if (error is AuthException && error.message.trim().isNotEmpty) {
