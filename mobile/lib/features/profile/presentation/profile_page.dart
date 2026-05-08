@@ -56,9 +56,17 @@ enum _ProfileSection {
 }
 
 class ProfilePage extends ConsumerStatefulWidget {
-  const ProfilePage({super.key, this.title = 'Profile', this.snapshotOverride});
+  const ProfilePage({
+    super.key,
+    this.title = 'You',
+    this.initialSection = 'hub',
+    this.showCommandHub = true,
+    this.snapshotOverride,
+  });
 
   final String title;
+  final String initialSection;
+  final bool showCommandHub;
   final AsyncValue<MobileProfileSnapshot>? snapshotOverride;
 
   @override
@@ -70,7 +78,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  _ProfileSection _selectedSection = _ProfileSection.viewProfile;
+  late _ProfileSection _selectedSection;
   bool _passwordSubmitting = false;
   String? _passwordStatus;
   String? _passwordError;
@@ -82,10 +90,35 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   String? _googleError;
 
   @override
+  void initState() {
+    super.initState();
+    _selectedSection = _sectionFromName(widget.initialSection);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSection != widget.initialSection) {
+      _selectedSection = _sectionFromName(widget.initialSection);
+    }
+  }
+
+  @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  _ProfileSection _sectionFromName(String name) {
+    return switch (name) {
+      'editProfile' || 'edit' => _ProfileSection.editProfile,
+      'businessSetup' || 'business' => _ProfileSection.businessSetup,
+      'listings' => _ProfileSection.listings,
+      'trust' => _ProfileSection.trust,
+      'settings' => _ProfileSection.settings,
+      _ => _ProfileSection.viewProfile,
+    };
   }
 
   String? _validatePassword(String? value) {
@@ -236,34 +269,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   _refresh();
                 },
                 loadingBuilder: () => const _ProfileLoadingState(),
-                data: (data) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ProfileHero(snapshot: data),
-                    const SizedBox(height: 16),
-                    _BusinessCockpitCard(
+                data: (data) {
+                  if (widget.showCommandHub) {
+                    return _ProfileCommandHub(
                       snapshot: data,
-                      onSelectSection: (section) {
-                        setState(() {
-                          _selectedSection = section;
-                        });
+                      user: user,
+                      onSignOut: () async {
+                        await auth.signOut();
                       },
-                    ),
-                    const SizedBox(height: 16),
-                    _ProfileSectionBar(
-                      selectedSection: _selectedSection,
-                      onSelected: (section) {
-                        setState(() {
-                          _selectedSection = section;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: _buildSection(
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProfileHero(snapshot: data),
+                      const SizedBox(height: 16),
+                      _buildSection(
                         context,
                         snapshot: data,
                         user: user,
@@ -271,9 +293,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           await auth.signOut();
                         },
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -336,44 +358,418 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-class _ProfileSectionBar extends StatelessWidget {
-  const _ProfileSectionBar({
-    required this.selectedSection,
-    required this.onSelected,
+class _ProfileCommandHub extends StatelessWidget {
+  const _ProfileCommandHub({
+    required this.snapshot,
+    required this.user,
+    required this.onSignOut,
   });
 
-  final _ProfileSection selectedSection;
-  final ValueChanged<_ProfileSection> onSelected;
+  final MobileProfileSnapshot snapshot;
+  final User? user;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final isProvider = snapshot.roleFamily == 'provider';
+    final displayName = snapshot.profile.fullName.isEmpty
+        ? snapshot.displayName
+        : snapshot.profile.fullName;
+    final offerCount = snapshot.serviceCount + snapshot.productCount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ProfileHero(snapshot: snapshot),
+        const SizedBox(height: 16),
+        _ProfileTopActions(snapshot: snapshot),
+        const SizedBox(height: 16),
+        _HubSummaryGrid(snapshot: snapshot),
+        const SizedBox(height: 16),
+        _HubSectionTitle(
+          title: isProvider ? 'Business cockpit' : 'Account cockpit',
+          message: isProvider
+              ? 'Manage setup, listings, leads, trust, orders, and profile quality from tappable pages.'
+              : 'Move from profile basics into local discovery, orders, saved items, and account trust.',
+        ),
+        const SizedBox(height: 12),
+        _HubTileGrid(
+          tiles: [
+            _HubTileData(
+              key: 'profile-tile-business-control',
+              icon: Icons.auto_awesome_rounded,
+              title: 'Business Control',
+              subtitle: isProvider
+                  ? 'Setup, leads, listings, quote readiness'
+                  : 'Start provider setup when you are ready',
+              route: AppRoutes.control,
+              emphasized: isProvider,
+            ),
+            _HubTileData(
+              key: 'profile-tile-public-profile',
+              icon: Icons.visibility_outlined,
+              title: 'Public Profile',
+              subtitle: 'Preview what nearby people trust first',
+              route: AppRoutes.profilePublic,
+            ),
+            _HubTileData(
+              key: 'profile-tile-edit-profile',
+              icon: Icons.edit_outlined,
+              title: 'Edit Profile',
+              subtitle: 'Name, area, bio, contact, availability',
+              route: AppRoutes.profileEdit,
+            ),
+            _HubTileData(
+              key: 'profile-tile-listings',
+              icon: Icons.inventory_2_outlined,
+              title: 'Listings',
+              subtitle: '$offerCount services and products synced',
+              route: AppRoutes.providerListings,
+            ),
+            _HubTileData(
+              key: 'profile-tile-inbox',
+              icon: Icons.chat_bubble_outline_rounded,
+              title: 'Leads and Inbox',
+              subtitle: 'Replies, quote follow-up, active threads',
+              route: AppRoutes.chat,
+            ),
+            _HubTileData(
+              key: 'profile-tile-orders',
+              icon: Icons.receipt_long_outlined,
+              title: 'Payments and Orders',
+              subtitle: 'Checkout history and fulfillment status',
+              route: AppRoutes.orders,
+            ),
+            _HubTileData(
+              key: 'profile-tile-trust',
+              icon: Icons.verified_user_outlined,
+              title: 'Trust and Verification',
+              subtitle:
+                  '${snapshot.trustScore} trust score / ${snapshot.reviewCount} reviews',
+              route: AppRoutes.profileTrust,
+            ),
+            _HubTileData(
+              key: 'profile-tile-saved',
+              icon: Icons.bookmark_border_rounded,
+              title: 'Saved',
+              subtitle: 'Saved providers, listings, and feed cards',
+              route: AppRoutes.saved,
+            ),
+            _HubTileData(
+              key: 'profile-tile-notifications',
+              icon: Icons.notifications_none_rounded,
+              title: 'Notifications',
+              subtitle: 'Messages, tasks, orders, and system alerts',
+              route: AppRoutes.notifications,
+            ),
+            _HubTileData(
+              key: 'profile-tile-settings',
+              icon: Icons.tune_rounded,
+              title: 'Settings',
+              subtitle: 'Sign-in, location, payout, and account',
+              route: AppRoutes.profileSettings,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _LaunchReadinessCard(snapshot: snapshot),
+        const SizedBox(height: 16),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Account', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                displayName.isEmpty
+                    ? 'Your ServiQ account controls profile, work, messages, and checkout history.'
+                    : '$displayName controls profile, work, messages, and checkout history here.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              _InfoRow(label: 'Email', value: user?.email ?? snapshot.email),
+              OutlinedButton.icon(
+                onPressed: onSignOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Sign out'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileTopActions extends StatelessWidget {
+  const _ProfileTopActions({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final isProvider = snapshot.roleFamily == 'provider';
+    final actions = [
+      ('Public Profile', Icons.visibility_outlined, AppRoutes.profilePublic),
+      ('Edit Profile', Icons.edit_outlined, AppRoutes.profileEdit),
+      (
+        isProvider ? 'Control' : 'Business',
+        Icons.auto_awesome_rounded,
+        AppRoutes.control,
+      ),
+      ('Orders', Icons.receipt_long_outlined, AppRoutes.orders),
+    ];
+
+    return Row(
+      children: [
+        for (var index = 0; index < actions.length; index += 1) ...[
+          Expanded(
+            child: _TopActionButton(
+              label: actions[index].$1,
+              icon: actions[index].$2,
+              onTap: () => context.push(actions[index].$3),
+            ),
+          ),
+          if (index != actions.length - 1) const SizedBox(width: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _TopActionButton extends StatelessWidget {
+  const _TopActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppColors.primary, size: 20),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HubSummaryGrid extends StatelessWidget {
+  const _HubSummaryGrid({required this.snapshot});
+
+  final MobileProfileSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final offerCount = snapshot.serviceCount + snapshot.productCount;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final tileWidth = constraints.maxWidth < 360
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap) / 2;
+        final tiles = [
+          (
+            'Profile',
+            '${snapshot.completionPercent}%',
+            'Completion',
+            Icons.person_outline_rounded,
+          ),
+          (
+            'Live offers',
+            offerCount.toString(),
+            'Services and products',
+            Icons.storefront_outlined,
+          ),
+          (
+            'Trust',
+            snapshot.trustScore.toString(),
+            '${snapshot.reviewCount} reviews',
+            Icons.verified_outlined,
+          ),
+          (
+            'Availability',
+            _humanize(snapshot.profile.availability),
+            'Current mode',
+            Icons.event_available_outlined,
+          ),
+        ];
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final tile in tiles)
+              SizedBox(
+                width: tileWidth,
+                child: MetricTile(
+                  label: tile.$1,
+                  value: tile.$2,
+                  caption: tile.$3,
+                  icon: tile.$4,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HubSectionTitle extends StatelessWidget {
+  const _HubSectionTitle({required this.title, required this.message});
+
+  final String title;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Profile sections',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(message, style: Theme.of(context).textTheme.bodyMedium),
+      ],
+    );
+  }
+}
+
+class _HubTileGrid extends StatelessWidget {
+  const _HubTileGrid({required this.tiles});
+
+  final List<_HubTileData> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final tile in tiles)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _HubTile(data: tile),
+          ),
+      ],
+    );
+  }
+}
+
+class _HubTileData {
+  const _HubTileData({
+    required this.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+    this.emphasized = false,
+  });
+
+  final String key;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
+  final bool emphasized;
+}
+
+class _HubTile extends StatelessWidget {
+  const _HubTile({required this.data});
+
+  final _HubTileData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = data.emphasized
+        ? AppColors.primarySoft
+        : AppColors.surface;
+    final iconColor = data.emphasized ? AppColors.primary : AppColors.inkSubtle;
+
+    return Material(
+      key: ValueKey(data.key),
+      color: background,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () => context.push(data.route),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 82),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: data.emphasized ? AppColors.primary : AppColors.border,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
           child: Row(
             children: [
-              for (final section in _ProfileSection.values) ...[
-                ChoiceChip(
-                  key: ValueKey('profile-section-${section.name}'),
-                  avatar: Icon(section.icon, size: 16),
-                  label: Text(section.label),
-                  selected: section == selectedSection,
-                  onSelected: (_) => onSelected(section),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
-                if (section != _ProfileSection.values.last)
-                  const SizedBox(width: 8),
-              ],
+                child: Icon(data.icon, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkMuted,
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1466,157 +1862,6 @@ class _ProfileHero extends StatelessWidget {
                     : profile.location,
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BusinessCockpitCard extends StatelessWidget {
-  const _BusinessCockpitCard({
-    required this.snapshot,
-    required this.onSelectSection,
-  });
-
-  final MobileProfileSnapshot snapshot;
-  final ValueChanged<_ProfileSection> onSelectSection;
-
-  @override
-  Widget build(BuildContext context) {
-    final offerCount = snapshot.serviceCount + snapshot.productCount;
-
-    return SectionCard(
-      variant: ServiqSurfaceVariant.highlight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Next actions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              IconButton.filledTonal(
-                tooltip: 'Open Inbox',
-                onPressed: () => context.push(AppRoutes.chat),
-                icon: const Icon(Icons.chat_bubble_outline_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Business AI setup, profile edits, and inbox follow-up are always one tap away.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const gap = 10.0;
-              final width = (constraints.maxWidth - gap) / 2;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  SizedBox(
-                    width: width,
-                    child: _CockpitMetric(
-                      label: 'Profile',
-                      value: '${snapshot.completionPercent}%',
-                      caption: 'Completion',
-                      icon: Icons.person_outline_rounded,
-                    ),
-                  ),
-                  SizedBox(
-                    width: width,
-                    child: _CockpitMetric(
-                      label: 'Live offers',
-                      value: offerCount.toString(),
-                      caption: 'Services and products',
-                      icon: Icons.storefront_outlined,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          _ActionRow(
-            icon: Icons.auto_awesome_rounded,
-            label: 'Business AI setup',
-            onTap: () => context.push(AppRoutes.providerLaunchpad),
-          ),
-          _ActionRow(
-            icon: Icons.edit_outlined,
-            label: 'Edit public profile',
-            onTap: () => onSelectSection(_ProfileSection.editProfile),
-          ),
-          _ActionRow(
-            icon: Icons.chat_bubble_outline_rounded,
-            label: 'Open Inbox',
-            onTap: () => context.push(AppRoutes.chat),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CockpitMetric extends StatelessWidget {
-  const _CockpitMetric({
-    required this.label,
-    required this.value,
-    required this.caption,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final String caption;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 118),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Icon(icon, size: 16, color: AppColors.primary),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),

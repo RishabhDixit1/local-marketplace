@@ -240,6 +240,75 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     });
   }
 
+  void _showFiltersSheet(MobileTaskSnapshot snapshot) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) {
+                void updateLane(_TaskBoardLane lane) {
+                  setState(() => _selectedLane = lane);
+                  setSheetState(() {});
+                }
+
+                void updateRole(_TaskRoleFilter role) {
+                  setState(() => _selectedRole = role);
+                  setSheetState(() {});
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Filter Work',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Choose the role and lane you want to inspect. The main Work tab stays focused on the selected next-action list.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      _TasksFilters(
+                        snapshot: snapshot,
+                        selectedLane: _selectedLane,
+                        selectedRole: _selectedRole,
+                        onLaneSelected: updateLane,
+                        onRoleSelected: updateRole,
+                        countFor: (lane) => _countFor(snapshot, lane),
+                        roleCountFor: (role) => _roleCount(snapshot, role),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('Show work'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
@@ -274,22 +343,13 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               ],
               const SizedBox(height: 16),
               if (data != null) ...[
-                _TasksFilters(
+                _WorkBoardSummary(
                   snapshot: data,
                   selectedLane: _selectedLane,
                   selectedRole: _selectedRole,
-                  onLaneSelected: (lane) {
-                    setState(() {
-                      _selectedLane = lane;
-                    });
-                  },
-                  onRoleSelected: (role) {
-                    setState(() {
-                      _selectedRole = role;
-                    });
-                  },
                   countFor: (lane) => _countFor(data, lane),
                   roleCountFor: (role) => _roleCount(data, role),
+                  onOpenFilters: () => _showFiltersSheet(data),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -696,6 +756,178 @@ class _FocusedTaskBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WorkBoardSummary extends StatelessWidget {
+  const _WorkBoardSummary({
+    required this.snapshot,
+    required this.selectedLane,
+    required this.selectedRole,
+    required this.countFor,
+    required this.roleCountFor,
+    required this.onOpenFilters,
+  });
+
+  final MobileTaskSnapshot snapshot;
+  final _TaskBoardLane selectedLane;
+  final _TaskRoleFilter selectedRole;
+  final int Function(_TaskBoardLane lane) countFor;
+  final int Function(_TaskRoleFilter role) roleCountFor;
+  final VoidCallback onOpenFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    final needsAction = countFor(_TaskBoardLane.needsAction);
+    final active = countFor(_TaskBoardLane.active);
+    final waiting = countFor(_TaskBoardLane.inProgress);
+    final done = countFor(_TaskBoardLane.done);
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'What needs attention now',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '${countFor(selectedLane)} ${selectedLane.label.toLowerCase()} in ${selectedRole.label.toLowerCase()} view',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onOpenFilters,
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('Filters'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 8.0;
+              final tileWidth = (constraints.maxWidth - gap) / 2;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  _WorkStatTile(
+                    width: tileWidth,
+                    label: 'Needs action',
+                    value: needsAction,
+                    selected: selectedLane == _TaskBoardLane.needsAction,
+                  ),
+                  _WorkStatTile(
+                    width: tileWidth,
+                    label: 'Active',
+                    value: active,
+                    selected: selectedLane == _TaskBoardLane.active,
+                  ),
+                  _WorkStatTile(
+                    width: tileWidth,
+                    label: 'Waiting',
+                    value: waiting,
+                    selected: selectedLane == _TaskBoardLane.inProgress,
+                  ),
+                  _WorkStatTile(
+                    width: tileWidth,
+                    label: 'Done',
+                    value: done,
+                    selected: selectedLane == _TaskBoardLane.done,
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TrustBadge(
+                label: '${snapshot.items.length} total',
+                icon: Icons.dashboard_outlined,
+                backgroundColor: AppColors.surfaceMuted,
+                foregroundColor: AppColors.ink,
+              ),
+              TrustBadge(
+                label: '${roleCountFor(_TaskRoleFilter.requester)} requested',
+                icon: Icons.person_outline_rounded,
+                backgroundColor: AppColors.primarySoft,
+                foregroundColor: AppColors.primary,
+              ),
+              TrustBadge(
+                label: '${roleCountFor(_TaskRoleFilter.provider)} helping',
+                icon: Icons.handshake_outlined,
+                backgroundColor: AppColors.accentSoft,
+                foregroundColor: AppColors.accent,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkStatTile extends StatelessWidget {
+  const _WorkStatTile({
+    required this.width,
+    required this.label,
+    required this.value,
+    required this.selected,
+  });
+
+  final double width;
+  final String label;
+  final int value;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySoft : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value > 99 ? '99+' : value.toString(),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: selected ? AppColors.primaryDeep : AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? AppColors.primaryDeep : AppColors.inkSubtle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

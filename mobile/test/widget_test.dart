@@ -10,6 +10,7 @@ import 'package:serviq_mobile/features/auth/presentation/sign_in_page.dart';
 import 'package:serviq_mobile/features/chat/data/chat_repository.dart';
 import 'package:serviq_mobile/features/chat/domain/chat_models.dart';
 import 'package:serviq_mobile/features/chat/presentation/chat_page.dart';
+import 'package:serviq_mobile/features/control/presentation/control_page.dart';
 import 'package:serviq_mobile/features/feed/data/feed_repository.dart';
 import 'package:serviq_mobile/features/feed/domain/feed_snapshot.dart';
 import 'package:serviq_mobile/features/feed/presentation/feed_page.dart';
@@ -18,6 +19,7 @@ import 'package:serviq_mobile/features/people/domain/people_snapshot.dart';
 import 'package:serviq_mobile/features/people/presentation/people_page.dart';
 import 'package:serviq_mobile/features/post_create/presentation/create_need_page.dart';
 import 'package:serviq_mobile/features/provider/presentation/provider_profile_page.dart';
+import 'package:serviq_mobile/features/profile/data/profile_repository.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
@@ -213,25 +215,44 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Public profile preview'), findsOneWidget);
-    expect(find.text('View Profile'), findsOneWidget);
-    expect(find.text('Business Setup'), findsOneWidget);
+    expect(find.text('Profile Hub'), findsOneWidget);
+    expect(find.text('Business Control'), findsOneWidget);
+    expect(find.text('Public Profile'), findsAtLeastNWidgets(1));
+    expect(find.text('Edit Profile'), findsAtLeastNWidgets(1));
     expect(find.text('Listings'), findsOneWidget);
 
-    final listingsTab = find.byKey(const ValueKey('profile-section-listings'));
-    await tester.ensureVisible(listingsTab);
-    await tester.pumpAndSettle();
-    await tester.tap(listingsTab);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ProfilePage(
+            snapshotOverride: AsyncData(_sampleProfile),
+            initialSection: 'listings',
+            showCommandHub: false,
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Services'), findsAtLeastNWidgets(1));
     expect(find.text('Products'), findsAtLeastNWidgets(1));
     expect(find.text('Emergency electrical repair'), findsOneWidget);
 
-    final trustTab = find.byKey(const ValueKey('profile-section-trust'));
-    await tester.ensureVisible(trustTab);
-    await tester.pumpAndSettle();
-    await tester.tap(trustTab);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ProfilePage(
+            snapshotOverride: AsyncData(_sampleProfile),
+            initialSection: 'trust',
+            showCommandHub: false,
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Link Google to this account'), findsOneWidget);
@@ -652,6 +673,48 @@ void main() {
 
     expect(find.text('Conversation'), findsOneWidget);
     expect(find.text('I can reach within 20 minutes.'), findsOneWidget);
+  });
+
+  testWidgets('inbox empty state stays visible and actionable', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          chatConversationsProvider.overrideWith((ref) async => const []),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const ChatPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Inbox'), findsWidgets);
+    expect(find.text('Inbox is ready'), findsOneWidget);
+    expect(find.text('Post a Need'), findsAtLeastNWidgets(1));
+    expect(find.text('Browse People'), findsOneWidget);
+    expect(find.text('Refresh Inbox'), findsOneWidget);
+  });
+
+  testWidgets('business control surfaces provider next actions', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          profileSnapshotProvider.overrideWith((ref) async => _sampleProfile),
+          chatConversationsProvider.overrideWith((ref) async => const []),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const ControlPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Business Control'), findsAtLeastNWidgets(1));
+    expect(find.text('Setup progress'), findsOneWidget);
+    expect(find.text('Lead control'), findsOneWidget);
+    expect(find.text('Trust and revenue'), findsOneWidget);
   });
 }
 

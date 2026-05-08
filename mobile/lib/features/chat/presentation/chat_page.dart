@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_surface.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/supabase/app_bootstrap.dart';
@@ -369,18 +370,23 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             child: RefreshIndicator(
               onRefresh: _refreshConversations,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 92),
                 children: [
-                  _InboxDealRoomHeader(
+                  _InboxDashboardHeader(
                     conversations: conversationsAsync.asData?.value,
                     onPostNeed: () => context.push(AppRoutes.createNeed),
+                    onFindPeople: () => context.push(AppRoutes.people),
+                    onRefresh: _refreshConversations,
                   ),
-                  const SizedBox(height: 14),
-                  AppSearchField(
-                    controller: _searchController,
-                    hintText: 'Search people or messages',
-                    onChanged: (_) => setState(() {}),
-                  ),
+                  if ((conversationsAsync.asData?.value ?? const [])
+                      .isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    AppSearchField(
+                      controller: _searchController,
+                      hintText: 'Search people or messages',
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   if (_openingConversation)
                     const SectionCard(
@@ -399,8 +405,22 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     errorMessageFor: (error, _) =>
                         AppErrorMapper.toMessage(error),
                     onRetry: _refreshConversations,
+                    errorBuilder: (error, _) => _InboxErrorRecovery(
+                      message: AppErrorMapper.toMessage(error),
+                      onRetry: _refreshConversations,
+                      onPostNeed: () => context.push(AppRoutes.createNeed),
+                      onFindPeople: () => context.push(AppRoutes.people),
+                    ),
                     loadingBuilder: () => const _ConversationListLoading(),
                     data: (conversations) {
+                      if (conversations.isEmpty) {
+                        return _InboxEmptyCommandCenter(
+                          onPostNeed: () => context.push(AppRoutes.createNeed),
+                          onFindPeople: () => context.push(AppRoutes.people),
+                          onRefresh: _refreshConversations,
+                        );
+                      }
+
                       final filtered = conversations.where((conversation) {
                         if (query.isEmpty) {
                           return true;
@@ -414,16 +434,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       if (filtered.isEmpty) {
                         return SectionCard(
                           child: EmptyStateView(
-                            title: query.isEmpty
-                                ? 'No conversations yet'
-                                : 'No conversations match',
-                            message: query.isEmpty
-                                ? 'Post a need or message a provider. Replies, quotes, and timing follow-up will collect here.'
-                                : 'Try a broader search term or clear the field to see recent local follow-up.',
-                            actionLabel: query.isEmpty ? 'Post a Need' : null,
-                            onAction: query.isEmpty
-                                ? () => context.push(AppRoutes.createNeed)
-                                : null,
+                            icon: Icons.search_off_rounded,
+                            title: 'No conversations match',
+                            message:
+                                'Try a broader search term or clear the field to see recent local follow-up.',
                           ),
                         );
                       }
@@ -500,6 +514,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           );
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(selectedConversationId == null ? 'Inbox' : 'Conversation'),
         leading: selectedConversationId == null
@@ -531,14 +546,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 }
 
-class _InboxDealRoomHeader extends StatelessWidget {
-  const _InboxDealRoomHeader({
+class _InboxDashboardHeader extends StatelessWidget {
+  const _InboxDashboardHeader({
     required this.conversations,
     required this.onPostNeed,
+    required this.onFindPeople,
+    required this.onRefresh,
   });
 
   final List<ChatConversation>? conversations;
   final VoidCallback onPostNeed;
+  final VoidCallback onFindPeople;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -551,6 +570,7 @@ class _InboxDealRoomHeader extends StatelessWidget {
     final taskCount = items.where(_conversationLooksLikeTask).length;
 
     return SectionCard(
+      variant: ServiqSurfaceVariant.highlight,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -562,10 +582,10 @@ class _InboxDealRoomHeader extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              FilledButton.icon(
-                onPressed: onPostNeed,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Need'),
+              IconButton.filledTonal(
+                tooltip: 'Refresh Inbox',
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded),
               ),
             ],
           ),
@@ -599,7 +619,183 @@ class _InboxDealRoomHeader extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onPostNeed,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Post Need'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onFindPeople,
+                  icon: const Icon(Icons.person_search_outlined),
+                  label: const Text('Find People'),
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _InboxEmptyCommandCenter extends StatelessWidget {
+  const _InboxEmptyCommandCenter({
+    required this.onPostNeed,
+    required this.onFindPeople,
+    required this.onRefresh,
+  });
+
+  final VoidCallback onPostNeed;
+  final VoidCallback onFindPeople;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          EmptyStateView(
+            icon: Icons.forum_outlined,
+            title: 'Inbox is ready',
+            message:
+                'Your provider replies, customer leads, quote follow-ups, task timing, and order handoffs will appear here as soon as a conversation starts.',
+          ),
+          const SizedBox(height: 16),
+          _InboxStartAction(
+            icon: Icons.add_circle_outline_rounded,
+            title: 'Post a Need',
+            subtitle: 'Create demand so providers can reply here.',
+            onTap: onPostNeed,
+          ),
+          _InboxStartAction(
+            icon: Icons.person_search_outlined,
+            title: 'Browse People',
+            subtitle: 'Open a provider profile and start a direct thread.',
+            onTap: onFindPeople,
+          ),
+          _InboxStartAction(
+            icon: Icons.refresh_rounded,
+            title: 'Refresh Inbox',
+            subtitle: 'Check for new conversations from this account.',
+            onTap: onRefresh,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxErrorRecovery extends StatelessWidget {
+  const _InboxErrorRecovery({
+    required this.message,
+    required this.onRetry,
+    required this.onPostNeed,
+    required this.onFindPeople,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onPostNeed;
+  final VoidCallback onFindPeople;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          EmptyStateView(
+            icon: Icons.wifi_off_rounded,
+            title: 'Inbox needs a refresh',
+            message:
+                '$message\n\nCheck the connection and try again. You can still move into the main marketplace actions below.',
+          ),
+          const SizedBox(height: 16),
+          _InboxStartAction(
+            icon: Icons.refresh_rounded,
+            title: 'Try again',
+            subtitle: 'Reload conversations and unread state.',
+            onTap: onRetry,
+          ),
+          _InboxStartAction(
+            icon: Icons.add_circle_outline_rounded,
+            title: 'Post a Need',
+            subtitle: 'Create a new request while Inbox recovers.',
+            onTap: onPostNeed,
+          ),
+          _InboxStartAction(
+            icon: Icons.person_search_outlined,
+            title: 'Find People',
+            subtitle: 'Browse nearby providers and open a profile.',
+            onTap: onFindPeople,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxStartAction extends StatelessWidget {
+  const _InboxStartAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.inkMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

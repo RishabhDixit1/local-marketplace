@@ -13,6 +13,11 @@ void main() {
   test('marketplace engine routes carry native workflow context', () {
     expect(AppRoutes.providerLaunchpad, '/app/provider-launchpad');
     expect(AppRoutes.providerListings, '/app/provider-listings');
+    expect(AppRoutes.control, '/app/control');
+    expect(AppRoutes.profilePublic, '/app/profile/public');
+    expect(AppRoutes.profileEdit, '/app/profile/edit');
+    expect(AppRoutes.profileTrust, '/app/profile/trust');
+    expect(AppRoutes.profileSettings, '/app/profile/settings');
     expect(AppRoutes.orders, '/app/orders');
     expect(AppRoutes.orderDetail('order-1'), '/app/orders/order-1');
     expect(
