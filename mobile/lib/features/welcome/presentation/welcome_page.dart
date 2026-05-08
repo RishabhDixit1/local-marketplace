@@ -718,18 +718,8 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                       activeTaskCount: activeTaskCount,
                       unreadChatCount: unreadChatCount,
                       nearbyProviderCount: people?.people.length ?? 0,
-                      onSearchTap: () {
-                        _trackFirstEngagement('search');
-                        ref
-                            .read(analyticsServiceProvider)
-                            .trackEvent(
-                              'home_search_tapped',
-                              extras: {
-                                'surface': _resolvedSurface.analyticsValue,
-                              },
-                            );
-                        context.push(AppRoutes.search);
-                      },
+                      onInboxTap: () => context.push(AppRoutes.chat),
+                      onTasksTap: () => context.go(AppRoutes.tasks),
                       onPrimaryTap: () {
                         _trackFirstEngagement('post_need');
                         ref
@@ -742,34 +732,28 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             );
                         context.push(AppRoutes.createRequest);
                       },
-                      onEarnTap: () {
-                        _trackFirstEngagement('earn_nearby');
-                        ref
-                            .read(analyticsServiceProvider)
-                            .trackEvent(
-                              'home_earn_nearby_tapped',
-                              extras: {
-                                'surface': _resolvedSurface.analyticsValue,
-                              },
-                            );
-                        context.push(AppRoutes.providerOnboarding);
-                      },
-                      onPeopleTap: () {
-                        _trackFirstEngagement('people');
-                        ref
-                            .read(analyticsServiceProvider)
-                            .trackEvent(
-                              'home_people_tapped',
-                              extras: {
-                                'surface': _resolvedSurface.analyticsValue,
-                              },
-                            );
-                        context.go(AppRoutes.people);
-                      },
                       heroSignals: model.heroSignals,
                     ),
+                    const SizedBox(height: 14),
+                    _NeedsActionPanel(
+                      activeTaskCount: activeTaskCount,
+                      unreadChatCount: unreadChatCount,
+                      urgentDemandCount: allFeed?.stats.urgent ?? 0,
+                      profileCompletion:
+                          profileAsync?.asData?.value.completionPercent,
+                      roleFamily:
+                          profileAsync?.asData?.value.roleFamily ??
+                          allFeed?.viewerRoleFamily ??
+                          people?.viewerRoleFamily ??
+                          'seeker',
+                      onReplyInbox: () => context.push(AppRoutes.chat),
+                      onOpenTasks: () => context.go(AppRoutes.tasks),
+                      onPostNeed: () => context.push(AppRoutes.createRequest),
+                      onCompleteProfile: () => context.push(AppRoutes.profile),
+                      onFindPeople: () => context.go(AppRoutes.people),
+                    ),
                     if (warnings.isNotEmpty) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _InlineWarningCard(
                         message: warnings.join(' '),
                         onRetry: _refresh,
@@ -784,7 +768,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                               return <Widget>[];
                             }
                             return [
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
                               _ReadinessPromptCard(prompt: prompt),
                             ];
                           },
@@ -792,7 +776,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         ) ??
                         <Widget>[]),
                     if (model.isFirstRun) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       _FirstRunGuidanceCard(
                         onPostNeedTap: () {
                           _trackFirstEngagement('first_run_post_need');
@@ -804,15 +788,14 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         },
                       ),
                     ],
-                    const SizedBox(height: 18),
-                    _TrustSummarySection(metrics: model.metrics),
                     if (model.quickCategories.isNotEmpty) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       SectionHeader(
-                        title: 'Popular nearby',
-                        subtitle: 'Quick ways to start.',
+                        title: 'Nearby',
+                        actionLabel: 'Search',
+                        onAction: () => context.push(AppRoutes.search),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _QuickCategoryRow(
                         categories: model.quickCategories,
                         onPressed: (category) {
@@ -828,16 +811,15 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         },
                       ),
                     ],
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     SectionHeader(
-                      title: 'Trusted activity',
-                      subtitle: model.trustedRailSubtitle,
+                      title: 'Recommended',
                       actionLabel: model.hasTrustedNetwork
                           ? 'People'
                           : 'Grow network',
                       onAction: () => context.go(AppRoutes.people),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     model.hasTrustedNetwork
                         ? _TrustedRail(
                             items: model.trustedRailItems,
@@ -867,14 +849,9 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             onPeopleTap: () => context.go(AppRoutes.people),
                             onExploreTap: () => context.go(AppRoutes.explore),
                           ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
                     SectionHeader(
-                      title: 'Live for today',
-                      subtitle:
-                          _resolvedSurface == model.defaultSurface &&
-                              model.defaultSurfaceReason.isNotEmpty
-                          ? model.defaultSurfaceReason
-                          : _resolvedSurface.subtitle,
+                      title: 'Recent',
                       actionLabel: _resolvedSurface == _WelcomeSurface.nearby
                           ? 'Explore all'
                           : 'Switch view',
@@ -886,15 +863,15 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         _setSurface(_WelcomeSurface.nearby);
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     _SurfaceTabsRow(
                       value: _resolvedSurface,
                       onChanged: _setSurface,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     ...activeEntries.map((entry) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 10),
                         child: _buildEntryCard(entry, model),
                       );
                     }),
@@ -926,7 +903,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           item: entry.item!,
           reason: entry.reason,
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
-          fromTrustedNetwork: entry.fromTrustedNetwork,
           primaryLabel: entry.primaryLabel,
           secondaryLabel: entry.secondaryLabel,
           onPrimaryTap: () => _openFeedItem(entry.item!),
@@ -941,11 +917,8 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
           item: entry.item!,
           reason: entry.reason,
           isSaved: _isSavedCard(entry.storageKey, model.savedCardIds),
-          fromTrustedNetwork: entry.fromTrustedNetwork,
           primaryLabel: entry.primaryLabel,
           secondaryLabel: entry.secondaryLabel,
-          accentColor: AppColors.warning,
-          accentBackground: WelcomeThemeTokens.light.earnTint,
           onPrimaryTap: () => _messageFeedItem(entry.item!),
           onSecondaryTap: () =>
               _toggleSave(entry, backendSavedIds: model.savedCardIds),
@@ -1081,39 +1054,14 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
 }
 
 enum _WelcomeSurface {
-  forYou(
-    title: 'For you',
-    subtitle:
-        'The best mix of trusted, urgent, and locally relevant posts right now.',
-    analyticsValue: 'for_you',
-  ),
-  trusted(
-    title: 'Trusted',
-    subtitle:
-        'Accepted connections first, with clearer social proof and safer follow-through.',
-    analyticsValue: 'trusted',
-  ),
-  nearby(
-    title: 'Nearby',
-    subtitle:
-        'Public demand and local supply ranked by urgency, speed, and distance.',
-    analyticsValue: 'nearby',
-  ),
-  earn(
-    title: 'Earn',
-    subtitle:
-        'High-intent requests and provider opportunities you can act on quickly.',
-    analyticsValue: 'earn',
-  );
+  forYou(title: 'For you', analyticsValue: 'for_you'),
+  trusted(title: 'Trusted', analyticsValue: 'trusted'),
+  nearby(title: 'Nearby', analyticsValue: 'nearby'),
+  earn(title: 'Earn', analyticsValue: 'earn');
 
-  const _WelcomeSurface({
-    required this.title,
-    required this.subtitle,
-    required this.analyticsValue,
-  });
+  const _WelcomeSurface({required this.title, required this.analyticsValue});
 
   final String title;
-  final String subtitle;
   final String analyticsValue;
 }
 
@@ -1257,30 +1205,12 @@ class _WelcomeFeedEntry {
   }
 }
 
-class _WelcomeMetric {
-  const _WelcomeMetric({
-    required this.label,
-    required this.value,
-    required this.caption,
-    required this.icon,
-    required this.tint,
-  });
-
-  final String label;
-  final String value;
-  final String caption;
-  final IconData icon;
-  final Color tint;
-}
-
 class _WelcomeViewModel {
   const _WelcomeViewModel({
-    required this.metrics,
     required this.heroSignals,
     required this.quickCategories,
     required this.hotCategoryKeys,
     required this.trustedRailItems,
-    required this.trustedRailSubtitle,
     required this.forYouEntries,
     required this.trustedEntries,
     required this.nearbyEntries,
@@ -1291,7 +1221,6 @@ class _WelcomeViewModel {
     required this.isFirstRun,
     required this.savedCardIds,
     required this.defaultSurface,
-    required this.defaultSurfaceReason,
   });
 
   factory _WelcomeViewModel.build({
@@ -1365,52 +1294,12 @@ class _WelcomeViewModel {
       _fastestResponseLabel(allItems),
     ];
 
-    final tokens = WelcomeThemeTokens.light;
-    final metrics = <_WelcomeMetric>[
-      _WelcomeMetric(
-        label: 'Trusted live',
-        value: _formatCompactCount(rankedTrusted.length),
-        caption: rankedTrusted.isEmpty
-            ? 'Grow accepted connections'
-            : 'Posts from accepted people',
-        icon: Icons.people_alt_rounded,
-        tint: tokens.trustedTint,
-      ),
-      _WelcomeMetric(
-        label: 'Urgent nearby',
-        value: _formatCompactCount(allFeed.stats.urgent),
-        caption: 'Requests people want solved today',
-        icon: Icons.flash_on_rounded,
-        tint: tokens.warningTint,
-      ),
-      _WelcomeMetric(
-        label: 'Providers ready',
-        value: _formatCompactCount(people.onlineCount),
-        caption: '${people.verifiedCount} profiles with strong trust',
-        icon: Icons.verified_user_rounded,
-        tint: tokens.nearbyTint,
-      ),
-      _WelcomeMetric(
-        label: 'Fastest response',
-        value: _fastestResponseShort(allItems),
-        caption: 'Best live reply signal in your area',
-        icon: Icons.schedule_rounded,
-        tint: tokens.earnTint,
-      ),
-    ];
-
     final trustedRailItems = rankedTrusted.take(3).toList();
-    final trustedRailSubtitle = rankedTrusted.isEmpty
-        ? 'Accepted connections make the feed safer and more actionable.'
-        : 'A compact view of what accepted people and their circles are posting now.';
-
     return _WelcomeViewModel(
-      metrics: metrics,
       heroSignals: signals,
       quickCategories: quickCategories,
       hotCategoryKeys: hotCategoryKeys.toSet(),
       trustedRailItems: trustedRailItems,
-      trustedRailSubtitle: trustedRailSubtitle,
       forYouEntries: _buildForYouEntries(
         trusted: rankedTrusted,
         nearby: rankedNearby,
@@ -1447,18 +1336,13 @@ class _WelcomeViewModel {
             ? allFeed.defaultHomeSurface
             : trustedFeed.defaultHomeSurface,
       ),
-      defaultSurfaceReason: allFeed.defaultHomeReason.isNotEmpty
-          ? allFeed.defaultHomeReason
-          : trustedFeed.defaultHomeReason,
     );
   }
 
-  final List<_WelcomeMetric> metrics;
   final List<String> heroSignals;
   final List<String> quickCategories;
   final Set<String> hotCategoryKeys;
   final List<MobileFeedItem> trustedRailItems;
-  final String trustedRailSubtitle;
   final List<_WelcomeFeedEntry> forYouEntries;
   final List<_WelcomeFeedEntry> trustedEntries;
   final List<_WelcomeFeedEntry> nearbyEntries;
@@ -1469,7 +1353,6 @@ class _WelcomeViewModel {
   final bool isFirstRun;
   final Set<String> savedCardIds;
   final _WelcomeSurface defaultSurface;
-  final String defaultSurfaceReason;
 
   List<_WelcomeFeedEntry> entriesFor(_WelcomeSurface surface) {
     switch (surface) {
@@ -2042,18 +1925,6 @@ int _extractRelativeMinutes(String value) {
   return 180;
 }
 
-String _fastestResponseShort(List<MobileFeedItem> items) {
-  final valid = items.where((item) => item.responseMinutes > 0).toList();
-  if (valid.isEmpty) {
-    return 'Live';
-  }
-
-  final minResponse = valid
-      .map((item) => item.responseMinutes)
-      .reduce(math.min);
-  return '$minResponse min';
-}
-
 String _fastestResponseLabel(List<MobileFeedItem> items) {
   final valid = items.where((item) => item.responseMinutes > 0).toList();
   if (valid.isEmpty) {
@@ -2124,6 +1995,215 @@ class _AppBarAction extends StatelessWidget {
   }
 }
 
+class _NeedsActionPanel extends StatelessWidget {
+  const _NeedsActionPanel({
+    required this.activeTaskCount,
+    required this.unreadChatCount,
+    required this.urgentDemandCount,
+    required this.roleFamily,
+    required this.onReplyInbox,
+    required this.onOpenTasks,
+    required this.onPostNeed,
+    required this.onCompleteProfile,
+    required this.onFindPeople,
+    this.profileCompletion,
+  });
+
+  final int activeTaskCount;
+  final int unreadChatCount;
+  final int urgentDemandCount;
+  final int? profileCompletion;
+  final String roleFamily;
+  final VoidCallback onReplyInbox;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onPostNeed;
+  final VoidCallback onCompleteProfile;
+  final VoidCallback onFindPeople;
+
+  @override
+  Widget build(BuildContext context) {
+    final completion = profileCompletion ?? 0;
+    final isProvider = roleFamily == 'provider';
+    final actions = <Widget>[
+      if (unreadChatCount > 0)
+        _NeedsActionMetric(
+          icon: Icons.mark_chat_unread_outlined,
+          value: unreadChatCount.toString(),
+          label: 'Inbox',
+          onTap: onReplyInbox,
+        ),
+      if (activeTaskCount > 0)
+        _NeedsActionMetric(
+          icon: Icons.assignment_turned_in_outlined,
+          value: activeTaskCount.toString(),
+          label: 'Work',
+          onTap: onOpenTasks,
+        ),
+      if (completion > 0 && completion < 70)
+        _NeedsActionMetric(
+          icon: Icons.verified_user_outlined,
+          value: '$completion%',
+          label: 'Profile',
+          onTap: onCompleteProfile,
+        ),
+      if (urgentDemandCount > 0)
+        _NeedsActionMetric(
+          icon: Icons.bolt_rounded,
+          value: urgentDemandCount.toString(),
+          label: isProvider ? 'Nearby' : 'Need',
+          onTap: isProvider ? onFindPeople : onPostNeed,
+        ),
+    ];
+
+    return SectionCard(
+      variant: ServiqSurfaceVariant.raised,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Needs attention',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              _ModePill(label: isProvider ? 'Provider' : 'Buyer'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (actions.isEmpty)
+            _QuietAttentionState(
+              isProvider: isProvider,
+              onPostNeed: onPostNeed,
+              onFindPeople: onFindPeople,
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: actions
+                    .map(
+                      (action) => Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: SizedBox(width: 142, child: action),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuietAttentionState extends StatelessWidget {
+  const _QuietAttentionState({
+    required this.isProvider,
+    required this.onPostNeed,
+    required this.onFindPeople,
+  });
+
+  final bool isProvider;
+  final VoidCallback onPostNeed;
+  final VoidCallback onFindPeople;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'All clear',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        TextButton(
+          onPressed: isProvider ? onFindPeople : onPostNeed,
+          child: Text(isProvider ? 'Nearby' : 'Post'),
+        ),
+      ],
+    );
+  }
+}
+
+class _NeedsActionMetric extends StatelessWidget {
+  const _NeedsActionMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceMuted,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: Container(
+          height: 68,
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 1),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModePill extends StatelessWidget {
+  const _ModePill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: AppColors.accentDeep,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 class _HeroSection extends StatelessWidget {
   const _HeroSection({
     required this.greeting,
@@ -2132,10 +2212,9 @@ class _HeroSection extends StatelessWidget {
     required this.activeTaskCount,
     required this.unreadChatCount,
     required this.nearbyProviderCount,
-    required this.onSearchTap,
+    required this.onInboxTap,
+    required this.onTasksTap,
     required this.onPrimaryTap,
-    required this.onEarnTap,
-    required this.onPeopleTap,
     required this.heroSignals,
   });
 
@@ -2145,339 +2224,144 @@ class _HeroSection extends StatelessWidget {
   final int activeTaskCount;
   final int unreadChatCount;
   final int nearbyProviderCount;
-  final VoidCallback onSearchTap;
+  final VoidCallback onInboxTap;
+  final VoidCallback onTasksTap;
   final VoidCallback onPrimaryTap;
-  final VoidCallback onEarnTap;
-  final VoidCallback onPeopleTap;
   final List<String> heroSignals;
 
   @override
   Widget build(BuildContext context) {
-    final signals = <String>[
-      trustedCountLabel,
-      liveStatusLabel,
-      ...heroSignals,
-    ];
-    final dedupedSignals = <String>[];
-    for (final signal in signals) {
-      final normalized = signal.trim();
-      if (normalized.isEmpty || dedupedSignals.contains(normalized)) {
-        continue;
-      }
-      dedupedSignals.add(normalized);
-    }
+    final nextAction = unreadChatCount > 0
+        ? (
+            label: 'Open Inbox',
+            icon: Icons.chat_bubble_outline_rounded,
+            tap: onInboxTap,
+          )
+        : activeTaskCount > 0
+        ? (
+            label: 'Open Work',
+            icon: Icons.assignment_turned_in_outlined,
+            tap: onTasksTap,
+          )
+        : (label: 'Post Need', icon: Icons.add_rounded, tap: onPrimaryTap);
+    final chips = _homeStatusChips(
+      activeTaskCount: activeTaskCount,
+      unreadChatCount: unreadChatCount,
+      nearbyProviderCount: nearbyProviderCount,
+      trustedCountLabel: trustedCountLabel,
+      liveStatusLabel: liveStatusLabel,
+      heroSignals: heroSignals,
+    );
 
     return SectionCard(
-      padding: EdgeInsets.zero,
       variant: ServiqSurfaceVariant.raised,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: ServiqThemeTokens.light.heroGradient,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: Text(
-                      'Today',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelMedium?.copyWith(color: Colors.white),
-                    ),
-                  ),
-                  const Spacer(),
-                  _HeroStatusDot(
-                    label: dedupedSignals.isEmpty
-                        ? 'Live'
-                        : dedupedSignals.first,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Text(
-                greeting,
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineMedium?.copyWith(color: Colors.white),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Start with one clear action. Post a need, find trusted people nearby, or switch into earning mode.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.78),
-                ),
-              ),
-              const SizedBox(height: 18),
-              _TodaySearchButton(onTap: onSearchTap),
-              const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final tileWidth = (constraints.maxWidth - 8) / 2;
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      SizedBox(
-                        width: tileWidth,
-                        child: _TodaySignalTile(
-                          icon: Icons.assignment_turned_in_outlined,
-                          value: _formatCompactCount(activeTaskCount),
-                          label: 'Pending tasks',
-                        ),
-                      ),
-                      SizedBox(
-                        width: tileWidth,
-                        child: _TodaySignalTile(
-                          icon: Icons.chat_bubble_outline_rounded,
-                          value: _formatCompactCount(unreadChatCount),
-                          label: 'Unread inbox',
-                        ),
-                      ),
-                      SizedBox(
-                        width: tileWidth,
-                        child: _TodaySignalTile(
-                          icon: Icons.people_alt_outlined,
-                          value: _formatCompactCount(nearbyProviderCount),
-                          label: 'Nearby providers',
-                        ),
-                      ),
-                      SizedBox(
-                        width: tileWidth,
-                        child: _TodaySignalTile(
-                          icon: Icons.bolt_rounded,
-                          value: liveStatusLabel,
-                          label: 'Live signal',
-                          compactValue: true,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: onPrimaryTap,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Post a Need'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primaryDeep,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _HeroTextAction(
-                      icon: Icons.people_outline_rounded,
-                      label: 'Find help',
-                      onPressed: onPeopleTap,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _HeroTextAction(
-                      icon: Icons.workspace_premium_outlined,
-                      label: 'Earn Nearby',
-                      onPressed: onEarnTap,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroStatusDot extends StatelessWidget {
-  const _HeroStatusDot({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 170),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFF5EEAD4),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodaySearchButton extends StatelessWidget {
-  const _TodaySearchButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.13),
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.search_rounded,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Search needs, providers, or categories',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.74),
-                  ),
-                ),
-              ),
-              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TodaySignalTile extends StatelessWidget {
-  const _TodaySignalTile({
-    required this.icon,
-    required this.value,
-    required this.label,
-    this.compactValue = false,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final bool compactValue;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 78),
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 17, color: Colors.white.withValues(alpha: 0.86)),
-          const SizedBox(height: 8),
+          Text(greeting, style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 6),
           Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style:
-                (compactValue
-                        ? Theme.of(context).textTheme.labelLarge
-                        : Theme.of(context).textTheme.titleLarge)
-                    ?.copyWith(color: Colors.white),
+            'What should I do now?',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: AppColors.inkSubtle),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.68),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: nextAction.tap,
+              icon: Icon(nextAction.icon),
+              label: Text(nextAction.label),
             ),
           ),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chips
+                  .take(3)
+                  .map(
+                    (chip) => _HomeStatusChip(
+                      icon: chip.icon,
+                      label: chip.label,
+                      onTap: chip.onTap,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _HeroTextAction extends StatelessWidget {
-  const _HeroTextAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
+class _HomeStatusChip extends StatelessWidget {
+  const _HomeStatusChip({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon),
+    return ActionChip(
+      avatar: Icon(icon, size: 16),
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-        backgroundColor: Colors.white.withValues(alpha: 0.1),
-      ),
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
     );
   }
+}
+
+({IconData icon, String label, VoidCallback? onTap}) _statusChip(
+  IconData icon,
+  String label, [
+  VoidCallback? onTap,
+]) {
+  return (icon: icon, label: label, onTap: onTap);
+}
+
+List<({IconData icon, String label, VoidCallback? onTap})> _homeStatusChips({
+  required int activeTaskCount,
+  required int unreadChatCount,
+  required int nearbyProviderCount,
+  required String trustedCountLabel,
+  required String liveStatusLabel,
+  required List<String> heroSignals,
+}) {
+  final chips = <({IconData icon, String label, VoidCallback? onTap})>[
+    if (unreadChatCount > 0)
+      _statusChip(
+        Icons.chat_bubble_outline_rounded,
+        '${_formatCompactCount(unreadChatCount)} inbox',
+      ),
+    if (activeTaskCount > 0)
+      _statusChip(
+        Icons.assignment_turned_in_outlined,
+        '${_formatCompactCount(activeTaskCount)} work',
+      ),
+    if (nearbyProviderCount > 0)
+      _statusChip(
+        Icons.people_alt_outlined,
+        '${_formatCompactCount(nearbyProviderCount)} nearby',
+      ),
+  ];
+
+  for (final signal in [trustedCountLabel, liveStatusLabel, ...heroSignals]) {
+    final normalized = signal.trim();
+    if (normalized.isEmpty ||
+        chips.any(
+          (chip) => chip.label.toLowerCase() == normalized.toLowerCase(),
+        )) {
+      continue;
+    }
+    chips.add(_statusChip(Icons.bolt_rounded, normalized));
+  }
+
+  return chips;
 }
 
 class _InlineWarningCard extends StatelessWidget {
@@ -2646,72 +2530,6 @@ class _FirstRunGuidanceCard extends StatelessWidget {
   }
 }
 
-class _TrustSummarySection extends StatelessWidget {
-  const _TrustSummarySection({required this.metrics});
-
-  final List<_WelcomeMetric> metrics;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = (constraints.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: metrics
-              .map(
-                (metric) => SizedBox(
-                  width: width,
-                  child: _MetricCard(metric: metric),
-                ),
-              )
-              .toList(),
-        );
-      },
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric});
-
-  final _WelcomeMetric metric;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: metric.tint,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            alignment: Alignment.center,
-            child: Icon(metric.icon, size: 18, color: AppColors.ink),
-          ),
-          const SizedBox(height: 12),
-          Text(metric.value, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text(metric.label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 6),
-          Text(metric.caption, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuickCategoryRow extends StatelessWidget {
   const _QuickCategoryRow({required this.categories, required this.onPressed});
 
@@ -2763,7 +2581,7 @@ class _TrustedRail extends StatelessWidget {
       builder: (context, constraints) {
         final width = math.min(320.0, constraints.maxWidth * 0.88);
         return SizedBox(
-          height: 500,
+          height: 264,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
@@ -2802,17 +2620,13 @@ class _TrustedConnectionRailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens =
-        Theme.of(context).extension<WelcomeThemeTokens>() ??
-        WelcomeThemeTokens.light;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2821,9 +2635,9 @@ class _TrustedConnectionRailCard extends StatelessWidget {
               imageUrl: item.thumbnailUrl,
               count: item.mediaCount,
               title: item.category,
-              height: 84,
+              height: 70,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
           ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2839,7 +2653,7 @@ class _TrustedConnectionRailCard extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: tokens.trustedTint,
+                        color: AppColors.primarySoft,
                         borderRadius: BorderRadius.circular(AppRadii.md),
                       ),
                       child: Text(
@@ -2886,58 +2700,28 @@ class _TrustedConnectionRailCard extends StatelessWidget {
             item.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             '${item.creatorName} • ${item.distanceLabel} • ${item.timeLabel}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tokens.trustedTint,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            child: Text(
-              item.responseLabel,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.primary),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _MetaPill(
-                icon: Icons.person_outline_rounded,
-                label: item.creatorName,
-              ),
-              _MetaPill(icon: Icons.place_outlined, label: item.distanceLabel),
-              _MetaPill(
-                icon: Icons.verified_user_outlined,
-                label: item.socialProofLabel,
-              ),
-              _MetaPill(icon: Icons.history_rounded, label: item.timeLabel),
-            ],
-          ),
-          const SizedBox(height: 14),
+          const Spacer(),
           Row(
             children: [
               Expanded(
-                child: SecondaryButton(label: 'Message', onPressed: onMessage),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
                 child: PrimaryButton(label: 'Open', onPressed: onOpen),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Message',
+                child: IconButton.outlined(
+                  onPressed: onMessage,
+                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                ),
               ),
             ],
           ),
@@ -3028,39 +2812,25 @@ class _WelcomeRequestCard extends StatelessWidget {
     required this.item,
     required this.reason,
     required this.isSaved,
-    required this.fromTrustedNetwork,
     required this.primaryLabel,
     required this.secondaryLabel,
     required this.onPrimaryTap,
     required this.onSecondaryTap,
     required this.onSaveTap,
     required this.onMoreTap,
-    this.accentColor = AppColors.primary,
-    this.accentBackground = AppColors.primarySoft,
   });
 
   final MobileFeedItem item;
   final String reason;
   final bool isSaved;
-  final bool fromTrustedNetwork;
   final String primaryLabel;
   final String secondaryLabel;
   final VoidCallback onPrimaryTap;
   final VoidCallback onSecondaryTap;
   final VoidCallback onSaveTap;
   final VoidCallback onMoreTap;
-  final Color accentColor;
-  final Color accentBackground;
-
   @override
   Widget build(BuildContext context) {
-    final reasonBackground = fromTrustedNetwork
-        ? AppColors.primarySoft
-        : accentBackground;
-    final reasonForeground = fromTrustedNetwork
-        ? AppColors.primary
-        : accentColor;
-
     return FeedCard(
       item: item,
       onPrimaryTap: onPrimaryTap,
@@ -3071,8 +2841,6 @@ class _WelcomeRequestCard extends StatelessWidget {
           ? Icons.bookmark_border_rounded
           : Icons.chat_bubble_outline_rounded,
       reason: reason,
-      reasonBackgroundColor: reasonBackground,
-      reasonForegroundColor: reasonForeground,
       isSaved: isSaved,
       onSaveTap: onSaveTap,
       onMoreTap: onMoreTap,
@@ -3105,7 +2873,6 @@ class _TrustedConnectionCard extends StatelessWidget {
       item: item,
       reason: reason,
       isSaved: isSaved,
-      fromTrustedNetwork: true,
       primaryLabel: 'Open request',
       secondaryLabel: 'Message',
       onPrimaryTap: onOpen,
@@ -3344,39 +3111,6 @@ class _Badge extends StatelessWidget {
         style: Theme.of(
           context,
         ).textTheme.labelMedium?.copyWith(color: foregroundColor),
-      ),
-    );
-  }
-}
-
-class _MetaPill extends StatelessWidget {
-  const _MetaPill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.inkMuted),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }

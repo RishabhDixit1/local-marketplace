@@ -31,7 +31,7 @@ class MainBottomNav extends StatelessWidget {
         selectedIcon: Icons.people_alt_rounded,
       ),
       _NavDestination(
-        label: 'Tasks',
+        label: 'Work',
         icon: Icons.assignment_outlined,
         selectedIcon: Icons.assignment_rounded,
         badgeCount: taskCount,
@@ -51,30 +51,32 @@ class MainBottomNav extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      minimum: const EdgeInsets.fromLTRB(0, 0, 0, 0),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.borderStrong),
-          boxShadow: AppShadows.floating,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            child: Row(
-              children: [
-                for (var index = 0; index < destinations.length; index += 1)
-                  Expanded(
-                    child: _NavDestinationButton(
-                      destination: destinations[index],
-                      selected: currentIndex == index,
-                      onTap: () => onTap(index),
-                    ),
-                  ),
-              ],
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 18,
+              offset: Offset(0, -6),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+          child: Row(
+            children: [
+              for (var index = 0; index < destinations.length; index += 1)
+                Expanded(
+                  child: _NavDestinationButton(
+                    destination: destinations[index],
+                    selected: currentIndex == index,
+                    onTap: () => onTap(index),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -120,39 +122,42 @@ class _NavDestinationButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
-            height: 58,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primarySoft : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: selected
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.18))
-                  : null,
-            ),
+            height: 54,
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: selected ? 20 : 0,
+                  height: 3,
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                ),
                 SizedBox(
                   width: 30,
-                  height: 25,
+                  height: 22,
                   child: Stack(
                     clipBehavior: Clip.none,
                     alignment: Alignment.center,
                     children: [
-                      Icon(icon, size: 22, color: foreground),
+                      Icon(icon, size: selected ? 22 : 21, color: foreground),
                       Positioned(
-                        top: -8,
-                        right: -14,
+                        top: -10,
+                        right: -12,
                         child: CountBadge(count: destination.badgeCount),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   destination.label,
                   maxLines: 1,

@@ -65,7 +65,7 @@ class AppShell extends ConsumerWidget {
         child: showPostAction
             ? Padding(
                 key: const ValueKey('post-need-fab'),
-                padding: const EdgeInsets.only(bottom: 78),
+                padding: const EdgeInsets.only(bottom: 66),
                 child: FloatingActionButton.extended(
                   heroTag: 'post-need-fab',
                   onPressed: () {

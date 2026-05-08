@@ -35,7 +35,7 @@ enum _TaskRoleFilter {
 }
 
 enum _TaskBoardLane {
-  inbox,
+  needsAction,
   active,
   inProgress,
   done;
@@ -44,8 +44,8 @@ enum _TaskBoardLane {
 
   String get label {
     switch (this) {
-      case _TaskBoardLane.inbox:
-        return 'Inbox';
+      case _TaskBoardLane.needsAction:
+        return 'Needs action';
       case _TaskBoardLane.active:
         return 'Active';
       case _TaskBoardLane.inProgress:
@@ -67,7 +67,7 @@ class TasksPage extends ConsumerStatefulWidget {
 }
 
 class _TasksPageState extends ConsumerState<TasksPage> {
-  _TaskBoardLane _selectedLane = _TaskBoardLane.active;
+  _TaskBoardLane _selectedLane = _TaskBoardLane.needsAction;
   _TaskRoleFilter _selectedRole = _TaskRoleFilter.all;
   String? _busyTaskId;
   String? _appliedFocusTaskId;
@@ -150,7 +150,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     _TaskBoardLane lane,
   ) {
     final items = switch (lane) {
-      _TaskBoardLane.inbox => const <MobileTaskItem>[],
+      _TaskBoardLane.needsAction =>
+        snapshot.items.where((item) => item.primaryAction != null).toList(),
       _TaskBoardLane.active => snapshot.itemsFor(MobileTaskStatus.active),
       _TaskBoardLane.inProgress => snapshot.itemsFor(
         MobileTaskStatus.inProgress,
@@ -249,7 +250,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks')),
+      appBar: AppBar(title: const Text('Work')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -263,7 +264,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 focusTaskId: widget.focusTaskId,
                 focusSource: widget.focusSource,
               ),
-              if ((widget.focusTaskId ?? '').trim().isNotEmpty) ...[
+              if ((widget.focusTaskId ?? '').trim().isNotEmpty ||
+                  widget.focusSource == 'post_success') ...[
                 const SizedBox(height: 12),
                 _FocusedTaskBanner(
                   task: focusedTask,
@@ -312,10 +314,12 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   if (laneItems.isEmpty) {
                     return SectionCard(
                       child: EmptyStateView(
-                        title: _selectedLane == _TaskBoardLane.inbox
-                            ? 'Inbox is clear'
+                        title: _selectedLane == _TaskBoardLane.needsAction
+                            ? 'Nothing needs action'
                             : 'Nothing in ${_selectedLane.label.toLowerCase()}',
-                        message: _selectedRole == _TaskRoleFilter.all
+                        message: _selectedLane == _TaskBoardLane.needsAction
+                            ? 'When a task needs acceptance, travel, work, completion, or payment follow-up, it will rise here.'
+                            : _selectedRole == _TaskRoleFilter.all
                             ? 'Switch lanes or open Find.'
                             : 'Switch roles or lanes.',
                       ),
@@ -345,7 +349,11 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                                     focused: task.id == widget.focusTaskId,
                                   ),
                                 ),
-                                _TaskSecondaryActions(task: task),
+                                _TaskSecondaryActions(
+                                  task: task,
+                                  onOpenDetail: () =>
+                                      _showTaskDetailSheet(task),
+                                ),
                               ],
                             ),
                           ),
@@ -360,55 +368,120 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       ),
     );
   }
+
+  void _showTaskDetailSheet(MobileTaskItem task) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: SingleChildScrollView(
+              child: _TaskDetailSheet(
+                task: task,
+                busy: _busyTaskId == task.id,
+                onPrimaryAction: task.primaryAction == null
+                    ? null
+                    : () {
+                        Navigator.of(sheetContext).pop();
+                        _runPrimaryAction(task);
+                      },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _TaskSecondaryActions extends StatelessWidget {
-  const _TaskSecondaryActions({required this.task});
+  const _TaskSecondaryActions({required this.task, required this.onOpenDetail});
 
   final MobileTaskItem task;
+  final VoidCallback onOpenDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          onPressed: onOpenDetail,
+          icon: const Icon(Icons.open_in_new_rounded),
+          label: const Text('Details'),
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskDetailSheet extends StatelessWidget {
+  const _TaskDetailSheet({
+    required this.task,
+    required this.busy,
+    required this.onPrimaryAction,
+  });
+
+  final MobileTaskItem task;
+  final bool busy;
+  final VoidCallback? onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
     final quoteMode = task.source == MobileTaskSource.order
         ? 'order'
         : 'help_request';
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => context.push(
-                AppRoutes.quoteRoom(mode: quoteMode, targetId: task.id),
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Task detail', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Text(
+          'Review the job, timeline, quote room, and next one-tap update.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 14),
+        TaskCard(
+          task: task,
+          busy: busy,
+          onPrimaryAction: onPrimaryAction,
+          focused: true,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => context.push(
+                  AppRoutes.quoteRoom(mode: quoteMode, targetId: task.id),
+                ),
+                icon: const Icon(Icons.request_quote_outlined),
+                label: const Text('Quote room'),
               ),
-              icon: const Icon(Icons.request_quote_outlined),
-              label: const Text('Quote'),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                if (task.source == MobileTaskSource.order) {
-                  context.push(AppRoutes.orderDetail(task.id));
-                  return;
-                }
-                context.push(
-                  Uri(
-                    path: AppRoutes.tasks,
-                    queryParameters: {
-                      'focus': task.id,
-                      'source': 'task_detail',
-                    },
-                  ).toString(),
-                );
-              },
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Detail'),
-            ),
-          ),
-        ],
-      ),
+            if (task.source == MobileTaskSource.order) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push(AppRoutes.orderDetail(task.id)),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Order'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

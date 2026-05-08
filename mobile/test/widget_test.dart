@@ -108,7 +108,10 @@ void main() {
       findsAtLeastNWidgets(1),
     );
     expect(find.text('Urgent nearby'), findsOneWidget);
-    expect(find.text('Electrical and safety inspection'), findsOneWidget);
+    expect(
+      find.textContaining('Electrical and safety inspection'),
+      findsAtLeastNWidgets(1),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -150,25 +153,30 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Start with one clear action'), findsOneWidget);
-    expect(find.text('Post a Need'), findsAtLeastNWidgets(1));
-    expect(find.text('Earn Nearby'), findsOneWidget);
-    expect(find.text('Find help'), findsOneWidget);
+    expect(find.text('What should I do now?'), findsOneWidget);
+    expect(find.text('Post Need'), findsAtLeastNWidgets(1));
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.text('Trusted activity'),
+      find.text('Needs attention'),
+      160,
+      scrollable: scrollable,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Needs attention'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Recommended'),
       240,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Trusted activity'), findsOneWidget);
+    expect(find.text('Recommended'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Live for today'),
+      find.text('Recent'),
       220,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Live for today'), findsOneWidget);
+    expect(find.text('Recent'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -210,14 +218,20 @@ void main() {
     expect(find.text('Business Setup'), findsOneWidget);
     expect(find.text('Listings'), findsOneWidget);
 
-    await tester.tap(find.text('Listings'));
+    final listingsTab = find.byKey(const ValueKey('profile-section-listings'));
+    await tester.ensureVisible(listingsTab);
+    await tester.pumpAndSettle();
+    await tester.tap(listingsTab);
     await tester.pumpAndSettle();
 
     expect(find.text('Services'), findsAtLeastNWidgets(1));
     expect(find.text('Products'), findsAtLeastNWidgets(1));
     expect(find.text('Emergency electrical repair'), findsOneWidget);
 
-    await tester.tap(find.text('Trust'));
+    final trustTab = find.byKey(const ValueKey('profile-section-trust'));
+    await tester.ensureVisible(trustTab);
+    await tester.pumpAndSettle();
+    await tester.tap(trustTab);
     await tester.pumpAndSettle();
 
     expect(find.text('Link Google to this account'), findsOneWidget);
@@ -236,16 +250,44 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Create request'), findsOneWidget);
-    expect(find.text('Request basics'), findsOneWidget);
+    expect(find.text('Post Need'), findsOneWidget);
+    expect(find.text('What do you need?'), findsAtLeastNWidgets(1));
 
-    await tester.ensureVisible(find.text('Continue'));
+    await tester.ensureVisible(find.text('Next'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
     expect(find.text('Add a clear request title.'), findsOneWidget);
     expect(find.text('Location and budget'), findsNothing);
+  });
+
+  testWidgets('create request page fits sprint viewport checks', (
+    WidgetTester tester,
+  ) async {
+    const scenarios = [
+      (Size(320, 640), 1.0),
+      (Size(390, 844), 1.0),
+      (Size(430, 932), 1.0),
+      (Size(390, 844), 1.6),
+    ];
+
+    for (final scenario in scenarios) {
+      _setTestSurface(tester, scenario.$1, textScaleFactor: scenario.$2);
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const CreateNeedPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Post Need'), findsOneWidget);
+      expect(find.text('What do you need?'), findsAtLeastNWidgets(1));
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('search page shows nearby provider matches', (
@@ -360,7 +402,6 @@ void main() {
     expect(find.text('Service'), findsOneWidget);
     expect(find.text('INR 1200'), findsOneWidget);
     expect(find.text('7.4 km away'), findsOneWidget);
-    expect(find.text('12 jobs completed'), findsOneWidget);
     expect(find.text('Replies in 34 min'), findsOneWidget);
 
     await tester.tap(find.text('Book'));
@@ -408,14 +449,10 @@ void main() {
 
     expect(find.text('Priyanka Narayanan'), findsOneWidget);
     expect(find.text('4.9 stars'), findsOneWidget);
-    expect(find.text('37 jobs completed'), findsOneWidget);
-    expect(find.text('Recommended nearby'), findsOneWidget);
-    expect(
-      find.text('Active now and ready for fast follow-up.'),
-      findsOneWidget,
-    );
+    expect(find.text('From INR 1200'), findsOneWidget);
+    expect(find.text('Active now and ready for fast follow-up.'), findsNothing);
 
-    await tester.tap(find.text('Open profile'));
+    await tester.tap(find.text('View'));
     await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
     await tester.tap(find.byIcon(Icons.bookmark_rounded));
     await tester.tap(find.byIcon(Icons.more_horiz_rounded));
@@ -494,8 +531,8 @@ void main() {
     expect(find.text('Growing profile'), findsNothing);
     expect(find.text(longIntro), findsNothing);
     expect(find.text('CCTV, Delivery'), findsOneWidget);
-    expect(find.text('CCTV'), findsOneWidget);
-    expect(find.text('Delivery'), findsOneWidget);
+    expect(find.text('CCTV'), findsNothing);
+    expect(find.text('Delivery'), findsNothing);
     expect(find.text('Electrician'), findsNothing);
 
     final name = tester.widget<Text>(find.text(longName));

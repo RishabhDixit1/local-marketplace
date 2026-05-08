@@ -4,14 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
-import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/supabase/app_bootstrap.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
@@ -117,16 +116,20 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(successMessage)));
+        message: successMessage,
+        tone: ServiqToastTone.success,
+      );
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      ServiqToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -176,9 +179,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         0;
     final query = _searchController.text.trim().toLowerCase();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
+    return ServiqScaffold(
+      appBar: ServiqTopBar(
+        title: 'Notifications',
+        subtitle: unreadCount == 0
+            ? 'All caught up'
+            : '$unreadCount unread update${unreadCount == 1 ? '' : 's'}',
         actions: [
           IconButton(
             tooltip: 'Mark all read',
@@ -206,17 +212,22 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.xxl,
+            ),
             children: [
               AppSearchField(
                 controller: _searchController,
                 hintText: 'Search updates, messages, trust, or tasks',
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: _NotificationFilter.values.map((filter) {
                   return ChoiceChip(
                     label: Text(filter.label),
@@ -225,7 +236,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               ServiqAsyncBody<List<MobileNotificationItem>>(
                 value: notificationsAsync,
                 errorTitle: 'Unable to load notifications',
@@ -256,7 +267,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         items: items,
                         filteredCount: filtered.length,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       if (filtered.isEmpty)
                         const SectionCard(
                           child: EmptyStateView(
@@ -268,7 +279,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       else
                         ...filtered.map(
                           (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.sm,
+                            ),
                             child: _NotificationCard(
                               item: item,
                               busy: _busy,
@@ -353,53 +366,39 @@ class _NotificationSummary extends StatelessWidget {
         )
         .length;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 12.0;
-        final width = (constraints.maxWidth - gap) / 2;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Unread',
-                value: unread.toString(),
-                caption: '$filteredCount visible now',
-                icon: Icons.mark_email_unread_outlined,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Messages',
-                value: messages.toString(),
-                caption: '$orders task updates',
-                icon: Icons.chat_bubble_outline_rounded,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'Trust',
-                value: trust.toString(),
-                caption: 'Reviews and connections',
-                icon: Icons.verified_outlined,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: MetricTile(
-                label: 'All activity',
-                value: items.length.toString(),
-                caption: 'Realtime notification stream',
-                icon: Icons.notifications_active_outlined,
-              ),
-            ),
-          ],
-        );
-      },
+    return TrustSnapshot(
+      items: [
+        TrustSnapshotItem(
+          icon: Icons.mark_email_unread_outlined,
+          label: '$filteredCount visible',
+          value: '$unread unread',
+          tone: unread == 0
+              ? TrustSnapshotTone.success
+              : TrustSnapshotTone.warning,
+        ),
+        TrustSnapshotItem(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: '$orders task updates',
+          value: '$messages messages',
+          tone: messages == 0
+              ? TrustSnapshotTone.neutral
+              : TrustSnapshotTone.trust,
+        ),
+        TrustSnapshotItem(
+          icon: Icons.verified_outlined,
+          label: 'Reviews and connections',
+          value: '$trust trust',
+          tone: trust == 0
+              ? TrustSnapshotTone.neutral
+              : TrustSnapshotTone.success,
+        ),
+        TrustSnapshotItem(
+          icon: Icons.notifications_active_outlined,
+          label: 'All activity',
+          value: '${items.length} total',
+          tone: TrustSnapshotTone.neutral,
+        ),
+      ],
     );
   }
 }
@@ -424,6 +423,9 @@ class _NotificationCard extends StatelessWidget {
     final icon = _kindIcon(item.kind);
 
     return SectionCard(
+      variant: item.unread
+          ? ServiqSurfaceVariant.highlight
+          : ServiqSurfaceVariant.flat,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -441,12 +443,10 @@ class _NotificationCard extends StatelessWidget {
                 ),
                 child: Icon(
                   icon,
-                  color: item.unread
-                      ? AppColors.verified
-                      : AppColors.inkSubtle,
+                  color: item.unread ? AppColors.verified : AppColors.inkSubtle,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +474,7 @@ class _NotificationCard extends StatelessWidget {
                       item.message,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       item.timeLabel,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -484,10 +484,10 @@ class _NotificationCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               TrustBadge(label: _kindLabel(item.kind)),
               TrustBadge(
@@ -498,23 +498,16 @@ class _NotificationCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: busy ? null : onClear,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Clear'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: busy ? null : onOpen,
-                  icon: const Icon(Icons.open_in_new_rounded),
-                  label: Text(actionLabel),
-                ),
+          const SizedBox(height: AppSpacing.md),
+          ServiqActionBar(
+            primaryLabel: actionLabel,
+            primaryIcon: Icons.open_in_new_rounded,
+            onPrimary: busy ? null : onOpen,
+            secondaryActions: [
+              ServiqCompactAction(
+                icon: Icons.delete_outline_rounded,
+                tooltip: 'Clear notification',
+                onPressed: busy ? null : onClear,
               ),
             ],
           ),

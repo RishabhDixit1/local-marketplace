@@ -134,7 +134,6 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final action = task.primaryAction;
-    final timelineSteps = _statusTimelineFor(task);
 
     final card = SectionCard(
       padding: const EdgeInsets.all(14),
@@ -152,11 +151,6 @@ class TaskCard extends StatelessWidget {
                       spacing: 7,
                       runSpacing: 7,
                       children: [
-                        _TaskPill(
-                          label: task.source.label,
-                          background: AppColors.verifiedSoft,
-                          foreground: AppColors.ink,
-                        ),
                         _TaskPill(
                           label: task.statusLabel,
                           background: _statusTint(task.status),
@@ -176,13 +170,15 @@ class TaskCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      task.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    if (focused && task.description.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        task.description,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -208,8 +204,10 @@ class TaskCard extends StatelessWidget {
             busy: busy,
             onPrimaryAction: onPrimaryAction,
           ),
-          const SizedBox(height: 12),
-          TaskTimeline(steps: timelineSteps),
+          if (focused) ...[
+            const SizedBox(height: 12),
+            TaskTimeline(steps: _statusTimelineFor(task)),
+          ],
         ],
       ),
     );
@@ -538,82 +536,90 @@ class _MetaPill extends StatelessWidget {
 }
 
 List<TaskTimelineStep> _statusTimelineFor(MobileTaskItem task) {
-  if (task.isProviderTask) {
-    return task.trackerSteps
-        .map(
-          (step) => TaskTimelineStep(
-            title: step.label,
-            message: _providerTimelineMessage(step.label, step.state),
-            state: step.state,
-          ),
-        )
-        .toList();
+  if (task.status == MobileTaskStatus.cancelled) {
+    return const [
+      TaskTimelineStep(
+        title: 'Posted',
+        message: 'The request entered the marketplace.',
+        state: MobileTaskTrackerStepState.done,
+      ),
+      TaskTimelineStep(
+        title: 'Stopped',
+        message: 'Matching is no longer active.',
+        state: MobileTaskTrackerStepState.active,
+      ),
+    ];
   }
 
-  switch (task.status) {
-    case MobileTaskStatus.active:
-      return const [
-        TaskTimelineStep(
-          title: 'Request posted',
-          message: 'Visible to nearby providers.',
-          state: MobileTaskTrackerStepState.done,
-        ),
-        TaskTimelineStep(
-          title: 'Provider replies',
-          message: 'Questions and quotes move to Chat.',
-          state: MobileTaskTrackerStepState.active,
-        ),
-        TaskTimelineStep(
-          title: 'Provider accepted',
-          message: 'The task becomes trackable.',
-          state: MobileTaskTrackerStepState.upcoming,
-        ),
-      ];
-    case MobileTaskStatus.inProgress:
-      return const [
-        TaskTimelineStep(
-          title: 'Provider accepted',
-          message: 'The handoff is confirmed.',
-          state: MobileTaskTrackerStepState.done,
-        ),
-        TaskTimelineStep(
-          title: 'Work moving',
-          message: 'Track travel, start, and finish updates.',
-          state: MobileTaskTrackerStepState.active,
-        ),
-        TaskTimelineStep(
-          title: 'Done',
-          message: 'Close the work and review.',
-          state: MobileTaskTrackerStepState.upcoming,
-        ),
-      ];
-    case MobileTaskStatus.completed:
-      return const [
-        TaskTimelineStep(
-          title: 'Accepted',
-          message: 'The work had a confirmed provider.',
-          state: MobileTaskTrackerStepState.done,
-        ),
-        TaskTimelineStep(
-          title: 'Completed',
-          message: 'The task is closed.',
-          state: MobileTaskTrackerStepState.done,
-        ),
-      ];
-    case MobileTaskStatus.cancelled:
-      return const [
-        TaskTimelineStep(
-          title: 'Opened',
-          message: 'The request entered the marketplace.',
-          state: MobileTaskTrackerStepState.done,
-        ),
-        TaskTimelineStep(
-          title: 'Stopped',
-          message: 'Matching is no longer active.',
-          state: MobileTaskTrackerStepState.active,
-        ),
-      ];
-  }
+  final acceptedState = switch (task.progressStage) {
+    MobileTaskProgressStage.pendingAcceptance =>
+      MobileTaskTrackerStepState.active,
+    _ => MobileTaskTrackerStepState.done,
+  };
+  final quoteState =
+      task.progressStage == MobileTaskProgressStage.pendingAcceptance
+      ? MobileTaskTrackerStepState.upcoming
+      : task.source == MobileTaskSource.order
+      ? MobileTaskTrackerStepState.done
+      : MobileTaskTrackerStepState.active;
+  final progressState = switch (task.progressStage) {
+    MobileTaskProgressStage.pendingAcceptance ||
+    MobileTaskProgressStage.accepted => MobileTaskTrackerStepState.upcoming,
+    MobileTaskProgressStage.travelStarted ||
+    MobileTaskProgressStage.workStarted => MobileTaskTrackerStepState.active,
+    MobileTaskProgressStage.completed => MobileTaskTrackerStepState.done,
+  };
+  final completeState = task.status == MobileTaskStatus.completed
+      ? MobileTaskTrackerStepState.done
+      : task.progressStage == MobileTaskProgressStage.workStarted
+      ? MobileTaskTrackerStepState.active
+      : MobileTaskTrackerStepState.upcoming;
+  final paidState = task.status == MobileTaskStatus.completed
+      ? MobileTaskTrackerStepState.active
+      : MobileTaskTrackerStepState.upcoming;
+
+  return [
+    const TaskTimelineStep(
+      title: 'Posted',
+      message: 'The work entered the local marketplace.',
+      state: MobileTaskTrackerStepState.done,
+    ),
+    TaskTimelineStep(
+      title: 'Accepted',
+      message: task.isProviderTask
+          ? _providerTimelineMessage('Task accepted', acceptedState)
+          : 'A provider handoff makes this task trackable.',
+      state: acceptedState,
+    ),
+    TaskTimelineStep(
+      title: 'Quote',
+      message: task.source == MobileTaskSource.order
+          ? 'Pricing is connected to this order.'
+          : 'Keep scope and pricing in the deal room.',
+      state: quoteState,
+    ),
+    TaskTimelineStep(
+      title: 'In progress',
+      message: task.isProviderTask
+          ? _providerTimelineMessage('Work started', progressState)
+          : 'Track travel, start, and finish updates here.',
+      state: progressState,
+    ),
+    TaskTimelineStep(
+      title: 'Complete',
+      message: task.isProviderTask
+          ? 'Close the loop when the work is wrapped.'
+          : 'Confirm the work and keep proof in the thread.',
+      state: completeState,
+    ),
+    TaskTimelineStep(
+      title: 'Paid',
+      message: task.status == MobileTaskStatus.completed
+          ? 'Payment follow-up is the final operational step.'
+          : 'Payment follow-up unlocks after completion.',
+      state: paidState,
+    ),
+  ];
 }
 
 String _providerTimelineMessage(
