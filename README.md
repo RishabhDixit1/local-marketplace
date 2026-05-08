@@ -4,7 +4,9 @@ Connecting people with Human-Centered Services Near You!
 
 ## Live Deployment
 
-- App: https://local-marketplace-eta.vercel.app/
+- Business domain: https://www.serviqapp.com
+- App: https://www.serviqapp.com
+- Vercel deployment: https://local-marketplace-eta.vercel.app/
 - Repository: https://github.com/RishabhDixit1/local-marketplace
 
 ## Product Scope
@@ -58,6 +60,90 @@ npm run dev
 
 Open `http://localhost:3000` in your browser. Do not use `https://localhost:3000` for local development.
 If a previous local Next dev process was left behind, rerunning `npm run dev` now cleans it up automatically before starting the app.
+
+## Android Flutter Setup
+
+The Android app lives in `mobile/`. Detailed mobile notes are in `mobile/README.md`.
+
+### Required tools
+
+- Flutter SDK on `PATH`
+- Android Studio
+- Android SDK Platform, Android Emulator, Android SDK Command-line Tools
+- One Android emulator or one physical Android phone with USB debugging enabled
+
+Check the toolchain:
+
+```bash
+(cd mobile && flutter doctor)
+(cd mobile && flutter devices)
+```
+
+### Local emulator run
+
+From the repo root, start the web/API server first:
+
+```bash
+npm run dev
+```
+
+Then run the Flutter app against the Android emulator. Android emulators cannot use `localhost` to reach the host machine; use `10.0.2.2`.
+
+```bash
+bash scripts/run-mobile.sh --device emulator-5554 --api-base-url http://10.0.2.2:3000
+```
+
+If the emulator id is different, run `flutter devices` and pass that id with `--device`.
+
+### Physical Android device run
+
+A physical phone cannot reach your laptop through `10.0.2.2`. Use either:
+
+- a deployed API: `https://www.serviqapp.com`
+- your laptop LAN IP while both devices are on the same Wi-Fi, for example `http://192.168.1.25:3000`
+
+Example:
+
+```bash
+bash scripts/run-mobile.sh --device <android-device-id> --api-base-url https://www.serviqapp.com
+```
+
+### Build a shareable Android APK
+
+Use the production business domain for APKs sent to testers:
+
+```bash
+cd mobile
+set -a
+source ../.env.local
+set +a
+flutter build apk --release \
+  --dart-define=APP_ENV=production \
+  --dart-define=SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL}" \
+  --dart-define=SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+  --dart-define=API_BASE_URL="https://www.serviqapp.com" \
+  --dart-define=AUTH_REDIRECT_SCHEME=serviq \
+  --dart-define=AUTH_REDIRECT_HOST=auth-callback \
+  --dart-define=ALLOW_BAD_CERTIFICATES=false
+```
+
+The built APK is, relative to the repo root:
+
+```text
+mobile/build/app/outputs/flutter-apk/app-release.apk
+```
+
+For WhatsApp/team sharing, copy it into `mobile/release/apk/` with a timestamped filename. APK release artifacts are intentionally ignored by git.
+
+### Android signing
+
+Release builds use `mobile/android/key.properties` when it exists. Start from:
+
+```bash
+cp mobile/android/key.properties.example mobile/android/key.properties
+```
+
+Keep the real keystore and passwords out of git. Without `key.properties`, Flutter signs release APKs with the debug key, which is installable for internal testing but not suitable for Play Store distribution.
 
 ## Supabase Setup
 
@@ -130,18 +216,19 @@ In Supabase Dashboard -> Authentication -> URL Configuration:
 
 - Site URL:
   - local: `http://localhost:3000`
-  - production: `https://<your-serviq-domain>`
+  - production: `https://www.serviqapp.com`
 - Redirect URLs:
   - `http://localhost:3000/auth/callback`
   - `http://127.0.0.1:3000/auth/callback`
-  - `https://<your-serviq-domain>/auth/callback`
+  - `https://www.serviqapp.com/auth/callback`
+  - `serviq://auth-callback`
 
 Important:
 - Production `Site URL` must never be localhost.
 - `POST /api/auth/send-link` now derives the auth callback from the current request origin, so local logins stay on localhost and deployed logins stay on the active site host.
 - `NEXT_PUBLIC_SITE_URL` should still be set per environment for canonical/share URLs and scripts:
   - local `.env.local`: `http://localhost:3000`
-  - Vercel production env: `https://<your-serviq-domain>`
+  - Vercel production env: `https://www.serviqapp.com`
 - If a callback URL is missing from Redirect URLs, Supabase may still fall back to `Site URL`.
 
 ## Scripts
@@ -225,8 +312,12 @@ Optional forwarding env vars:
 
 ## Deployment Notes
 
-The project is deployed on Vercel:https://local-marketplace-eta.vercel.app/
+Production business domain:
 
-- Production URL: https://https://local-marketplace-eta.vercel.app/
+- https://www.serviqapp.com
+
+Current Vercel deployment:
+
+- https://local-marketplace-eta.vercel.app/
 
 For preview/production rollouts, use standard Vercel workflows connected to this GitHub repo.
