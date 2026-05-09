@@ -32,33 +32,62 @@ class ServiqAsyncBody<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return value.when(
-      data: data,
-      loading: () =>
-          loadingBuilder?.call() ??
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-      error: (error, stack) {
-        if (errorBuilder != null) {
-          return errorBuilder!(error, stack);
-        }
-        final message = errorMessageFor != null
-            ? errorMessageFor!(error, stack)
-            : error.toString();
-        final body = ErrorStateView(
-          title: errorTitle,
-          message: message,
-          onRetry: onRetry,
-        );
-        if (!wrapErrorInCard) {
-          return body;
-        }
-        return SectionCard(child: body);
+    return AnimatedSwitcher(
+      duration: AppDurations.fast,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return currentChild ?? const SizedBox.shrink();
       },
+      child: value.when(
+        data: (payload) => KeyedSubtree(
+          key: const ValueKey('serviq-async-data'),
+          child: data(payload),
+        ),
+        loading: () => Semantics(
+          key: const ValueKey('serviq-async-loading'),
+          liveRegion: true,
+          label: 'Loading content',
+          child:
+              loadingBuilder?.call() ??
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+        ),
+        error: (error, stack) {
+          if (errorBuilder != null) {
+            return KeyedSubtree(
+              key: const ValueKey('serviq-async-custom-error'),
+              child: errorBuilder!(error, stack),
+            );
+          }
+          final message = errorMessageFor != null
+              ? errorMessageFor!(error, stack)
+              : error.toString();
+          final body = Semantics(
+            liveRegion: true,
+            label: '$errorTitle. $message',
+            child: ErrorStateView(
+              title: errorTitle,
+              message: message,
+              onRetry: onRetry,
+            ),
+          );
+          if (!wrapErrorInCard) {
+            return KeyedSubtree(
+              key: const ValueKey('serviq-async-error'),
+              child: body,
+            );
+          }
+          return SectionCard(
+            key: const ValueKey('serviq-async-error-card'),
+            child: body,
+          );
+        },
+      ),
     );
   }
 }

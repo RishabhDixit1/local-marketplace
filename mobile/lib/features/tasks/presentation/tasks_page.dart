@@ -359,9 +359,11 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   selectedRole: _selectedRole,
                   countFor: (lane) => _countFor(data, lane),
                   roleCountFor: (role) => _roleCount(data, role),
-                  onLaneSelected: (lane) => setState(() {
-                    _selectedLane = lane;
-                  }),
+                  onShowNextActions: _selectedLane == _TaskBoardLane.needsAction
+                      ? null
+                      : () => setState(
+                          () => _selectedLane = _TaskBoardLane.needsAction,
+                        ),
                   onOpenFilters: () => _showFiltersSheet(data),
                 ),
                 const SizedBox(height: 16),
@@ -829,7 +831,7 @@ class _WorkBoardSummary extends StatelessWidget {
     required this.selectedRole,
     required this.countFor,
     required this.roleCountFor,
-    required this.onLaneSelected,
+    required this.onShowNextActions,
     required this.onOpenFilters,
   });
 
@@ -838,15 +840,19 @@ class _WorkBoardSummary extends StatelessWidget {
   final _TaskRoleFilter selectedRole;
   final int Function(_TaskBoardLane lane) countFor;
   final int Function(_TaskRoleFilter role) roleCountFor;
-  final ValueChanged<_TaskBoardLane> onLaneSelected;
+  final VoidCallback? onShowNextActions;
   final VoidCallback onOpenFilters;
 
   @override
   Widget build(BuildContext context) {
-    final needsAction = countFor(_TaskBoardLane.needsAction);
-    final active = countFor(_TaskBoardLane.active);
-    final waiting = countFor(_TaskBoardLane.inProgress);
-    final done = countFor(_TaskBoardLane.done);
+    final visibleCount = countFor(selectedLane);
+    final nextActionCount = countFor(_TaskBoardLane.needsAction);
+    final title = selectedLane == _TaskBoardLane.needsAction
+        ? 'Next-action queue'
+        : '${selectedLane.label} work';
+    final message = selectedLane == _TaskBoardLane.needsAction
+        ? '$visibleCount task${visibleCount == 1 ? '' : 's'} ready for a one-tap update.'
+        : '$visibleCount ${selectedLane.label.toLowerCase()} task${visibleCount == 1 ? '' : 's'} in ${selectedRole.label.toLowerCase()} view.';
 
     return SectionCard(
       child: Column(
@@ -858,66 +864,34 @@ class _WorkBoardSummary extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'What needs attention now',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 5),
-                    Text(
-                      '${countFor(selectedLane)} ${selectedLane.label.toLowerCase()} in ${selectedRole.label.toLowerCase()} view',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(message, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
               OutlinedButton.icon(
                 onPressed: onOpenFilters,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
                 icon: const Icon(Icons.tune_rounded),
                 label: const Text('Filters'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const gap = 8.0;
-              final tileWidth = (constraints.maxWidth - gap) / 2;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  _WorkStatTile(
-                    width: tileWidth,
-                    label: 'Needs action',
-                    value: needsAction,
-                    selected: selectedLane == _TaskBoardLane.needsAction,
-                    onTap: () => onLaneSelected(_TaskBoardLane.needsAction),
-                  ),
-                  _WorkStatTile(
-                    width: tileWidth,
-                    label: 'Active',
-                    value: active,
-                    selected: selectedLane == _TaskBoardLane.active,
-                    onTap: () => onLaneSelected(_TaskBoardLane.active),
-                  ),
-                  _WorkStatTile(
-                    width: tileWidth,
-                    label: 'Waiting',
-                    value: waiting,
-                    selected: selectedLane == _TaskBoardLane.inProgress,
-                    onTap: () => onLaneSelected(_TaskBoardLane.inProgress),
-                  ),
-                  _WorkStatTile(
-                    width: tileWidth,
-                    label: 'Done',
-                    value: done,
-                    selected: selectedLane == _TaskBoardLane.done,
-                    onTap: () => onLaneSelected(_TaskBoardLane.done),
-                  ),
-                ],
-              );
-            },
-          ),
+          if (onShowNextActions != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: onShowNextActions,
+                icon: const Icon(Icons.flash_on_rounded),
+                label: const Text('Back to next actions'),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -930,82 +904,23 @@ class _WorkBoardSummary extends StatelessWidget {
                 foregroundColor: AppColors.ink,
               ),
               TrustBadge(
-                label: '${roleCountFor(_TaskRoleFilter.requester)} requested',
-                icon: Icons.person_outline_rounded,
+                label: '$nextActionCount next',
+                icon: Icons.flash_on_rounded,
                 backgroundColor: AppColors.primarySoft,
                 foregroundColor: AppColors.primary,
               ),
               TrustBadge(
-                label: '${roleCountFor(_TaskRoleFilter.provider)} helping',
-                icon: Icons.handshake_outlined,
+                label:
+                    '${roleCountFor(selectedRole)} ${selectedRole.label.toLowerCase()}',
+                icon: selectedRole == _TaskRoleFilter.provider
+                    ? Icons.handshake_outlined
+                    : Icons.person_outline_rounded,
                 backgroundColor: AppColors.accentSoft,
                 foregroundColor: AppColors.accent,
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _WorkStatTile extends StatelessWidget {
-  const _WorkStatTile({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final double width;
-  final String label;
-  final int value;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Material(
-        color: selected ? AppColors.primarySoft : AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(
-                color: selected ? AppColors.primary : AppColors.border,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value > 99 ? '99+' : value.toString(),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: selected ? AppColors.primaryDeep : AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected
-                        ? AppColors.primaryDeep
-                        : AppColors.inkSubtle,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

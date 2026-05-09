@@ -55,42 +55,65 @@ class AppShell extends ConsumerWidget {
       orElse: () => 0,
     );
 
-    return Scaffold(
-      extendBody: true,
-      body: navigationShell,
-      floatingActionButton: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: showPostAction
-            ? Padding(
-                key: const ValueKey('post-need-fab'),
-                padding: const EdgeInsets.only(bottom: 66),
-                child: FloatingActionButton.extended(
-                  heroTag: 'post-need-fab',
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    context.push(AppRoutes.createNeed);
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Post Need'),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  elevation: 3,
-                  extendedPadding: const EdgeInsetsDirectional.symmetric(
-                    horizontal: 18,
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useRail = shouldUseRailNavigation(constraints.maxWidth);
+        void destinationSelected(int index) {
+          _onDestinationSelected(context, ref, index);
+        }
+
+        return Scaffold(
+          extendBody: !useRail,
+          body: useRail
+              ? Row(
+                  children: [
+                    MainNavigationRail(
+                      currentIndex: navigationShell.currentIndex,
+                      onTap: destinationSelected,
+                      chatCount: unreadChatCount,
+                      taskCount: activeTaskCount,
+                    ),
+                    Expanded(child: navigationShell),
+                  ],
+                )
+              : navigationShell,
+          floatingActionButton: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: showPostAction
+                ? Padding(
+                    key: const ValueKey('post-need-fab'),
+                    padding: EdgeInsets.only(bottom: useRail ? 16 : 66),
+                    child: FloatingActionButton.extended(
+                      heroTag: 'post-need-fab',
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.push(AppRoutes.createNeed);
+                      },
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Post Need'),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      elevation: 3,
+                      extendedPadding: const EdgeInsetsDirectional.symmetric(
+                        horizontal: 18,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('no-post-need-fab')),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          bottomNavigationBar: useRail
+              ? null
+              : MainBottomNav(
+                  currentIndex: navigationShell.currentIndex,
+                  onTap: destinationSelected,
+                  chatCount: unreadChatCount,
+                  taskCount: activeTaskCount,
                 ),
-              )
-            : const SizedBox.shrink(key: ValueKey('no-post-need-fab')),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: MainBottomNav(
-        currentIndex: navigationShell.currentIndex,
-        onTap: (index) => _onDestinationSelected(context, ref, index),
-        chatCount: unreadChatCount,
-        taskCount: activeTaskCount,
-      ),
+        );
+      },
     );
   }
 }
