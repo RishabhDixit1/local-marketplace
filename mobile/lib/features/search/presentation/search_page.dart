@@ -15,9 +15,9 @@ import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
+import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/filter_chip_group.dart';
 import '../../../shared/components/provider_card.dart';
-import '../../../shared/components/request_card.dart';
 import '../../../shared/components/section_header.dart';
 
 enum _SearchScope {
@@ -124,6 +124,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     context.push(AppRoutes.provider(providerId));
   }
 
+  void _openListing(MobileFeedItem item) {
+    context.push(
+      AppRoutes.listingDetail(item.id, source: item.source.apiValue),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final feedAsync = ref.watch(feedSnapshotProvider(MobileFeedScope.all));
@@ -178,8 +184,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             ServiqAsyncBody<MobileFeedSnapshot>(
               value: feedAsync,
               errorTitle: 'Unable to search',
-              errorMessageFor: (error, _) =>
-                  AppErrorMapper.toMessage(error),
+              errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
               onRetry: () =>
                   ref.invalidate(feedSnapshotProvider(MobileFeedScope.all)),
               loadingBuilder: () =>
@@ -187,8 +192,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               data: (feed) => ServiqAsyncBody<MobilePeopleSnapshot>(
                 value: peopleAsync,
                 errorTitle: 'Unable to load people',
-                errorMessageFor: (error, _) =>
-                    AppErrorMapper.toMessage(error),
+                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
                 onRetry: () => ref.invalidate(peopleSnapshotProvider),
                 loadingBuilder: () =>
                     const Center(child: CircularProgressIndicator()),
@@ -254,15 +258,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                             .map(
                               (item) => Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
-                                child: RequestCard(
+                                child: FeedCard(
                                   item: item,
-                                  onOpen: item.providerId.trim().isEmpty
+                                  primaryLabel:
+                                      item.type == MobileFeedItemType.demand
+                                      ? 'Open request'
+                                      : 'View details',
+                                  secondaryLabel: 'Contact',
+                                  onPrimaryTap: item.providerId.trim().isEmpty
                                       ? null
-                                      : () => _openProvider(
+                                      : item.type == MobileFeedItemType.demand
+                                      ? () => _openProvider(
                                           item.providerId,
                                           source: 'search_result',
-                                        ),
-                                  onMessage: item.providerId.trim().isEmpty
+                                        )
+                                      : () => _openListing(item),
+                                  onSecondaryTap: item.providerId.trim().isEmpty
                                       ? null
                                       : () => context.push(
                                           AppRoutes.chatDirect(

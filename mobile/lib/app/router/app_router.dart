@@ -13,6 +13,7 @@ import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
+import '../../features/listings/presentation/listing_detail_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
 import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
@@ -172,6 +173,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.saved,
         builder: (context, state) => const SavedFeedPage(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.listings}/:itemId',
+        builder: (context, state) => ListingDetailPage(
+          itemId: state.pathParameters['itemId']?.trim() ?? '',
+          source: _queryParam(state, 'source'),
+        ),
       ),
       GoRoute(
         path: AppRoutes.providerLaunchpadReview,

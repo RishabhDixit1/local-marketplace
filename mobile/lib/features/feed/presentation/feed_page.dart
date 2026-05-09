@@ -167,10 +167,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         ),
         ListTile(
           leading: const Icon(Icons.payments_outlined),
-          title: Text(_primaryLabelFor(item)),
+          title: Text(_checkoutLabelFor(item)),
           onTap: () {
             Navigator.of(context).pop();
-            _primaryActionFor(item)?.call();
+            _openCheckout(item);
           },
         ),
         ListTile(
@@ -191,6 +191,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       return null;
     }
     return () => _showListingActionsSheet(item);
+  }
+
+  void _openListingDetail(MobileFeedItem item) {
+    context.push(
+      AppRoutes.listingDetail(item.id, source: item.source.apiValue),
+    );
   }
 
   Future<void> _sendInterest(MobileFeedItem item) async {
@@ -339,7 +345,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       }
       if (item.type == MobileFeedItemType.service ||
           item.type == MobileFeedItemType.product) {
-        return () => _openCheckout(item);
+        return () => _openListingDetail(item);
       }
       return () => context.push(AppRoutes.provider(item.providerId));
     }
@@ -383,10 +389,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   String _primaryLabelFor(MobileFeedItem item) {
     if (item.helpRequestId == null) {
       if (item.type == MobileFeedItemType.product) {
-        return 'Buy';
+        return 'View details';
       }
       if (item.type == MobileFeedItemType.service) {
-        return 'Book';
+        return 'View details';
       }
       return 'Open profile';
     }
@@ -394,6 +400,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       return 'Withdraw interest';
     }
     return 'Express interest';
+  }
+
+  String _checkoutLabelFor(MobileFeedItem item) {
+    if (item.type == MobileFeedItemType.product) {
+      return 'Order';
+    }
+    return 'Reserve';
   }
 
   String _secondaryLabelFor(MobileFeedItem item) {

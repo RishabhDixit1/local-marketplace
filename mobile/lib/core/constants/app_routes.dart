@@ -23,6 +23,7 @@ class AppRoutes {
   static const providerOnboarding = '/app/provider-onboarding';
   static const providerLaunchpad = '/app/provider-launchpad';
   static const providerListings = '/app/provider-listings';
+  static const listings = '/app/listings';
   static const orders = '/app/orders';
   static const checkout = '/app/checkout';
   static const saved = '/app/saved';
@@ -32,6 +33,10 @@ class AppRoutes {
   static String get checkoutFromCart => '$checkout?source=cart';
 
   static String provider(String providerId) => '/app/provider/$providerId';
+  static String listingDetail(String itemId, {String? source}) {
+    return _withQuery('$listings/$itemId', {'source': source});
+  }
+
   static String chatThread(String threadId) => '/app/chat/thread/$threadId';
   static String inboxThread(String conversationId) =>
       chatThread(conversationId);

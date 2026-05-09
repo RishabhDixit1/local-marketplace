@@ -1028,9 +1028,20 @@ String _composeChatMessageContent(
 List<String> _quickRepliesFor({
   required String? contextTitle,
   required String? contextStatus,
+  required String? contextSource,
 }) {
   final rawTitle = contextTitle?.trim() ?? '';
   final normalizedStatus = (contextStatus ?? '').trim().toLowerCase();
+  final normalizedSource = (contextSource ?? '').trim().toLowerCase();
+  if (normalizedSource.contains('listing_detail')) {
+    return const [
+      'Is this available?',
+      'Can you confirm timing and total price?',
+      'Can I pick up today?',
+      'I would like to reserve this.',
+    ];
+  }
+
   if (normalizedStatus.contains('progress') ||
       normalizedStatus.contains('accepted') ||
       normalizedStatus.contains('travel') ||
@@ -1098,6 +1109,10 @@ class _ChatRequestContext {
       sourceText.isNotEmpty;
 
   String get sourceLabel {
+    if (sourceText.contains('listing_detail')) {
+      return 'From listing detail';
+    }
+
     switch (sourceText) {
       case 'notification':
         return 'From notification';
@@ -1111,6 +1126,15 @@ class _ChatRequestContext {
       default:
         return 'Request context';
     }
+  }
+
+  bool get isListingContext => sourceText.contains('listing_detail');
+
+  String get guidanceText {
+    if (isListingContext) {
+      return 'Confirm availability, price, pickup or delivery, and timing before moving off-platform.';
+    }
+    return 'Confirm scope, timing, and the next task update before moving off-platform.';
   }
 }
 
@@ -1168,7 +1192,7 @@ class _RequestContextCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Confirm scope, timing, and the next task update before moving off-platform.',
+                  contextData.guidanceText,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: AppColors.primaryDeep),
@@ -1221,7 +1245,9 @@ class _ThreadEmptyState extends StatelessWidget {
             icon: Icons.chat_bubble_outline_rounded,
             title: 'No messages in this thread yet',
             message: hasContext
-                ? 'Start with timing, access, and scope so this request stays easy to track in Tasks.'
+                ? contextData.isListingContext
+                      ? 'Start with availability, pickup or delivery, timing, and final price so the order stays easy to trace.'
+                      : 'Start with timing, access, and scope so this request stays easy to track in Tasks.'
                 : 'Send the first message to confirm timing, scope, or pricing before sharing sensitive details.',
           ),
           const SizedBox(height: 14),
@@ -1502,6 +1528,7 @@ class _ChatThread extends ConsumerWidget {
                                 _quickRepliesFor(
                                       contextTitle: contextTitle,
                                       contextStatus: contextStatus,
+                                      contextSource: contextSource,
                                     )
                                     .map(
                                       (reply) => Padding(

@@ -57,6 +57,17 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     super.dispose();
   }
 
+  int get _activeDiscoveryFilterCount {
+    var count = _filters.length;
+    if (_selectedCategory != 'All') {
+      count += 1;
+    }
+    if (_mode != _DiscoveryMode.best) {
+      count += 1;
+    }
+    return count;
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(peopleSnapshotProvider);
     await ref.read(peopleSnapshotProvider.future);
@@ -75,7 +86,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                 'people_search',
                 extras: {
                   'query_length': nextQuery.length,
-                  'filter_count': _filters.length,
+                  'filter_count': _activeDiscoveryFilterCount,
                 },
               );
         }
@@ -99,27 +110,155 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         .read(analyticsServiceProvider)
         .trackEvent(
           'people_filter_changed',
-          extras: {'filter_count': _filters.length},
+          extras: {'filter_count': _activeDiscoveryFilterCount},
         );
   }
 
-  void _selectDiscoveryMode(_DiscoveryMode mode) {
+  void _showDiscoverySheet(List<String> categories) {
     HapticFeedback.selectionClick();
-    setState(() => _mode = mode);
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'people_discovery_mode_changed',
-          extras: {'mode': mode.name},
-        );
-  }
+    final availableCategories = categories.isEmpty ? const ['All'] : categories;
 
-  void _selectCategory(String category) {
-    HapticFeedback.selectionClick();
-    setState(() => _selectedCategory = category);
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent('people_category_selected', extras: {'category': category});
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        var sheetMode = _mode;
+        var sheetCategory = availableCategories.contains(_selectedCategory)
+            ? _selectedCategory
+            : 'All';
+        var sheetFilters = <String>{..._filters};
+
+        void syncSheetState(StateSetter setSheetState) {
+          setSheetState(() {
+            sheetMode = _mode;
+            sheetCategory = availableCategories.contains(_selectedCategory)
+                ? _selectedCategory
+                : 'All';
+            sheetFilters = <String>{..._filters};
+          });
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) {
+                void update(void Function() change) {
+                  setState(change);
+                  syncSheetState(setSheetState);
+                  _trackPeopleFilterChange();
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Discovery filters',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tune provider discovery without crowding the directory.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Sort by',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      _DiscoveryModeControl(
+                        selectedMode: sheetMode,
+                        onSelected: (mode) {
+                          update(() => _mode = mode);
+                          ref
+                              .read(analyticsServiceProvider)
+                              .trackEvent(
+                                'people_discovery_mode_changed',
+                                extras: {'mode': mode.name},
+                              );
+                        },
+                      ),
+                      if (availableCategories.length > 1) ...[
+                        const SizedBox(height: 18),
+                        Text(
+                          'Category',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        _CategoryChoiceWrap(
+                          categories: availableCategories,
+                          selectedCategory: sheetCategory,
+                          onSelected: (category) {
+                            update(() => _selectedCategory = category);
+                            ref
+                                .read(analyticsServiceProvider)
+                                .trackEvent(
+                                  'people_category_selected',
+                                  extras: {'category': category},
+                                );
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 18),
+                      Text(
+                        'Signals',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      FilterChipGroup<String>(
+                        options: _peopleFilterOptions,
+                        selectedValues: sheetFilters,
+                        onChanged: (next) {
+                          update(() {
+                            _filters
+                              ..clear()
+                              ..addAll(next);
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                update(() {
+                                  _filters.clear();
+                                  _selectedCategory = 'All';
+                                  _mode = _DiscoveryMode.best;
+                                });
+                              },
+                              icon: const Icon(Icons.restart_alt_rounded),
+                              label: const Text('Reset'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              child: const Text('Show providers'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _openProvider(MobilePersonCard person) {
@@ -165,6 +304,10 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(peopleSnapshotProvider);
+    final preview = snapshot.asData?.value;
+    final categories = preview == null
+        ? const ['All']
+        : _topCategories(preview.people);
 
     return Scaffold(
       appBar: AppBar(
@@ -205,48 +348,15 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       onChanged: _onQueryChanged,
                     ),
                     const SizedBox(height: 12),
-                    _DiscoveryModeControl(
-                      selectedMode: _mode,
-                      onSelected: _selectDiscoveryMode,
-                    ),
-                    const SizedBox(height: 10),
-                    FilterChipGroup<String>(
-                      options: const [
-                        FilterOption(
-                          value: 'online',
-                          label: 'Online',
-                          icon: Icons.bolt_rounded,
-                        ),
-                        FilterOption(
-                          value: 'verified',
-                          label: 'Verified',
-                          icon: Icons.verified_user_outlined,
-                        ),
-                        FilterOption(
-                          value: 'top_rated',
-                          label: 'Top rated',
-                          icon: Icons.star_rounded,
-                        ),
-                        FilterOption(
-                          value: 'connected',
-                          label: 'Connected',
-                          icon: Icons.diversity_3_outlined,
-                        ),
-                        FilterOption(
-                          value: 'fast',
-                          label: 'Fast replies',
-                          icon: Icons.speed_rounded,
-                        ),
-                      ],
-                      selectedValues: _filters,
-                      onChanged: (next) {
-                        setState(() {
-                          _filters
-                            ..clear()
-                            ..addAll(next);
-                        });
-                        _trackPeopleFilterChange();
-                      },
+                    _PeopleDiscoverySummary(
+                      mode: _mode,
+                      selectedCategory: _selectedCategory,
+                      filters: _filters,
+                      activeCount: _activeDiscoveryFilterCount,
+                      onOpenFilters: () => _showDiscoverySheet(categories),
+                      onClear: _activeDiscoveryFilterCount == 0
+                          ? null
+                          : _clearSearchAndFilters,
                     ),
                   ],
                 ),
@@ -259,7 +369,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                 onRetry: _refresh,
                 loadingBuilder: () => const _PeopleLoading(),
                 data: (data) {
-                  final categories = _topCategories(data.people);
                   final filtered =
                       data.people.where((person) {
                         if (_filters.contains('online') && !person.isOnline) {
@@ -304,12 +413,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _DiscoveryOverview(snapshot: data, filtered: filtered),
-                      const SizedBox(height: 14),
-                      _CategoryRail(
-                        categories: categories,
-                        selectedCategory: _selectedCategory,
-                        onSelected: _selectCategory,
-                      ),
                       if (_mode == _DiscoveryMode.compare &&
                           filtered.isNotEmpty) ...[
                         const SizedBox(height: 14),
@@ -369,6 +472,26 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     );
   }
 }
+
+const _peopleFilterOptions = [
+  FilterOption(value: 'online', label: 'Online', icon: Icons.bolt_rounded),
+  FilterOption(
+    value: 'verified',
+    label: 'Verified',
+    icon: Icons.verified_user_outlined,
+  ),
+  FilterOption(
+    value: 'top_rated',
+    label: 'Top rated',
+    icon: Icons.star_rounded,
+  ),
+  FilterOption(
+    value: 'connected',
+    label: 'Connected',
+    icon: Icons.diversity_3_outlined,
+  ),
+  FilterOption(value: 'fast', label: 'Fast replies', icon: Icons.speed_rounded),
+];
 
 int _compareFindPeople(MobilePersonCard left, MobilePersonCard right) {
   final scoreCompare = _findPeopleScore(
@@ -479,6 +602,82 @@ List<String> _topCategories(List<MobilePersonCard> people) {
   return ['All', ...ranked.take(8).map((entry) => entry.key)];
 }
 
+class _PeopleDiscoverySummary extends StatelessWidget {
+  const _PeopleDiscoverySummary({
+    required this.mode,
+    required this.selectedCategory,
+    required this.filters,
+    required this.activeCount,
+    required this.onOpenFilters,
+    required this.onClear,
+  });
+
+  final _DiscoveryMode mode;
+  final String selectedCategory;
+  final Set<String> filters;
+  final int activeCount;
+  final VoidCallback onOpenFilters;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = [
+      _modeLabel(mode),
+      if (selectedCategory == 'All') 'All categories' else selectedCategory,
+      ...filters.map(_filterLabelFor),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chips.map((label) {
+                return TrustBadge(
+                  label: label,
+                  icon: Icons.check_rounded,
+                  backgroundColor: AppColors.surface,
+                  foregroundColor: AppColors.ink,
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (onClear != null)
+            Tooltip(
+              message: 'Reset filters',
+              child: IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.restart_alt_rounded),
+              ),
+            ),
+          OutlinedButton.icon(
+            onPressed: onOpenFilters,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            icon: Badge(
+              isLabelVisible: activeCount > 0,
+              label: Text('$activeCount'),
+              child: const Icon(Icons.tune_rounded),
+            ),
+            label: const Text('Filters'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DiscoveryModeControl extends StatelessWidget {
   const _DiscoveryModeControl({
     required this.selectedMode,
@@ -578,8 +777,27 @@ class _DiscoveryOverview extends StatelessWidget {
   }
 }
 
-class _CategoryRail extends StatelessWidget {
-  const _CategoryRail({
+String _modeLabel(_DiscoveryMode mode) {
+  return switch (mode) {
+    _DiscoveryMode.best => 'Best matches',
+    _DiscoveryMode.nearby => 'Nearby first',
+    _DiscoveryMode.compare => 'Compare mode',
+  };
+}
+
+String _filterLabelFor(String value) {
+  return switch (value) {
+    'online' => 'Online',
+    'verified' => 'Verified',
+    'top_rated' => 'Top rated',
+    'connected' => 'Connected',
+    'fast' => 'Fast replies',
+    _ => value,
+  };
+}
+
+class _CategoryChoiceWrap extends StatelessWidget {
+  const _CategoryChoiceWrap({
     required this.categories,
     required this.selectedCategory,
     required this.onSelected,
@@ -591,26 +809,16 @@ class _CategoryRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (categories.length <= 1) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final selected = category == selectedCategory;
-          return ChoiceChip(
-            label: Text(category),
-            selected: selected,
-            onSelected: (_) => onSelected(category),
-          );
-        },
-      ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: categories.map((category) {
+        return ChoiceChip(
+          label: Text(category),
+          selected: category == selectedCategory,
+          onSelected: (_) => onSelected(category),
+        );
+      }).toList(),
     );
   }
 }

@@ -314,6 +314,42 @@ class AppTheme {
           textStyle: textTheme.labelLarge,
         ),
       ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: WidgetStateProperty.all(
+            const Size(0, AppTouchTargets.minimum),
+          ),
+          visualDensity: VisualDensity.compact,
+          textStyle: WidgetStateProperty.all(textTheme.labelMedium),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primaryDeep
+                : AppColors.inkSubtle;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primarySoft
+                : AppColors.surface;
+          }),
+          iconColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primaryDeep
+                : AppColors.inkSubtle;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            return BorderSide(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primarySoft
+                  : AppColors.border,
+            );
+          }),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
+          ),
+        ),
+      ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.ink,
         foregroundColor: Colors.white,
@@ -365,6 +401,39 @@ class AppTheme {
             size: 24,
           );
         }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.accentSoft,
+        elevation: 0,
+        minWidth: 82,
+        minExtendedWidth: 188,
+        labelType: NavigationRailLabelType.all,
+        selectedIconTheme: const IconThemeData(
+          color: AppColors.accentDeep,
+          size: 24,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.inkSubtle,
+          size: 23,
+        ),
+        selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.inkStrong,
+          fontWeight: FontWeight.w900,
+        ),
+        unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.inkSubtle,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      badgeTheme: BadgeThemeData(
+        backgroundColor: AppColors.danger,
+        textColor: Colors.white,
+        textStyle: textTheme.labelSmall?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
       ),
     );
   }
