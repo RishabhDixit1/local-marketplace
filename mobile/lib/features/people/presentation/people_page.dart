@@ -706,12 +706,13 @@ class _CompareRow extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: AppColors.primarySoft,
-                backgroundImage: person.avatarUrl.trim().isEmpty
+                foregroundImage: person.avatarUrl.trim().isEmpty
                     ? null
                     : NetworkImage(person.avatarUrl),
-                child: person.avatarUrl.trim().isEmpty
-                    ? Text(person.name.characters.first.toUpperCase())
-                    : null,
+                onForegroundImageError: person.avatarUrl.trim().isEmpty
+                    ? null
+                    : (_, _) {},
+                child: Text(_avatarInitial(person.name)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -820,4 +821,9 @@ class _PeopleLoading extends StatelessWidget {
       ),
     );
   }
+}
+
+String _avatarInitial(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? 'S' : trimmed.characters.first.toUpperCase();
 }

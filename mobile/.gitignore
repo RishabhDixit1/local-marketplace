@@ -46,3 +46,7 @@ app.*.map.json
 
 # Local iOS release/export artifacts
 /release/ios/
+
+# Local Android release handoff artifacts
+/release/apk/*.apk
+/release/apk/*.apk.sha256

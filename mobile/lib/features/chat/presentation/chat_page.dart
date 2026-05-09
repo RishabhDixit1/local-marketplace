@@ -1778,12 +1778,13 @@ class _ConversationTile extends StatelessWidget {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: AppColors.surfaceMuted,
-                  backgroundImage: conversation.avatarUrl.trim().isEmpty
+                  foregroundImage: conversation.avatarUrl.trim().isEmpty
                       ? null
                       : NetworkImage(conversation.avatarUrl),
-                  child: conversation.avatarUrl.trim().isEmpty
-                      ? Text(conversation.name.characters.first.toUpperCase())
-                      : null,
+                  onForegroundImageError: conversation.avatarUrl.trim().isEmpty
+                      ? null
+                      : (_, _) {},
+                  child: Text(_avatarInitial(conversation.name)),
                 ),
                 Positioned(
                   right: 0,
@@ -1997,6 +1998,11 @@ bool _conversationLooksLikeTask(ChatConversation conversation) {
       haystack.contains('complete') ||
       haystack.contains('eta') ||
       haystack.contains('timing');
+}
+
+String _avatarInitial(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? 'S' : trimmed.characters.first.toUpperCase();
 }
 
 String _messageStatusLabel(

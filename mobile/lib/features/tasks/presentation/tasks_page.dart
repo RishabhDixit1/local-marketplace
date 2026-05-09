@@ -173,6 +173,11 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     return _itemsForLane(snapshot, lane).length;
   }
 
+  MobileTaskItem? _nextActionTaskFor(MobileTaskSnapshot snapshot) {
+    final items = _itemsForLane(snapshot, _TaskBoardLane.needsAction);
+    return items.isEmpty ? null : items.first;
+  }
+
   int _roleCount(MobileTaskSnapshot snapshot, _TaskRoleFilter filter) {
     switch (filter) {
       case _TaskRoleFilter.all:
@@ -314,6 +319,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     final snapshot = ref.watch(taskSnapshotProvider);
     final data = snapshot.asData?.value;
     final focusedTask = _focusedTaskFor(data);
+    final nextActionTask = data == null ? null : _nextActionTaskFor(data);
     if (data != null) {
       _applyFocusIfNeeded(data);
     }
@@ -330,6 +336,10 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 snapshot: data,
                 selectedRole: _selectedRole,
                 roleCount: data == null ? 0 : _roleCount(data, _selectedRole),
+                nextActionTask: nextActionTask,
+                onOpenNextAction: nextActionTask == null
+                    ? null
+                    : () => _showTaskDetailSheet(nextActionTask),
                 focusTaskId: widget.focusTaskId,
                 focusSource: widget.focusSource,
               ),
@@ -349,6 +359,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   selectedRole: _selectedRole,
                   countFor: (lane) => _countFor(data, lane),
                   roleCountFor: (role) => _roleCount(data, role),
+                  onLaneSelected: (lane) => setState(() {
+                    _selectedLane = lane;
+                  }),
                   onOpenFilters: () => _showFiltersSheet(data),
                 ),
                 const SizedBox(height: 16),
@@ -518,28 +531,47 @@ class _TaskDetailSheet extends StatelessWidget {
           focused: true,
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: () => context.push(
-                  AppRoutes.quoteRoom(mode: quoteMode, targetId: task.id),
-                ),
-                icon: const Icon(Icons.request_quote_outlined),
-                label: const Text('Quote room'),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final quoteButton = FilledButton.icon(
+              onPressed: () => context.push(
+                AppRoutes.quoteRoom(mode: quoteMode, targetId: task.id),
               ),
-            ),
-            if (task.source == MobileTaskSource.order) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push(AppRoutes.orderDetail(task.id)),
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('Order'),
-                ),
-              ),
-            ],
-          ],
+              icon: const Icon(Icons.request_quote_outlined),
+              label: const Text('Quote room'),
+            );
+            final orderButton = task.source == MobileTaskSource.order
+                ? OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push(AppRoutes.orderDetail(task.id)),
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('Order'),
+                  )
+                : null;
+
+            if (orderButton == null) {
+              return SizedBox(width: double.infinity, child: quoteButton);
+            }
+
+            if (constraints.maxWidth < 360) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  quoteButton,
+                  const SizedBox(height: 10),
+                  orderButton,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: quoteButton),
+                const SizedBox(width: 10),
+                Expanded(child: orderButton),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -551,6 +583,8 @@ class _TasksHero extends StatelessWidget {
     required this.snapshot,
     required this.selectedRole,
     required this.roleCount,
+    required this.nextActionTask,
+    required this.onOpenNextAction,
     this.focusTaskId,
     this.focusSource,
   });
@@ -558,6 +592,8 @@ class _TasksHero extends StatelessWidget {
   final MobileTaskSnapshot? snapshot;
   final _TaskRoleFilter selectedRole;
   final int roleCount;
+  final MobileTaskItem? nextActionTask;
+  final VoidCallback? onOpenNextAction;
   final String? focusTaskId;
   final String? focusSource;
 
@@ -576,35 +612,64 @@ class _TasksHero extends StatelessWidget {
         : snapshot!.items
               .where((item) => item.role == MobileTaskRole.accepted)
               .length;
+    final nextTask = nextActionTask;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B1F33), Color(0xFF1D4ED8), Color(0xFF0EA5A4)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      padding: const EdgeInsets.all(22),
+    return SectionCard(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Operations board',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.fact_check_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Next up',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      nextTask == null
+                          ? selectedRole == _TaskRoleFilter.all
+                                ? 'No task needs action right now. Scan active work or switch lanes below.'
+                                : 'No ${selectedRole.label.toLowerCase()} task needs action across $roleCount visible tasks.'
+                          : '${nextTask.primaryAction?.label ?? _nextStepShortLabel(nextTask)}: ${nextTask.title}',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            selectedRole == _TaskRoleFilter.all
-                ? 'Track requests, work, and handoffs.'
-                : '$roleCount ${selectedRole.label.toLowerCase()} tasks are currently visible in this board.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.84),
+          if (nextTask != null && onOpenNextAction != null) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onOpenNextAction,
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Review next task'),
+              ),
             ),
-          ),
+          ],
           if ((focusTaskId ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 14),
             _HeroBadge(
@@ -654,20 +719,16 @@ class _HeroBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
+          Icon(icon, color: AppColors.inkMuted, size: 16),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(color: Colors.white),
-          ),
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
         ],
       ),
     );
@@ -768,6 +829,7 @@ class _WorkBoardSummary extends StatelessWidget {
     required this.selectedRole,
     required this.countFor,
     required this.roleCountFor,
+    required this.onLaneSelected,
     required this.onOpenFilters,
   });
 
@@ -776,6 +838,7 @@ class _WorkBoardSummary extends StatelessWidget {
   final _TaskRoleFilter selectedRole;
   final int Function(_TaskBoardLane lane) countFor;
   final int Function(_TaskRoleFilter role) roleCountFor;
+  final ValueChanged<_TaskBoardLane> onLaneSelected;
   final VoidCallback onOpenFilters;
 
   @override
@@ -828,24 +891,28 @@ class _WorkBoardSummary extends StatelessWidget {
                     label: 'Needs action',
                     value: needsAction,
                     selected: selectedLane == _TaskBoardLane.needsAction,
+                    onTap: () => onLaneSelected(_TaskBoardLane.needsAction),
                   ),
                   _WorkStatTile(
                     width: tileWidth,
                     label: 'Active',
                     value: active,
                     selected: selectedLane == _TaskBoardLane.active,
+                    onTap: () => onLaneSelected(_TaskBoardLane.active),
                   ),
                   _WorkStatTile(
                     width: tileWidth,
                     label: 'Waiting',
                     value: waiting,
                     selected: selectedLane == _TaskBoardLane.inProgress,
+                    onTap: () => onLaneSelected(_TaskBoardLane.inProgress),
                   ),
                   _WorkStatTile(
                     width: tileWidth,
                     label: 'Done',
                     value: done,
                     selected: selectedLane == _TaskBoardLane.done,
+                    onTap: () => onLaneSelected(_TaskBoardLane.done),
                   ),
                 ],
               );
@@ -888,45 +955,56 @@ class _WorkStatTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.selected,
+    required this.onTap,
   });
 
   final double width;
   final String label;
   final int value;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primarySoft : AppColors.surfaceMuted,
+      child: Material(
+        color: selected ? AppColors.primarySoft : AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.border,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.border,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value > 99 ? '99+' : value.toString(),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: selected ? AppColors.primaryDeep : AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected
+                        ? AppColors.primaryDeep
+                        : AppColors.inkSubtle,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value > 99 ? '99+' : value.toString(),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: selected ? AppColors.primaryDeep : AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selected ? AppColors.primaryDeep : AppColors.inkSubtle,
-              ),
-            ),
-          ],
         ),
       ),
     );
