@@ -101,6 +101,28 @@ void main() {
 
     expect(find.text('Next-action queue'), findsOneWidget);
   });
+
+  testWidgets('work tab shows partial-load recovery warnings', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appBootstrapProvider.overrideWithValue(_bootstrap),
+          taskSnapshotProvider.overrideWith(
+            (ref) async => _partialTaskSnapshot,
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TasksPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Requests could not load. Pull to refresh and try again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Repair kitchen sink leak'), findsOneWidget);
+  });
 }
 
 const _peopleSnapshot = MobilePeopleSnapshot(
@@ -179,4 +201,10 @@ final _taskSnapshot = MobileTaskSnapshot(
       createdAt: DateTime(2026, 5, 8, 11),
     ),
   ],
+);
+
+final _partialTaskSnapshot = MobileTaskSnapshot(
+  currentUserId: _taskSnapshot.currentUserId,
+  warnings: const ['Requests could not load. Pull to refresh and try again.'],
+  items: _taskSnapshot.items,
 );

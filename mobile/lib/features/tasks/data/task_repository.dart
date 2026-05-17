@@ -38,24 +38,51 @@ class TaskRepository {
       );
     }
 
-    final futures = await Future.wait<Object?>([
-      client
-          .from('orders')
-          .select(
-            'id,help_request_id,status,price,listing_type,consumer_id,provider_id,metadata,created_at',
-          )
-          .or('consumer_id.eq.$userId,provider_id.eq.$userId')
-          .order('created_at', ascending: false)
-          .limit(120),
-      _apiClient.getJson('/api/tasks/help-requests'),
+    List<dynamic> orderRows = const [];
+    Map<String, dynamic>? helpPayload;
+    var ordersLoaded = false;
+    var helpRequestsLoaded = false;
+    final warnings = <String>[];
+
+    await Future.wait<void>([
+      (() async {
+        try {
+          final rows = await client
+              .from('orders')
+              .select(
+                'id,help_request_id,status,price,listing_type,consumer_id,provider_id,metadata,created_at',
+              )
+              .or('consumer_id.eq.$userId,provider_id.eq.$userId')
+              .order('created_at', ascending: false)
+              .limit(120);
+          orderRows = (rows as List?) ?? const [];
+          ordersLoaded = true;
+        } catch (error) {
+          warnings.add(_loadWarning('Orders', error));
+        }
+      })(),
+      (() async {
+        try {
+          final payload = await _apiClient.getJson('/api/tasks/help-requests');
+          if (payload['ok'] != true) {
+            throw ApiException(
+              (payload['message'] as String?) ??
+                  'Unable to load the help request activity.',
+            );
+          }
+          helpPayload = payload;
+          helpRequestsLoaded = true;
+        } catch (error) {
+          warnings.add(_loadWarning('Requests', error));
+        }
+      })(),
     ]);
 
-    final orderRows = (futures[0] as List?) ?? const [];
-    final helpPayload = futures[1] as Map<String, dynamic>;
-    if (helpPayload['ok'] != true) {
+    if (!ordersLoaded && !helpRequestsLoaded) {
       throw ApiException(
-        (helpPayload['message'] as String?) ??
-            'Unable to load the help request activity.',
+        warnings.isEmpty
+            ? 'Unable to load Work right now.'
+            : warnings.join(' '),
       );
     }
 
@@ -73,7 +100,7 @@ class TaskRepository {
               currentUserId: userId,
             ),
           ),
-          ...((helpPayload['requests'] as List?) ?? const [])
+          ...((helpPayload?['requests'] as List?) ?? const [])
               .whereType<Map>()
               .map((row) => Map<String, dynamic>.from(row))
               .where(
@@ -86,7 +113,11 @@ class TaskRepository {
           return rightTime.compareTo(leftTime);
         });
 
-    return MobileTaskSnapshot(currentUserId: userId, items: tasks);
+    return MobileTaskSnapshot(
+      currentUserId: userId,
+      items: tasks,
+      warnings: warnings,
+    );
   }
 
   Future<void> performPrimaryAction(MobileTaskItem task) async {
@@ -169,6 +200,16 @@ class TaskRepository {
       statusCode: payload['statusCode'] as int?,
     );
   }
+}
+
+String _loadWarning(String source, Object error) {
+  if (error is ApiException) {
+    return '$source could not load: ${error.message}';
+  }
+  if (error is PostgrestException) {
+    return '$source could not load: ${error.message}';
+  }
+  return '$source could not load. Pull to refresh and try again.';
 }
 
 MobileTaskItem _mapOrderToTask(

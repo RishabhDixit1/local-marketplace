@@ -13,6 +13,7 @@ import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/quote_repository.dart';
+import '../domain/quote_drafting.dart';
 import '../domain/quote_models.dart';
 
 class QuoteRoomPage extends ConsumerStatefulWidget {
@@ -228,6 +229,34 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
     }
   }
 
+  void _generateDraft(MobileQuoteContext quoteContext) {
+    final generated = generateMobileQuoteDraft(quoteContext);
+
+    for (final item in _lineItems) {
+      item.dispose();
+    }
+    _lineItems
+      ..clear()
+      ..addAll(generated.lineItems.map(_LineItemControllers.fromItem));
+
+    _summaryController.text = generated.summary;
+    _notesController.text = generated.notes;
+    _taxController.text = '0';
+    _expiresDaysController.text = generated.expiresDays.toString();
+
+    setState(() {});
+    ref
+        .read(analyticsServiceProvider)
+        .trackEvent(
+          'quote_draft_generated',
+          extras: {
+            'mode': widget.mode.apiValue,
+            'target_id': widget.targetId,
+            'line_count': generated.lineItems.length,
+          },
+        );
+  }
+
   Future<void> _acceptQuote(MobileQuoteDraft draft) async {
     setState(() => _accepting = true);
     try {
@@ -282,7 +311,7 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
 
     final workspaceAsync = ref.watch(quoteWorkspaceProvider(_request));
     return Scaffold(
-      appBar: AppBar(title: const Text('Deal room')),
+      appBar: AppBar(title: const Text('Quote room')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -340,6 +369,8 @@ class _QuoteRoomPageState extends ConsumerState<QuoteRoomPage> {
                         },
                         onSave: _saveDraft,
                         onSend: _sendQuote,
+                        onGenerateDraft: () =>
+                            _generateDraft(workspace.context),
                       ),
                     ],
                   );
@@ -429,7 +460,7 @@ class _QuoteStatusCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             draft.sentAt == null
-                ? 'Draft saved locally to this deal.'
+                ? 'Draft saved locally to this quote room.'
                 : 'Sent ${_relativeTime(draft.sentAt!)}.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -501,7 +532,7 @@ class _QuoteTimelineCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Deal timeline', style: Theme.of(context).textTheme.titleLarge),
+          Text('Quote timeline', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
             'Scope, quote, acceptance, and task handoff stay visible together.',
@@ -600,6 +631,7 @@ class _QuoteForm extends StatelessWidget {
     required this.onRemoveLine,
     required this.onSave,
     required this.onSend,
+    required this.onGenerateDraft,
   });
 
   final GlobalKey<FormState> formKey;
@@ -615,6 +647,7 @@ class _QuoteForm extends StatelessWidget {
   final ValueChanged<int> onRemoveLine;
   final VoidCallback onSave;
   final VoidCallback onSend;
+  final VoidCallback onGenerateDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -653,7 +686,21 @@ class _QuoteForm extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Chip(label: Text('${lineItems.length} lines')),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Chip(label: Text('${lineItems.length} lines')),
+                    if (canEdit) ...[
+                      const SizedBox(height: 6),
+                      SecondaryButton(
+                        label: 'Generate draft',
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        expanded: false,
+                        onPressed: saving || sending ? null : onGenerateDraft,
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 12),

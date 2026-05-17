@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Flutter/native artifacts. These can contain vendored JS from
+    // mobile SDKs and should not be linted as app source.
+    "mobile/.dart_tool/**",
+    "mobile/build/**",
+    "mobile/android/.gradle/**",
+    "mobile/ios/Pods/**",
+    "mobile/release/**",
   ]),
 ]);
 

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
@@ -349,6 +350,14 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 _FocusedTaskBanner(
                   task: focusedTask,
                   focusSource: widget.focusSource,
+                ),
+              ],
+              if (data?.hasPartialFailure == true) ...[
+                const SizedBox(height: 12),
+                ServiqRecoveryBanner(
+                  message: data!.warnings.join(' '),
+                  actionLabel: 'Retry',
+                  onAction: () => ref.invalidate(taskSnapshotProvider),
                 ),
               ],
               const SizedBox(height: 16),

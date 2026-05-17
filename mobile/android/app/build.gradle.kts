@@ -23,6 +23,12 @@ val hasReleaseKeystore =
         keystoreProperties["keyAlias"] != null &&
         keystoreProperties["keyPassword"] != null
 
+fun releaseSigningError(): String {
+    return "Release signing is not configured. Copy android/key.properties.example " +
+        "to android/key.properties, create a stable keystore outside git, and then " +
+        "run the release build again."
+}
+
 android {
     namespace = "com.serviq.serviq_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -50,7 +56,7 @@ android {
             if (hasReleaseKeystore) {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
@@ -58,12 +64,21 @@ android {
 
     buildTypes {
         release {
-            signingConfig =
-                if (hasReleaseKeystore) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name.contains("Release") &&
+        (name.startsWith("assemble") || name.startsWith("bundle") || name.startsWith("package"))
+    ) {
+        doFirst {
+            if (!hasReleaseKeystore) {
+                throw GradleException(releaseSigningError())
+            }
         }
     }
 }

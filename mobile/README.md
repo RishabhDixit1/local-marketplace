@@ -158,7 +158,9 @@ When that file exists, the Android Gradle build applies Google Services and Cras
 
 ### 7. Android release signing
 
-For internal testing, Flutter can build an installable APK without a release keystore. For Play Store or wider distribution, create a release keystore and configure:
+Debug builds can still run without release signing. Shareable release APKs now
+require a stable release keystore so tester devices receive updates from the
+same signing identity. Configure:
 
 ```text
 mobile/android/key.properties
@@ -180,6 +182,24 @@ storeFile=../release/serviq-release.keystore
 ```
 
 Keep the real keystore and passwords out of git.
+
+The release Gradle task now refuses to fall back to debug signing. For a local
+tester keystore, run this from the repo root:
+
+```bash
+bash scripts/setup-mobile-android-keystore.sh
+```
+
+That creates ignored local files:
+
+```text
+mobile/android/key.properties
+mobile/release/serviq-release.keystore
+mobile/release/android-signing-credentials.txt
+```
+
+Back up the keystore and credentials in the team password manager. Losing the
+keystore means future Android updates cannot use the same signing identity.
 
 ### 8. Build a shareable Android APK
 
@@ -217,6 +237,18 @@ shasum -a 256 release/apk/*.apk > release/apk/SHA256SUMS.txt
 ```
 
 Only send the `.apk` file to Android testers. The checksum file is only for verification.
+
+The repo also includes a repeatable release helper that runs analyze/tests,
+builds a signed APK with physical-device-safe URLs, copies it to
+`mobile/release/apk/`, writes a SHA-256 checksum, and verifies the signing cert:
+
+```bash
+bash scripts/build-mobile-android-release.sh --label internal-qa
+```
+
+Use `--api-base-url https://your-staging-domain.example` for staging. The script
+will refuse `localhost`, `127.0.0.1`, `0.0.0.0`, or `10.0.2.2` for tester
+artifacts because those do not work on other physical phones.
 
 ### 9. Install an APK manually
 
