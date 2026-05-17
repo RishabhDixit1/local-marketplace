@@ -736,6 +736,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                       nearbyProviderCount: people?.people.length ?? 0,
                       onInboxTap: () => context.push(AppRoutes.chat),
                       onTasksTap: () => context.go(AppRoutes.tasks),
+                      onFindPeopleTap: () => context.go(AppRoutes.people),
                       onPrimaryTap: () {
                         _trackFirstEngagement('post_need');
                         ref
@@ -749,24 +750,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         context.push(AppRoutes.createRequest);
                       },
                       heroSignals: model.heroSignals,
-                    ),
-                    const SizedBox(height: 14),
-                    _NeedsActionPanel(
-                      activeTaskCount: activeTaskCount,
-                      unreadChatCount: unreadChatCount,
-                      urgentDemandCount: allFeed?.stats.urgent ?? 0,
-                      profileCompletion:
-                          profileAsync?.asData?.value.completionPercent,
-                      roleFamily:
-                          profileAsync?.asData?.value.roleFamily ??
-                          allFeed?.viewerRoleFamily ??
-                          people?.viewerRoleFamily ??
-                          'seeker',
-                      onReplyInbox: () => context.push(AppRoutes.chat),
-                      onOpenTasks: () => context.go(AppRoutes.tasks),
-                      onPostNeed: () => context.push(AppRoutes.createRequest),
-                      onCompleteProfile: () => context.push(AppRoutes.profile),
-                      onFindPeople: () => context.go(AppRoutes.people),
                     ),
                     if (warnings.isNotEmpty) ...[
                       const SizedBox(height: 14),
@@ -865,6 +848,24 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             onPeopleTap: () => context.go(AppRoutes.people),
                             onExploreTap: () => context.go(AppRoutes.explore),
                           ),
+                    const SizedBox(height: 18),
+                    _NeedsActionPanel(
+                      activeTaskCount: activeTaskCount,
+                      unreadChatCount: unreadChatCount,
+                      urgentDemandCount: allFeed?.stats.urgent ?? 0,
+                      profileCompletion:
+                          profileAsync?.asData?.value.completionPercent,
+                      roleFamily:
+                          profileAsync?.asData?.value.roleFamily ??
+                          allFeed?.viewerRoleFamily ??
+                          people?.viewerRoleFamily ??
+                          'seeker',
+                      onReplyInbox: () => context.push(AppRoutes.chat),
+                      onOpenTasks: () => context.go(AppRoutes.tasks),
+                      onPostNeed: () => context.push(AppRoutes.createRequest),
+                      onCompleteProfile: () => context.push(AppRoutes.profile),
+                      onFindPeople: () => context.go(AppRoutes.people),
+                    ),
                     const SizedBox(height: 18),
                     SectionHeader(
                       title: 'Recent',
@@ -2230,6 +2231,7 @@ class _HeroSection extends StatelessWidget {
     required this.nearbyProviderCount,
     required this.onInboxTap,
     required this.onTasksTap,
+    required this.onFindPeopleTap,
     required this.onPrimaryTap,
     required this.heroSignals,
   });
@@ -2242,6 +2244,7 @@ class _HeroSection extends StatelessWidget {
   final int nearbyProviderCount;
   final VoidCallback onInboxTap;
   final VoidCallback onTasksTap;
+  final VoidCallback onFindPeopleTap;
   final VoidCallback onPrimaryTap;
   final List<String> heroSignals;
 
@@ -2260,6 +2263,27 @@ class _HeroSection extends StatelessWidget {
             tap: onTasksTap,
           )
         : (label: 'Post Need', icon: Icons.add_rounded, tap: onPrimaryTap);
+    final compactActions = <({String label, IconData icon, VoidCallback tap})>[
+      if (nextAction.label != 'Post Need')
+        (label: 'Post Need', icon: Icons.add_rounded, tap: onPrimaryTap),
+      (
+        label: 'Find People',
+        icon: Icons.person_search_outlined,
+        tap: onFindPeopleTap,
+      ),
+      if (nextAction.label != 'Open Work')
+        (
+          label: 'Work',
+          icon: Icons.assignment_turned_in_outlined,
+          tap: onTasksTap,
+        ),
+      if (nextAction.label != 'Open Inbox')
+        (
+          label: 'Inbox',
+          icon: Icons.chat_bubble_outline_rounded,
+          tap: onInboxTap,
+        ),
+    ].take(3).toList();
     final chips = _homeStatusChips(
       activeTaskCount: activeTaskCount,
       unreadChatCount: unreadChatCount,
@@ -2290,6 +2314,21 @@ class _HeroSection extends StatelessWidget {
               icon: Icon(nextAction.icon),
               label: Text(nextAction.label),
             ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: compactActions
+                .map(
+                  (action) => ActionChip(
+                    avatar: Icon(action.icon, size: 16),
+                    label: Text(action.label),
+                    onPressed: action.tap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+                .toList(),
           ),
           if (chips.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -2429,9 +2468,9 @@ class _ReadinessPrompt {
       return const _ReadinessPrompt(
         title: 'Publish your first offer',
         message:
-            'Business AI can turn your services, products, and service area into a launch-ready listing.',
-        actionLabel: 'Open Launchpad',
-        route: AppRoutes.providerLaunchpad,
+            'Business AI now lives in You, so Home can stay focused on demand, people, and work.',
+        actionLabel: 'Open You',
+        route: AppRoutes.profile,
         icon: Icons.rocket_launch_outlined,
         tone: ServiqRecoveryTone.neutral,
       );

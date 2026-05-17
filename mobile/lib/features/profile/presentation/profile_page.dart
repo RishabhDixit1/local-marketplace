@@ -510,13 +510,13 @@ class _ProfileTopActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final isProvider = snapshot.roleFamily == 'provider';
     final actions = [
-      ('Public Profile', Icons.visibility_outlined, AppRoutes.profilePublic),
-      ('Edit Profile', Icons.edit_outlined, AppRoutes.profileEdit),
       (
-        isProvider ? 'Control' : 'Business',
+        isProvider ? 'Business AI' : 'Business',
         Icons.auto_awesome_rounded,
         AppRoutes.control,
       ),
+      ('Edit Profile', Icons.edit_outlined, AppRoutes.profileEdit),
+      ('Inbox', Icons.chat_bubble_outline_rounded, AppRoutes.chat),
       ('Orders', Icons.receipt_long_outlined, AppRoutes.orders),
     ];
 

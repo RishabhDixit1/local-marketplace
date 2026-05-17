@@ -86,10 +86,17 @@ class MobileTaskPrimaryAction {
 }
 
 class MobileTaskSnapshot {
-  const MobileTaskSnapshot({required this.currentUserId, required this.items});
+  const MobileTaskSnapshot({
+    required this.currentUserId,
+    required this.items,
+    this.warnings = const [],
+  });
 
   final String currentUserId;
   final List<MobileTaskItem> items;
+  final List<String> warnings;
+
+  bool get hasPartialFailure => warnings.isNotEmpty;
 
   int countFor(MobileTaskStatus status) {
     return items.where((item) => item.status == status).length;

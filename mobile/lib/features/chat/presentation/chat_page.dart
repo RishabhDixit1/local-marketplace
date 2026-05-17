@@ -1659,7 +1659,7 @@ class _DealRoomShortcut extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.request_quote_outlined),
-            label: const Text('Deal room'),
+            label: const Text('Quote room'),
           ),
         ],
       ),

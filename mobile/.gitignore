@@ -50,3 +50,6 @@ app.*.map.json
 # Local Android release handoff artifacts
 /release/apk/*.apk
 /release/apk/*.apk.sha256
+/release/*.keystore
+/release/*.jks
+/release/android-signing-credentials.txt

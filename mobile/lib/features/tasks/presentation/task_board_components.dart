@@ -595,7 +595,7 @@ List<TaskTimelineStep> _statusTimelineFor(MobileTaskItem task) {
       title: 'Quote',
       message: task.source == MobileTaskSource.order
           ? 'Pricing is connected to this order.'
-          : 'Keep scope and pricing in the deal room.',
+          : 'Keep scope and pricing in the quote room.',
       state: quoteState,
     ),
     TaskTimelineStep(
