@@ -229,7 +229,7 @@ export default function SettingsPage() {
       )}
 
       {toast ? (
-        <div className="fixed bottom-4 left-1/2 z-[1200] -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg">
+        <div className="fixed bottom-4 left-1/2 z-[var(--layer-toast)] -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-lg">
           {toast}
         </div>
       ) : null}

@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 import type {
   MarketplaceCardActionButton,
   MarketplacePrimaryActionKind,
@@ -403,6 +404,54 @@ export default function FeedCard({
               {item.locationLabel}
             </span>
           </p>
+        ) : null}
+
+        {!isOwner ? (
+          <TrustSnapshot
+            items={[
+              {
+                label:
+                  item.verificationStatus === "verified"
+                    ? "Verified"
+                    : item.reviewCount && item.reviewCount > 0
+                      ? "Active profile"
+                      : "New profile",
+                tone:
+                  item.verificationStatus === "verified"
+                    ? "good"
+                    : item.reviewCount && item.reviewCount > 0
+                      ? "neutral"
+                      : "caution",
+              },
+              item.averageRating && item.averageRating > 0
+                ? {
+                    label: `${item.averageRating.toFixed(1)} stars`,
+                    tone: "good" as const,
+                  }
+                : {
+                    label: "No ratings",
+                    tone: "neutral" as const,
+                  },
+              item.completedJobs && item.completedJobs > 0
+                ? {
+                    label: `${item.completedJobs} jobs done`,
+                    tone: "good" as const,
+                  }
+                : null,
+              item.responseMinutes > 0
+                ? {
+                    label: `~${item.responseMinutes} min reply`,
+                    tone:
+                      item.responseMinutes <= 15
+                        ? ("good" as const)
+                        : ("neutral" as const),
+                  }
+                : null,
+            ].filter((value): value is { label: string; tone: "neutral" | "good" | "caution" } => value !== null)}
+            compact
+            mobileItemLimit={2}
+            className="mt-2"
+          />
         ) : null}
       </div>
 

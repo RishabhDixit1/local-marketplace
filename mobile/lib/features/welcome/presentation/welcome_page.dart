@@ -2316,16 +2316,20 @@ class _HeroSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
             children: compactActions
                 .map(
-                  (action) => ActionChip(
-                    avatar: Icon(action.icon, size: 16),
-                    label: Text(action.label),
-                    onPressed: action.tap,
-                    visualDensity: VisualDensity.compact,
+                  (action) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: action != compactActions.last ? 8 : 0,
+                      ),
+                      child: _CompactActionButton(
+                        icon: action.icon,
+                        label: action.label,
+                        onTap: action.tap,
+                      ),
+                    ),
                   ),
                 )
                 .toList(),
@@ -2348,6 +2352,36 @@ class _HeroSection extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _CompactActionButton extends StatelessWidget {
+  const _CompactActionButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+        ),
       ),
     );
   }

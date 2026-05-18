@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isRelistedHelpRequest, normalizeHelpRequestProgressStage } from "@/lib/helpRequestProgress";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, code: "UNAUTHORIZED", message: authResult.message }, { status: authResult.status });
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "needs:accept", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response!;
 
   const userDbClient = createSupabaseUserServerClient(authResult.auth.accessToken);
   const adminDbClient = createSupabaseAdminClient();
@@ -90,24 +94,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data, error } = await dbClient.rpc("accept_help_request", {
-    target_help_request_id: helpRequestId,
-  });
-
-  if (error) {
-    return NextResponse.json({ ok: false, code: "DB", message: error.message }, { status: 500 });
-  }
-
-  if (!data) {
-    return NextResponse.json(
-      { ok: false, code: "FORBIDDEN", message: "Request already accepted or unavailable." },
-      { status: 409 }
-    );
-  }
-
   const nextProgressStage = normalizeHelpRequestProgressStage("pending_acceptance", existing?.status) || "pending_acceptance";
 
-  await metadataClient
+  // Update metadata first (informational, idempotent) before the acceptance RPC.
+  // If metadata fails, no acceptance has been committed yet — safe to bail.
+  const { error: metadataError } = await metadataClient
     .from("help_requests")
     .update({
       metadata: {
@@ -123,6 +114,28 @@ export async function POST(request: Request) {
       updated_at: now,
     })
     .eq("id", helpRequestId);
+
+  if (metadataError) {
+    return NextResponse.json(
+      { ok: false, code: "DB", message: metadataError.message },
+      { status: 500 }
+    );
+  }
+
+  const { data, error } = await dbClient.rpc("accept_help_request", {
+    target_help_request_id: helpRequestId,
+  });
+
+  if (error) {
+    return NextResponse.json({ ok: false, code: "DB", message: error.message }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json(
+      { ok: false, code: "FORBIDDEN", message: "Request already accepted or unavailable." },
+      { status: 409 }
+    );
+  }
 
   return NextResponse.json({ ok: true, status: "accepted", helpRequestId });
 }

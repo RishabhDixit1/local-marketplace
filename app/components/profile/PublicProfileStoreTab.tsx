@@ -776,7 +776,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
       {/* ── Delete confirm ──────────────────────────────────────────────────── */}
       {deleteTarget ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setDeleteTarget(null)} />
           <div className="relative z-[1] w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl">
             <h3 className="text-base font-semibold text-slate-950">Remove listing?</h3>
@@ -810,7 +810,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
       {/* ── Edit service modal ──────────────────────────────────────────────── */}
       {editService ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !editBusy && setEditService(null)} />
           <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
@@ -903,7 +903,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
       {/* ── Edit product modal ──────────────────────────────────────────────── */}
       {editProduct ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !editBusy && setEditProduct(null)} />
           <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
@@ -1013,7 +1013,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
       {/* ── Add service modal ───────────────────────────────────────────────── */}
       {addModal === "service" ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !addBusy && setAddModal(null)} />
           <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">
@@ -1097,7 +1097,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
 
       {/* ── Add product modal ───────────────────────────────────────────────── */}
       {addModal === "product" ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => !addBusy && setAddModal(null)} />
           <div className="relative z-[1] flex max-h-[88vh] w-full max-w-lg flex-col overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-3">

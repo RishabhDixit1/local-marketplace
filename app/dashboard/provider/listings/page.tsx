@@ -79,7 +79,7 @@ function EditSheet({ title, onClose, children, footer }: {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[2000] bg-slate-950/40 backdrop-blur-sm"
+        className="fixed inset-0 z-[var(--layer-drawer-backdrop)] bg-slate-950/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
@@ -88,7 +88,7 @@ function EditSheet({ title, onClose, children, footer }: {
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", stiffness: 340, damping: 32 }}
-        className="fixed inset-y-0 right-0 z-[2001] flex w-full max-w-md flex-col bg-white shadow-2xl"
+        className="fixed inset-y-0 right-0 z-[var(--layer-drawer)] flex w-full max-w-md flex-col bg-white shadow-2xl"
         role="dialog"
         aria-label={title}
       >

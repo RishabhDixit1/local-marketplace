@@ -17,6 +17,7 @@ import FeedGrid from "@/app/dashboard/components/posts/FeedGrid";
 import { useFeedActions } from "@/app/dashboard/components/posts/useFeedActions";
 import { useMarketplaceFeed } from "@/app/dashboard/components/posts/useMarketplaceFeed";
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
+import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 import {
   buildMarketplaceFeedCardId,
   type MarketplaceDisplayFeedItem,
@@ -43,6 +44,7 @@ export default function MarketplacePage() {
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [showPostExplainer, setShowPostExplainer] = useState(false);
 
   const pushToast = useCallback(
     (kind: ProfileToast["kind"], message: string) => {
@@ -344,6 +346,8 @@ export default function MarketplacePage() {
             ? `Request published. ${result.matchedCount} provider matches are ready.`
             : "Request published. Matching is in progress.",
         );
+        setShowPostExplainer(true);
+        setTimeout(() => setShowPostExplainer(false), 8000);
         void fetchFeed(true);
       } else {
         router.push("/dashboard/profile");
@@ -358,11 +362,15 @@ export default function MarketplacePage() {
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
         <PageContextStrip
-          label="Find Help"
-          description="Browse nearby needs, services, products, and providers."
-          action={{ label: "Post Need", href: "/dashboard/create_post" }}
-          switchAction={{ label: "Home", href: "/dashboard/welcome" }}
-        />
+            label="Find Help"
+            description="Browse the full marketplace — nearby needs, services, products, and providers."
+            action={{ label: "Post Need", href: "/dashboard/create_post" }}
+            switchAction={{ label: "Connected Feed", href: "/dashboard/welcome" }}
+          />
+
+        {showPostExplainer && (
+          <WhatHappensNext kind="post_need" />
+        )}
 
         {showAdvancedFilters && (
           <FeedFilters

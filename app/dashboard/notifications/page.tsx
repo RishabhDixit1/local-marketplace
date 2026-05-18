@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
+import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -40,6 +41,8 @@ export default function NotificationsPage() {
         renderMode="page"
         filterQuery={searchQuery}
       />
+
+      <WhatHappensNext kind="notification" />
     </div>
   );
 }

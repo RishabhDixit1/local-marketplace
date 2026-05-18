@@ -22,32 +22,19 @@ const authContext = {
   },
 };
 
-const makeSelectChain = <T,>(result: { data: T; error: { message: string } | null }) => {
-  const chain = {
+const makeChain = <T>(result?: { data: T; error: { message: string } | null }) => {
+  const chain: Record<string, ReturnType<typeof vi.fn>> = {
     select: vi.fn(() => chain),
     eq: vi.fn(() => chain),
-    maybeSingle: vi.fn(async () => result),
-  };
-
-  return chain;
-};
-
-const makeConditionalUpdateChain = () => {
-  const chain = {
+    maybeSingle: vi.fn(async () => result || { data: null, error: null }),
     update: vi.fn(() => chain),
-    eq: vi.fn(() => chain),
     is: vi.fn(async () => ({ error: null })),
+    insert: vi.fn(() => chain),
+    order: vi.fn(() => chain),
+    limit: vi.fn(() => chain),
+    in: vi.fn(() => chain),
+    single: vi.fn(async () => ({ error: null })),
   };
-
-  return chain;
-};
-
-const makeUpdateChain = () => {
-  const chain = {
-    update: vi.fn(() => chain),
-    eq: vi.fn(async () => ({ error: null })),
-  };
-
   return chain;
 };
 
@@ -62,7 +49,7 @@ describe("POST /api/needs/accept", () => {
   it("reopens relisted declined requests before accepting them again", async () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
 
-    const selectChain = makeSelectChain({
+    const selectChain = makeChain({
       data: {
         requester_id: "requester-1",
         accepted_provider_id: null,
@@ -74,10 +61,16 @@ describe("POST /api/needs/accept", () => {
       },
       error: null,
     });
-    const reopenChain = makeConditionalUpdateChain();
-    const metadataUpdateChain = makeUpdateChain();
+    const reopenChain = makeChain();
+    const metadataUpdateChain = makeChain();
     const metadataClient = {
-      from: vi.fn().mockReturnValueOnce(selectChain).mockReturnValueOnce(reopenChain).mockReturnValueOnce(metadataUpdateChain),
+      from: vi
+        .fn()
+        .mockReturnValueOnce(makeChain())       // rate limit: select
+        .mockReturnValueOnce(makeChain())       // rate limit: insert/update
+        .mockReturnValueOnce(selectChain)        // help_requests: fetch existing
+        .mockReturnValueOnce(reopenChain)        // help_requests: reopen
+        .mockReturnValueOnce(metadataUpdateChain), // help_requests: metadata update
     };
     const dbClient = {
       rpc: vi.fn(async () => ({ data: true, error: null })),
@@ -134,7 +127,7 @@ describe("POST /api/needs/accept", () => {
   it("rejects attempts to accept your own task", async () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
 
-    const selectChain = makeSelectChain({
+    const selectChain = makeChain({
       data: {
         requester_id: "provider-1",
         accepted_provider_id: null,
@@ -144,7 +137,11 @@ describe("POST /api/needs/accept", () => {
       error: null,
     });
     const metadataClient = {
-      from: vi.fn().mockReturnValueOnce(selectChain),
+      from: vi
+        .fn()
+        .mockReturnValueOnce(makeChain())  // rate limit: select
+        .mockReturnValueOnce(makeChain())  // rate limit: insert/update
+        .mockReturnValueOnce(selectChain),  // help_requests: fetch existing
     };
     const dbClient = {
       rpc: vi.fn(async () => ({ data: true, error: null })),

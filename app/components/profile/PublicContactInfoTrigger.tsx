@@ -92,7 +92,7 @@ export default function PublicContactInfoTrigger({
       </button>
 
       {!open ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/42 px-4 py-8 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[var(--layer-fullscreen)] grid place-items-center bg-slate-950/42 px-4 py-8 backdrop-blur-xl">
           <div className="absolute inset-0" onClick={() => setOpen(false)} />
 
           <div

@@ -34,7 +34,7 @@ export default function ProfileToastViewport({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[1500] flex w-[min(92vw,380px)] flex-col gap-3">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[var(--layer-toast)] flex w-[min(92vw,380px)] flex-col gap-3">
       {toasts.map((toast) => {
         const styles = toastStyles[toast.kind];
         const Icon = styles.icon;

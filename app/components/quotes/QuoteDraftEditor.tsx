@@ -13,6 +13,7 @@ import type {
 import { generateQuoteDraft } from "@/lib/ai/quoteDrafting";
 import { calculateQuoteTotals, toDateInputValue } from "@/lib/quotes/calculations";
 import { acceptQuoteDraft, loadQuoteDraft, saveQuoteDraft, sendQuoteDraft } from "@/lib/quotes/client";
+import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 
 type EditableLineItem = {
   id: string;
@@ -103,6 +104,8 @@ export default function QuoteDraftEditor({
   const [accepting, setAccepting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [quoteSent, setQuoteSent] = useState(false);
+  const [quoteAccepted, setQuoteAccepted] = useState(false);
   const [context, setContext] = useState<QuoteContextRecord | null>(null);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
@@ -230,6 +233,7 @@ export default function QuoteDraftEditor({
         setExpiresAt(toDateInputValue(result.draft.expiresAt));
         setLineItems(toEditableLineItems(result.context, result.draft));
         setSuccessMessage("Quote sent. The buyer will be notified and can accept or counter. Track it in Tasks.");
+        setQuoteSent(true);
         onSent?.(result);
       }
     } catch (error) {
@@ -268,6 +272,7 @@ export default function QuoteDraftEditor({
       const result = await acceptQuoteDraft(currentDraftId);
       if (!result.ok) throw new Error(result.message || "Unable to accept quote.");
       setSuccessMessage("Quote accepted. The provider has been notified and the job is now in progress.");
+      setQuoteAccepted(true);
       onAccepted?.(result.quoteId, result.orderId);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to accept quote.");
@@ -340,6 +345,8 @@ export default function QuoteDraftEditor({
           {successMessage}
         </div>
       ) : null}
+      {quoteSent ? <WhatHappensNext kind="quote" className="mt-4" /> : null}
+      {quoteAccepted ? <WhatHappensNext kind="accept" className="mt-4" /> : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_320px]">
         <div className="space-y-4">

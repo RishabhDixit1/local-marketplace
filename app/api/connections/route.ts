@@ -7,6 +7,7 @@ import type {
 import { CONNECTION_SCHEMA_UNAVAILABLE_MESSAGE } from "@/lib/connectionErrors";
 import { createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import {
   hasConnectionRequestSchema,
   listViewerConnectionRows,
@@ -77,6 +78,9 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "connections:send", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response!;
 
   const dbClient = createSupabaseUserServerClient(authResult.auth.accessToken);
   if (!dbClient) {

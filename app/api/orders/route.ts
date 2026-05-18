@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { sendOrderEmail } from "@/lib/email";
 import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
@@ -103,6 +104,9 @@ export async function POST(request: Request) {
       { status: authResult.status }
     );
   }
+
+  const rateLimitCheck = await applyRateLimit(authResult.auth.userId, "orders:create", WRITE_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) return rateLimitCheck.response!;
 
   let body: unknown;
   try {
