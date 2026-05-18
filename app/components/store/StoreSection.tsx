@@ -573,7 +573,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
       )}
 
       {deleteTarget ? (
-        <div className="fixed inset-0 z-[1450] grid place-items-center bg-slate-950/55 p-4">
+        <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/55 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl">
             <h3 className="text-base font-semibold">Delete listing?</h3>
             <p className="mt-2 text-sm text-slate-600">{deleteTarget.title} will be removed from your store.</p>
@@ -599,7 +599,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
       ) : null}
 
       {editService ? (
-        <div className="fixed inset-0 z-[1450] grid place-items-center bg-slate-950/55 p-4">
+        <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/55 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl">
             <h3 className="text-base font-semibold">Edit service</h3>
             <div className="mt-3 grid gap-2">
@@ -668,7 +668,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
       ) : null}
 
       {editProduct ? (
-        <div className="fixed inset-0 z-[1450] grid place-items-center bg-slate-950/55 p-4">
+        <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-slate-950/55 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl">
             <h3 className="text-base font-semibold">Edit product</h3>
             <div className="mt-3 grid gap-2">
@@ -747,7 +747,7 @@ export function StoreSection({ services, products, providerId, providerName, pro
       ) : null}
 
       {toast ? (
-        <div className="fixed bottom-4 left-1/2 z-[1500] -translate-x-1/2 px-4">
+        <div className="fixed bottom-4 left-1/2 z-[var(--layer-toast)] -translate-x-1/2 px-4">
           <div
             className={`rounded-full px-4 py-2 text-xs font-semibold shadow-lg ${
               toast.kind === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"

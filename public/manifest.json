@@ -1,0 +1,33 @@
+{
+  "name": "ServiQ — Local Help, Nearby",
+  "short_name": "ServiQ",
+  "description": "Find trusted providers and services near you. Post needs, get quotes, and get work done.",
+  "start_url": "/dashboard/welcome",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "categories": ["marketplace", "services", "local", "business"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/serviq-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/serviq-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/serviq-icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

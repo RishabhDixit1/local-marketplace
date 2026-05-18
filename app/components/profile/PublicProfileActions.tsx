@@ -361,7 +361,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
       </div>
 
       {!editDialogOpen ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-end bg-slate-950/24 px-3 pt-6 backdrop-blur-xl sm:place-items-center sm:px-6 sm:py-8">
+        <div className="fixed inset-0 z-[var(--layer-fullscreen)] grid place-items-end bg-slate-950/24 px-3 pt-6 backdrop-blur-xl sm:place-items-center sm:px-6 sm:py-8">
           <div className="absolute inset-0" onClick={closeEditDialog} />
 
           <div

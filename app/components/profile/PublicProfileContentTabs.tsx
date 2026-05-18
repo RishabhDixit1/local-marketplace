@@ -303,7 +303,7 @@ export default function PublicProfileContentTabs({
       </div>
 
       {!reviewModalOpen ? null : (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setReviewModalOpen(false)} />
           <div
             role="dialog"

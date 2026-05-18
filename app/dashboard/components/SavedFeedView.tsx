@@ -1176,7 +1176,7 @@ export default function SavedFeedView({ embedded = false }: SavedFeedViewProps) 
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed bottom-6 right-4 z-[1200] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
+        className="pointer-events-none fixed bottom-6 right-4 z-[var(--layer-toast)] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
       >
         {feedToasts.map((toast) => (
           <div

@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   },
   applicationName: appName,
   description: appTagline,
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: appName,
+  },
   openGraph: {
     title: appName,
     description: appTagline,
@@ -28,6 +34,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
@@ -40,6 +47,17 @@ export default function RootLayout({
       <body className="bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
         {children}
         <Analytics />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                  navigator.serviceWorker.register("/sw.js");
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

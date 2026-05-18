@@ -36,6 +36,7 @@ import {
 import { isAbortLikeError, isFailedFetchError, toErrorMessage } from "@/lib/runtimeErrors";
 import { buildWelcomeFeedCards, type WelcomeFeedCard } from "@/lib/welcomeFeed";
 import { BriefcaseBusiness, ClipboardList, Loader2, Search, UsersRound, Zap } from "lucide-react";
+import PageContextStrip from "@/app/components/PageContextStrip";
 
 const CreatePostModal = dynamic(() => import("@/app/components/CreatePostModal").then((mod) => mod.default), {
   ssr: false,
@@ -1305,6 +1306,12 @@ export default function WelcomePage() {
 
       <div className="min-h-screen bg-[var(--surface-app)] text-slate-900">
         <div className="mx-auto w-full max-w-[1480px] py-2 sm:py-4 space-y-5 sm:space-y-6">
+          <PageContextStrip
+            label="Home"
+            description="Your connected network feed — requests and updates from people you trust."
+            action={{ label: "Post Need", href: "/dashboard/create_post" }}
+            switchAction={{ label: "Browse Marketplace", href: "/dashboard" }}
+          />
           {!!loadError && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {loadError}
@@ -1536,7 +1543,7 @@ export default function WelcomePage() {
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed bottom-6 right-4 z-[1200] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
+        className="pointer-events-none fixed bottom-6 right-4 z-[var(--layer-toast)] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2 sm:right-6"
       >
         {feedToasts.map((toast) => (
           <div

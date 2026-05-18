@@ -182,7 +182,7 @@ export default function PublicProfileAvatarEdit({
       )}
 
       {!dialogOpen ? null : (
-        <div className="fixed inset-0 z-[4000] grid place-items-center bg-slate-950/24 px-4 py-6 backdrop-blur-xl sm:px-6 sm:py-8">
+        <div className="fixed inset-0 z-[var(--layer-fullscreen)] grid place-items-center bg-slate-950/24 px-4 py-6 backdrop-blur-xl sm:px-6 sm:py-8">
           <div className="absolute inset-0" onClick={closeDialog} />
 
           <div

@@ -12,7 +12,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/loading_shimmer.dart';
-import '../../../shared/components/metric_tile.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../data/task_repository.dart';
 import '../domain/task_snapshot.dart';
@@ -194,21 +193,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
   }
 
-  MobileTaskItem? _focusedTaskFor(MobileTaskSnapshot? snapshot) {
-    final focusTaskId = widget.focusTaskId?.trim() ?? '';
-    if (snapshot == null || focusTaskId.isEmpty) {
-      return null;
-    }
-
-    for (final item in snapshot.items) {
-      if (item.id == focusTaskId) {
-        return item;
-      }
-    }
-
-    return null;
-  }
-
   void _applyFocusIfNeeded(MobileTaskSnapshot snapshot) {
     final focusTaskId = widget.focusTaskId?.trim() ?? '';
     if (focusTaskId.isEmpty || _appliedFocusTaskId == focusTaskId) {
@@ -281,11 +265,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                         'Filter Work',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Choose the role and lane you want to inspect. The main Work tab stays focused on the selected next-action list.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
                       const SizedBox(height: 16),
                       _TasksFilters(
                         snapshot: snapshot,
@@ -319,7 +298,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   Widget build(BuildContext context) {
     final snapshot = ref.watch(taskSnapshotProvider);
     final data = snapshot.asData?.value;
-    final focusedTask = _focusedTaskFor(data);
     final nextActionTask = data == null ? null : _nextActionTaskFor(data);
     if (data != null) {
       _applyFocusIfNeeded(data);
@@ -341,17 +319,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 onOpenNextAction: nextActionTask == null
                     ? null
                     : () => _showTaskDetailSheet(nextActionTask),
-                focusTaskId: widget.focusTaskId,
-                focusSource: widget.focusSource,
               ),
-              if ((widget.focusTaskId ?? '').trim().isNotEmpty ||
-                  widget.focusSource == 'post_success') ...[
-                const SizedBox(height: 12),
-                _FocusedTaskBanner(
-                  task: focusedTask,
-                  focusSource: widget.focusSource,
-                ),
-              ],
               if (data?.hasPartialFailure == true) ...[
                 const SizedBox(height: 12),
                 ServiqRecoveryBanner(
@@ -416,29 +384,16 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                         .map(
                           (task) => Padding(
                             padding: const EdgeInsets.only(bottom: 14),
-                            child: Column(
-                              children: [
-                                _TaskActionWrapper(
-                                  task: task,
-                                  busy: _busyTaskId == task.id,
-                                  onPrimaryAction: task.primaryAction == null
-                                      ? null
-                                      : () => _runPrimaryAction(task),
-                                  child: TaskCard(
-                                    task: task,
-                                    busy: _busyTaskId == task.id,
-                                    onPrimaryAction: task.primaryAction == null
-                                        ? null
-                                        : () => _runPrimaryAction(task),
-                                    focused: task.id == widget.focusTaskId,
-                                  ),
-                                ),
-                                _TaskSecondaryActions(
-                                  task: task,
-                                  onOpenDetail: () =>
-                                      _showTaskDetailSheet(task),
-                                ),
-                              ],
+                            child: GestureDetector(
+                              onTap: () => _showTaskDetailSheet(task),
+                              child: TaskCard(
+                                task: task,
+                                busy: _busyTaskId == task.id,
+                                onPrimaryAction: task.primaryAction == null
+                                    ? null
+                                    : () => _runPrimaryAction(task),
+                                focused: task.id == widget.focusTaskId,
+                              ),
                             ),
                           ),
                         )
@@ -482,28 +437,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           ),
         );
       },
-    );
-  }
-}
-
-class _TaskSecondaryActions extends StatelessWidget {
-  const _TaskSecondaryActions({required this.task, required this.onOpenDetail});
-
-  final MobileTaskItem task;
-  final VoidCallback onOpenDetail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: TextButton.icon(
-          onPressed: onOpenDetail,
-          icon: const Icon(Icons.open_in_new_rounded),
-          label: const Text('Details'),
-        ),
-      ),
     );
   }
 }
@@ -596,8 +529,6 @@ class _TasksHero extends StatelessWidget {
     required this.roleCount,
     required this.nextActionTask,
     required this.onOpenNextAction,
-    this.focusTaskId,
-    this.focusSource,
   });
 
   final MobileTaskSnapshot? snapshot;
@@ -605,24 +536,12 @@ class _TasksHero extends StatelessWidget {
   final int roleCount;
   final MobileTaskItem? nextActionTask;
   final VoidCallback? onOpenNextAction;
-  final String? focusTaskId;
-  final String? focusSource;
 
   @override
   Widget build(BuildContext context) {
     final activeCount = snapshot?.countFor(MobileTaskStatus.active) ?? 0;
     final inProgressCount =
         snapshot?.countFor(MobileTaskStatus.inProgress) ?? 0;
-    final requesterCount = snapshot == null
-        ? 0
-        : snapshot!.items
-              .where((item) => item.role == MobileTaskRole.posted)
-              .length;
-    final providerCount = snapshot == null
-        ? 0
-        : snapshot!.items
-              .where((item) => item.role == MobileTaskRole.accepted)
-              .length;
     final nextTask = nextActionTask;
 
     return SectionCard(
@@ -658,7 +577,7 @@ class _TasksHero extends StatelessWidget {
                     Text(
                       nextTask == null
                           ? selectedRole == _TaskRoleFilter.all
-                                ? 'No task needs action right now. Scan active work or switch lanes below.'
+                                ? 'No task needs action right now.'
                                 : 'No ${selectedRole.label.toLowerCase()} task needs action across $roleCount visible tasks.'
                           : '${nextTask.primaryAction?.label ?? _nextStepShortLabel(nextTask)}: ${nextTask.title}',
                       maxLines: 3,
@@ -681,15 +600,6 @@ class _TasksHero extends StatelessWidget {
               ),
             ),
           ],
-          if ((focusTaskId ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _HeroBadge(
-              icon: Icons.push_pin_outlined,
-              label: focusSource == 'notification'
-                  ? 'Focused from notification'
-                  : 'Focused task view',
-            ),
-          ],
           const SizedBox(height: 18),
           Wrap(
             spacing: 10,
@@ -702,14 +612,6 @@ class _TasksHero extends StatelessWidget {
               _HeroBadge(
                 icon: Icons.route_rounded,
                 label: '$inProgressCount in progress',
-              ),
-              _HeroBadge(
-                icon: Icons.person_outline_rounded,
-                label: '$requesterCount requested',
-              ),
-              _HeroBadge(
-                icon: Icons.storefront_outlined,
-                label: '$providerCount helping',
               ),
             ],
           ),
@@ -740,93 +642,6 @@ class _HeroBadge extends StatelessWidget {
           Icon(icon, color: AppColors.inkMuted, size: 16),
           const SizedBox(width: 8),
           Text(label, style: Theme.of(context).textTheme.labelLarge),
-        ],
-      ),
-    );
-  }
-}
-
-class _FocusedTaskBanner extends StatelessWidget {
-  const _FocusedTaskBanner({required this.task, this.focusSource});
-
-  final MobileTaskItem? task;
-  final String? focusSource;
-
-  @override
-  Widget build(BuildContext context) {
-    final fromPostSuccess = focusSource == 'post_success';
-    final fromNotification = focusSource == 'notification';
-    final currentTask = task;
-    final title = fromPostSuccess
-        ? 'Your request is live. Track it here.'
-        : fromNotification
-        ? 'Opened from notification'
-        : 'Focused task';
-    final message = currentTask == null
-        ? 'Loading the latest task details, status, and next step for this request.'
-        : currentTask.isProviderTask
-        ? 'You are the provider on "${currentTask.title}". Keep the requester updated from this task timeline.'
-        : 'You requested "${currentTask.title}". Watch provider replies in Chat and accepted work in this timeline.';
-
-    return SectionCard(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              fromPostSuccess
-                  ? Icons.task_alt_rounded
-                  : Icons.push_pin_outlined,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 5),
-                Text(message, style: Theme.of(context).textTheme.bodyMedium),
-                if (currentTask != null) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      TrustBadge(
-                        label: currentTask.statusLabel,
-                        icon: Icons.flag_outlined,
-                        backgroundColor: _statusTint(currentTask.status),
-                        foregroundColor: _statusInk(currentTask.status),
-                      ),
-                      TrustBadge(
-                        label: currentTask.role.summary,
-                        icon: currentTask.isProviderTask
-                            ? Icons.handshake_outlined
-                            : Icons.person_outline_rounded,
-                        backgroundColor: AppColors.surfaceMuted,
-                        foregroundColor: AppColors.ink,
-                      ),
-                      TrustBadge(
-                        label: _nextStepShortLabel(currentTask),
-                        icon: Icons.arrow_forward_rounded,
-                        backgroundColor: AppColors.accentSoft,
-                        foregroundColor: AppColors.accent,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -935,7 +750,7 @@ class _WorkBoardSummary extends StatelessWidget {
   }
 }
 
-class _TasksFilters extends StatelessWidget {
+class _TasksFilters extends StatefulWidget {
   const _TasksFilters({
     required this.snapshot,
     required this.selectedLane,
@@ -955,46 +770,16 @@ class _TasksFilters extends StatelessWidget {
   final int Function(_TaskRoleFilter role) roleCountFor;
 
   @override
-  Widget build(BuildContext context) {
-    final total = snapshot.items.length;
+  State<_TasksFilters> createState() => _TasksFiltersState();
+}
 
+class _TasksFiltersState extends State<_TasksFilters> {
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            const gap = 10.0;
-            final tileWidth = (constraints.maxWidth - gap) / 2;
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: [
-                SizedBox(
-                  width: tileWidth,
-                  child: MetricTile(
-                    label: 'Board',
-                    value: '$total live tasks',
-                    caption: 'Realtime orders and local requests',
-                    icon: Icons.dashboard_outlined,
-                  ),
-                ),
-                SizedBox(
-                  width: tileWidth,
-                  child: MetricTile(
-                    label: 'Current lane',
-                    value:
-                        '${countFor(selectedLane)} ${selectedLane.label.toLowerCase()}',
-                    caption:
-                        '${roleCountFor(selectedRole)} in ${selectedRole.label.toLowerCase()} view',
-                    icon: Icons.tune_rounded,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-        Text('Your role', style: Theme.of(context).textTheme.titleMedium),
+        Text('Role filter', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -1002,19 +787,19 @@ class _TasksFilters extends StatelessWidget {
           children: _TaskRoleFilter.values
               .map(
                 (role) => ChoiceChip(
-                  label: Text('${role.label} (${roleCountFor(role)})'),
-                  selected: role == selectedRole,
-                  onSelected: (_) => onRoleSelected(role),
+                  label: Text('${role.label} (${widget.roleCountFor(role)})'),
+                  selected: role == widget.selectedRole,
+                  onSelected: (_) => widget.onRoleSelected(role),
                 ),
               )
               .toList(),
         ),
         const SizedBox(height: 18),
-        Text('Status', style: Theme.of(context).textTheme.titleMedium),
+        Text('Status lane', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         TaskStatusTabs(
-          selectedId: selectedLane.id,
-          onSelected: (id) => onLaneSelected(
+          selectedId: widget.selectedLane.id,
+          onSelected: (id) => widget.onLaneSelected(
             _TaskBoardLane.values.firstWhere(
               (lane) => lane.id == id,
               orElse: () => _TaskBoardLane.active,
@@ -1025,65 +810,12 @@ class _TasksFilters extends StatelessWidget {
                 (lane) => TaskStatusTabData(
                   id: lane.id,
                   label: lane.label,
-                  count: countFor(lane),
+                  count: widget.countFor(lane),
                 ),
               )
               .toList(),
         ),
       ],
-    );
-  }
-}
-
-class _TaskActionWrapper extends StatelessWidget {
-  const _TaskActionWrapper({
-    required this.task,
-    required this.busy,
-    required this.onPrimaryAction,
-    required this.child,
-  });
-
-  final MobileTaskItem task;
-  final bool busy;
-  final VoidCallback? onPrimaryAction;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final action = task.primaryAction;
-    if (action == null) {
-      return child;
-    }
-
-    return Dismissible(
-      key: ValueKey('task-${task.id}'),
-      direction: busy ? DismissDirection.none : DismissDirection.startToEnd,
-      dismissThresholds: const {DismissDirection.startToEnd: 0.25},
-      confirmDismiss: (_) async {
-        onPrimaryAction?.call();
-        return false;
-      },
-      background: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-        alignment: Alignment.centerLeft,
-        child: Row(
-          children: [
-            const Icon(Icons.swipe_right_alt_rounded, color: Colors.white),
-            const SizedBox(width: 10),
-            Text(
-              action.label,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-      child: child,
     );
   }
 }
@@ -1132,28 +864,4 @@ String _nextStepShortLabel(MobileTaskItem task) {
   };
 }
 
-Color _statusTint(MobileTaskStatus status) {
-  switch (status) {
-    case MobileTaskStatus.active:
-      return const Color(0xFFE0F2FE);
-    case MobileTaskStatus.inProgress:
-      return const Color(0xFFEDE9FE);
-    case MobileTaskStatus.completed:
-      return const Color(0xFFD1FAE5);
-    case MobileTaskStatus.cancelled:
-      return const Color(0xFFFFE4E6);
-  }
-}
 
-Color _statusInk(MobileTaskStatus status) {
-  switch (status) {
-    case MobileTaskStatus.active:
-      return const Color(0xFF0B1F33);
-    case MobileTaskStatus.inProgress:
-      return const Color(0xFF5B21B6);
-    case MobileTaskStatus.completed:
-      return const Color(0xFF047857);
-    case MobileTaskStatus.cancelled:
-      return const Color(0xFFBE123C);
-  }
-}

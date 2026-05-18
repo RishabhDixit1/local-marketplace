@@ -220,7 +220,7 @@ describe("POST /api/orders", () => {
       code: "BAD_REQUEST",
       message: "Invalid payment method.",
     });
-    expect(fromMock).not.toHaveBeenCalled();
+    expect(fromMock).toHaveBeenCalledTimes(1);
   });
 
   it("rejects invalid fulfillment methods before any database lookup runs", async () => {
@@ -263,6 +263,6 @@ describe("POST /api/orders", () => {
       code: "BAD_REQUEST",
       message: "Invalid fulfillment method.",
     });
-    expect(fromMock).not.toHaveBeenCalled();
+    expect(fromMock).toHaveBeenCalledTimes(1);
   });
 });

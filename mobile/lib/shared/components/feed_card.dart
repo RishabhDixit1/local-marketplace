@@ -114,6 +114,41 @@ class FeedCard extends StatelessWidget {
                   .toList(),
             ),
           ],
+          const SizedBox(height: AppSpacing.sm),
+          TrustSnapshot(
+            dense: true,
+            items: [
+              TrustSnapshotItem(
+                icon: Icons.verified_outlined,
+                label: 'Trust',
+                value: item.trustLabel,
+                tone: item.isVerified
+                    ? TrustSnapshotTone.trust
+                    : TrustSnapshotTone.neutral,
+              ),
+              TrustSnapshotItem(
+                icon: Icons.star_outline_rounded,
+                label: 'Rating',
+                value: item.ratingLabel,
+                tone: item.averageRating != null && item.averageRating! >= 4
+                    ? TrustSnapshotTone.success
+                    : TrustSnapshotTone.neutral,
+              ),
+              TrustSnapshotItem(
+                icon: Icons.schedule_rounded,
+                label: 'Response',
+                value: item.responseLabel,
+              ),
+              TrustSnapshotItem(
+                icon: Icons.work_outline_rounded,
+                label: 'Completed',
+                value: item.socialProofLabel,
+                tone: item.completedJobs > 10
+                    ? TrustSnapshotTone.trust
+                    : TrustSnapshotTone.neutral,
+              ),
+            ],
+          ),
           if (onPrimaryTap != null || onSecondaryTap != null) ...[
             const SizedBox(height: AppSpacing.sm),
             ServiqActionBar(
