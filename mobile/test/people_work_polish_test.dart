@@ -86,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Filter Work'), findsOneWidget);
-    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Status lane'), findsOneWidget);
 
     await tester.tap(find.text('Active').last);
     await tester.pumpAndSettle();
