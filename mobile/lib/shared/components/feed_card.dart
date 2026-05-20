@@ -178,10 +178,7 @@ List<({IconData icon, String label})> _compactMetaFor(MobileFeedItem item) {
   if (item.distanceLabel.trim().isNotEmpty) {
     signals.add((icon: Icons.place_outlined, label: item.distanceLabel));
   }
-  if (item.responseLabel.trim().isNotEmpty) {
-    signals.add((icon: Icons.schedule_rounded, label: item.responseLabel));
-  }
-  return signals.take(3).toList();
+  return signals.take(2).toList();
 }
 
 bool _hasRealMoneySignal(MobileFeedItem item) {

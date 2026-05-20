@@ -47,17 +47,19 @@ export default function RootLayout({
       <body className="bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
         {children}
         <Analytics />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ("serviceWorker" in navigator) {
-                window.addEventListener("load", () => {
-                  navigator.serviceWorker.register("/sw.js");
-                });
-              }
-            `,
-          }}
-        />
+        {process.env.NODE_ENV === "production" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ("serviceWorker" in navigator) {
+                  window.addEventListener("load", () => {
+                    navigator.serviceWorker.register("/sw.js");
+                  });
+                }
+              `,
+            }}
+          />
+        )}
       </body>
     </html>
   );

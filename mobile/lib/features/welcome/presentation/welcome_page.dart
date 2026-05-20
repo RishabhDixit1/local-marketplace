@@ -22,14 +22,11 @@ import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/people/data/people_repository.dart';
 import '../../../features/people/domain/people_snapshot.dart';
-import '../../../features/profile/data/profile_repository.dart';
-import '../../../features/profile/domain/mobile_profile_snapshot.dart';
 import '../../../features/tasks/data/task_repository.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/feed_card.dart';
 import '../../../shared/components/loading_shimmer.dart';
-import '../../../shared/components/marketplace_guidance.dart';
 import '../../../shared/components/provider_card.dart';
 import '../../../shared/components/section_header.dart';
 
@@ -607,10 +604,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     final allFeed = allFeedAsync.asData?.value;
     final trustedFeed = trustedFeedAsync.asData?.value;
     final people = peopleAsync.asData?.value;
-    final signedIn = ref.watch(currentSessionProvider).asData?.value != null;
-    final AsyncValue<MobileProfileSnapshot>? profileAsync = signedIn
-        ? ref.watch(profileSnapshotProvider)
-        : null;
     final hasAnyData = allFeed != null || trustedFeed != null || people != null;
 
     if (!hasAnyData &&
@@ -657,12 +650,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
       hiddenFeedIds: _hiddenFeedIds,
       hiddenProviderIds: _hiddenProviderIds,
     );
-
-    final warnings = <String>[
-      if (allFeedAsync.hasError) 'Nearby feed is delayed.',
-      if (trustedFeedAsync.hasError) 'Trusted connection posts are delayed.',
-      if (peopleAsync.hasError) 'Provider recommendations are delayed.',
-    ];
 
     final userName = _resolveViewerName();
     final greeting = '${_greetingPrefix()}, $userName';
@@ -729,11 +716,8 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   delegate: SliverChildListDelegate.fixed([
                     _HeroSection(
                       greeting: greeting,
-                      trustedCountLabel: model.trustedCountLabel,
-                      liveStatusLabel: model.liveStatusLabel,
                       activeTaskCount: activeTaskCount,
                       unreadChatCount: unreadChatCount,
-                      nearbyProviderCount: people?.people.length ?? 0,
                       onInboxTap: () => context.push(AppRoutes.chat),
                       onTasksTap: () => context.go(AppRoutes.tasks),
                       onFindPeopleTap: () => context.go(AppRoutes.people),
@@ -749,44 +733,10 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             );
                         context.push(AppRoutes.createRequest);
                       },
-                      heroSignals: model.heroSignals,
                     ),
-                    if (warnings.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      _InlineWarningCard(
-                        message: warnings.join(' '),
-                        onRetry: _refresh,
-                      ),
-                    ],
-                    ...(profileAsync?.maybeWhen(
-                          data: (profile) {
-                            final prompt = _ReadinessPrompt.fromProfile(
-                              profile,
-                            );
-                            if (prompt == null) {
-                              return <Widget>[];
-                            }
-                            return [
-                              const SizedBox(height: 14),
-                              _ReadinessPromptCard(prompt: prompt),
-                            ];
-                          },
-                          orElse: () => <Widget>[],
-                        ) ??
-                        <Widget>[]),
-                    if (model.isFirstRun) ...[
-                      const SizedBox(height: 14),
-                      _FirstRunGuidanceCard(
-                        onPostNeedTap: () {
-                          _trackFirstEngagement('first_run_post_need');
-                          context.push(AppRoutes.createRequest);
-                        },
-                        onPeopleTap: () {
-                          _trackFirstEngagement('first_run_people');
-                          context.go(AppRoutes.people);
-                        },
-                      ),
-                    ],
+
+
+
                     if (model.quickCategories.isNotEmpty) ...[
                       const SizedBox(height: 18),
                       SectionHeader(
@@ -848,25 +798,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             onPeopleTap: () => context.go(AppRoutes.people),
                             onExploreTap: () => context.go(AppRoutes.explore),
                           ),
-                    const SizedBox(height: 18),
-                    _NeedsActionPanel(
-                      activeTaskCount: activeTaskCount,
-                      unreadChatCount: unreadChatCount,
-                      urgentDemandCount: allFeed?.stats.urgent ?? 0,
-                      profileCompletion:
-                          profileAsync?.asData?.value.completionPercent,
-                      roleFamily:
-                          profileAsync?.asData?.value.roleFamily ??
-                          allFeed?.viewerRoleFamily ??
-                          people?.viewerRoleFamily ??
-                          'seeker',
-                      onReplyInbox: () => context.push(AppRoutes.chat),
-                      onOpenTasks: () => context.go(AppRoutes.tasks),
-                      onPostNeed: () => context.push(AppRoutes.createRequest),
-                      onCompleteProfile: () => context.push(AppRoutes.profile),
-                      onFindPeople: () => context.go(AppRoutes.people),
-                    ),
-                    const SizedBox(height: 18),
                     SectionHeader(
                       title: 'Recent',
                       actionLabel: _resolvedSurface == _WelcomeSurface.nearby
@@ -2012,241 +1943,32 @@ class _AppBarAction extends StatelessWidget {
   }
 }
 
-class _NeedsActionPanel extends StatelessWidget {
-  const _NeedsActionPanel({
-    required this.activeTaskCount,
-    required this.unreadChatCount,
-    required this.urgentDemandCount,
-    required this.roleFamily,
-    required this.onReplyInbox,
-    required this.onOpenTasks,
-    required this.onPostNeed,
-    required this.onCompleteProfile,
-    required this.onFindPeople,
-    this.profileCompletion,
-  });
 
-  final int activeTaskCount;
-  final int unreadChatCount;
-  final int urgentDemandCount;
-  final int? profileCompletion;
-  final String roleFamily;
-  final VoidCallback onReplyInbox;
-  final VoidCallback onOpenTasks;
-  final VoidCallback onPostNeed;
-  final VoidCallback onCompleteProfile;
-  final VoidCallback onFindPeople;
 
-  @override
-  Widget build(BuildContext context) {
-    final completion = profileCompletion ?? 0;
-    final isProvider = roleFamily == 'provider';
-    final actions = <Widget>[
-      if (unreadChatCount > 0)
-        _NeedsActionMetric(
-          icon: Icons.mark_chat_unread_outlined,
-          value: unreadChatCount.toString(),
-          label: 'Inbox',
-          onTap: onReplyInbox,
-        ),
-      if (activeTaskCount > 0)
-        _NeedsActionMetric(
-          icon: Icons.assignment_turned_in_outlined,
-          value: activeTaskCount.toString(),
-          label: 'Work',
-          onTap: onOpenTasks,
-        ),
-      if (completion > 0 && completion < 70)
-        _NeedsActionMetric(
-          icon: Icons.verified_user_outlined,
-          value: '$completion%',
-          label: 'Profile',
-          onTap: onCompleteProfile,
-        ),
-      if (urgentDemandCount > 0)
-        _NeedsActionMetric(
-          icon: Icons.bolt_rounded,
-          value: urgentDemandCount.toString(),
-          label: isProvider ? 'Nearby' : 'Need',
-          onTap: isProvider ? onFindPeople : onPostNeed,
-        ),
-    ];
 
-    return SectionCard(
-      variant: ServiqSurfaceVariant.raised,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Needs attention',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              _ModePill(label: isProvider ? 'Provider' : 'Buyer'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (actions.isEmpty)
-            _QuietAttentionState(
-              isProvider: isProvider,
-              onPostNeed: onPostNeed,
-              onFindPeople: onFindPeople,
-            )
-          else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: actions
-                    .map(
-                      (action) => Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: SizedBox(width: 142, child: action),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
-class _QuietAttentionState extends StatelessWidget {
-  const _QuietAttentionState({
-    required this.isProvider,
-    required this.onPostNeed,
-    required this.onFindPeople,
-  });
 
-  final bool isProvider;
-  final VoidCallback onPostNeed;
-  final VoidCallback onFindPeople;
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'All clear',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-        TextButton(
-          onPressed: isProvider ? onFindPeople : onPostNeed,
-          child: Text(isProvider ? 'Nearby' : 'Post'),
-        ),
-      ],
-    );
-  }
-}
 
-class _NeedsActionMetric extends StatelessWidget {
-  const _NeedsActionMetric({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceMuted,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Container(
-          height: 68,
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              Icon(icon, color: AppColors.primary, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 1),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ModePill extends StatelessWidget {
-  const _ModePill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.accentSoft,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: AppColors.accentDeep,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
 
 class _HeroSection extends StatelessWidget {
   const _HeroSection({
     required this.greeting,
-    required this.trustedCountLabel,
-    required this.liveStatusLabel,
     required this.activeTaskCount,
     required this.unreadChatCount,
-    required this.nearbyProviderCount,
     required this.onInboxTap,
     required this.onTasksTap,
     required this.onFindPeopleTap,
     required this.onPrimaryTap,
-    required this.heroSignals,
   });
 
   final String greeting;
-  final String trustedCountLabel;
-  final String liveStatusLabel;
   final int activeTaskCount;
   final int unreadChatCount;
-  final int nearbyProviderCount;
   final VoidCallback onInboxTap;
   final VoidCallback onTasksTap;
   final VoidCallback onFindPeopleTap;
   final VoidCallback onPrimaryTap;
-  final List<String> heroSignals;
 
   @override
   Widget build(BuildContext context) {
@@ -2284,15 +2006,6 @@ class _HeroSection extends StatelessWidget {
           tap: onInboxTap,
         ),
     ].take(3).toList();
-    final chips = _homeStatusChips(
-      activeTaskCount: activeTaskCount,
-      unreadChatCount: unreadChatCount,
-      nearbyProviderCount: nearbyProviderCount,
-      trustedCountLabel: trustedCountLabel,
-      liveStatusLabel: liveStatusLabel,
-      heroSignals: heroSignals,
-    );
-
     return SectionCard(
       variant: ServiqSurfaceVariant.raised,
       child: Column(
@@ -2334,23 +2047,6 @@ class _HeroSection extends StatelessWidget {
                 )
                 .toList(),
           ),
-          if (chips.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: chips
-                  .take(3)
-                  .map(
-                    (chip) => _HomeStatusChip(
-                      icon: chip.icon,
-                      label: chip.label,
-                      onTap: chip.onTap,
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
         ],
       ),
     );
@@ -2387,237 +2083,13 @@ class _CompactActionButton extends StatelessWidget {
   }
 }
 
-class _HomeStatusChip extends StatelessWidget {
-  const _HomeStatusChip({required this.icon, required this.label, this.onTap});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 16),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      onPressed: onTap,
-      visualDensity: VisualDensity.compact,
-    );
-  }
-}
 
-({IconData icon, String label, VoidCallback? onTap}) _statusChip(
-  IconData icon,
-  String label, [
-  VoidCallback? onTap,
-]) {
-  return (icon: icon, label: label, onTap: onTap);
-}
 
-List<({IconData icon, String label, VoidCallback? onTap})> _homeStatusChips({
-  required int activeTaskCount,
-  required int unreadChatCount,
-  required int nearbyProviderCount,
-  required String trustedCountLabel,
-  required String liveStatusLabel,
-  required List<String> heroSignals,
-}) {
-  final chips = <({IconData icon, String label, VoidCallback? onTap})>[
-    if (unreadChatCount > 0)
-      _statusChip(
-        Icons.chat_bubble_outline_rounded,
-        '${_formatCompactCount(unreadChatCount)} inbox',
-      ),
-    if (activeTaskCount > 0)
-      _statusChip(
-        Icons.assignment_turned_in_outlined,
-        '${_formatCompactCount(activeTaskCount)} work',
-      ),
-    if (nearbyProviderCount > 0)
-      _statusChip(
-        Icons.people_alt_outlined,
-        '${_formatCompactCount(nearbyProviderCount)} nearby',
-      ),
-  ];
 
-  for (final signal in [trustedCountLabel, liveStatusLabel, ...heroSignals]) {
-    final normalized = signal.trim();
-    if (normalized.isEmpty ||
-        chips.any(
-          (chip) => chip.label.toLowerCase() == normalized.toLowerCase(),
-        )) {
-      continue;
-    }
-    chips.add(_statusChip(Icons.bolt_rounded, normalized));
-  }
 
-  return chips;
-}
 
-class _InlineWarningCard extends StatelessWidget {
-  const _InlineWarningCard({required this.message, required this.onRetry});
-
-  final String message;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ServiqRecoveryBanner(
-      message: message,
-      icon: Icons.sync_problem_rounded,
-      actionLabel: 'Retry',
-      onAction: () => onRetry(),
-    );
-  }
-}
-
-class _ReadinessPrompt {
-  const _ReadinessPrompt({
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    required this.route,
-    required this.icon,
-    required this.tone,
-  });
-
-  static _ReadinessPrompt? fromProfile(MobileProfileSnapshot profile) {
-    final role = profile.roleFamily.trim().toLowerCase();
-    final isProvider =
-        role == 'provider' || role == 'business' || role == 'seller';
-    final hasOfferings = profile.serviceCount + profile.productCount > 0;
-
-    if (profile.completionPercent < 50) {
-      return const _ReadinessPrompt(
-        title: 'Finish your public profile',
-        message:
-            'Add name, area, and contact details so nearby people can trust the next action.',
-        actionLabel: 'Update profile',
-        route: AppRoutes.profile,
-        icon: Icons.assignment_turned_in_outlined,
-        tone: ServiqRecoveryTone.warning,
-      );
-    }
-
-    if (isProvider && !hasOfferings) {
-      return const _ReadinessPrompt(
-        title: 'Publish your first offer',
-        message:
-            'Business AI now lives in You, so Home can stay focused on demand, people, and work.',
-        actionLabel: 'Open You',
-        route: AppRoutes.profile,
-        icon: Icons.rocket_launch_outlined,
-        tone: ServiqRecoveryTone.neutral,
-      );
-    }
-
-    return null;
-  }
-
-  final String title;
-  final String message;
-  final String actionLabel;
-  final String route;
-  final IconData icon;
-  final ServiqRecoveryTone tone;
-}
-
-class _ReadinessPromptCard extends StatelessWidget {
-  const _ReadinessPromptCard({required this.prompt});
-
-  final _ReadinessPrompt prompt;
-
-  @override
-  Widget build(BuildContext context) {
-    if (prompt.route.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return ServiqRecoveryBanner(
-      icon: prompt.icon,
-      tone: prompt.tone,
-      message: '${prompt.title}. ${prompt.message}',
-      actionLabel: prompt.actionLabel,
-      onAction: () => context.push(prompt.route),
-    );
-  }
-}
-
-class _FirstRunGuidanceCard extends StatelessWidget {
-  const _FirstRunGuidanceCard({
-    required this.onPostNeedTap,
-    required this.onPeopleTap,
-  });
-
-  final VoidCallback onPostNeedTap;
-  final VoidCallback onPeopleTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-                child: const Icon(
-                  Icons.route_rounded,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Your first useful move',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Post one real need, or add trusted people so Home can start ranking nearby work around you.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const MarketplaceLoopSteps(activeIndex: 1),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: PrimaryButton(
-                  label: 'Post a Need',
-                  icon: const Icon(Icons.add_rounded),
-                  onPressed: onPostNeedTap,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SecondaryButton(
-                  label: 'People',
-                  icon: const Icon(Icons.people_outline_rounded),
-                  onPressed: onPeopleTap,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _QuickCategoryRow extends StatelessWidget {
   const _QuickCategoryRow({required this.categories, required this.onPressed});

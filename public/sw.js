@@ -1,51 +1,69 @@
-const CACHE_NAME = "serviq-v1";
-const STATIC_RESOURCES = [
-  "/",
-  "/dashboard/welcome",
-  "/dashboard",
-  "/serviq-icon.svg",
-];
+const CACHE_NAME = "serviq-v2";
+const STATIC_CACHE = "serviq-static-v2";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_RESOURCES);
-    }),
-  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((names) => {
-      return Promise.all(
-        names
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name)),
-      );
-    }),
+    Promise.all([
+      caches.keys().then((names) =>
+        Promise.all(
+          names
+            .filter((name) => name !== CACHE_NAME && name !== STATIC_CACHE)
+            .map((name) => caches.delete(name)),
+        ),
+      ),
+      self.clients.claim(),
+    ]),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
+  const url = new URL(event.request.url);
+
+  if (url.pathname === "/sw.js") return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/")));
+    return;
+  }
+
+  if (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/next/static/") ||
+    url.pathname.startsWith("/images/") ||
+    url.pathname.match(/\.(css|js|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp|avif)$/)
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request).then((response) => {
           if (response.ok && response.type === "basic") {
             const cloned = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
+            caches.open(STATIC_CACHE).then((cache) => {
               cache.put(event.request, cloned);
             });
           }
           return response;
-        })
-        .catch(() => cached);
+        });
+        return cached || fetchPromise;
+      }),
+    );
+    return;
+  }
 
-      return cached || fetchPromise;
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      if (response.ok && response.type === "basic" && !url.pathname.startsWith("/api/")) {
+        const cloned = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, cloned);
+        });
+      }
+      return response;
     }),
   );
 });

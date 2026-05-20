@@ -35,10 +35,7 @@ class AuthStateController extends ChangeNotifier {
   Session? get currentSession => _currentSession;
   User? get currentUser => _currentSession?.user;
   bool get isAuthenticated => currentSession != null;
-  Stream<Session?> get sessionChanges async* {
-    yield _currentSession;
-    yield* _sessionController.stream;
-  }
+  Stream<Session?> get sessionChanges => _sessionController.stream;
 
   Future<void> signOut() async {
     final client = _bootstrap.client;

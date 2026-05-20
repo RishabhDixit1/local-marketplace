@@ -66,26 +66,8 @@ void main() {
     expect(find.text('Find local help nearby.'), findsOneWidget);
     expect(find.text('Post Need'), findsOneWidget);
 
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Search and filters'),
-      180,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Search and filters'), findsOneWidget);
+    expect(find.text('Urgent'), findsAtLeastNWidgets(1));
     expect(find.text('Verified'), findsAtLeastNWidgets(1));
-
-    await tester.scrollUntilVisible(
-      find.text('Requests you can act on'),
-      220,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Requests you can act on'), findsAtLeastNWidgets(1));
-    expect(find.text('Trusted providers'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -123,7 +105,6 @@ void main() {
     await _pumpFeedPage(tester, const Size(390, 844), textScaleFactor: 1.3);
 
     expect(find.text('Find Help'), findsOneWidget);
-    expect(find.text('Search and filters'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
@@ -161,21 +142,14 @@ void main() {
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
       find.text('Recommended'),
-      240,
+      280,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
     expect(find.text('Recommended'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Needs attention'),
-      160,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Needs attention'), findsOneWidget);
-    await tester.scrollUntilVisible(
       find.text('Recent'),
-      220,
+      280,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();

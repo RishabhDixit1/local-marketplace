@@ -164,12 +164,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                         'Discovery filters',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tune provider discovery without crowding the directory.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 12),
                       Text(
                         'Sort by',
                         style: Theme.of(context).textTheme.titleMedium,
@@ -336,11 +331,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       'Find nearby help',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Search by skill, area, speed, or reputation.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                     const SizedBox(height: 12),
                     AppSearchField(
                       controller: _searchController,
@@ -412,7 +402,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _DiscoveryOverview(snapshot: data, filtered: filtered),
                       if (_mode == _DiscoveryMode.compare &&
                           filtered.isNotEmpty) ...[
                         const SizedBox(height: 14),
@@ -445,7 +434,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: ProviderDirectoryCard(
                               person: person,
-                              rankingReason: _providerRankingReason(person),
                               onOpenProfile: () => _openProvider(person),
                               onMessage: () => context.push(
                                 AppRoutes.chatDirect(
@@ -550,32 +538,6 @@ int _findPeopleScore(MobilePersonCard person) {
   score += person.mutualConnectionsCount.clamp(0, 10).toInt() * 4;
   score += person.completedJobs.clamp(0, 20).toInt();
   return score;
-}
-
-String _providerRankingReason(MobilePersonCard person) {
-  final explicitReason = person.reason.trim();
-  if (explicitReason.isNotEmpty) {
-    return explicitReason;
-  }
-  if (person.isOnline) {
-    return 'Available today and ready for fast follow-up.';
-  }
-  if (person.completedJobs >= 3) {
-    return '${person.completedJobs} completed jobs nearby.';
-  }
-  if ((person.averageRating ?? 0) >= 4.5 && person.reviewCount > 0) {
-    return '${person.ratingLabel} from ${person.reviewCount} review${person.reviewCount == 1 ? '' : 's'}.';
-  }
-  if (person.completionPercent >= 80) {
-    return 'Verified profile with stronger trust signals.';
-  }
-  if (person.activityLabel.toLowerCase().contains('min')) {
-    return person.activityLabel;
-  }
-  if (person.priceLabel.toLowerCase() != 'pricing in chat') {
-    return '${person.priceLabel} with profile details ready to compare.';
-  }
-  return 'Matched by skill, local area, and marketplace activity.';
 }
 
 List<String> _topCategories(List<MobilePersonCard> people) {
@@ -710,69 +672,6 @@ class _DiscoveryModeControl extends StatelessWidget {
       ],
       selected: {selectedMode},
       onSelectionChanged: (selection) => onSelected(selection.first),
-    );
-  }
-}
-
-class _DiscoveryOverview extends StatelessWidget {
-  const _DiscoveryOverview({required this.snapshot, required this.filtered});
-
-  final MobilePeopleSnapshot snapshot;
-  final List<MobilePersonCard> filtered;
-
-  @override
-  Widget build(BuildContext context) {
-    final topRated = snapshot.people
-        .where((person) => (person.averageRating ?? 0) >= 4.5)
-        .length;
-    return SectionCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Local signal board',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Text(
-                '${filtered.length}/${snapshot.totalCount}',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(color: AppColors.primary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TrustBadge(
-                label: '${snapshot.onlineCount} online',
-                icon: Icons.bolt_rounded,
-                backgroundColor: AppColors.primarySoft,
-                foregroundColor: AppColors.primary,
-              ),
-              TrustBadge(
-                label: '${snapshot.verifiedCount} verified',
-                icon: Icons.verified_user_outlined,
-                backgroundColor: AppColors.accentSoft,
-                foregroundColor: AppColors.accent,
-              ),
-              TrustBadge(
-                label: '$topRated top rated',
-                icon: Icons.star_rounded,
-                backgroundColor: AppColors.warningSoft,
-                foregroundColor: AppColors.warning,
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -975,16 +874,7 @@ class _CompareRow extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _providerRankingReason(person),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.accentDeep,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+
                   ],
                 ),
               ),

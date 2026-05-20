@@ -374,8 +374,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 children: [
                   _InboxDashboardHeader(
                     conversations: conversationsAsync.asData?.value,
-                    onPostNeed: () => context.push(AppRoutes.createNeed),
-                    onFindPeople: () => context.push(AppRoutes.people),
                     onRefresh: _refreshConversations,
                   ),
                   if ((conversationsAsync.asData?.value ?? const [])
@@ -549,14 +547,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 class _InboxDashboardHeader extends StatelessWidget {
   const _InboxDashboardHeader({
     required this.conversations,
-    required this.onPostNeed,
-    required this.onFindPeople,
     required this.onRefresh,
   });
 
   final List<ChatConversation>? conversations;
-  final VoidCallback onPostNeed;
-  final VoidCallback onFindPeople;
   final VoidCallback onRefresh;
 
   @override
@@ -589,11 +583,6 @@ class _InboxDashboardHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Messages, quotes, task timing, payment follow-up, and repeat hires stay together here.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -616,26 +605,6 @@ class _InboxDashboardHeader extends StatelessWidget {
                 icon: Icons.assignment_turned_in_outlined,
                 backgroundColor: AppColors.accentSoft,
                 foregroundColor: AppColors.accent,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onPostNeed,
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Post Need'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onFindPeople,
-                  icon: const Icon(Icons.person_search_outlined),
-                  label: const Text('Find People'),
-                ),
               ),
             ],
           ),
@@ -672,19 +641,16 @@ class _InboxEmptyCommandCenter extends StatelessWidget {
           _InboxStartAction(
             icon: Icons.add_circle_outline_rounded,
             title: 'Post a Need',
-            subtitle: 'Create demand so providers can reply here.',
             onTap: onPostNeed,
           ),
           _InboxStartAction(
             icon: Icons.person_search_outlined,
             title: 'Browse People',
-            subtitle: 'Open a provider profile and start a direct thread.',
             onTap: onFindPeople,
           ),
           _InboxStartAction(
             icon: Icons.refresh_rounded,
             title: 'Refresh Inbox',
-            subtitle: 'Check for new conversations from this account.',
             onTap: onRefresh,
           ),
         ],
@@ -722,19 +688,16 @@ class _InboxErrorRecovery extends StatelessWidget {
           _InboxStartAction(
             icon: Icons.refresh_rounded,
             title: 'Try again',
-            subtitle: 'Reload conversations and unread state.',
             onTap: onRetry,
           ),
           _InboxStartAction(
             icon: Icons.add_circle_outline_rounded,
             title: 'Post a Need',
-            subtitle: 'Create a new request while Inbox recovers.',
             onTap: onPostNeed,
           ),
           _InboxStartAction(
             icon: Icons.person_search_outlined,
             title: 'Find People',
-            subtitle: 'Browse nearby providers and open a profile.',
             onTap: onFindPeople,
           ),
         ],
@@ -747,13 +710,11 @@ class _InboxStartAction extends StatelessWidget {
   const _InboxStartAction({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
 
   @override
@@ -779,11 +740,6 @@ class _InboxStartAction extends StatelessWidget {
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -1498,13 +1454,6 @@ class _ChatThread extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _DealRoomActionRail(
-                    contextData: requestContext,
-                    conversationId: conversationId,
-                    composerController: composerController,
-                    sending: sending,
-                  ),
-                  const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Column(
@@ -1662,124 +1611,6 @@ class _DealRoomShortcut extends StatelessWidget {
             label: const Text('Quote room'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DealRoomActionRail extends StatelessWidget {
-  const _DealRoomActionRail({
-    required this.contextData,
-    required this.conversationId,
-    required this.composerController,
-    required this.sending,
-  });
-
-  final _ChatRequestContext contextData;
-  final String conversationId;
-  final TextEditingController composerController;
-  final bool sending;
-
-  void _setDraft(String value) {
-    composerController.value = TextEditingValue(
-      text: value,
-      selection: TextSelection.collapsed(offset: value.length),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mode = contextData.sourceText.contains('order')
-        ? 'order'
-        : 'help_request';
-    final hasTask = contextData.taskIdText.isNotEmpty;
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Smart actions', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ActionChip(
-                    avatar: const Icon(Icons.request_quote_outlined, size: 18),
-                    label: const Text('Quote'),
-                    onPressed: sending
-                        ? null
-                        : () {
-                            if (hasTask) {
-                              context.push(
-                                AppRoutes.quoteRoom(
-                                  mode: mode,
-                                  targetId: contextData.taskIdText,
-                                  conversationId: conversationId,
-                                ),
-                              );
-                              return;
-                            }
-                            _setDraft('I will send a clear quote shortly.');
-                          },
-                  ),
-                ),
-                _DealActionChip(
-                  label: 'Share ETA',
-                  icon: Icons.schedule_send_outlined,
-                  disabled: sending,
-                  onPressed: () => _setDraft(
-                    'I can be there around [time]. Does that work?',
-                  ),
-                ),
-                _DealActionChip(
-                  label: 'Mark started',
-                  icon: Icons.play_circle_outline_rounded,
-                  disabled: sending,
-                  onPressed: () =>
-                      _setDraft('Work has started. I will keep updates here.'),
-                ),
-                _DealActionChip(
-                  label: 'Request payment',
-                  icon: Icons.payments_outlined,
-                  disabled: sending,
-                  onPressed: () => _setDraft(
-                    'The work is complete. Can you confirm payment next?',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DealActionChip extends StatelessWidget {
-  const _DealActionChip({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.disabled = false,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final bool disabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ActionChip(
-        avatar: Icon(icon, size: 18),
-        label: Text(label),
-        onPressed: disabled ? null : onPressed,
       ),
     );
   }
