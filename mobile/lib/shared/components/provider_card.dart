@@ -277,11 +277,11 @@ class ProviderDirectoryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (onOpenProfile != null)
-                    Semantics(
-                      button: true,
-                      enabled: true,
-                      label: 'View profile of ${person.name}',
-                      child: Expanded(
+                    Expanded(
+                      child: Semantics(
+                        button: true,
+                        enabled: true,
+                        label: 'View profile of ${person.name}',
                         child: FilledButton.icon(
                           onPressed: onOpenProfile,
                           icon: const Icon(Icons.person_outline_rounded),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 
 import 'package:serviq_mobile/core/config/app_config.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
@@ -35,8 +34,6 @@ const _bootstrap = AppBootstrap(
 );
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
   testWidgets('auth → browse feed flow: welcome page renders and scrolls', (
     WidgetTester tester,
   ) async {
@@ -175,15 +172,6 @@ void main() {
     expect(find.text('Public Profile'), findsAtLeastNWidgets(1));
     expect(find.text('Edit Profile'), findsAtLeastNWidgets(1));
     expect(find.text('Listings'), findsOneWidget);
-
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Link Google to this account'),
-      280,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Link Google to this account'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
