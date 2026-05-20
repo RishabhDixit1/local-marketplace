@@ -17,6 +17,7 @@ class ProviderCard extends StatelessWidget {
     this.isSaved = false,
     this.onSave,
     this.onMore,
+    this.onReport,
   });
 
   final MobilePersonCard person;
@@ -26,6 +27,7 @@ class ProviderCard extends StatelessWidget {
   final bool isSaved;
   final VoidCallback? onSave;
   final VoidCallback? onMore;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +43,14 @@ class ProviderCard extends StatelessWidget {
             name: person.name,
             subtitle: person.headline,
             avatarUrl: person.avatarUrl,
-            trailing: onSave == null && onMore == null
+            trailing: onSave == null && onMore == null && onReport == null
                 ? _AvailabilityPill(online: person.isOnline)
                 : _ProviderActions(
                     online: person.isOnline,
                     isSaved: isSaved,
                     onSave: onSave,
                     onMore: onMore,
+                    onReport: onReport,
                   ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -274,29 +277,38 @@ class ProviderDirectoryCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (onOpenProfile != null)
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: onOpenProfile,
-                        icon: const Icon(Icons.person_outline_rounded),
-                        label: const Text(
-                          'View',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
+                    Semantics(
+                      button: true,
+                      enabled: true,
+                      label: 'View profile of ${person.name}',
+                      child: Expanded(
+                        child: FilledButton.icon(
+                          onPressed: onOpenProfile,
+                          icon: const Icon(Icons.person_outline_rounded),
+                          label: const Text(
+                            'View',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                          ),
                         ),
                       ),
                     ),
                   if (onMessage != null) ...[
                     const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Message',
-                      child: SizedBox.square(
-                        dimension: 44,
-                        child: IconButton.outlined(
-                          onPressed: onMessage,
-                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    Semantics(
+                      label: 'Send message to ${person.name}',
+                      hint: 'Opens a chat conversation',
+                      child: Tooltip(
+                        message: 'Message',
+                        child: SizedBox.square(
+                          dimension: 44,
+                          child: IconButton.outlined(
+                            onPressed: onMessage,
+                            icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          ),
                         ),
                       ),
                     ),
@@ -358,12 +370,14 @@ class _ProviderActions extends StatelessWidget {
     required this.isSaved,
     this.onSave,
     this.onMore,
+    this.onReport,
   });
 
   final bool online;
   final bool isSaved;
   final VoidCallback? onSave;
   final VoidCallback? onMore;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -376,29 +390,56 @@ class _ProviderActions extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (onSave != null)
-              Tooltip(
-                message: isSaved ? 'Saved' : 'Save',
-                child: SizedBox.square(
-                  dimension: AppTouchTargets.minimum,
-                  child: IconButton.outlined(
-                    onPressed: onSave,
-                    icon: Icon(
-                      isSaved
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_border_rounded,
+              Semantics(
+                label: isSaved ? 'Remove from saved' : 'Save this provider',
+                hint: isSaved
+                    ? 'Removes this provider from your saved list'
+                    : 'Saves this provider for later',
+                child: Tooltip(
+                  message: isSaved ? 'Saved' : 'Save',
+                  child: SizedBox.square(
+                    dimension: AppTouchTargets.minimum,
+                    child: IconButton.outlined(
+                      onPressed: onSave,
+                      icon: Icon(
+                        isSaved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                      ),
                     ),
                   ),
                 ),
               ),
             if (onMore != null) ...[
               if (onSave != null) const SizedBox(width: 4),
-              Tooltip(
-                message: 'More actions',
-                child: SizedBox.square(
-                  dimension: AppTouchTargets.minimum,
-                  child: IconButton.outlined(
-                    onPressed: onMore,
-                    icon: const Icon(Icons.more_horiz_rounded),
+              Semantics(
+                label: 'More actions',
+                hint: 'Shows additional options for this provider',
+                child: Tooltip(
+                  message: 'More actions',
+                  child: SizedBox.square(
+                    dimension: AppTouchTargets.minimum,
+                    child: IconButton.outlined(
+                      onPressed: onMore,
+                      icon: const Icon(Icons.more_horiz_rounded),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            if (onReport != null) ...[
+              if (onSave != null || onMore != null) const SizedBox(width: 4),
+              Semantics(
+                label: 'Report this provider',
+                hint: 'Opens report options for this provider',
+                child: Tooltip(
+                  message: 'Report',
+                  child: SizedBox.square(
+                    dimension: AppTouchTargets.minimum,
+                    child: IconButton.outlined(
+                      onPressed: onReport,
+                      icon: const Icon(Icons.outlined_flag_rounded),
+                    ),
                   ),
                 ),
               ),

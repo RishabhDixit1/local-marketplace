@@ -29,25 +29,29 @@ class FilterChipGroup<T> extends StatelessWidget {
       runSpacing: 8,
       children: options.map((option) {
         final isSelected = selectedValues.contains(option.value);
-        return FilterChip(
+        return Semantics(
+          label: 'Filter by ${option.label}',
           selected: isSelected,
-          onSelected: (selected) {
-            final next = <T>{...selectedValues};
-            if (allowMultiple) {
-              if (selected) {
-                next.add(option.value);
+          child: FilterChip(
+            selected: isSelected,
+            onSelected: (selected) {
+              final next = <T>{...selectedValues};
+              if (allowMultiple) {
+                if (selected) {
+                  next.add(option.value);
+                } else {
+                  next.remove(option.value);
+                }
               } else {
-                next.remove(option.value);
+                next
+                  ..clear()
+                  ..add(option.value);
               }
-            } else {
-              next
-                ..clear()
-                ..add(option.value);
-            }
-            onChanged(next);
-          },
-          avatar: option.icon == null ? null : Icon(option.icon, size: 16),
-          label: Text(option.label),
+              onChanged(next);
+            },
+            avatar: option.icon == null ? null : Icon(option.icon, size: 16),
+            label: Text(option.label),
+          ),
         );
       }).toList(),
     );

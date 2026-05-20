@@ -156,6 +156,8 @@ class _ProviderControlDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _TrustRevenuePanel(snapshot: snapshot, tasks: tasks),
+        const SizedBox(height: 14),
+        _AnalyticsPanel(snapshot: snapshot, tasks: tasks),
       ],
     );
   }
@@ -579,6 +581,92 @@ class _TrustRevenuePanel extends StatelessWidget {
             icon: Icons.verified_user_outlined,
             label: 'Open trust and verification',
             route: AppRoutes.profileTrust,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsPanel extends StatelessWidget {
+  const _AnalyticsPanel({required this.snapshot, required this.tasks});
+
+  final MobileProfileSnapshot snapshot;
+  final MobileTaskSnapshot? tasks;
+
+  @override
+  Widget build(BuildContext context) {
+    final completed = tasks?.items
+        .where((t) => t.isProviderTask && t.status == MobileTaskStatus.completed)
+        .length ?? 0;
+    final totalTasks = tasks?.items.where((t) => t.isProviderTask).length ?? 0;
+    final completionRate = totalTasks > 0 ? (completed / totalTasks * 100).round() : 0;
+    final trustScore = snapshot.trustScore;
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Analytics', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Your key performance indicators at a glance.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 360;
+              final tileWidth = narrow ? constraints.maxWidth : (constraints.maxWidth - 10) / 2;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  SizedBox(
+                    width: tileWidth,
+                    child: MetricTile(
+                      label: 'Completion rate',
+                      value: '$completionRate%',
+                      caption: '${completed} of $totalTasks tasks completed',
+                      icon: Icons.trending_up_rounded,
+                    ),
+                  ),
+                  SizedBox(
+                    width: tileWidth,
+                    child: MetricTile(
+                      label: 'Trust score',
+                      value: trustScore.toString(),
+                      caption: '${snapshot.reviewCount} reviews',
+                      icon: Icons.verified_outlined,
+                    ),
+                  ),
+                  SizedBox(
+                    width: tileWidth,
+                    child: MetricTile(
+                      label: 'Services',
+                      value: snapshot.serviceCount.toString(),
+                      caption: 'Active listings',
+                      icon: Icons.design_services_outlined,
+                    ),
+                  ),
+                  SizedBox(
+                    width: tileWidth,
+                    child: MetricTile(
+                      label: 'Products',
+                      value: snapshot.productCount.toString(),
+                      caption: 'Catalog items',
+                      icon: Icons.inventory_2_outlined,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _ControlLinkRow(
+            icon: Icons.receipt_long_outlined,
+            label: 'View all orders',
+            route: AppRoutes.orders,
           ),
         ],
       ),

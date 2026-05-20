@@ -54,6 +54,20 @@ class AppColors {
   static const shadow = Color(0x15141A22);
   static const glow = Color(0x220F766E);
 
+  // Dark theme surfaces
+  static const darkBackground = Color(0xFF0E1217);
+  static const darkBackgroundRaised = Color(0xFF161C23);
+  static const darkSurface = Color(0xFF1A2129);
+  static const darkSurfaceAlt = Color(0xFF222B35);
+  static const darkSurfaceTint = Color(0xFF1E2A3A);
+  static const darkSurfacePressed = Color(0xFF2A3543);
+  static const darkInk = Color(0xFFE6EDF5);
+  static const darkInkStrong = Color(0xFFF2F7FC);
+  static const darkInkSubtle = Color(0xFF9CAAB8);
+  static const darkInkFaint = Color(0xFF6F7E8C);
+  static const darkBorder = Color(0xFF2E3A47);
+  static const darkBorderStrong = Color(0xFF3E4B59);
+
   /// Skeleton / shimmer tracks (tokenized — avoid one-off grays in loaders).
   static const shimmerBase = Color(0xFFE7EBF1);
   static const shimmerHighlight = Color(0xFFF4F6FA);
@@ -186,6 +200,40 @@ class ServiqThemeTokens extends ThemeExtension<ServiqThemeTokens> {
       end: Alignment.centerRight,
     ),
     glassBorder: Color(0x66FFFFFF),
+  );
+
+  static const dark = ServiqThemeTokens(
+    heroGradient: LinearGradient(
+      colors: [Color(0xFF0A1A1E), Color(0xFF0D4A45), Color(0xFF0A8A7A)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    exploreGradient: LinearGradient(
+      colors: [Color(0xFF0D1F1E), Color(0xFF1A1408)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    peopleGradient: LinearGradient(
+      colors: [Color(0xFF0E1225), Color(0xFF0D1F16)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    trustGradient: LinearGradient(
+      colors: [Color(0xFF1A0E05), Color(0xFF0E1425)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    authGradient: LinearGradient(
+      colors: [Color(0xFF121310), Color(0xFF0D1F1C), Color(0xFF1A1108)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomRight,
+    ),
+    actionGradient: LinearGradient(
+      colors: [Color(0xFF0A5C56), Color(0xFF1E3C8A)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    ),
+    glassBorder: Color(0x33FFFFFF),
   );
 
   final Gradient heroGradient;

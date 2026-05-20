@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../core/auth/auth_state_controller.dart';
 import '../core/firebase/app_firebase.dart';
 import '../core/firebase/mobile_push_notifications.dart';
 import '../core/services/analytics_service.dart';
+import '../core/services/app_update_service.dart';
+import '../core/services/update_dialog.dart';
 import '../core/supabase/app_bootstrap.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/data/onboarding_handoff.dart';
@@ -43,6 +46,17 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
               'firebase_ready': firebase.initialized,
             },
           );
+
+      ref.read(appUpdateServiceProvider).checkForUpdate().then((info) {
+        if (!mounted || !info.updateAvailable) return;
+        showUpdateDialog(
+          context,
+          latestVersion: info.latestVersion,
+          isCritical: info.isCritical,
+          releaseNotes: info.releaseNotes,
+          updateUrl: info.updateUrl,
+        );
+      });
     });
   }
 
@@ -101,6 +115,21 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
       title: bootstrap.config.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('hi', 'IN'),
+        Locale('bn', 'BD'),
+        Locale('ta', 'IN'),
+        Locale('te', 'IN'),
+        Locale('mr', 'IN'),
+      ],
       routerConfig: router,
     );
   }

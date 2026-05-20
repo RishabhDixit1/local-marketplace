@@ -2500,9 +2500,9 @@ class _PreviewRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2748,7 +2748,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: Theme.of(
               context,
-            ).textTheme.labelLarge?.copyWith(color: const Color(0xFF64748B)),
+            ).textTheme.labelLarge?.copyWith(color: AppColors.inkSubtle),
           ),
           const SizedBox(height: 4),
           Text(

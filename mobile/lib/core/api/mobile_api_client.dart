@@ -32,6 +32,7 @@ class MobileApiClient {
   final AppConfig _config;
   final SupabaseClient? _supabaseClient;
   final http.Client _httpClient;
+  static Completer<void>? _refreshCompleter;
 
   Future<Map<String, dynamic>> getJson(
     String path, {
@@ -93,6 +94,7 @@ class MobileApiClient {
     String fieldName = 'file',
     Map<String, String>? fields,
     bool authenticated = true,
+    bool isRetry = false,
   }) async {
     if (!_config.hasApiConfig) {
       throw const ApiException(
@@ -103,7 +105,7 @@ class MobileApiClient {
     final uri = _buildUri(path);
     final request = http.MultipartRequest('POST', uri);
     if (authenticated) {
-      request.headers.addAll(_buildAuthHeaders());
+      request.headers.addAll(await _buildAuthHeaders());
     }
     if (fields != null && fields.isNotEmpty) {
       request.fields.addAll(fields);
@@ -124,6 +126,21 @@ class MobileApiClient {
       final payload = _decodeBody(response.body);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (response.statusCode == 401 && authenticated && !isRetry) {
+          final refreshed = await _tryRefreshSession();
+          if (refreshed) {
+            return uploadFile(
+              path,
+              filePath: filePath,
+              fileName: fileName,
+              mediaType: mediaType,
+              fieldName: fieldName,
+              fields: fields,
+              authenticated: authenticated,
+              isRetry: true,
+            );
+          }
+        }
         throw ApiException(
           _extractMessage(payload) ?? 'Upload failed.',
           statusCode: response.statusCode,
@@ -152,6 +169,7 @@ class MobileApiClient {
     Map<String, String>? queryParameters,
     Map<String, dynamic>? body,
     required bool authenticated,
+    bool isRetry = false,
   }) async {
     if (!_config.hasApiConfig) {
       throw const ApiException(
@@ -163,7 +181,7 @@ class MobileApiClient {
 
     final headers = <String, String>{
       'Content-Type': 'application/json',
-      if (authenticated) ..._buildAuthHeaders(),
+      if (authenticated) ...await _buildAuthHeaders(),
     };
 
     late http.Response response;
@@ -223,6 +241,19 @@ class MobileApiClient {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode == 401 && authenticated && !isRetry) {
+        final refreshed = await _tryRefreshSession();
+        if (refreshed) {
+          return _sendJson(
+            method: method,
+            path: path,
+            queryParameters: queryParameters,
+            body: body,
+            authenticated: authenticated,
+            isRetry: true,
+          );
+        }
+      }
       throw ApiException(
         _extractMessage(payload) ?? 'Request failed.',
         statusCode: response.statusCode,
@@ -285,9 +316,15 @@ class MobileApiClient {
         'Details: ${error.message}';
   }
 
-  Map<String, String> _buildAuthHeaders() {
-    final session = _supabaseClient?.auth.currentSession;
-    final accessToken = session?.accessToken ?? '';
+  Future<Map<String, String>> _buildAuthHeaders() async {
+    var session = _supabaseClient?.auth.currentSession;
+    var accessToken = session?.accessToken ?? '';
+
+    if (accessToken.isEmpty) {
+      await _tryRefreshSession();
+      session = _supabaseClient?.auth.currentSession;
+      accessToken = session?.accessToken ?? '';
+    }
 
     if (accessToken.isEmpty) {
       throw const ApiException(
@@ -297,6 +334,26 @@ class MobileApiClient {
     }
 
     return {'Authorization': 'Bearer $accessToken'};
+  }
+
+  Future<bool> _tryRefreshSession() async {
+    if (_supabaseClient == null) return false;
+    if (_refreshCompleter != null) {
+      await _refreshCompleter!.future;
+      return _supabaseClient!.auth.currentSession != null;
+    }
+    _refreshCompleter = Completer<void>();
+    try {
+      final session = _supabaseClient!.auth.currentSession;
+      if (session == null) return false;
+      await _supabaseClient!.auth.refreshSession();
+      return _supabaseClient!.auth.currentSession != null;
+    } catch (e) {
+      return false;
+    } finally {
+      _refreshCompleter?.complete();
+      _refreshCompleter = null;
+    }
   }
 
   Map<String, dynamic> _decodeBody(
@@ -320,10 +377,11 @@ class MobileApiClient {
           ? requestUri!.path
           : (requestUri?.origin ?? 'the API route');
       final preview = _bodyPreview(rawBody);
+      final is404 = statusCode == 404;
       throw ApiException(
         'The server returned HTML instead of JSON for $target'
         '${statusCode == null ? '' : ' (HTTP $statusCode)'}. '
-        'This usually means the Next.js route crashed or returned an error page. '
+        '${is404 ? 'This route may not exist on the API - check the endpoint path.' : 'This usually means the Next.js route crashed or returned an error page.'} '
         'Check the local web server logs.'
         '${preview.isEmpty ? '' : ' Response preview: $preview'}',
         statusCode: statusCode,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -97,7 +99,9 @@ final onboardingHandoffControllerProvider =
       return controller;
     });
 
-abstract class OnboardingHandoffStore {
+abstract class OnboardingHandoffStore extends ChangeNotifier {
+  bool isReady = false;
+
   MobileOnboardingIntent? readIntent();
   MobileAuthMethod? readPendingAuthMethod();
   String? readLastRoute();
@@ -109,14 +113,16 @@ abstract class OnboardingHandoffStore {
   Future<void> clearLastRoute();
 }
 
-class MemoryOnboardingHandoffStore implements OnboardingHandoffStore {
+class MemoryOnboardingHandoffStore extends OnboardingHandoffStore {
   MemoryOnboardingHandoffStore({
     MobileOnboardingIntent? initialIntent,
     MobileAuthMethod? initialPendingAuthMethod,
     String? initialLastRoute,
   }) : _intent = initialIntent,
        _pendingAuthMethod = initialPendingAuthMethod,
-       _lastRoute = _sanitizeRoute(initialLastRoute);
+       _lastRoute = _sanitizeRoute(initialLastRoute) {
+    isReady = true;
+  }
 
   MobileOnboardingIntent? _intent;
   MobileAuthMethod? _pendingAuthMethod;
@@ -158,71 +164,121 @@ class MemoryOnboardingHandoffStore implements OnboardingHandoffStore {
 }
 
 class SharedPreferencesOnboardingHandoffStore
-    implements OnboardingHandoffStore {
-  SharedPreferencesOnboardingHandoffStore(this._preferences);
+    extends OnboardingHandoffStore {
+  SharedPreferencesOnboardingHandoffStore(this._preferences) {
+    isReady = true;
+    _readyCompleter.complete();
+  }
+
+  SharedPreferencesOnboardingHandoffStore.uninitialized() {
+    _init();
+  }
 
   static const _intentKey = 'serviq.mobile.onboarding.intent';
   static const _pendingAuthMethodKey =
       'serviq.mobile.onboarding.pendingAuthMethod';
   static const _lastRouteKey = 'serviq.mobile.onboarding.lastRoute';
 
-  final SharedPreferences _preferences;
+  SharedPreferences? _preferences;
+  final _readyCompleter = Completer<void>();
+
+  Future<void> _init() async {
+    _preferences = await SharedPreferences.getInstance();
+    isReady = true;
+    _readyCompleter.complete();
+    notifyListeners();
+  }
+
+  Future<void> _ensureReady() async {
+    if (!isReady) await _readyCompleter.future;
+  }
 
   @override
   MobileOnboardingIntent? readIntent() {
+    if (!isReady) return null;
     return MobileOnboardingIntentDetails.fromStorageValue(
-      _preferences.getString(_intentKey),
+      _preferences!.getString(_intentKey),
     );
   }
 
   @override
   MobileAuthMethod? readPendingAuthMethod() {
+    if (!isReady) return null;
     return MobileAuthMethodDetails.fromStorageValue(
-      _preferences.getString(_pendingAuthMethodKey),
+      _preferences!.getString(_pendingAuthMethodKey),
     );
   }
 
   @override
-  String? readLastRoute() =>
-      _sanitizeRoute(_preferences.getString(_lastRouteKey));
-
-  @override
-  Future<void> writeIntent(MobileOnboardingIntent intent) {
-    return _preferences.setString(_intentKey, intent.storageValue);
+  String? readLastRoute() {
+    if (!isReady) return null;
+    return _sanitizeRoute(_preferences!.getString(_lastRouteKey));
   }
 
   @override
-  Future<void> writePendingAuthMethod(MobileAuthMethod method) {
-    return _preferences.setString(_pendingAuthMethodKey, method.storageValue);
+  Future<void> writeIntent(MobileOnboardingIntent intent) async {
+    await _ensureReady();
+    await _preferences!.setString(_intentKey, intent.storageValue);
   }
 
   @override
-  Future<void> clearPendingAuthMethod() {
-    return _preferences.remove(_pendingAuthMethodKey);
+  Future<void> writePendingAuthMethod(MobileAuthMethod method) async {
+    await _ensureReady();
+    await _preferences!.setString(_pendingAuthMethodKey, method.storageValue);
   }
 
   @override
-  Future<void> writeLastRoute(String route) {
+  Future<void> clearPendingAuthMethod() async {
+    await _ensureReady();
+    await _preferences!.remove(_pendingAuthMethodKey);
+  }
+
+  @override
+  Future<void> writeLastRoute(String route) async {
+    await _ensureReady();
     final sanitized = _sanitizeRoute(route) ?? AppRoutes.home;
-    return _preferences.setString(_lastRouteKey, sanitized);
+    await _preferences!.setString(_lastRouteKey, sanitized);
   }
 
   @override
-  Future<void> clearLastRoute() {
-    return _preferences.remove(_lastRouteKey);
+  Future<void> clearLastRoute() async {
+    await _ensureReady();
+    await _preferences!.remove(_lastRouteKey);
   }
 }
 
 class OnboardingHandoffController extends ChangeNotifier {
   OnboardingHandoffController(this._store)
-    : _selectedIntent = _store.readIntent() ?? MobileOnboardingIntent.findHelp,
-      _pendingAuthMethod = _store.readPendingAuthMethod(),
-      _lastRoute = _store.readLastRoute();
+    : _selectedIntent = MobileOnboardingIntent.findHelp,
+      _pendingAuthMethod = null,
+      _lastRoute = null {
+    _initFromStore();
+  }
 
   final OnboardingHandoffStore _store;
   MobileOnboardingIntent _selectedIntent;
   MobileAuthMethod? _pendingAuthMethod;
   String? _lastRoute;
+  bool _disposed = false;
+
+  void _initFromStore() {
+    if (_store.isReady) {
+      _selectedIntent = _store.readIntent() ?? MobileOnboardingIntent.findHelp;
+      _pendingAuthMethod = _store.readPendingAuthMethod();
+      _lastRoute = _store.readLastRoute();
+    } else {
+      _store.addListener(_onStoreReady);
+    }
+  }
+
+  void _onStoreReady() {
+    if (_disposed || !_store.isReady) return;
+    _store.removeListener(_onStoreReady);
+    _selectedIntent = _store.readIntent() ?? MobileOnboardingIntent.findHelp;
+    _pendingAuthMethod = _store.readPendingAuthMethod();
+    _lastRoute = _store.readLastRoute();
+    notifyListeners();
+  }
 
   MobileOnboardingIntent get selectedIntent => _selectedIntent;
   MobileAuthMethod? get pendingAuthMethod => _pendingAuthMethod;
@@ -281,6 +337,13 @@ class OnboardingHandoffController extends ChangeNotifier {
     }
     notifyListeners();
     await _store.clearPendingAuthMethod();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _store.removeListener(_onStoreReady);
+    super.dispose();
   }
 
   Map<String, Object> analyticsExtras({MobileAuthMethod? method}) {

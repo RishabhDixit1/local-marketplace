@@ -178,4 +178,11 @@ class MobileAuthService {
   Future<void> updatePassword(String password) async {
     await _client.auth.updateUser(UserAttributes(password: password));
   }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _client.auth.resetPasswordForEmail(
+      email.trim(),
+      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+    );
+  }
 }

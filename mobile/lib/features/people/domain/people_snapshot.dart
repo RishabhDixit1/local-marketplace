@@ -336,6 +336,13 @@ class MobilePeopleSnapshot {
   final List<String> acceptedConnectionIds;
   final String viewerRoleFamily;
 
+  Map<String, dynamic> toJson() => {
+    'currentUserId': currentUserId,
+    'acceptedConnectionIds': acceptedConnectionIds,
+    'viewerRoleFamily': viewerRoleFamily,
+    'profiles': people.map((p) => p.toJson()).toList(),
+  };
+
   int get totalCount => people.length;
 
   int get onlineCount => people.where((person) => person.isOnline).length;
@@ -402,6 +409,36 @@ class MobilePersonCard {
   final String previewSource;
   final String contactPhone;
   final bool canCall;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'avatarUrl': avatarUrl,
+    'headline': headline,
+    'locationLabel': locationLabel,
+    'isOnline': isOnline,
+    'activityLabel': activityLabel,
+    'verificationLabel': verificationLabel,
+    'completionPercent': completionPercent,
+    'primaryTags': primaryTags,
+    'openNeedsCount': openNeedsCount,
+    'postCount': postCount,
+    'completedJobs': completedJobs,
+    'openLeads': openLeads,
+    'averageRating': averageRating,
+    'reviewCount': reviewCount,
+    'priceLabel': priceLabel,
+    'isAcceptedConnection': isAcceptedConnection,
+    'mutualConnectionsCount': mutualConnectionsCount,
+    'reason': reason,
+    'priorityScore': priorityScore,
+    'previewImageUrl': previewImageUrl,
+    'previewMediaCount': previewMediaCount,
+    'previewTitle': previewTitle,
+    'previewSource': previewSource,
+    'contactPhone': contactPhone,
+    'canCall': canCall,
+  };
 
   bool get hasPreviewImage => previewImageUrl.trim().isNotEmpty;
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/supabase/app_bootstrap.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 
 class SetupPage extends ConsumerWidget {
@@ -125,7 +126,7 @@ Windows
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B1F33),
+                      color: AppColors.inkStrong,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     padding: const EdgeInsets.all(16),
@@ -176,10 +177,10 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = ready ? const Color(0xFF0F766E) : const Color(0xFFB45309);
+    final color = ready ? AppColors.primary : AppColors.warm;
     final background = ready
-        ? const Color(0xFFCCFBF1)
-        : const Color(0xFFFEF3C7);
+        ? AppColors.primarySoft
+        : AppColors.warmSoft;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,12 +229,12 @@ class _ChecklistItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 13,
-            backgroundColor: const Color(0xFFE0F2FE),
+            backgroundColor: AppColors.accentSoft,
             child: Text(
               '$index',
               style: Theme.of(
                 context,
-              ).textTheme.labelLarge?.copyWith(color: const Color(0xFF0B1F33)),
+              ).textTheme.labelLarge?.copyWith(color: AppColors.inkStrong),
             ),
           ),
           const SizedBox(width: 12),

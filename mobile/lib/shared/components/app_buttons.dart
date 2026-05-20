@@ -24,11 +24,16 @@ class PrimaryButton extends StatelessWidget {
             label: Text(label),
           );
 
-    if (!expanded) {
-      return child;
-    }
+    final sized = !expanded
+        ? child
+        : SizedBox(width: double.infinity, child: child);
 
-    return SizedBox(width: double.infinity, child: child);
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: sized,
+    );
   }
 }
 
@@ -56,11 +61,16 @@ class SecondaryButton extends StatelessWidget {
             label: Text(label),
           );
 
-    if (!expanded) {
-      return child;
-    }
+    final sized = !expanded
+        ? child
+        : SizedBox(width: double.infinity, child: child);
 
-    return SizedBox(width: double.infinity, child: child);
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: sized,
+    );
   }
 }
 
@@ -98,11 +108,16 @@ class DangerButton extends StatelessWidget {
             label: Text(label),
           );
 
-    if (!expanded) {
-      return child;
-    }
+    final sized = !expanded
+        ? child
+        : SizedBox(width: double.infinity, child: child);
 
-    return SizedBox(width: double.infinity, child: child);
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: sized,
+    );
   }
 }
 
@@ -130,10 +145,15 @@ class GhostButton extends StatelessWidget {
             label: Text(label),
           );
 
-    if (!expanded) {
-      return child;
-    }
+    final sized = !expanded
+        ? child
+        : SizedBox(width: double.infinity, child: child);
 
-    return SizedBox(width: double.infinity, child: child);
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: sized,
+    );
   }
 }

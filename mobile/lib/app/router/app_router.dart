@@ -33,6 +33,7 @@ import '../../features/quotes/domain/quote_models.dart';
 import '../../features/quotes/presentation/quote_room_page.dart';
 import '../../features/search/presentation/search_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
+import '../../features/welcome/presentation/onboarding_walkthrough_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
 import '../presentation/app_shell.dart';
 import 'post_auth_route_resolver.dart';
@@ -41,6 +42,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
   final authState = ref.watch(authStateControllerProvider);
   final onboardingHandoff = ref.watch(onboardingHandoffControllerProvider);
+  final onboardingComplete = ref.watch(onboardingCompleteProvider);
   final profileReadiness = authState.isAuthenticated
       ? ref
             .watch(profileSnapshotProvider)
@@ -56,6 +58,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: Listenable.merge([authState, onboardingHandoff]),
     redirect: (context, state) {
       final location = state.matchedLocation;
+
+      if (bootstrap.needsSetup && location != AppRoutes.setup) {
+        return AppRoutes.setup;
+      }
+
+      final onboardingValue = onboardingComplete.asData?.value;
+      if (onboardingValue != null) {
+        if (!onboardingValue && location != AppRoutes.onboarding) {
+          return AppRoutes.onboarding;
+        }
+        if (onboardingValue && location == AppRoutes.onboarding) {
+          return AppRoutes.root;
+        }
+      } else {
+        return null;
+      }
+
       if (!authState.isAuthenticated && location.startsWith('/app')) {
         scheduleMicrotask(() {
           unawaited(onboardingHandoff.rememberRoute(state.uri.toString()));
@@ -85,6 +104,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.signIn,
         builder: (context, state) => const SignInPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, state) => const OnboardingWalkthroughPage(),
       ),
       GoRoute(
         path: AppRoutes.createNeed,

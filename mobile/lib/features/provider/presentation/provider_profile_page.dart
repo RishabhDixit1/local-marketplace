@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -22,6 +23,7 @@ import '../../../shared/components/profile_avatar_tile.dart';
 import '../../../shared/components/section_header.dart';
 import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
+import '../../profile/data/profile_repository.dart';
 
 class ProviderProfilePage extends ConsumerWidget {
   const ProviderProfilePage({super.key, required this.providerId});
@@ -146,6 +148,18 @@ class ProviderProfilePage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _ReviewsCard(provider: provider),
                   const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _writeReview(context, ref, provider.id),
+                        icon: const Icon(Icons.rate_review_outlined),
+                        label: const Text('Write a Review'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _RelatedActivitySection(
                     providerId: provider.id,
                     requests: requests,
@@ -227,6 +241,117 @@ class ProviderProfilePage extends ConsumerWidget {
     }
 
     context.push(AppRoutes.createRequest);
+  }
+
+  void _writeReview(BuildContext context, WidgetRef ref, String providerId) {
+    var rating = 5;
+    var comment = '';
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  4,
+                  20,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Write a Review',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final star = index + 1;
+                        return IconButton(
+                          icon: Icon(
+                            star <= rating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: star <= rating
+                                ? AppColors.warning
+                                : AppColors.inkMuted,
+                            size: 36,
+                          ),
+                          onPressed: () =>
+                              setSheetState(() => rating = star),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Review (optional)',
+                        hintText: 'Share your experience...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (v) => comment = v,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () async {
+                          Navigator.of(sheetContext).pop();
+                          try {
+                            await ref
+                                .read(profileRepositoryProvider)
+                                .submitReview(
+                                  providerId: providerId,
+                                  rating: rating,
+                                  comment: comment,
+                                );
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Review submitted.'),
+                              ),
+                            );
+                          } on ApiException catch (error) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(error.message),
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.error,
+                              ),
+                            );
+                          } catch (error) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(error.toString()),
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.error,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Submit'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _copyProvider(

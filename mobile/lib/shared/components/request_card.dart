@@ -17,12 +17,16 @@ class RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FeedCard(
-      item: item,
-      onPrimaryTap: onOpen,
-      onSecondaryTap: onMessage,
-      primaryLabel: 'Open request',
-      secondaryLabel: 'Contact',
+    return Semantics(
+      button: true,
+      enabled: onOpen != null,
+      child: FeedCard(
+        item: item,
+        onPrimaryTap: onOpen,
+        onSecondaryTap: onMessage,
+        primaryLabel: 'Open request',
+        secondaryLabel: 'Contact',
+      ),
     );
   }
 }
