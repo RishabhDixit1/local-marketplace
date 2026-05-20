@@ -52,13 +52,17 @@ class _BootstrapHost extends StatefulWidget {
 class _BootstrapHostState extends State<_BootstrapHost> {
   late Future<AppBootstrap> _bootstrapFuture;
   bool _timedOut = false;
+  bool _bootstrapDone = false;
 
   @override
   void initState() {
     super.initState();
     _bootstrapFuture = AppBootstrap.initialize();
+    _bootstrapFuture.then((_) {
+      if (mounted) setState(() => _bootstrapDone = true);
+    });
     Future.delayed(const Duration(seconds: 8), () {
-      if (mounted && !_timedOut) {
+      if (mounted && !_timedOut && !_bootstrapDone) {
         setState(() => _timedOut = true);
       }
     });
@@ -72,10 +76,14 @@ class _BootstrapHostState extends State<_BootstrapHost> {
         onRetry: () {
           setState(() {
             _timedOut = false;
+            _bootstrapDone = false;
             _bootstrapFuture = AppBootstrap.initialize();
           });
+          _bootstrapFuture.then((_) {
+            if (mounted) setState(() => _bootstrapDone = true);
+          });
           Future.delayed(const Duration(seconds: 8), () {
-            if (mounted && _timedOut == false) {
+            if (mounted && _timedOut == false && !_bootstrapDone) {
               setState(() => _timedOut = true);
             }
           });
@@ -95,9 +103,20 @@ class _BootstrapHostState extends State<_BootstrapHost> {
           final msg = snapshot.error?.toString() ??
               snapshot.data?.initializationError ??
               'Could not start ServiQ.';
-          return _BootstrapErrorApp(message: msg, onRetry: () => setState(() {
-            _bootstrapFuture = AppBootstrap.initialize();
-          }));
+          return _BootstrapErrorApp(message: msg, onRetry: () {
+            setState(() {
+              _bootstrapDone = false;
+              _bootstrapFuture = AppBootstrap.initialize();
+            });
+            _bootstrapFuture.then((_) {
+              if (mounted) setState(() => _bootstrapDone = true);
+            });
+            Future.delayed(const Duration(seconds: 8), () {
+              if (mounted && !_bootstrapDone) {
+                setState(() => _timedOut = true);
+              }
+            });
+          });
         }
 
         final bootstrap = snapshot.data!;

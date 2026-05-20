@@ -12,7 +12,7 @@ final appBootstrapProvider = Provider<AppBootstrap>((ref) {
 });
 
 class AppBootstrap {
-  static const Duration _initializationTimeout = Duration(seconds: 5);
+  static const Duration _initializationTimeout = Duration(seconds: 15);
 
   const AppBootstrap({
     required this.config,
