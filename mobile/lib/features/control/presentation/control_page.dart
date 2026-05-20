@@ -627,7 +627,7 @@ class _AnalyticsPanel extends StatelessWidget {
                     child: MetricTile(
                       label: 'Completion rate',
                       value: '$completionRate%',
-                      caption: '${completed} of $totalTasks tasks completed',
+                      caption: '$completed of $totalTasks tasks completed',
                       icon: Icons.trending_up_rounded,
                     ),
                   ),

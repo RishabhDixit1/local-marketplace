@@ -50,7 +50,7 @@ class _BootstrapHost extends StatefulWidget {
 }
 
 class _BootstrapHostState extends State<_BootstrapHost> {
-  late final Future<AppBootstrap> _bootstrapFuture;
+  late Future<AppBootstrap> _bootstrapFuture;
   bool _timedOut = false;
 
   @override
