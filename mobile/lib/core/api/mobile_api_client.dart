@@ -337,17 +337,18 @@ class MobileApiClient {
   }
 
   Future<bool> _tryRefreshSession() async {
-    if (_supabaseClient == null) return false;
+    final client = _supabaseClient;
+    if (client == null) return false;
     if (_refreshCompleter != null) {
       await _refreshCompleter!.future;
-      return _supabaseClient!.auth.currentSession != null;
+      return client.auth.currentSession != null;
     }
     _refreshCompleter = Completer<void>();
     try {
-      final session = _supabaseClient!.auth.currentSession;
+      final session = client.auth.currentSession;
       if (session == null) return false;
-      await _supabaseClient!.auth.refreshSession();
-      return _supabaseClient!.auth.currentSession != null;
+      await client.auth.refreshSession();
+      return client.auth.currentSession != null;
     } catch (e) {
       return false;
     } finally {
