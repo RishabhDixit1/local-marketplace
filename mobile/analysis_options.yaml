@@ -11,7 +11,6 @@ linter:
     - avoid_empty_else
     - avoid_init_to_null
     - avoid_print
-    - avoid_redundant_argument_values
     - avoid_return_types_on_setters
     - avoid_shadowing_type_parameters
     - avoid_single_cascade_in_expression_statements
@@ -23,7 +22,6 @@ linter:
     - cancel_subscriptions
     - constant_identifier_names
     - curly_braces_in_flow_control_structures
-    - directives_ordering
     - empty_catches
     - empty_constructor_bodies
     - empty_statements
@@ -42,10 +40,6 @@ linter:
     - prefer_adjacent_string_concatenation
     - prefer_collection_literals
     - prefer_conditional_assignment
-    - prefer_const_constructors
-    - prefer_const_constructors_in_immutables
-    - prefer_const_declarations
-    - prefer_const_literals_to_create_immutables
     - prefer_contains
     - prefer_final_fields
     - prefer_final_locals
