@@ -226,7 +226,7 @@ ensure_node_available
 enable_supported_ca_for_local_node
 
 if ((${#NEXT_DEV_ARGS[@]} > 0)); then
-  exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT" "${NEXT_DEV_ARGS[@]}"
+  exec ./node_modules/.bin/next dev --port "$DEV_PORT" "${NEXT_DEV_ARGS[@]}"
 fi
 
-exec ./node_modules/.bin/next dev --webpack --port "$DEV_PORT"
+exec ./node_modules/.bin/next dev --port "$DEV_PORT"
