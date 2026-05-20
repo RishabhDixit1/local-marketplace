@@ -29,6 +29,17 @@ class WelcomeThemeTokens extends ThemeExtension<WelcomeThemeTokens> {
     warningTint: AppColors.warningSoft,
   );
 
+  static const dark = WelcomeThemeTokens(
+    heroStart: Color(0xFF0D1F1C),
+    heroEnd: Color(0xFF1A1408),
+    heroAccent: AppColors.primary,
+    heroStroke: Color(0xFF2A3538),
+    trustedTint: Color(0xFF0A2E20),
+    nearbyTint: Color(0xFF11206B),
+    earnTint: Color(0xFF3D2812),
+    warningTint: Color(0xFF3D2800),
+  );
+
   final Color heroStart;
   final Color heroEnd;
   final Color heroAccent;
@@ -423,6 +434,359 @@ class AppTheme {
         ),
         unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
           color: AppColors.inkSubtle,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      badgeTheme: BadgeThemeData(
+        backgroundColor: AppColors.danger,
+        textColor: Colors.white,
+        textStyle: textTheme.labelSmall?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+      ),
+    );
+  }
+
+  static ThemeData dark() {
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: AppColors.primary,
+          onPrimary: Colors.white,
+          primaryContainer: AppColors.primaryDeep,
+          onPrimaryContainer: AppColors.primarySoft,
+          secondary: AppColors.accent,
+          onSecondary: Colors.white,
+          secondaryContainer: AppColors.accentDeep,
+          onSecondaryContainer: AppColors.accentSoft,
+          tertiary: AppColors.warm,
+          onTertiary: Colors.white,
+          tertiaryContainer: AppColors.warmDeep,
+          onTertiaryContainer: AppColors.warmSoft,
+          error: AppColors.danger,
+          onError: Colors.white,
+          errorContainer: AppColors.dangerSoft,
+          surface: AppColors.darkSurface,
+          onSurface: AppColors.darkInk,
+          surfaceContainerHighest: AppColors.darkSurfaceAlt,
+          outline: AppColors.darkBorder,
+          outlineVariant: AppColors.darkBorder,
+          shadow: AppColors.shadow,
+          scrim: AppColors.scrim,
+        );
+
+    final baseText = GoogleFonts.manropeTextTheme(
+      Typography.material2021().white,
+    );
+    final display = GoogleFonts.soraTextTheme(baseText);
+    final textTheme = baseText.copyWith(
+      displayLarge: display.displayLarge?.copyWith(
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInkStrong,
+      ),
+      headlineLarge: display.headlineLarge?.copyWith(
+        fontSize: 30,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInkStrong,
+      ),
+      headlineMedium: display.headlineMedium?.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInkStrong,
+      ),
+      headlineSmall: display.headlineSmall?.copyWith(
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInkStrong,
+      ),
+      titleLarge: baseText.titleLarge?.copyWith(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+      ),
+      titleMedium: baseText.titleMedium?.copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+      ),
+      titleSmall: baseText.titleSmall?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+      ),
+      bodyLarge: baseText.bodyLarge?.copyWith(
+        fontSize: 15,
+        height: 1.45,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyMedium: baseText.bodyMedium?.copyWith(
+        fontSize: 14,
+        height: 1.45,
+        letterSpacing: 0,
+        color: AppColors.darkInkSubtle,
+        fontWeight: FontWeight.w600,
+      ),
+      bodySmall: baseText.bodySmall?.copyWith(
+        fontSize: 12,
+        height: 1.4,
+        letterSpacing: 0,
+        color: AppColors.darkInkSubtle,
+        fontWeight: FontWeight.w700,
+      ),
+      labelLarge: baseText.labelLarge?.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+      ),
+      labelMedium: baseText.labelMedium?.copyWith(
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInk,
+      ),
+      labelSmall: baseText.labelSmall?.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+        color: AppColors.darkInkSubtle,
+      ),
+    );
+
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderSide: const BorderSide(color: AppColors.darkBorder),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: AppColors.darkBackground,
+      textTheme: textTheme,
+      extensions: const <ThemeExtension<dynamic>>[
+        ServiqThemeTokens.dark,
+        WelcomeThemeTokens.dark,
+      ],
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.darkSurface,
+        foregroundColor: AppColors.darkInk,
+        centerTitle: false,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.darkSurface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          side: const BorderSide(color: AppColors.darkBorder),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.darkBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.darkSurfaceAlt,
+        selectedColor: AppColors.accentDeep,
+        disabledColor: AppColors.darkSurfacePressed,
+        side: const BorderSide(color: AppColors.darkBorder),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+        labelStyle: textTheme.labelMedium,
+        secondaryLabelStyle: textTheme.labelMedium,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.darkSurface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.darkInkFaint),
+        labelStyle: textTheme.bodyMedium,
+        floatingLabelStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.accent,
+        ),
+        border: inputBorder,
+        enabledBorder: inputBorder,
+        focusedBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        ),
+        errorBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: AppColors.danger),
+        ),
+        focusedErrorBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.4),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          foregroundColor: Colors.white,
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.darkSurfacePressed,
+          disabledForegroundColor: AppColors.darkInkFaint,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          foregroundColor: AppColors.darkInk,
+          side: const BorderSide(color: AppColors.darkBorderStrong),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          textStyle: textTheme.labelLarge,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: WidgetStateProperty.all(
+            const Size(0, AppTouchTargets.minimum),
+          ),
+          visualDensity: VisualDensity.compact,
+          textStyle: WidgetStateProperty.all(textTheme.labelMedium),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primarySoft
+                : AppColors.darkInkSubtle;
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primaryDeep
+                : AppColors.darkSurface;
+          }),
+          iconColor: WidgetStateProperty.resolveWith((states) {
+            return states.contains(WidgetState.selected)
+                ? AppColors.primarySoft
+                : AppColors.darkInkSubtle;
+          }),
+          side: WidgetStateProperty.resolveWith((states) {
+            return BorderSide(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.primaryDeep
+                  : AppColors.darkBorder,
+            );
+          }),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.darkInk,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadii.md)),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: AppColors.darkSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadii.lg),
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.darkInk,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: AppColors.accentDeep,
+        height: 74,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return textTheme.labelMedium?.copyWith(
+            color: selected ? AppColors.darkInkStrong : AppColors.darkInkSubtle,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? AppColors.accent : AppColors.darkInkSubtle,
+            size: 24,
+          );
+        }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.darkSurface,
+        indicatorColor: AppColors.accentDeep,
+        elevation: 0,
+        minWidth: 82,
+        minExtendedWidth: 188,
+        labelType: NavigationRailLabelType.all,
+        selectedIconTheme: const IconThemeData(
+          color: AppColors.accent,
+          size: 24,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.darkInkSubtle,
+          size: 23,
+        ),
+        selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.darkInkStrong,
+          fontWeight: FontWeight.w900,
+        ),
+        unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: AppColors.darkInkSubtle,
           fontWeight: FontWeight.w700,
         ),
       ),

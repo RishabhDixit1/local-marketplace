@@ -18,6 +18,7 @@ class FeedCard extends StatelessWidget {
     this.isSaved = false,
     this.onSaveTap,
     this.onMoreTap,
+    this.onReport,
   });
 
   final MobileFeedItem item;
@@ -30,6 +31,7 @@ class FeedCard extends StatelessWidget {
   final bool isSaved;
   final VoidCallback? onSaveTap;
   final VoidCallback? onMoreTap;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +70,13 @@ class FeedCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onSaveTap != null || onMoreTap != null) ...[
+              if (onSaveTap != null || onMoreTap != null || onReport != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 _CardActions(
                   isSaved: isSaved,
                   onSaveTap: onSaveTap,
                   onMoreTap: onMoreTap,
+                  onReport: onReport,
                 ),
               ],
             ],
@@ -376,11 +379,17 @@ class _OverlayPill extends StatelessWidget {
 }
 
 class _CardActions extends StatelessWidget {
-  const _CardActions({required this.isSaved, this.onSaveTap, this.onMoreTap});
+  const _CardActions({
+    required this.isSaved,
+    this.onSaveTap,
+    this.onMoreTap,
+    this.onReport,
+  });
 
   final bool isSaved;
   final VoidCallback? onSaveTap;
   final VoidCallback? onMoreTap;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -389,28 +398,53 @@ class _CardActions extends StatelessWidget {
       runSpacing: AppSpacing.xs,
       children: [
         if (onSaveTap != null)
-          Tooltip(
-            message: isSaved ? 'Saved' : 'Save',
-            child: SizedBox.square(
-              dimension: AppTouchTargets.minimum,
-              child: IconButton.outlined(
-                onPressed: onSaveTap,
-                icon: Icon(
-                  isSaved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_border_rounded,
+          Semantics(
+            label: isSaved ? 'Remove from saved' : 'Save this item',
+            hint: isSaved
+                ? 'Removes this item from your saved list'
+                : 'Saves this item for later',
+            child: Tooltip(
+              message: isSaved ? 'Saved' : 'Save',
+              child: SizedBox.square(
+                dimension: AppTouchTargets.minimum,
+                child: IconButton.outlined(
+                  onPressed: onSaveTap,
+                  icon: Icon(
+                    isSaved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                  ),
                 ),
               ),
             ),
           ),
         if (onMoreTap != null)
-          Tooltip(
-            message: 'More actions',
-            child: SizedBox.square(
-              dimension: AppTouchTargets.minimum,
-              child: IconButton.outlined(
-                onPressed: onMoreTap,
-                icon: const Icon(Icons.more_horiz_rounded),
+          Semantics(
+            label: 'More actions',
+            hint: 'Shows additional options for this item',
+            child: Tooltip(
+              message: 'More actions',
+              child: SizedBox.square(
+                dimension: AppTouchTargets.minimum,
+                child: IconButton.outlined(
+                  onPressed: onMoreTap,
+                  icon: const Icon(Icons.more_horiz_rounded),
+                ),
+              ),
+            ),
+          ),
+        if (onReport != null)
+          Semantics(
+            label: 'Report this item',
+            hint: 'Opens report options for this item',
+            child: Tooltip(
+              message: 'Report',
+              child: SizedBox.square(
+                dimension: AppTouchTargets.minimum,
+                child: IconButton.outlined(
+                  onPressed: onReport,
+                  icon: const Icon(Icons.outlined_flag_rounded),
+                ),
               ),
             ),
           ),

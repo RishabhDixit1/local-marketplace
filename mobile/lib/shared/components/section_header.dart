@@ -16,24 +16,35 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
+    return Semantics(
+      header: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+                ),
+                if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        if (actionLabel != null && onAction != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
-      ],
+          if (actionLabel != null && onAction != null)
+            Semantics(
+              button: true,
+              enabled: onAction != null,
+              label: actionLabel!,
+              child: TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            ),
+        ],
+      ),
     );
   }
 }

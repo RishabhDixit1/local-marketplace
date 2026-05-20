@@ -18,36 +18,39 @@ class MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              if (icon != null) Icon(icon, size: 16),
+                if (icon != null) Icon(icon, size: 16),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+            if (caption != null && caption!.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(caption!, style: Theme.of(context).textTheme.bodySmall),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
-          if (caption != null && caption!.trim().isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(caption!, style: Theme.of(context).textTheme.bodySmall),
           ],
-        ],
+        ),
       ),
     );
   }

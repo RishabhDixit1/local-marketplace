@@ -21,41 +21,44 @@ class ProfileAvatarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: AppColors.surfaceTint,
-          foregroundImage: avatarUrl.trim().isEmpty
-              ? null
-              : NetworkImage(avatarUrl),
-          onForegroundImageError: avatarUrl.trim().isEmpty ? null : (_, _) {},
-          child: Text(AppFormatters.initials(name)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                maxLines: subtitleMaxLines,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+    return Semantics(
+      label: '$name, $subtitle',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.surfaceTint,
+            foregroundImage: avatarUrl.trim().isEmpty
+                ? null
+                : NetworkImage(avatarUrl),
+            onForegroundImageError: avatarUrl.trim().isEmpty ? null : (_, _) {},
+            child: Text(AppFormatters.initials(name)),
           ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: subtitleMaxLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+        ],
+      ),
     );
   }
 }

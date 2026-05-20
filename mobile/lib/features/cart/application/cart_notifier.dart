@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -79,7 +80,11 @@ class CartNotifier extends AsyncNotifier<List<MobileCartItem>> {
       list.add(nextItem);
     }
     state = AsyncData(list);
-    await _persist(list);
+    try {
+      await _persist(list);
+    } catch (e) {
+      debugPrint('CartNotifier.addListing: failed to persist — $e');
+    }
   }
 
   Future<void> setQuantity(String key, int quantity) async {
@@ -104,19 +109,31 @@ class CartNotifier extends AsyncNotifier<List<MobileCartItem>> {
       );
     }
     state = AsyncData(list);
-    await _persist(list);
+    try {
+      await _persist(list);
+    } catch (e) {
+      debugPrint('CartNotifier.setQuantity: failed to persist — $e');
+    }
   }
 
   Future<void> remove(String key) async {
     final list =
         (state.value ?? []).where((e) => e.key != key).toList(growable: false);
     state = AsyncData(list);
-    await _persist(list);
+    try {
+      await _persist(list);
+    } catch (e) {
+      debugPrint('CartNotifier.remove: failed to persist — $e');
+    }
   }
 
   Future<void> clear() async {
     state = const AsyncData([]);
-    await _persist(const []);
+    try {
+      await _persist(const []);
+    } catch (e) {
+      debugPrint('CartNotifier.clear: failed to persist — $e');
+    }
   }
 }
 

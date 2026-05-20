@@ -16,7 +16,16 @@ class GeneratedMobileQuoteDraft {
   final List<MobileQuoteLineItem> lineItems;
 }
 
-GeneratedMobileQuoteDraft generateMobileQuoteDraft(MobileQuoteContext context) {
+GeneratedMobileQuoteDraft generateMobileQuoteDraft(MobileQuoteContext? context) {
+  if (context == null) {
+    return GeneratedMobileQuoteDraft(
+      summary: 'Quote',
+      notes: '',
+      expiresDays: 7,
+      lineItems: const [],
+    );
+  }
+
   final taskTitle = _trim(context.taskTitle).isEmpty
       ? 'Scope item'
       : _trim(context.taskTitle);
@@ -37,17 +46,26 @@ GeneratedMobileQuoteDraft generateMobileQuoteDraft(MobileQuoteContext context) {
       ? labels.map((_) => 0.0).toList()
       : _distributeAmount(suggestedAmount, labels.length);
 
-  final lineItems = [
-    for (var index = 0; index < labels.length; index += 1)
-      MobileQuoteLineItem(
-        label: labels[index],
-        description: index == 0 && descriptionItems.length < 2
-            ? _limit(taskDescription, 160)
-            : '',
-        quantity: 1,
-        unitPrice: amounts[index],
-      ),
-  ];
+  final lineItems = descriptionItems.isEmpty
+      ? [
+          MobileQuoteLineItem(
+            label: _titleCase(taskTitle),
+            description: _limit(taskDescription, 160),
+            quantity: 1,
+            unitPrice: suggestedAmount ?? 0,
+          ),
+        ]
+      : [
+          for (var index = 0; index < labels.length; index += 1)
+            MobileQuoteLineItem(
+              label: labels[index],
+              description: index == 0 && descriptionItems.length < 2
+                  ? _limit(taskDescription, 160)
+                  : '',
+              quantity: 1,
+              unitPrice: amounts[index],
+            ),
+        ];
 
   final notes = [
     if (locationLabel.isNotEmpty) 'Location: $locationLabel.',

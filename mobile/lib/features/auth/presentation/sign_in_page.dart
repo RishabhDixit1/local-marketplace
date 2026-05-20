@@ -458,6 +458,19 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     }
   }
 
+  void _showForgotPasswordSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) {
+        return _ForgotPasswordSheet(
+          authService: ref.read(mobileAuthServiceProvider),
+        );
+      },
+    );
+  }
+
   void _clearOtpFlow() {
     setState(() {
       _otpEmail = null;
@@ -859,6 +872,14 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                 }
               },
             ),
+            if (_passwordMode == _PasswordAuthMode.signIn)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _passwordSubmitting ? null : _showForgotPasswordSheet,
+                  child: const Text('Forgot password?'),
+                ),
+              ),
             if (_passwordMode == _PasswordAuthMode.signUp) ...[
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
@@ -1087,6 +1108,181 @@ class _CallbackPanel extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ForgotPasswordSheet extends StatefulWidget {
+  const _ForgotPasswordSheet({required this.authService});
+
+  final MobileAuthService authService;
+
+  @override
+  State<_ForgotPasswordSheet> createState() => _ForgotPasswordSheetState();
+}
+
+class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
+  final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _submitting = false;
+  bool _success = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) {
+      return 'Enter an email address.';
+    }
+    final pattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    if (!pattern.hasMatch(email)) {
+      return 'Enter a valid email address.';
+    }
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      await widget.authService.sendPasswordResetEmail(
+        _emailController.text.trim(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _success = true;
+        _submitting = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _error = widget.authService.friendlyErrorMessage(
+          error,
+          fallbackPrefix: 'Unable to send reset link',
+        );
+        _submitting = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Reset your password', style: theme.textTheme.titleLarge),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Enter your email to receive a password reset link.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_success)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.successSoft,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.16),
+                ),
+              ),
+              child: Text(
+                'Check your email for the password reset link.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            )
+          else ...[
+            Form(
+              key: _formKey,
+              child: TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.email],
+                decoration: const InputDecoration(
+                  labelText: 'Email address',
+                  hintText: 'you@example.com',
+                ),
+                validator: _validateEmail,
+                onFieldSubmitted: (_) => _submit(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _submitting ? null : _submit,
+                child: _ButtonText(
+                  _submitting ? 'Sending...' : 'Send reset link',
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(
+                    color: AppColors.danger.withValues(alpha: 0.16),
+                  ),
+                ),
+                child: Text(
+                  _error!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Done'),
+            ),
+          ),
+        ],
       ),
     );
   }

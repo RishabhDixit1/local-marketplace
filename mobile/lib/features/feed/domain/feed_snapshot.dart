@@ -116,6 +116,17 @@ class MobileFeedSnapshot {
   final String defaultHomeSurface;
   final String defaultHomeReason;
 
+  Map<String, dynamic> toJson() => {
+    'currentUserId': currentUserId,
+    'feedStats': stats.toJson(),
+    'feedItems': items.map((i) => i.toJson()).toList(),
+    'acceptedConnectionIds': acceptedConnectionIds,
+    'savedCardIds': savedCardIds.toList(),
+    'viewerRoleFamily': viewerRoleFamily,
+    'defaultHomeSurface': defaultHomeSurface,
+    'defaultHomeReason': defaultHomeReason,
+  };
+
   List<MobileFeedItem> get requests =>
       items.where((item) => item.type == MobileFeedItemType.demand).toList();
 
@@ -131,6 +142,14 @@ class MobileFeedStats {
     required this.service,
     required this.product,
   });
+
+  Map<String, dynamic> toJson() => {
+    'total': total,
+    'urgent': urgent,
+    'demand': demand,
+    'service': service,
+    'product': product,
+  };
 
   factory MobileFeedStats.fromJson(Map<String, dynamic> json) {
     return MobileFeedStats(
@@ -407,6 +426,53 @@ class MobileFeedItem {
 
     return '${rating.toStringAsFixed(1)} ($reviewCount)';
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'providerId': providerId,
+    'source': source.apiValue,
+    'helpRequestId': helpRequestId,
+    'type': type.name,
+    'title': title,
+    'description': description,
+    'category': category,
+    'creatorName': creatorName,
+    'avatarUrl': avatarUrl,
+    'locationLabel': locationLabel,
+    'statusLabel': statusLabel,
+    'priceLabel': priceLabel,
+    'price': price,
+    'timeLabel': timeLabel,
+    'distanceLabel': distanceLabel,
+    'publicProfilePath': publicProfilePath,
+    'verificationStatus': verificationStatus,
+    'profileCompletion': profileCompletion,
+    'responseMinutes': responseMinutes,
+    'averageRating': averageRating,
+    'reviewCount': reviewCount,
+    'completedJobs': completedJobs,
+    'listingCount': listingCount,
+    'urgent': urgent,
+    'mediaCount': mediaCount,
+    'cardId': cardId,
+    'sourceType': sourceType,
+    'thumbnailUrl': thumbnailUrl,
+    'priorityScore': priorityScore,
+    'feedReason': feedReason,
+    'whyThisCard': whyThisCard,
+    'mutualConnectionsCount': mutualConnectionsCount,
+    'responseEta': responseEta,
+    'viewerRoleFit': viewerRoleFit,
+    'activeNow': activeNow,
+    'lastActiveLabel': lastActiveLabel,
+    'responseReliability': responseReliability,
+    'contactPhone': contactPhone,
+    'canCall': canCall,
+    'status': status,
+    'acceptedProviderId': acceptedProviderId,
+    'viewerMatchStatus': viewerMatchStatus,
+    'viewerHasExpressedInterest': viewerHasExpressedInterest,
+  };
 
   bool get isDemand => type == MobileFeedItemType.demand;
 

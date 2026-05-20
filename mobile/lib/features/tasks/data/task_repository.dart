@@ -167,6 +167,25 @@ class TaskRepository {
     }
   }
 
+  Future<void> completeTask(String taskId, {String? notes}) async {
+    await _apiClient.postJson('/api/tasks/complete', body: {
+      'taskId': taskId,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    });
+  }
+
+  Future<void> submitReview({
+    required String taskId,
+    required int rating,
+    String? comment,
+  }) async {
+    await _apiClient.postJson('/api/tasks/review', body: {
+      'taskId': taskId,
+      'rating': rating.clamp(1, 5),
+      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+    });
+  }
+
   Future<void> _updateProgressStage(
     MobileTaskItem task, {
     required String stage,

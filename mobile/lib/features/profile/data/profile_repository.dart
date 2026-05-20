@@ -72,6 +72,18 @@ class ProfileRepository {
     }
   }
 
+  Future<void> submitReview({
+    required String providerId,
+    required int rating,
+    String? comment,
+  }) async {
+    await _apiClient.postJson('/api/profile/review', body: {
+      'providerId': providerId,
+      'rating': rating.clamp(1, 5),
+      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
+    });
+  }
+
   Map<String, dynamic> _profileSavePayload(
     MobileProfileSnapshot snapshot, {
     String? fullName,

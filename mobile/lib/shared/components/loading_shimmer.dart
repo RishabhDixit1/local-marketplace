@@ -39,24 +39,28 @@ class _LoadingShimmerState extends State<LoadingShimmer>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final value = Color.lerp(
-          AppColors.shimmerBase,
-          AppColors.shimmerHighlight,
-          _controller.value,
-        )!;
+    return Semantics(
+      label: 'Loading',
+      liveRegion: true,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final value = Color.lerp(
+            AppColors.shimmerBase,
+            AppColors.shimmerHighlight,
+            _controller.value,
+          )!;
 
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: value,
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-          ),
-        );
-      },
+          return Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: value,
+              borderRadius: BorderRadius.circular(widget.borderRadius),
+            ),
+          );
+        },
+      ),
     );
   }
 }

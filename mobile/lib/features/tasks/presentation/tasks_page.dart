@@ -83,6 +83,11 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       return;
     }
 
+    if (action.kind == MobileTaskPrimaryActionKind.completeTask) {
+      await _completeTaskWithFeedback(task);
+      return;
+    }
+
     setState(() {
       _busyTaskId = task.id;
     });
@@ -127,6 +132,222 @@ class _TasksPageState extends ConsumerState<TasksPage> {
           _busyTaskId = null;
         });
       }
+    }
+  }
+
+  Future<void> _completeTaskWithFeedback(MobileTaskItem task) async {
+    var isConfirmed = false;
+    var notes = '';
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  4,
+                  20,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Complete this task?',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('I confirm this task is complete'),
+                      value: isConfirmed,
+                      onChanged: (v) => setSheetState(() => isConfirmed = v),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Notes (optional)',
+                        hintText: 'Add any completion notes...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (v) => notes = v,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: isConfirmed
+                            ? () => Navigator.of(sheetContext).pop(true)
+                            : null,
+                        child: const Text('Mark Complete'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _busyTaskId = task.id;
+    });
+
+    try {
+      await ref.read(taskRepositoryProvider).completeTask(
+        task.id,
+        notes: notes,
+      );
+      ref.invalidate(taskSnapshotProvider);
+      await ref.read(taskSnapshotProvider.future);
+      if (!mounted) return;
+
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Task completed.')),
+      );
+
+      await _showReviewSheet(task);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busyTaskId = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _showReviewSheet(MobileTaskItem task) async {
+    var rating = 5;
+    var comment = '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  4,
+                  20,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'How was your experience?',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final star = index + 1;
+                        return IconButton(
+                          icon: Icon(
+                            star <= rating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: star <= rating
+                                ? AppColors.warning
+                                : AppColors.inkMuted,
+                            size: 36,
+                          ),
+                          onPressed: () =>
+                              setSheetState(() => rating = star),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Review (optional)',
+                        hintText: 'Share your experience...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (v) => comment = v,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () =>
+                            Navigator.of(sheetContext).pop(),
+                        child: const Text('Submit'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    try {
+      await ref.read(taskRepositoryProvider).submitReview(
+        taskId: task.id,
+        rating: rating,
+        comment: comment,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review submitted.')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
