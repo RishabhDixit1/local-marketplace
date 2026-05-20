@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_theme.dart';
 
 const _onboardingCompleteKey = 'serviq_onboarding_complete';
@@ -89,14 +90,14 @@ class _OnboardingWalkthroughPageState
     await markOnboardingComplete();
     ref.invalidate(onboardingCompleteProvider);
     if (!mounted) return;
-    context.go('/');
+    context.go(AppRoutes.home);
   }
 
   Future<void> _onGetStarted() async {
     await markOnboardingComplete();
     ref.invalidate(onboardingCompleteProvider);
     if (!mounted) return;
-    context.go('/');
+    context.go(AppRoutes.home);
   }
 
   @override
