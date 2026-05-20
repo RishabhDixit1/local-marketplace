@@ -263,11 +263,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _NotificationSummary(
-                        items: items,
-                        filteredCount: filtered.length,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
+
                       if (filtered.isEmpty)
                         const SectionCard(
                           child: EmptyStateView(
@@ -337,69 +333,6 @@ IconData _kindIcon(MobileNotificationKind kind) {
       return Icons.notifications_none_rounded;
     case MobileNotificationKind.connection:
       return Icons.people_outline_rounded;
-  }
-}
-
-class _NotificationSummary extends StatelessWidget {
-  const _NotificationSummary({
-    required this.items,
-    required this.filteredCount,
-  });
-
-  final List<MobileNotificationItem> items;
-  final int filteredCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final unread = items.where((item) => item.unread).length;
-    final messages = items
-        .where((item) => item.kind == MobileNotificationKind.message)
-        .length;
-    final orders = items
-        .where((item) => item.kind == MobileNotificationKind.order)
-        .length;
-    final trust = items
-        .where(
-          (item) =>
-              item.kind == MobileNotificationKind.review ||
-              item.kind == MobileNotificationKind.connection,
-        )
-        .length;
-
-    return TrustSnapshot(
-      items: [
-        TrustSnapshotItem(
-          icon: Icons.mark_email_unread_outlined,
-          label: '$filteredCount visible',
-          value: '$unread unread',
-          tone: unread == 0
-              ? TrustSnapshotTone.success
-              : TrustSnapshotTone.warning,
-        ),
-        TrustSnapshotItem(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: '$orders task updates',
-          value: '$messages messages',
-          tone: messages == 0
-              ? TrustSnapshotTone.neutral
-              : TrustSnapshotTone.trust,
-        ),
-        TrustSnapshotItem(
-          icon: Icons.verified_outlined,
-          label: 'Reviews and connections',
-          value: '$trust trust',
-          tone: trust == 0
-              ? TrustSnapshotTone.neutral
-              : TrustSnapshotTone.success,
-        ),
-        TrustSnapshotItem(
-          icon: Icons.notifications_active_outlined,
-          label: 'All activity',
-          value: '${items.length} total',
-          tone: TrustSnapshotTone.neutral,
-        ),
-      ],
-    );
   }
 }
 
@@ -474,11 +407,7 @@ class _NotificationCard extends StatelessWidget {
                       item.message,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      item.timeLabel,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+
                   ],
                 ),
               ),
@@ -490,12 +419,6 @@ class _NotificationCard extends StatelessWidget {
             runSpacing: AppSpacing.xs,
             children: [
               TrustBadge(label: _kindLabel(item.kind)),
-              TrustBadge(
-                label: item.timeLabel,
-                icon: Icons.schedule_rounded,
-                backgroundColor: AppColors.accentSoft,
-                foregroundColor: AppColors.inkStrong,
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
