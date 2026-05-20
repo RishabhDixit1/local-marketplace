@@ -1049,40 +1049,43 @@ class _CallbackPanel extends StatelessWidget {
     return PremiumSurface(
       padding: EdgeInsets.zero,
       shadows: const [],
-      child: Theme(
-        data: theme.copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            0,
-            AppSpacing.md,
-            AppSpacing.md,
-          ),
-          leading: const Icon(Icons.route_outlined),
-          title: Text(
-            'Current auth callback',
-            style: theme.textTheme.titleMedium,
-          ),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                callbackUrl,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
+      child: Material(
+        type: MaterialType.transparency,
+        child: Theme(
+          data: theme.copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            leading: const Icon(Icons.route_outlined),
+            title: Text(
+              'Current auth callback',
+              style: theme.textTheme.titleMedium,
+            ),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  callbackUrl,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Google OAuth, email confirmation, and deep-link auth returns should use this callback.',
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Google OAuth, email confirmation, and deep-link auth returns should use this callback.',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
       ),
     );
