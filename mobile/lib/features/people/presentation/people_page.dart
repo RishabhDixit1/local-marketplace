@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -39,6 +40,8 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   String _selectedCategory = 'All';
   _DiscoveryMode _mode = _DiscoveryMode.best;
   String? _busyConnectId;
+  List<Map<String, dynamic>> _localities = [];
+  String? _selectedLocalityId;
 
   @override
   void initState() {
@@ -48,6 +51,15 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
         ref.read(analyticsServiceProvider).trackScreen('people');
       }
     });
+    _loadLocalities();
+  }
+
+  Future<void> _loadLocalities() async {
+    try {
+      final client = ref.read(mobileApiClientProvider);
+      final locs = await client.getLocalities(zoneType: 'society', phase: 1);
+      if (mounted) setState(() => _localities = locs);
+    } catch (_) {}
   }
 
   @override
@@ -337,6 +349,33 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       hintText: 'Search name, skill, area',
                       onChanged: _onQueryChanged,
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
+                        border: Border.all(color: AppColors.border),
+                        color: AppColors.surface,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          value: _selectedLocalityId,
+                          hint: const Text('All localities', style: TextStyle(fontSize: 13)),
+                          style: const TextStyle(fontSize: 13, color: AppColors.inkStrong),
+                          isExpanded: true,
+                          isDense: true,
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('All localities', style: TextStyle(fontSize: 13))),
+                            ..._localities.map((loc) => DropdownMenuItem(
+                              value: loc['id'] as String?,
+                              child: Text(loc['name'] as String? ?? '', style: const TextStyle(fontSize: 13)),
+                            )),
+                          ],
+                          onChanged: (val) => setState(() => _selectedLocalityId = val),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     _PeopleDiscoverySummary(
                       mode: _mode,
@@ -391,6 +430,17 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                                   _selectedCategory.toLowerCase(),
                             )) {
                           return false;
+                        }
+
+                        if (_selectedLocalityId != null) {
+                          final locName = _localities
+                              .where((l) => l['id'] == _selectedLocalityId)
+                              .map((l) => (l['name'] as String? ?? '').toLowerCase())
+                              .firstOrNull;
+                          if (locName != null &&
+                              !person.locationLabel.toLowerCase().contains(locName)) {
+                            return false;
+                          }
                         }
 
                         return person.matchesQuery(_query);

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { BadgeCheck, Briefcase, Clock3, Globe, MapPin, Phone, Sparkles, Star } from "lucide-react";
+import { BadgeCheck, Briefcase, Clock3, Globe, MapPin, Phone, ShieldCheck, Sparkles, Star } from "lucide-react";
 import { appName, withAppName } from "@/lib/branding";
 import {
   calculateProfileCompletion,
@@ -376,7 +376,7 @@ const loadBusiness = cache(async (slug: string) => {
   );
   const relatedProfileIdSet = new Set(relatedProfileIds);
 
-  const [{ data: services }, { data: products }, { data: reviews }, { data: posts }, { data: providerOrderStats }] =
+  const [{ data: services }, { data: products }, { data: reviews }, { data: posts }, { data: providerOrderStats }, { data: trustArtifacts }, { data: trustScore }, { data: presence }] =
     await Promise.all([
       supabase
         .from("service_listings")
@@ -398,6 +398,22 @@ const loadBusiness = cache(async (slug: string) => {
         .order("created_at", { ascending: false })
         .limit(12),
       supabase.rpc("get_provider_order_stats", { provider_ids: [businessId] }),
+      supabase
+        .from("trust_artifacts")
+        .select("id,artifact_type,title,description,media_url,is_verified,created_at")
+        .eq("provider_id", businessId)
+        .eq("is_verified", true)
+        .limit(20),
+      supabase
+        .from("trust_scores")
+        .select("trust_score,completion_rate,on_time_rate,repeat_clients_score,rating_score,response_time_score")
+        .eq("profile_id", businessId)
+        .maybeSingle(),
+      supabase
+        .from("provider_presence")
+        .select("is_online,completed_jobs,cancelled_jobs,response_sla_minutes")
+        .eq("provider_id", businessId)
+        .maybeSingle(),
     ]);
 
   const safeServices = (services as ServiceRow[] | null) || [];
@@ -444,6 +460,22 @@ const loadBusiness = cache(async (slug: string) => {
   const completedJobs = providerStatsRows.length > 0 ? Number(providerStatsRows[0].completed_jobs || 0) : 0;
   const launchpadMeta = readLaunchpadMeta(normalizedProfile.metadata);
 
+  const safeTrustArtifacts = (trustArtifacts as Array<{
+    id: string; artifact_type: string; title: string;
+    description: string | null; media_url: string | null;
+    is_verified: boolean; created_at: string | null;
+  }> | null) || [];
+
+  const trustScoreData = trustScore as {
+    trust_score: number; completion_rate: number; on_time_rate: number;
+    repeat_clients_score: number; rating_score: number; response_time_score: number;
+  } | null;
+
+  const presenceData = presence as {
+    is_online: boolean; completed_jobs: number;
+    cancelled_jobs: number; response_sla_minutes: number;
+  } | null;
+
   return {
     profile: normalizedProfile,
     services: safeServices,
@@ -456,6 +488,9 @@ const loadBusiness = cache(async (slug: string) => {
     verificationStatus,
     completedJobs,
     launchpadMeta,
+    trustArtifacts: safeTrustArtifacts,
+    trustScore: trustScoreData,
+    presence: presenceData,
     canonicalSlug: createBusinessSlug(normalizedProfile.name, normalizedProfile.id),
   };
 });
@@ -519,6 +554,9 @@ export default async function BusinessProfilePage({ params }: Params) {
     verificationStatus,
     completedJobs,
     launchpadMeta,
+    trustArtifacts,
+    trustScore,
+    presence,
     canonicalSlug,
   } = business;
 
@@ -768,6 +806,67 @@ export default async function BusinessProfilePage({ params }: Params) {
                 <p>{launchpadMeta.hours || "Hours shared on request"}</p>
               </div>
             </section>
+
+            {trustScore && (
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <h2 className="text-lg font-semibold">Trust Summary</h2>
+                <div className="mt-3 space-y-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Trust Score</span>
+                    <span className="font-bold text-white">{Math.round(trustScore.trust_score)}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Completion</span>
+                    <span className="font-semibold text-emerald-400">{Math.round(trustScore.completion_rate * 100)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">On-Time</span>
+                    <span className="font-semibold text-emerald-400">{Math.round(trustScore.on_time_rate * 100)}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Rating Score</span>
+                    <span className="font-semibold text-amber-400">{Math.round(trustScore.rating_score)}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Response</span>
+                    <span className="font-semibold text-cyan-400">{Math.round(trustScore.response_time_score)}/100</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Repeat Clients</span>
+                    <span className="font-semibold text-fuchsia-400">{Math.round(trustScore.repeat_clients_score)}/100</span>
+                  </div>
+                  {presence && (
+                    <div className="mt-2 flex items-center gap-2 border-t border-slate-700 pt-2 text-xs">
+                      <span className={`h-2 w-2 rounded-full ${presence.is_online ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                      <span className="text-slate-400">{presence.is_online ? 'Online' : 'Offline'}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="text-slate-400">{completedJobs} jobs done</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {trustArtifacts.length > 0 && (
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <h2 className="text-lg font-semibold">Badges & Certifications</h2>
+                <div className="mt-3 space-y-2">
+                  {trustArtifacts.map((artifact) => (
+                    <div key={artifact.id} className="flex items-start gap-3 rounded-xl bg-slate-950 p-3">
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-200">{artifact.title}</p>
+                        {artifact.description && (
+                          <p className="mt-0.5 text-xs text-slate-400 line-clamp-2">{artifact.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <h2 className="text-lg font-semibold">Recent Reviews</h2>

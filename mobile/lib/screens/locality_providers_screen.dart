@@ -102,10 +102,12 @@ class LocalityProvidersScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final p = providers[index];
               final providerId = p['id'] as String? ?? '';
-              final name = p['name'] as String? ?? 'Unknown Provider';
-              final bio = p['bio'] as String? ?? '';
+              final name = (p['full_name'] as String? ?? p['name'] as String?) ?? 'Unknown Provider';
               final trustScore = p['trust_score'];
               final score = trustScore is num ? trustScore.toDouble() : null;
+              final localityName = p['locality_name'] as String? ?? '';
+              final completedJobs = p['completed_jobs'];
+              final jobs = completedJobs is num ? completedJobs.toInt() : 0;
 
               return Card(
                 elevation: 0,
@@ -142,31 +144,39 @@ class LocalityProvidersScreen extends ConsumerWidget {
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                       color: AppColors.inkStrong)),
-                              if (bio.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(bio,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.inkSubtle)),
-                              ],
-                              if (score != null) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.star_rounded,
-                                        size: 14,
-                                        color: AppColors.warning),
-                                    const SizedBox(width: 4),
-                                    Text(score.toStringAsFixed(1),
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.inkSubtle)),
-                                  ],
+                          if (localityName.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_rounded, size: 12, color: AppColors.inkFaint),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(localityName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
                                 ),
                               ],
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (score != null) ...[
+                                Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                                const SizedBox(width: 4),
+                                Text(score.toStringAsFixed(1),
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.inkSubtle)),
+                                const SizedBox(width: 12),
+                              ],
+                              if (jobs > 0) ...[
+                                Icon(Icons.work_history_rounded, size: 12, color: AppColors.inkFaint),
+                                const SizedBox(width: 4),
+                                Text('$jobs job${jobs == 1 ? '' : 's'}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle)),
+                              ],
+                            ],
+                          ),
                             ],
                           ),
                         ),

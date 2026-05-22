@@ -89,7 +89,7 @@ export default function LaunchpadPage() {
       if (!user || !active) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name,location,latitude,longitude,phone,website")
+        .select("full_name,location,latitude,longitude,phone,website,locality_id,service_area_radius_km")
         .eq("id", user.id)
         .maybeSingle<{
           full_name?: string | null;
@@ -98,16 +98,30 @@ export default function LaunchpadPage() {
           longitude?: number | null;
           phone?: string | null;
           website?: string | null;
+          locality_id?: string | null;
+          service_area_radius_km?: number | null;
         }>();
       if (!active || !profile) return;
+
+      let localityName = "";
+      if (profile.locality_id) {
+        const { data: loc } = await supabase
+          .from("localities")
+          .select("name")
+          .eq("id", profile.locality_id)
+          .maybeSingle<{ name: string }>();
+        if (loc?.name) localityName = loc.name;
+      }
+
       setAnswers((prev) => ({
         ...prev,
         businessName: prev.businessName || profile.full_name || "",
-        location: prev.location || profile.location || "",
+        location: prev.location || localityName || profile.location || "",
         latitude: prev.latitude ?? profile.latitude ?? null,
         longitude: prev.longitude ?? profile.longitude ?? null,
         phone: prev.phone || profile.phone || "",
         website: prev.website || profile.website || "",
+        serviceRadiusKm: prev.serviceRadiusKm || profile.service_area_radius_km || 3,
       }));
     })();
     return () => { active = false; };

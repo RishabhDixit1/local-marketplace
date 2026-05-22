@@ -134,7 +134,7 @@ export default function ZoneBrowser({
               <Link
                 key={locality.id}
                 href={`/dashboard/people?locality_id=${locality.id}`}
-                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
+                className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md active:scale-[0.98] active:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

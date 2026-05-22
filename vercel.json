@@ -2,6 +2,16 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/escalations/process",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/campaigns/process",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/auth/callback",
