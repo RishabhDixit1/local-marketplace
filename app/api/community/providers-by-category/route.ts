@@ -18,21 +18,59 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+type ProviderWithStats = {
+  id: string;
+  name: string;
+  location: string;
+  lat: string | number | null;
+  lng: string | number | null;
+  avatarUrl: string;
+  bio: string;
+  role: string;
+  services: string[];
+  avgRating: number | null;
+  reviewCount: number;
+  serviceCount: number;
+  completedJobs: number;
+  responseMinutes: number | null;
+  isOnline: boolean;
+  priceMin: number | null;
+  priceMax: number | null;
+  distanceKm: number | null;
+  verified: boolean;
+  listings: { id: string; title: string; category: string; price: number | null }[];
+  sortScore: number;
+};
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const category = requestUrl.searchParams.get("category") || "";
   const latParam = requestUrl.searchParams.get("lat");
   const lngParam = requestUrl.searchParams.get("lng");
   const limitParam = requestUrl.searchParams.get("limit");
-  
+  const offsetParam = requestUrl.searchParams.get("offset");
+  const minRatingParam = requestUrl.searchParams.get("minRating");
+  const onlineOnlyParam = requestUrl.searchParams.get("onlineOnly");
+  const sortByParam = requestUrl.searchParams.get("sortBy") || "distance";
+  const searchParam = requestUrl.searchParams.get("search") || "";
+
   const userLat = latParam ? parseFloat(latParam) : null;
   const userLng = lngParam ? parseFloat(lngParam) : null;
   const limit = limitParam ? parseInt(limitParam, 10) : 100;
+  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+  const minRating = minRatingParam ? parseFloat(minRatingParam) : null;
+  const onlineOnly = onlineOnlyParam === "true" || onlineOnlyParam === "1";
+  const sortBy = ["distance", "rating", "jobs", "response"].includes(sortByParam)
+    ? (sortByParam as "distance" | "rating" | "jobs" | "response")
+    : "distance";
+  const search = searchParam.trim().toLowerCase();
+
   const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const safeOffset = Math.max(offset, 0);
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    return NextResponse.json({ ok: false, providers: [] });
+    return NextResponse.json({ ok: false, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } });
   }
 
   try {
@@ -40,19 +78,40 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at")
       .in("role", ["provider", "business"])
-      .not("full_name", "is", null)
-      .limit(safeLimit);
+      .not("full_name", "is", null);
 
     if (category) {
       query = query.contains("services", [category]);
     }
 
+    if (search) {
+      query = query.or(
+        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%,services.cs.{${search}}`
+      );
+    }
+
     const { data: profiles, error } = await query;
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message, providers: [] });
+      return NextResponse.json({ ok: false, error: error.message, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } });
     }
 
     const profileIds = (profiles || []).map((p) => p.id).filter(Boolean);
+
+    if (profileIds.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        providers: [],
+        facets: {
+          categories: [],
+          minPrice: null,
+          maxPrice: null,
+          avgRatingRange: { min: 0, max: 0 },
+          totalProviders: 0,
+          onlineCount: 0,
+        },
+        pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false },
+      });
+    }
 
     const [servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
       admin
@@ -67,7 +126,7 @@ export async function GET(request: Request) {
         .from("provider_presence")
         .select("provider_id, is_online, response_sla_minutes, rolling_response_minutes")
         .in("provider_id", profileIds),
-      admin.rpc("get_provider_order_stats", { p_provider_ids: profileIds }).maybeSingle(),
+      admin.rpc("get_provider_order_stats", { p_provider_ids: profileIds }),
     ]);
 
     const servicesData = servicesResult.data || [];
@@ -77,16 +136,22 @@ export async function GET(request: Request) {
 
     const serviceMap: Record<string, { id: string; title: string; category: string; price: number | null }[]> = {};
     const priceMap: Record<string, number[]> = {};
+    const allPrices: number[] = [];
+    const allCategories = new Set<string>();
+
     for (const s of servicesData || []) {
       if (!serviceMap[s.provider_id]) serviceMap[s.provider_id] = [];
       serviceMap[s.provider_id].push({ id: s.id, title: s.title, category: s.category, price: s.price });
+      if (s.category) allCategories.add(s.category);
       if (s.price != null) {
         if (!priceMap[s.provider_id]) priceMap[s.provider_id] = [];
         priceMap[s.provider_id].push(Number(s.price));
+        allPrices.push(Number(s.price));
       }
     }
 
     const ratingMap: Record<string, number[]> = {};
+    const allRatings: number[] = [];
     for (const r of reviewsData || []) {
       if (!ratingMap[r.provider_id]) ratingMap[r.provider_id] = [];
       ratingMap[r.provider_id].push(r.rating);
@@ -103,14 +168,18 @@ export async function GET(request: Request) {
     const orderStats = Array.isArray(orderStatsData) ? orderStatsData : [];
     const completedJobsMap: Record<string, number> = {};
     for (const o of orderStats) {
-      if (o.provider_id && o.completed_jobs != null) {
-        completedJobsMap[o.provider_id] = Number(o.completed_jobs);
+      const record = o as { provider_id?: string; completed_jobs?: number };
+      if (record.provider_id && record.completed_jobs != null) {
+        completedJobsMap[record.provider_id] = Number(record.completed_jobs);
       }
     }
+
+    let onlineCount = 0;
 
     const rawProviders = (profiles || []).map((p) => {
       const ratings = ratingMap[p.id] || [];
       const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+      if (avgRating != null && avgRating > 0) allRatings.push(avgRating);
       const prices = priceMap[p.id] || [];
       const minPrice = prices.length > 0 ? Math.min(...prices) : null;
       const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
@@ -119,6 +188,9 @@ export async function GET(request: Request) {
         p.latitude != null && p.longitude != null && userLat != null && userLng != null
           ? distanceKm(userLat, userLng, Number(p.latitude), Number(p.longitude))
           : null;
+
+      const isOnline = pres?.isOnline ?? false;
+      if (isOnline) onlineCount++;
 
       return {
         id: p.id,
@@ -135,49 +207,92 @@ export async function GET(request: Request) {
         serviceCount: (serviceMap[p.id] || []).length,
         completedJobs: completedJobsMap[p.id] || 0,
         responseMinutes: pres?.responseMinutes ?? null,
-        isOnline: pres?.isOnline ?? false,
+        isOnline,
         priceMin: minPrice,
         priceMax: maxPrice,
         distanceKm: dist != null ? Math.round(dist * 10) / 10 : null,
         verified: p.role === "provider",
         listings: serviceMap[p.id] || [],
+        sortScore: 0,
       };
     });
 
-    const sortByScore = (a: typeof rawProviders[0], b: typeof rawProviders[0]) => {
-      if (a.isOnline !== b.isOnline) {
-        return a.isOnline ? -1 : 1;
-      }
-      if (a.completedJobs !== b.completedJobs) {
-        return b.completedJobs - a.completedJobs;
-      }
-      const ratingA = a.avgRating ?? 0;
-      const ratingB = b.avgRating ?? 0;
-      if (ratingA !== ratingB) {
-        return ratingB - ratingA;
-      }
-      if (a.serviceCount !== b.serviceCount) {
-        return b.serviceCount - a.serviceCount;
-      }
-      return 0;
-    };
+    let filteredProviders = [...rawProviders];
 
-    let providers: typeof rawProviders;
-    if (userLat != null && userLng != null) {
-      providers = rawProviders.sort((a, b) => {
-        const da = a.distanceKm ?? Infinity;
-        const db = b.distanceKm ?? Infinity;
-        if (da !== db) {
-          return da - db;
-        }
-        return sortByScore(a, b);
-      });
-    } else {
-      providers = rawProviders.sort(sortByScore);
+    if (minRating != null) {
+      filteredProviders = filteredProviders.filter((p) => (p.avgRating || 0) >= minRating);
     }
 
-    return NextResponse.json({ ok: true, providers });
-  } catch {
-    return NextResponse.json({ ok: false, providers: [] });
+    if (onlineOnly) {
+      filteredProviders = filteredProviders.filter((p) => p.isOnline);
+    }
+
+    filteredProviders.sort((a, b) => {
+      switch (sortBy) {
+        case "rating":
+          return (b.avgRating || 0) - (a.avgRating || 0);
+        case "jobs":
+          return b.completedJobs - a.completedJobs;
+        case "response":
+          return (a.responseMinutes || 60) - (b.responseMinutes || 60);
+        case "distance":
+        default:
+          const da = a.distanceKm ?? Infinity;
+          const db = b.distanceKm ?? Infinity;
+          if (da !== db) return da - db;
+          if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+          if (a.completedJobs !== b.completedJobs) return b.completedJobs - a.completedJobs;
+          return (b.avgRating || 0) - (a.avgRating || 0);
+      }
+    });
+
+    const categories: { category: string; count: number }[] = [];
+    const categoryCounts: Record<string, number> = {};
+    for (const p of filteredProviders) {
+      for (const s of p.services) {
+        categoryCounts[s] = (categoryCounts[s] || 0) + 1;
+      }
+    }
+    for (const [cat, count] of Object.entries(categoryCounts)) {
+      categories.push({ category: cat, count });
+    }
+    categories.sort((a, b) => b.count - a.count);
+
+    const filteredPrices = filteredProviders
+      .filter((p) => p.priceMin != null)
+      .flatMap((p) => [p.priceMin!, p.priceMax!].filter(Boolean) as number[]);
+
+    const total = filteredProviders.length;
+    const paginatedProviders = filteredProviders.slice(safeOffset, safeOffset + safeLimit);
+
+    return NextResponse.json({
+      ok: true,
+      providers: paginatedProviders,
+      facets: {
+        categories,
+        minPrice: filteredPrices.length > 0 ? Math.min(...filteredPrices) : null,
+        maxPrice: filteredPrices.length > 0 ? Math.max(...filteredPrices) : null,
+        avgRatingRange: {
+          min: allRatings.length > 0 ? Math.min(...allRatings) : 0,
+          max: allRatings.length > 0 ? Math.max(...allRatings) : 0,
+        },
+        totalProviders: rawProviders.length,
+        onlineCount,
+      },
+      pagination: {
+        total,
+        offset: safeOffset,
+        limit: safeLimit,
+        hasMore: safeOffset + safeLimit < total,
+      },
+    });
+  } catch (e) {
+    console.error("Providers API error:", e);
+    return NextResponse.json({
+      ok: false,
+      providers: [],
+      facets: null,
+      pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false },
+    });
   }
 }

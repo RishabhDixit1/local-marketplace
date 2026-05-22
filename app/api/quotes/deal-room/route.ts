@@ -7,6 +7,7 @@ import type {
   ProviderCatalogItem,
   QuoteApiErrorCode,
   QuoteAttachmentRecord,
+  QuoteAttachmentType,
   QuoteVersionRecord,
 } from "@/lib/api/quotes";
 import { loadQuoteDraft } from "@/lib/server/quoteWrites";
@@ -208,33 +209,178 @@ export async function GET(request: Request) {
       return toErrorResponse(404, "NOT_FOUND", "Could not load deal room context.");
     }
 
-    const providerId = dealRoomContext.providerId;
-    let catalogItems: ProviderCatalogItem[] = [];
+     const providerId = dealRoomContext.providerId;
+     let catalogItems: ProviderCatalogItem[] = [];
 
-    if (providerId && dealRoomContext.actorRole === "provider") {
-      const servicesResult = await db
-        .from("service_listings")
-        .select("id,title,description,category,price,metadata")
-        .eq("provider_id", providerId)
-        .limit(20);
+     if (providerId && dealRoomContext.actorRole === "provider") {
+       const servicesResult = await db
+         .from("service_listings")
+         .select("id,title,description,category,price,metadata")
+         .eq("provider_id", providerId)
+         .limit(20);
 
-      if (servicesResult.error) {
-        console.warn("Failed to load service listings:", servicesResult.error.message);
-      } else {
-        catalogItems = ((servicesResult.data as Record<string, unknown>[] | null) ?? []).map((row) => ({
-          id: String(row.id),
-          title: String(row.title ?? ""),
-          description: String(row.description ?? ""),
-          category: String(row.category ?? "Service"),
-          price: toFiniteNumber(row.price),
-          source: row.metadata && typeof row.metadata === "object" ? String((row.metadata as Record<string, unknown>).source ?? null) : null,
-        }));
-      }
-    }
+       if (servicesResult.error) {
+         console.warn("Failed to load service listings:", servicesResult.error.message);
+       } else {
+         catalogItems = ((servicesResult.data as Record<string, unknown>[] | null) ?? []).map((row) => ({
+           id: String(row.id),
+           title: String(row.title ?? ""),
+           description: String(row.description ?? ""),
+           category: String(row.category ?? "Service"),
+           price: toFiniteNumber(row.price),
+           source: row.metadata && typeof row.metadata === "object" ? String((row.metadata as Record<string, unknown>).source ?? null) : null,
+         }));
+       }
+     }
 
-    const versions: QuoteVersionRecord[] = [];
-    const attachments: QuoteAttachmentRecord[] = [];
-    const timeline: DealRoomTimelineItem[] = [];
+     const versions: QuoteVersionRecord[] = [];
+     const attachments: QuoteAttachmentRecord[] = [];
+     const timeline: DealRoomTimelineItem[] = [];
+
+     if (quoteDraftResult?.ok && quoteDraftResult.draft) {
+       const quoteId = quoteDraftResult.draft.id;
+
+       const [versionsResult, versionItemsResult, attachmentsResult] = await Promise.all([
+         db
+           .from("quote_versions")
+           .select("id,quote_id,version_number,status,summary,notes,subtotal,tax_amount,total,expires_at,sent_at,accepted_at,rejected_at,rejected_reason,metadata,created_at,updated_at")
+           .eq("quote_id", quoteId)
+           .order("version_number", { ascending: false }),
+         db
+           .from("quote_version_line_items")
+           .select("id,quote_version_id,quote_id,label,description,quantity,unit_price,amount,sort_order,metadata")
+           .eq("quote_id", quoteId)
+           .order("sort_order", { ascending: true }),
+         db
+           .from("quote_attachments")
+           .select("id,quote_id,order_id,help_request_id,uploaded_by,kind,file_name,file_path,file_url,file_size_bytes,mime_type,title,description,metadata,created_at,updated_at")
+           .eq("quote_id", quoteId)
+           .order("created_at", { ascending: false }),
+       ]);
+
+       if (!versionsResult.error && versionsResult.data) {
+         const versionRows = versionsResult.data as Record<string, unknown>[];
+         const itemRows = (versionItemsResult.data as Record<string, unknown>[] | null) ?? [];
+
+         for (const row of versionRows) {
+           const versionId = String(row.id);
+           const itemsForVersion = itemRows.filter((item) => item.quote_version_id === versionId);
+
+           versions.push({
+             id: versionId,
+             quoteId: String(row.quote_id),
+             versionNumber: Math.max(1, toFiniteNumber(row.version_number) || 1),
+             status: (String(row.status ?? "draft") as QuoteVersionRecord["status"]) || "draft",
+             summary: row.summary ? String(row.summary) : null,
+             notes: row.notes ? String(row.notes) : null,
+             subtotal: Math.max(0, toFiniteNumber(row.subtotal) || 0),
+             taxAmount: Math.max(0, toFiniteNumber(row.tax_amount) || 0),
+             total: Math.max(0, toFiniteNumber(row.total) || 0),
+             expiresAt: row.expires_at ? String(row.expires_at) : null,
+             sentAt: row.sent_at ? String(row.sent_at) : null,
+             acceptedAt: row.accepted_at ? String(row.accepted_at) : null,
+             rejectedAt: row.rejected_at ? String(row.rejected_at) : null,
+             rejectedReason: row.rejected_reason ? String(row.rejected_reason) : null,
+             createdAt: row.created_at ? String(row.created_at) : null,
+             updatedAt: row.updated_at ? String(row.updated_at) : null,
+             metadata: row.metadata && typeof row.metadata === "object" ? (row.metadata as Record<string, unknown>) : {},
+             lineItems: itemsForVersion.map((item) => ({
+               id: String(item.id),
+               quoteVersionId: String(item.quote_version_id),
+               quoteId: String(item.quote_id),
+               label: String(item.label ?? ""),
+               description: item.description ? String(item.description) : null,
+               quantity: Math.max(1, toFiniteNumber(item.quantity) || 1),
+               unitPrice: Math.max(0, toFiniteNumber(item.unit_price) || 0),
+               amount: Math.max(0, toFiniteNumber(item.amount) || 0),
+               sortOrder: Number.isFinite(Number(item.sort_order)) ? Number(item.sort_order) : 0,
+               metadata: item.metadata && typeof item.metadata === "object" ? (item.metadata as Record<string, unknown>) : {},
+             })),
+           });
+         }
+       }
+
+       if (!attachmentsResult.error && attachmentsResult.data) {
+         for (const row of attachmentsResult.data as Record<string, unknown>[]) {
+           attachments.push({
+             id: String(row.id),
+             quoteId: String(row.quote_id),
+             orderId: row.order_id ? String(row.order_id) : null,
+             helpRequestId: row.help_request_id ? String(row.help_request_id) : null,
+             uploadedBy: String(row.uploaded_by),
+             kind: (String(row.kind ?? "attachment") as QuoteAttachmentType) || "attachment",
+             fileName: String(row.file_name ?? ""),
+             filePath: String(row.file_path ?? ""),
+             fileUrl: String(row.file_url ?? ""),
+             fileSizeBytes: row.file_size_bytes != null ? Number(row.file_size_bytes) : null,
+             mimeType: row.mime_type ? String(row.mime_type) : null,
+             title: row.title ? String(row.title) : null,
+             description: row.description ? String(row.description) : null,
+             metadata: row.metadata && typeof row.metadata === "object" ? (row.metadata as Record<string, unknown>) : {},
+             createdAt: row.created_at ? String(row.created_at) : null,
+             updatedAt: row.updated_at ? String(row.updated_at) : null,
+           });
+         }
+       }
+
+       const timelineEvents: DealRoomTimelineItem[] = [];
+
+       for (const v of versions) {
+         if (v.sentAt) {
+           timelineEvents.push({
+             id: `v${v.versionNumber}-sent`,
+             kind: "quote_sent",
+             actorId: dealRoomContext.providerId,
+             actorName: dealRoomContext.actorRole === "consumer" ? dealRoomContext.counterpartyName : "You",
+             title: `Quote v${v.versionNumber} sent`,
+             description: v.summary || `Quote for INR ${v.total.toLocaleString("en-IN")}`,
+             timestamp: v.sentAt,
+             metadata: { versionNumber: v.versionNumber, quoteId: v.quoteId },
+           });
+         }
+         if (v.acceptedAt) {
+           timelineEvents.push({
+             id: `v${v.versionNumber}-accepted`,
+             kind: "quote_accepted",
+             actorId: dealRoomContext.consumerId,
+             actorName: dealRoomContext.actorRole === "provider" ? dealRoomContext.counterpartyName : "You",
+             title: `Quote v${v.versionNumber} accepted`,
+             description: `Quote accepted for INR ${v.total.toLocaleString("en-IN")}`,
+             timestamp: v.acceptedAt,
+             metadata: { versionNumber: v.versionNumber, quoteId: v.quoteId },
+           });
+         }
+         if (v.rejectedAt) {
+           timelineEvents.push({
+             id: `v${v.versionNumber}-rejected`,
+             kind: "status_change",
+             actorId: dealRoomContext.consumerId,
+             actorName: dealRoomContext.actorRole === "provider" ? dealRoomContext.counterpartyName : "You",
+             title: `Quote v${v.versionNumber} rejected`,
+             description: v.rejectedReason || "Quote was rejected",
+             timestamp: v.rejectedAt,
+             metadata: { versionNumber: v.versionNumber, quoteId: v.quoteId, reason: v.rejectedReason },
+           });
+         }
+       }
+
+       for (const a of attachments) {
+         const isUploaderMe = a.uploadedBy === dealRoomContext.currentUserId;
+         timelineEvents.push({
+           id: `att-${a.id}`,
+           kind: "attachment",
+           actorId: a.uploadedBy,
+           actorName: isUploaderMe ? "You" : dealRoomContext.counterpartyName,
+           title: `Attachment: ${a.fileName}`,
+           description: a.description || (a.title ? a.title : null),
+           timestamp: a.createdAt || new Date().toISOString(),
+           metadata: { attachmentId: a.id, quoteId: a.quoteId, fileUrl: a.fileUrl, mimeType: a.mimeType },
+         });
+       }
+
+       timelineEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+       timeline.push(...timelineEvents);
+     }
 
     const result: Extract<GetDealRoomResponse, { ok: true }> = {
       ok: true,
