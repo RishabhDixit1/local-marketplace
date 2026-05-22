@@ -38,6 +38,11 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [loadingLocalities, setLoadingLocalities] = useState(true);
 
+  const selectedLocalityName = useMemo(() => {
+    if (!selectedLocalityId) return null;
+    return localities.find((l) => l.id === selectedLocalityId)?.name || null;
+  }, [selectedLocalityId, localities]);
+
   useEffect(() => {
     fetch("/api/localities?zone_type=society&phase=1")
       .then((r) => r.json())
@@ -100,9 +105,13 @@ export default function PeoplePage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">People Directory</h1>
+          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
+            {selectedLocalityName ? `${selectedLocalityName} Providers` : "People Directory"}
+          </h1>
           <p className="text-xs text-slate-500">
-            Find providers and neighbours in your locality
+            {selectedLocalityName
+              ? `Providers and neighbours in ${selectedLocalityName}`
+              : "Find providers and neighbours in your locality"}
           </p>
         </div>
       </div>

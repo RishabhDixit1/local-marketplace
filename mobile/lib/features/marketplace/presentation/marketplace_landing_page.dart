@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../screens/market_zones_screen.dart';
 
 import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
@@ -196,7 +195,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketZonesScreen())),
+                onPressed: () => context.push(AppRoutes.marketZones),
                 icon: const Icon(Icons.explore_rounded, size: 18),
                 label: const Text('Explore Local Zones'),
                 style: OutlinedButton.styleFrom(

@@ -25,6 +25,12 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
   late final TabController _tabController;
   String _searchQuery = '';
 
+  Future<void> _refresh() async {
+    final zoneType = _zoneTypeKeys[_tabController.index];
+    ref.invalidate(_localitiesProvider(zoneType));
+    await ref.read(_localitiesProvider(zoneType).future);
+  }
+
   static const _tabs = [
     Tab(text: 'Societies', icon: Icon(Icons.apartment_rounded)),
     Tab(text: 'Markets', icon: Icon(Icons.store_rounded)),
@@ -99,23 +105,41 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
           ),
         ),
       ),
-      body: localitiesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.pageInset),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.danger),
-                const SizedBox(height: AppSpacing.sm),
-                Text('Could not load zones',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xxs),
-                Text('$err',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center),
-              ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: localitiesAsync.when(
+        loading: () => const SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ),
+        error: (err, _) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.pageInset),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.danger),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('Could not load zones',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text('$err',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  FilledButton.tonal(
+                    onPressed: _refresh,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -209,6 +233,7 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
             },
           );
         },
+      ),
       ),
     );
   }

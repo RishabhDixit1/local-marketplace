@@ -207,6 +207,10 @@ export default function QuickOnboardingSheet() {
       }
 
       setProfile(nextProfile);
+      if (roleChoice === "provider" || roleChoice === "both") {
+        router.push("/onboarding/provider/locality");
+        return;
+      }
       setFlowStep("complete");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save onboarding details.");
