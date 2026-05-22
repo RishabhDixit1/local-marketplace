@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Sparkles, Trash2, XCircle } from "lucide-react";
 import type {
   QuoteContextRecord,
   QuoteDraftInput,
@@ -32,6 +32,7 @@ type QuoteDraftEditorProps = {
   onSent?: (payload: SendQuoteDraftResponse & { ok: true }) => void;
   onOpenChat?: () => void;
   onAccepted?: (quoteId: string, orderId: string) => void;
+  onReject?: () => void;
 };
 
 const buildLocalLineItemId = (prefix: string, index: number) => `${prefix}-${index}-${Math.random().toString(36).slice(2, 8)}`;
@@ -97,6 +98,7 @@ export default function QuoteDraftEditor({
   onSent,
   onOpenChat,
   onAccepted,
+  onReject,
 }: QuoteDraftEditorProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -612,6 +614,17 @@ export default function QuoteDraftEditor({
                   {accepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {accepting ? "Accepting..." : "Accept quote"}
                 </button>
+                {onReject && (
+                  <button
+                    type="button"
+                    onClick={onReject}
+                    disabled={accepting}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject or request changes
+                  </button>
+                )}
                 <p className="text-xs text-slate-500 text-center">Accepting will notify the provider and move the job into active work.</p>
               </div>
             ) : !canEdit ? (

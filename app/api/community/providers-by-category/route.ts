@@ -23,8 +23,12 @@ export async function GET(request: Request) {
   const category = requestUrl.searchParams.get("category") || "";
   const latParam = requestUrl.searchParams.get("lat");
   const lngParam = requestUrl.searchParams.get("lng");
+  const limitParam = requestUrl.searchParams.get("limit");
+  
   const userLat = latParam ? parseFloat(latParam) : null;
   const userLng = lngParam ? parseFloat(lngParam) : null;
+  const limit = limitParam ? parseInt(limitParam, 10) : 100;
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
       .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null)
-      .limit(50);
+      .limit(safeLimit);
 
     if (category) {
       query = query.contains("services", [category]);
@@ -140,13 +144,37 @@ export async function GET(request: Request) {
       };
     });
 
-    const providers = userLat != null && userLng != null
-      ? rawProviders.sort((a, b) => {
-          const da = a.distanceKm ?? Infinity;
-          const db = b.distanceKm ?? Infinity;
+    const sortByScore = (a: typeof rawProviders[0], b: typeof rawProviders[0]) => {
+      if (a.isOnline !== b.isOnline) {
+        return a.isOnline ? -1 : 1;
+      }
+      if (a.completedJobs !== b.completedJobs) {
+        return b.completedJobs - a.completedJobs;
+      }
+      const ratingA = a.avgRating ?? 0;
+      const ratingB = b.avgRating ?? 0;
+      if (ratingA !== ratingB) {
+        return ratingB - ratingA;
+      }
+      if (a.serviceCount !== b.serviceCount) {
+        return b.serviceCount - a.serviceCount;
+      }
+      return 0;
+    };
+
+    let providers: typeof rawProviders;
+    if (userLat != null && userLng != null) {
+      providers = rawProviders.sort((a, b) => {
+        const da = a.distanceKm ?? Infinity;
+        const db = b.distanceKm ?? Infinity;
+        if (da !== db) {
           return da - db;
-        })
-      : rawProviders;
+        }
+        return sortByScore(a, b);
+      });
+    } else {
+      providers = rawProviders.sort(sortByScore);
+    }
 
     return NextResponse.json({ ok: true, providers });
   } catch {

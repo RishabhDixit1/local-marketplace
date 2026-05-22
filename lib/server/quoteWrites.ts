@@ -1,13 +1,52 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { QuoteContextRecord, QuoteDraftInput, QuoteDraftRecord, QuoteLineItemRecord } from "@/lib/api/quotes";
+import type {
+  QuoteContextRecord,
+  QuoteDraftInput,
+  QuoteDraftRecord,
+  QuoteLineItemRecord,
+  QuoteVersionRecord,
+} from "@/lib/api/quotes";
 import { normalizeOrderStatus } from "@/lib/orderWorkflow";
 import { calculateQuoteTotals } from "@/lib/quotes/calculations";
 import { getConversationContext } from "@/lib/server/chatGuards";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 type FlexibleRecord = Record<string, unknown>;
+
+type QuoteVersionRow = {
+  id: string;
+  quote_id: string;
+  version_number: number;
+  status: string | null;
+  summary: string | null;
+  notes: string | null;
+  subtotal: number | string | null;
+  tax_amount: number | string | null;
+  total: number | string | null;
+  expires_at: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  rejected_at: string | null;
+  rejected_reason: string | null;
+  metadata: FlexibleRecord | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type QuoteVersionLineItemRow = {
+  id: string;
+  quote_version_id: string;
+  quote_id: string;
+  label: string | null;
+  description: string | null;
+  quantity: number | string | null;
+  unit_price: number | string | null;
+  amount: number | string | null;
+  sort_order: number | null;
+  metadata: FlexibleRecord | null;
+};
 
 type OrderRow = {
   id: string;
@@ -68,6 +107,7 @@ type QuoteLineItemRow = {
   unit_price: number | string | null;
   amount: number | string | null;
   sort_order: number | null;
+  metadata: FlexibleRecord | null;
 };
 
 type QuoteMutationError = {
@@ -176,7 +216,7 @@ const toQuoteLineItemRecord = (row: QuoteLineItemRow): QuoteLineItemRecord => ({
 
 const buildQuoteDraftRecord = (row: QuoteDraftRow, lineItems: QuoteLineItemRow[]): QuoteDraftRecord => {
   const storedStatus =
-    row.status === "sent" || row.status === "accepted" || row.status === "expired" || row.status === "cancelled"
+    row.status === "sent" || row.status === "accepted" || row.status === "expired" || row.status === "cancelled" || row.status === "rejected" || row.status === "countered"
       ? row.status
       : "draft";
   const status = storedStatus === "sent" && isExpired(row.expires_at) ? "expired" : storedStatus;
@@ -202,6 +242,202 @@ const buildQuoteDraftRecord = (row: QuoteDraftRow, lineItems: QuoteLineItemRow[]
       .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id)),
     metadata: toMetadata(row.metadata),
   };
+};
+
+const getNextVersionNumber = async (db: SupabaseClient, quoteId: string): Promise<number> => {
+  const result = await db
+    .from("quote_versions")
+    .select("version_number")
+    .eq("quote_id", quoteId)
+    .order("version_number", { ascending: false })
+    .limit(1);
+
+  if (result.error || !result.data || result.data.length === 0) {
+    return 1;
+  }
+  const latestVersion = toFiniteNumber((result.data[0] as Record<string, unknown>).version_number);
+  return (latestVersion || 0) + 1;
+};
+
+const buildQuoteVersionRecord = (
+  row: QuoteVersionRow,
+  lineItems: QuoteVersionLineItemRow[]
+): QuoteVersionRecord => {
+  const storedStatus =
+    row.status === "sent" || row.status === "accepted" || row.status === "expired" || row.status === "cancelled" || row.status === "rejected" || row.status === "countered"
+      ? row.status
+      : "draft";
+
+  return {
+    id: row.id,
+    quoteId: row.quote_id,
+    versionNumber: Math.max(1, toFiniteNumber(row.version_number) || 1),
+    status: storedStatus as QuoteVersionRecord["status"],
+    summary: trim(row.summary),
+    notes: trim(row.notes),
+    subtotal: Math.max(0, toFiniteNumber(row.subtotal) || 0),
+    taxAmount: Math.max(0, toFiniteNumber(row.tax_amount) || 0),
+    total: Math.max(0, toFiniteNumber(row.total) || 0),
+    expiresAt: row.expires_at,
+    sentAt: row.sent_at,
+    acceptedAt: row.accepted_at,
+    rejectedAt: row.rejected_at,
+    rejectedReason: trim(row.rejected_reason),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lineItems: lineItems
+      .map((row) => ({
+        id: row.id,
+        quoteVersionId: row.quote_version_id,
+        quoteId: row.quote_id,
+        label: trim(row.label),
+        description: trim(row.description),
+        quantity: Math.max(1, toFiniteNumber(row.quantity) || 1),
+        unitPrice: Math.max(0, toFiniteNumber(row.unit_price) || 0),
+        amount: Math.max(0, toFiniteNumber(row.amount) || 0),
+        sortOrder: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+        metadata: toMetadata(row.metadata),
+      }))
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id)),
+    metadata: toMetadata(row.metadata),
+  };
+};
+
+const createQuoteVersionSnapshot = async (params: {
+  db: SupabaseClient;
+  quoteId: string;
+  status?: string;
+  acceptedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectedReason?: string | null;
+}): Promise<{ ok: true; version: QuoteVersionRecord } | QuoteMutationError> => {
+  try {
+    const quoteResult = await params.db
+      .from("quote_drafts")
+      .select(
+        "id,order_id,help_request_id,provider_id,consumer_id,status,summary,notes,subtotal,tax_amount,total,expires_at,sent_at,metadata,created_at,updated_at"
+      )
+      .eq("id", params.quoteId)
+      .maybeSingle();
+
+    if (quoteResult.error || !quoteResult.data) {
+      return createMutationError(quoteResult.error?.message || "Quote not found for versioning.", {
+        code: quoteResult.error?.code || null,
+        notFound: !quoteResult.data,
+      });
+    }
+
+    const lineItemsResult = await params.db
+      .from("quote_line_items")
+      .select("id,quote_id,label,description,quantity,unit_price,amount,sort_order,metadata")
+      .eq("quote_id", params.quoteId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (lineItemsResult.error) {
+      return createMutationError(lineItemsResult.error.message || "Failed to load line items for versioning.", {
+        code: lineItemsResult.error.code,
+      });
+    }
+
+    const quoteRow = quoteResult.data as QuoteDraftRow;
+    const lineItemRows = (lineItemsResult.data as QuoteLineItemRow[] | null) || [];
+
+    const versionNumber = await getNextVersionNumber(params.db, params.quoteId);
+    const status = params.status || quoteRow.status || "draft";
+    const now = new Date().toISOString();
+
+    const versionPayload = {
+      quote_id: params.quoteId,
+      version_number: versionNumber,
+      status: status,
+      summary: quoteRow.summary,
+      notes: quoteRow.notes,
+      subtotal: quoteRow.subtotal,
+      tax_amount: quoteRow.tax_amount,
+      total: quoteRow.total,
+      expires_at: quoteRow.expires_at,
+      sent_at: quoteRow.sent_at,
+      accepted_at: params.acceptedAt || null,
+      rejected_at: params.rejectedAt || null,
+      rejected_reason: params.rejectedReason || null,
+      metadata: {
+        ...toMetadata(quoteRow.metadata),
+        version_created_at: now,
+        snapshot_status: status,
+      },
+      created_at: now,
+      updated_at: now,
+    };
+
+    const insertVersionResult = await params.db
+      .from("quote_versions")
+      .insert(versionPayload)
+      .select("*")
+      .single();
+
+    if (insertVersionResult.error || !insertVersionResult.data) {
+      return createMutationError(
+        insertVersionResult.error?.message || "Failed to create quote version snapshot.",
+        {
+          code: insertVersionResult.error?.code || null,
+        }
+      );
+    }
+
+    const versionId = (insertVersionResult.data as QuoteVersionRow).id;
+
+    if (lineItemRows.length > 0) {
+      const versionLineItems = lineItemRows.map((row, index) => ({
+        quote_version_id: versionId,
+        quote_id: params.quoteId,
+        label: row.label,
+        description: row.description,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        amount: row.amount,
+        sort_order: row.sort_order ?? index,
+        metadata: toMetadata(row.metadata),
+        created_at: now,
+        updated_at: now,
+      }));
+
+      const insertItemsResult = await params.db
+        .from("quote_version_line_items")
+        .insert(versionLineItems);
+
+      if (insertItemsResult.error) {
+        console.warn("Failed to insert quote version line items:", insertItemsResult.error.message);
+      }
+    }
+
+    const loadedVersionResult = await params.db
+      .from("quote_versions")
+      .select("*")
+      .eq("id", versionId)
+      .single();
+
+    const loadedItemsResult = await params.db
+      .from("quote_version_line_items")
+      .select("*")
+      .eq("quote_version_id", versionId)
+      .order("sort_order", { ascending: true });
+
+    return {
+      ok: true,
+      version: buildQuoteVersionRecord(
+        (loadedVersionResult.data ?? insertVersionResult.data) as QuoteVersionRow,
+        (loadedItemsResult.data ?? []) as QuoteVersionLineItemRow[]
+      ),
+    };
+  } catch (error) {
+    return createMutationError(
+      error instanceof Error ? error.message : "Unexpected error during quote versioning.",
+      {
+        code: "VERSIONING_ERROR",
+      }
+    );
+  }
 };
 
 const createMutationError = (
@@ -693,7 +929,23 @@ const upsertQuoteDraft = async (params: {
   });
   if (!lineItemsResult.ok) return lineItemsResult;
 
-  return loadQuoteDraftById(params.db, quoteResult.data.id as string);
+  const draftResult = await loadQuoteDraftById(params.db, quoteResult.data.id as string);
+
+  if (draftResult.ok) {
+    (async () => {
+      try {
+        await createQuoteVersionSnapshot({
+          db: params.db,
+          quoteId: draftResult.draft.id,
+          status: draftResult.draft.status,
+        });
+      } catch (error) {
+        console.warn("Failed to create quote version snapshot:", error instanceof Error ? error.message : error);
+      }
+    })();
+  }
+
+  return draftResult;
 };
 
 const createOrderMetadataFromContext = (params: {
@@ -1144,6 +1396,17 @@ export const acceptQuoteDraft = async (params: {
     } catch (error) {
       console.warn("Quote accepted notification could not be delivered:", error instanceof Error ? error.message : error);
     }
+  }
+
+  try {
+    await createQuoteVersionSnapshot({
+      db: params.db,
+      quoteId: params.quoteId,
+      status: "accepted",
+      acceptedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.warn("Failed to create quote version on accept:", error instanceof Error ? error.message : error);
   }
 
   return {
