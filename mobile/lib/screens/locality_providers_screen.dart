@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/api/mobile_api_provider.dart';
+import '../core/constants/app_routes.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/design_tokens.dart';
 import '../shared/components/loading_shimmer.dart';
@@ -99,6 +101,7 @@ class LocalityProvidersScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final p = providers[index];
+              final providerId = p['id'] as String? ?? '';
               final name = p['name'] as String? ?? 'Unknown Provider';
               final bio = p['bio'] as String? ?? '';
               final trustScore = p['trust_score'];
@@ -112,9 +115,9 @@ class LocalityProvidersScreen extends ConsumerWidget {
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppRadii.xl),
-                  onTap: () {
-                    // could navigate to provider profile
-                  },
+                  onTap: providerId.isNotEmpty
+                      ? () => context.push(AppRoutes.provider(providerId))
+                      : null,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Row(

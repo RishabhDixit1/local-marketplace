@@ -582,6 +582,45 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 selectedLocalityName: _selectedLocalityName,
                 onOpenLocalityPicker: _showLocalityPicker,
               ),
+              if (widget.mode == FeedPageMode.explore) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    onTap: () => context.push(AppRoutes.marketZones),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              borderRadius: BorderRadius.circular(AppRadii.lg),
+                            ),
+                            child: const Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Explore Local Zones',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                                const SizedBox(height: 2),
+                                Text('Browse societies, markets, and supply areas in Crossings Republik',
+                                    style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               ServiqAsyncBody<MobileFeedSnapshot>(
                 value: snapshot,

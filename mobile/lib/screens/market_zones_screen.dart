@@ -148,13 +148,63 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
             );
           }
 
+          final categoryIcons = [
+            (Icons.electrical_services_rounded, 'Electrician'),
+            (Icons.plumbing_rounded, 'Plumber'),
+            (Icons.ac_unit_rounded, 'AC Repair'),
+            (Icons.water_drop_rounded, 'RO Repair'),
+            (Icons.local_fire_department_rounded, 'Geyser Repair'),
+            (Icons.build_rounded, 'Appliance Repair'),
+            (Icons.handyman_rounded, 'Carpenter'),
+          ];
+
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.pageInset),
-            itemCount: filtered.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.sm),
+            itemCount: filtered.length + 1,
+            separatorBuilder: (_, i) =>
+                i > 0 ? const SizedBox(height: AppSpacing.sm) : const SizedBox(height: 0),
             itemBuilder: (context, index) {
-              final loc = filtered[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Popular Services',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.inkSubtle)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 72,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: categoryIcons.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (ctx, ci) {
+                            final (icon, label) = categoryIcons[ci];
+                            return Column(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                                  ),
+                                  child: Icon(icon, color: AppColors.primaryDeep, size: 22),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(label,
+                                    style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final loc = filtered[index - 1];
               return _LocalityCard(locality: loc);
             },
           );

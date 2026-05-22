@@ -29,8 +29,12 @@ const zoneColors: Record<string, { bg: string; badge: string; text: string }> = 
 
 export default function ZoneBrowser({
   initialLocalities,
+  loading,
+  error,
 }: {
   initialLocalities: Locality[];
+  loading?: boolean;
+  error?: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<string>("society");
   const [search, setSearch] = useState("");
@@ -45,6 +49,41 @@ export default function ZoneBrowser({
   }, [initialLocalities, activeTab, search]);
 
   const TabIcon = zoneTabs.find((t) => t.key === activeTab)?.icon || Building2;
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
+        <p className="text-sm font-semibold text-rose-700">Failed to load zones</p>
+        <p className="mt-1 text-xs text-rose-500">{error}</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1">
+          {zoneTabs.map((tab) => (
+            <div key={tab.key} className="h-9 w-24 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-xl bg-slate-100" />
+                <div className="h-4 flex-1 rounded bg-slate-100" />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <div className="h-5 w-16 rounded-full bg-slate-100" />
+                <div className="h-5 w-20 rounded-full bg-slate-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
