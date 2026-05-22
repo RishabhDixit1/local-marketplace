@@ -56,7 +56,7 @@ const getCompletionActions = (roleChoice: RoleChoice): CompletionAction[] => {
   if (roleChoice === "provider") {
     return [
       {
-        href: "/dashboard/provider/add-service",
+        href: "/dashboard",
         label: "Add your first service",
         description: "Create a bookable offer so nearby customers can act right away.",
         icon: Store,
@@ -81,7 +81,7 @@ const getCompletionActions = (roleChoice: RoleChoice): CompletionAction[] => {
         primary: true,
       },
       {
-        href: "/dashboard/provider/add-service",
+        href: "/dashboard",
         label: "Add a service",
         description: "You can also publish what you offer and earn from the same account.",
         icon: Store,

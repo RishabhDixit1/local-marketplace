@@ -2,9 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
-import { Search, Sparkles } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, Sparkles, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { parseIntent } from "@/lib/ai/intentParser";
 
 export type DashboardPromptAction = {
   id: string;
@@ -32,18 +33,16 @@ type DashboardPromptContextValue = {
   showPrompt: boolean;
 };
 
-const DEFAULT_PLACEHOLDER = "Search within ServiQ";
+const DEFAULT_PLACEHOLDER = "I need help with...";
 
 const PROMPT_ROUTE_SET = new Set([
   "/dashboard",
-  "/dashboard/welcome",
-  "/dashboard/people",
   "/dashboard/tasks",
   "/dashboard/chat",
   "/dashboard/notifications",
 ]);
 
-const PROMPT_ROUTE_PREFIXES = ["/dashboard/provider"];
+const PROMPT_ROUTE_PREFIXES: string[] = [];
 
 const matchesPromptRoute = (pathname: string) =>
   PROMPT_ROUTE_SET.has(pathname) ||
@@ -52,15 +51,10 @@ const matchesPromptRoute = (pathname: string) =>
   );
 
 const getRoutePlaceholder = (pathname: string) => {
-  if (pathname === "/dashboard") return "Search requests, services, products, or people";
-  if (pathname === "/dashboard/people") return "Search people by name, role, location, or expertise";
-  if (pathname === "/dashboard/tasks") return "Search tasks by title, status, category, or owner";
-  if (pathname === "/dashboard/chat") return "Search chats by member name or message keyword";
-  if (pathname === "/dashboard/notifications") return "Search notifications by title, message, type, or action";
-  if (pathname === "/dashboard/provider" || pathname.startsWith("/dashboard/provider/")) {
-    return "Search listings, orders, inventory, pricing, or business setup";
-  }
-  if (pathname === "/dashboard/welcome") return "What do you need?";
+  if (pathname === "/dashboard") return "I want to find...";
+  if (pathname === "/dashboard/tasks") return "Post what you need...";
+  if (pathname === "/dashboard/chat") return "Search conversations...";
+  if (pathname === "/dashboard/notifications") return "Search notifications...";
   return DEFAULT_PLACEHOLDER;
 };
 
@@ -93,7 +87,7 @@ export function DashboardPromptProvider({ children }: { children: ReactNode }) {
         }));
       },
       onSubmit: () => {
-        // Default prompt submit is intentionally passive until a page registers behavior.
+        // Default handled by DashboardPromptBar runSubmit with AI parser
       },
       actions: [],
     }),
@@ -160,7 +154,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   const { effectivePrompt, showPrompt } = useDashboardPromptContext();
   const [focused, setFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const focusHideTimerRef = useRef<number | null>(null);
+  const router = useRouter();
 
   const showFocusControls = useCallback(() => {
     if (focusHideTimerRef.current) {
@@ -189,14 +185,21 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   }, []);
 
   const runSubmit = useCallback(async () => {
-    if (!effectivePrompt.onSubmit) return;
+    const query = effectivePrompt.value.trim();
+    if (!query) return;
     setSubmitting(true);
+    setAiResponse(null);
     try {
-      await effectivePrompt.onSubmit();
+      const parsed = parseIntent(query);
+      setAiResponse(parsed.response);
+      const params = new URLSearchParams();
+      if (parsed.category) params.set("category", parsed.category);
+      if (parsed.action) params.set("action", parsed.action);
+      router.push(`/dashboard?${params.toString()}`);
     } finally {
       setSubmitting(false);
     }
-  }, [effectivePrompt]);
+  }, [effectivePrompt, router]);
 
   if (!showPrompt) return null;
 
@@ -214,6 +217,12 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
         }}
         className="w-full max-w-none space-y-2 md:max-w-[760px]"
       >
+        {aiResponse && (
+          <div className="flex items-center gap-2 rounded-lg bg-[var(--brand-50)] px-3 py-2 text-sm text-[var(--brand-900)] animate-in slide-in-from-top-1">
+            <ArrowRight size={14} className="shrink-0" />
+            <span>{aiResponse}</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div
             className={`group relative min-w-0 flex-1 overflow-hidden rounded-2xl border bg-white transition-all duration-250 ${
@@ -306,6 +315,12 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
         }}
         className="space-y-2"
       >
+        {aiResponse && (
+          <div className="flex items-center gap-2 rounded-lg bg-[var(--brand-50)] px-3 py-2 text-sm text-[var(--brand-900)] animate-in slide-in-from-top-1">
+            <ArrowRight size={15} className="shrink-0" />
+            <span>{aiResponse}</span>
+          </div>
+        )}
         <div
           className={`group relative overflow-hidden rounded-2xl border bg-white transition-all duration-250 ${
             focused

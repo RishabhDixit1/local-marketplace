@@ -108,7 +108,8 @@ String? resolveMobileAppRedirect({
   }
 
   if (!setupRequired && !signedIn && location == AppRoutes.root) {
-    return AppRoutes.signIn;
+    // Show public landing page instead of redirecting to sign-in
+    return null;
   }
 
   return null;

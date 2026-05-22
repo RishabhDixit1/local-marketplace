@@ -11,7 +11,6 @@ import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/sign_in_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
-import '../../features/control/presentation/control_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
@@ -22,6 +21,7 @@ import '../../features/orders/presentation/orders_page.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/provider/presentation/provider_launchpad_review_page.dart';
 import '../../features/saved/presentation/saved_feed_page.dart';
+import '../../features/marketplace/presentation/marketplace_landing_page.dart';
 import '../../features/people/presentation/people_page.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
@@ -95,7 +95,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.root,
-        builder: (context, state) => const _RouterPlaceholder(),
+        builder: (context, state) => const MarketplaceLandingPage(),
       ),
       GoRoute(
         path: AppRoutes.setup,
@@ -128,39 +128,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.profilePublic,
-        builder: (context, state) => const ProfilePage(
-          title: 'Public Profile',
-          initialSection: 'viewProfile',
-          showCommandHub: false,
-        ),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.profileEdit,
-        builder: (context, state) => const ProfilePage(
-          title: 'Edit Profile',
-          initialSection: 'editProfile',
-          showCommandHub: false,
-        ),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.profileTrust,
-        builder: (context, state) => const ProfilePage(
-          title: 'Trust',
-          initialSection: 'trust',
-          showCommandHub: false,
-        ),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.profileSettings,
-        builder: (context, state) => const ProfilePage(
-          title: 'Settings',
-          initialSection: 'settings',
-          showCommandHub: false,
-        ),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.control,
-        builder: (context, state) => const ControlPage(),
+        redirect: (context, state) => AppRoutes.profile,
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,
@@ -266,10 +250,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
               ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
               GoRoute(
                 path: AppRoutes.people,
                 builder: (context, state) => const PeoplePage(),
@@ -285,10 +265,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   focusSource: state.uri.queryParameters['source'],
                 ),
               ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
               GoRoute(
                 path: AppRoutes.chat,
                 builder: (context, state) => ChatPage(
@@ -380,13 +356,4 @@ MobileCheckoutItem? _checkoutItemFromQuery(GoRouterState state) {
     price: price,
     quantity: quantity <= 0 ? 1 : quantity,
   );
-}
-
-class _RouterPlaceholder extends StatelessWidget {
-  const _RouterPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: SizedBox.shrink());
-  }
 }

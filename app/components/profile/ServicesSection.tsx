@@ -77,7 +77,7 @@ export default function ServicesSection({
   const handleHire = useCallback(
     async (service: MarketplaceServiceRecord) => {
       if (isSelf) {
-        router.push("/dashboard/provider/listings");
+        router.push("/dashboard");
         return;
       }
 

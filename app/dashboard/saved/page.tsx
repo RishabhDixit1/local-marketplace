@@ -1,5 +1,5 @@
-import SavedFeedView from "@/app/dashboard/components/SavedFeedView";
+import { redirect } from "next/navigation";
 
-export default function SavedFeedPage() {
-  return <SavedFeedView />;
+export default function SavedRedirect() {
+  redirect("/dashboard/profile");
 }

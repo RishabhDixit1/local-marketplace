@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { MapPin, SlidersHorizontal, X, Store, Star, User } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
@@ -34,17 +35,19 @@ const MOBILE_VISIBLE_INCREMENT = 6;
 
 export default function MarketplacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [openPostModal, setOpenPostModal] = useState(false);
   const [hoveredMapItemId, setHoveredMapItemId] = useState<string | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
-  const [mobileVisibleState, setMobileVisibleState] = useState({
-    count: MOBILE_INITIAL_VISIBLE_ITEMS,
-    key: "",
-  });
+  const [providers, setProviders] = useState<{ id: string; name: string; location: string; avatarUrl: string; bio: string; avgRating: number | null; serviceCount: number; listings: { id: string; title: string; price: number | null }[] }[]>([]);
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
   const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const [showPostExplainer, setShowPostExplainer] = useState(false);
+  const [mobileVisibleState, setMobileVisibleState] = useState({
+    count: MOBILE_INITIAL_VISIBLE_ITEMS,
+    key: "",
+  });
 
   const pushToast = useCallback(
     (kind: ProfileToast["kind"], message: string) => {
@@ -67,7 +70,6 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const timers = toastTimersRef.current;
-
     return () => {
       timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
       timers.clear();
@@ -114,6 +116,21 @@ export default function MarketplacePage() {
     fetchFeed,
     resetFilters,
   } = useMarketplaceFeed({ pushToast });
+
+  useEffect(() => {
+    const category = searchParams.get("category") || filters.category;
+    if (!category) return;
+    let active = true;
+    fetch(`/api/community/providers-by-category?category=${encodeURIComponent(category)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active) return;
+        setProviders(data.providers || []);
+      })
+      .catch(() => {})
+    ;
+    return () => { active = false; };
+  }, [searchParams, filters.category]);
 
   const {
     acceptTarget,
@@ -361,12 +378,117 @@ export default function MarketplacePage() {
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
-        <PageContextStrip
+        {/* ── Location hero ── */}
+        <div className="overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-100)]">
+                <MapPin className="h-5 w-5 text-[var(--brand-700)]" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Serving Crossings Republik, Ghaziabad</h2>
+                <p className="text-xs text-slate-500">Uttar Pradesh 201016 — Hyperlocal marketplace</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {["Electrician", "Plumber", "AC Repair", "RO Repair", "Carpenter", "Appliance Repair"].map((cat) => (
+                <Link
+                  key={cat}
+                  href={`/dashboard?category=${encodeURIComponent(cat)}`}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                >
+                  {cat}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
+            <MapPin className="h-3 w-3" />
+            <span>Covering: Mahagun Mascot, Panchsheel Wellington, Galleria Market, Avantika Retail Street, and 12+ areas</span>
+          </div>
+        </div>
+
+        {filters.category ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--brand-200)] bg-gradient-to-r from-[var(--brand-50)] to-white px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--brand-100)]">
+                <Store className="h-4 w-4 text-[var(--brand-700)]" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">
+                  {providers.length > 0
+                    ? `${providers.length} ${filters.category} provider${providers.length === 1 ? "" : "s"} near Crossings Republik`
+                    : `Showing results for ${filters.category}`}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Browse services, providers, and requests — or refine below
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            >
+              <X className="h-3 w-3" />
+              Clear filter
+            </Link>
+          </div>
+        ) : (
+          <PageContextStrip
             label="Find Help"
             description="Browse the full marketplace — nearby needs, services, products, and providers."
             action={{ label: "Post Need", href: "/dashboard/create_post" }}
-            switchAction={{ label: "Connected Feed", href: "/dashboard/welcome" }}
           />
+        )}
+
+        {providers.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <User className="h-4 w-4 text-[var(--brand-600)]" />
+              Available Providers
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {providers.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/dashboard/chat?recipientId=${p.id}`}
+                  className="group flex min-w-[220px] max-w-[260px] shrink-0 flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-200)] hover:shadow-md"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-bold text-[var(--brand-700)]">
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
+                      <p className="truncate text-xs text-slate-500">{p.location || "Crossings Republik"}</p>
+                    </div>
+                  </div>
+                  {p.bio && (
+                    <p className="line-clamp-2 text-xs text-slate-600">{p.bio}</p>
+                  )}
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    {p.avgRating ? (
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3 text-amber-500" />
+                        {p.avgRating.toFixed(1)}
+                      </span>
+                    ) : null}
+                    <span>{p.serviceCount} service{p.serviceCount === 1 ? "" : "s"}</span>
+                  </div>
+                  {p.listings.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.listings.slice(0, 3).map((l) => (
+                        <span key={l.id} className="rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          {l.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {showPostExplainer && (
           <WhatHappensNext kind="post_need" />

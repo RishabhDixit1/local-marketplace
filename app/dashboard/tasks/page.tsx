@@ -2690,7 +2690,7 @@ export default function TasksPage() {
       <PageContextStrip
         label="Tasks"
         description="Manage your orders, quotes, and requests — accept offers, track progress, and close jobs."
-        action={{ label: "Open Control", href: "/dashboard/provider" }}
+        action={{ label: "Open Control", href: "/dashboard" }}
         switchAction={{ label: "Full Marketplace", href: "/dashboard" }}
       />
 

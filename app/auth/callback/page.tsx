@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
-import { ensureProfileForUser, resolveCurrentProfileDestination } from "@/lib/profile/client";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
 
@@ -58,6 +57,7 @@ export default function AuthCallbackPage() {
         if (error) throw error;
 
         if (data.session?.user) {
+          const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
           const profile = await ensureProfileForUser(data.session.user).catch(() => null);
           router.replace(resolveCurrentProfileDestination(profile));
           return;
@@ -67,13 +67,15 @@ export default function AuthCallbackPage() {
           data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
           if (!cancelled && event === "SIGNED_IN" && session) {
-            void ensureProfileForUser(session.user)
-              .catch(() => null)
-              .then((profile) => {
-                if (!cancelled) {
-                  router.replace(resolveCurrentProfileDestination(profile));
-                }
-              });
+            import("@/lib/profile/client").then(({ ensureProfileForUser, resolveCurrentProfileDestination }) => {
+              void ensureProfileForUser(session.user)
+                .catch(() => null)
+                .then((profile) => {
+                  if (!cancelled) {
+                    router.replace(resolveCurrentProfileDestination(profile));
+                  }
+                });
+            });
           }
         });
         subscription = authSubscription;

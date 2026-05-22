@@ -21,7 +21,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
     setStep("form_redirect");
     setTimeout(() => {
       onClose();
-      router.push("/dashboard/provider/add-service");
+      router.push("/dashboard");
     }, 800);
   };
 
@@ -29,7 +29,7 @@ export function OnboardingServiceWizard({ open, onClose }: OnboardingServiceWiza
     setStep("form_redirect");
     setTimeout(() => {
       onClose();
-      router.push("/dashboard/provider/add-product");
+      router.push("/dashboard");
     }, 800);
   };
 

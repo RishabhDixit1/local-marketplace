@@ -121,7 +121,7 @@ export const createMarketplaceReadinessSummary = (params: {
         id: "first-listing",
         title: "Publish your first listing",
         description: "People can discover you faster when there is a concrete service or product to open.",
-        href: "/dashboard/provider/add-service",
+        href: "/dashboard",
         ctaLabel: "Add service",
       });
     } else if (listingCount < 3) {
@@ -129,7 +129,7 @@ export const createMarketplaceReadinessSummary = (params: {
         id: "grow-listings",
         title: "Expand your storefront",
         description: "A few focused listings create more entry points from discovery and feed surfaces.",
-        href: "/dashboard/provider",
+        href: "/dashboard",
         ctaLabel: "Open control",
       });
     }
@@ -203,7 +203,7 @@ export const createMarketplaceReadinessSummary = (params: {
             id: "orders",
             title: "Stay responsive in your pipeline",
             description: "Fast replies and clear availability keep discovery momentum turning into bookings.",
-            href: "/dashboard/provider/orders",
+            href: "/dashboard",
             ctaLabel: "Open control",
           }
         : {

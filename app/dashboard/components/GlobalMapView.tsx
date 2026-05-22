@@ -22,13 +22,14 @@ import { resolveCoordinatesWithAccuracy } from "@/lib/geo";
 import { buildMarketplaceDisplayItem, type MarketplaceFeedItem } from "@/lib/marketplaceFeed";
 import { captureUiActionObservability, resolveObservedRouteFromPathname } from "@/lib/observability";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
+import { societyPins, marketPins } from "@/lib/demo/crossings-republik";
 
 const MarketplaceMap = dynamic(
   () => import("@/app/components/MarketplaceMap").then((m) => ({ default: m.default ?? m })),
   { ssr: false }
 );
 
-type Layer = "all" | "explore" | "people";
+type Layer = "all" | "explore" | "people" | "areas";
 
 type MapItemDetail = {
   id: string;
@@ -38,7 +39,7 @@ type MapItemDetail = {
   locationLabel?: string;
   timeLabel?: string;
   priceLabel?: string;
-  layer: Layer | "explore" | "people";
+  layer: Layer | "explore" | "people" | "areas";
   coordinateAccuracy: "precise" | "approximate";
   detailPath: string | null;
   detailLabel: string;
@@ -199,6 +200,42 @@ async function fetchPeopleItems(): Promise<MarketplaceMapItem[]> {
   }
 }
 
+function getAreaItems(): MarketplaceMapItem[] {
+  const items: MarketplaceMapItem[] = [];
+
+  for (const pin of societyPins) {
+    items.push({
+      id: pin.id,
+      title: pin.name,
+      lat: pin.lat,
+      lng: pin.lng,
+      creatorName: "Society",
+      locationLabel: "Residential society",
+      category: "society",
+      coordinateAccuracy: "precise",
+      detailPath: null,
+      detailLabel: "Society",
+    });
+  }
+
+  for (const pin of marketPins) {
+    items.push({
+      id: pin.id,
+      title: pin.name,
+      lat: pin.lat,
+      lng: pin.lng,
+      creatorName: "Market",
+      locationLabel: "Commercial area",
+      category: "market",
+      coordinateAccuracy: "precise",
+      detailPath: null,
+      detailLabel: "Market",
+    });
+  }
+
+  return items;
+}
+
 async function getUserCenter(): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
     if (!navigator?.geolocation) {
@@ -219,6 +256,7 @@ const LAYERS: { id: Layer; label: string; Icon: typeof Layers }[] = [
   { id: "all", label: "All", Icon: Layers },
   { id: "explore", label: "Explore", Icon: Newspaper },
   { id: "people", label: "People", Icon: Users },
+  { id: "areas", label: "Areas", Icon: MapPin },
 ];
 
 const resolveDefaultLayer = (pathname: string | null | undefined): Layer => {
@@ -245,6 +283,7 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const [activeLayer, setActiveLayer] = useState<Layer>("all");
   const [exploreItems, setExploreItems] = useState<MarketplaceMapItem[]>([]);
   const [peopleItems, setPeopleItems] = useState<MarketplaceMapItem[]>([]);
+  const [areaItems] = useState<MarketplaceMapItem[]>(() => getAreaItems());
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -397,7 +436,8 @@ export default function GlobalMapView({ open, onClose }: Props) {
   const visibleItems: MarketplaceMapItem[] = (() => {
     if (activeLayer === "explore") return exploreItems;
     if (activeLayer === "people") return peopleItems;
-    return [...exploreItems, ...peopleItems];
+    if (activeLayer === "areas") return areaItems;
+    return [...exploreItems, ...peopleItems, ...areaItems];
   })();
 
   const selectedDetail: MapItemDetail | null = (() => {
