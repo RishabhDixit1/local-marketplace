@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Building2, Loader2, MapPin, Search, Store, Users,
+  ArrowLeft, Building2, Loader2, MapPin, Search, ShieldCheck, Store, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -37,6 +37,11 @@ export default function PeoplePage() {
   const [people, setPeople] = useState<PeopleProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingLocalities, setLoadingLocalities] = useState(true);
+
+  const selectedLocalityName = useMemo(() => {
+    if (!selectedLocalityId) return null;
+    return localities.find((l) => l.id === selectedLocalityId)?.name || null;
+  }, [selectedLocalityId, localities]);
 
   useEffect(() => {
     fetch("/api/localities?zone_type=society&phase=1")
@@ -100,9 +105,13 @@ export default function PeoplePage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">People Directory</h1>
+          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
+            {selectedLocalityName ? `${selectedLocalityName} Providers` : "People Directory"}
+          </h1>
           <p className="text-xs text-slate-500">
-            Find providers and neighbours in your locality
+            {selectedLocalityName
+              ? `Providers and neighbours in ${selectedLocalityName}`
+              : "Find providers and neighbours in your locality"}
           </p>
         </div>
       </div>
@@ -186,6 +195,11 @@ export default function PeoplePage() {
                     {profile.trust_score > 0 && (
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
                         ⭐ {profile.trust_score.toFixed(1)}
+                      </span>
+                    )}
+                    {profile.trust_score >= 70 && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                        <ShieldCheck className="mr-0.5 inline h-3 w-3" />Trusted
                       </span>
                     )}
                     {profile.completed_jobs > 0 && (

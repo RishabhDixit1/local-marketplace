@@ -56,17 +56,17 @@ const getCompletionActions = (roleChoice: RoleChoice): CompletionAction[] => {
   if (roleChoice === "provider") {
     return [
       {
+        href: "/onboarding/provider/locality",
+        label: "Set up your service area",
+        description: "Select which localities and categories you serve so customers can find you.",
+        icon: MapPin,
+        primary: true,
+      },
+      {
         href: "/dashboard",
         label: "Add your first service",
         description: "Create a bookable offer so nearby customers can act right away.",
         icon: Store,
-        primary: true,
-      },
-      {
-        href: "/dashboard?category=demand",
-        label: "See live demand",
-        description: "Browse the marketplace feed for needs you can respond to today.",
-        icon: Zap,
       },
     ];
   }
@@ -81,10 +81,10 @@ const getCompletionActions = (roleChoice: RoleChoice): CompletionAction[] => {
         primary: true,
       },
       {
-        href: "/dashboard",
-        label: "Add a service",
-        description: "You can also publish what you offer and earn from the same account.",
-        icon: Store,
+        href: "/onboarding/provider/locality",
+        label: "Set up your service area",
+        description: "Also configure which areas and categories you serve as a provider.",
+        icon: MapPin,
       },
     ];
   }
@@ -207,6 +207,10 @@ export default function QuickOnboardingSheet() {
       }
 
       setProfile(nextProfile);
+      if (roleChoice === "provider" || roleChoice === "both") {
+        router.push("/onboarding/provider/locality");
+        return;
+      }
       setFlowStep("complete");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save onboarding details.");

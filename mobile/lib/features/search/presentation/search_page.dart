@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
@@ -52,12 +54,20 @@ class SearchPage extends ConsumerStatefulWidget {
   ConsumerState<SearchPage> createState() => _SearchPageState();
 }
 
+const _searchCategories = [
+  'Electrician', 'Plumber', 'RO Repair', 'AC Repair',
+  'Geyser Repair', 'Appliance Repair', 'Carpenter',
+];
+
 class _SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _query = '';
   _SearchScope _scope = _SearchScope.all;
   final Set<String> _flags = <String>{};
+  String? _selectedCategory;
+  List<Map<String, dynamic>> _localities = [];
+  String? _selectedLocalityId;
 
   @override
   void initState() {
@@ -71,7 +81,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       }
       ref.read(analyticsServiceProvider).trackScreen('search');
       _trackSearchSubmit(initial);
+      _loadLocalities();
     });
+  }
+
+  Future<void> _loadLocalities() async {
+    try {
+      final client = ref.read(mobileApiClientProvider);
+      final locs = await client.getLocalities(zoneType: 'society', phase: 1);
+      if (mounted) setState(() => _localities = locs);
+    } catch (_) {}
   }
 
   @override
@@ -161,6 +180,52 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   },
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 32,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _searchCategories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final cat = _searchCategories[index];
+                  final selected = _selectedCategory == cat;
+                  return FilterChip(
+                    label: Text(cat, style: const TextStyle(fontSize: 11)),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _selectedCategory = selected ? null : cat),
+                    visualDensity: VisualDensity.compact,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                border: Border.all(color: AppColors.border),
+                color: AppColors.surface,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  value: _selectedLocalityId,
+                  hint: const Text('All localities', style: TextStyle(fontSize: 13)),
+                  style: const TextStyle(fontSize: 13, color: AppColors.inkStrong),
+                  isExpanded: true,
+                  isDense: true,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All localities', style: TextStyle(fontSize: 13))),
+                    ..._localities.map((loc) => DropdownMenuItem(
+                      value: loc['id'] as String?,
+                      child: Text(loc['name'] as String? ?? '', style: const TextStyle(fontSize: 13)),
+                    )),
+                  ],
+                  onChanged: (val) => setState(() => _selectedLocalityId = val),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             FilterChipGroup<String>(
@@ -314,6 +379,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ((person.averageRating ?? 0) < 4.5 || person.reviewCount < 1)) {
         return false;
       }
+      if (_selectedCategory != null &&
+          !person.primaryTags.any((t) => t.toLowerCase() == _selectedCategory!.toLowerCase())) {
+        return false;
+      }
+      if (_selectedLocalityId != null) {
+        final locName = _localities
+            .where((l) => l['id'] == _selectedLocalityId)
+            .map((l) => (l['name'] as String? ?? '').toLowerCase())
+            .firstOrNull;
+        if (locName != null && !person.locationLabel.toLowerCase().contains(locName)) {
+          return false;
+        }
+      }
       return person.matchesQuery(_query);
     }).toList();
   }
@@ -341,6 +419,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       if (_flags.contains('top_rated') &&
           ((item.averageRating ?? 0) < 4.5 || item.reviewCount < 1)) {
         return false;
+      }
+      if (_selectedCategory != null &&
+          !item.category.toLowerCase().contains(_selectedCategory!.toLowerCase())) {
+        return false;
+      }
+      if (_selectedLocalityId != null) {
+        final locName = _localities
+            .where((l) => l['id'] == _selectedLocalityId)
+            .map((l) => (l['name'] as String? ?? '').toLowerCase())
+            .firstOrNull;
+        if (locName != null && !item.locationLabel.toLowerCase().contains(locName)) {
+          return false;
+        }
       }
 
       if (_query.isEmpty) {

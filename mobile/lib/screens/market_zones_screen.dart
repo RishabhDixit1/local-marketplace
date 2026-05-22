@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/mobile_api_provider.dart';
 import '../core/theme/app_theme.dart';
 import '../models/locality.dart';
+import 'locality_providers_screen.dart';
 
 final _localitiesProvider = FutureProvider.autoDispose
     .family<List<Locality>, String?>((ref, zoneType) async {
@@ -23,6 +24,12 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   String _searchQuery = '';
+
+  Future<void> _refresh() async {
+    final zoneType = _zoneTypeKeys[_tabController.index];
+    ref.invalidate(_localitiesProvider(zoneType));
+    await ref.read(_localitiesProvider(zoneType).future);
+  }
 
   static const _tabs = [
     Tab(text: 'Societies', icon: Icon(Icons.apartment_rounded)),
@@ -98,23 +105,41 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
           ),
         ),
       ),
-      body: localitiesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.pageInset),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.danger),
-                const SizedBox(height: AppSpacing.sm),
-                Text('Could not load zones',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xxs),
-                Text('$err',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center),
-              ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: localitiesAsync.when(
+        loading: () => const SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        ),
+        error: (err, _) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.pageInset),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.danger),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('Could not load zones',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text('$err',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  FilledButton.tonal(
+                    onPressed: _refresh,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -147,17 +172,68 @@ class _MarketZonesScreenState extends ConsumerState<MarketZonesScreen>
             );
           }
 
+          final categoryIcons = [
+            (Icons.electrical_services_rounded, 'Electrician'),
+            (Icons.plumbing_rounded, 'Plumber'),
+            (Icons.ac_unit_rounded, 'AC Repair'),
+            (Icons.water_drop_rounded, 'RO Repair'),
+            (Icons.local_fire_department_rounded, 'Geyser Repair'),
+            (Icons.build_rounded, 'Appliance Repair'),
+            (Icons.handyman_rounded, 'Carpenter'),
+          ];
+
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.pageInset),
-            itemCount: filtered.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.sm),
+            itemCount: filtered.length + 1,
+            separatorBuilder: (_, i) =>
+                i > 0 ? const SizedBox(height: AppSpacing.sm) : const SizedBox(height: 0),
             itemBuilder: (context, index) {
-              final loc = filtered[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Popular Services',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.inkSubtle)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 72,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: categoryIcons.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (ctx, ci) {
+                            final (icon, label) = categoryIcons[ci];
+                            return Column(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                                  ),
+                                  child: Icon(icon, color: AppColors.primaryDeep, size: 22),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(label,
+                                    style: const TextStyle(fontSize: 10, color: AppColors.inkSubtle)),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final loc = filtered[index - 1];
               return _LocalityCard(locality: loc);
             },
           );
         },
+      ),
       ),
     );
   }
@@ -205,9 +281,16 @@ class _LocalityCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        onTap: () {
-          // Navigate to provider list filtered by locality
-        },
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LocalityProvidersScreen(
+                  localityId: locality.id,
+                  localityName: locality.name,
+                ),
+              ),
+            );
+          },
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Row(

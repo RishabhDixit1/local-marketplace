@@ -197,6 +197,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
+  // Auto-create review request on completion
+  if (status === "completed") {
+    void (async () => {
+      try {
+        await admin.from("review_requests").upsert({
+          order_id: id,
+          provider_id: ex.provider_id,
+          requester_id: ex.consumer_id,
+          sent_at: new Date().toISOString(),
+          status: "sent",
+        }, { onConflict: "order_id, requester_id" });
+      } catch (err) {
+        console.error("[review-request] failed for order", id, err);
+      }
+    })();
+  }
+
   // Fire-and-forget email notification (with error capture)
   void (async () => {
     try {

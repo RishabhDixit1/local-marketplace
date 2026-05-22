@@ -23,6 +23,7 @@ import '../../features/provider/presentation/provider_launchpad_review_page.dart
 import '../../features/saved/presentation/saved_feed_page.dart';
 import '../../features/marketplace/presentation/marketplace_landing_page.dart';
 import '../../features/people/presentation/people_page.dart';
+import '../../screens/market_zones_screen.dart';
 import '../../features/post_create/presentation/create_need_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/provider/presentation/provider_onboarding_page.dart';
@@ -199,6 +200,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           targetId: _queryParam(state, 'targetId') ?? '',
           conversationId: _queryParam(state, 'conversationId'),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.marketZones,
+        builder: (context, state) => const MarketZonesScreen(),
       ),
       GoRoute(
         path: AppRoutes.provider(':providerId'),

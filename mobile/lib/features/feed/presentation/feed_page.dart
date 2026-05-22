@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/auth/auth_state_controller.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
@@ -70,12 +71,20 @@ class FeedPage extends ConsumerStatefulWidget {
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
 
+const _categories = [
+  'Electrician', 'Plumber', 'RO Repair', 'AC Repair',
+  'Geyser Repair', 'Appliance Repair', 'Carpenter',
+];
+
 class _FeedPageState extends ConsumerState<FeedPage> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _query = '';
   late MobileFeedScope _scope;
   final Set<String> _filters = <String>{};
+  String? _selectedCategory;
+  String? _selectedLocalityId;
+  String? _selectedLocalityName;
   String? _busyFeedActionId;
 
   @override
@@ -94,6 +103,49 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   Future<void> _refresh() async {
     ref.invalidate(feedSnapshotProvider(_scope));
     await ref.read(feedSnapshotProvider(_scope).future);
+  }
+
+  Future<void> _showLocalityPicker() async {
+    final client = ref.read(mobileApiClientProvider);
+    final localities = await client.getLocalities(zoneType: 'society', phase: 1);
+    if (!mounted || localities.isEmpty) return;
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+        children: [
+          const Text('Select locality',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 12),
+          ...localities.map((loc) {
+            final id = loc['id'] as String? ?? '';
+            final name = loc['name'] as String? ?? '';
+            return ListTile(
+              title: Text(name),
+              leading: const Icon(Icons.location_city_rounded),
+              onTap: () => Navigator.of(ctx).pop(id),
+            );
+          }),
+        ],
+      ),
+    );
+
+    if (selected != null && mounted) {
+      final name = localities
+          .firstWhere(
+            (l) => l['id'] == selected,
+            orElse: () => <String, dynamic>{},
+          )['name'] as String?;
+      setState(() {
+        _selectedLocalityId = selected;
+        _selectedLocalityName = name;
+      });
+    }
   }
 
   void _onQueryChanged(String value) {
@@ -302,6 +354,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       }
       if (_filters.contains('top_rated') &&
           ((item.averageRating ?? 0) < 4.5 || item.reviewCount < 1)) {
+        return false;
+      }
+
+      if (_selectedCategory != null &&
+          !item.category.toLowerCase().contains(_selectedCategory!.toLowerCase())) {
+        return false;
+      }
+
+      if (_selectedLocalityId != null &&
+          !item.locationLabel.toLowerCase().contains(_selectedLocalityName?.toLowerCase() ?? '')) {
         return false;
       }
 
@@ -515,7 +577,50 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ..addAll(next);
                 }),
                 onOpenPeople: () => context.push(AppRoutes.people),
+                selectedCategory: _selectedCategory,
+                onCategoryChanged: (cat) => setState(() => _selectedCategory = cat),
+                selectedLocalityName: _selectedLocalityName,
+                onOpenLocalityPicker: _showLocalityPicker,
               ),
+              if (widget.mode == FeedPageMode.explore) ...[
+                const SizedBox(height: 12),
+                SectionCard(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    onTap: () => context.push(AppRoutes.marketZones),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              borderRadius: BorderRadius.circular(AppRadii.lg),
+                            ),
+                            child: const Icon(Icons.explore_rounded, color: AppColors.primaryDeep),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Explore Local Zones',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                                const SizedBox(height: 2),
+                                Text('Browse societies, markets, and supply areas in Crossings Republik',
+                                    style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               ServiqAsyncBody<MobileFeedSnapshot>(
                 value: snapshot,
@@ -634,6 +739,10 @@ class _ExploreIntentPanel extends StatelessWidget {
     required this.onScopeChanged,
     required this.onFiltersChanged,
     required this.onOpenPeople,
+    required this.selectedCategory,
+    required this.onCategoryChanged,
+    required this.selectedLocalityName,
+    required this.onOpenLocalityPicker,
   });
 
   final FeedPageMode mode;
@@ -644,6 +753,10 @@ class _ExploreIntentPanel extends StatelessWidget {
   final ValueChanged<MobileFeedScope> onScopeChanged;
   final ValueChanged<Set<String>> onFiltersChanged;
   final VoidCallback onOpenPeople;
+  final String? selectedCategory;
+  final ValueChanged<String?> onCategoryChanged;
+  final String? selectedLocalityName;
+  final VoidCallback onOpenLocalityPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -655,6 +768,24 @@ class _ExploreIntentPanel extends StatelessWidget {
             controller: searchController,
             hintText: 'Filter by service, provider, area, or request',
             onChanged: onQueryChanged,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, index) {
+                final cat = _categories[index];
+                final selected = selectedCategory == cat;
+                return FilterChip(
+                  label: Text(cat, style: const TextStyle(fontSize: 12)),
+                  selected: selected,
+                  onSelected: (_) => onCategoryChanged(selected ? null : cat),
+                );
+              },
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -674,12 +805,46 @@ class _ExploreIntentPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: onOpenLocalityPicker,
+                icon: Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: selectedLocalityName != null
+                      ? AppColors.primaryDeep
+                      : null,
+                ),
+                label: Text(
+                  selectedLocalityName ?? 'Area',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: selectedLocalityName != null
+                        ? AppColors.primaryDeep
+                        : null,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: selectedLocalityName != null
+                      ? AppColors.primaryDeep
+                      : null,
+                  side: BorderSide(
+                    color: selectedLocalityName != null
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : AppColors.border,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
               SizedBox(
-                width: 112,
+                width: 80,
                 child: OutlinedButton.icon(
                   onPressed: onOpenPeople,
-                  icon: const Icon(Icons.people_outline_rounded),
-                  label: const Text('Find'),
+                  icon: const Icon(Icons.people_outline_rounded, size: 16),
+                  label: const Text('Find', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
             ],
