@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
+import DealRoom from "@/app/components/quotes/DealRoom";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   TaskCard,
@@ -2149,10 +2149,20 @@ export default function TasksPage() {
       >
               <div className="space-y-4">
                 {(canManageQuote(task) || canViewQuote(task)) && quoteEditorTaskId === task.orderId ? (
-                  <QuoteDraftEditor
+                  <DealRoom
                     orderId={task.source === "order" ? task.orderId : null}
                     helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
-                    onSent={(result) => {
+                    surface="tasks"
+                    onClose={() => {
+                      setQuoteEditorTaskId(null);
+                    }}
+                    onQuoteSaved={() => {
+                      setNotice({
+                        kind: "info",
+                        message: `Quote draft saved for ${task.title}.`,
+                      });
+                    }}
+                    onQuoteSent={(result) => {
                       setQuoteEditorTaskId(result.orderId);
                       setExpandedTaskId(result.orderId);
                       setNotice({
@@ -2163,10 +2173,22 @@ export default function TasksPage() {
                         void loadTasks(true);
                       });
                     }}
-                    onSaved={() => {
+                    onQuoteAccepted={() => {
+                      setNotice({
+                        kind: "success",
+                        message: `Quote accepted for ${task.title}.`,
+                      });
+                      startTransition(() => {
+                        void loadTasks(true);
+                      });
+                    }}
+                    onQuoteRejected={() => {
                       setNotice({
                         kind: "info",
-                        message: `Quote draft saved for ${task.title}.`,
+                        message: `Quote rejected for ${task.title}.`,
+                      });
+                      startTransition(() => {
+                        void loadTasks(true);
                       });
                     }}
                     onOpenChat={() => {

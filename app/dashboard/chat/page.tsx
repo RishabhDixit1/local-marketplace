@@ -10,7 +10,7 @@ import { buildInterestDraftMessage, parseChatDraftTemplate, parseChatFeedContext
 import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
+import DealRoom from "@/app/components/quotes/DealRoom";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   Activity,
@@ -1681,15 +1681,18 @@ export default function ChatPage() {
 
                 {activeQuoteTarget && showQuotePanel && (
                   <div className="mb-4">
-                    <QuoteDraftEditor
+                    <DealRoom
                       orderId={activeQuoteTarget.orderId}
                       helpRequestId={activeQuoteTarget.helpRequestId}
                       conversationId={selectedChat}
                       surface="chat"
-                      onSaved={() => {
+                      onClose={() => {
+                        setQuotePanelDismissed(true);
+                      }}
+                      onQuoteSaved={() => {
                         setChatError(null);
                       }}
-                      onSent={(result) => {
+                      onQuoteSent={(result) => {
                         setQuotePanelDismissed(false);
                         setQuoteTarget((current) =>
                           current
@@ -1701,6 +1704,16 @@ export default function ChatPage() {
                               }
                             : current
                         );
+                        if (selectedChat) {
+                          void loadMessages(selectedChat);
+                        }
+                      }}
+                      onQuoteAccepted={() => {
+                        if (selectedChat) {
+                          void loadMessages(selectedChat);
+                        }
+                      }}
+                      onQuoteRejected={() => {
                         if (selectedChat) {
                           void loadMessages(selectedChat);
                         }
