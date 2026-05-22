@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api/mobile_api_provider.dart';
 import '../core/theme/app_theme.dart';
 import '../models/locality.dart';
+import 'locality_providers_screen.dart';
 
 final _localitiesProvider = FutureProvider.autoDispose
     .family<List<Locality>, String?>((ref, zoneType) async {
@@ -205,9 +206,16 @@ class _LocalityCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        onTap: () {
-          // Navigate to provider list filtered by locality
-        },
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LocalityProvidersScreen(
+                  localityId: locality.id,
+                  localityName: locality.name,
+                ),
+              ),
+            );
+          },
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Row(

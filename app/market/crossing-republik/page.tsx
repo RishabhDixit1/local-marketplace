@@ -5,7 +5,7 @@ import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ServiceCategoryGrid from "@/app/components/services/ServiceCategoryGrid";
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 type LocalityWithCount = LocalityResponse & { provider_count: number };
 
