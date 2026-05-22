@@ -82,25 +82,36 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.sm),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.primaryDeep,
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              child: const Center(
-                child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDeep,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: const Center(
+                    child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Text('ServiQ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+              ],
             ),
-            const SizedBox(width: AppSpacing.xs),
-            const Text('ServiQ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
-            const Spacer(),
-            FilledButton.tonalIcon(
-              onPressed: () => context.push(AppRoutes.signIn),
-              label: const Text('Sign In'),
-              icon: const Icon(Icons.login_rounded, size: 18),
+            ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 0, maxWidth: 150,
+                minHeight: 0, maxHeight: 48,
+              ),
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.push(AppRoutes.signIn),
+                label: const Text('Sign In'),
+                icon: const Icon(Icons.login_rounded, size: 18),
+              ),
             ),
           ],
         ),
