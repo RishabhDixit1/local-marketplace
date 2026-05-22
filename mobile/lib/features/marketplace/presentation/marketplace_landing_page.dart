@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../screens/market_zones_screen.dart';
 
 import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
@@ -82,25 +83,36 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.sm),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.primaryDeep,
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              child: const Center(
-                child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDeep,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: const Center(
+                    child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Text('ServiQ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+              ],
             ),
-            const SizedBox(width: AppSpacing.xs),
-            const Text('ServiQ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
-            const Spacer(),
-            FilledButton.tonalIcon(
-              onPressed: () => context.push(AppRoutes.signIn),
-              label: const Text('Sign In'),
-              icon: const Icon(Icons.login_rounded, size: 18),
+            ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 0, maxWidth: 150,
+                minHeight: 0, maxHeight: 48,
+              ),
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.push(AppRoutes.signIn),
+                label: const Text('Sign In'),
+                icon: const Icon(Icons.login_rounded, size: 18),
+              ),
             ),
           ],
         ),
@@ -180,6 +192,21 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 style: TextStyle(fontSize: 14, color: AppColors.inkSubtle)),
             const SizedBox(height: AppSpacing.md),
             _HeroSearchField(controller: _searchController),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketZonesScreen())),
+                icon: const Icon(Icons.explore_rounded, size: 18),
+                label: const Text('Explore Local Zones'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryDeep,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.xl)),
+                ),
+              ),
+            ),
           ],
         ),
       ),

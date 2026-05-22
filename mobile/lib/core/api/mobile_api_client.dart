@@ -86,6 +86,82 @@ class MobileApiClient {
     );
   }
 
+  // ── Locality & Service Category helpers ──
+
+  Future<List<Map<String, dynamic>>> getLocalities({
+    String? zoneType,
+    int? phase,
+  }) async {
+    final params = <String, String>{};
+    if (zoneType != null) params['zone_type'] = zoneType;
+    if (phase != null) params['phase'] = phase.toString();
+
+    final response = await getJson(
+      '/api/localities',
+      queryParameters: params.isNotEmpty ? params : null,
+      authenticated: false,
+    );
+
+    final list = (response['localities'] as List?) ?? <dynamic>[];
+    return list.whereType<Map>().cast<Map<String, dynamic>>().toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getServiceCategories({
+    String? localityId,
+  }) async {
+    final params = <String, String>{};
+    if (localityId != null) params['locality_id'] = localityId;
+
+    final response = await getJson(
+      '/api/service-categories',
+      queryParameters: params.isNotEmpty ? params : null,
+      authenticated: false,
+    );
+
+    final list = (response['categories'] as List?) ?? <dynamic>[];
+    return list.whereType<Map>().cast<Map<String, dynamic>>().toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getLocalityProviders(
+    String localityId, {
+    String? categoryId,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final params = <String, String>{
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+    };
+    if (categoryId != null) params['category_id'] = categoryId;
+
+    final response = await getJson(
+      '/api/localities/$localityId/providers',
+      queryParameters: params,
+      authenticated: false,
+    );
+
+    final list = (response['providers'] as List?) ?? <dynamic>[];
+    return list.whereType<Map>().cast<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>> postOnboardLocality({
+    required String localityId,
+    List<String> serviceZoneIds = const [],
+    List<String> serviceCategoryIds = const [],
+    double serviceAreaRadiusKm = 3.0,
+  }) async {
+    return postJson(
+      '/api/providers/onboard-locality',
+      body: {
+        'locality_id': localityId,
+        'service_zone_ids': serviceZoneIds,
+        'service_category_ids': serviceCategoryIds,
+        'service_area_radius_km': serviceAreaRadiusKm,
+      },
+      authenticated: true,
+    );
+  }
+
   Future<Map<String, dynamic>> uploadFile(
     String path, {
     required String filePath,
