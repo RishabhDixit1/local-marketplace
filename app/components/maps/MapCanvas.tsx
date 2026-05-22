@@ -2,6 +2,7 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl from "maplibre-gl";
 import AnimatedMarker from "@/app/components/maps/AnimatedMarker";
 import RealtimeLayer from "@/app/components/maps/RealtimeLayer";

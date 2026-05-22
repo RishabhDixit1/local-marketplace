@@ -1,26 +1,42 @@
 ﻿"use client";
 
 import type { User } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
-  Clock3,
   Mail,
   LogIn,
   ShieldCheck,
+  MapPin,
+  X,
+  Star,
+  Search,
+  Phone,
+  Zap,
+  Store,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
-import {
-  ensureProfileForUser,
-  resolveCurrentProfileDestination,
-} from "@/lib/profile/client";
 import ServiQLogo from "@/app/components/ServiQLogo";
-import { appName, appTagline } from "@/lib/branding";
+import { appName } from "@/lib/branding";
+import {
+  CROSSINGS_REPUBLIK_COORDS,
+  LOCAL_SOCIETIES,
+} from "@/lib/demo/crossings-republik";
 
 type AuthMode = "login" | "email";
-const isDevelopment = process.env.NODE_ENV !== "production";
+
+interface ProviderCardData {
+  id: string; name: string; location: string; lat: number | null; lng: number | null;
+  avatarUrl: string; bio: string; role: string; services: string[];
+  avgRating: number | null; reviewCount: number; serviceCount: number;
+  completedJobs: number; responseMinutes: number | null; isOnline: boolean;
+  priceMin: number | null; priceMax: number | null; distanceKm: number | null;
+  verified: boolean;
+  listings: { id: string; title: string; price: number | null }[];
+}
 
 const COUNTRY_CODE_OPTIONS: Array<{ code: string; label: string; dial: string }> = [
   { code: "IN", label: "India (+91)", dial: "+91" },
@@ -39,33 +55,121 @@ const cleanDialCode = (value: string) => {
   if (!raw) return "";
   return raw.startsWith("+") ? raw : `+${raw}`;
 };
-
 const cleanPhoneDigits = (value: string) => value.replace(/\D/g, "");
-
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
 const toE164Phone = (dialCodeRaw: string, phoneRaw: string): string | null => {
   const dialCode = cleanDialCode(dialCodeRaw);
   const dialDigits = dialCode.replace("+", "");
   let subscriberDigits = cleanPhoneDigits(phoneRaw);
-
   if (!dialDigits || !subscriberDigits) return null;
-
-  // India-friendly handling for local leading zero.
   if (dialDigits === "91" && subscriberDigits.length === 11 && subscriberDigits.startsWith("0")) {
     subscriberDigits = subscriberDigits.slice(1);
   }
-
   const combinedDigits = `${dialDigits}${subscriberDigits}`;
   if (combinedDigits.length < 8 || combinedDigits.length > 15) return null;
-
   return `+${combinedDigits}`;
 };
 
-export default function LoginPage() {
-  const router = useRouter();
+const CATEGORIES = [
+  { label: "Electrician", icon: "⚡", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+  { label: "Plumber", icon: "🔧", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  { label: "AC Repair", icon: "❄️", color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  { label: "RO Repair", icon: "💧", color: "bg-teal-50 text-teal-700 border-teal-200" },
+  { label: "Carpenter", icon: "🪚", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  { label: "Appliance Repair", icon: "🔌", color: "bg-rose-50 text-rose-700 border-rose-200" },
+  { label: "Mobile Repair", icon: "📱", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { label: "Bike Repair", icon: "🏍️", color: "bg-orange-50 text-orange-700 border-orange-200" },
+  { label: "Hardware Shop", icon: "🏪", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { label: "Electrical Shop", icon: "💡", color: "bg-violet-50 text-violet-700 border-violet-200" },
+];
 
+function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCardData; onContact: (p: ProviderCardData) => void; onSelect: (p: ProviderCardData) => void }) {
+  const priceLabel = provider.priceMin != null
+    ? provider.priceMax != null && provider.priceMax > provider.priceMin
+      ? `₹${provider.priceMin} - ₹${provider.priceMax}`
+      : `From ₹${provider.priceMin}`
+    : null;
+
+  return (
+    <div className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-500)]/30 hover:shadow-md hover:shadow-[var(--brand-500)]/5">
+      <div className="flex items-start gap-3">
+        <button type="button" onClick={() => onSelect(provider)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-50)] text-lg font-bold text-[var(--brand-700)] transition hover:ring-2 hover:ring-[var(--brand-300)]">
+          {provider.name.charAt(0)}
+        </button>
+        <div className="min-w-0 flex-1">
+          <button type="button" onClick={() => onSelect(provider)} className="w-full text-left">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">{provider.name}</h3>
+                <p className="mt-0.5 text-xs text-slate-500">{provider.location || "Crossings Republik"}</p>
+              </div>
+              {provider.verified && (
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">
+                  Verified
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+              {provider.avgRating ? (
+                <span className="flex items-center gap-1">
+                  <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
+                  {provider.avgRating.toFixed(1)} ({provider.reviewCount})
+                </span>
+              ) : null}
+              {provider.responseMinutes ? (
+                <span className="flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-[var(--brand-500)]" />
+                  {provider.responseMinutes} min
+                </span>
+              ) : null}
+              {provider.completedJobs > 0 && (
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                  {provider.completedJobs} jobs
+                </span>
+              )}
+              {provider.distanceKm != null && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-slate-400" />
+                  {provider.distanceKm} km
+                </span>
+              )}
+              {provider.serviceCount > 0 && (
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-slate-400" />
+                  {provider.serviceCount} service{provider.serviceCount === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
+            {provider.bio && (
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-500 line-clamp-2">
+                {provider.bio}
+              </p>
+            )}
+          </button>
+          <div className="mt-3 flex items-center justify-between">
+            {priceLabel && (
+              <span className="text-sm font-bold text-[var(--brand-700)]">{priceLabel}</span>
+            )}
+            <button
+              type="button"
+              onClick={() => onContact(provider)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-[11px] font-semibold text-white transition hover:bg-[var(--brand-700)]"
+            >
+              <Phone className="h-3 w-3" />
+              Contact
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function PublicLandingPage() {
+  const router = useRouter();
   const [authMode, setAuthMode] = useState<AuthMode>("email");
+  const [showAuth, setShowAuth] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
@@ -73,6 +177,39 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showHowItWorks, setShowHowItWorks] = useState(true);
+  const [contactProvider, setContactProvider] = useState<ProviderCardData | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderCardData | null>(null);
+  const [realProviders, setRealProviders] = useState<ProviderCardData[]>([]);
+  const [realProvidersLoading, setRealProvidersLoading] = useState(true);
+  const [realProvidersError, setRealProvidersError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const contactProviderRef = useRef(contactProvider);
+  contactProviderRef.current = contactProvider;
+
+  useEffect(() => {
+    let active = true;
+    setRealProvidersError(null);
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set("category", selectedCategory);
+    fetch(`/api/community/providers-by-category${params.toString() ? `?${params.toString()}` : ""}`)
+      .then((r) => { if (!r.ok) throw new Error(`Request failed (${r.status})`); return r.json(); })
+      .then((data) => {
+        if (!active) return;
+        setRealProviders((data.providers || []) as ProviderCardData[]);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setRealProviders([]);
+        setRealProvidersError(err instanceof Error ? err.message : "Something went wrong");
+      })
+      .finally(() => {
+        if (active) setRealProvidersLoading(false);
+      });
+    return () => { active = false; };
+  }, [selectedCategory, retryCount]);
 
   const resetAuthFlow = useCallback((nextMode: AuthMode) => {
     setAuthMode(nextMode);
@@ -82,537 +219,568 @@ export default function LoginPage() {
     setLoading(false);
   }, []);
 
-  const loadingLabel = useMemo(() => {
-    if (!loading) return "";
-    if (authMode === "email") return "Sending magic link...";
-    return "Signing you in...";
-  }, [authMode, loading]);
+  const providers = useMemo(() => {
+    const list = realProviders.length > 0 ? realProviders : [];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.bio && p.bio.toLowerCase().includes(q)) ||
+          (p.services && p.services.some((s: string) => s.toLowerCase().includes(q)))
+      );
+    }
+    return list;
+  }, [searchQuery, realProviders]);
 
   const completeAuth = useCallback(
     async (user: User) => {
+      const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
       const profile = await ensureProfileForUser(user).catch(() => null);
-      router.replace(resolveCurrentProfileDestination(profile));
+      const target = contactProviderRef.current
+        ? `/dashboard?providerId=${contactProviderRef.current.id}`
+        : resolveCurrentProfileDestination(profile);
+      setContactProvider(null);
+      setSelectedProvider(null);
+      router.replace(target);
     },
     [router]
   );
 
   useEffect(() => {
     let active = true;
-
     const bootstrapSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       if (!active || !session?.user) return;
       await completeAuth(session.user);
     };
-
     void bootstrapSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       if (event === "SIGNED_IN" && session?.user) {
         void completeAuth(session.user);
       }
     });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
+    return () => { active = false; subscription.unsubscribe(); };
   }, [completeAuth]);
-
-  const loginWithPassword = async () => {
-    setErrorMessage("");
-    setInfoMessage("");
-
-    const e164 = toE164Phone(countryCode, phoneNumber);
-    if (!e164) {
-      setErrorMessage("Select a country code and enter a valid phone number.");
-      return;
-    }
-
-    const secret = password.trim();
-    if (!secret) {
-      setErrorMessage("Enter your password.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        phone: e164,
-        password: secret,
-      });
-
-      if (error) throw error;
-
-      const user = data.user || (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        throw new Error("Sign-in succeeded, but your session was not created. Try again.");
-      }
-
-      await completeAuth(user);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to sign in right now.";
-      setErrorMessage(
-        /invalid|credential|password|not found/i.test(message)
-          ? "Phone or password is incorrect. If you're not sure, use Email Link instead."
-          : message
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const sendEmailLink = async () => {
     setErrorMessage("");
     setInfoMessage("");
-
     const email = emailAddress.trim().toLowerCase();
-    if (!isEmailLike(email)) {
-      setErrorMessage("Enter a valid email address.");
-      return;
-    }
-
+    if (!isEmailLike(email)) { setErrorMessage("Enter a valid email address."); return; }
     setLoading(true);
-
     try {
       const response = await fetch("/api/auth/send-link", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
-      if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error || "Unable to send magic link right now.");
-      }
-
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Unable to send magic link.");
       setInfoMessage(`Magic link sent to ${email}. Open the email to continue.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to send magic link right now.";
-      if (/rate|too many/i.test(message)) {
-        setErrorMessage("Too many requests. Wait 60 seconds and try again.");
-      } else {
-        setErrorMessage(message);
-      }
-    } finally {
-      setLoading(false);
-    }
+      const message = error instanceof Error ? error.message : "Unable to send magic link.";
+      if (/rate|too many/i.test(message)) setErrorMessage("Too many requests. Wait 60 seconds.");
+      else setErrorMessage(message);
+    } finally { setLoading(false); }
+  };
+
+  const loginWithPassword = async () => {
+    setErrorMessage("");
+    setInfoMessage("");
+    const e164 = toE164Phone(countryCode, phoneNumber);
+    if (!e164) { setErrorMessage("Select a country code and enter a valid phone number."); return; }
+    const secret = password.trim();
+    if (!secret) { setErrorMessage("Enter your password."); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password: secret });
+      if (error) throw error;
+      const user = data.user || (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error("Sign-in succeeded, but session was not created.");
+      await completeAuth(user);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to sign in.";
+      setErrorMessage(/invalid|credential|password|not found/i.test(message)
+        ? "Phone or password is incorrect."
+        : message
+      );
+    } finally { setLoading(false); }
   };
 
   const emailLinkSent = authMode === "email" && infoMessage.startsWith("Magic link sent");
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#070e1b]">
-      {/* Ambient blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute left-0 top-0 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-teal-500/[0.07] blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3 rounded-full bg-cyan-400/[0.05] blur-[100px]" />
-        <div className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/[0.04] blur-[80px]" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
-
-        {/* ══════════════════════════════════════════
-            AUTH PANEL — mobile first (full-width),
-            right column on desktop (46%)
-        ══════════════════════════════════════════ */}
-        <div className="order-1 flex min-h-screen w-full flex-col items-center justify-center px-5 py-12 lg:order-2 lg:w-[46%] lg:border-l lg:border-white/[0.05] lg:px-12 lg:py-16">
-
-          {/* Mobile-only logo */}
-          <div className="mb-8 w-full max-w-[420px] lg:hidden">
-            <ServiQLogo
-              href="/"
-              ariaLabel="ServiQ home"
-              showTagline
-              wordmarkClassName="text-white"
-              taglineClassName="text-white/50"
-              markClassName="border-white/20 bg-white/10 text-white shadow-black/30"
-              markDotClassName="bg-cyan-400"
-              qClassName="text-cyan-400"
-              qRingClassName="border-cyan-400/50"
-            />
+    <div className="relative min-h-screen bg-white">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <ServiQLogo href="/" ariaLabel="ServiQ home" />
+            <div className="hidden sm:flex items-center gap-1.5 rounded-xl bg-[var(--brand-50)] px-3 py-1.5 text-[11px] font-medium text-[var(--brand-700)]">
+              <MapPin className="h-3.5 w-3.5" />
+              {CROSSINGS_REPUBLIK_COORDS.label}
+            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowAuth(true); setContactProvider(null); }}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <div className="w-full max-w-[420px]">
-            {/* Glass card */}
-            <div className="overflow-hidden rounded-[28px] border border-white/[0.1] bg-white/[0.05] shadow-[0_40px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-              <div className="p-6 sm:p-8">
-
-                {/* Card heading */}
-                <div className="mb-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">
-                    Secure Access
-                  </p>
-                  <h2 className="brand-display mt-1.5 text-2xl font-semibold leading-tight text-white">
-                    Welcome to {appName}
-                  </h2>
-                  <p className="mt-1.5 text-[0.8rem] leading-[1.55] text-white/45">
-                    {authMode === "email"
-                      ? "Start with email link sign-in. It works for new and existing users and keeps the first step simple."
-                      : "Use phone + password only if you already have an account password."}
-                  </p>
-                </div>
-
-                {/* Tab bar */}
-                <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1">
-                  {(
-                    [
-                      { mode: "email" as const, label: "Email Link", icon: Mail },
-                      { mode: "login" as const, label: "Password", icon: LogIn },
-                    ] as const
-                  ).map(({ mode, label, icon: Icon }) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => resetAuthFlow(mode)}
-                      className={`relative inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[9.5px] font-semibold transition ${
-                        authMode === mode ? "bg-white text-slate-900 shadow-md" : "text-white/40 hover:text-white/70"
-                      }`}
-                    >
-                      <Icon size={12} />
-                      <span>{label}</span>
-                      {mode === "email" && authMode !== "email" && (
-                        <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-cyan-400" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="space-y-3">
-
-                  {/* ── EMAIL MAGIC LINK ── */}
-                  {authMode === "email" ? (
-                    emailLinkSent ? (
-                      <div className="space-y-4 py-2 text-center">
-                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
-                          <CheckCircle2 className="h-6 w-6 text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-white">Check Your Email</p>
-                          <p className="mt-1 text-xs leading-5 text-white/45">
-                            We emailed a secure login link to{" "}
-                            <span className="font-medium text-white/75">{emailAddress}</span>
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <a
-                            href="https://mail.google.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
-                          >
-                            Open Gmail <ArrowRight size={13} />
-                          </a>
-                          <a
-                            href="https://outlook.live.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
-                          >
-                            Open Outlook <ArrowRight size={13} />
-                          </a>
-                        </div>
-                        <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
-                          <p className="text-[11px] leading-[1.6] text-white/35">
-                            Link valid for 24&nbsp;hours. Check spam if you don&apos;t see it.{" "}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInfoMessage("");
-                                setErrorMessage("");
-                              }}
-                              className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300"
-                            >
-                              Use a different email
-                            </button>{" "}
-                            or{" "}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInfoMessage("");
-                                void sendEmailLink();
-                              }}
-                              className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300"
-                            >
-                              resend
-                            </button>
-                            .
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-semibold text-white/60">
-                            Email address
-                          </label>
-                          <input
-                            type="email"
-                            inputMode="email"
-                            autoComplete="email"
-                            placeholder="you@example.com"
-                            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
-                            value={emailAddress}
-                            onChange={(e) => setEmailAddress(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") void sendEmailLink();
-                            }}
-                          />
-                          {isDevelopment ? (
-                            <p className="text-[11px] leading-[1.5] text-amber-300/80">
-                              Local development uses live Supabase email delivery. Use a real inbox and avoid repeated test sends to typo or placeholder addresses.
-                            </p>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={sendEmailLink}
-                          disabled={loading}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          {loading ? "Sending\u2026" : "Send Login Link"}
-                          {!loading && <ArrowRight size={15} />}
-                        </button>
-                        <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5">
-                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
-                          <p className="text-[11px] leading-[1.55] text-white/40">
-                            Recommended for launch. Works for new and returning users with no password setup friction.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => resetAuthFlow("login")}
-                          className="w-full text-center text-xs font-medium text-white/30 transition hover:text-white/60"
-                        >
-                          Already have a password? Use phone sign-in &rarr;
-                        </button>
-                      </>
-                    )
-                  ) : null}
-
-                  {/* ── PHONE + PASSWORD LOGIN ── */}
-                  {authMode === "login" ? (
-                    <>
-                      <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-[1.55] text-white/40">
-                        Existing-password login only. New accounts should start with Email Link.
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold text-white/60">
-                          Phone number
-                        </label>
-                        <div className="grid grid-cols-[9rem_1fr] gap-2">
-                          <select
-                            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-3 py-3 text-sm text-white/80 outline-none transition hover:border-white/20"
-                            value={countryCode}
-                            onChange={(e) => setCountryCode(e.target.value)}
-                          >
-                            {COUNTRY_CODE_OPTIONS.map((opt) => (
-                              <option key={opt.code} value={opt.dial} className="bg-slate-900 text-white">
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            placeholder="9876543210"
-                            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
-                            value={phoneNumber}
-                            onChange={(e) =>
-                              setPhoneNumber(cleanPhoneDigits(e.target.value).slice(0, 14))
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold text-white/60">Password</label>
-                        <input
-                          type="password"
-                          placeholder="Your account password"
-                          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") void loginWithPassword();
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={loginWithPassword}
-                        disabled={loading}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98] disabled:opacity-55"
-                      >
-                        {loading ? "Signing in\u2026" : "Sign In"}
-                        {!loading && <ArrowRight size={15} />}
-                      </button>
-                      <div className="flex items-center gap-3">
-                        <div className="h-px flex-1 bg-white/[0.08]" />
-                        <span className="text-[10.5px] text-white/25">recommended</span>
-                        <div className="h-px flex-1 bg-white/[0.08]" />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => resetAuthFlow("email")}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-white/55 transition hover:bg-white/[0.08] hover:text-white/80"
-                      >
-                        <Mail size={13} />
-                        Use Email Link instead
-                      </button>
-                    </>
-                  ) : null}
-
-                  {/* Status messages */}
-                  {infoMessage && !emailLinkSent ? (
-                    <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">
-                      {infoMessage}
-                    </div>
-                  ) : null}
-                  {errorMessage ? (
-                    <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">
-                      {errorMessage}
-                    </div>
-                  ) : null}
-                  {loading && loadingLabel ? (
-                    <p className="text-[11px] text-white/30">{loadingLabel}</p>
-                  ) : null}
-                </div>
+      <main className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        {/* ── Dismissible "How it works" banner ── */}
+        {showHowItWorks && (
+          <div className="relative mt-4 overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setShowHowItWorks(false)}
+              className="absolute right-3 top-3 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+              <span className="text-sm font-bold text-slate-900">How {appName} works</span>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
+                <span className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">1</span>
+                  Browse nearby providers
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">2</span>
+                  Contact & compare
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">3</span>
+                  Get work done
+                </span>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Footer */}
-            <p className="mt-5 text-center text-[11px] text-white/20">
-              {appName} &mdash; Built for local communities &middot; Powered by Supabase &amp; Next.js
-            </p>
+        {/* ── Hero search ── */}
+        <div className="mt-8 text-center sm:mt-12">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+            What do you need done?
+          </h1>
+          <p className="mt-2 text-sm text-slate-500 sm:text-base">
+            Find trusted providers near you in Crossings Republik
+          </p>
+          <div className="mx-auto mt-6 max-w-2xl">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder='Try "AC repair", "electrician", "plumber nearby"...'
+                className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-slate-900 outline-none shadow-sm transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
+              />
+            </div>
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════
-            HERO PANEL — desktop only, left col (54%)
-        ══════════════════════════════════════════ */}
-        <div className="relative order-2 hidden flex-col overflow-hidden px-14 pb-14 pt-14 text-white lg:order-1 lg:flex lg:w-[54%] lg:min-h-screen lg:justify-between">
-          {/* Grid texture */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            aria-hidden="true"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-              backgroundSize: "52px 52px",
-            }}
-          />
-          {/* Cyan glow */}
-          <div
-            className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-cyan-400/[0.12] blur-3xl"
-            aria-hidden="true"
-          />
+        {/* ── Category pills ── */}
+        <div className="mt-8">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.label}
+                type="button"
+                onClick={() => setSelectedCategory(selectedCategory === cat.label ? null : cat.label)}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                  selectedCategory === cat.label
+                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                    : cat.color + " hover:shadow-sm"
+                }`}
+              >
+                <span className="text-sm">{cat.icon}</span>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* Top section: logo + hero copy + steps */}
-          <div className="relative z-10 flex flex-col gap-10">
-            <ServiQLogo
-              href="/"
-              ariaLabel="ServiQ home"
-              showTagline
-              wordmarkClassName="text-white"
-              taglineClassName="text-white/50"
-              markClassName="border-white/20 bg-white/10 text-white shadow-black/30"
-              markDotClassName="bg-cyan-400"
-              qClassName="text-cyan-400"
-              qRingClassName="border-cyan-400/50"
+        {/* ── Results count ── */}
+        <div className="mt-8 flex items-center justify-between">
+          <p className="text-sm text-slate-500">
+            {providers.length} {providers.length === 1 ? "provider" : "providers"} near you
+          </p>
+          {selectedCategory && (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className="text-xs font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]"
+            >
+              Clear filter
+            </button>
+          )}
+        </div>
+
+        {/* ── Provider cards grid ── */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {providers.map((provider) => (
+            <ProviderCard
+              key={provider.id}
+              provider={provider}
+              onSelect={(p) => setSelectedProvider(p)}
+              onContact={(p) => {
+                setContactProvider(p);
+                setShowAuth(false);
+              }}
             />
+          ))}
+        </div>
 
+        {providers.length === 0 && !realProvidersLoading && !realProvidersError && (
+          <div className="mt-12 text-center">
+            <p className="text-sm text-slate-500">No providers found. Try a different search or category.</p>
+          </div>
+        )}
+
+        {realProvidersError && (
+          <div className="mt-12 text-center">
+            <p className="text-sm text-rose-500">Could not load providers. {realProvidersError}</p>
+            <button
+              type="button"
+              onClick={() => setRetryCount((c) => c + 1)}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+            >Retry</button>
+          </div>
+        )}
+
+        {realProvidersLoading && (
+          <div className="mt-12 flex items-center justify-center gap-2 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading providers...
+          </div>
+        )}
+
+        {/* ── CTA: List your business ── */}
+        <div className="mt-12 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
+          <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
+          <h3 className="mt-3 text-lg font-bold text-slate-900">Are you a service provider?</h3>
+          <p className="mt-1 text-sm text-slate-500">List your business on {appName} and get more customers from your neighborhood.</p>
+          <button
+            type="button"
+            onClick={() => { setShowAuth(true); setContactProvider(null); }}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+          ><Store className="h-4 w-4" /> List Your Business</button>
+        </div>
+
+        {/* ── Location info ── */}
+        <div className="mt-12 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em] text-cyan-400">
-                Trusted For Everyday Urgency
+              <h3 className="text-sm font-bold text-slate-900">Serving Crossings Republik & nearby areas</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {LOCAL_SOCIETIES.slice(0, 5).join(", ")}, and more
               </p>
-              <h1 className="brand-display mt-4 text-[2.7rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white xl:text-[3rem]">
-                Reliable help
-                <br />
-                for real life,
-                <br />
-                delivered by
-                <br />
-                people nearby.
-              </h1>
-              <p className="mt-4 max-w-xs text-[0.88rem] leading-relaxed text-white/50">
-                {appTagline}
-              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <MapPin className="h-3.5 w-3.5" />
+              Ghaziabad, Uttar Pradesh 201016
+            </div>
+          </div>
+        </div>
 
-              {/* How it works — 3 steps */}
-              <div className="mt-8 flex items-start">
-                {[
-                  { step: "01", title: "Post your need", desc: "Describe it in seconds." },
-                  { step: "02", title: "Get matched", desc: "Nearby providers respond." },
-                  { step: "03", title: "Track & complete", desc: "Real-time workflow." },
-                ].map((item, idx) => (
-                  <div key={item.step} className="flex items-start">
-                    <div className="flex flex-col gap-1 pr-6">
-                      <span className="text-[10px] font-bold tracking-widest text-cyan-500/70">
-                        {item.step}
-                      </span>
-                      <span className="text-xs font-semibold text-white/80">{item.title}</span>
-                      <span className="text-[11px] leading-4 text-white/40">{item.desc}</span>
-                    </div>
-                    {idx < 2 && (
-                      <div className="mb-auto mr-6 mt-3 h-px w-5 shrink-0 bg-gradient-to-r from-white/20 to-transparent" />
+        {/* ── Footer ── */}
+        <footer className="mt-12 border-t border-slate-200 pt-8 text-center">
+          <p className="text-xs text-slate-400">
+            {appName} &mdash; Crossings Republik&apos;s local marketplace &middot; Built for the community
+          </p>
+        </footer>
+      </main>
+
+      {/* ── Provider Detail Modal ── */}
+      {selectedProvider && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 px-4 pt-[8vh] pb-8 backdrop-blur-sm" onClick={() => setSelectedProvider(null)}>
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setSelectedProvider(null)}
+              className="absolute right-4 top-4 z-10 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="p-6 sm:p-8">
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-50)] text-2xl font-bold text-[var(--brand-700)]">
+                  {selectedProvider.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-slate-900">{selectedProvider.name}</h2>
+                    {selectedProvider.verified && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>
                     )}
                   </div>
-                ))}
+                  <p className="mt-0.5 text-sm text-slate-500">{selectedProvider.location || "Crossings Republik"}</p>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Bottom section: 2×2 feature cards */}
-          <div className="relative z-10 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
-              <div className="mb-2 flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
-                <p className="text-[12.5px] font-semibold text-white/90">Verified ecosystem</p>
+              {/* Trust signals summary */}
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {selectedProvider.avgRating != null && (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                    <Star className="mx-auto h-4 w-4 text-amber-400" fill="currentColor" />
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.avgRating.toFixed(1)}</p>
+                    <p className="text-[10px] text-slate-500">{selectedProvider.reviewCount} reviews</p>
+                  </div>
+                )}
+                {selectedProvider.completedJobs > 0 && (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                    <CheckCircle2 className="mx-auto h-4 w-4 text-slate-500" />
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.completedJobs}</p>
+                    <p className="text-[10px] text-slate-500">jobs done</p>
+                  </div>
+                )}
+                {selectedProvider.responseMinutes != null && (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                    <Zap className="mx-auto h-4 w-4 text-[var(--brand-500)]" />
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.responseMinutes} min</p>
+                    <p className="text-[10px] text-slate-500">response</p>
+                  </div>
+                )}
+                {selectedProvider.distanceKm != null && (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                    <MapPin className="mx-auto h-4 w-4 text-slate-500" />
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.distanceKm}</p>
+                    <p className="text-[10px] text-slate-500">km away</p>
+                  </div>
+                )}
               </div>
-              <p className="text-[11px] leading-[1.6] text-white/45">
-                Every profile carries trust signals before conversations start.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
-              <div className="mb-2 flex items-center gap-2">
-                <Clock3 className="h-3.5 w-3.5 text-cyan-400" />
-                <p className="text-[12.5px] font-semibold text-white/90">Fast turnaround</p>
+
+              {/* Bio */}
+              {selectedProvider.bio && (
+                <div className="mt-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">About</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{selectedProvider.bio}</p>
+                </div>
+              )}
+
+              {/* Services */}
+              {selectedProvider.services && selectedProvider.services.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Services</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedProvider.services.map((s) => (
+                      <span key={s} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Listings */}
+              {selectedProvider.listings && selectedProvider.listings.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Available Listings</p>
+                  <div className="mt-2 space-y-2">
+                    {selectedProvider.listings.map((l) => (
+                      <div key={l.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5">
+                        <span className="text-sm text-slate-700">{l.title}</span>
+                        {l.price != null && <span className="text-sm font-bold text-[var(--brand-700)]">₹{l.price}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact action */}
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setContactProvider(selectedProvider); setSelectedProvider(null); }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
+                ><Phone className="h-4 w-4" /> Contact</button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProvider(null)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >Close</button>
               </div>
-              <p className="text-[11px] leading-[1.6] text-white/45">
-                Post needs in seconds and get responses from people nearby.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
-              <div className="mb-2 flex items-center gap-2">
-                <Mail className="h-3.5 w-3.5 text-cyan-400" />
-                <p className="text-[12.5px] font-semibold text-white/90">No-friction access</p>
-              </div>
-              <p className="text-[11px] leading-[1.6] text-white/45">
-                Sign in with a magic link &mdash; no password required to get started.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 backdrop-blur-sm transition hover:bg-white/[0.06]">
-              <div className="mb-2 flex items-center gap-2">
-                <CheckCircle2 className="h-3.5 w-3.5 text-cyan-400" />
-                <p className="text-[12.5px] font-semibold text-white/90">End-to-end workflow</p>
-              </div>
-              <p className="text-[11px] leading-[1.6] text-white/45">
-                From posting a need to real-time order tracking, all in one place.
-              </p>
             </div>
           </div>
         </div>
+      )}
 
-      </div>
+      {/* ── Auth Modal ── */}
+      {(showAuth || contactProvider) && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 px-4 pt-[10vh] pb-8 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#070e1b] shadow-2xl">
+            <button
+              type="button"
+              onClick={() => { setShowAuth(false); setContactProvider(null); }}
+              className="absolute right-4 top-4 rounded-xl p-1.5 text-white/40 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="p-6 sm:p-8">
+              {contactProvider ? (
+                <div className="mb-6">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">Contact Provider</p>
+                  <h2 className="brand-display mt-1.5 text-xl font-semibold text-white">
+                    {contactProvider.name}
+                  </h2>
+                  <p className="mt-1 text-xs text-white/50">
+                    {contactProvider.services?.[0] || contactProvider.role} &middot; {contactProvider.location}
+                  </p>
+                  <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+                    <p className="text-xs text-white/60">Sign in or create an account to contact this provider and get their phone number.</p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mb-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">Secure Access</p>
+                <h2 className="brand-display mt-1.5 text-2xl font-semibold text-white">
+                  Welcome to {appName}
+                </h2>
+                <p className="mt-1.5 text-[0.8rem] leading-[1.55] text-white/45">
+                  {authMode === "email"
+                    ? "Start with email link sign-in."
+                    : "Use phone + password if you already have an account."}
+                </p>
+              </div>
+
+              {/* Tab bar */}
+              <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1">
+                {([{ mode: "email" as const, label: "Email Link", icon: Mail },
+                   { mode: "login" as const, label: "Password", icon: LogIn }] as const).map(({ mode, label, icon: Icon }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => resetAuthFlow(mode)}
+                    className={`relative inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[9.5px] font-semibold transition ${
+                      authMode === mode ? "bg-white text-slate-900 shadow-md" : "text-white/40 hover:text-white/70"
+                    }`}
+                  >
+                    <Icon size={12} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {authMode === "email" ? (
+                  emailLinkSent ? (
+                    <div className="space-y-4 py-2 text-center">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Check Your Email</p>
+                        <p className="mt-1 text-xs leading-5 text-white/45">
+                          We emailed a secure login link to{" "}
+                          <span className="font-medium text-white/75">{emailAddress}</span>
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                        >Open Gmail <ArrowRight size={13} /></a>
+                        <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                        >Open Outlook <ArrowRight size={13} /></a>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
+                        <p className="text-[11px] leading-[1.6] text-white/35">
+                          Link valid for 24&nbsp;hours.{" "}
+                          <button type="button" onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
+                            className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">Use a different email</button>{" "}
+                          or{" "}
+                          <button type="button" onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
+                            className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">resend</button>.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-white/60">Email address</label>
+                        <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+                          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
+                          value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") void sendEmailLink(); }}
+                        />
+                      </div>
+                      <button type="button" onClick={sendEmailLink} disabled={loading}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                      >{loading ? "Sending\u2026" : "Send Login Link"}{!loading && <ArrowRight size={15} />}</button>
+                      <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
+                        <p className="text-[11px] leading-[1.55] text-white/40">Recommended. No password needed.</p>
+                      </div>
+                      <button type="button" onClick={() => resetAuthFlow("login")}
+                        className="w-full text-center text-xs font-medium text-white/30 transition hover:text-white/60"
+                      >Already have a password? Use phone sign-in &rarr;</button>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-[1.55] text-white/40">
+                      Existing-password login only. New accounts should start with Email Link.
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-white/60">Phone number</label>
+                      <div className="grid grid-cols-[9rem_1fr] gap-2">
+                        <select className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-3 py-3 text-sm text-white/80 outline-none transition hover:border-white/20"
+                          value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
+                        >{COUNTRY_CODE_OPTIONS.map((opt) => (
+                          <option key={opt.code} value={opt.dial} className="bg-slate-900 text-white">{opt.label}</option>
+                        ))}</select>
+                        <input type="tel" inputMode="numeric" placeholder="9876543210"
+                          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
+                          value={phoneNumber} onChange={(e) => setPhoneNumber(cleanPhoneDigits(e.target.value).slice(0, 14))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-white/60">Password</label>
+                      <input type="password" placeholder="Your account password"
+                        className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
+                        value={password} onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") void loginWithPassword(); }}
+                      />
+                    </div>
+                    <button type="button" onClick={loginWithPassword} disabled={loading}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98] disabled:opacity-55"
+                    >{loading ? "Signing in\u2026" : "Sign In"}{!loading && <ArrowRight size={15} />}</button>
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-white/[0.08]" />
+                      <span className="text-[10.5px] text-white/25">recommended</span>
+                      <div className="h-px flex-1 bg-white/[0.08]" />
+                    </div>
+                    <button type="button" onClick={() => resetAuthFlow("email")}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-white/55 transition hover:bg-white/[0.08] hover:text-white/80"
+                    ><Mail size={13} /> Use Email Link instead</button>
+                  </>
+                )}
+
+                {infoMessage && !emailLinkSent ? (
+                  <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">{infoMessage}</div>
+                ) : null}
+                {errorMessage ? (
+                  <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">{errorMessage}</div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

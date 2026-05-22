@@ -36,19 +36,14 @@ import {
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   AlertTriangle,
-  BriefcaseBusiness,
-  Bookmark,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
-  Home,
   LogOut,
   MessageCircle,
-  Newspaper,
-  Pencil,
   Plus,
-  Settings,
   User,
+  Store,
 } from "lucide-react";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -69,18 +64,15 @@ const CartDrawer = dynamic(
 );
 
 const baseNavigationTabs = [
-  { name: "Home", path: "/dashboard/welcome", icon: Home },
-  { name: "Find Help", path: "/dashboard", icon: Newspaper },
-  { name: "Manage Tasks", path: "/dashboard/tasks", icon: ClipboardList },
-  { name: "Grow Business", path: "/dashboard/provider", icon: BriefcaseBusiness },
+  { name: "Market", path: "/dashboard", icon: Store },
+  { name: "My Work", path: "/dashboard/tasks", icon: ClipboardList },
+  { name: "Profile", path: "/dashboard/profile", icon: User },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
 
 const isNavigationTabActive = (pathname: string, path: string) =>
-  path === "/dashboard/provider"
-    ? pathname === path || pathname.startsWith("/dashboard/provider/")
-    : pathname === path;
+  pathname === path;
 
 export default function DashboardLayout({
   children,
@@ -189,15 +181,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         : null;
   const isChatRouteActive = pathname === "/dashboard/chat";
   const isFeedLandingRoute =
-    pathname === "/dashboard" || pathname === "/dashboard/welcome";
+    pathname === "/dashboard";
   const hideFloatingPostAction =
     pathname.startsWith("/dashboard/chat") ||
-    pathname.startsWith("/dashboard/people") ||
     pathname.startsWith("/dashboard/tasks") ||
-    pathname.startsWith("/dashboard/provider") ||
-    pathname.startsWith("/dashboard/notifications") ||
     pathname.startsWith("/dashboard/create_post") ||
-    pathname.startsWith("/dashboard/launchpad") ||
     (desktopNavAutoCollapsed && isFeedLandingRoute);
   const shellIconButtonClassName =
     "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
@@ -538,45 +526,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => {
                     setShowUserMenu(false);
-                    router.push("/dashboard/saved");
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Bookmark className="h-4 w-4 shrink-0 text-slate-400" />
-                  Saved
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
                     router.push(myProfileHref);
                   }}
                   className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
                 >
                   <User className="h-4 w-4 shrink-0 text-slate-400" />
                   {publicProfileMenuLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    router.push("/dashboard/profile");
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Pencil className="h-4 w-4 shrink-0 text-slate-400" />
-                  Edit Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    router.push("/dashboard/settings");
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Settings className="h-4 w-4 shrink-0 text-slate-400" />
-                  Settings
                 </button>
                 <div className="my-1 border-t border-slate-100" />
                 <button
@@ -614,14 +569,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <ServiQLogo
                     compact
                     markOnly
-                    href="/dashboard/welcome"
-                    ariaLabel="Open Welcome dashboard"
+                    href="/dashboard"
+                    ariaLabel="Open Market dashboard"
                   />
                 ) : (
                   <ServiQLogo
                     className="max-w-[220px]"
-                    href="/dashboard/welcome"
-                    ariaLabel="Open Welcome dashboard"
+                    href="/dashboard"
+                    ariaLabel="Open Market dashboard"
                   />
                 )}
               </div>
@@ -699,47 +654,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   : "space-y-2.5 px-3 py-3"
               }`}
             >
-              <Link
-                href="/dashboard/settings"
-                title={desktopNavCollapsed ? "Settings" : undefined}
-                className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-[var(--brand-500)]/45 hover:text-slate-900 ${
-                  desktopNavCollapsed
-                    ? "justify-center px-3 py-3"
-                    : "gap-3 px-4 py-3"
-                }`}
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5 shrink-0" />
-                {!desktopNavCollapsed && (
-                  <span className="text-sm font-semibold">Settings</span>
-                )}
-              </Link>
-              <button
-                onClick={() => router.push(myProfileHref)}
-                title={desktopNavCollapsed ? "My Profile" : undefined}
-                className={`w-full flex items-center rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors hover:border-[var(--brand-500)]/45 ${
-                  desktopNavCollapsed
-                    ? "justify-center px-3 py-3"
-                    : "gap-3 px-4 py-3"
-                }`}
-                aria-label="Open my profile"
-              >
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-900)]">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                {!desktopNavCollapsed && (
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900">
-                      My Profile
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {myProfileHref === "/dashboard/profile"
-                        ? "Complete profile"
-                        : "View public profile"}
-                    </p>
-                  </div>
-                )}
-              </button>
               <button
                 className={`w-full flex items-center justify-center rounded-2xl bg-slate-900 font-semibold text-white transition-colors hover:bg-slate-800 ${
                   desktopNavCollapsed ? "px-3 py-3" : "gap-2 px-4 py-3"
@@ -768,8 +682,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 <div className="sm:hidden">
                   <ServiQLogo
                     markOnly
-                    href="/dashboard/welcome"
-                    ariaLabel="Open Welcome dashboard"
+                    href="/dashboard"
+                    ariaLabel="Open Market dashboard"
                   />
                 </div>
                 {/* Tablet (sm-lg): compact logo shortcut to Welcome */}
@@ -777,8 +691,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <ServiQLogo
                     compact
                     className="max-w-[180px]"
-                    href="/dashboard/welcome"
-                    ariaLabel="Open Welcome dashboard"
+                    href="/dashboard"
+                    ariaLabel="Open Market dashboard"
                   />
                 </div>
               </div>

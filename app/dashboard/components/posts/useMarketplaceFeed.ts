@@ -124,8 +124,16 @@ export const useMarketplaceFeed = ({ pushToast }: UseMarketplaceFeedParams) => {
       const params = new URLSearchParams(window.location.search);
       const queryParam = params.get("q") || "";
       const focusParam = params.get("focus") || params.get("help_request") || "";
+      const categoryParam = params.get("category") || "";
+      const actionParam = params.get("action") || "";
       if (queryParam.trim()) {
         setFilters((current) => ({ ...current, query: queryParam.trim() }));
+      }
+      if (categoryParam.trim()) {
+        setFilters((current) => ({ ...current, category: categoryParam.trim() }));
+      }
+      if (actionParam.trim()) {
+        // action is stored for UI context but doesn't affect filtering
       }
       if (focusParam.trim()) {
         setFocusItemId(focusParam.trim());

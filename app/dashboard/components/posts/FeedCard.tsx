@@ -15,8 +15,10 @@ import {
   MoreVertical,
   Pencil,
   Share2,
+  Star,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 import type {
@@ -243,6 +245,21 @@ export default function FeedCard({
               <MapPin size={11} />
               {item.distanceLabel}
             </span>
+            {item.responseMinutes > 0 ? (
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <Zap size={10} />
+                ~{item.responseMinutes} min
+              </span>
+            ) : null}
+            {item.completedJobs && item.completedJobs > 0 ? (
+              <span className="shrink-0">{item.completedJobs} jobs</span>
+            ) : null}
+            {item.averageRating && item.averageRating > 0 ? (
+              <span className="inline-flex items-center gap-0.5 shrink-0">
+                <Star className="h-3 w-3 text-amber-400" fill="currentColor" />
+                {item.averageRating.toFixed(1)}
+              </span>
+            ) : null}
             {item.urgent ? <span className="shrink-0 text-rose-600">Urgent</span> : null}
           </div>
         </div>

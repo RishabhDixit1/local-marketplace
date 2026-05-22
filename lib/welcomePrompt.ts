@@ -57,7 +57,7 @@ export const resolveWelcomeCommand = (
   if (/(service|services|listing|listings|storefront|sell|seller|product|products)/.test(normalized)) {
     return {
       kind: "route",
-      href: options.isProvider ? options.providerDefaultHref || "/dashboard/provider/add-service" : "/dashboard/people",
+      href: options.isProvider ? options.providerDefaultHref || "/dashboard" : "/dashboard/people",
     };
   }
 

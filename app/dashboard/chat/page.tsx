@@ -28,6 +28,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import {
   extractPresenceUserIds,
@@ -80,6 +81,7 @@ export default function ChatPage() {
   const searchParamString = searchParams.toString();
   const requestedChatId = searchParams.get("open")?.trim() || null;
   const requestedLiveTalk = searchParams.get("liveTalk") === "1";
+  const requestedProviderId = searchParams.get("providerId")?.trim() || searchParams.get("recipientId")?.trim() || null;
   const draftTemplate = useMemo(
     () => parseChatDraftTemplate(new URLSearchParams(searchParamString)),
     [searchParamString]
@@ -197,6 +199,28 @@ export default function ChatPage() {
     if (!requestedChatId) return;
     setSelectedChat((current) => (current === requestedChatId ? current : requestedChatId));
   }, [requestedChatId]);
+
+  useEffect(() => {
+    if (!requestedProviderId || !userId || requestedChatId) return;
+
+    let active = true;
+    setChatError(null);
+
+    getOrCreateDirectConversationId(supabase, userId, requestedProviderId)
+      .then((conversationId) => {
+        if (!active) return;
+        const params = new URLSearchParams(searchParamString);
+        params.delete("providerId");
+        params.set("open", conversationId);
+        router.replace(buildChatRouteHref(params), { scroll: false });
+      })
+      .catch((err) => {
+        if (!active) return;
+        setChatError(err instanceof Error ? err.message : "Unable to start conversation.");
+      });
+
+    return () => { active = false; };
+  }, [requestedProviderId, userId, requestedChatId, router, searchParamString]);
 
   useEffect(() => {
     setShowEmoticonPicker(false);

@@ -151,26 +151,15 @@ List<_NavDestination> _mainDestinations({
 }) {
   return [
     const _NavDestination(
-      label: 'Home',
+      label: 'Market',
       icon: Icons.home_outlined,
       selectedIcon: Icons.home_rounded,
-    ),
-    const _NavDestination(
-      label: 'People',
-      icon: Icons.people_outline_rounded,
-      selectedIcon: Icons.people_alt_rounded,
     ),
     _NavDestination(
       label: 'Work',
       icon: Icons.assignment_outlined,
       selectedIcon: Icons.assignment_rounded,
-      badgeCount: taskCount,
-    ),
-    _NavDestination(
-      label: 'Inbox',
-      icon: Icons.chat_bubble_outline_rounded,
-      selectedIcon: Icons.chat_bubble_rounded,
-      badgeCount: chatCount,
+      badgeCount: taskCount + chatCount,
     ),
     const _NavDestination(
       label: 'You',

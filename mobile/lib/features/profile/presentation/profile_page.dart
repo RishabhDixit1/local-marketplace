@@ -402,7 +402,7 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: isProvider
                   ? 'Setup, leads, listings, quote readiness'
                   : 'Start provider setup when you are ready',
-              route: AppRoutes.control,
+              route: AppRoutes.profile,
               emphasized: isProvider,
             ),
             _HubTileData(
@@ -410,14 +410,14 @@ class _ProfileCommandHub extends StatelessWidget {
               icon: Icons.visibility_outlined,
               title: 'Public Profile',
               subtitle: 'Preview what nearby people trust first',
-              route: AppRoutes.profilePublic,
+              route: AppRoutes.profile,
             ),
             _HubTileData(
               key: 'profile-tile-edit-profile',
               icon: Icons.edit_outlined,
               title: 'Edit Profile',
               subtitle: 'Name, area, bio, contact, availability',
-              route: AppRoutes.profileEdit,
+              route: AppRoutes.profile,
             ),
             _HubTileData(
               key: 'profile-tile-listings',
@@ -467,7 +467,7 @@ class _ProfileCommandHub extends StatelessWidget {
               icon: Icons.tune_rounded,
               title: 'Settings',
               subtitle: 'Sign-in, location, payout, and account',
-              route: AppRoutes.profileSettings,
+              route: AppRoutes.profile,
             ),
           ],
         ),
@@ -513,9 +513,9 @@ class _ProfileTopActions extends StatelessWidget {
       (
         isProvider ? 'Business AI' : 'Business',
         Icons.auto_awesome_rounded,
-        AppRoutes.control,
+        AppRoutes.profile,
       ),
-      ('Edit Profile', Icons.edit_outlined, AppRoutes.profileEdit),
+      ('Edit Profile', Icons.edit_outlined, AppRoutes.profile),
       ('Inbox', Icons.chat_bubble_outline_rounded, AppRoutes.chat),
       ('Orders', Icons.receipt_long_outlined, AppRoutes.orders),
     ];

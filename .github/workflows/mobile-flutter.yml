@@ -38,7 +38,7 @@ jobs:
         run: flutter test
 
       - name: Build Android (debug)
-        run: flutter build appbundle --debug
+        run: flutter build appbundle
 
       - name: Build iOS (debug, no codesign)
-        run: flutter build ios --debug --no-codesign
+        run: flutter build ios --no-codesign
