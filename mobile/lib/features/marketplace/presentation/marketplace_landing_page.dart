@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../screens/market_zones_screen.dart';
 
 import '../../../core/design_system/design_system.dart';
 import '../../../core/theme/app_theme.dart';
@@ -191,6 +192,21 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 style: TextStyle(fontSize: 14, color: AppColors.inkSubtle)),
             const SizedBox(height: AppSpacing.md),
             _HeroSearchField(controller: _searchController),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketZonesScreen())),
+                icon: const Icon(Icons.explore_rounded, size: 18),
+                label: const Text('Explore Local Zones'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryDeep,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.xl)),
+                ),
+              ),
+            ),
           ],
         ),
       ),
