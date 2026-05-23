@@ -8,42 +8,25 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy source to EC2
-        uses: easingthemes/ssh-deploy@v5
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.EC2_HOST }}
-          REMOTE_USER: ec2-user
-          SOURCE: .
-          TARGET: /home/ec2-user/serviq
-          EXCLUDE: |
-            /node_modules
-            /.next
-            /.git
-            /mobile
-            /docs
-            /supabase
-            /scripts
-            /playwright-report
-            /test-results
-            .env*
-            *.pem
-
-      - name: Build & restart on EC2
-        uses: appleboy/ssh-action@v1
+      - name: Rsync & build on EC2
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
             cd /home/ec2-user/serviq
+            git fetch origin main
+            git reset --hard origin/main
+
             npm ci
             npm run build
             pm2 restart serviq
