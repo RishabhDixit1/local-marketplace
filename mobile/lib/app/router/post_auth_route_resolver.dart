@@ -48,6 +48,8 @@ class MobileProfileReadiness {
 
   bool get hasProviderBasics =>
       completionPercent >= 60 || hasPublishedOfferings || hasContact;
+
+  bool get hasSeekerBasics => hasName && hasLocation;
 }
 
 String? resolveMobileAppRedirect({
@@ -147,7 +149,13 @@ String resolveIntentLandingRoute(
 }) {
   switch (intent) {
     case MobileOnboardingIntent.findHelp:
-      return fromAuthHandoff ? AppRoutes.createNeed : AppRoutes.home;
+      if (fromAuthHandoff) {
+        return AppRoutes.createNeed;
+      }
+      if (profileReadiness?.hasSeekerBasics == false) {
+        return AppRoutes.seekerOnboarding;
+      }
+      return AppRoutes.home;
     case MobileOnboardingIntent.earnNearby:
       if (profileReadiness?.hasProviderBasics == true) {
         return AppRoutes.providerLaunchpad;
@@ -170,6 +178,9 @@ String resolveReturningLandingRoute(MobileProfileReadiness? profileReadiness) {
     return readiness.hasProviderBasics
         ? AppRoutes.providerLaunchpad
         : AppRoutes.providerOnboarding;
+  }
+  if (!readiness.hasSeekerBasics) {
+    return AppRoutes.seekerOnboarding;
   }
   return AppRoutes.home;
 }

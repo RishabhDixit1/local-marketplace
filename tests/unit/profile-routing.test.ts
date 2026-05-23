@@ -13,8 +13,8 @@ describe("resolveAuthenticatedProfilePath", () => {
   });
 
   it("keeps completed profiles on the returning-user landing route", () => {
-    expect(POST_LOGIN_REDIRECT_ROUTE).toBe("/dashboard/welcome");
-    expect(resolveAuthenticatedProfilePath({ onboarding_completed: true })).toBe("/dashboard/welcome");
+    expect(POST_LOGIN_REDIRECT_ROUTE).toBe("/dashboard");
+    expect(resolveAuthenticatedProfilePath({ onboarding_completed: true })).toBe("/dashboard");
   });
 
   it("preserves an explicit next path", () => {

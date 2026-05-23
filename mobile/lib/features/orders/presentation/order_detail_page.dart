@@ -12,6 +12,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../../../shared/components/loading_shimmer.dart';
+import '../../profile/data/profile_repository.dart';
 import '../../quotes/domain/quote_models.dart';
 import '../../tasks/data/task_repository.dart';
 import '../data/order_repository.dart';
@@ -64,6 +65,9 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order marked ${_humanize(status)}.')),
       );
+      if (status == 'completed') {
+        _promptReview();
+      }
     } on ApiException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -80,6 +84,115 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
       if (mounted) {
         setState(() => _busy = false);
       }
+    }
+  }
+
+  Future<void> _promptReview() async {
+    final asyncOrder = ref.read(orderDetailProvider(widget.orderId));
+    final providerId = asyncOrder.hasValue ? asyncOrder.value!.providerId : null;
+    if (providerId == null || providerId.isEmpty) return;
+
+    var rating = 5;
+    var comment = '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20, 4, 20,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'How was your experience?',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final star = index + 1;
+                        return IconButton(
+                          icon: Icon(
+                            star <= rating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: star <= rating
+                                ? AppColors.warning
+                                : AppColors.inkMuted,
+                            size: 36,
+                          ),
+                          onPressed: () =>
+                              setSheetState(() => rating = star),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Review (optional)',
+                        hintText: 'Share your experience...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (v) => comment = v,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () =>
+                            Navigator.of(sheetContext).pop(),
+                        child: const Text('Submit'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    try {
+      await ref.read(profileRepositoryProvider).submitReview(
+        providerId: providerId,
+        rating: rating,
+        comment: comment,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review submitted.')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 

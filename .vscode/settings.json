@@ -5,5 +5,6 @@
         "*.sql": "plaintext",
         "supabase/migrations/*.sql": "plaintext",
         "supabase/*.sql": "plaintext"
-    }
+    },
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

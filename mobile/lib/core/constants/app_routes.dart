@@ -21,6 +21,7 @@ class AppRoutes {
   static const profileEdit = '/app/profile/edit';
   static const profileTrust = '/app/profile/trust';
   static const profileSettings = '/app/profile/settings';
+  static const seekerOnboarding = '/app/seeker-onboarding';
   static const providerOnboarding = '/app/provider-onboarding';
   static const providerLaunchpad = '/app/provider-launchpad';
   static const providerListings = '/app/provider-listings';

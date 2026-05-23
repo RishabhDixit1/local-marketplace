@@ -20,7 +20,7 @@ describe("createMarketplaceReadinessSummary", () => {
 
     expect(summary.stage).toBe("momentum");
     expect(summary.headline).toMatch(/bookable storefront/i);
-    expect(summary.actions[0]?.href).toBe("/dashboard/provider/add-service");
+    expect(summary.actions[0]?.href).toBe("/dashboard");
   });
 
   it("pushes seekers toward posting a need when matches already exist", () => {
@@ -61,6 +61,6 @@ describe("createMarketplaceReadinessSummary", () => {
     });
 
     expect(summary.stage).toBe("market-ready");
-    expect(summary.actions[0]?.href).toBe("/dashboard/provider/orders");
+    expect(summary.actions[0]?.href).toBe("/dashboard");
   });
 });

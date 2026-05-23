@@ -775,7 +775,7 @@ class _ExploreIntentPanel extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
               itemBuilder: (context, index) {
                 final cat = _categories[index];
                 final selected = selectedCategory == cat;
