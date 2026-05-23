@@ -187,7 +187,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _searchCategories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
                   final cat = _searchCategories[index];
                   final selected = _selectedCategory == cat;

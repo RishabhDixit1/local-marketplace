@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/design_system.dart';
@@ -433,6 +434,9 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
 
   void _continue() {
     if (!_validateCurrentStep()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fill in all required fields to continue.')),
+      );
       return;
     }
     switch (_step) {
@@ -450,7 +454,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   void _back() {
     switch (_step) {
       case _LaunchpadStep.basics:
-        Navigator.of(context).maybePop();
+        context.pop();
       case _LaunchpadStep.offers:
         _goToStep(_LaunchpadStep.basics);
       case _LaunchpadStep.aiDraft:

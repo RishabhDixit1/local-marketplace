@@ -2,6 +2,7 @@ import https from "node:https";
 import { Resolver, promises as dnsPromises } from "node:dns";
 import { NextResponse } from "next/server";
 import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
+import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import {
   getLastMagicLinkRequestAt,
   MAGIC_LINK_COOLDOWN_MS,
@@ -258,6 +259,11 @@ export async function POST(request: Request) {
   const email = body.email?.trim().toLowerCase() ?? "";
   if (!isEmailLike(email)) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
+  }
+
+  const rateLimitCheck = await applyRateLimit(null, "auth:send-link", AUTH_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) {
+    return rateLimitCheck.response as NextResponse;
   }
 
   const recipientError = resolveMagicLinkRecipientError(email);

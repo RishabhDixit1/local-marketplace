@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const supabaseHostname = (() => {
   const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
@@ -46,6 +47,37 @@ const images: NonNullable<NextConfig["images"]> = {
   imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
 };
 
+const securityHeaders = [
+  {
+    key: "X-DNS-Prefetch-Control",
+    value: "on",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "DENY",
+  },
+  {
+    key: "X-XSS-Protection",
+    value: "1; mode=block",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+];
+
 const createNextConfig = (phase: string): NextConfig => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   images: {
@@ -63,6 +95,23 @@ const createNextConfig = (phase: string): NextConfig => ({
     ],
   },
   staticPageGenerationTimeout: 120,
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
 });
 
-export default createNextConfig;
+const sentryOptions: Parameters<typeof withSentryConfig>[1] = {
+  org: "serviq",
+  project: "serviq-web",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  disableLogger: true,
+  automaticVercelMonitors: true,
+};
+
+export default withSentryConfig(createNextConfig, sentryOptions);

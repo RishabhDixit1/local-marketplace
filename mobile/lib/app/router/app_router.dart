@@ -14,6 +14,7 @@ import '../../features/chat/presentation/chat_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
+import '../../features/onboarding/presentation/seeker_onboarding_page.dart';
 import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
@@ -146,6 +147,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.control,
         redirect: (context, state) => AppRoutes.profile,
+      ),
+      GoRoute(
+        path: AppRoutes.seekerOnboarding,
+        builder: (context, state) => const SeekerOnboardingPage(),
       ),
       GoRoute(
         path: AppRoutes.providerOnboarding,
