@@ -7,6 +7,7 @@ const staticRoutes = [
   "/dashboard",
   "/dashboard/welcome",
   "/dashboard/explore",
+  "/dashboard/admin",
   "/dashboard/people",
   "/dashboard/tasks",
   "/dashboard/chat",

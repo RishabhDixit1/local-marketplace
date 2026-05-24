@@ -276,5 +276,25 @@ export async function POST(request: Request) {
     return toErrorResponse(500, error.message || "Unable to report feed card.");
   }
 
+  // Increment abuse_reports counter on the reported user's profile
+  void (async () => {
+    try {
+      const svc = createSupabaseAdminClient();
+      if (svc && action.card.focus_id) {
+        const { data: current } = await svc
+          .from("profiles")
+          .select("abuse_reports")
+          .eq("id", action.card.focus_id)
+          .maybeSingle<{ abuse_reports: number }>();
+        await svc
+          .from("profiles")
+          .update({ abuse_reports: (current?.abuse_reports ?? 0) + 1 })
+          .eq("id", action.card.focus_id);
+      }
+    } catch (err) {
+      console.error("[feed-card-interactions] failed to increment abuse_reports", err);
+    }
+  })();
+
   return NextResponse.json({ ok: true });
 }

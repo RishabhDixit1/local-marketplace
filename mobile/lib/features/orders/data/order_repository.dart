@@ -80,6 +80,17 @@ class OrderRepository {
     _expectOk(payload, 'Unable to update order status.');
   }
 
+  Future<void> raiseDispute({
+    required String orderId,
+    required String reason,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/api/disputes',
+      body: {'orderId': orderId, 'reason': reason},
+    );
+    _expectOk(payload, 'Unable to file dispute.');
+  }
+
   Future<MobileRazorpayOrder> createRazorpayOrder({
     required int amountPaise,
     required String receipt,

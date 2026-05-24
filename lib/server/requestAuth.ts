@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseAdminClient, createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 
 export type RequestAuthContext = {
   userId: string;
@@ -48,6 +48,23 @@ export const requireRequestAuth = async (
       status: 401,
       message: "Invalid or expired session token.",
     };
+  }
+
+  // Check if user is suspended
+  const admin = createSupabaseAdminClient();
+  if (admin) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("is_suspended")
+      .eq("id", data.user.id)
+      .maybeSingle<{ is_suspended: boolean | null }>();
+    if (profile?.is_suspended === true) {
+      return {
+        ok: false,
+        status: 403,
+        message: "Account suspended. Contact support for assistance.",
+      };
+    }
   }
 
   return {

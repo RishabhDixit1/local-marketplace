@@ -42,8 +42,9 @@ import {
   LogOut,
   MessageCircle,
   Plus,
-  User,
+  Shield,
   Store,
+  User,
 } from "lucide-react";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -144,6 +145,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     string[]
   >([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
   const userMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -335,7 +337,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         if (!active) return;
 
-        if (!payload?.admin) {
+        const adminStatus = payload?.admin === true;
+        setIsAdmin(adminStatus);
+
+        if (!adminStatus) {
           setShowStartupIssues(false);
           setStartupIssues([]);
           setStartupFixInstructions([]);
@@ -533,6 +538,19 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <User className="h-4 w-4 shrink-0 text-slate-400" />
                   {publicProfileMenuLabel}
                 </button>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      router.push("/dashboard/admin");
+                    }}
+                    className="mt-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                  >
+                    <Shield className="h-4 w-4 shrink-0 text-slate-400" />
+                    Admin
+                  </button>
+                ) : null}
                 <div className="my-1 border-t border-slate-100" />
                 <button
                   type="button"

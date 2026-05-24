@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  Gavel,
   Loader2,
   MapPin,
   Package,
@@ -87,6 +88,8 @@ export default function OrderStatusPage() {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [disputeLoading, setDisputeLoading] = useState(false);
+  const [disputeSent, setDisputeSent] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -128,6 +131,28 @@ export default function OrderStatusPage() {
       setActionError(e instanceof Error ? e.message : "Failed to update order.");
     } finally {
       setBusy(false);
+    }
+  }, [id]);
+
+  const raiseDispute = useCallback(async () => {
+    const reason = prompt("Describe the issue with this order:");
+    if (!reason || !reason.trim()) return;
+    setDisputeLoading(true);
+    setActionError("");
+    try {
+      const res = await fetchAuthedJson<{ ok: boolean }>(supabase, "/api/disputes", {
+        method: "POST",
+        body: JSON.stringify({ orderId: id, reason: reason.trim() }),
+      });
+      if (res.ok) {
+        setDisputeSent(true);
+      } else {
+        setActionError("Failed to submit dispute.");
+      }
+    } catch {
+      setActionError("Failed to submit dispute.");
+    } finally {
+      setDisputeLoading(false);
     }
   }, [id]);
 
@@ -354,6 +379,32 @@ export default function OrderStatusPage() {
             </button>
           </section>
         )}
+
+        {isFinal && !disputeSent ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+              <Gavel className="h-4 w-4" /> Need help?
+            </h2>
+            <p className="mt-1 text-xs text-amber-700">
+              If something went wrong with this order, you can file a dispute for review.
+            </p>
+            <button
+              type="button"
+              disabled={disputeLoading}
+              onClick={() => void raiseDispute()}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+            >
+              {disputeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Gavel className="h-3.5 w-3.5" />}
+              Raise Dispute
+            </button>
+          </section>
+        ) : null}
+
+        {disputeSent ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            Dispute submitted. An admin will review and follow up.
+          </div>
+        ) : null}
 
         {busy && <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
 

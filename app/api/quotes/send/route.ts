@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import type { QuoteApiErrorCode, SendQuoteDraftResponse } from "@/lib/api/quotes";
+import type { QuoteApiErrorCode, QuoteContextRecord, QuoteDraftRecord, SendQuoteDraftResponse } from "@/lib/api/quotes";
 import { sendQuoteDraft } from "@/lib/server/quoteWrites";
 import { mapQuoteRouteError, parseQuoteDraftInput } from "@/lib/server/quoteRoute";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,34 @@ export async function POST(request: Request) {
     const error = mapQuoteRouteError(result);
     return toErrorResponse(error.status, error.code, error.message, error.details);
   }
+
+  // Fire-and-forget: email consumer about the quote
+  void (async () => {
+    try {
+      const reply = result as { ok: true; context: QuoteContextRecord; draft: QuoteDraftRecord };
+      const consumerId = reply.context.consumerId;
+      const admin = createSupabaseAdminClient();
+      if (admin && consumerId) {
+        const skip = await shouldSkipOrderEmail(consumerId);
+        if (skip) return;
+        const { data: consumerUser } = await admin.auth.admin.getUserById(consumerId);
+        const email = consumerUser?.user?.email;
+        if (email) {
+          await sendOrderEmail({
+            type: "quote_received",
+            to: email,
+            recipientName: (consumerUser.user?.user_metadata?.name as string | undefined) ?? "there",
+            orderId: reply.context.orderId ?? "",
+            itemTitle: reply.context.taskTitle,
+            providerName: reply.context.counterpartyName,
+            quoteAmount: reply.draft.total,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[quote-send-email] failed", err);
+    }
+  })();
 
   return NextResponse.json(result satisfies SendQuoteDraftResponse, {
     headers: {

@@ -374,6 +374,8 @@ export default function FeedGrid({
                   discard: isPrimaryBusy(item, "discard"),
                   save: isSaveBusy(item),
                   share: isShareBusy(item),
+                  hide: false,
+                  report: false,
                 }}
                 onPrimaryAction={(action) => onPrimaryAction(item, action)}
                 onSecondaryAction={(action) => onSecondaryAction(item, action)}

@@ -87,6 +87,48 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     }
   }
 
+  Future<void> _raiseDispute() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Raise Dispute'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Describe the issue...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || reason.isEmpty) return;
+
+    setState(() => _busy = true);
+    try {
+      await ref.read(orderRepositoryProvider).raiseDispute(orderId: widget.orderId, reason: reason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dispute submitted. Admin will review.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _promptReview() async {
     final asyncOrder = ref.read(orderDetailProvider(widget.orderId));
     final providerId = asyncOrder.hasValue ? asyncOrder.value!.providerId : null;
@@ -227,6 +269,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       order: order,
                       busy: _busy,
                       onUpdateStatus: _updateStatus,
+                      onRaiseDispute: _raiseDispute,
                     ),
                   ],
                 ),
@@ -356,14 +399,19 @@ class _OrderActions extends StatelessWidget {
     required this.order,
     required this.busy,
     required this.onUpdateStatus,
+    this.onRaiseDispute,
   });
 
   final MobileOrderRecord order;
   final bool busy;
   final ValueChanged<String> onUpdateStatus;
+  final VoidCallback? onRaiseDispute;
+
+  static const _finalStatuses = {'completed', 'closed', 'cancelled', 'rejected'};
 
   @override
   Widget build(BuildContext context) {
+    final isFinal = _finalStatuses.contains(order.status);
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,26 +428,45 @@ class _OrderActions extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          if (order.status == 'new_lead' || order.status == 'quoted')
-            SecondaryButton(
-              label: busy ? 'Updating...' : 'Mark accepted',
-              icon: const Icon(Icons.check_circle_outline_rounded),
-              onPressed: busy ? null : () => onUpdateStatus('accepted'),
-            ),
-          if (order.status == 'accepted') ...[
-            SecondaryButton(
-              label: busy ? 'Updating...' : 'Start work',
-              icon: const Icon(Icons.play_circle_outline_rounded),
-              onPressed: busy ? null : () => onUpdateStatus('in_progress'),
-            ),
-          ],
-          if (order.status == 'accepted' || order.status == 'in_progress') ...[
+          if (!isFinal) ...[
             const SizedBox(height: 10),
+            if (order.status == 'new_lead' || order.status == 'quoted')
+              SecondaryButton(
+                label: busy ? 'Updating...' : 'Mark accepted',
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                onPressed: busy ? null : () => onUpdateStatus('accepted'),
+              ),
+            if (order.status == 'accepted') ...[
+              SecondaryButton(
+                label: busy ? 'Updating...' : 'Start work',
+                icon: const Icon(Icons.play_circle_outline_rounded),
+                onPressed: busy ? null : () => onUpdateStatus('in_progress'),
+              ),
+            ],
+            if (order.status == 'accepted' || order.status == 'in_progress') ...[
+              const SizedBox(height: 10),
+              SecondaryButton(
+                label: busy ? 'Updating...' : 'Mark completed',
+                icon: const Icon(Icons.task_alt_rounded),
+                onPressed: busy ? null : () => onUpdateStatus('completed'),
+              ),
+            ],
+          ],
+          if (isFinal && onRaiseDispute != null) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              'Need help?',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppColors.inkMuted,
+              ),
+            ),
+            const SizedBox(height: 8),
             SecondaryButton(
-              label: busy ? 'Updating...' : 'Mark completed',
-              icon: const Icon(Icons.task_alt_rounded),
-              onPressed: busy ? null : () => onUpdateStatus('completed'),
+              label: busy ? 'Submitting...' : 'Raise Dispute',
+              icon: const Icon(Icons.gavel_outlined),
+              onPressed: busy ? null : onRaiseDispute,
             ),
           ],
         ],

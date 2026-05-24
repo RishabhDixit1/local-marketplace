@@ -18,6 +18,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../features/chat/data/chat_repository.dart';
 import '../../../features/feed/data/feed_interactions_repository.dart';
+import '../../../features/reporting/domain/report_models.dart';
+import '../../../features/reporting/presentation/report_sheet.dart';
 import '../../../features/feed/data/feed_repository.dart';
 import '../../../features/feed/domain/feed_snapshot.dart';
 import '../../../features/people/data/people_repository.dart';
@@ -508,15 +510,16 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.flag_outlined),
                   title: const Text('Report'),
-                  onTap: () async {
+                  onTap: () {
                     Navigator.of(context).pop();
-                    final reason = await _showReportReasonSheet(
-                      entry.sheetTitle,
+                    ReportSheet.show(
+                      context: context,
+                      targetType: entry.item != null
+                          ? ReportTargetType.feedItem
+                          : ReportTargetType.provider,
+                      targetId: entry.storageKey,
+                      targetTitle: entry.sheetTitle,
                     );
-                    if (reason == null || reason.trim().isEmpty) {
-                      return;
-                    }
-                    await _reportEntry(entry, reason: reason);
                   },
                 ),
               ],

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
-import { sendOrderEmail } from "@/lib/email";
+import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 
@@ -390,23 +390,49 @@ export async function POST(request: Request) {
     }
   })();
 
-  // Fire-and-forget: email buyer confirmation (with error capture)
+  // Fire-and-forget: email buyer confirmation + provider notification
   void (async () => {
     try {
-      const { data: userData } = await admin.auth.admin.getUserById(authResult.auth.userId);
-      const email = userData?.user?.email;
-      if (email && requestedItems[0]) {
-        await sendOrderEmail({
-          type: "placed",
-          to: email,
-          recipientName: (userData.user?.user_metadata?.name as string | undefined) ?? "there",
-          orderId: orderIds[0] ?? "",
-          itemTitle: requestedItems[0].title ?? "your order",
-          price: requestedItems[0].price,
-        });
+      const [consumerUser, providerUser] = await Promise.all([
+        admin.auth.admin.getUserById(authResult.auth.userId).catch(() => null),
+        requestedItems[0] ? admin.auth.admin.getUserById(requestedItems[0].providerId).catch(() => null) : null,
+      ]);
+
+      const consumerName = (consumerUser?.data?.user?.user_metadata?.name as string | undefined) ?? "there";
+      const consumerEmail = consumerUser?.data?.user?.email;
+      const providerName = (providerUser?.data?.user?.user_metadata?.name as string | undefined) ?? undefined;
+      const providerEmail = providerUser?.data?.user?.email;
+
+      if (consumerEmail && requestedItems[0]) {
+        const consumerSkip = await shouldSkipOrderEmail(authResult.auth.userId);
+        if (!consumerSkip) {
+          await sendOrderEmail({
+            type: "placed",
+            to: consumerEmail,
+            recipientName: consumerName,
+            orderId: orderIds[0] ?? "",
+            itemTitle: requestedItems[0].title ?? "your order",
+            price: requestedItems[0].price,
+          });
+        }
+      }
+
+      if (providerEmail && requestedItems[0]) {
+        const skip = await shouldSkipOrderEmail(requestedItems[0].providerId);
+        if (!skip) {
+          await sendOrderEmail({
+            type: "order_placed_provider",
+            to: providerEmail,
+            recipientName: providerName ?? "there",
+            orderId: orderIds[0] ?? "",
+            itemTitle: requestedItems[0].title ?? "an order",
+            price: requestedItems[0].price,
+            consumerName,
+          });
+        }
       }
     } catch (err) {
-      console.error("[order-email] failed for order", orderIds[0], err);
+      console.error("[order-emails] failed", err);
     }
   })();
 

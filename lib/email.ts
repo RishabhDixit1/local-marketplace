@@ -9,7 +9,28 @@ const FROM_EMAIL = process.env.EMAIL_FROM ?? "orders@serviqapp.com";
 const APP_NAME = "ServiQ";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
-type OrderEmailType = "placed" | "accepted" | "rejected" | "completed" | "cancelled";
+/**
+ * Check whether a user has opted out of order-related emails.
+ * Uses the `user_settings` table (order_notifications column).
+ * Returns true (should skip email) if the user has explicitly opted out.
+ */
+export async function shouldSkipOrderEmail(userId: string): Promise<boolean> {
+  try {
+    const { createSupabaseAdminClient } = await import("@/lib/server/supabaseClients");
+    const admin = createSupabaseAdminClient();
+    if (!admin) return false;
+    const { data } = await admin
+      .from("user_settings")
+      .select("order_notifications")
+      .eq("user_id", userId)
+      .maybeSingle<{ order_notifications: boolean }>();
+    return data?.order_notifications === false;
+  } catch {
+    return false;
+  }
+}
+
+type OrderEmailType = "placed" | "accepted" | "rejected" | "completed" | "cancelled" | "order_placed_provider" | "quote_received" | "review_received";
 
 type OrderEmailOptions = {
   type: OrderEmailType;
@@ -20,6 +41,9 @@ type OrderEmailOptions = {
   price?: number;
   providerName?: string;
   consumerName?: string;
+  rating?: number;
+  reviewComment?: string;
+  quoteAmount?: number;
 };
 
 const INR = (v: number) =>
@@ -90,6 +114,37 @@ function buildSubjectAndBody(opts: OrderEmailOptions): { subject: string; html: 
           <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">Order Cancelled</h2>
           <p style="color:#475569">Hi ${opts.recipientName}, the order for <strong>${opts.itemTitle}</strong> has been cancelled.</p>
           ${btn("Browse Services", APP_URL)}
+        `),
+      };
+    case "order_placed_provider": {
+      const consumerName = opts.consumerName ?? "A customer";
+      return {
+        subject: `New order — ${opts.itemTitle}`,
+        html: wrap(`
+          <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">New Order Received 📦</h2>
+          <p style="color:#475569">Hi ${opts.recipientName},</p>
+          <p style="color:#475569"><strong>${consumerName}</strong> placed an order for <strong>${opts.itemTitle}</strong>${opts.price ? ` (${INR(opts.price)})` : ""}. Review and respond to confirm availability.</p>
+          ${btn("View Order", `${APP_URL}/orders/${opts.orderId}`)}
+        `),
+      };
+    }
+    case "quote_received":
+      return {
+        subject: `Quote received — ${opts.itemTitle}`,
+        html: wrap(`
+          <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">Quote Received 💬</h2>
+          <p style="color:#475569">Hi ${opts.recipientName},</p>
+          <p style="color:#475569"><strong>${opts.providerName ?? "A provider"}</strong> sent you a quote for <strong>${opts.itemTitle}</strong>${opts.quoteAmount ? ` — ${INR(opts.quoteAmount)}` : ""}.</p>
+          ${btn("View Quote", `${APP_URL}/orders/${opts.orderId}`)}
+        `),
+      };
+    case "review_received":
+      return {
+        subject: `New review — ${opts.itemTitle}`,
+        html: wrap(`
+          <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">New Review ⭐</h2>
+          <p style="color:#475569">Hi ${opts.recipientName}, you received a ${opts.rating ? `${opts.rating}-star` : ""} review${opts.reviewComment ? `: "${opts.reviewComment}"` : ""}.</p>
+          ${btn("View Profile", `${APP_URL}/profile`)}
         `),
       };
   }
