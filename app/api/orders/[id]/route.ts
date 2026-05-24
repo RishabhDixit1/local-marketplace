@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import type { CanonicalOrderStatus, OrderActorRole } from "@/lib/orderWorkflow";
 import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkflow";
-import { sendOrderEmail } from "@/lib/email";
+import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 
 export const runtime = "nodejs";
@@ -214,7 +214,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
-  // Fire-and-forget email notification (with error capture)
+  // Fire-and-forget email notifications (with error capture)
   void (async () => {
     try {
       const itemTitle = (ex.metadata?.title as string | undefined) ?? "Order";
@@ -227,21 +227,47 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       if (!emailType) return;
 
-      // Fetch consumer email
-      const { data: consumerUser } = await admin.auth.admin.getUserById(ex.consumer_id);
-      const consumerEmail = consumerUser?.user?.email;
-      if (consumerEmail) {
+      const [consumerUser, providerUser] = await Promise.all([
+        admin.auth.admin.getUserById(ex.consumer_id).catch(() => null),
+        ex.provider_id ? admin.auth.admin.getUserById(ex.provider_id).catch(() => null) : null,
+      ]);
+
+      const consumerEmail = consumerUser?.data?.user?.email;
+      const providerEmail = providerUser?.data?.user?.email;
+      const consumerName = (consumerUser?.data?.user?.user_metadata?.name as string | undefined) ?? "there";
+      const providerName = (providerUser?.data?.user?.user_metadata?.name as string | undefined) ?? undefined;
+
+      const [consumerSkip, providerSkip] = await Promise.all([
+        shouldSkipOrderEmail(ex.consumer_id),
+        ex.provider_id ? shouldSkipOrderEmail(ex.provider_id) : Promise.resolve(false),
+      ]);
+
+      if (consumerEmail && !consumerSkip) {
         await sendOrderEmail({
           type: emailType,
           to: consumerEmail,
-          recipientName: (consumerUser.user?.user_metadata?.name as string | undefined) ?? "there",
+          recipientName: consumerName,
           orderId: id,
           itemTitle,
           price: ex.price ?? undefined,
+          providerName,
+        });
+      }
+
+      // Notify provider for consumer-initiated status changes (completed, cancelled)
+      if (providerEmail && (status === "completed" || status === "cancelled") && actor === "consumer" && !providerSkip) {
+        await sendOrderEmail({
+          type: emailType === "completed" ? "completed" : "cancelled",
+          to: providerEmail,
+          recipientName: providerName ?? "there",
+          orderId: id,
+          itemTitle,
+          price: ex.price ?? undefined,
+          consumerName,
         });
       }
     } catch (err) {
-      console.error("[order-status-email] failed for order", id, err);
+      console.error("[order-status-emails] failed for order", id, err);
     }
   })();
 

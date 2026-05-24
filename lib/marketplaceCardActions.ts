@@ -8,7 +8,7 @@ export type MarketplacePrimaryActionKind =
   | "send_quote"
   | "view_profile"
   | "discard";
-export type MarketplaceSecondaryActionKind = "save" | "share";
+export type MarketplaceSecondaryActionKind = "save" | "share" | "hide" | "report";
 
 export type MarketplaceActionTone = "primary" | "secondary" | "success" | "status" | "destructive";
 
@@ -95,6 +95,11 @@ export const resolveMarketplaceCardActionModel = (
 
   return {
     buttons,
-    icons: [buildButton("save", "Save", "secondary"), buildButton("share", "Share", "secondary")],
+    icons: [
+      buildButton("save", "Save", "secondary"),
+      buildButton("share", "Share", "secondary"),
+      buildButton("hide", "Hide", "secondary"),
+      buildButton("report", "Report", "destructive"),
+    ],
   };
 };

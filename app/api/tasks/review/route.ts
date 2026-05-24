@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -75,5 +76,32 @@ export async function POST(request: Request) {
   });
 
   if (insertError) return toError(500, "DB", insertError.message);
+
+  void (async () => {
+    try {
+      const skip = await shouldSkipOrderEmail(providerId);
+      if (skip) return;
+      const admin = createSupabaseAdminClient();
+      if (admin && providerId) {
+        const { data: providerUser } = await admin.auth.admin.getUserById(providerId);
+        const email = providerUser?.user?.email;
+        const title = (order.metadata?.title as string | undefined) ?? "Task";
+        if (email) {
+          await sendOrderEmail({
+            type: "review_received",
+            to: email,
+            recipientName: (providerUser.user?.user_metadata?.name as string | undefined) ?? "there",
+            orderId: taskId,
+            itemTitle: title,
+            rating,
+            reviewComment: comment ?? undefined,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[task-review-email] failed", err);
+    }
+  })();
+
   return NextResponse.json({ ok: true });
 }

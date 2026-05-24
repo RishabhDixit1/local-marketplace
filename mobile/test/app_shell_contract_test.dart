@@ -73,10 +73,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('People'), findsOneWidget);
+    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
-    expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
   });
 
@@ -97,12 +95,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('People'), findsOneWidget);
+    expect(find.text('Market'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
-    expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
   });
 }

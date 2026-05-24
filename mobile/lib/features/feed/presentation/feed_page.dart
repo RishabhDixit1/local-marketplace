@@ -17,6 +17,8 @@ import '../../cart/application/cart_notifier.dart';
 import '../../cart/presentation/cart_sheet.dart';
 import '../../orders/domain/order_models.dart';
 import '../../profile/data/profile_repository.dart';
+import '../../reporting/domain/report_models.dart';
+import '../../reporting/presentation/report_sheet.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/error_state_view.dart';
 import '../../../shared/components/feed_card.dart';
@@ -29,6 +31,7 @@ import '../../chat/data/chat_repository.dart';
 import '../../people/data/people_repository.dart';
 import '../../people/domain/people_snapshot.dart';
 
+import '../data/feed_interactions_repository.dart';
 import '../data/feed_repository.dart';
 import '../domain/feed_snapshot.dart';
 
@@ -229,6 +232,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           onTap: () {
             Navigator.of(context).pop();
             _messageActionFor(item)?.call();
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.visibility_off_outlined),
+          title: const Text('Not interested'),
+          onTap: () {
+            Navigator.of(context).pop();
+            _hideFeedItem(item);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.flag_outlined),
+          title: const Text('Report'),
+          onTap: () {
+            Navigator.of(context).pop();
+            ReportSheet.show(
+              context: context,
+              targetType: ReportTargetType.feedItem,
+              targetId: item.id,
+              targetTitle: item.title,
+            );
           },
         ),
       ],
@@ -436,6 +460,19 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         price: item.price,
       ),
     );
+  }
+
+  void _hideFeedItem(MobileFeedItem item) {
+    final ctx = FeedCardInteractionContext(
+      cardId: item.id,
+      focusId: item.providerId,
+      cardType: item.type == MobileFeedItemType.service ? 'service' : 'product',
+      title: item.title,
+    );
+    ref.read(feedInteractionsRepositoryProvider).hide(ctx, reason: 'not_interested');
+    if (!mounted) return;
+    ref.invalidate(feedSnapshotProvider(_scope));
+    ServiqToast.show(context, message: 'Hidden.', tone: ServiqToastTone.success);
   }
 
   VoidCallback? _messageActionFor(MobileFeedItem item) {
@@ -805,34 +842,37 @@ class _ExploreIntentPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              OutlinedButton.icon(
-                onPressed: onOpenLocalityPicker,
-                icon: Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: selectedLocalityName != null
-                      ? AppColors.primaryDeep
-                      : null,
-                ),
-                label: Text(
-                  selectedLocalityName ?? 'Area',
-                  style: TextStyle(
-                    fontSize: 12,
+              SizedBox(
+                width: 100,
+                child: OutlinedButton.icon(
+                  onPressed: onOpenLocalityPicker,
+                  icon: Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
                     color: selectedLocalityName != null
                         ? AppColors.primaryDeep
                         : null,
                   ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: selectedLocalityName != null
-                      ? AppColors.primaryDeep
-                      : null,
-                  side: BorderSide(
-                    color: selectedLocalityName != null
-                        ? AppColors.primary.withValues(alpha: 0.4)
-                        : AppColors.border,
+                  label: Text(
+                    selectedLocalityName ?? 'Area',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: selectedLocalityName != null
+                          ? AppColors.primaryDeep
+                          : null,
+                    ),
                   ),
-                  visualDensity: VisualDensity.compact,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: selectedLocalityName != null
+                        ? AppColors.primaryDeep
+                        : null,
+                    side: BorderSide(
+                      color: selectedLocalityName != null
+                          ? AppColors.primary.withValues(alpha: 0.4)
+                          : AppColors.border,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),

@@ -9,6 +9,8 @@ import {
   Bookmark,
   BookmarkCheck,
   Check,
+  EyeOff,
+  Flag,
   Loader2,
   MapPin,
   MessageCircle,
@@ -81,6 +83,18 @@ const secondaryActionMeta = {
     active: "Share post",
     icon: Share2,
     activeIcon: Share2,
+  },
+  hide: {
+    idle: "Hide post",
+    active: "Hidden",
+    icon: EyeOff,
+    activeIcon: EyeOff,
+  },
+  report: {
+    idle: "Report post",
+    active: "Reported",
+    icon: Flag,
+    activeIcon: Flag,
   },
 } satisfies Record<
   MarketplaceSecondaryActionKind,
@@ -539,17 +553,18 @@ export default function FeedCard({
         </div>
 
         <div className="flex items-center gap-1.5 self-end sm:self-auto">
-          {(["share", "save"] as const).map((actionKind) => {
+          {(["save", "share", "hide", "report"] as const).map((actionKind) => {
             const busy = actionBusyState[actionKind];
             const isActive = actionKind === "save" ? saved : false;
             const Icon = isActive ? secondaryActionMeta[actionKind].activeIcon : secondaryActionMeta[actionKind].icon;
             const label = isActive ? secondaryActionMeta[actionKind].active : secondaryActionMeta[actionKind].idle;
+            const isDestructive = actionKind === "report";
 
             return (
               <button
                 key={actionKind}
                 type="button"
-                data-testid={actionKind === "share" ? "feed-action-share" : "feed-action-save"}
+                data-testid={`feed-action-${actionKind}`}
                 onClick={() => void onSecondaryAction(actionKind)}
                 disabled={busy}
                 aria-label={label}
@@ -557,7 +572,9 @@ export default function FeedCard({
                 className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-70 sm:h-9 sm:w-9 ${
                   isActive
                     ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                    : isDestructive
+                      ? "border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:text-rose-700"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
                 }`}
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Icon size={16} />}
