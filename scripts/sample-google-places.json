@@ -1,0 +1,125 @@
+{
+  "places": [
+    {
+      "id": "ChIJ0UiPU7zvDDkR1sCb1j3I9gE",
+      "types": ["tailor", "service", "point_of_interest", "establishment"],
+      "nationalPhoneNumber": "099119 56517",
+      "formattedAddress": "Shop No. 23, Galleria-1 Market, Crossings Republik, Ghaziabad, Uttar Pradesh 201016, India",
+      "location": { "latitude": 28.6258361, "longitude": 77.4350206 },
+      "rating": 4.8,
+      "googleMapsUri": "https://maps.google.com/?cid=141520606227841238",
+      "regularOpeningHours": {
+        "openNow": true,
+        "periods": [
+          { "open": { "day": 0, "hour": 10, "minute": 0 }, "close": { "day": 0, "hour": 21, "minute": 0 } },
+          { "open": { "day": 1, "hour": 10, "minute": 0 }, "close": { "day": 1, "hour": 21, "minute": 0 } },
+          { "open": { "day": 2, "hour": 10, "minute": 0 }, "close": { "day": 2, "hour": 21, "minute": 0 } },
+          { "open": { "day": 3, "hour": 10, "minute": 0 }, "close": { "day": 3, "hour": 21, "minute": 0 } },
+          { "open": { "day": 4, "hour": 10, "minute": 0 }, "close": { "day": 4, "hour": 21, "minute": 0 } },
+          { "open": { "day": 5, "hour": 10, "minute": 0 }, "close": { "day": 5, "hour": 21, "minute": 0 } },
+          { "open": { "day": 6, "hour": 10, "minute": 0 }, "close": { "day": 6, "hour": 21, "minute": 0 } }
+        ],
+        "weekdayDescriptions": [
+          "Monday: 10:00 AM – 9:00 PM", "Tuesday: 10:00 AM – 9:00 PM",
+          "Wednesday: 10:00 AM – 9:00 PM", "Thursday: 10:00 AM – 9:00 PM",
+          "Friday: 10:00 AM – 9:00 PM", "Saturday: 10:00 AM – 9:00 PM",
+          "Sunday: 10:00 AM – 9:00 PM"
+        ]
+      },
+      "businessStatus": "OPERATIONAL",
+      "userRatingCount": 37,
+      "displayName": { "text": "The Tailor Shop", "languageCode": "en" },
+      "primaryType": "tailor",
+      "shortFormattedAddress": "Shop No. 23, Galleria-1 Market, Crossings Republik, Ghaziabad"
+    },
+    {
+      "id": "ChIJsyMQSDfuDDkRmbVKCbQ3m2Y",
+      "types": ["tailor", "service", "point_of_interest", "establishment"],
+      "nationalPhoneNumber": "084590 48246",
+      "formattedAddress": "S.No Ugf A1 Galleria Markt, G.Z.B, Biharipur Village, Crossings Republik, Ghaziabad, Uttar Pradesh 201016, India",
+      "location": { "latitude": 28.6260092, "longitude": 77.4343906 },
+      "rating": 5,
+      "googleMapsUri": "https://maps.google.com/?cid=7393564459648333209",
+      "regularOpeningHours": {
+        "openNow": true,
+        "periods": [
+          { "open": { "day": 0, "hour": 10, "minute": 0 }, "close": { "day": 0, "hour": 21, "minute": 0 } },
+          { "open": { "day": 1, "hour": 10, "minute": 0 }, "close": { "day": 1, "hour": 21, "minute": 0 } },
+          { "open": { "day": 2, "hour": 10, "minute": 0 }, "close": { "day": 2, "hour": 21, "minute": 0 } },
+          { "open": { "day": 3, "hour": 10, "minute": 0 }, "close": { "day": 3, "hour": 21, "minute": 0 } },
+          { "open": { "day": 4, "hour": 10, "minute": 0 }, "close": { "day": 4, "hour": 21, "minute": 0 } },
+          { "open": { "day": 5, "hour": 10, "minute": 0 }, "close": { "day": 5, "hour": 21, "minute": 0 } },
+          { "open": { "day": 6, "hour": 10, "minute": 0 }, "close": { "day": 6, "hour": 21, "minute": 0 } }
+        ]
+      },
+      "businessStatus": "OPERATIONAL",
+      "userRatingCount": 1,
+      "displayName": { "text": "Royal Star Tailor & Draper", "languageCode": "en" },
+      "primaryType": "tailor",
+      "shortFormattedAddress": "S.No Ugf A1 Galleria Markt, G.Z.B, Crossings Republik, Ghaziabad"
+    },
+    {
+      "id": "ChIJz4ylVeTvDDkRNYVgac2CIeg",
+      "types": ["tailor", "service", "point_of_interest", "establishment"],
+      "nationalPhoneNumber": "084471 63581",
+      "formattedAddress": "UGF 20, Galleria Market-2, Biharipur Village, Crossings Republik, Ghaziabad, Uttar Pradesh 201016, India",
+      "location": { "latitude": 28.6263094, "longitude": 77.4345865 },
+      "rating": 4.9,
+      "googleMapsUri": "https://maps.google.com/?cid=16726794309778572597",
+      "regularOpeningHours": {
+        "openNow": true,
+        "periods": [
+          { "open": { "day": 0, "hour": 10, "minute": 0 }, "close": { "day": 0, "hour": 21, "minute": 0 } },
+          { "open": { "day": 1, "hour": 10, "minute": 0 }, "close": { "day": 1, "hour": 21, "minute": 0 } },
+          { "open": { "day": 2, "hour": 10, "minute": 0 }, "close": { "day": 2, "hour": 21, "minute": 0 } },
+          { "open": { "day": 3, "hour": 10, "minute": 0 }, "close": { "day": 3, "hour": 21, "minute": 0 } },
+          { "open": { "day": 4, "hour": 10, "minute": 0 }, "close": { "day": 4, "hour": 21, "minute": 0 } },
+          { "open": { "day": 5, "hour": 10, "minute": 0 }, "close": { "day": 5, "hour": 21, "minute": 0 } },
+          { "open": { "day": 6, "hour": 10, "minute": 0 }, "close": { "day": 6, "hour": 21, "minute": 0 } }
+        ]
+      },
+      "businessStatus": "OPERATIONAL",
+      "userRatingCount": 9,
+      "displayName": { "text": "The Tailor's Touch, Crossing Republic Ghaziabad", "languageCode": "en" },
+      "primaryType": "tailor",
+      "shortFormattedAddress": "UGF 20, Galleria Market-2, GOLD COAST, Biharipur Village, Crossings Republik, Ghaziabad"
+    },
+    {
+      "id": "ChIJ7_OitHDvDDkRkzEJJWX-3Yg",
+      "types": ["tailor", "service", "point_of_interest", "establishment"],
+      "nationalPhoneNumber": "099177 77743",
+      "formattedAddress": "Ff 28, Biharipur Village, Crossings Republik, Ghaziabad, Uttar Pradesh 201016, India",
+      "location": { "latitude": 28.6235326, "longitude": 77.4339628 },
+      "googleMapsUri": "https://maps.google.com/?cid=9862318469377765779",
+      "businessStatus": "OPERATIONAL",
+      "displayName": { "text": "Gupta Spoats", "languageCode": "en" },
+      "primaryType": "tailor",
+      "shortFormattedAddress": "Tower-2, GOLD COAST, Ff 28, Biharipur Village, Crossings Republik, Ghaziabad"
+    },
+    {
+      "id": "ChIJA8DM4v_vDDkRMiar0OwoGdY",
+      "types": ["womens_clothing_store", "clothing_store", "tailor", "store", "service", "point_of_interest", "establishment"],
+      "formattedAddress": "Tower5, 505, Panchsheel Wellington, Crossings Republik, Ghaziabad, Uttar Pradesh 201016, India",
+      "location": { "latitude": 28.627706, "longitude": 77.4375609 },
+      "rating": 4.8,
+      "googleMapsUri": "https://maps.google.com/?cid=15427406996112614962",
+      "regularOpeningHours": {
+        "openNow": true,
+        "periods": [
+          { "open": { "day": 0, "hour": 10, "minute": 0 }, "close": { "day": 0, "hour": 18, "minute": 0 } },
+          { "open": { "day": 1, "hour": 10, "minute": 0 }, "close": { "day": 1, "hour": 18, "minute": 0 } },
+          { "open": { "day": 2, "hour": 10, "minute": 0 }, "close": { "day": 2, "hour": 18, "minute": 0 } },
+          { "open": { "day": 3, "hour": 10, "minute": 0 }, "close": { "day": 3, "hour": 18, "minute": 0 } },
+          { "open": { "day": 4, "hour": 10, "minute": 0 }, "close": { "day": 4, "hour": 18, "minute": 0 } },
+          { "open": { "day": 5, "hour": 10, "minute": 0 }, "close": { "day": 5, "hour": 18, "minute": 0 } },
+          { "open": { "day": 6, "hour": 10, "minute": 0 }, "close": { "day": 6, "hour": 18, "minute": 0 } }
+        ]
+      },
+      "businessStatus": "OPERATIONAL",
+      "userRatingCount": 15,
+      "displayName": { "text": "Abeer Fashion Boutique", "languageCode": "en" },
+      "primaryType": "clothing_store",
+      "shortFormattedAddress": "505, Panchsheel Wellington, Tower5, Crossings Republik, Ghaziabad"
+    }
+  ]
+}
