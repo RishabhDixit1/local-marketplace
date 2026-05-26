@@ -222,7 +222,7 @@ export async function POST(request: Request) {
     if (/rate|throttl/i.test(message)) {
       return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
     }
-    if (/not.verified|sandbox|not.authorized/i.test(message)) {
+    if (/not.verified|sandbox|not.authorized|could not load credentials/i.test(message)) {
       return NextResponse.json({
         ok: true,
         emailSent: false,
