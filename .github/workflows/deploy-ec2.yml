@@ -30,3 +30,4 @@ jobs:
             npm ci
             npm run build
             pm2 restart serviq
+          command_timeout: 15m

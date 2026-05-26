@@ -927,7 +927,7 @@ export default function ProvidersPage() {
               </span>
             )}
           </span>
-          {searchQuery && <span>for "{searchQuery}"</span>}
+          {searchQuery && <span>for &ldquo;{searchQuery}&rdquo;</span>}
         </div>
       )}
 

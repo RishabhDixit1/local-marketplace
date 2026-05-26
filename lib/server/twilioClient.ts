@@ -1,11 +1,11 @@
 import "server-only";
+import * as twilio from "twilio";
 
 const getTwilio = () => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!accountSid || !authToken) return null;
   try {
-    const twilio = require("twilio");
     return twilio(accountSid, authToken);
   } catch {
     return null;

@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const releasesDir = path.join(process.cwd(), "public", "app", "releases");
   let latestVersion = currentVersion;
   let updateUrl = downloadUrl;
-  let releaseNotes = process.env.APP_RELEASE_NOTES || "";
+  const releaseNotes = process.env.APP_RELEASE_NOTES || "";
 
   try {
     if (fs.existsSync(releasesDir)) {

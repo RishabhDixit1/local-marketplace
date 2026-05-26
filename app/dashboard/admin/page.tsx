@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, Users, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, XCircle } from "lucide-react";
 
 type AdminStats = {
   totalUsers: number;

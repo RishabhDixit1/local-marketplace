@@ -18,8 +18,6 @@ type ScoreLeadsRequest = {
   helpRequestId: string;
 };
 
-const DB_URL = "leads/score";
-
 const toError = (status: number, code: string, message: string, details?: string) =>
   NextResponse.json({ ok: false, code, message, details } satisfies LeadApiError, { status });
 
@@ -96,7 +94,6 @@ export async function POST(request: Request) {
   }
 
   const leads: ScoredProvider[] = [];
-  const now = Date.now();
 
   for (const provider of (providers as Array<Record<string, unknown>>) || []) {
     const presence = provider.provider_presence as Record<string, unknown> | null;
