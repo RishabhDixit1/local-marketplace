@@ -54,6 +54,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             )
       : null;
 
+  var initialLandingServed = false;
+
   return GoRouter(
     initialLocation: AppRoutes.root,
     debugLogDiagnostics: false,
@@ -83,7 +85,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         });
       }
 
-      return resolveMobileAppRedirect(
+      final redirect = resolveMobileAppRedirect(
         location: location,
         setupRequired: bootstrap.needsSetup,
         signedIn: authState.isAuthenticated,
@@ -93,6 +95,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         storedHandoffRoute: onboardingHandoff.lastRoute,
         profileReadiness: profileReadiness,
       );
+
+      if (redirect == null) {
+        return null;
+      }
+
+      if (redirect.startsWith('/app')) {
+        if (initialLandingServed &&
+            (location == AppRoutes.root || location == AppRoutes.signIn)) {
+          return AppRoutes.home;
+        }
+        initialLandingServed = true;
+      }
+
+      return redirect;
     },
     routes: [
       GoRoute(

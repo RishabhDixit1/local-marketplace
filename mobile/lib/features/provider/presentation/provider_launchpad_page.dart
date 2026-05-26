@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -452,9 +453,13 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   }
 
   void _back() {
+    if (_step == _LaunchpadStep.basics && _hasDraftContent) {
+      _showDiscardDialog();
+      return;
+    }
     switch (_step) {
       case _LaunchpadStep.basics:
-        context.pop();
+        _goBackOrHome();
       case _LaunchpadStep.offers:
         _goToStep(_LaunchpadStep.basics);
       case _LaunchpadStep.aiDraft:
@@ -464,13 +469,60 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
     }
   }
 
+  void _goBackOrHome() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go(AppRoutes.home);
+    }
+  }
+
+  Future<void> _showDiscardDialog() {
+    final router = GoRouter.of(context);
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text(
+          'You have unsaved changes to your business profile. '
+          'Are you sure you want to discard them?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => router.go(AppRoutes.home),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final workspaceAsync = ref.watch(launchpadWorkspaceProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Business AI setup')),
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _back();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Business AI setup'),
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: _back,
+          ),
+        ),
+        body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ServiqAsyncBody<MobileLaunchpadWorkspace>(
@@ -559,6 +611,7 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
               );
             },
           ),
+        ),
         ),
       ),
     );

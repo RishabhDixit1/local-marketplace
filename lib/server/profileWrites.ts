@@ -47,13 +47,12 @@ const bootstrapUpsertVariants = (payload: Record<string, unknown>) => [
   payload,
   Object.fromEntries(
     Object.entries(payload).filter(([key]) =>
-      ["id", "full_name", "name", "email", "avatar_url", "role", "location", "availability", "metadata"].includes(key)
+      ["id", "full_name", "name", "email", "avatar_url", "role", "location", "availability", "metadata", "onboarding_completed"].includes(key)
     )
   ),
   Object.fromEntries(
-    Object.entries(payload).filter(([key]) => ["id", "name", "email", "avatar_url", "role", "availability"].includes(key))
+    Object.entries(payload).filter(([key]) => ["id", "name", "email", "avatar_url", "role", "availability", "onboarding_completed"].includes(key))
   ),
-  Object.fromEntries(Object.entries(payload).filter(([key]) => ["id", "name", "email", "avatar_url"].includes(key))),
   { id: payload.id },
 ];
 

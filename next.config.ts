@@ -2,16 +2,18 @@ import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const supabaseHostname = (() => {
+const supabaseUrl = (() => {
   const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
-  if (!value) return "";
-
+  if (!value) return null;
   try {
-    return new URL(value).hostname;
+    return new URL(value);
   } catch {
-    return "";
+    return null;
   }
 })();
+
+const supabaseHostname = supabaseUrl?.hostname || "";
+const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
 
 const images: NonNullable<NextConfig["images"]> = {
   remotePatterns: [
@@ -23,14 +25,10 @@ const images: NonNullable<NextConfig["images"]> = {
       protocol: "https",
       hostname: "i.pravatar.cc",
     },
-    {
-      protocol: "https",
-      hostname: "*.supabase.co",
-    },
     ...(supabaseHostname
       ? [
           {
-            protocol: "https" as const,
+            protocol: supabaseProtocol,
             hostname: supabaseHostname,
           },
         ]

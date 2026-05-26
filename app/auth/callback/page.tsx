@@ -57,8 +57,15 @@ export default function AuthCallbackPage() {
         if (error) throw error;
 
         if (data.session?.user) {
+          const user = data.session.user;
+          const providers = user.app_metadata?.providers as string[] | undefined;
+          const needsPassword = !user.user_metadata?.password_set && providers?.includes("email");
+          if (needsPassword) {
+            router.replace("/auth/set-password");
+            return;
+          }
           const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
-          const profile = await ensureProfileForUser(data.session.user).catch(() => null);
+          const profile = await ensureProfileForUser(user).catch(() => null);
           router.replace(resolveCurrentProfileDestination(profile));
           return;
         }
@@ -67,6 +74,12 @@ export default function AuthCallbackPage() {
           data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
           if (!cancelled && event === "SIGNED_IN" && session) {
+            const providers = session.user.app_metadata?.providers as string[] | undefined;
+            const needsPassword = !session.user.user_metadata?.password_set && providers?.includes("email");
+            if (needsPassword) {
+              if (!cancelled) router.replace("/auth/set-password");
+              return;
+            }
             import("@/lib/profile/client").then(({ ensureProfileForUser, resolveCurrentProfileDestination }) => {
               void ensureProfileForUser(session.user)
                 .catch(() => null)
