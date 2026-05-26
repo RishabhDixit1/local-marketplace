@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Local config with credentials
 mobile/config/local.json
+
+# APK releases (hosted as GitHub Releases instead)
+public/app/releases/
