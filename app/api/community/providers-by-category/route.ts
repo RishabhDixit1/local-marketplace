@@ -18,29 +18,7 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-type ProviderWithStats = {
-  id: string;
-  name: string;
-  location: string;
-  lat: string | number | null;
-  lng: string | number | null;
-  avatarUrl: string;
-  bio: string;
-  role: string;
-  services: string[];
-  avgRating: number | null;
-  reviewCount: number;
-  serviceCount: number;
-  completedJobs: number;
-  responseMinutes: number | null;
-  isOnline: boolean;
-  priceMin: number | null;
-  priceMax: number | null;
-  distanceKm: number | null;
-  verified: boolean;
-  listings: { id: string; title: string; category: string; price: number | null }[];
-  sortScore: number;
-};
+
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   DollarSign,
   FileText,
   Image as ImageIcon,
@@ -17,9 +16,7 @@ import {
   PenTool,
   Plus,
   Receipt,
-  Send,
   Trash2,
-  User,
   XCircle,
 } from "lucide-react";
 import type {
@@ -31,7 +28,6 @@ import type {
   SaveQuoteDraftResponse,
   SendQuoteDraftResponse,
 } from "@/lib/api/quotes";
-import { generateQuoteDraft } from "@/lib/ai/quoteDrafting";
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 import {
@@ -40,10 +36,8 @@ import {
   uploadQuoteMedia,
   addQuoteAttachment,
   removeQuoteAttachment,
-  type UploadQuoteMediaResult,
 } from "@/lib/quotes/dealRoom";
 import {
-  type CanonicalOrderStatus,
   getOrderStatusLabel,
   getOrderStatusPillClass,
   normalizeOrderStatus,
@@ -258,33 +252,6 @@ export default function DealRoom({
     const statusIndex = stageOrder.indexOf(canonicalStatus);
     return stageOrder.slice(0, Math.max(0, statusIndex + 1));
   }, [canonicalStatus]);
-
-  const handleGenerateFromCatalog = useCallback(() => {
-    if (!dealRoomContext || catalogItems.length === 0) return;
-
-    const context = {
-      mode: dealRoomContext.orderId ? ("order" as const) : ("help_request" as const),
-      orderId: dealRoomContext.orderId,
-      helpRequestId: dealRoomContext.helpRequestId,
-      consumerId: dealRoomContext.consumerId,
-      providerId: dealRoomContext.providerId,
-      actorRole: dealRoomContext.actorRole,
-      canEdit: dealRoomContext.canEditQuote,
-      taskTitle: dealRoomContext.scope.taskTitle,
-      taskDescription: dealRoomContext.scope.taskDescription,
-      locationLabel: dealRoomContext.scope.locationLabel,
-      currentStatus: dealRoomContext.status,
-      suggestedAmount: dealRoomContext.scope.budgetMax ?? null,
-      counterpartyName: dealRoomContext.counterpartyName,
-    };
-
-    const catalogLines = catalogItems.map((item) => {
-      const pricePart = item.price ? ` – ₹${item.price}` : "";
-      return `${item.title}${pricePart}`;
-    });
-
-    return generateQuoteDraft(context, catalogLines);
-  }, [dealRoomContext, catalogItems]);
 
   const panelToneClassName =
     surface === "chat"

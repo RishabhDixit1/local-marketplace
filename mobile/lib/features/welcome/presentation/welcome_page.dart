@@ -228,32 +228,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     }
   }
 
-  Future<void> _reportEntry(
-    _WelcomeFeedEntry entry, {
-    required String reason,
-  }) async {
-    _trackFirstEngagement('report_card');
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'home_item_report_submitted',
-          extras: {
-            'item_id': entry.storageKey,
-            'surface': _resolvedSurface.analyticsValue,
-            'reason': reason,
-          },
-        );
-
-    try {
-      await ref
-          .read(feedInteractionsRepositoryProvider)
-          .report(_buildInteractionContext(entry), reason: reason);
-      _showSnack('Thanks. We have flagged this for review.');
-    } catch (error) {
-      _showSnack(AppErrorMapper.toMessage(error));
-    }
-  }
-
   Future<void> _shareEntry(_WelcomeFeedEntry entry) async {
     final card = _buildInteractionContext(entry);
     final config = ref.read(appBootstrapProvider).config;
@@ -335,47 +309,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
     if (!await launchUrl(uri)) {
       _showSnack('Unable to open the phone dialer right now.');
     }
-  }
-
-  Future<String?> _showReportReasonSheet(String title) async {
-    const reasons = <String>[
-      'Spam or scam',
-      'Unsafe request',
-      'Wrong category',
-      'Offensive content',
-    ];
-
-    return showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 6),
-                Text(
-                  'Tell us what is wrong with this card.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 12),
-                ...reasons.map(
-                  (reason) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(reason),
-                    onTap: () => Navigator.of(context).pop(reason),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   FeedCardInteractionContext _buildInteractionContext(_WelcomeFeedEntry entry) {
