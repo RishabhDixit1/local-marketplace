@@ -26,8 +26,7 @@ jobs:
             cd /home/ec2-user/serviq
             git fetch origin main
             git reset --hard origin/main
-
-            npm ci
-            npm run build
+            npm ci --prefer-offline
+            NEXT_TELEMETRY_DISABLED=1 npm run build
             pm2 restart serviq
-          command_timeout: 15m
+          command_timeout: 30m

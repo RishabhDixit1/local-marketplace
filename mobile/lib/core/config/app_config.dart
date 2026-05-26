@@ -39,7 +39,7 @@ class AppConfig {
 
   static Future<AppConfig> load() async {
     final environmentConfig = AppConfig.fromEnvironment();
-    if (!kDebugMode) {
+    if (environmentConfig.hasSupabaseConfig) {
       return environmentConfig;
     }
 

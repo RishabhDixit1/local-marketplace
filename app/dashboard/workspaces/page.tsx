@@ -36,7 +36,19 @@ export default function WorkspacesPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const data = await fetchAuthedJson<{ ok: boolean; workspaces: Workspace[] }>(
+        supabase, "/api/workspaces", { method: "GET" }
+      );
+      if (cancelled) return;
+      if (data?.ok) setWorkspaces(data.workspaces || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleCreate = async () => {
     if (!formName.trim()) return;

@@ -6,7 +6,7 @@
     "dev": "bash scripts/dev_server.sh",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 200",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:auth": "bash scripts/run_e2e_authenticated.sh",

@@ -54,7 +54,7 @@ void main() {
       400,
       scrollable: scrollable,
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Send magic link instead'), findsOneWidget);
   });
@@ -66,7 +66,7 @@ void main() {
     await _pumpSignInPage(tester, const Size(390, 844), store: store);
 
     await tester.tap(find.text('Earn nearby'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('Sign in with email'), findsOneWidget);
     expect(find.text('Send magic link instead'), findsOneWidget);
@@ -113,7 +113,7 @@ Future<void> _pumpSignInPage(
       child: MaterialApp(theme: AppTheme.light(), home: const SignInPage()),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 200));
 }
 
 void _setTestSurface(

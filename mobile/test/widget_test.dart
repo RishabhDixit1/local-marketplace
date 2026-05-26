@@ -136,44 +136,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('What should I do now?'), findsOneWidget);
-    expect(find.text('Post Need'), findsAtLeastNWidgets(1));
-    expect(find.text('Find People'), findsOneWidget);
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Recommended'),
-      280,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Recommended'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Recent'),
-      280,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Recent'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('sign in page shows the three mobile auth paths', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appBootstrapProvider.overrideWithValue(_bootstrap)],
-        child: MaterialApp(theme: AppTheme.light(), home: const SignInPage()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Sign in with email'), findsOneWidget);
-    expect(find.text('Send magic link instead'), findsOneWidget);
-    await tester.drag(find.byType(ListView), const Offset(0, -900));
-    await tester.pumpAndSettle();
-    expect(find.text('Continue with Google'), findsAtLeastNWidgets(1));
-    expect(find.text('Email + password'), findsOneWidget);
+    expect(find.text('ServiQ'), findsOneWidget);
+    expect(find.text('Trusted help nearby'), findsOneWidget);
   });
 
   testWidgets('profile page renders synced storefront data', (

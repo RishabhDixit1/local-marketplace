@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
-import * as cronParser from "cron-parser";
+import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
 
 const parseCron = (expression: string): boolean => {
   try {
-    const interval = cronParser.parseExpression(expression);
+    const interval = CronExpressionParser.parse(expression);
     const prev = interval.prev();
     const diff = Date.now() - prev.getTime();
     return diff >= 0 && diff < 300_000;
