@@ -222,6 +222,15 @@ export async function POST(request: Request) {
     if (/rate|throttl/i.test(message)) {
       return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
     }
+    if (/not.verified|sandbox|not.authorized/i.test(message)) {
+      return NextResponse.json({
+        ok: true,
+        emailSent: false,
+        actionLink,
+        emailOtp: generateResult.email_otp,
+        message: "Email delivery unavailable. Use the link or code below to sign in.",
+      });
+    }
     return NextResponse.json(
       { ok: false, error: `Failed to send email. ${message}` },
       { status: 502 }
@@ -229,5 +238,5 @@ export async function POST(request: Request) {
   }
 
   recordMagicLinkRequest(email);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, emailSent: true });
 }

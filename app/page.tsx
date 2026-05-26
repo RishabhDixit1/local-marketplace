@@ -133,6 +133,8 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
   );
 }
 
+type MagicLinkData = { actionLink: string; emailOtp: string; email: string };
+
 export default function PublicLandingPage() {
   const router = useRouter();
   const [showAuth, setShowAuth] = useState(false);
@@ -140,6 +142,7 @@ export default function PublicLandingPage() {
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [magicLinkData, setMagicLinkData] = useState<MagicLinkData | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(true);
@@ -222,6 +225,7 @@ export default function PublicLandingPage() {
   const sendEmailLink = async () => {
     setErrorMessage("");
     setInfoMessage("");
+    setMagicLinkData(null);
     const email = emailAddress.trim().toLowerCase();
     if (!isEmailLike(email)) { setErrorMessage("Enter a valid email address."); return; }
     setLoading(true);
@@ -231,9 +235,14 @@ export default function PublicLandingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; emailSent?: boolean; actionLink?: string; emailOtp?: string; message?: string } | null;
       if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Unable to send magic link.");
-      setInfoMessage(`Magic link sent to ${email}. Open the email to continue.`);
+      if (payload.emailSent === false) {
+        setMagicLinkData({ actionLink: payload.actionLink!, emailOtp: payload.emailOtp!, email });
+        setInfoMessage(payload.message || "Use the link or code below to sign in.");
+      } else {
+        setInfoMessage(`Magic link sent to ${email}. Open the email to continue.`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send magic link.";
       if (/rate|too many/i.test(message)) setErrorMessage("Too many requests. Wait 60 seconds.");
@@ -241,7 +250,7 @@ export default function PublicLandingPage() {
     } finally { setLoading(false); }
   };
 
-  const emailLinkSent = infoMessage.startsWith("Magic link sent");
+  const emailLinkSent = infoMessage.startsWith("Magic link sent") || magicLinkData !== null;
 
   return (
     <div className="relative min-h-screen bg-white">
@@ -640,6 +649,18 @@ export default function PublicLandingPage() {
 
                 {infoMessage && !emailLinkSent ? (
                   <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">{infoMessage}</div>
+                ) : null}
+                {magicLinkData ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-white/70">{magicLinkData.emailOtp}</p>
+                    <div className="rounded-xl bg-cyan-500/[0.12] border border-cyan-400/[0.25] overflow-hidden">
+                      <a href={magicLinkData.actionLink}
+                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/[0.08] transition">
+                        <LogIn className="h-4 w-4" />
+                        Click to Sign In
+                      </a>
+                    </div>
+                  </div>
                 ) : null}
                 {errorMessage ? (
                   <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">{errorMessage}</div>
