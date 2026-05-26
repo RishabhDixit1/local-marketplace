@@ -1,5 +1,5 @@
 import "server-only";
-import * as twilio from "twilio";
+import twilio from "twilio";
 
 const getTwilio = () => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
