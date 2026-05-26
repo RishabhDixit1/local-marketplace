@@ -34,11 +34,11 @@ jobs:
       - name: Package build artifacts
         run: |
           tar czf /tmp/serviq-build.tar.gz \
+            --exclude='public/app/releases/*.apk' \
             .next \
             public \
             package.json \
-            package-lock.json \
-            --exclude='public/app/releases/*.apk'
+            package-lock.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
