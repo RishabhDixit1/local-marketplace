@@ -30,6 +30,24 @@ export default function ReferralsPage() {
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const data = await fetchAuthedJson<{ ok: boolean; codes: ReferralCode[]; referrals: ReferralEvent[]; totalRewards: number }>(
+        supabase, "/api/referrals", { method: "GET" }
+      );
+      if (cancelled) return;
+      if (data?.ok) {
+        setCodes(data.codes);
+        setReferrals(data.referrals);
+        setTotalRewards(data.totalRewards);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const data = await fetchAuthedJson<{ ok: boolean; codes: ReferralCode[]; referrals: ReferralEvent[]; totalRewards: number }>(
@@ -42,8 +60,6 @@ export default function ReferralsPage() {
     }
     setLoading(false);
   }, []);
-
-  useEffect(() => { void load(); }, [load]);
 
   const handleCreate = async () => {
     setCreating(true);

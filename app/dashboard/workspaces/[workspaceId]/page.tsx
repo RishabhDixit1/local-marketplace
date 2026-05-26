@@ -49,6 +49,28 @@ export default function WorkspaceDetailPage() {
   const [tab, setTab] = useState<string>("Overview");
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const [wsData, memData, brData, rlData, anData] = await Promise.all([
+        fetchAuthedJson<{ ok: boolean; workspace: Workspace }>(supabase, `/api/workspaces/${workspaceId}`, { method: "GET" }),
+        fetchAuthedJson<{ ok: boolean; members: Member[] }>(supabase, `/api/workspaces/${workspaceId}/members`, { method: "GET" }),
+        fetchAuthedJson<{ ok: boolean; branches: Branch[] }>(supabase, `/api/workspaces/${workspaceId}/branches`, { method: "GET" }),
+        fetchAuthedJson<{ ok: boolean; rules: Rule[] }>(supabase, `/api/workspaces/${workspaceId}/rules`, { method: "GET" }),
+        fetchAuthedJson<{ ok: boolean; analytics: Analytics }>(supabase, `/api/workspaces/${workspaceId}/analytics`, { method: "GET" }),
+      ]);
+      if (cancelled) return;
+      if (wsData?.ok) setWorkspace(wsData.workspace);
+      if (memData?.ok) setMembers(memData.members);
+      if (brData?.ok) setBranches(brData.branches);
+      if (rlData?.ok) setRules(rlData.rules);
+      if (anData?.ok) setAnalytics(anData.analytics);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     const [wsData, memData, brData, rlData, anData] = await Promise.all([
@@ -65,8 +87,6 @@ export default function WorkspaceDetailPage() {
     if (anData?.ok) setAnalytics(anData.analytics);
     setLoading(false);
   }, [workspaceId]);
-
-  useEffect(() => { void loadAll(); }, [loadAll]);
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-slate-400" /></div>;
   if (!workspace) return <div className="p-10 text-center text-sm text-slate-500">Workspace not found.</div>;
