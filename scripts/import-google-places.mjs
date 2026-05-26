@@ -277,7 +277,30 @@ async function main() {
 
       const userId = authUser.user.id;
 
-      // ---- Step 2: Create profile ----
+      // ---- Step 2: Upsert category ----
+      let categoryId = null;
+      if (category) {
+        const { data: cat } = await sb
+          .from("service_categories")
+          .upsert(
+            {
+              name: category,
+              slug: category
+                .toLowerCase()
+                .replace(/&/g, "and")
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, ""),
+              is_active: true,
+              sort_order: 99,
+            },
+            { onConflict: "name", ignoreDuplicates: false }
+          )
+          .select("id")
+          .maybeSingle();
+        if (cat) categoryId = cat.id;
+      }
+
+      // ---- Step 3: Create profile ----
       const { error: profileError } = await sb.from("profiles").insert({
         id: userId,
         full_name: name,
@@ -286,6 +309,7 @@ async function main() {
         latitude: lat,
         longitude: lng,
         role: "provider",
+        service_category_ids: categoryId ? [categoryId] : [],
         metadata,
       });
 
@@ -297,7 +321,7 @@ async function main() {
         continue;
       }
 
-      // ---- Step 3: Create service listing ----
+      // ---- Step 4: Create service listing ----
       const listingTitle = clampText(
         `${name} — ${category}`,
         200

@@ -35,8 +35,8 @@ void main() {
       expect(find.text('Find help'), findsOneWidget);
       expect(find.text('Earn nearby'), findsOneWidget);
       expect(find.text('Set up my business'), findsOneWidget);
-      expect(find.text('Continue with email code'), findsOneWidget);
-      expect(find.text('Send magic link'), findsOneWidget);
+      expect(find.text('Sign in with email'), findsOneWidget);
+      expect(find.text('Send magic link instead'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -46,28 +46,17 @@ void main() {
   ) async {
     await _pumpSignInPage(tester, const Size(390, 844), textScaleFactor: 1.6);
 
-    expect(find.text('Welcome to ServiQ'), findsOneWidget);
-    expect(find.text('Continue with email code'), findsOneWidget);
+    expect(find.text('Your local marketplace'), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('sign-in-google-card')),
-      220,
+      find.text('Send magic link instead'),
+      400,
       scrollable: scrollable,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Continue with Google'), findsAtLeastNWidgets(1));
-
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('sign-in-password-card')),
-      260,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Email + password'), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    expect(find.text('Send magic link instead'), findsOneWidget);
   });
 
   testWidgets('intent selection updates without losing auth controls', (
@@ -79,8 +68,8 @@ void main() {
     await tester.tap(find.text('Earn nearby'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Send email code'), findsOneWidget);
-    expect(find.text('Send magic link'), findsOneWidget);
+    expect(find.text('Sign in with email'), findsOneWidget);
+    expect(find.text('Send magic link instead'), findsOneWidget);
     expect(store.readIntent(), MobileOnboardingIntent.earnNearby);
     expect(store.readLastRoute(), '/app/provider-onboarding');
     expect(tester.takeException(), isNull);
@@ -101,7 +90,7 @@ void main() {
       find.text('Set up my business -> Business AI Launchpad'),
       findsOneWidget,
     );
-    expect(find.text('Continue with email code'), findsOneWidget);
+    expect(find.text('Sign in with email'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

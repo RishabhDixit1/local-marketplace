@@ -494,6 +494,7 @@ export const buildBootstrapProfilePatch = (
   if (!trim(existingProfile?.verification_level)) patch.verification_level = "email";
   if (!trim(existingProfile?.availability)) patch.availability = "available";
   if (!existingProfile?.metadata || Object.keys(existingProfile.metadata).length === 0) patch.metadata = {};
+  if (existingProfile) patch.onboarding_completed = true;
 
   return patch;
 };

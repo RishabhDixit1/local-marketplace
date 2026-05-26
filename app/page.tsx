@@ -6,14 +6,13 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
-  Mail,
-  LogIn,
   ShieldCheck,
   MapPin,
   X,
   Star,
   Search,
   Phone,
+  LogIn,
   Zap,
   Store,
   Loader2,
@@ -26,8 +25,6 @@ import {
   LOCAL_SOCIETIES,
 } from "@/lib/demo/crossings-republik";
 
-type AuthMode = "login" | "email";
-
 interface ProviderCardData {
   id: string; name: string; location: string; lat: number | null; lng: number | null;
   avatarUrl: string; bio: string; role: string; services: string[];
@@ -38,37 +35,7 @@ interface ProviderCardData {
   listings: { id: string; title: string; price: number | null }[];
 }
 
-const COUNTRY_CODE_OPTIONS: Array<{ code: string; label: string; dial: string }> = [
-  { code: "IN", label: "India (+91)", dial: "+91" },
-  { code: "US", label: "United States (+1)", dial: "+1" },
-  { code: "GB", label: "United Kingdom (+44)", dial: "+44" },
-  { code: "AE", label: "United Arab Emirates (+971)", dial: "+971" },
-  { code: "SA", label: "Saudi Arabia (+966)", dial: "+966" },
-  { code: "SG", label: "Singapore (+65)", dial: "+65" },
-  { code: "AU", label: "Australia (+61)", dial: "+61" },
-  { code: "CA", label: "Canada (+1)", dial: "+1" },
-  { code: "DE", label: "Germany (+49)", dial: "+49" },
-];
-
-const cleanDialCode = (value: string) => {
-  const raw = value.replace(/[^\d+]/g, "");
-  if (!raw) return "";
-  return raw.startsWith("+") ? raw : `+${raw}`;
-};
-const cleanPhoneDigits = (value: string) => value.replace(/\D/g, "");
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-const toE164Phone = (dialCodeRaw: string, phoneRaw: string): string | null => {
-  const dialCode = cleanDialCode(dialCodeRaw);
-  const dialDigits = dialCode.replace("+", "");
-  let subscriberDigits = cleanPhoneDigits(phoneRaw);
-  if (!dialDigits || !subscriberDigits) return null;
-  if (dialDigits === "91" && subscriberDigits.length === 11 && subscriberDigits.startsWith("0")) {
-    subscriberDigits = subscriberDigits.slice(1);
-  }
-  const combinedDigits = `${dialDigits}${subscriberDigits}`;
-  if (combinedDigits.length < 8 || combinedDigits.length > 15) return null;
-  return `+${combinedDigits}`;
-};
 
 const CATEGORIES = [
   { label: "Electrician", icon: "⚡", color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
@@ -168,12 +135,8 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
 
 export default function PublicLandingPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<AuthMode>("email");
   const [showAuth, setShowAuth] = useState(false);
-  const [countryCode, setCountryCode] = useState("+91");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -210,14 +173,6 @@ export default function PublicLandingPage() {
       });
     return () => { active = false; };
   }, [selectedCategory, retryCount]);
-
-  const resetAuthFlow = useCallback((nextMode: AuthMode) => {
-    setAuthMode(nextMode);
-    setPassword("");
-    setInfoMessage("");
-    setErrorMessage("");
-    setLoading(false);
-  }, []);
 
   const providers = useMemo(() => {
     const list = realProviders.length > 0 ? realProviders : [];
@@ -286,30 +241,7 @@ export default function PublicLandingPage() {
     } finally { setLoading(false); }
   };
 
-  const loginWithPassword = async () => {
-    setErrorMessage("");
-    setInfoMessage("");
-    const e164 = toE164Phone(countryCode, phoneNumber);
-    if (!e164) { setErrorMessage("Select a country code and enter a valid phone number."); return; }
-    const secret = password.trim();
-    if (!secret) { setErrorMessage("Enter your password."); return; }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password: secret });
-      if (error) throw error;
-      const user = data.user || (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error("Sign-in succeeded, but session was not created.");
-      await completeAuth(user);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to sign in.";
-      setErrorMessage(/invalid|credential|password|not found/i.test(message)
-        ? "Phone or password is incorrect."
-        : message
-      );
-    } finally { setLoading(false); }
-  };
-
-  const emailLinkSent = authMode === "email" && infoMessage.startsWith("Magic link sent");
+  const emailLinkSent = infoMessage.startsWith("Magic link sent");
 
   return (
     <div className="relative min-h-screen bg-white">
@@ -650,123 +582,59 @@ export default function PublicLandingPage() {
                   Welcome to {appName}
                 </h2>
                 <p className="mt-1.5 text-[0.8rem] leading-[1.55] text-white/45">
-                  {authMode === "email"
-                    ? "Start with email link sign-in."
-                    : "Use phone + password if you already have an account."}
+                  Sign in with a one-time login link sent to your email.
                 </p>
               </div>
 
-              {/* Tab bar */}
-              <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1">
-                {([{ mode: "email" as const, label: "Email Link", icon: Mail },
-                   { mode: "login" as const, label: "Password", icon: LogIn }] as const).map(({ mode, label, icon: Icon }) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => resetAuthFlow(mode)}
-                    className={`relative inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[9.5px] font-semibold transition ${
-                      authMode === mode ? "bg-white text-slate-900 shadow-md" : "text-white/40 hover:text-white/70"
-                    }`}
-                  >
-                    <Icon size={12} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-
               <div className="space-y-3">
-                {authMode === "email" ? (
-                  emailLinkSent ? (
-                    <div className="space-y-4 py-2 text-center">
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">Check Your Email</p>
-                        <p className="mt-1 text-xs leading-5 text-white/45">
-                          We emailed a secure login link to{" "}
-                          <span className="font-medium text-white/75">{emailAddress}</span>
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
-                        >Open Gmail <ArrowRight size={13} /></a>
-                        <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
-                        >Open Outlook <ArrowRight size={13} /></a>
-                      </div>
-                      <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
-                        <p className="text-[11px] leading-[1.6] text-white/35">
-                          Link valid for 24&nbsp;hours.{" "}
-                          <button type="button" onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
-                            className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">Use a different email</button>{" "}
-                          or{" "}
-                          <button type="button" onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
-                            className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">resend</button>.
-                        </p>
-                      </div>
+                {emailLinkSent ? (
+                  <div className="space-y-4 py-2 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-400" />
                     </div>
-                  ) : (
-                    <>
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold text-white/60">Email address</label>
-                        <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
-                          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
-                          value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") void sendEmailLink(); }}
-                        />
-                      </div>
-                      <button type="button" onClick={sendEmailLink} disabled={loading}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                      >{loading ? "Sending\u2026" : "Send Login Link"}{!loading && <ArrowRight size={15} />}</button>
-                      <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5">
-                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
-                        <p className="text-[11px] leading-[1.55] text-white/40">Recommended. No password needed.</p>
-                      </div>
-                      <button type="button" onClick={() => resetAuthFlow("login")}
-                        className="w-full text-center text-xs font-medium text-white/30 transition hover:text-white/60"
-                      >Already have a password? Use phone sign-in &rarr;</button>
-                    </>
-                  )
+                    <div>
+                      <p className="text-sm font-semibold text-white">Check Your Email</p>
+                      <p className="mt-1 text-xs leading-5 text-white/45">
+                        We emailed a secure login link to{" "}
+                        <span className="font-medium text-white/75">{emailAddress}</span>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                      >Open Gmail <ArrowRight size={13} /></a>
+                      <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                      >Open Outlook <ArrowRight size={13} /></a>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
+                      <p className="text-[11px] leading-[1.6] text-white/35">
+                        Link valid for 24&nbsp;hours.{" "}
+                        <button type="button" onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
+                          className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">Use a different email</button>{" "}
+                        or{" "}
+                        <button type="button" onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
+                          className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">resend</button>.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <>
-                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 text-[11px] leading-[1.55] text-white/40">
-                      Existing-password login only. New accounts should start with Email Link.
-                    </div>
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-white/60">Phone number</label>
-                      <div className="grid grid-cols-[9rem_1fr] gap-2">
-                        <select className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-3 py-3 text-sm text-white/80 outline-none transition hover:border-white/20"
-                          value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
-                        >{COUNTRY_CODE_OPTIONS.map((opt) => (
-                          <option key={opt.code} value={opt.dial} className="bg-slate-900 text-white">{opt.label}</option>
-                        ))}</select>
-                        <input type="tel" inputMode="numeric" placeholder="9876543210"
-                          className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
-                          value={phoneNumber} onChange={(e) => setPhoneNumber(cleanPhoneDigits(e.target.value).slice(0, 14))}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-white/60">Password</label>
-                      <input type="password" placeholder="Your account password"
-                        className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none focus:border-cyan-500/60"
-                        value={password} onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") void loginWithPassword(); }}
+                      <label className="block text-xs font-semibold text-white/60">Email address</label>
+                      <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+                        className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
+                        value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") void sendEmailLink(); }}
                       />
                     </div>
-                    <button type="button" onClick={loginWithPassword} disabled={loading}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98] disabled:opacity-55"
-                    >{loading ? "Signing in\u2026" : "Sign In"}{!loading && <ArrowRight size={15} />}</button>
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-white/[0.08]" />
-                      <span className="text-[10.5px] text-white/25">recommended</span>
-                      <div className="h-px flex-1 bg-white/[0.08]" />
+                    <button type="button" onClick={sendEmailLink} disabled={loading}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                    >{loading ? "Sending\u2026" : "Send Login Link"}{!loading && <ArrowRight size={15} />}</button>
+                    <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
+                      <p className="text-[11px] leading-[1.55] text-white/40">No password needed — a secure link is sent to your inbox.</p>
                     </div>
-                    <button type="button" onClick={() => resetAuthFlow("email")}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-xs font-semibold text-white/55 transition hover:bg-white/[0.08] hover:text-white/80"
-                    ><Mail size={13} /> Use Email Link instead</button>
                   </>
                 )}
 

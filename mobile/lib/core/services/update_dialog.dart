@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
-void showUpdateDialog(BuildContext context, {
+Future<void> showUpdateDialog(BuildContext context, {
   required String latestVersion,
   required bool isCritical,
   String? releaseNotes,
   String? updateUrl,
-}) {
-  showDialog(
+}) async {
+  if (!context.mounted) return;
+
+  final install = await showDialog<bool>(
     context: context,
     barrierDismissible: !isCritical,
     builder: (context) {
@@ -15,7 +18,7 @@ void showUpdateDialog(BuildContext context, {
         title: Row(
           children: [
             Icon(
-              isCritical ? Icons.system_update_alt_rounded : Icons.system_update_alt_rounded,
+              Icons.system_update_alt_rounded,
               color: isCritical ? AppColors.danger : AppColors.primary,
             ),
             const SizedBox(width: 12),
@@ -43,15 +46,11 @@ void showUpdateDialog(BuildContext context, {
         actions: [
           if (!isCritical)
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Later'),
             ),
           FilledButton.icon(
-            onPressed: () {
-              // In production, open the app store URL
-              // url_launcher could be used here
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(Icons.download_rounded),
             label: const Text('Update'),
           ),
@@ -59,4 +58,14 @@ void showUpdateDialog(BuildContext context, {
       );
     },
   );
+
+  if (install != true || !context.mounted) return;
+  if (updateUrl == null || updateUrl.isEmpty) return;
+
+  final uri = Uri.tryParse(updateUrl);
+  if (uri == null) return;
+
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 }

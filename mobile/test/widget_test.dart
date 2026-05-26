@@ -168,8 +168,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Continue with email code'), findsOneWidget);
-    expect(find.text('Send magic link'), findsOneWidget);
+    expect(find.text('Sign in with email'), findsOneWidget);
+    expect(find.text('Send magic link instead'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -900));
     await tester.pumpAndSettle();
     expect(find.text('Continue with Google'), findsAtLeastNWidgets(1));

@@ -1,5 +1,4 @@
-import https from "node:https";
-import { Resolver, promises as dnsPromises } from "node:dns";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NextResponse } from "next/server";
 import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
@@ -12,8 +11,6 @@ import {
 
 export const runtime = "nodejs";
 
-const REQUEST_TIMEOUT_MS = 8000;
-const PUBLIC_DNS_SERVERS = ["1.1.1.1", "8.8.8.8"];
 const BUILTIN_BLOCKED_MAGIC_LINK_RECIPIENTS = new Set([
   "test@example.com",
   "user@example.com",
@@ -34,9 +31,15 @@ const BUILTIN_BLOCKED_MAGIC_LINK_DOMAINS = new Set([
   "discard.email",
 ]);
 
-type SendLinkBody = {
-  email?: string;
-  redirectTo?: string;
+type SendLinkBody = { email?: string; redirectTo?: string };
+
+type GenerateLinkResponse = {
+  action_link?: string;
+  email_otp?: string;
+  hashed_token?: string;
+  id?: string;
+  error?: string;
+  msg?: string;
 };
 
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -52,160 +55,7 @@ const getEmailDomain = (email: string) => normalizeRecipientEntry(email.split("@
 const recipientMatchesSet = (email: string, entries: Set<string>) => {
   const normalizedEmail = normalizeRecipientEntry(email);
   const domain = getEmailDomain(normalizedEmail);
-
   return entries.has(normalizedEmail) || entries.has(domain) || entries.has(`@${domain}`);
-};
-
-const resolveIpv4ViaPublicDns = (host: string): Promise<string[]> =>
-  new Promise((resolve, reject) => {
-    const resolver = new Resolver();
-    resolver.setServers(PUBLIC_DNS_SERVERS);
-    resolver.resolve4(host, (error, addresses) => {
-      if (error || !addresses?.length) {
-        reject(error ?? new Error(`No IPv4 records found for ${host}.`));
-        return;
-      }
-      resolve(addresses);
-    });
-  });
-
-const resolveIpv4Candidates = async (host: string): Promise<string[]> => {
-  const candidates = new Set<string>();
-
-  try {
-    const systemResolved = await dnsPromises.lookup(host, { all: true, family: 4 });
-    for (const entry of systemResolved) {
-      if (entry.address) {
-        candidates.add(entry.address);
-      }
-    }
-  } catch {
-    // Continue to public resolvers below.
-  }
-
-  try {
-    const publicResolved = await resolveIpv4ViaPublicDns(host);
-    for (const address of publicResolved) {
-      if (address) {
-        candidates.add(address);
-      }
-    }
-  } catch {
-    // Keep the system DNS results if we have them.
-  }
-
-  return Array.from(candidates);
-};
-
-const postOtpRequest = ({
-  hostname,
-  hostHeader,
-  path,
-  anonKey,
-  payload,
-  servername = hostHeader,
-}: {
-  hostname: string;
-  hostHeader: string;
-  path: string;
-  anonKey: string;
-  payload: string;
-  servername?: string;
-}): Promise<{ status: number; body: string }> =>
-  new Promise((resolve, reject) => {
-    const request = https.request(
-      {
-        hostname,
-        port: 443,
-        family: 4,
-        method: "POST",
-        path,
-        servername,
-        headers: {
-          Host: hostHeader,
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(payload).toString(),
-        },
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-        response.on("end", () => {
-          resolve({
-            status: response.statusCode ?? 502,
-            body: Buffer.concat(chunks).toString("utf8"),
-          });
-        });
-      }
-    );
-
-    const timeoutId = setTimeout(() => {
-      request.destroy(new Error("Supabase auth request timed out."));
-    }, REQUEST_TIMEOUT_MS);
-
-    request.on("error", (error) => {
-      clearTimeout(timeoutId);
-      reject(error);
-    });
-
-    request.on("close", () => {
-      clearTimeout(timeoutId);
-    });
-
-    request.write(payload);
-    request.end();
-  });
-
-const postOtpThroughResolvedIps = async ({
-  ips,
-  host,
-  path,
-  anonKey,
-  payload,
-}: {
-  ips: string[];
-  host: string;
-  path: string;
-  anonKey: string;
-  payload: string;
-}): Promise<{ status: number; body: string }> => {
-  let lastError: Error | null = null;
-
-  for (const ip of ips) {
-    try {
-      return await postOtpRequest({
-        hostname: ip,
-        hostHeader: host,
-        path,
-        anonKey,
-        payload,
-        servername: host,
-      });
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Resolved IP auth request failed.");
-    }
-  }
-
-  throw lastError ?? new Error(`No reachable IPv4 addresses found for ${host}.`);
-};
-
-const extractAuthErrorMessage = (rawBody: string, fallback: string): string => {
-  try {
-    const parsed = JSON.parse(rawBody) as {
-      message?: string;
-      msg?: string;
-      error?: string;
-      error_description?: string;
-    };
-    const message =
-      parsed.message || parsed.msg || parsed.error_description || (typeof parsed.error === "string" ? parsed.error : "");
-
-    return message?.trim() || fallback;
-  } catch {
-    return rawBody.trim() || fallback;
-  }
 };
 
 const resolveMagicLinkRecipientError = (email: string) => {
@@ -222,20 +72,50 @@ const resolveMagicLinkRecipientError = (email: string) => {
   if (blockedRecipients.has(email) || blockedDomains.has(getEmailDomain(email)) || recipientMatchesSet(email, blockedRecipients)) {
     return "Use a real inbox. Placeholder, disposable, or blocked email addresses cannot receive login links.";
   }
-
   if (allowedRecipients.size > 0 && !recipientMatchesSet(email, allowedRecipients)) {
     return "This email address is not approved for magic-link sign-in in this environment.";
   }
-
   return null;
 };
 
-export async function POST(request: Request) {
-  const isDevelopment = process.env.NODE_ENV !== "production";
-  const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+const buildMagicLinkEmailHtml = ({
+  appName,
+  actionLink,
+  otpCode,
+}: {
+  appName: string;
+  actionLink: string;
+  otpCode: string;
+}) => `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px">
+<table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+<tr><td style="padding:32px 32px 0">
+<h1 style="margin:0;font-size:20px;color:#1a1a2e">Sign in to ${appName}</h1>
+<p style="margin:12px 0 0;font-size:14px;color:#666;line-height:1.5">Click the button below to sign in instantly.</p>
+</td></tr>
+<tr><td style="padding:24px 32px">
+<a href="${actionLink}" style="display:inline-block;padding:14px 32px;background:#1a1a2e;color:#ffffff;text-decoration:none;border-radius:12px;font-size:15px;font-weight:600">Sign In to ${appName}</a>
+</td></tr>
+<tr><td style="padding:0 32px 24px;border-bottom:1px solid #eee">
+<p style="margin:0;font-size:13px;color:#999">Or enter this code on the sign-in page:</p>
+<p style="margin:8px 0 0;font-size:28px;font-weight:700;color:#1a1a2e;letter-spacing:6px">${otpCode}</p>
+</td></tr>
+<tr><td style="padding:16px 32px">
+<p style="margin:0;font-size:12px;color:#aaa;line-height:1.4">This link and code expire in 24 hours. If you didn't request this, you can ignore this email.</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`;
 
-  if (!supabaseUrlValue || !anonKey) {
+export async function POST(request: Request) {
+  const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+
+  if (!supabaseUrlValue || !serviceRoleKey) {
     return NextResponse.json(
       { ok: false, error: "Supabase environment variables are missing." },
       { status: 500 }
@@ -282,80 +162,72 @@ export async function POST(request: Request) {
         ok: false,
         error: `Please wait ${retryAfterSeconds} seconds before requesting another login link.`,
       },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfterSeconds),
-        },
-      }
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
     );
   }
 
-  const redirectTo = resolveAuthCallbackUrl({
-    request,
-    requestedRedirectTo: body.redirectTo,
-  });
-  const otpUrl = new URL("/auth/v1/otp", supabaseUrl.origin);
-  otpUrl.searchParams.set("redirect_to", redirectTo);
+  const redirectTo = resolveAuthCallbackUrl({ request, requestedRedirectTo: body.redirectTo });
 
-  if (isDevelopment) {
-    console.info(`[auth/send-link] redirect_to=${redirectTo}`);
-  }
-
-  const payload = JSON.stringify({
-    email,
-    create_user: true,
-  });
-
-  let status: number;
-  let rawBody = "";
-
-  try {
-    const directResponse = await postOtpRequest({
-      hostname: supabaseUrl.hostname,
-      hostHeader: supabaseUrl.hostname,
-      path: `${otpUrl.pathname}${otpUrl.search}`,
-      anonKey,
-      payload,
-    });
-    status = directResponse.status;
-    rawBody = directResponse.body;
-  } catch {
+  const adminUrl = new URL("/auth/v1/admin/generate_link", supabaseUrl.origin);
+  let generateResult: GenerateLinkResponse;
     try {
-      const resolvedIps = await resolveIpv4Candidates(supabaseUrl.hostname);
-      const fallbackResponse = await postOtpThroughResolvedIps({
-        ips: resolvedIps,
-        host: supabaseUrl.hostname,
-        path: `${otpUrl.pathname}${otpUrl.search}`,
-        anonKey,
-        payload,
-      });
-      status = fallbackResponse.status;
-      rawBody = fallbackResponse.body;
-    } catch {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Supabase auth network request failed for ${supabaseUrl.hostname}. Check DNS, VPN, firewall, and retry.`,
+      const res = await fetch(adminUrl.toString(), {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
         },
-        { status: 503 }
-      );
+        body: JSON.stringify({ type: "magiclink", email, redirect_to: redirectTo }),
+      });
+      generateResult = (await res.json()) as GenerateLinkResponse;
+      if (!res.ok || !generateResult.hashed_token) {
+        throw new Error(generateResult.msg || generateResult.error || `GoTrue admin API error (${res.status})`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to generate magic link.";
+      return NextResponse.json({ ok: false, error: message }, { status: 502 });
     }
+
+    const actionLink = `${supabaseUrl.origin}/auth/v1/verify?${new URLSearchParams({
+      token: generateResult.hashed_token,
+      type: "magiclink",
+      redirect_to: redirectTo,
+    })}`;
+
+    try {
+      const appName = "ServiQ";
+      const ses = new SESClient({ region: "ap-southeast-2" });
+      await ses.send(
+        new SendEmailCommand({
+          Source: `"${appName}" <info@serviqapp.com>`,
+          Destination: { ToAddresses: [email] },
+          ReplyToAddresses: ["info@serviqapp.com"],
+          Message: {
+            Subject: { Data: `Your Magic Link to Sign In to ${appName}` },
+            Body: {
+              Html: {
+                Data: buildMagicLinkEmailHtml({
+                  appName,
+                  actionLink,
+                  otpCode: generateResult.email_otp!,
+                }),
+              },
+            },
+          },
+        })
+      );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to send email.";
+    if (/rate|throttl/i.test(message)) {
+      return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+    return NextResponse.json(
+      { ok: false, error: `Failed to send email. ${message}` },
+      { status: 502 }
+    );
   }
 
-  if (status >= 200 && status < 300) {
-    recordMagicLinkRequest(email);
-    return NextResponse.json(isDevelopment ? { ok: true, redirectTo } : { ok: true });
-  }
-
-  const message = extractAuthErrorMessage(rawBody, `Unable to send login link right now (${status}).`);
-  const responseStatus = status >= 400 && status <= 599 ? status : 502;
-
-  return NextResponse.json(
-    {
-      ok: false,
-      error: message,
-    },
-    { status: responseStatus }
-  );
+  recordMagicLinkRequest(email);
+  return NextResponse.json({ ok: true });
 }
