@@ -87,6 +87,12 @@ export const resolveRequestOrigin = (request: Request): string | null => {
     return normalizeSiteUrl(`${protocol}://${forwardedHost}`);
   }
 
+  const host = request.headers.get("host");
+  if (host) {
+    const protocol = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : requestProtocol;
+    return normalizeSiteUrl(`${protocol}://${host}`);
+  }
+
   try {
     return normalizeSiteUrl(new URL(request.url).origin);
   } catch {
