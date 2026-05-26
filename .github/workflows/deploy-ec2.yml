@@ -6,13 +6,62 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Rsync & build on EC2
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: NEXT_TELEMETRY_DISABLED=1 npm run build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      - name: Package build artifacts
+        run: |
+          tar czf /tmp/serviq-build.tar.gz \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            --exclude='public/app/releases/*.apk'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serviq-build
+          path: /tmp/serviq-build.tar.gz
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: serviq-build
+
+      - name: Deploy to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: serviq-build.tar.gz
+          target: /home/ec2-user/serviq
+          strip_components: 0
+
+      - name: Extract and restart on EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -24,9 +73,8 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
             cd /home/ec2-user/serviq
-            git fetch origin main
-            git reset --hard origin/main
-            npm ci --prefer-offline
-            NEXT_TELEMETRY_DISABLED=1 npm run build
+            tar xzf serviq-build.tar.gz
+            rm serviq-build.tar.gz
+            npm ci --production --prefer-offline
             pm2 restart serviq
-          command_timeout: 30m
+          command_timeout: 5m
