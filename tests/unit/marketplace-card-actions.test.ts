@@ -43,7 +43,7 @@ describe("resolveMarketplaceCardActionModel", () => {
       expect.objectContaining({ kind: "send_quote", label: "Chat", disabled: false }),
       expect.objectContaining({ kind: "view_profile", label: "Open", disabled: false }),
     ]);
-    expect(actions.icons.map((action) => action.kind)).toEqual(["save", "share"]);
+    expect(actions.icons.map((action) => action.kind)).toEqual(["save", "share", "hide", "report"]);
   });
 
   it("keeps open help request cards actionable for accept and quote outreach", () => {

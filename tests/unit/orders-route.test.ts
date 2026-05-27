@@ -15,6 +15,7 @@ vi.mock("@/lib/server/supabaseClients", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendOrderEmail: sendOrderEmailMock,
+  shouldSkipOrderEmail: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/lib/server/pushNotifications", () => ({

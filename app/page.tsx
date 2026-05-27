@@ -596,7 +596,7 @@ export default function PublicLandingPage() {
               </div>
 
               <div className="space-y-3">
-                {emailLinkSent ? (
+                {emailLinkSent && !magicLinkData ? (
                   <div className="space-y-4 py-2 text-center">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
                       <CheckCircle2 className="h-6 w-6 text-emerald-400" />
@@ -627,6 +627,30 @@ export default function PublicLandingPage() {
                       </p>
                     </div>
                   </div>
+                ) : null}
+
+                {magicLinkData ? (
+                  <div className="space-y-3 rounded-xl border border-cyan-400/[0.2] bg-cyan-400/[0.06] p-4">
+                    <p className="text-center text-xs text-white/60">
+                      {infoMessage || "Email delivery unavailable. Use the link or code below to sign in."}
+                    </p>
+                    <div className="rounded-xl bg-cyan-500/[0.12] border border-cyan-400/[0.25] overflow-hidden">
+                      <a href={magicLinkData.actionLink}
+                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/[0.08] transition">
+                        <LogIn className="h-4 w-4" />
+                        Click to Sign In
+                      </a>
+                    </div>
+                    <p className="text-center text-sm font-mono tracking-widest text-white/50">
+                      {magicLinkData.emailOtp}
+                    </p>
+                    <div className="flex justify-center">
+                      <button type="button" onClick={() => { setInfoMessage(""); setMagicLinkData(null); setErrorMessage(""); }}
+                        className="text-[11px] text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">
+                        Use a different email
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <div className="space-y-1.5">
@@ -647,20 +671,8 @@ export default function PublicLandingPage() {
                   </>
                 )}
 
-                {infoMessage && !emailLinkSent ? (
+                {infoMessage && !emailLinkSent && !magicLinkData ? (
                   <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">{infoMessage}</div>
-                ) : null}
-                {magicLinkData ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-white/70">{magicLinkData.emailOtp}</p>
-                    <div className="rounded-xl bg-cyan-500/[0.12] border border-cyan-400/[0.25] overflow-hidden">
-                      <a href={magicLinkData.actionLink}
-                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/[0.08] transition">
-                        <LogIn className="h-4 w-4" />
-                        Click to Sign In
-                      </a>
-                    </div>
-                  </div>
                 ) : null}
                 {errorMessage ? (
                   <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">{errorMessage}</div>
