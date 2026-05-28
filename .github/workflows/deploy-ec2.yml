@@ -13,9 +13,7 @@ jobs:
       actions: write
     steps:
       - name: Checkout
-        run: |
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
-          git checkout ${{ github.sha }}
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -38,11 +36,11 @@ jobs:
       - name: Package build artifacts
         run: |
           tar czf /tmp/serviq-build.tar.gz \
-            --exclude='public/app/releases/*.apk' \
             .next \
             public \
             package.json \
-            package-lock.json
+            package-lock.json \
+            --exclude='public/app/releases/*.apk'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -52,8 +50,6 @@ jobs:
           retention-days: 1
 
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -87,9 +83,9 @@ jobs:
             cd /home/ec2-user/serviq
             tar xzf serviq-build.tar.gz
             rm serviq-build.tar.gz
-            npm ci --prefer-offline
+            npm ci --production --prefer-offline
 
-            cat > /home/ec2-user/serviq/.env.production << 'EOF'
+            cat > .env.production << EOF
             NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
             NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
             SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
