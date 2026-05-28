@@ -87,14 +87,9 @@ jobs:
             rm serviq-build.tar.gz
             npm ci --production --prefer-offline
 
-            cat > .env.production << EOF
-            NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-            SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
-            NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-            EOF
+            env | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SITE_URL)=' > .env.production
 
-            pm2 restart serviq
+            pm2 restart serviq --update-env
           command_timeout: 5m
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
