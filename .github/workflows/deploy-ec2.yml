@@ -50,6 +50,8 @@ jobs:
           retention-days: 1
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
