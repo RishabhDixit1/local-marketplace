@@ -86,5 +86,25 @@ jobs:
             rm serviq-build.tar.gz
             npm ci --production --prefer-offline
 
-            pm2 restart serviq
+            cat > ecosystem.config.js << 'ENDCONFIG'
+            module.exports = {
+              apps: [{
+                name: "serviq",
+                cwd: "/home/ec2-user/serviq",
+                script: "node_modules/next/dist/bin/next",
+                args: "start",
+                env: {
+                  NODE_ENV: "production",
+                  NEXT_PUBLIC_SUPABASE_URL: "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}",
+                  NEXT_PUBLIC_SUPABASE_ANON_KEY: "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}",
+                  SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
+                  NEXT_PUBLIC_SITE_URL: "${{ secrets.NEXT_PUBLIC_SITE_URL }}"
+                }
+              }]
+            };
+            ENDCONFIG
+
+            pm2 delete serviq 2>/dev/null || true
+            pm2 start ecosystem.config.js
+            pm2 save
           command_timeout: 5m
