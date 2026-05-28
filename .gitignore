@@ -52,3 +52,4 @@ mobile/config/local.json
 
 # APK releases (hosted as GitHub Releases instead)
 public/app/releases/
+ecosystem.config.js
