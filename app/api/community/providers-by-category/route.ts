@@ -91,25 +91,48 @@ export async function GET(request: Request) {
       });
     }
 
+    const BATCH_SIZE = 40;
+    const batchInQuery = async <T>(
+      table: ReturnType<typeof admin.from>,
+      selectCols: string,
+      idCol: string,
+      ids: string[]
+    ): Promise<{ data: T[] | null; error: unknown }> => {
+      const results: T[] = [];
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        const { data, error } = await table.select(selectCols).in(idCol, batch);
+        if (error) return { data: null, error };
+        if (data) results.push(...(data as T[]));
+      }
+      return { data: results, error: null };
+    };
+
     const [servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
-      admin
-        .from("service_listings")
-        .select("provider_id, id, title, category, price, metadata")
-        .in("provider_id", profileIds),
-      admin
-        .from("reviews")
-        .select("provider_id, rating")
-        .in("provider_id", profileIds),
-      admin
-        .from("provider_presence")
-        .select("provider_id, is_online, response_sla_minutes, rolling_response_minutes")
-        .in("provider_id", profileIds),
-      admin.rpc("get_provider_order_stats", { p_provider_ids: profileIds }),
+      batchInQuery<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>(
+        admin.from("service_listings"),
+        "provider_id, id, title, category, price, metadata",
+        "provider_id",
+        profileIds
+      ),
+      batchInQuery<{ provider_id: string; rating: number }>(
+        admin.from("reviews"),
+        "provider_id, rating",
+        "provider_id",
+        profileIds
+      ),
+      batchInQuery<{ provider_id: string; is_online: boolean; response_sla_minutes: number; rolling_response_minutes: number }>(
+        admin.from("provider_presence"),
+        "provider_id, is_online, response_sla_minutes, rolling_response_minutes",
+        "provider_id",
+        profileIds
+      ),
+      admin.rpc("get_provider_order_stats", { provider_ids: profileIds }),
     ]);
 
-    const servicesData = servicesResult.data || [];
-    const reviewsData = reviewsResult.data || [];
-    const presenceData = presenceResult.data || [];
+    const servicesData = (servicesResult.data || []) as Array<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>;
+    const reviewsData = (reviewsResult.data || []) as Array<{ provider_id: string; rating: number }>;
+    const presenceData = (presenceResult.data || []) as Array<{ provider_id: string; is_online: boolean; response_sla_minutes: number; rolling_response_minutes: number }>;
     const orderStatsData = orderStatsResult.data || [];
 
     const serviceMap: Record<string, { id: string; title: string; category: string; price: number | null }[]> = {};
