@@ -212,7 +212,7 @@ export default function FeedCard({
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
-          className="relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+          className="relative shrink-0 overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
           aria-label={`Open ${item.displayCreator} profile`}
         >
           {useBrowserAvatar ? (
