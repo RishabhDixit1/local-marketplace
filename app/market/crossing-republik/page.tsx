@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Building2, MapPin, Store, Users } from "lucide-react";
 import type { LocalityResponse } from "@/app/api/localities/route";
-import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ServiceCategoryGrid from "@/app/components/services/ServiceCategoryGrid";
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 type LocalityWithCount = LocalityResponse & { provider_count: number };
 
 async function getMarketData() {
-  const supabase = createSupabaseAnonServerClient();
+  const supabase = createSupabaseAdminClient();
   if (!supabase) return null;
 
   const [localitiesResult, categoriesResult, providersResult] = await Promise.all([
