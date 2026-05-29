@@ -410,6 +410,7 @@ export const normalizeProfileRecord = (
     avatar_url: toNullableString(resolvedAvatarUrl),
     availability: normalizeAvailability(typeof row?.availability === "string" ? row.availability : ""),
     verification_level: toNullableString(typeof row?.verification_level === "string" ? row.verification_level : ""),
+    verification_status: typeof row?.verification_status === "string" ? row.verification_status : "unverified",
     on_time_rate:
       typeof row?.on_time_rate === "number"
         ? row.on_time_rate

@@ -36,6 +36,7 @@ import {
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   AlertTriangle,
+  BadgeCheck,
   Bell,
   Building2,
   ClipboardList,
@@ -84,6 +85,7 @@ const secondaryNavItems = [
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
   { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
   { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
+  { name: "Verification", path: "/dashboard/verification", icon: BadgeCheck },
   { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
 ];
 

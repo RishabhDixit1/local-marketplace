@@ -54,7 +54,7 @@ export async function GET(request: Request) {
   try {
     let query = admin
       .from("profiles")
-      .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at")
+      .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at, verification_status")
       .in("role", ["provider", "business"])
       .not("full_name", "is", null);
 
@@ -193,6 +193,8 @@ export async function GET(request: Request) {
       const isOnline = pres?.isOnline ?? false;
       if (isOnline) onlineCount++;
 
+      const pVerificationStatus = (p as Record<string, unknown>).verification_status as string || "unverified";
+
       return {
         id: p.id,
         name: p.full_name || p.name || "",
@@ -212,7 +214,7 @@ export async function GET(request: Request) {
         priceMin: minPrice,
         priceMax: maxPrice,
         distanceKm: dist != null ? Math.round(dist * 10) / 10 : null,
-        verified: p.role === "provider",
+        verified: pVerificationStatus === "verified",
         listings: serviceMap[p.id] || [],
         sortScore: 0,
       };

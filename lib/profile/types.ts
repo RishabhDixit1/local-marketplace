@@ -27,6 +27,7 @@ export type ProfileRecord = {
   avatar_url: string | null;
   availability: ProfileAvailability;
   verification_level: string | null;
+  verification_status: string;
   on_time_rate: number | null;
   response_time_minutes: number | null;
   repeat_clients_count: number | null;
