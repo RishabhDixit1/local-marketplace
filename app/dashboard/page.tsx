@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, MapPin, MessageCircle, SlidersHorizontal, UserPlus, X, Store, Star, User, Users, TrendingUp } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, SlidersHorizontal, UserPlus, X, Store, Star, Users, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
@@ -474,28 +474,22 @@ export default function MarketplacePage() {
               </Link>
             </div>
           )}
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
-            <MapPin className="h-3 w-3" />
-            <span>Covering: Mahagun Mascot, Panchsheel Wellington, Galleria Market, Avantika Retail Street, and 12+ areas</span>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <MapPin className="h-3 w-3" />
+              <span>Covering: Mahagun Mascot, Panchsheel Wellington, Galleria Market, Avantika Retail Street, and 12+ areas</span>
+            </div>
+            <Link
+              href={filters.category ? `/dashboard/providers?category=${encodeURIComponent(filters.category)}` : "/dashboard/providers"}
+              className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
+            >
+              Browse All
+              <SlidersHorizontal className="h-3 w-3" />
+            </Link>
           </div>
         </div>
 
          <div className="space-y-3">
-               <div className="flex items-center justify-between">
-                 <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                   <User className="h-4 w-4 text-[var(--brand-600)]" />
-                   {filters.category
-                     ? `${providers.length > 0 ? `${providers.length} ` : ""}${filters.category} Provider${providers.length !== 1 ? "s" : ""}`
-                     : "Local Providers Near You"}
-                 </h3>
-                 <Link
-                   href={filters.category ? `/dashboard/providers?category=${encodeURIComponent(filters.category)}` : "/dashboard/providers"}
-                   className="inline-flex items-center gap-1 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
-                 >
-                   Browse All
-                   <SlidersHorizontal className="h-3 w-3" />
-                 </Link>
-               </div>
                {providersLoading ? (
                  <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                    {Array.from({ length: 4 }).map((_, index) => (

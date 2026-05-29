@@ -212,7 +212,7 @@ export default function FeedCard({
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
-          className="relative shrink-0 overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
+          className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-10 sm:w-10"
           aria-label={`Open ${item.displayCreator} profile`}
         >
           {useBrowserAvatar ? (
@@ -221,7 +221,7 @@ export default function FeedCard({
               src={item.avatarUrl}
               alt={`${item.displayCreator} avatar`}
               loading="lazy"
-              className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
+              className="h-full w-full object-cover"
             />
           ) : (
             <Image
@@ -231,7 +231,7 @@ export default function FeedCard({
               height={40}
               quality={60}
               sizes="40px"
-              className="h-9 w-9 rounded-full border border-slate-200 object-cover sm:h-10 sm:w-10"
+              className="h-full w-full object-cover"
             />
           )}
         </button>
