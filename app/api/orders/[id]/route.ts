@@ -110,14 +110,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   // Verify caller is consumer or provider of this order
   const { data: existing } = await admin
     .from("orders")
-    .select("consumer_id,provider_id,status,price,metadata,listing_type")
+    .select("id,consumer_id,provider_id,status,price,metadata,listing_type")
     .eq("id", id)
     .single();
 
   if (!existing) return NextResponse.json({ ok: false, message: "Not found." }, { status: 404 });
 
   const ex = existing as unknown as {
-    consumer_id: string; provider_id: string | null; status: string; price: number | null;
+    id: string; consumer_id: string; provider_id: string | null; status: string; price: number | null;
     metadata: Record<string, unknown>;
     listing_type: string;
   };
@@ -134,6 +134,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       { status: 400 }
     );
   }
+
+  const previousStatus = ex.status;
 
   const { error } = await admin
     .from("orders")
@@ -287,6 +289,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     } catch (err) {
       console.error("[order-status-emails] failed for order", id, err);
+    }
+  })();
+
+  // Fire-and-forget SMS notifications via Twilio
+  void (async () => {
+    try {
+      const { sendOrderSmsNotifications } = await import("@/lib/server/orderSmsNotifications");
+      await sendOrderSmsNotifications({
+        id: ex.id,
+        consumer_id: ex.consumer_id,
+        provider_id: ex.provider_id,
+        status: status,
+        price: ex.price,
+      }, previousStatus);
+    } catch (err) {
+      console.error("[order-status-sms] failed for order", id, err);
     }
   })();
 

@@ -65,7 +65,7 @@ type SystemHealth = {
   summary: { total: number; present: number; missing: number };
 };
 
-type TabId = "overview" | "reports" | "users" | "system" | "disputes" | "verifications";
+type TabId = "overview" | "reports" | "users" | "system" | "disputes" | "verifications" | "payouts";
 
 const TAB_LABELS: Record<TabId, string> = {
   overview: "Overview",
@@ -74,6 +74,7 @@ const TAB_LABELS: Record<TabId, string> = {
   system: "System",
   disputes: "Disputes",
   verifications: "Verifications",
+  payouts: "Payouts",
 };
 
 const tryFetch = async <T,>(url: string, options?: RequestInit): Promise<T | null> => {
@@ -593,6 +594,10 @@ export default function AdminPage() {
         </div>
       ) : null}
 
+      {activeTab === "payouts" ? (
+        <AdminPayoutsTab />
+      ) : null}
+
       {activeTab === "system" ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
@@ -657,6 +662,127 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
       <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+const PAYOUT_STATUS_STYLES: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  approved: "bg-blue-50 text-blue-700 border-blue-200",
+  processing: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  failed: "bg-rose-50 text-rose-700 border-rose-200",
+  cancelled: "bg-slate-50 text-slate-500 border-slate-200",
+};
+
+function AdminPayoutsTab() {
+  const [payouts, setPayouts] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState("pending");
+
+  const fetchPayouts = useCallback(async (status: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/payouts?status=${status}`);
+      const json = await res.json();
+      if (json.ok) setPayouts(json.payouts);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchPayouts(filterStatus); }, [filterStatus, fetchPayouts]);
+
+  const handleAction = async (payoutId: string, action: string) => {
+    setBusyId(`${payoutId}_${action}`);
+    try {
+      const res = await fetch("/api/admin/payouts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payoutId, action }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setPayouts((prev) => prev.filter((p) => (p.id as string) !== payoutId));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const INR = (paise: unknown) => {
+    const v = typeof paise === "number" ? paise : Number(paise) || 0;
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v / 100);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none">
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="processing">Processing</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <span className="text-sm text-slate-500">{payouts.length} payout{payouts.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+      ) : payouts.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+          No {filterStatus} payouts.
+        </div>
+      ) : (
+        payouts.map((p: Record<string, unknown>) => (
+          <div key={p.id as string} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-semibold text-slate-900">{INR(p.net_amount_paise)}</p>
+                <p className="text-xs text-slate-500">{p.payout_method as string} — {p.payout_detail as string || "No details"}</p>
+                <p className="text-xs text-slate-400">{(p as Record<string, { full_name: string }>).profiles?.full_name || (p as Record<string, string>).provider_id}</p>
+                <p className="text-xs text-slate-400">{new Date(p.created_at as string).toLocaleDateString("en-IN")}</p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${PAYOUT_STATUS_STYLES[p.status as string] ?? ""}`}>
+                  {p.status as string}
+                </span>
+                <div className="flex gap-1.5 mt-1">
+                  {p.status === "pending" && (
+                    <>
+                      <button type="button" disabled={busyId === `${p.id}_approve`}
+                        onClick={() => void handleAction(p.id as string, "approve")}
+                        className="rounded-full border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50">
+                        {busyId === `${p.id}_approve` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Approve"}
+                      </button>
+                      <button type="button" disabled={busyId === `${p.id}_reject`}
+                        onClick={() => void handleAction(p.id as string, "reject")}
+                        className="rounded-full border border-rose-200 px-2.5 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50">
+                        {busyId === `${p.id}_reject` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reject"}
+                      </button>
+                    </>
+                  )}
+                  {p.status === "approved" && (
+                    <button type="button" disabled={busyId === `${p.id}_complete`}
+                      onClick={() => void handleAction(p.id as string, "complete")}
+                      className="rounded-full border border-blue-200 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50">
+                      {busyId === `${p.id}_complete` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mark completed"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
