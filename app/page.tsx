@@ -3,6 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
@@ -272,6 +273,13 @@ export default function PublicLandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/market/crossing-republik"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
+            >
+              <Store className="h-4 w-4" />
+              Explore
+            </Link>
             <button
               type="button"
               onClick={() => { setShowAuth(true); setContactProvider(null); }}
@@ -335,6 +343,15 @@ export default function PublicLandingPage() {
                 className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-slate-900 outline-none shadow-sm transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
               />
             </div>
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-3 text-xs text-slate-400">
+            <span>or</span>
+            <Link
+              href="/market/crossing-republik"
+              className="inline-flex items-center gap-1 font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]"
+            >
+              Browse the full marketplace <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
 
@@ -419,11 +436,10 @@ export default function PublicLandingPage() {
           <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
           <h3 className="mt-3 text-lg font-bold text-slate-900">Are you a service provider?</h3>
           <p className="mt-1 text-sm text-slate-500">List your business on {appName} and get more customers from your neighborhood.</p>
-          <button
-            type="button"
-            onClick={() => { setShowAuth(true); setContactProvider(null); }}
+          <Link
+            href="/onboarding/provider/locality"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
-          ><Store className="h-4 w-4" /> List Your Business</button>
+          ><Store className="h-4 w-4" /> List Your Business</Link>
         </div>
 
         {/* ── Location info ── */}

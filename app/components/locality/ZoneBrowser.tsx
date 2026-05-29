@@ -150,11 +150,15 @@ export default function ZoneBrowser({
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${colors.badge}`}>
                         {locality.zone_type === "society" ? "Society" : locality.zone_type === "market" ? "Market" : locality.zone_type === "supply_area" ? "Supply Area" : "Upcoming"}
                       </span>
-                      {locality.provider_count != null && locality.provider_count > 0 && (
+                      {locality.provider_count != null && locality.provider_count > 0 ? (
                         <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
                           {locality.provider_count} provider{locality.provider_count === 1 ? "" : "s"}
                         </span>
-                      )}
+                      ) : locality.zone_type !== "expansion" ? (
+                        <span className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] text-slate-400">
+                          Browsable
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>

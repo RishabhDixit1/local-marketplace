@@ -125,13 +125,13 @@ export default async function CrossingRepublikPage() {
 
       <section className="mx-auto max-w-lg space-y-3">
         <Link
-          href="/dashboard"
+          href="/dashboard/people"
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[var(--brand-800)]"
         >
           Book a Service
         </Link>
         <Link
-          href="/dashboard"
+          href="/onboarding/provider/locality"
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300"
         >
           Join as Provider

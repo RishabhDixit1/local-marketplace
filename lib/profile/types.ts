@@ -35,6 +35,10 @@ export type ProfileRecord = {
   profile_completion_percent: number;
   latitude: number | null;
   longitude: number | null;
+  locality_id: string | null;
+  service_zone_ids: string[];
+  service_category_ids: string[];
+  service_area_radius_km: number | null;
   metadata: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;

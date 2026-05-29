@@ -11,9 +11,9 @@ type ServiceCategory = {
   slug: string;
   icon_slug: string;
   description: string;
-  base_price_min: number;
-  base_price_max: number;
-  estimated_duration_mins: number;
+  base_price_min: number | null;
+  base_price_max: number | null;
+  estimated_duration_mins: number | null;
   provider_count?: number;
 };
 
@@ -34,9 +34,21 @@ export default function ServiceCategoryGrid({
   categories: ServiceCategory[];
   localityId?: string;
 }) {
+  const visibleCategories = categories.filter(
+    (c) => c.base_price_min != null && c.base_price_max != null
+  );
+
+  if (visibleCategories.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
+        <p className="text-sm font-semibold text-slate-500">No service categories available yet</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      {categories.map((cat) => {
+      {visibleCategories.map((cat) => {
         const Icon = iconMap[cat.icon_slug] || Wrench;
         return (
           <Link

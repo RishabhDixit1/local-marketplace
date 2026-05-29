@@ -1,12 +1,15 @@
 "use client";
 
 import { startTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 
+const ONBOARDING_STEPS = ["/onboarding/provider/locality"];
+
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { loading, user, profile, errorMessage, refreshProfile } = useProfileContext();
 
   useEffect(() => {
@@ -19,7 +22,19 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
       return;
     }
 
-  }, [loading, router, user]);
+    const role = profile?.role;
+    const hasLocality = !!profile?.locality_id;
+    const needsLocality = role === "provider" || role === "business";
+
+    if (needsLocality && !hasLocality) {
+      const isAlreadyOnOnboarding = ONBOARDING_STEPS.some((step) => pathname?.startsWith(step));
+      if (!isAlreadyOnOnboarding) {
+        startTransition(() => {
+          router.replace("/onboarding/provider/locality");
+        });
+      }
+    }
+  }, [loading, router, user, profile, pathname]);
 
   if (loading) {
     return (
