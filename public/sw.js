@@ -1,7 +1,7 @@
 const CACHE_NAME = "serviq-v2";
 const STATIC_CACHE = "serviq-static-v2";
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Building2, Loader2, MapPin, Search, ShieldCheck, Store, Users,
+  ArrowLeft, Building2, Loader2, MapPin, ShieldCheck, Store, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";

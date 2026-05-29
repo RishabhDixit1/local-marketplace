@@ -40,7 +40,6 @@ export const checkRateLimit = async (
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const windowStart = now - config.windowSeconds;
     const rateLimitKey = buildRateLimitKey(key.identifier, key.route);
 
     const { data: existing } = await adminDb

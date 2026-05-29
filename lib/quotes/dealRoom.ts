@@ -8,7 +8,6 @@ import type {
   ProviderCatalogItem,
   QuoteAttachmentRecord,
   QuoteAttachmentType,
-  QuoteDraftRecord,
   QuoteVersionRecord,
   RemoveQuoteAttachmentRequest,
   RemoveQuoteAttachmentResponse,

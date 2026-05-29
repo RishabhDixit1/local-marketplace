@@ -37,8 +37,6 @@ import {
   Sparkles,
   Star,
   TrendingUp,
-  Wifi,
-  WifiOff,
   X,
 } from "lucide-react";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
@@ -49,60 +47,30 @@ import {
   TaskCard,
   TaskStatusTabs,
   type NextActionPanelProps,
-  type TaskBoardStatusTabValue,
   type TaskTimelineStep,
 } from "@/app/dashboard/tasks/components/TaskBoardComponents";
-import { createAvatarFallback } from "@/lib/avatarFallback";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   buildCancelledTrackerSteps,
-  canCancelTrackedTaskAtStage,
   describeCancelledTrackerStage,
-  normalizeHelpRequestProgressStage,
-  type HelpRequestProgressStage,
 } from "@/lib/helpRequestProgress";
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
-  canTransitionOrderStatus,
-  getAllowedTransitions,
-  getOrderStatusLabel,
-  getOrderStatusPillClass,
-  getTransitionActionLabel,
   type CanonicalOrderStatus,
-  type OrderActorRole,
   normalizeOrderStatus,
 } from "@/lib/orderWorkflow";
 import {
-  buildFallbackTaskEventFeed,
-  fallbackAvatar,
-  formatAgo,
-  formatCompactCurrency,
   getPreferredProfileName,
-  getListingTypeLabel,
-  mapOrderToTask,
-  mapTaskEventToFeedItem,
   normalizeTaskStatus,
-  resolveOrderListing,
   timelineFromStatus,
-  type OrderRow,
-  type PostRow,
-  type ProductRow,
   type ProfileRow,
-  type ServiceRow,
-  type Task,
-  type TaskEventFeedItem,
-  type TaskEventRow,
   type TaskEventTone,
-  type TaskStatus,
 } from "@/lib/taskOperations";
-import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/utils";
 import type {
   RealtimeState,
   TaskSortOption,
   TaskViewTab,
-  InboxHelpRequest,
   InboxMatchItem,
   OperationalTask,
   HelpRequestRow,
@@ -118,15 +86,11 @@ import {
   getTaskCreatorName,
   getTaskCreatorAvatar,
   getTaskCreatorSummary,
-  isTaskPersonPlaceholder,
   realtimeStateMeta,
   isMissingSupabaseRelation,
-  isMissingColumnError,
   isSupportOpen,
   formatTaskBudget,
-  buildTaskAvatar,
   mapHelpRequestToTask,
-  pickSupportTaskId,
   mapSupportRequest,
   loadTaskProfiles,
   getCanonicalTaskStatus,

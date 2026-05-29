@@ -2,44 +2,22 @@ import { Loader2, Wifi, WifiOff } from "lucide-react";
 import type { TaskBoardStatusTabValue } from "@/app/dashboard/tasks/components/TaskBoardComponents";
 import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
-import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
 import {
-  buildFallbackTaskEventFeed,
   fallbackAvatar,
-  formatAgo,
-  formatCompactCurrency,
   getPreferredProfileName,
-  getListingTypeLabel,
-  mapOrderToTask,
-  mapTaskEventToFeedItem,
   normalizeTaskStatus,
-  resolveOrderListing,
   timelineFromStatus,
-  type OrderRow,
-  type PostRow,
-  type ProductRow,
   type ProfileRow,
-  type ServiceRow,
   type Task,
-  type TaskEventFeedItem,
-  type TaskEventRow,
   type TaskEventTone,
-  type TaskStatus,
 } from "@/lib/taskOperations";
 import {
-  canTransitionOrderStatus,
-  getAllowedTransitions,
-  getOrderStatusLabel,
-  getOrderStatusPillClass,
-  getTransitionActionLabel,
   type CanonicalOrderStatus,
-  type OrderActorRole,
   normalizeOrderStatus,
 } from "@/lib/orderWorkflow";
 import {
   canCancelTrackedTaskAtStage,
-  describeCancelledTrackerStage,
   normalizeHelpRequestProgressStage,
   type HelpRequestProgressStage,
 } from "@/lib/helpRequestProgress";

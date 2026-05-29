@@ -382,7 +382,6 @@ export default function ProvidersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<ProviderCard[]>([]);
-  const [allProviders, setAllProviders] = useState<ProviderCard[]>([]);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,

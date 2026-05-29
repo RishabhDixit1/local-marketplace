@@ -43,8 +43,8 @@ export default function ServiceCategoryGrid({
             key={cat.id}
             href={
               localityId
-                ? `/explore?category=${cat.slug}&locality=${localityId}`
-                : `/explore?category=${cat.slug}`
+                ? `/?category=${cat.slug}&locality=${localityId}`
+                : `/?category=${cat.slug}`
             }
             className="group flex flex-col items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
           >

@@ -156,6 +156,12 @@ export default function PublicLandingPage() {
   contactProviderRef.current = contactProvider;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get("category");
+    if (category) setSelectedCategory(category);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     setRealProvidersError(null);
     const params = new URLSearchParams();

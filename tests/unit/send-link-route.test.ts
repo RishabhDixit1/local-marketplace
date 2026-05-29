@@ -46,7 +46,7 @@ function makeFetchMock(adminResponse?: AdminResponse) {
 
   const seen: string[] = [];
 
-  const fn = (url: string, init?: RequestInit): Promise<Response> => {
+  const fn = (url: string): Promise<Response> => {
     seen.push(url);
 
     if (url.includes("/auth/v1/admin/generate_link")) {

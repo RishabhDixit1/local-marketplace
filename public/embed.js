@@ -98,7 +98,7 @@
           var card = createProfileCard(data);
           el.appendChild(card);
         })
-        .catch(function (err) {
+        .catch(function () {
           el.innerHTML = '<div style="padding:16px;border:1px solid #fca5a5;border-radius:8px;background:#fef2f2;color:#991b1b;font-size:14px;">ServiQ widget unavailable</div>';
         });
     });

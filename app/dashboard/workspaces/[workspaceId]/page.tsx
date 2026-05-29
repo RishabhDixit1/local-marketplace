@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ArrowLeft, BarChart3, Loader2, MapPin, Plus, Settings, ShieldCheck, Trash2, Users,
+  ArrowLeft, Loader2, MapPin, Plus, Users,
 } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";

@@ -6,7 +6,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { CreateLiveTalkRequest, LiveTalkRequestRecord, SendChatMessageResponse } from "@/lib/api/chat";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import { buildInterestDraftMessage, parseChatDraftTemplate, parseChatFeedContext, parseChatQuoteContext } from "@/lib/chatNavigation";
+import { buildInterestDraftMessage, parseChatDraftTemplate } from "@/lib/chatNavigation";
 import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
@@ -44,7 +44,6 @@ import type {
   InboxFilter,
   ChannelHealth,
   GroupedMessages,
-  FeedMessageContext,
   RequestedQuoteContext,
 } from "./chatTypes";
 import {
@@ -53,10 +52,7 @@ import {
   CONVERSATION_MESSAGE_SCAN_MAX,
   CONVERSATION_MESSAGE_SCAN_PER_CHAT,
   MESSAGE_HISTORY_LIMIT,
-  CHAT_EMOTICONS,
-  CHAT_EMOJI_OPTIONS,
   CHAT_PICKER_OPTIONS,
-  CHAT_PICKER_VALUE_OVERRIDES,
   isMissingColumnError,
   CHANNEL_HEALTH_STYLES,
   formatTime,
@@ -70,9 +66,7 @@ import {
   buildFeedContextKey,
   normalizeQuoteTarget,
   buildQuoteTargetKey,
-  FEED_CONTEXT_QUERY_KEYS,
   QUOTE_CONTEXT_QUERY_KEYS,
-  DRAFT_CONTEXT_QUERY_KEYS,
 } from "./chatTypes";
 
 export default function ChatPage() {

@@ -6,7 +6,7 @@ import { createAvatarFallback } from "@/lib/avatarFallback";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { buildPublicProfilePath, getProfileDisplayName } from "@/lib/profile/utils";
 import { supabase } from "@/lib/supabase";
-import type { ProviderCard as ProviderCardModel, ProviderMedia, ProviderOffering, ProviderPreview } from "./types";
+import type { ProviderCard as ProviderCardModel, ProviderMedia, ProviderOffering } from "./types";
 
 export type ProfileRow = CommunityProfileRecord;
 
