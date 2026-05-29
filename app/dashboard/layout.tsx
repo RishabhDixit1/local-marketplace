@@ -36,15 +36,21 @@ import {
 import { fetchAuthedJson } from "@/lib/clientApi";
 import {
   AlertTriangle,
+  Bell,
+  Building2,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
+  Gift,
   LogOut,
   MessageCircle,
   Plus,
+  Rocket,
   Shield,
+  ShoppingCart,
   Store,
   User,
+  Users,
 } from "lucide-react";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
@@ -68,6 +74,17 @@ const baseNavigationTabs = [
   { name: "Market", path: "/dashboard", icon: Store },
   { name: "My Work", path: "/dashboard/tasks", icon: ClipboardList },
   { name: "Profile", path: "/dashboard/profile", icon: User },
+];
+
+const secondaryNavItems = [
+  { name: "People", path: "/dashboard/people", icon: Users },
+  { name: "Providers", path: "/dashboard/providers", icon: Store },
+  { name: "Orders", path: "/dashboard/orders", icon: ShoppingCart },
+  { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
+  { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
+  { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
+  { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
+  { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
@@ -661,6 +678,34 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+
+          {!desktopNavCollapsed && secondaryNavItems.length > 0 && (
+            <div className="border-t border-slate-100 px-4 py-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                More
+              </p>
+              <div className="space-y-1">
+                {secondaryNavItems.map((item) => {
+                  const isActive = isNavigationTabActive(pathname, item.path);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                        isActive
+                          ? "bg-slate-100 text-slate-900"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div
             className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}

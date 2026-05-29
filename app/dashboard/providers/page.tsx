@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 import ProfileToastViewport, {
   type ProfileToast,
 } from "@/app/components/profile/ProfileToastViewport";
@@ -100,16 +101,6 @@ const saveFavorites = (ids: Set<string>) => {
 const formatCurrency = (value: number | null) => {
   if (!Number.isFinite(Number(value))) return null;
   return `₹${Number(value).toLocaleString("en-IN")}`;
-};
-
-const buildPublicProfilePath = (profile: { id: string; name?: string | null }) => {
-  if (!profile.name) return null;
-  const slug = profile.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  if (!slug) return null;
-  return `/profile/${slug}?provider=${encodeURIComponent(profile.id)}`;
 };
 
 function ProviderCardSkeleton() {

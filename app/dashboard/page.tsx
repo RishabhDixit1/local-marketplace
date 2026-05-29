@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, MapPin, MessageCircle, SlidersHorizontal, UserPlus, X, Store, Star, User, Users, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { buildPublicProfilePath } from "@/lib/profile/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageContextStrip from "@/app/components/PageContextStrip";
 import RouteObservability from "@/app/components/RouteObservability";
@@ -34,16 +35,6 @@ const CreatePostModal = dynamic(
 
 const MOBILE_INITIAL_VISIBLE_ITEMS = 8;
 const MOBILE_VISIBLE_INCREMENT = 6;
-
-const buildPublicProfilePath = (profile: { id: string; name?: string | null }) => {
-  if (!profile.name) return null;
-  const slug = profile.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  if (!slug) return null;
-  return `/profile/${slug}?provider=${encodeURIComponent(profile.id)}`;
-};
 
 export default function MarketplacePage() {
   const router = useRouter();
