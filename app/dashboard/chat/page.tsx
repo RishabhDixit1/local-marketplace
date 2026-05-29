@@ -11,6 +11,7 @@ import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
 import DealRoom from "@/app/components/quotes/DealRoom";
+import LiveTalkCall from "@/app/components/LiveTalkCall";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   Activity,
@@ -119,6 +120,7 @@ export default function ChatPage() {
   const [supportsReadReceipts, setSupportsReadReceipts] = useState(true);
   const [liveTalkRequest, setLiveTalkRequest] = useState<LiveTalkRequestRecord | null>(null);
   const [liveTalkBusy, setLiveTalkBusy] = useState(false);
+  const [callActive, setCallActive] = useState(false);
 
   const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -1728,7 +1730,7 @@ export default function ChatPage() {
                               ? "This member wants to launch the live audio/video workspace for this chat."
                               : "Your live audio/video request is pending. Keep using chat while the other member responds."
                             : liveTalkRequest.status === "accepted"
-                            ? "Realtime chat is active now. This placeholder is ready for WebRTC media wiring in the next pass."
+                            ? callActive ? "Call is active in fullscreen mode." : "Live Talk session is active. Join the audio/video call."
                             : liveTalkRequest.status === "declined"
                             ? "The request was declined. You can keep coordinating in chat and retry later."
                             : "This Live Talk session is no longer active."}
@@ -1766,18 +1768,40 @@ export default function ChatPage() {
                           </button>
                         )}
                         {liveTalkRequest.status === "accepted" && (
-                          <button
-                            type="button"
-                            onClick={() => void updateLiveTalk(liveTalkRequest.id, "ended")}
-                            disabled={liveTalkBusy}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
-                          >
-                            End session
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setCallActive(true)}
+                              disabled={callActive}
+                              className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+                            >
+                              {callActive ? "In call" : "Join call"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { void updateLiveTalk(liveTalkRequest.id, "ended"); setCallActive(false); }}
+                              disabled={liveTalkBusy}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-70"
+                            >
+                              End session
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
+                )}
+                {callActive && liveTalkRequest?.status === "accepted" && selectedConversation && selectedConversation.otherUserId && (
+                  <LiveTalkCall
+                    conversationId={selectedChat!}
+                    userId={userId}
+                    otherUserId={selectedConversation.otherUserId}
+                    requestId={liveTalkRequest.id}
+                    onEnd={() => {
+                      setCallActive(false);
+                      void updateLiveTalk(liveTalkRequest.id, "ended");
+                    }}
+                  />
                 )}
                 {loadingMessages ? (
                   <p className="inline-flex items-center gap-2 text-sm text-slate-600">

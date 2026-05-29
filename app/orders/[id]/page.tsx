@@ -22,6 +22,7 @@ import { fetchAuthedJson } from "@/lib/clientApi";
 import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
 import { getOrderFulfillmentOption, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { getOrderPaymentSummary, type PaymentStatusTone } from "@/lib/paymentFlow";
+import DisputeFormModal from "@/app/components/DisputeFormModal";
 
 const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -90,6 +91,7 @@ export default function OrderStatusPage() {
   const [actionError, setActionError] = useState("");
   const [disputeLoading, setDisputeLoading] = useState(false);
   const [disputeSent, setDisputeSent] = useState(false);
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -135,26 +137,8 @@ export default function OrderStatusPage() {
   }, [id]);
 
   const raiseDispute = useCallback(async () => {
-    const reason = prompt("Describe the issue with this order:");
-    if (!reason || !reason.trim()) return;
-    setDisputeLoading(true);
-    setActionError("");
-    try {
-      const res = await fetchAuthedJson<{ ok: boolean }>(supabase, "/api/disputes", {
-        method: "POST",
-        body: JSON.stringify({ orderId: id, reason: reason.trim() }),
-      });
-      if (res.ok) {
-        setDisputeSent(true);
-      } else {
-        setActionError("Failed to submit dispute.");
-      }
-    } catch {
-      setActionError("Failed to submit dispute.");
-    } finally {
-      setDisputeLoading(false);
-    }
-  }, [id]);
+    setShowDisputeForm(true);
+  }, []);
 
   if (loading) {
     return (
@@ -405,6 +389,13 @@ export default function OrderStatusPage() {
             Dispute submitted. An admin will review and follow up.
           </div>
         ) : null}
+
+        <DisputeFormModal
+          orderId={id}
+          open={showDisputeForm}
+          onClose={() => setShowDisputeForm(false)}
+          onSuccess={() => setDisputeSent(true)}
+        />
 
         {busy && <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
 
