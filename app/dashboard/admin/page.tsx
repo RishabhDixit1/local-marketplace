@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, XCircle } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, XCircle } from "lucide-react";
 
 type AdminStats = {
   totalUsers: number;
@@ -65,7 +65,7 @@ type SystemHealth = {
   summary: { total: number; present: number; missing: number };
 };
 
-type TabId = "overview" | "reports" | "users" | "system" | "disputes";
+type TabId = "overview" | "reports" | "users" | "system" | "disputes" | "verifications";
 
 const TAB_LABELS: Record<TabId, string> = {
   overview: "Overview",
@@ -73,6 +73,7 @@ const TAB_LABELS: Record<TabId, string> = {
   users: "Users",
   system: "System",
   disputes: "Disputes",
+  verifications: "Verifications",
 };
 
 const tryFetch = async <T,>(url: string, options?: RequestInit): Promise<T | null> => {
@@ -95,6 +96,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
+  const [verifications, setVerifications] = useState<Record<string, unknown>[]>([]);
 
   const [userQuery, setUserQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -134,6 +136,11 @@ export default function AdminPage() {
     if (data) setUsers(data.users);
   }, []);
 
+  const fetchVerifications = useCallback(async (status: string = "pending") => {
+    const data = await tryFetch<{ verifications: Record<string, unknown>[] }>(`/api/admin/verifications?status=${status}`);
+    if (data) setVerifications(data.verifications);
+  }, []);
+
   const fetchSystem = useCallback(async () => {
     const data = await tryFetch<SystemHealth>("/api/admin/system");
     if (data) setSystemHealth(data);
@@ -145,7 +152,8 @@ export default function AdminPage() {
     void fetchReports();
     void fetchDisputes();
     void fetchSystem();
-  }, [isAdmin, fetchStats, fetchReports, fetchDisputes, fetchSystem]);
+    void fetchVerifications();
+  }, [isAdmin, fetchStats, fetchReports, fetchDisputes, fetchSystem, fetchVerifications]);
 
   const handleDismiss = async (id: string) => {
     setBusyId(id);
@@ -181,6 +189,28 @@ export default function AdminPage() {
       const json = await res.json();
       if (json?.ok) {
         setReports((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        setError(json?.message || `Failed to ${action}.`);
+      }
+    } catch {
+      setError(`Failed to ${action}.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleVerificationAction = async (id: string, action: "approve" | "reject") => {
+    setBusyId(`${id}_${action}`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/verifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action }),
+      });
+      const json = await res.json();
+      if (json?.ok) {
+        setVerifications((prev) => prev.filter((v: Record<string, unknown>) => v.id !== id));
       } else {
         setError(json?.message || `Failed to ${action}.`);
       }
@@ -484,6 +514,75 @@ export default function AdminPage() {
                       >
                         {busyId === `${dispute.id}_resolve_for_provider` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                         For provider
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+
+      {activeTab === "verifications" ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">
+            {verifications.length > 0 ? `${verifications.length} pending verification${verifications.length === 1 ? "" : "s"}.` : "No pending verifications."}
+          </p>
+          {verifications.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+              All caught up — no pending verifications.
+            </div>
+          ) : (
+            verifications.map((v) => {
+              const doc = v as Record<string, unknown>;
+              return (
+                <div key={doc.id as string} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 space-y-1">
+                      <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <BadgeCheck className="h-4 w-4 text-sky-500" />
+                        {doc.applicantName as string}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        Document: <span className="font-medium">{doc.document_type as string}</span>
+                      </p>
+                      {doc.applicantEmail ? (
+                        <p className="text-xs text-slate-500">Email: {doc.applicantEmail as string}</p>
+                      ) : null}
+                      {doc.applicantPhone ? (
+                        <p className="text-xs text-slate-500">Phone: {doc.applicantPhone as string}</p>
+                      ) : null}
+                      {doc.file_url ? (
+                        <a
+                          href={doc.file_url as string}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          View document →
+                        </a>
+                      ) : null}
+                      <p className="text-xs text-slate-400">{formatDate(doc.created_at as string | null)}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busyId === `${doc.id}_approve`}
+                        onClick={() => void handleVerificationAction(doc.id as string, "approve")}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                      >
+                        {busyId === `${doc.id}_approve` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === `${doc.id}_reject`}
+                        onClick={() => void handleVerificationAction(doc.id as string, "reject")}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        {busyId === `${doc.id}_reject` ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                        Reject
                       </button>
                     </div>
                   </div>

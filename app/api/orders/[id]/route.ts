@@ -197,7 +197,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
-  // Auto-create review request on completion
+  // Auto-create review request + commission on completion
   if (status === "completed") {
     void (async () => {
       try {
@@ -210,6 +210,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }, { onConflict: "order_id, requester_id" });
       } catch (err) {
         console.error("[review-request] failed for order", id, err);
+      }
+
+      // Calculate platform commission
+      try {
+        const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
+        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 5.0;
+        const feePaise = Math.round(pricePaise * (rate / 100));
+        const payoutPaise = pricePaise - feePaise;
+
+        await admin.from("orders").update({
+          platform_fee_paise: feePaise,
+          provider_payout_paise: payoutPaise,
+          metadata: {
+            ...(ex.metadata || {}),
+            commission_calculated_at: new Date().toISOString(),
+          },
+        }).eq("id", id);
+      } catch (err) {
+        console.error("[commission] calculation failed for order", id, err);
       }
     })();
   }

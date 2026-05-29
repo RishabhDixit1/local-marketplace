@@ -53,6 +53,7 @@ import {
   User,
   Users,
 } from "lucide-react";
+import PushNotificationSubscriber from "@/app/components/PushNotificationSubscriber";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
 
@@ -844,6 +845,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             )}
             <OnboardingGuard>{children}</OnboardingGuard>
             <QuickOnboardingSheet />
+            <PushNotificationSubscriber />
           </main>
         </div>
       </div>
