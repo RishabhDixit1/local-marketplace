@@ -8,6 +8,7 @@ import {
   pruneExpiredMagicLinkCooldowns,
   recordMagicLinkRequest,
 } from "./cooldown";
+import { tryBackupProvider } from "@/lib/server/backupEmailProvider";
 
 export const runtime = "nodejs";
 
@@ -223,6 +224,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
     }
     if (/not.verified|sandbox|not.authorized|could not load credentials/i.test(message)) {
+      const backupSent = await tryBackupProvider({
+        to: email,
+        subject: `Your Magic Link to Sign In to ServiQ`,
+        html: buildMagicLinkEmailHtml({
+          appName: "ServiQ",
+          actionLink,
+          otpCode: generateResult.email_otp!,
+        }),
+      });
+      if (backupSent) {
+        recordMagicLinkRequest(email);
+        return NextResponse.json({ ok: true, emailSent: true });
+      }
       return NextResponse.json({
         ok: true,
         emailSent: false,

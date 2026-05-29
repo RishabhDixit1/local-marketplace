@@ -494,7 +494,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/");
+    // Auth state change handler will redirect; push is a safety net.
   };
 
   const userMenu =
@@ -886,9 +886,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   Log out of {appName}?
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  You can always sign back in with your phone number and
-                  password, use OTP recovery if you forget it, or open an email
-                  magic link. Any unsaved local changes on open pages will be
+                  You can always sign back in with a magic link sent to your
+                  email. Any unsaved local changes on open pages will be
                   lost.
                 </p>
               </div>

@@ -198,6 +198,7 @@ export default function PublicLandingPage() {
       const target = contactProviderRef.current
         ? `/dashboard?providerId=${contactProviderRef.current.id}`
         : resolveCurrentProfileDestination(profile);
+      setShowAuth(false);
       setContactProvider(null);
       setSelectedProvider(null);
       router.replace(target);
@@ -559,11 +560,11 @@ export default function PublicLandingPage() {
       {/* ── Auth Modal ── */}
       {(showAuth || contactProvider) && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/40 px-4 pt-[10vh] pb-8 backdrop-blur-sm">
-          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#070e1b] shadow-2xl">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
             <button
               type="button"
               onClick={() => { setShowAuth(false); setContactProvider(null); }}
-              className="absolute right-4 top-4 rounded-xl p-1.5 text-white/40 transition hover:bg-white/10 hover:text-white"
+              className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -572,81 +573,81 @@ export default function PublicLandingPage() {
             <div className="p-6 sm:p-8">
               {contactProvider ? (
                 <div className="mb-6">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">Contact Provider</p>
-                  <h2 className="brand-display mt-1.5 text-xl font-semibold text-white">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">Contact Provider</p>
+                  <h2 className="mt-1.5 text-xl font-semibold text-slate-900">
                     {contactProvider.name}
                   </h2>
-                  <p className="mt-1 text-xs text-white/50">
+                  <p className="mt-1 text-xs text-slate-500">
                     {contactProvider.services?.[0] || contactProvider.role} &middot; {contactProvider.location}
                   </p>
-                  <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
-                    <p className="text-xs text-white/60">Sign in or create an account to contact this provider and get their phone number.</p>
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs text-slate-600">Sign in or create an account to contact this provider.</p>
                   </div>
                 </div>
               ) : null}
 
               <div className="mb-5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-cyan-400/80">Secure Access</p>
-                <h2 className="brand-display mt-1.5 text-2xl font-semibold text-white">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">Secure Access</p>
+                <h2 className="mt-1.5 text-2xl font-semibold text-slate-900">
                   Welcome to {appName}
                 </h2>
-                <p className="mt-1.5 text-[0.8rem] leading-[1.55] text-white/45">
-                  Sign in with a one-time login link sent to your email.
+                <p className="mt-1.5 text-sm leading-[1.55] text-slate-500">
+                  Sign in or create an account with a one-time login link sent to your email.
                 </p>
               </div>
 
               <div className="space-y-3">
                 {emailLinkSent && !magicLinkData ? (
                   <div className="space-y-4 py-2 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.1]">
-                      <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50">
+                      <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Check Your Email</p>
-                      <p className="mt-1 text-xs leading-5 text-white/45">
+                      <p className="text-sm font-semibold text-slate-900">Check Your Email</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
                         We emailed a secure login link to{" "}
-                        <span className="font-medium text-white/75">{emailAddress}</span>
+                        <span className="font-medium text-slate-700">{emailAddress}</span>
                       </p>
                     </div>
                     <div className="space-y-2">
                       <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
                       >Open Gmail <ArrowRight size={13} /></a>
                       <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
                       >Open Outlook <ArrowRight size={13} /></a>
                     </div>
-                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.04] p-3 text-left">
-                      <p className="text-[11px] leading-[1.6] text-white/35">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left">
+                      <p className="text-xs leading-[1.6] text-slate-500">
                         Link valid for 24&nbsp;hours.{" "}
                         <button type="button" onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
-                          className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">Use a different email</button>{" "}
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">Use a different email</button>{" "}
                         or{" "}
                         <button type="button" onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
-                          className="text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">resend</button>.
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend</button>.
                       </p>
                     </div>
                   </div>
                 ) : null}
 
                 {magicLinkData ? (
-                  <div className="space-y-3 rounded-xl border border-cyan-400/[0.2] bg-cyan-400/[0.06] p-4">
-                    <p className="text-center text-xs text-white/60">
+                  <div className="space-y-3 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4">
+                    <p className="text-center text-xs text-slate-600">
                       {infoMessage || "Email delivery unavailable. Use the link or code below to sign in."}
                     </p>
-                    <div className="rounded-xl bg-cyan-500/[0.12] border border-cyan-400/[0.25] overflow-hidden">
+                    <div className="rounded-xl bg-white border border-[var(--brand-200)] overflow-hidden">
                       <a href={magicLinkData.actionLink}
-                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/[0.08] transition">
+                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[var(--brand-700)] hover:bg-[var(--brand-50)] transition">
                         <LogIn className="h-4 w-4" />
                         Click to Sign In
                       </a>
                     </div>
-                    <p className="text-center text-sm font-mono tracking-widest text-white/50">
+                    <p className="text-center text-sm font-mono tracking-widest text-slate-500">
                       {magicLinkData.emailOtp}
                     </p>
                     <div className="flex justify-center">
                       <button type="button" onClick={() => { setInfoMessage(""); setMagicLinkData(null); setErrorMessage(""); }}
-                        className="text-[11px] text-cyan-400 underline underline-offset-2 transition hover:text-cyan-300">
+                        className="text-xs text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">
                         Use a different email
                       </button>
                     </div>
@@ -654,28 +655,28 @@ export default function PublicLandingPage() {
                 ) : (
                   <>
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-white/60">Email address</label>
+                      <label className="block text-xs font-semibold text-slate-600">Email address</label>
                       <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
-                        className="w-full rounded-xl border border-white/[0.12] bg-white/[0.07] px-4 py-3 text-sm text-white placeholder:text-white/25 outline-none transition hover:border-white/20 focus:border-cyan-500/60 focus:bg-white/[0.09]"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                         value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") void sendEmailLink(); }}
                       />
                     </div>
                     <button type="button" onClick={sendEmailLink} disabled={loading}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
                     >{loading ? "Sending\u2026" : "Send Login Link"}{!loading && <ArrowRight size={15} />}</button>
-                    <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5">
-                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/60" />
-                      <p className="text-[11px] leading-[1.55] text-white/40">No password needed — a secure link is sent to your inbox.</p>
+                    <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-500)]" />
+                      <p className="text-xs leading-[1.55] text-slate-500">No password needed — a secure link is sent to your inbox. First-time users get an account created automatically.</p>
                     </div>
                   </>
                 )}
 
                 {infoMessage && !emailLinkSent && !magicLinkData ? (
-                  <div className="rounded-xl border border-emerald-400/[0.2] bg-emerald-400/[0.08] px-3.5 py-2.5 text-xs text-emerald-300/90">{infoMessage}</div>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-700">{infoMessage}</div>
                 ) : null}
                 {errorMessage ? (
-                  <div className="rounded-xl border border-rose-400/[0.2] bg-rose-400/[0.08] px-3.5 py-2.5 text-xs text-rose-300/90">{errorMessage}</div>
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-600">{errorMessage}</div>
                 ) : null}
               </div>
             </div>

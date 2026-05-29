@@ -128,8 +128,8 @@ export default function QuickOnboardingSheet() {
 
   const shouldShow = useMemo(() => {
     if (!user || !profile) return false;
-    return !profile.onboarding_completed || flowStep === "complete";
-  }, [flowStep, profile, user]);
+    return !profile.onboarding_completed;
+  }, [profile, user]);
 
   useEffect(() => {
     setName(profile?.full_name || profile?.name || "");

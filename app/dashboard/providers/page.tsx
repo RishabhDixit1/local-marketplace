@@ -420,6 +420,7 @@ export default function ProvidersPage() {
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
 
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const loadMoreCallbackRef = useRef<() => void>(() => {});
   const toastTimersRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -560,14 +561,22 @@ export default function ProvidersPage() {
   }, [filters, searchQuery]);
 
   useEffect(() => {
+    loadMoreCallbackRef.current = () => {
+      if (pagination.hasMore && !loadingMore && !loading) {
+        loadProviders(true);
+      }
+    };
+  }, [pagination.hasMore, loadingMore, loading, loadProviders]);
+
+  useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting && pagination.hasMore && !loadingMore && !loading) {
-          loadProviders(true);
+        if (entry?.isIntersecting) {
+          loadMoreCallbackRef.current();
         }
       },
       {
@@ -578,7 +587,7 @@ export default function ProvidersPage() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [pagination.hasMore, loadingMore, loading, loadProviders]);
+  }, []);
 
   const filteredProviders = useMemo(() => {
     let result = [...providers];
