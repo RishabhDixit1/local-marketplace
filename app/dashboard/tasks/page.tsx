@@ -57,14 +57,33 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import {
+  canTransitionOrderStatus,
+  getAllowedTransitions,
+  getOrderStatusLabel,
+  getOrderStatusPillClass,
+  getTransitionActionLabel,
   type CanonicalOrderStatus,
+  type OrderActorRole,
   normalizeOrderStatus,
 } from "@/lib/orderWorkflow";
 import {
+  buildFallbackTaskEventFeed,
+  formatAgo,
+  formatCompactCurrency,
+  getListingTypeLabel,
   getPreferredProfileName,
+  mapOrderToTask,
+  mapTaskEventToFeedItem,
   normalizeTaskStatus,
+  resolveOrderListing,
   timelineFromStatus,
+  type OrderRow,
+  type PostRow,
+  type ProductRow,
   type ProfileRow,
+  type ServiceRow,
+  type TaskEventFeedItem,
+  type TaskEventRow,
   type TaskEventTone,
 } from "@/lib/taskOperations";
 import type {
@@ -79,6 +98,7 @@ import type {
   TaskNotice,
   TaskReviewDraft,
 } from "./taskTypes";
+import { buildPublicProfilePath, inferProfileNameFromUser } from "@/lib/profile/utils";
 import {
   stageOrder,
   getStatusAccentClass,

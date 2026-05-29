@@ -11,6 +11,7 @@ import {
   type ProfileRow,
   type Task,
   type TaskEventTone,
+  type TaskStatus,
 } from "@/lib/taskOperations";
 import {
   type CanonicalOrderStatus,

@@ -516,7 +516,6 @@ export default function ProvidersPage() {
           setProviders((prev) => [...prev, ...(data.providers || [])]);
         } else {
           setProviders(data.providers || []);
-          setAllProviders(data.providers || []);
           setFacets(data.facets);
         }
         setPagination(data.pagination);
