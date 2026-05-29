@@ -48,6 +48,13 @@ export default function WorkspaceDetailPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [tab, setTab] = useState<string>("Overview");
   const [loading, setLoading] = useState(true);
+  const [addingBranch, setAddingBranch] = useState(false);
+  const [branchName, setBranchName] = useState("");
+  const [branchAddress, setBranchAddress] = useState("");
+  const [addingRule, setAddingRule] = useState(false);
+  const [ruleName, setRuleName] = useState("");
+  const [ruleCategory, setRuleCategory] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +78,7 @@ export default function WorkspaceDetailPage() {
     return () => { cancelled = true; };
   }, [workspaceId]);
 
-  const loadAll = useCallback(async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
     const [wsData, memData, brData, rlData, anData] = await Promise.all([
       fetchAuthedJson<{ ok: boolean; workspace: Workspace }>(supabase, `/api/workspaces/${workspaceId}`, { method: "GET" }),
@@ -87,6 +94,42 @@ export default function WorkspaceDetailPage() {
     if (anData?.ok) setAnalytics(anData.analytics);
     setLoading(false);
   }, [workspaceId]);
+
+  const handleAddBranch = async () => {
+    if (!branchName.trim()) return;
+    setBusy(true);
+    const data = await fetchAuthedJson<{ ok: boolean; branch: Branch }>(
+      supabase, `/api/workspaces/${workspaceId}/branches`, {
+        method: "POST",
+        body: JSON.stringify({ name: branchName.trim(), address: branchAddress.trim() || undefined }),
+      }
+    );
+    if (data?.ok) {
+      setBranchName("");
+      setBranchAddress("");
+      setAddingBranch(false);
+      await reload();
+    }
+    setBusy(false);
+  };
+
+  const handleAddRule = async () => {
+    if (!ruleName.trim()) return;
+    setBusy(true);
+    const data = await fetchAuthedJson<{ ok: boolean; rule: Rule }>(
+      supabase, `/api/workspaces/${workspaceId}/rules`, {
+        method: "POST",
+        body: JSON.stringify({ name: ruleName.trim(), category: ruleCategory.trim() || undefined }),
+      }
+    );
+    if (data?.ok) {
+      setRuleName("");
+      setRuleCategory("");
+      setAddingRule(false);
+      await reload();
+    }
+    setBusy(false);
+  };
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-slate-400" /></div>;
   if (!workspace) return <div className="p-10 text-center text-sm text-slate-500">Workspace not found.</div>;
@@ -162,10 +205,45 @@ export default function WorkspaceDetailPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">{branches.length} branch{branches.length === 1 ? "" : "es"}</p>
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setAddingBranch(!addingBranch)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
               <Plus className="h-3 w-3" /> Add Branch
             </button>
           </div>
+          {addingBranch && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <input
+                type="text"
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                placeholder="Branch name"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+              />
+              <input
+                type="text"
+                value={branchAddress}
+                onChange={(e) => setBranchAddress(e.target.value)}
+                placeholder="Address (optional)"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddBranch}
+                  disabled={busy || !branchName.trim()}
+                  className="rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--brand-700)] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                </button>
+                <button type="button" onClick={() => setAddingBranch(false)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           {branches.map((b) => (
             <div key={b.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
@@ -188,10 +266,45 @@ export default function WorkspaceDetailPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">{rules.length} rule{rules.length === 1 ? "" : "s"}</p>
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setAddingRule(!addingRule)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
               <Plus className="h-3 w-3" /> Add Rule
             </button>
           </div>
+          {addingRule && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <input
+                type="text"
+                value={ruleName}
+                onChange={(e) => setRuleName(e.target.value)}
+                placeholder="Rule name"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+              />
+              <input
+                type="text"
+                value={ruleCategory}
+                onChange={(e) => setRuleCategory(e.target.value)}
+                placeholder="Category (optional)"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddRule}
+                  disabled={busy || !ruleName.trim()}
+                  className="rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--brand-700)] disabled:opacity-60"
+                >
+                  {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                </button>
+                <button type="button" onClick={() => setAddingRule(false)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           {rules.map((r) => (
             <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-3">
               <div className="flex items-center justify-between">

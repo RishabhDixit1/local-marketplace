@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Loader2, Plus, Settings, Users } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -26,15 +26,6 @@ export default function WorkspacesPage() {
   const [formDesc, setFormDesc] = useState("");
   const [formType, setFormType] = useState("");
   const [creating, setCreating] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const data = await fetchAuthedJson<{ ok: boolean; workspaces: Workspace[] }>(
-      supabase, "/api/workspaces", { method: "GET" }
-    );
-    if (data?.ok) setWorkspaces(data.workspaces || []);
-    setLoading(false);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +55,6 @@ export default function WorkspacesPage() {
       setFormName("");
       setFormDesc("");
       setFormType("");
-      await load();
       router.push(`/dashboard/workspaces/${data.workspace.id}`);
     }
     setCreating(false);

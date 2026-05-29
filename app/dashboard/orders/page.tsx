@@ -172,7 +172,7 @@ export default function ConsumerOrdersPage() {
                   <div className="font-semibold text-slate-900">
                     {order.listing_type.toUpperCase()}
                   </div>
-                  <div className="text-sm text-slate-500">₹ {order.price}</div>
+                  <div className="text-sm text-slate-500">₹{order.price.toLocaleString("en-IN")}</div>
                   <div className="text-xs text-slate-400 mt-1">{new Date(order.created_at).toLocaleString()}</div>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getOrderStatusPillClass(normalizedStatus)}`}>
