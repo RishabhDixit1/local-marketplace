@@ -6,7 +6,6 @@ export const runtime = "nodejs";
 export const preferredRegion = "auto";
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
-const ZERO_WALLET = "wallet";
 
 function verifySignature(body: string, signature: string): boolean {
   if (!WEBHOOK_SECRET) return false;
@@ -53,8 +52,6 @@ type RazorpayWebhookPayload = {
     };
   };
 };
-
-const trimText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 export async function POST(request: Request) {
   const bodyText = await request.text();

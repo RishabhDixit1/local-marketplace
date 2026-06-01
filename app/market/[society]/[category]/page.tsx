@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { MapPin, Store, Users, Star, ArrowRight } from "lucide-react";
+import { MapPin, Store, Users, ArrowRight } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { notFound } from "next/navigation";
-import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 
 interface PageProps {
   params: Promise<{ society: string; category: string }>;

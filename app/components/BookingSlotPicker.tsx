@@ -104,7 +104,7 @@ export default function BookingSlotPicker({ orderId, providerId, onBooked }: Pro
       </div>
 
       {slots.length === 0 ? (
-        <p className="text-sm text-slate-500">Provider hasn't set their availability yet.</p>
+        <p className="text-sm text-slate-500">Provider hasn&apos;t set their availability yet.</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-7">

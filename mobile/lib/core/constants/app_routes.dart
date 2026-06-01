@@ -32,6 +32,8 @@ class AppRoutes {
   static const providerLaunchpadReview = '/app/provider-launchpad-review';
   static const quote = '/app/quote';
   static const marketZones = '/app/market-zones';
+  static const payouts = '/app/payouts';
+  static const referrals = '/app/referrals';
 
   static String get checkoutFromCart => '$checkout?source=cart';
 

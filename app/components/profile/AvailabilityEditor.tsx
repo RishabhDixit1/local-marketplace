@@ -104,7 +104,7 @@ export default function AvailabilityEditor() {
       </div>
 
       <div className="space-y-2">
-        {groupedSlots.map(({ day, label, fullLabel, daySlots }) => (
+        {groupedSlots.map(({ day, fullLabel, daySlots }) => (
           <div key={day} className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-slate-900">
@@ -126,11 +126,6 @@ export default function AvailabilityEditor() {
               const globalIdx = slots.findIndex(
                 (s) => s === slot && s.day_of_week === day
               );
-              // Find actual index in slots array
-              const actualIdx = slots.findIndex(
-                (s, i) => i >= slots.findIndex((x) => x.day_of_week === day) && s.day_of_week === day && s.start_time === slot.start_time && s.end_time === slot.end_time
-              );
-
               return (
                 <div key={`${day}-${idx}`} className="mt-2 flex items-center gap-2">
                   <input

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Bell, BellOff, Loader2, LogOut, Moon, Shield, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, Bell, Loader2, LogOut, Moon, Shield, Sun, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { fetchAuthedJson } from "@/lib/clientApi";
 
 type UserSettings = {
   order_notifications: boolean;

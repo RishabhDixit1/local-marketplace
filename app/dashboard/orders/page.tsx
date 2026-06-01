@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import {
@@ -163,9 +164,10 @@ export default function ConsumerOrdersPage() {
           const isBusy = busyOrderId === order.id;
 
           return (
-            <div
+            <Link
               key={order.id}
-              className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm"
+              href={`/orders/${order.id}`}
+              className="block p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition-colors"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -213,7 +215,7 @@ export default function ConsumerOrdersPage() {
                   Updating...
                 </div>
               )}
-            </div>
+            </Link>
           );
         })}
 

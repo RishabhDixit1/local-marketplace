@@ -6,11 +6,9 @@ import {
   Loader2,
   Mic,
   MicOff,
-  Phone,
   PhoneOff,
   Video,
   VideoOff,
-  X,
 } from "lucide-react";
 
 type Props = {
@@ -26,7 +24,7 @@ const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun1.l.google.com:19302" },
 ];
 
-export default function LiveTalkCall({ conversationId, userId, otherUserId, requestId, onEnd }: Props) {
+export default function LiveTalkCall({ conversationId, userId, otherUserId, onEnd }: Props) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [muted, setMuted] = useState(false);

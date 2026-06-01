@@ -39,8 +39,7 @@ export default function ReferralsPage() {
   const [requestingPayout, setRequestingPayout] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     const [refData, payoutData] = await Promise.all([
       fetchAuthedJson<{ ok: boolean; codes: ReferralCode[]; referrals: ReferralEvent[]; totalRewards: number }>(
         supabase, "/api/referrals", { method: "GET" }
@@ -59,17 +58,25 @@ export default function ReferralsPage() {
       setTotalPoints(payoutData.totalPoints);
       setAvailablePoints(payoutData.availablePoints);
     }
-    setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    const doLoad = async () => {
+      setLoading(true);
+      await fetchData();
+      if (!cancelled) setLoading(false);
+    };
+    void doLoad();
+    return () => { cancelled = true; };
+  }, [fetchData]);
 
   const handleCreate = async () => {
     setCreating(true);
     const data = await fetchAuthedJson<{ ok: boolean; code: ReferralCode }>(
       supabase, "/api/referrals", { method: "POST" }
     );
-    if (data?.ok) await load();
+    if (data?.ok) await fetchData();
     setCreating(false);
   };
 
@@ -91,7 +98,7 @@ export default function ReferralsPage() {
       }
     );
     setPayoutMsg(data?.message || "Error requesting payout.");
-    if (data?.ok) await load();
+    if (data?.ok) await fetchData();
     setRequestingPayout(false);
   };
 

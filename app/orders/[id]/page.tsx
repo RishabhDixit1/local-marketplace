@@ -89,7 +89,7 @@ export default function OrderStatusPage() {
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [disputeLoading, setDisputeLoading] = useState(false);
+  const [disputeLoading] = useState(false);
   const [disputeSent, setDisputeSent] = useState(false);
   const [showDisputeForm, setShowDisputeForm] = useState(false);
 

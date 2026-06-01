@@ -8,23 +8,16 @@ import {
   Loader2,
   MapPin,
   Phone,
-  Search,
   Star,
   Store,
   Users,
   X,
   Zap,
   CheckCircle2,
-  ShieldCheck,
-  LogIn,
 } from "lucide-react";
 import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ServiceCategoryGrid from "@/app/components/services/ServiceCategoryGrid";
 import { appName } from "@/lib/branding";
-import {
-  CROSSINGS_REPUBLIK_COORDS,
-  LOCAL_SOCIETIES,
-} from "@/lib/demo/crossings-republik";
 import type { LocalityResponse } from "@/app/api/localities/route";
 
 type ProviderCardData = {
@@ -139,8 +132,7 @@ export default function CrossingRepublikPage() {
   const [providersLoading, setProvidersLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const [contactProvider, setContactProvider] = useState<ProviderCardData | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderCardData | null>(null);
+
 
   useEffect(() => {
     async function load() {
@@ -157,23 +149,26 @@ export default function CrossingRepublikPage() {
 
   useEffect(() => {
     let active = true;
-    setProvidersLoading(true);
-    const params = new URLSearchParams();
-    if (selectedCategory) params.set("category", selectedCategory);
-    fetch(`/api/community/providers-by-category${params.toString() ? `?${params.toString()}` : ""}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!active) return;
-        setProviders((data as { providers?: ProviderCardData[] }).providers || []);
-      })
-      .catch(() => { if (active) setProviders([]); })
-      .finally(() => { if (active) setProvidersLoading(false); });
+    const loadProviders = async () => {
+      setProvidersLoading(true);
+      const params = new URLSearchParams();
+      if (selectedCategory) params.set("category", selectedCategory);
+      try {
+        const res = await fetch(`/api/community/providers-by-category${params.toString() ? `?${params.toString()}` : ""}`);
+        const data = await res.json();
+        if (active) setProviders((data as { providers?: ProviderCardData[] }).providers || []);
+      } catch {
+        if (active) setProviders([]);
+      } finally {
+        if (active) setProvidersLoading(false);
+      }
+    };
+    void loadProviders();
     return () => { active = false; };
   }, [selectedCategory]);
 
   const societies = localities.filter((l) => l.zone_type === "society");
   const marketZones = localities.filter((l) => l.zone_type === "market");
-  const activeProviderCount = localities.reduce((sum, l) => sum + ((l as Record<string, unknown>).provider_count as number || 0), 0);
 
   const areaList = useMemo(() => {
     const names = localities.slice(0, 5).map((l) => l.name);
@@ -318,8 +313,8 @@ export default function CrossingRepublikPage() {
               <ProviderCard
                 key={provider.id}
                 provider={provider}
-                onSelect={(p) => setSelectedProvider(p)}
-                onContact={(p) => setContactProvider(p)}
+                onSelect={() => {}}
+                onContact={() => {}}
               />
             ))}
           </div>

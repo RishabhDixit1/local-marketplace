@@ -5,16 +5,13 @@ import { supabase } from "@/lib/supabase";
 
 const PUBLIC_VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-export default function PushNotificationSubscriber() {
-  const [status, setStatus] = useState<"idle" | "granted" | "denied" | "unsupported" | "subscribed">("idle");
+function getInitialStatus(): "idle" | "granted" | "denied" | "unsupported" | "subscribed" {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  return Notification.permission === "granted" ? "granted" : "idle";
+}
 
-  useEffect(() => {
-    if (!("Notification" in window)) {
-      setStatus("unsupported");
-      return;
-    }
-    setStatus(Notification.permission === "granted" ? "granted" : "idle");
-  }, []);
+export default function PushNotificationSubscriber() {
+  const [status, setStatus] = useState<"idle" | "granted" | "denied" | "unsupported" | "subscribed">(getInitialStatus);
 
   useEffect(() => {
     if (status !== "granted") return;

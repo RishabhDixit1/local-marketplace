@@ -43,34 +43,38 @@ export default function VerificationPage() {
   const status = profile?.verification_status || "unverified";
   const badge = STATUS_BADGES[status] || STATUS_BADGES.unverified;
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const fetchDocuments = useCallback(async () => {
     const data = await fetchAuthedJson<{ ok: boolean; documents: Document[] }>(
       supabase, "/api/verification/documents", { method: "GET" }
     );
     if (data?.ok) setDocuments(data.documents);
-    setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      await fetchDocuments();
+      if (!cancelled) setLoading(false);
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [fetchDocuments]);
 
   const handleUpload = async () => {
     if (!file) { setMessage("Select a file first."); return; }
     setUploading(true);
     setMessage("");
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("document_type", selectedType);
-
     const data = await fetchAuthedJson<{ ok: boolean; message?: string; fileUrl?: string }>(
       supabase, "/api/verification/documents", { method: "POST", body: formData }
     );
-
     if (data?.ok) {
       setMessage("Document uploaded. Submit for review once ready.");
       setFile(null);
-      void load();
+      await fetchDocuments();
     } else {
       setMessage(data?.message || "Upload failed.");
     }
@@ -83,7 +87,7 @@ export default function VerificationPage() {
       supabase, "/api/verification/submit", { method: "POST" }
     );
     setMessage(data?.message || (data?.ok ? "Submitted!" : "Error"));
-    if (data?.ok) void load();
+    if (data?.ok) await fetchDocuments();
   };
 
   const pendingCount = documents.filter((d) => d.status === "pending").length;

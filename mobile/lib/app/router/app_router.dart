@@ -19,6 +19,8 @@ import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
+import '../../features/payouts/presentation/payouts_page.dart';
+import '../../features/referrals/presentation/referrals_page.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/provider/presentation/provider_launchpad_review_page.dart';
 import '../../features/saved/presentation/saved_feed_page.dart';
@@ -179,6 +181,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.providerListings,
         builder: (context, state) => const ProviderListingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.payouts,
+        builder: (context, state) => const PayoutsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.referrals,
+        builder: (context, state) => const ReferralsPage(),
       ),
       GoRoute(
         path: AppRoutes.orders,
