@@ -60,6 +60,20 @@ class MobileApiClient {
     );
   }
 
+  /// POST with a JSON array body (for APIs that expect List at top level).
+  Future<Map<String, dynamic>> postJsonArray(
+    String path, {
+    required List<Object> body,
+    bool authenticated = true,
+  }) {
+    return _sendJson(
+      method: 'POST',
+      path: path,
+      body: body,
+      authenticated: authenticated,
+    );
+  }
+
   Future<Map<String, dynamic>> patchJson(
     String path, {
     Map<String, dynamic>? body,
@@ -243,7 +257,7 @@ class MobileApiClient {
     required String method,
     required String path,
     Map<String, String>? queryParameters,
-    Map<String, dynamic>? body,
+    Object? body,
     required bool authenticated,
     bool isRetry = false,
   }) async {
@@ -272,7 +286,7 @@ class MobileApiClient {
               .post(
                 uri,
                 headers: headers,
-                body: jsonEncode(body ?? const <String, dynamic>{}),
+                body: jsonEncode(body ?? <String, dynamic>{}),
               )
               .timeout(_requestTimeout);
         case 'PATCH':
@@ -280,7 +294,7 @@ class MobileApiClient {
               .patch(
                 uri,
                 headers: headers,
-                body: jsonEncode(body ?? const <String, dynamic>{}),
+                body: jsonEncode(body ?? <String, dynamic>{}),
               )
               .timeout(_requestTimeout);
         case 'DELETE':
@@ -288,7 +302,7 @@ class MobileApiClient {
               .delete(
                 uri,
                 headers: headers,
-                body: jsonEncode(body ?? const <String, dynamic>{}),
+                body: jsonEncode(body ?? <String, dynamic>{}),
               )
               .timeout(_requestTimeout);
         default:

@@ -3,19 +3,77 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/api/mobile_api_client.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_buttons.dart';
 import '../data/launchpad_repository.dart';
+import '../data/provider_listing_repository.dart';
 import '../domain/launchpad_models.dart';
 
-class ProviderLaunchpadReviewPage extends ConsumerWidget {
+class ProviderLaunchpadReviewPage extends ConsumerStatefulWidget {
   const ProviderLaunchpadReviewPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProviderLaunchpadReviewPage> createState() =>
+      _ProviderLaunchpadReviewPageState();
+}
+
+class _ProviderLaunchpadReviewPageState
+    extends ConsumerState<ProviderLaunchpadReviewPage> {
+  bool _publishing = false;
+
+  Future<void> _refresh() async {
+    ref.invalidate(launchpadWorkspaceProvider);
+    await ref.read(launchpadWorkspaceProvider.future);
+  }
+
+  Future<void> _publish() async {
+    final workspace = ref.read(launchpadWorkspaceProvider).asData?.value;
+    final draftId = workspace?.draft?.id;
+    if (draftId == null || draftId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Save a draft before publishing.')),
+      );
+      return;
+    }
+
+    setState(() => _publishing = true);
+    try {
+      final result = await ref
+          .read(launchpadRepositoryProvider)
+          .publish(draftId: draftId);
+      ref.invalidate(launchpadWorkspaceProvider);
+      ref.invalidate(providerListingsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Published ${result.publishedServices} services and ${result.publishedProducts} products.',
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppErrorMapper.toMessage(error))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final workspace = ref.watch(launchpadWorkspaceProvider);
 
     return Scaffold(
@@ -25,16 +83,24 @@ class ProviderLaunchpadReviewPage extends ConsumerWidget {
           value: workspace,
           errorTitle: 'Unable to load launchpad',
           errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-          onRetry: () => ref.invalidate(launchpadWorkspaceProvider),
+          onRetry: _refresh,
           loadingBuilder: () =>
               const Center(child: CircularProgressIndicator()),
           data: (data) {
+            final draft = data.draft;
             final answers =
-                data.draft?.answers ?? MobileLaunchpadAnswers.empty();
+                draft?.answers ?? MobileLaunchpadAnswers.empty();
             final readiness = LaunchpadReadiness.fromAnswers(answers);
             final ratio = readiness.totalCount == 0
                 ? 0.0
                 : readiness.completedCount / readiness.totalCount;
+            final generatedServices = draft?.generatedServices ?? const [];
+            final generatedProducts = draft?.generatedProducts ?? const [];
+            final allGenerated = [
+              ...generatedServices,
+              ...generatedProducts,
+            ];
+            final hasGenerated = allGenerated.isNotEmpty;
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -113,7 +179,8 @@ class ProviderLaunchpadReviewPage extends ConsumerWidget {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       item.title,
@@ -127,7 +194,9 @@ class ProviderLaunchpadReviewPage extends ConsumerWidget {
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
-                                          ?.copyWith(color: AppColors.inkMuted),
+                                          ?.copyWith(
+                                            color: AppColors.inkMuted,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -138,10 +207,58 @@ class ProviderLaunchpadReviewPage extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (hasGenerated) ...[
+                  const SizedBox(height: 16),
+                  SectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Generated content',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        if (generatedServices.isNotEmpty) ...[
+                          Text(
+                            'Services (${generatedServices.length})',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          ...generatedServices.map(
+                            (s) => _GeneratedItemTile(offering: s),
+                          ),
+                        ],
+                        if (generatedProducts.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Products (${generatedProducts.length})',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          ...generatedProducts.map(
+                            (p) => _GeneratedItemTile(offering: p),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 PrimaryButton(
+                  label: _publishing ? 'Publishing...' : 'Publish profile',
+                  icon: _publishing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.rocket_launch_outlined),
+                  onPressed: _publishing ? null : _publish,
+                ),
+                const SizedBox(height: 10),
+                SecondaryButton(
                   label: 'Open Business AI Launchpad',
-                  icon: const Icon(Icons.rocket_launch_outlined),
+                  icon: const Icon(Icons.edit_outlined),
                   onPressed: () =>
                       context.push(AppRoutes.providerLaunchpad),
                 ),
@@ -149,6 +266,51 @@ class ProviderLaunchpadReviewPage extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _GeneratedItemTile extends StatelessWidget {
+  const _GeneratedItemTile({required this.offering});
+
+  final MobileLaunchpadGeneratedOffering offering;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = offering.price;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(offering.title,
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            [
+              if (offering.category.isNotEmpty) offering.category,
+              if (price != null && price > 0) 'INR ${price.round()}',
+            ].join(' / '),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (offering.description.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              offering.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ],
       ),
     );
   }

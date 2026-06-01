@@ -34,6 +34,11 @@ class AppRoutes {
   static const marketZones = '/app/market-zones';
   static const payouts = '/app/payouts';
   static const referrals = '/app/referrals';
+  static const verification = '/app/verification';
+  static const analytics = '/app/analytics';
+  static const availability = '/app/availability';
+  static const workspaces = '/app/workspaces';
+  static String workspaceDetail(String workspaceId) => '/app/workspaces/$workspaceId';
 
   static String get checkoutFromCart => '$checkout?source=cart';
 

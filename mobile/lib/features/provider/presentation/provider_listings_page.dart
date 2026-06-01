@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/constants/categories.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
@@ -623,8 +624,8 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _title;
   late final TextEditingController _description;
-  late final TextEditingController _category;
   late final TextEditingController _price;
+  String _category = '';
   String _availability = 'available';
   String _pricingType = 'fixed';
   bool _saving = false;
@@ -635,7 +636,7 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
     final service = widget.service;
     _title = TextEditingController(text: service?.title ?? '');
     _description = TextEditingController(text: service?.description ?? '');
-    _category = TextEditingController(text: service?.category ?? '');
+    _category = service?.category ?? '';
     _price = TextEditingController(
       text: service == null || service.price <= 0
           ? ''
@@ -649,7 +650,6 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
   void dispose() {
     _title.dispose();
     _description.dispose();
-    _category.dispose();
     _price.dispose();
     super.dispose();
   }
@@ -662,7 +662,7 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
     final values = {
       'title': _title.text.trim(),
       'description': _description.text.trim(),
-      'category': _category.text.trim(),
+      'category': _category,
       'price': double.tryParse(_price.text.trim()) ?? 0,
       'availability': _availability,
       'pricingType': _pricingType,
@@ -710,10 +710,11 @@ class _ServiceListingSheetState extends ConsumerState<_ServiceListingSheet> {
               label: 'Description',
               maxLines: 3,
             ),
-            _SheetTextField(
-              controller: _category,
+            _SheetDropdown(
               label: 'Category',
-              validator: _required('Add a category.'),
+              value: _category,
+              values: categories,
+              onChanged: (value) => setState(() => _category = value),
             ),
             _SheetTextField(
               controller: _price,
@@ -759,10 +760,10 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _title;
   late final TextEditingController _description;
-  late final TextEditingController _category;
   late final TextEditingController _price;
   late final TextEditingController _stock;
   late final TextEditingController _image;
+  String _category = '';
   String _deliveryMethod = 'pickup';
   bool _saving = false;
   bool _uploading = false;
@@ -773,7 +774,7 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
     final product = widget.product;
     _title = TextEditingController(text: product?.title ?? '');
     _description = TextEditingController(text: product?.description ?? '');
-    _category = TextEditingController(text: product?.category ?? '');
+    _category = product?.category ?? '';
     _price = TextEditingController(
       text: product == null || product.price <= 0
           ? ''
@@ -788,7 +789,6 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
   void dispose() {
     _title.dispose();
     _description.dispose();
-    _category.dispose();
     _price.dispose();
     _stock.dispose();
     _image.dispose();
@@ -836,7 +836,7 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
     final values = {
       'title': _title.text.trim(),
       'description': _description.text.trim(),
-      'category': _category.text.trim(),
+      'category': _category,
       'price': double.tryParse(_price.text.trim()) ?? 0,
       'stock': int.tryParse(_stock.text.trim()) ?? 0,
       'deliveryMethod': _deliveryMethod,
@@ -885,10 +885,11 @@ class _ProductListingSheetState extends ConsumerState<_ProductListingSheet> {
               label: 'Description',
               maxLines: 3,
             ),
-            _SheetTextField(
-              controller: _category,
+            _SheetDropdown(
               label: 'Category',
-              validator: _required('Add a category.'),
+              value: _category,
+              values: categories,
+              onChanged: (value) => setState(() => _category = value),
             ),
             _SheetTextField(
               controller: _price,

@@ -112,6 +112,8 @@ class MobileLaunchpadAnswers {
     required this.phone,
     required this.website,
     required this.brandTone,
+    this.latitude,
+    this.longitude,
   });
 
   factory MobileLaunchpadAnswers.fromJson(Map<String, dynamic> json) {
@@ -134,6 +136,8 @@ class MobileLaunchpadAnswers {
       phone: _readString(json['phone']),
       website: _readString(json['website']),
       brandTone: _readString(json['brandTone'], fallback: 'friendly'),
+      latitude: _nullableDouble(json['latitude']),
+      longitude: _nullableDouble(json['longitude']),
     );
   }
 
@@ -154,6 +158,8 @@ class MobileLaunchpadAnswers {
       phone: '',
       website: '',
       brandTone: 'friendly',
+      latitude: null,
+      longitude: null,
     );
   }
 
@@ -172,6 +178,8 @@ class MobileLaunchpadAnswers {
   final String phone;
   final String website;
   final String brandTone;
+  final double? latitude;
+  final double? longitude;
 
   Map<String, dynamic> toJson() {
     return {
@@ -190,6 +198,8 @@ class MobileLaunchpadAnswers {
       'phone': phone,
       'website': website,
       'brandTone': brandTone,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
     };
   }
 }

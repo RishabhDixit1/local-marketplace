@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/constants/categories.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
@@ -65,8 +67,6 @@ class ProviderLaunchpadPage extends ConsumerStatefulWidget {
 class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   final _formKey = GlobalKey<FormState>();
   final _businessNameController = TextEditingController();
-  final _businessTypeController = TextEditingController(text: 'local_service');
-  final _categoryController = TextEditingController();
   final _locationController = TextEditingController();
   final _serviceAreaController = TextEditingController();
   final _radiusController = TextEditingController(text: '5');
@@ -81,6 +81,11 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   _LaunchpadStep _step = _LaunchpadStep.basics;
   String _offeringType = 'services';
   String _brandTone = 'friendly';
+  String _businessType = '';
+  String _primaryCategory = '';
+  double? _latitude;
+  double? _longitude;
+  bool _locatingGps = false;
   String? _loadedDraftId;
   bool _saving = false;
   bool _autosaving = false;
@@ -95,8 +100,6 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
 
   List<TextEditingController> get _controllers => [
     _businessNameController,
-    _businessTypeController,
-    _categoryController,
     _locationController,
     _serviceAreaController,
     _radiusController,
@@ -148,8 +151,6 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       }
       _hydrating = true;
       _businessNameController.text = answers.businessName;
-      _businessTypeController.text = answers.businessType;
-      _categoryController.text = answers.primaryCategory;
       _locationController.text = answers.location;
       _serviceAreaController.text = answers.serviceArea;
       _radiusController.text = answers.serviceRadiusKm.toString();
@@ -163,6 +164,10 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       setState(() {
         _offeringType = _validOfferingType(answers.offeringType);
         _brandTone = _validBrandTone(answers.brandTone);
+        _businessType = _validBusinessType(answers.businessType);
+        _primaryCategory = _validCategory(answers.primaryCategory);
+        _latitude = answers.latitude;
+        _longitude = answers.longitude;
         _draftStatus = draft == null ? 'Draft ready' : 'Loaded saved draft';
       });
       _hydrating = false;
@@ -184,11 +189,11 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
   MobileLaunchpadAnswers _readAnswers() {
     return MobileLaunchpadAnswers(
       businessName: _businessNameController.text.trim(),
-      businessType: _businessTypeController.text.trim().isEmpty
+      businessType: _businessType.trim().isEmpty
           ? 'local_service'
-          : _businessTypeController.text.trim(),
+          : _businessType.trim(),
       offeringType: _offeringType,
-      primaryCategory: _categoryController.text.trim(),
+      primaryCategory: _primaryCategory.trim(),
       location: _locationController.text.trim(),
       serviceArea: _serviceAreaController.text.trim(),
       serviceRadiusKm: int.tryParse(_radiusController.text.trim()) ?? 5,
@@ -200,6 +205,8 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
       phone: _phoneController.text.trim(),
       website: _websiteController.text.trim(),
       brandTone: _brandTone,
+      latitude: _latitude,
+      longitude: _longitude,
     );
   }
 
@@ -223,6 +230,30 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
         unawaited(_saveDraft(quiet: true, validate: false));
       }
     });
+  }
+
+  Future<void> _handleGps() async {
+    setState(() => _locatingGps = true);
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 0,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to get GPS location: ${AppErrorMapper.toMessage(error)}')),
+      );
+    } finally {
+      if (mounted) setState(() => _locatingGps = false);
+    }
   }
 
   void _handleDropdownChanged(VoidCallback update) {
@@ -571,8 +602,6 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
                       answers: _readAnswers(),
                       readiness: _readiness,
                       businessNameController: _businessNameController,
-                      businessTypeController: _businessTypeController,
-                      categoryController: _categoryController,
                       locationController: _locationController,
                       serviceAreaController: _serviceAreaController,
                       radiusController: _radiusController,
@@ -585,10 +614,20 @@ class _ProviderLaunchpadPageState extends ConsumerState<ProviderLaunchpadPage> {
                       websiteController: _websiteController,
                       offeringType: _offeringType,
                       brandTone: _brandTone,
+                      businessType: _businessType,
+                      primaryCategory: _primaryCategory,
+                      latitude: _latitude,
+                      longitude: _longitude,
+                      locatingGps: _locatingGps,
                       onOfferingTypeChanged: (value) =>
                           _handleDropdownChanged(() => _offeringType = value),
                       onBrandToneChanged: (value) =>
                           _handleDropdownChanged(() => _brandTone = value),
+                      onBusinessTypeChanged: (value) =>
+                          _handleDropdownChanged(() => _businessType = value),
+                      onCategoryChanged: (value) =>
+                          _handleDropdownChanged(() => _primaryCategory = value),
+                      onGps: _handleGps,
                       onAiReviewStarted: _trackAiReviewStarted,
                     ),
                   ),
@@ -763,8 +802,6 @@ class _CurrentStepCard extends StatelessWidget {
     required this.answers,
     required this.readiness,
     required this.businessNameController,
-    required this.businessTypeController,
-    required this.categoryController,
     required this.locationController,
     required this.serviceAreaController,
     required this.radiusController,
@@ -777,8 +814,16 @@ class _CurrentStepCard extends StatelessWidget {
     required this.websiteController,
     required this.offeringType,
     required this.brandTone,
+    required this.businessType,
+    required this.primaryCategory,
+    required this.latitude,
+    required this.longitude,
+    required this.locatingGps,
     required this.onOfferingTypeChanged,
     required this.onBrandToneChanged,
+    required this.onBusinessTypeChanged,
+    required this.onCategoryChanged,
+    required this.onGps,
     required this.onAiReviewStarted,
   });
 
@@ -787,8 +832,6 @@ class _CurrentStepCard extends StatelessWidget {
   final MobileLaunchpadAnswers answers;
   final _PublishReadiness readiness;
   final TextEditingController businessNameController;
-  final TextEditingController businessTypeController;
-  final TextEditingController categoryController;
   final TextEditingController locationController;
   final TextEditingController serviceAreaController;
   final TextEditingController radiusController;
@@ -801,8 +844,16 @@ class _CurrentStepCard extends StatelessWidget {
   final TextEditingController websiteController;
   final String offeringType;
   final String brandTone;
+  final String businessType;
+  final String primaryCategory;
+  final double? latitude;
+  final double? longitude;
+  final bool locatingGps;
   final ValueChanged<String> onOfferingTypeChanged;
   final ValueChanged<String> onBrandToneChanged;
+  final ValueChanged<String> onBusinessTypeChanged;
+  final ValueChanged<String> onCategoryChanged;
+  final VoidCallback onGps;
   final VoidCallback onAiReviewStarted;
 
   @override
@@ -811,13 +862,19 @@ class _CurrentStepCard extends StatelessWidget {
       child: switch (step) {
         _LaunchpadStep.basics => _BasicsStep(
           businessNameController: businessNameController,
-          businessTypeController: businessTypeController,
-          categoryController: categoryController,
+          businessType: businessType,
+          primaryCategory: primaryCategory,
           locationController: locationController,
           serviceAreaController: serviceAreaController,
           radiusController: radiusController,
           brandTone: brandTone,
+          latitude: latitude,
+          longitude: longitude,
+          locatingGps: locatingGps,
           onBrandToneChanged: onBrandToneChanged,
+          onBusinessTypeChanged: onBusinessTypeChanged,
+          onCategoryChanged: onCategoryChanged,
+          onGps: onGps,
         ),
         _LaunchpadStep.offers => _OffersStep(
           offeringType: offeringType,
@@ -848,23 +905,35 @@ class _CurrentStepCard extends StatelessWidget {
 class _BasicsStep extends StatelessWidget {
   const _BasicsStep({
     required this.businessNameController,
-    required this.businessTypeController,
-    required this.categoryController,
+    required this.businessType,
+    required this.primaryCategory,
     required this.locationController,
     required this.serviceAreaController,
     required this.radiusController,
     required this.brandTone,
+    required this.latitude,
+    required this.longitude,
+    required this.locatingGps,
     required this.onBrandToneChanged,
+    required this.onBusinessTypeChanged,
+    required this.onCategoryChanged,
+    required this.onGps,
   });
 
   final TextEditingController businessNameController;
-  final TextEditingController businessTypeController;
-  final TextEditingController categoryController;
+  final String businessType;
+  final String primaryCategory;
   final TextEditingController locationController;
   final TextEditingController serviceAreaController;
   final TextEditingController radiusController;
   final String brandTone;
+  final double? latitude;
+  final double? longitude;
+  final bool locatingGps;
   final ValueChanged<String> onBrandToneChanged;
+  final ValueChanged<String> onBusinessTypeChanged;
+  final ValueChanged<String> onCategoryChanged;
+  final VoidCallback onGps;
 
   @override
   Widget build(BuildContext context) {
@@ -881,17 +950,70 @@ class _BasicsStep extends StatelessWidget {
           label: 'Business or provider name',
           validator: _required('Add a public name.'),
         ),
-        _TextField(controller: businessTypeController, label: 'Business type'),
-        _TextField(
-          controller: categoryController,
+        _DropdownField(
+          label: 'Business type',
+          value: businessType,
+          values: businessTypes,
+          onChanged: onBusinessTypeChanged,
+        ),
+        _DropdownField(
           label: 'Primary category',
-          validator: _required('Add a category.'),
+          value: primaryCategory,
+          values: categories,
+          onChanged: onCategoryChanged,
         ),
-        _TextField(
-          controller: locationController,
-          label: 'Base location',
-          validator: _required('Add a location.'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _TextField(
+                controller: locationController,
+                label: 'Base location',
+                validator: _required('Add a location.'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: locatingGps ? null : onGps,
+                icon: locatingGps
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.location_on_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                label: Text(
+                  'GPS',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (latitude != null && longitude != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Coordinates saved: ${latitude!.toStringAsFixed(4)}, ${longitude!.toStringAsFixed(4)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.success,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         _TextField(controller: serviceAreaController, label: 'Service area'),
         _TextField(
           controller: radiusController,
@@ -1206,6 +1328,15 @@ class _PublicProfilePreview extends StatelessWidget {
             '$category / $location',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          if (answers.latitude != null && answers.longitude != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'GPS: ${answers.latitude!.toStringAsFixed(4)}, ${answers.longitude!.toStringAsFixed(4)}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.success,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Text(summary, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 10),
@@ -1608,6 +1739,14 @@ String _validBrandTone(String value) {
       }.contains(value)
       ? value
       : 'friendly';
+}
+
+String _validBusinessType(String value) {
+  return businessTypes.contains(value) ? value : '';
+}
+
+String _validCategory(String value) {
+  return categories.contains(value) ? value : '';
 }
 
 String _fallbackSummary(MobileLaunchpadAnswers answers) {

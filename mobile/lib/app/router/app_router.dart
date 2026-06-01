@@ -21,6 +21,12 @@ import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
 import '../../features/payouts/presentation/payouts_page.dart';
 import '../../features/referrals/presentation/referrals_page.dart';
+import '../../features/verification/presentation/verification_page.dart';
+import '../../features/analytics/presentation/analytics_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
+import '../../features/availability/presentation/availability_page.dart';
+import '../../features/workspaces/presentation/workspaces_page.dart';
+import '../../features/workspaces/presentation/workspace_detail_page.dart';
 import '../../features/profile/data/profile_repository.dart';
 import '../../features/provider/presentation/provider_launchpad_review_page.dart';
 import '../../features/saved/presentation/saved_feed_page.dart';
@@ -160,7 +166,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.profileSettings,
-        redirect: (context, state) => AppRoutes.profile,
+        builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
         path: AppRoutes.control,
@@ -189,6 +195,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.referrals,
         builder: (context, state) => const ReferralsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.verification,
+        builder: (context, state) => const VerificationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.analytics,
+        builder: (context, state) => const AnalyticsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.availability,
+        builder: (context, state) => const AvailabilityPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.workspaces,
+        builder: (context, state) => const WorkspacesPage(),
+        routes: [
+          GoRoute(
+            path: ':workspaceId',
+            builder: (context, state) => WorkspaceDetailPage(
+              workspaceId: state.pathParameters['workspaceId']?.trim() ?? '',
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.orders,

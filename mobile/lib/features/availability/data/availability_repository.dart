@@ -1,0 +1,55 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
+import '../domain/availability_models.dart';
+
+final availabilityRepositoryProvider = Provider<AvailabilityRepository>((ref) {
+  return AvailabilityRepository(ref.watch(mobileApiClientProvider));
+});
+
+final availabilitySlotsProvider = FutureProvider<List<AvailabilitySlot>>((ref) {
+  return ref.watch(availabilityRepositoryProvider).fetch();
+});
+
+class AvailabilityRepository {
+  const AvailabilityRepository(this._apiClient);
+
+  final MobileApiClient _apiClient;
+
+  Future<List<AvailabilitySlot>> fetch() async {
+    final payload = await _apiClient.getJson('/api/provider/availability');
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to load availability.',
+      );
+    }
+
+    final slots = (payload['slots'] as List?) ?? [];
+    return slots
+        .whereType<Map<String, dynamic>>()
+        .map(AvailabilitySlot.fromJson)
+        .toList();
+  }
+
+  Future<List<AvailabilitySlot>> update(List<AvailabilitySlot> slots) async {
+    final body = slots.map((s) => s.toPayload()).toList();
+    final payload = await _apiClient.postJsonArray(
+      '/api/provider/availability',
+      body: body,
+    );
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to save availability.',
+      );
+    }
+
+    final updatedSlots = (payload['slots'] as List?) ?? [];
+    return updatedSlots
+        .whereType<Map<String, dynamic>>()
+        .map(AvailabilitySlot.fromJson)
+        .toList();
+  }
+}
