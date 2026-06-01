@@ -37,6 +37,10 @@ const images: NonNullable<NextConfig["images"]> = {
       protocol: "https",
       hostname: "picsum.photos",
     },
+    {
+      protocol: "https",
+      hostname: "*.supabase.co",
+    },
   ],
   minimumCacheTTL: 31536000,
   formats: ["image/avif", "image/webp"],
