@@ -975,6 +975,7 @@ class _BasicsStep extends StatelessWidget {
             const SizedBox(width: 8),
             SizedBox(
               height: 56,
+              width: 100,
               child: OutlinedButton.icon(
                 onPressed: locatingGps ? null : onGps,
                 icon: locatingGps
@@ -1592,18 +1593,24 @@ class _DropdownField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasValidValue = value.isNotEmpty && values.contains(value);
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      initialValue: hasValidValue ? value : null,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
-      items: values
-          .map(
-            (item) => DropdownMenuItem<String>(
-              value: item,
-              child: Text(_humanize(item)),
-            ),
-          )
-          .toList(),
+      items: [
+        if (!hasValidValue)
+          const DropdownMenuItem<String>(
+            value: null,
+            child: Text('Select...'),
+          ),
+        ...values.map(
+          (item) => DropdownMenuItem<String>(
+            value: item,
+            child: Text(_humanize(item)),
+          ),
+        ),
+      ],
       onChanged: (next) {
         if (next != null) {
           onChanged(next);
