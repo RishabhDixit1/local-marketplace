@@ -112,6 +112,7 @@ jobs:
                   NEXT_PUBLIC_SUPABASE_ANON_KEY: "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}",
                   SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
                   NEXT_PUBLIC_SITE_URL: "${{ secrets.NEXT_PUBLIC_SITE_URL }}",
+                  RESEND_API_KEY: "${{ secrets.RESEND_API_KEY }}",
                   BACKUP_EMAIL_API_KEY: "${{ secrets.BACKUP_EMAIL_API_KEY }}",
                   SENTRY_DSN: "${{ secrets.SENTRY_DSN }}",
                   RAZORPAY_KEY_ID: "${{ secrets.RAZORPAY_KEY_ID }}",
