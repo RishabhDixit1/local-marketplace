@@ -32,8 +32,8 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="serviq" android:host="auth-callback"/>
             </intent-filter>
-            <!-- Deep links -->
-            <intent-filter android:autoVerify="true">
+            <!-- Deep links (autoVerify removed to avoid ANR on emulator) -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
@@ -49,9 +49,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="serviq_updates" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

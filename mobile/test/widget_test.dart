@@ -6,7 +6,6 @@ import 'package:serviq_mobile/core/config/app_config.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
 import 'package:serviq_mobile/core/theme/app_theme.dart';
 import 'package:serviq_mobile/core/widgets/section_card.dart';
-import 'package:serviq_mobile/features/auth/presentation/sign_in_page.dart';
 import 'package:serviq_mobile/features/chat/data/chat_repository.dart';
 import 'package:serviq_mobile/features/chat/domain/chat_models.dart';
 import 'package:serviq_mobile/features/chat/presentation/chat_page.dart';

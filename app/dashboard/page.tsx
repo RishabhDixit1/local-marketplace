@@ -429,23 +429,14 @@ export default function MarketplacePage() {
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
         {/* ── Combined Hero ── */}
         <div className="overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-100)]">
-                <MapPin className="h-5 w-5 text-[var(--brand-700)]" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-900">Serving Crossings Republik, Ghaziabad</h2>
-                <p className="text-xs text-slate-500">Uttar Pradesh 201016 — Hyperlocal marketplace</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-100)]">
+              <MapPin className="h-5 w-5 text-[var(--brand-700)]" />
             </div>
-            <Link
-              href="/market/crossing-republik"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
-            >
-              <Store className="h-3.5 w-3.5" />
-              View Market
-            </Link>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Serving Crossings Republik, Ghaziabad</h2>
+              <p className="text-xs text-slate-500">Uttar Pradesh 201016 — Hyperlocal marketplace</p>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {["Electrician", "Plumber", "AC Repair", "RO Repair", "Carpenter", "Appliance Repair"].map((cat) => (
@@ -474,17 +465,24 @@ export default function MarketplacePage() {
               </Link>
             </div>
           )}
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <MapPin className="h-3 w-3" />
-              <span>Covering: Mahagun Mascot, Panchsheel Wellington, Galleria Market, Avantika Retail Street, and 12+ areas</span>
-            </div>
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
+            <MapPin className="h-3 w-3" />
+            <span>Covering: Mahagun Mascot, Panchsheel Wellington, Galleria Market, Avantika Retail Street, and 12+ areas</span>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Link
+              href="/market/crossing-republik"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--brand-800)]"
+            >
+              <Store className="h-3.5 w-3.5" />
+              View Market
+            </Link>
             <Link
               href={filters.category ? `/dashboard/providers?category=${encodeURIComponent(filters.category)}` : "/dashboard/providers"}
-              className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
             >
-              Browse All
-              <SlidersHorizontal className="h-3 w-3" />
+              <Users className="h-3.5 w-3.5" />
+              Browse All Providers
             </Link>
           </div>
         </div>
@@ -655,41 +653,17 @@ export default function MarketplacePage() {
                      </div>
                    ))}
                  </div>
-               ) : (
-               <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 text-center">
-                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-                   <Users className="h-7 w-7 text-slate-400" />
-                 </div>
-                 <p className="mt-4 text-sm font-bold text-slate-800">
-                   {filters.category
-                     ? `No ${filters.category} providers found nearby`
-                     : "No nearby providers yet"}
-                 </p>
-                 <p className="mt-1.5 text-xs text-slate-500">
-                   {filters.category
-                     ? "Try adjusting your filters or browse all providers"
-                     : "Be the first to offer services in your area, or check back later"}
-                 </p>
-                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                   <Link
-                     href="/dashboard/providers"
-                     className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
-                   >
-                     <Users className="h-3.5 w-3.5" />
-                     Browse All Providers
-                   </Link>
-                   {filters.category && (
-                     <Link
-                       href="/dashboard"
-                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
-                     >
-                       <X className="h-3.5 w-3.5" />
-                       Clear Filter
-                     </Link>
-                   )}
-                 </div>
-               </div>
-             )}
+                ) : filters.category ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+                    <Users className="h-7 w-7 text-slate-400" />
+                  </div>
+                  <p className="mt-4 text-sm font-bold text-slate-800">No providers found nearby</p>
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    Try adjusting your filters or browse all providers
+                  </p>
+                </div>
+              ) : null}
            </div>
 
          {showPostExplainer && (

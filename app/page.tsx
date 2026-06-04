@@ -17,6 +17,7 @@ import {
   Zap,
   Store,
   Loader2,
+  User as UserIcon,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import ServiQLogo from "@/app/components/ServiQLogo";
@@ -341,6 +342,12 @@ export default function PublicLandingPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder='Try "AC repair", "electrician", "plumber nearby"...'
                 className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-slate-900 outline-none shadow-sm transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    e.preventDefault();
+                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                  }
+                }}
               />
             </div>
           </div>
@@ -562,7 +569,7 @@ export default function PublicLandingPage() {
               )}
 
               {/* Contact action */}
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex gap-2">
                 <button
                   type="button"
                   onClick={() => { setContactProvider(selectedProvider); setSelectedProvider(null); }}
@@ -570,8 +577,13 @@ export default function PublicLandingPage() {
                 ><Phone className="h-4 w-4" /> Contact</button>
                 <button
                   type="button"
+                  onClick={() => { router.push(`/profile/${selectedProvider.id}`); }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--brand-200)] bg-white px-4 py-3 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-50)]"
+                ><UserIcon className="h-4 w-4" /> View Profile</button>
+                <button
+                  type="button"
                   onClick={() => setSelectedProvider(null)}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >Close</button>
               </div>
             </div>

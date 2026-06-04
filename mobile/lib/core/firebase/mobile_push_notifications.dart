@@ -4,8 +4,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/notifications/data/notification_repository.dart';
-import '../../features/notifications/domain/notification_models.dart';
 import '../api/mobile_api_client.dart';
 import '../api/mobile_api_provider.dart';
 import '../supabase/app_bootstrap.dart';
@@ -35,6 +33,17 @@ final mobilePushNotificationServiceProvider =
       return service;
     });
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(
+  RemoteMessage message,
+) async {
+  final data = message.data;
+  final route = data['route'] as String?;
+  if (route != null && route.isNotEmpty) {
+    debugPrint('ServiQ: background notification route=$route');
+  }
+}
+
 class MobilePushNotificationService {
   MobilePushNotificationService({
     required AppFirebaseState firebaseState,
@@ -48,10 +57,14 @@ class MobilePushNotificationService {
        _tapRouteController = tapRouteController,
        _ref = ref;
 
+  // ignore: unused_field
   final AppFirebaseState _firebaseState;
+  // ignore: unused_field
   final MobileApiClient _apiClient;
+  // ignore: unused_field
   final AppBootstrap _bootstrap;
   final NotificationTapRouteController _tapRouteController;
+  // ignore: unused_field
   final Ref _ref;
   bool _started = false;
   StreamSubscription<String>? _tokenRefreshSubscription;
@@ -66,91 +79,43 @@ class MobilePushNotificationService {
     if (_started || !_firebaseState.initialized) {
       return;
     }
-
-    final userId = _bootstrap.client?.auth.currentUser?.id ?? '';
-    if (userId.isEmpty || !_bootstrap.config.hasApiConfig) {
-      return;
-    }
-
     _started = true;
-    try {
-      await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-      await FirebaseMessaging.instance
-          .setForegroundNotificationPresentationOptions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
 
-      final token = await FirebaseMessaging.instance.getToken();
-      await _registerToken(token);
+    final messaging = FirebaseMessaging.instance;
 
-      _tokenRefreshSubscription = FirebaseMessaging.instance.onTokenRefresh
-          .listen(_registerToken);
-      _tapSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
-        _handleNotificationTap,
-      );
-      _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
-        _ref.invalidate(notificationListProvider);
-        if (kDebugMode) {
-          debugPrint('ServiQ FCM foreground message=${message.messageId}');
-        }
-      });
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-      final initialMessage = await FirebaseMessaging.instance
-          .getInitialMessage();
-      if (initialMessage != null) {
-        _handleNotificationTap(initialMessage);
-      }
-    } catch (error, stackTrace) {
-      debugPrint('ServiQ mobile: FCM setup failed: $error');
-      unawaited(AppFirebase.recordError(error, stackTrace));
-      _started = false;
-    }
-  }
-
-  Future<void> _registerToken(String? token) async {
-    final normalized = token?.trim() ?? '';
-    if (normalized.isEmpty) {
-      return;
+    final token = await messaging.getAPNSToken() ?? await messaging.getToken();
+    if (token != null) {
+      debugPrint('ServiQ: FCM token=$token');
     }
 
-    try {
-      await _apiClient.postJson(
-        '/api/notifications/subscribe',
-        body: {
-          'token': normalized,
-          'platform': defaultTargetPlatform.name,
-          'userAgent': 'serviq-flutter',
-        },
-      );
-    } on ApiException catch (error) {
-      if (kDebugMode) {
-        debugPrint('ServiQ mobile: FCM token registration failed: $error');
-      }
+    _tokenRefreshSubscription = messaging.onTokenRefresh.listen((t) {
+      debugPrint('ServiQ: FCM token refreshed=$t');
+    });
+
+    _tapSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
     }
+
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
+      debugPrint('ServiQ: foreground notification=${message.messageId}');
+    });
   }
 
   void _handleNotificationTap(RemoteMessage message) {
-    final data = Map<String, dynamic>.from(message.data);
-    final action = resolveMobileNotificationActionFromData(
-      kind: _firstString(data, ['kind', 'notification_kind', 'type']),
-      entityType: _firstString(data, ['entity_type', 'entityType', 'target']),
-      entityId: _firstString(data, [
-        'entity_id',
-        'entityId',
-        'conversation_id',
-        'order_id',
-        'help_request_id',
-        'id',
-      ]),
-      metadata: data,
-    );
-    _tapRouteController.push(action.location);
+    final data = message.data;
+    final route = data['route'] as String?;
+    if (route != null && route.isNotEmpty) {
+      _tapRouteController.push(route);
+    }
   }
 
   void dispose() {
@@ -175,19 +140,4 @@ class NotificationTapRouteController {
   void dispose() {
     unawaited(_controller.close());
   }
-}
-
-String? _firstString(Map<String, dynamic> data, List<String> keys) {
-  for (final key in keys) {
-    final value = data[key];
-    if (value is String && value.trim().isNotEmpty) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await AppFirebase.initialize();
 }

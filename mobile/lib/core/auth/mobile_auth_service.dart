@@ -110,6 +110,18 @@ class MobileAuthService {
         );
       }
 
+      final emailSent = payload['emailSent'] == true;
+      final emailOtp = payload['emailOtp'] as String?;
+
+      if (!emailSent && emailOtp != null && emailOtp.isNotEmpty) {
+        await _client.auth.verifyOTP(
+          email: email.trim(),
+          token: emailOtp,
+          type: OtpType.magiclink,
+        );
+        return '';
+      }
+
       final resolvedRedirect = payload['redirectTo'];
       if (resolvedRedirect is String && resolvedRedirect.trim().isNotEmpty) {
         return resolvedRedirect.trim();
@@ -183,6 +195,24 @@ class MobileAuthService {
     await _client.auth.resetPasswordForEmail(
       email.trim(),
       redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+    );
+  }
+
+  Future<void> sendPhoneOtp(String phone) async {
+    await _client.auth.signInWithOtp(
+      phone: phone.trim(),
+      shouldCreateUser: true,
+    );
+  }
+
+  Future<AuthResponse> verifyPhoneOtp({
+    required String phone,
+    required String code,
+  }) async {
+    return _client.auth.verifyOTP(
+      phone: phone.trim(),
+      token: code.trim(),
+      type: OtpType.sms,
     );
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Building2,
@@ -121,6 +122,7 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
 }
 
 export default function CrossingRepublikPage() {
+  const router = useRouter();
   const providerSectionRef = useRef<HTMLDivElement>(null);
   const zoneSectionRef = useRef<HTMLDivElement>(null);
 
@@ -310,12 +312,12 @@ export default function CrossingRepublikPage() {
         ) : filteredProviders.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProviders.map((provider) => (
-              <ProviderCard
-                key={provider.id}
-                provider={provider}
-                onSelect={() => {}}
-                onContact={() => {}}
-              />
+                <ProviderCard
+                  key={provider.id}
+                  provider={provider}
+                  onSelect={(p) => router.push(`/profile/${p.id}`)}
+                  onContact={(p) => router.push(`/dashboard/chat?recipientId=${encodeURIComponent(p.id)}`)}
+                />
             ))}
           </div>
         ) : (

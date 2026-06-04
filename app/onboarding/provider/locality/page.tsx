@@ -86,7 +86,7 @@ export default function ProviderLocalityOnboarding() {
         }
       );
       if (result?.ok) {
-        router.push("/dashboard/launchpad");
+        router.push("/onboarding/provider/availability");
       } else {
         setError(result?.message || "Failed to save");
       }

@@ -22,6 +22,7 @@ import { fetchAuthedJson } from "@/lib/clientApi";
 import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
 import { getOrderFulfillmentOption, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { getOrderPaymentSummary, type PaymentStatusTone } from "@/lib/paymentFlow";
+import BookingSlotPicker from "@/app/components/BookingSlotPicker";
 import DisputeFormModal from "@/app/components/DisputeFormModal";
 
 const INR = (v: number) =>
@@ -318,6 +319,17 @@ export default function OrderStatusPage() {
             {notes && (
               <p className="text-xs text-slate-500 italic pl-6">&ldquo;{notes}&rdquo;</p>
             )}
+          </section>
+        )}
+
+        {/* Booking slot picker (visible when order is accepted) */}
+        {status === "accepted" && order.provider_id && (
+          <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <BookingSlotPicker
+              orderId={id}
+              providerId={order.provider_id}
+              onBooked={() => setOrder((prev) => prev ? { ...prev, status: "accepted" } : null)}
+            />
           </section>
         )}
 

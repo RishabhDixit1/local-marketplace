@@ -9,7 +9,9 @@ import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
 import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
-import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/sign_up_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
@@ -129,7 +131,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.signIn,
-        builder: (context, state) => const SignInPage(),
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        builder: (context, state) => const SignUpPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordPage(),
       ),
       GoRoute(
         path: AppRoutes.onboarding,

@@ -24,6 +24,7 @@ const BASE_ENV: Record<string, string> = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
+  RESEND_API_KEY: "test-key",
 };
 const TEST_ENV_KEYS = new Set([
   ...Object.keys(BASE_ENV),
@@ -234,12 +235,10 @@ describe("POST /api/auth/send-link", () => {
     expect((await response.json()).ok).toBe(false);
   });
 
-  it("falls back to in-browser link when SES is unavailable", async () => {
+  it("returns OTP fallback when no email provider is configured", async () => {
+    delete process.env.RESEND_API_KEY;
     const { fn } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
-
-    MockSESClient.prototype.send = () =>
-      Promise.reject(new Error("Email sandbox: not verified"));
 
     const response = await POST(
       new Request("http://localhost:3000/api/auth/send-link", {

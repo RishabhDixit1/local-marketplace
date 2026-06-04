@@ -211,6 +211,13 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     try {
       final resolvedRedirect = await authService.sendMagicLink(email);
       if (!mounted) return;
+      if (resolvedRedirect.isEmpty) {
+        setState(() => _magicLinkStatus = 'Signed in. Redirecting...');
+        context.go(
+          ref.read(onboardingHandoffControllerProvider).postAuthDestination,
+        );
+        return;
+      }
       setState(() {
         _magicLinkStatus = resolvedRedirect;
       });

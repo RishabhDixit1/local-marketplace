@@ -1,4 +1,3 @@
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -35,33 +34,35 @@ class AppFirebaseState {
 class AppFirebase {
   const AppFirebase._();
 
-  static bool _errorHandlersBound = false;
-
   static Future<AppFirebaseState> initialize() async {
     try {
-      if (Firebase.apps.isEmpty) {
-        final options = FirebaseRuntimeOptions.currentPlatform;
-        if (options == null) {
-          return const AppFirebaseState.disabled(
-            error: 'Firebase runtime options are not configured.',
-          );
-        } else {
-          await Firebase.initializeApp(options: options);
-        }
+      final options = FirebaseRuntimeOptions.currentPlatform;
+      if (options == null) {
+        return const AppFirebaseState.disabled(
+          error: 'Firebase runtime options are not configured.',
+        );
       }
 
-      await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(
-        !kDebugMode,
-      );
-      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
-        !kDebugMode,
-      );
-      _bindErrorHandlers();
+      await Firebase.initializeApp(options: options);
+
+      if (kDebugMode) {
+        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+          false,
+        );
+      } else {
+        FlutterError.onError = (details) {
+          FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+        };
+        PlatformDispatcher.instance.onError = (error, stack) {
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+          return true;
+        };
+      }
 
       return AppFirebaseState(
         initialized: true,
         analyticsEnabled: true,
-        crashlyticsEnabled: true,
+        crashlyticsEnabled: !kDebugMode,
       );
     } catch (error) {
       debugPrint('ServiQ mobile: Firebase disabled: $error');
@@ -74,26 +75,8 @@ class AppFirebase {
     StackTrace stackTrace, {
     bool fatal = false,
   }) async {
-    if (Firebase.apps.isEmpty) {
-      return;
-    }
-    await FirebaseCrashlytics.instance.recordError(
-      error,
-      stackTrace,
+    await FirebaseCrashlytics.instance.recordError(error, stackTrace,
       fatal: fatal,
     );
-  }
-
-  static void _bindErrorHandlers() {
-    if (_errorHandlersBound || Firebase.apps.isEmpty) {
-      return;
-    }
-
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stackTrace) {
-      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
-      return true;
-    };
-    _errorHandlersBound = true;
   }
 }

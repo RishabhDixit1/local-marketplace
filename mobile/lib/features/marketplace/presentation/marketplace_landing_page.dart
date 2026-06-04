@@ -58,6 +58,10 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
                 p.services.any((s) => s.toLowerCase().contains(q));
           }).toList();
 
+    final hasActiveFilter = _selectedCategory != null || searchQuery.isNotEmpty;
+    final showEmptyState = filteredProviders.isEmpty && hasActiveFilter;
+    final showHeroActions = filteredProviders.isEmpty && !hasActiveFilter;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -65,10 +69,13 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
           slivers: [
             _buildHeader(),
             if (_showBanner) _buildHowItWorksBanner(),
-            _buildHeroSection(),
-            _buildCategoryChips(),
-            _buildResultsCount(filteredProviders.length),
-            _buildProviderList(providersAsync, filteredProviders, searchQuery.isNotEmpty),
+            _buildUnifiedHero(showHeroActions),
+            _buildProviderList(
+              providersAsync,
+              filteredProviders,
+              searchQuery.isNotEmpty,
+              showEmptyState,
+            ),
             _buildBusinessCta(),
             _buildFooter(),
           ],
@@ -103,10 +110,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
               ],
             ),
             ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 0, maxWidth: 150,
-                minHeight: 0, maxHeight: 48,
-              ),
+              constraints: const BoxConstraints(minWidth: 0, maxWidth: 150, minHeight: 0, maxHeight: 48),
               child: FilledButton.tonalIcon(
                 onPressed: () => context.push(AppRoutes.signIn),
                 label: const Text('Sign In'),
@@ -179,77 +183,106 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     );
   }
 
-  Widget _buildHeroSection() {
+  Widget _buildUnifiedHero(bool showActions) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.lg),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset, vertical: AppSpacing.md),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('What do you need done?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.inkStrong)),
-            const SizedBox(height: AppSpacing.xxs),
-            const Text('Find trusted providers near you in Crossings Republik',
-                style: TextStyle(fontSize: 14, color: AppColors.inkSubtle)),
+            const Text('What do you need done?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: AppColors.inkStrong)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_on_rounded, size: 14, color: AppColors.primaryDeep),
+                  const SizedBox(width: 4),
+                  const Text('Serving Crossings Republik, Ghaziabad',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryDeep)),
+                ],
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
             _HeroSearchField(controller: _searchController),
             const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push(AppRoutes.marketZones),
-                icon: const Icon(Icons.explore_rounded, size: 18),
-                label: const Text('Explore Local Zones'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryDeep,
-                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.xl)),
-                ),
-              ),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: _categories.map((cat) {
+                final selected = _selectedCategory == cat.$2;
+                return FilterChip(
+                  label: Text('${cat.$1} ${cat.$2}',
+                      style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
+                  selected: selected,
+                  selectedColor: AppColors.primarySoft,
+                  checkmarkColor: AppColors.primaryDeep,
+                  onSelected: (val) => setState(() => _selectedCategory = val ? cat.$2 : null),
+                  side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
+                );
+              }).toList(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryChips() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageInset),
-        child: Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: _categories.map((cat) {
-            final selected = _selectedCategory == cat.$2;
-            return FilterChip(
-              label: Text('${cat.$1} ${cat.$2}', style: TextStyle(fontSize: 12, fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
-              selected: selected,
-              selectedColor: AppColors.primarySoft,
-              checkmarkColor: AppColors.primaryDeep,
-              onSelected: (val) => setState(() => _selectedCategory = val ? cat.$2 : null),
-              side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultsCount(int count) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.pageInset, AppSpacing.lg, AppSpacing.pageInset, AppSpacing.sm),
-        child: Row(
-          children: [
-            Text('$count ${count == 1 ? 'provider' : 'providers'} near you',
-                style: const TextStyle(fontSize: 13, color: AppColors.inkSubtle)),
-            const Spacer(),
-            if (_selectedCategory != null)
-              GestureDetector(
-                onTap: () => setState(() => _selectedCategory = null),
-                child: const Text('Clear filter',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryDeep)),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Text(
+                  _selectedCategory != null
+                      ? 'Showing "$_selectedCategory" providers'
+                      : 'Showing results for all',
+                  style: const TextStyle(fontSize: 13, color: AppColors.inkFaint),
+                ),
+                const Spacer(),
+                if (_selectedCategory != null)
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = null),
+                    child: const Text('Clear',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryDeep)),
+                  ),
+              ],
+            ),
+            if (showActions) ...[
+              const SizedBox(height: 12),
+              const Text('Covering all service categories across Crossings Republik and nearby areas.',
+                  style: TextStyle(fontSize: 12, color: AppColors.inkMuted)),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => context.push(AppRoutes.marketZones),
+                      icon: const Icon(Icons.explore_rounded, size: 18),
+                      label: const Text('View Market'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryDeep,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push(AppRoutes.marketZones),
+                      icon: const Icon(Icons.store_rounded, size: 18),
+                      label: const Text('Browse All Providers'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryDeep,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ],
           ],
         ),
       ),
@@ -260,6 +293,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
     AsyncValue<List<MarketplaceProvider>> asyncValue,
     List<MarketplaceProvider> filtered,
     bool hasSearch,
+    bool showEmptyState,
   ) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -276,25 +310,29 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
             );
           },
           data: (providers) {
-            if (filtered.isEmpty) {
-              return EmptyStateView(
-                icon: Icons.search_off_rounded,
-                title: hasSearch ? 'No matches' : 'No providers found',
-                message: hasSearch
-                    ? 'Try a different search term.'
-                    : 'No providers available for this area or category.',
+            if (showEmptyState) {
+              return Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.md),
+                child: EmptyStateView(
+                  icon: Icons.search_off_rounded,
+                  title: 'No providers found nearby',
+                  message: hasSearch
+                      ? 'Try a different search term.'
+                      : 'Try adjusting your filters or browse all providers.',
+                ),
               );
             }
 
+            if (filtered.isEmpty) return const SizedBox.shrink();
+
             return Column(
               children: [
+                const SizedBox(height: AppSpacing.xs),
                 for (final provider in filtered) ...[
                   _ProviderLandingCard(
                     provider: provider,
                     onTap: () => _showProviderDetail(context, provider),
-                    onContact: () {
-                      context.push(AppRoutes.signIn);
-                    },
+                    onContact: () => context.push(AppRoutes.signIn),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
@@ -462,7 +500,8 @@ class _ProviderLandingCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(provider.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
+                          child: Text(provider.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.inkStrong)),
                         ),
                         if (provider.verified)
                           const Padding(
@@ -514,7 +553,8 @@ class _ProviderLandingCard extends StatelessWidget {
                       children: [
                         if (priceLabel != null)
                           Expanded(
-                            child: Text(priceLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
+                            child: Text(priceLabel,
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
                           ),
                         FilledButton.icon(
                           onPressed: onContact,
@@ -598,7 +638,8 @@ class _ProviderDetailSheet extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(provider.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
+                      Text(provider.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
                       if (provider.verified) ...[
                         const SizedBox(width: AppSpacing.xxs),
                         const TrustBadge(label: 'Verified'),
@@ -613,7 +654,6 @@ class _ProviderDetailSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        // Trust signals grid
         Row(
           children: [
             if (provider.avgRating != null)
@@ -628,13 +668,15 @@ class _ProviderDetailSheet extends StatelessWidget {
         ),
         if (provider.bio.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('ABOUT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          const Text('ABOUT',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
           const SizedBox(height: AppSpacing.xxs),
           Text(provider.bio, style: const TextStyle(fontSize: 14, color: AppColors.ink, height: 1.5)),
         ],
         if (provider.services.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('SERVICES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          const Text('SERVICES',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
           const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: AppSpacing.xs,
@@ -648,7 +690,8 @@ class _ProviderDetailSheet extends StatelessWidget {
         ],
         if (provider.listings.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          const Text('AVAILABLE LISTINGS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
+          const Text('AVAILABLE LISTINGS',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2, color: AppColors.inkFaint)),
           const SizedBox(height: AppSpacing.xs),
           ...provider.listings.map((l) => Container(
             margin: const EdgeInsets.only(bottom: AppSpacing.xxs),
@@ -662,7 +705,8 @@ class _ProviderDetailSheet extends StatelessWidget {
               children: [
                 Expanded(child: Text(l.title, style: const TextStyle(fontSize: 13, color: AppColors.ink))),
                 if (l.price != null)
-                  Text('₹${l.price}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
+                  Text('₹${l.price}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primaryDeep)),
               ],
             ),
           )),

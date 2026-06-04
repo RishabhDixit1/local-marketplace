@@ -79,6 +79,11 @@ const resolveMagicLinkRecipientError = (email: string) => {
   return null;
 };
 
+const hasEmailProvider = (): boolean =>
+  !!(process.env.AWS_ACCESS_KEY_ID ||
+    process.env.RESEND_API_KEY ||
+    process.env.BACKUP_EMAIL_API_KEY);
+
 const buildMagicLinkEmailHtml = ({
   appName,
   actionLink,
@@ -195,6 +200,16 @@ export async function POST(request: Request) {
       type: "magiclink",
       redirect_to: redirectTo,
     })}`;
+
+  if (!hasEmailProvider()) {
+    recordMagicLinkRequest(email);
+    return NextResponse.json({
+      ok: true,
+      emailSent: false,
+      actionLink,
+      emailOtp: generateResult.email_otp,
+    });
+  }
 
     try {
       const appName = "ServiQ";
