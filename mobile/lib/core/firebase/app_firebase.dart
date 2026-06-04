@@ -3,6 +3,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/app_config.dart';
 import 'firebase_runtime_options.dart';
 
 final appFirebaseProvider = Provider<AppFirebaseState>((ref) {
@@ -34,10 +35,17 @@ class AppFirebaseState {
 class AppFirebase {
   const AppFirebase._();
 
-  static Future<AppFirebaseState> initialize() async {
+  static Future<AppFirebaseState> initialize({AppConfig? config}) async {
     try {
-      final options = FirebaseRuntimeOptions.currentPlatform;
+      FirebaseOptions? options = config?.buildFirebaseOptions();
+
+      options ??= FirebaseRuntimeOptions.currentPlatform;
+
       if (options == null) {
+        debugPrint(
+          'ServiQ mobile: Firebase runtime options not configured. '
+          'Set dart-define flags or add Firebase keys to local.json.',
+        );
         return const AppFirebaseState.disabled(
           error: 'Firebase runtime options are not configured.',
         );

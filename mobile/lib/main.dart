@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'core/config/app_config.dart';
 import 'core/firebase/app_firebase.dart';
 import 'core/firebase/mobile_push_notifications.dart';
 import 'core/supabase/app_bootstrap.dart';
@@ -15,7 +16,9 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      final firebaseState = await AppFirebase.initialize();
+
+      final appConfig = await AppConfig.load();
+      final firebaseState = await AppFirebase.initialize(config: appConfig);
       final onboardingStore = SharedPreferencesOnboardingHandoffStore(
         await SharedPreferences.getInstance(),
       );
@@ -25,6 +28,7 @@ Future<void> main() async {
 
       runApp(
         _BootstrapHost(
+          appConfig: appConfig,
           firebaseState: firebaseState,
           onboardingStore: onboardingStore,
         ),
@@ -38,10 +42,12 @@ Future<void> main() async {
 
 class _BootstrapHost extends StatefulWidget {
   const _BootstrapHost({
+    required this.appConfig,
     required this.firebaseState,
     required this.onboardingStore,
   });
 
+  final AppConfig appConfig;
   final AppFirebaseState firebaseState;
   final OnboardingHandoffStore onboardingStore;
 
@@ -57,7 +63,7 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   @override
   void initState() {
     super.initState();
-    _bootstrapFuture = AppBootstrap.initialize();
+    _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
     _bootstrapFuture.then((_) {
       if (mounted) setState(() => _bootstrapDone = true);
     });
@@ -77,7 +83,7 @@ class _BootstrapHostState extends State<_BootstrapHost> {
           setState(() {
             _timedOut = false;
             _bootstrapDone = false;
-            _bootstrapFuture = AppBootstrap.initialize();
+            _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
           });
           _bootstrapFuture.then((_) {
             if (mounted) setState(() => _bootstrapDone = true);
@@ -106,7 +112,7 @@ class _BootstrapHostState extends State<_BootstrapHost> {
           return _BootstrapErrorApp(message: msg, onRetry: () {
             setState(() {
               _bootstrapDone = false;
-              _bootstrapFuture = AppBootstrap.initialize();
+              _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
             });
             _bootstrapFuture.then((_) {
               if (mounted) setState(() => _bootstrapDone = true);

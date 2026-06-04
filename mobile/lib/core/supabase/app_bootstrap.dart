@@ -29,8 +29,8 @@ class AppBootstrap {
   bool get needsSetup =>
       !config.hasMinimumClientConfig || initializationError != null;
 
-  static Future<AppBootstrap> initialize() async {
-    final config = await AppConfig.load();
+  static Future<AppBootstrap> initialize({AppConfig? config}) async {
+    config ??= await AppConfig.load();
     DebugNetworkTrust.installIfNeeded(config);
     final httpClient = DebugNetworkTrust.createHttpClient(config);
 

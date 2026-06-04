@@ -38,7 +38,8 @@ void main() {
       expect(find.text('Listings'), findsOneWidget);
       expect(find.text('Leads and Inbox'), findsOneWidget);
       expect(find.text('Payments and Orders'), findsOneWidget);
-      expect(find.text('Trust and Verification'), findsOneWidget);
+      expect(find.text('Trust'), findsOneWidget);
+      expect(find.text('Verification'), findsOneWidget);
       expect(find.text('Saved'), findsOneWidget);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Settings'), findsOneWidget);

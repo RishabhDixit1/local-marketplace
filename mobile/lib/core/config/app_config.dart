@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -13,6 +14,11 @@ class AppConfig {
     required this.authRedirectScheme,
     required this.authRedirectHost,
     required this.allowBadCertificates,
+    this.firebaseApiKey,
+    this.firebaseProjectId,
+    this.firebaseMessagingSenderId,
+    this.firebaseAndroidAppId,
+    this.firebaseIosAppId,
   });
 
   factory AppConfig.fromEnvironment() {
@@ -34,6 +40,13 @@ class AppConfig {
         defaultValue: 'auth-callback',
       ),
       allowBadCertificates: bool.fromEnvironment('ALLOW_BAD_CERTIFICATES'),
+      firebaseApiKey: String.fromEnvironment('FIREBASE_API_KEY'),
+      firebaseProjectId: String.fromEnvironment('FIREBASE_PROJECT_ID'),
+      firebaseMessagingSenderId: String.fromEnvironment(
+        'FIREBASE_MESSAGING_SENDER_ID',
+      ),
+      firebaseAndroidAppId: String.fromEnvironment('FIREBASE_ANDROID_APP_ID'),
+      firebaseIosAppId: String.fromEnvironment('FIREBASE_IOS_APP_ID'),
     );
   }
 
@@ -59,6 +72,11 @@ class AppConfig {
   final String authRedirectScheme;
   final String authRedirectHost;
   final bool allowBadCertificates;
+  final String? firebaseApiKey;
+  final String? firebaseProjectId;
+  final String? firebaseMessagingSenderId;
+  final String? firebaseAndroidAppId;
+  final String? firebaseIosAppId;
 
   AppConfig mergeWith(AppConfig fallback) {
     return AppConfig(
@@ -131,6 +149,15 @@ class AppConfig {
           defaultValue: 'auth-callback',
         ),
         allowBadCertificates: _readBool(decoded, 'ALLOW_BAD_CERTIFICATES'),
+        firebaseApiKey: _readStringOrNull(decoded, 'FIREBASE_API_KEY'),
+        firebaseProjectId: _readStringOrNull(decoded, 'FIREBASE_PROJECT_ID'),
+        firebaseMessagingSenderId: _readStringOrNull(
+          decoded, 'FIREBASE_MESSAGING_SENDER_ID',
+        ),
+        firebaseAndroidAppId: _readStringOrNull(
+          decoded, 'FIREBASE_ANDROID_APP_ID',
+        ),
+        firebaseIosAppId: _readStringOrNull(decoded, 'FIREBASE_IOS_APP_ID'),
       );
     } on FlutterError {
       return null;
@@ -139,6 +166,17 @@ class AppConfig {
     } catch (_) {
       return null;
     }
+  }
+
+  static String? _readStringOrNull(
+    Map<dynamic, dynamic> values,
+    String key,
+  ) {
+    final value = values[key];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+    return null;
   }
 
   static String _readString(
@@ -171,6 +209,29 @@ class AppConfig {
     }
 
     return false;
+  }
+
+  FirebaseOptions? buildFirebaseOptions() {
+    final apiKey = firebaseApiKey;
+    final projectId = firebaseProjectId;
+    final senderId = firebaseMessagingSenderId;
+    if (apiKey == null || projectId == null || senderId == null) {
+      return null;
+    }
+
+    final appId = switch (defaultTargetPlatform) {
+      TargetPlatform.android => firebaseAndroidAppId,
+      TargetPlatform.iOS => firebaseIosAppId,
+      _ => null,
+    };
+    if (appId == null) return null;
+
+    return FirebaseOptions(
+      apiKey: apiKey,
+      appId: appId,
+      messagingSenderId: senderId,
+      projectId: projectId,
+    );
   }
 
   static String _pickNonEmpty(String primary, String fallback) {

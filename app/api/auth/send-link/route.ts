@@ -79,11 +79,6 @@ const resolveMagicLinkRecipientError = (email: string) => {
   return null;
 };
 
-const hasEmailProvider = (): boolean =>
-  !!(process.env.AWS_ACCESS_KEY_ID ||
-    process.env.RESEND_API_KEY ||
-    process.env.BACKUP_EMAIL_API_KEY);
-
 const buildMagicLinkEmailHtml = ({
   appName,
   actionLink,
@@ -201,7 +196,27 @@ export async function POST(request: Request) {
       redirect_to: redirectTo,
     })}`;
 
-  if (!hasEmailProvider()) {
+  const appName = "ServiQ";
+  const emailHtml = buildMagicLinkEmailHtml({
+    appName,
+    actionLink,
+    otpCode: generateResult.email_otp!,
+  });
+
+  const resendSent = process.env.RESEND_API_KEY
+    ? await tryBackupProvider({
+        to: email,
+        subject: `Your Magic Link to Sign In to ${appName}`,
+        html: emailHtml,
+      })
+    : false;
+
+  if (resendSent) {
+    recordMagicLinkRequest(email);
+    return NextResponse.json({ ok: true, emailSent: true });
+  }
+
+  if (!process.env.AWS_ACCESS_KEY_ID && !process.env.RESEND_API_KEY) {
     recordMagicLinkRequest(email);
     return NextResponse.json({
       ok: true,
@@ -211,28 +226,19 @@ export async function POST(request: Request) {
     });
   }
 
-    try {
-      const appName = "ServiQ";
-      const ses = new SESClient({ region: "ap-southeast-2" });
-      await ses.send(
-        new SendEmailCommand({
-          Source: `"${appName}" <info@serviqapp.com>`,
-          Destination: { ToAddresses: [email] },
-          ReplyToAddresses: ["info@serviqapp.com"],
-          Message: {
-            Subject: { Data: `Your Magic Link to Sign In to ${appName}` },
-            Body: {
-              Html: {
-                Data: buildMagicLinkEmailHtml({
-                  appName,
-                  actionLink,
-                  otpCode: generateResult.email_otp!,
-                }),
-              },
-            },
-          },
-        })
-      );
+  try {
+    const ses = new SESClient({ region: "ap-southeast-2" });
+    await ses.send(
+      new SendEmailCommand({
+        Source: `"${appName}" <info@serviqapp.com>`,
+        Destination: { ToAddresses: [email] },
+        ReplyToAddresses: ["info@serviqapp.com"],
+        Message: {
+          Subject: { Data: `Your Magic Link to Sign In to ${appName}` },
+          Body: { Html: { Data: emailHtml } },
+        },
+      })
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to send email.";
     if (/rate|throttl/i.test(message)) {
@@ -241,12 +247,8 @@ export async function POST(request: Request) {
     if (/not.verified|sandbox|not.authorized|could not load credentials/i.test(message)) {
       const backupSent = await tryBackupProvider({
         to: email,
-        subject: `Your Magic Link to Sign In to ServiQ`,
-        html: buildMagicLinkEmailHtml({
-          appName: "ServiQ",
-          actionLink,
-          otpCode: generateResult.email_otp!,
-        }),
+        subject: `Your Magic Link to Sign In to ${appName}`,
+        html: emailHtml,
       });
       if (backupSent) {
         recordMagicLinkRequest(email);
