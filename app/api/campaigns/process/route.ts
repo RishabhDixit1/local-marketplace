@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { sendSms } from "@/lib/server/twilioClient";
 import { CronExpressionParser } from "cron-parser";
 
 export const runtime = "nodejs";
+
+const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
+const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
 const parseCron = (expression: string): boolean => {
   try {
@@ -61,8 +66,10 @@ export async function POST() {
     const channel = (campaign.channel as string) || "push";
 
     try {
+      const userId = providerId;
+
       if (channel === "push") {
-        const result = await sendPushToUser(db, providerId, {
+        const result = await sendPushToUser(db, userId, {
           title,
           body: template,
           data: {
@@ -71,7 +78,52 @@ export async function POST() {
           },
         });
         if (result.sent === 0) {
-          console.warn(`[campaign] push to ${providerId} had no deliveries`);
+          console.warn(`[campaign] push to ${userId} had no deliveries`);
+        }
+      }
+
+      if (channel === "email" && RESEND_API_KEY) {
+        const userResp = await db.auth.admin.getUserById(userId).catch(() => null);
+        const email = (userResp as { data?: { user?: { email?: string } } } | null)?.data?.user?.email;
+        if (email) {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: FROM_EMAIL,
+              to: email,
+              subject: title,
+              html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px"><p>${template}</p><p><a href="${APP_URL}/dashboard">Go to Dashboard</a></p></div>`,
+            }),
+          });
+        }
+      }
+
+      if (channel === "sms") {
+        const { data: profile } = await db
+          .from("profiles")
+          .select("phone")
+          .eq("id", userId)
+          .maybeSingle<{ phone: string | null }>();
+
+        if (profile?.phone) {
+          await sendSms(profile.phone, `${title}: ${template}`);
+        }
+      }
+
+      if (channel === "whatsapp") {
+        const { data: profile } = await db
+          .from("profiles")
+          .select("phone")
+          .eq("id", userId)
+          .maybeSingle<{ phone: string | null }>();
+
+        if (profile?.phone) {
+          const twilioModule = await import("@/lib/server/twilioClient");
+          await twilioModule.sendWhatsApp(profile.phone, `${title}: ${template}`);
         }
       }
 

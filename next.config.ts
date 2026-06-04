@@ -49,6 +49,19 @@ const images: NonNullable<NextConfig["images"]> = {
   imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
 };
 
+const csp = [
+  `default-src 'self'`,
+  `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://maps.googleapis.com https://www.googletagmanager.com`,
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+  `img-src 'self' data: blob: https: http:`,
+  `font-src 'self' https://fonts.gstatic.com data:`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
+  `frame-src https://checkout.razorpay.com https://accounts.google.com`,
+  `frame-ancestors 'none'`,
+  `base-uri 'self'`,
+  `form-action 'self'`,
+].join("; ");
+
 const securityHeaders = [
   {
     key: "X-DNS-Prefetch-Control",
@@ -77,6 +90,10 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: csp,
   },
 ];
 

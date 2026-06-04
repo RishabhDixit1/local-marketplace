@@ -1,3 +1,6 @@
+import { generate } from "./provider";
+import { z } from "zod";
+
 export type ParsedIntent = {
   action: "find_service" | "buy_product" | "post_need" | "find_provider" | "help";
   category: string | null;
@@ -39,7 +42,6 @@ function matchKeywords(query: string): ParsedIntent {
   let action: ParsedIntent["action"] = "find_service";
   const budget: { min: number | null; max: number | null } = { min: null, max: null };
 
-  // Extract budget
   const budgetMatch = lower.match(/(?:under|below|less than|upto|up to)\s*(?:rs\.?\s*)?(\d+)/i);
   if (budgetMatch) {
     budget.max = parseInt(budgetMatch[1], 10);
@@ -54,7 +56,6 @@ function matchKeywords(query: string): ParsedIntent {
     budget.max = parseInt(rangeMatch[2], 10);
   }
 
-  // Extract urgency
   for (const [key, patterns] of Object.entries(URGENCY_KEYWORDS)) {
     if (patterns.some((p) => lower.includes(p))) {
       urgency = key as ParsedIntent["urgency"];
@@ -62,7 +63,6 @@ function matchKeywords(query: string): ParsedIntent {
     }
   }
 
-  // Determine if it's a product request
   const isProductQuery = tokens.some((t) => PRODUCT_CATEGORIES.includes(t)) ||
     /\b(buy|purchase|price|cost)\b/.test(lower);
 
@@ -70,17 +70,14 @@ function matchKeywords(query: string): ParsedIntent {
     action = "buy_product";
   }
 
-  // Extract "I need" / "I want" patterns
   if (/need help|help me|how do i|how to/i.test(lower)) {
     action = "help";
   }
 
-  // If posting intent
   if (/\b(post|create|list|offer|sell)\b/.test(lower) && !isProductQuery) {
     action = "post_need";
   }
 
-  // Match category
   for (const [cat, patterns] of Object.entries(CATEGORY_KEYWORDS)) {
     if (patterns.some((p) => lower.includes(p))) {
       category = cat;
@@ -101,7 +98,7 @@ function matchKeywords(query: string): ParsedIntent {
 }
 
 function buildResponse(intent: ParsedIntent): string {
-  const prefix = intent.urgency === "now" ? "🔴 Urgent! " : "";
+  const prefix = intent.urgency === "now" ? "Urgent! " : "";
 
   if (intent.category) {
     const categoryLabel = intent.category.charAt(0).toUpperCase() + intent.category.slice(1);
@@ -124,6 +121,38 @@ function buildResponse(intent: ParsedIntent): string {
   }
 
   return `Showing providers and services near Crossings Republik.`;
+}
+
+const intentSchema = z.object({
+  action: z.enum(["find_service", "buy_product", "post_need", "find_provider", "help"]),
+  category: z.string().nullable(),
+  subcategory: z.string().nullable(),
+  urgency: z.enum(["now", "today", "this_week", "flexible"]).nullable(),
+  location: z.string().nullable(),
+  budget: z.object({ min: z.number().nullable(), max: z.number().nullable() }),
+  keywords: z.array(z.string()),
+});
+
+export async function parseIntentWithLLM(query: string): Promise<ParsedIntent> {
+  try {
+    const result = await generate({
+      prompt: `Parse this user query from a hyperlocal marketplace: "${query}"
+
+Identify:
+- action: what the user wants to do (find_service, buy_product, post_need, find_provider, help)
+- category: the service category (electrician, plumber, ac repair, ro repair, carpenter, appliance repair, mobile repair, bike repair, hardware shop, electrical shop, or null)
+- subcategory: more specific (or null)
+- urgency: how urgent (now, today, this_week, flexible)
+- location: any location mentioned (or null)
+- budget: min/max in INR (or null)
+- keywords: important search keywords`,
+      schema: intentSchema,
+      system: "You are a hyperlocal marketplace intent parser. Extract structured intent from natural language queries.",
+    });
+    return { ...result, originalQuery: query };
+  } catch {
+    return parseIntent(query);
+  }
 }
 
 export function parseIntent(query: string): ParsedIntent & { response: string } {

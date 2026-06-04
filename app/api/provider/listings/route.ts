@@ -16,6 +16,7 @@ import {
   listProviderListings,
   updateProviderListing,
 } from "@/lib/server/providerListings";
+import { getProviderSubscription, hasFeature } from "@/lib/server/subscriptionCheck";
 
 export const runtime = "nodejs";
 
@@ -118,6 +119,22 @@ export async function POST(request: Request) {
       "CONFIG",
       "Supabase server credentials are missing. Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
     );
+  }
+
+  // Check subscription listing limit
+  const sub = await getProviderSubscription(authResult.auth.userId);
+  const listingLimit = sub.active && hasFeature(sub, "unlimited listings") ? Infinity
+    : sub.active && hasFeature(sub, "5 service listings") ? 5
+    : 1;
+  if (listingLimit < Infinity) {
+    const { count } = await dbClient
+      .from("service_listings")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", authResult.auth.userId);
+    if (count != null && count >= listingLimit) {
+      return toErrorResponse(403, "FORBIDDEN",
+        `Your current plan allows up to ${listingLimit} listing${listingLimit > 1 ? "s" : ""}. Upgrade to add more.`);
+    }
   }
 
   const body = await readJsonBody(request);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { getProviderSubscription, hasFeature } from "@/lib/server/subscriptionCheck";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,12 @@ export async function GET(request: Request) {
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 
   const userId = auth.auth.userId;
+
+  // Only paid plans get analytics
+  const sub = await getProviderSubscription(userId);
+  if (!sub.active || !hasFeature(sub, "analytics dashboard")) {
+    return NextResponse.json({ ok: false, message: "Analytics requires an Essential or Premium subscription" }, { status: 403 });
+  }
   const url = new URL(request.url);
   const year = parseInt(url.searchParams.get("year") ?? String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2099) {

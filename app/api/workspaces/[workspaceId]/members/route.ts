@@ -37,6 +37,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   try { body = await request.json(); } catch { return toError(400, "INVALID_PAYLOAD", "Invalid JSON."); }
   if (!body.userId) return toError(400, "INVALID_PAYLOAD", "userId required.");
 
+  // Check seat limit
+  const { data: workspace } = await db
+    .from("workspaces")
+    .select("max_members")
+    .eq("id", workspaceId)
+    .single<{ max_members: number }>();
+  if (!workspace) return toError(404, "NOT_FOUND", "Workspace not found.");
+
+  const { count } = await db
+    .from("workspace_members")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("is_active", true);
+  if (count != null && count >= workspace.max_members) {
+    return toError(403, "SEAT_LIMIT", `Workspace seat limit (${workspace.max_members}) reached. Upgrade to add more members.`);
+  }
+
   const { data, error } = await db.from("workspace_members").insert({
     workspace_id: workspaceId,
     user_id: body.userId,

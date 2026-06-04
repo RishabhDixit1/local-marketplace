@@ -1335,8 +1335,8 @@ export const acceptQuoteDraft = async (params: {
     });
   }
 
-  // Sync the linked order to "accepted"
-  const orderId = draft.orderId || "";
+  // Sync the linked order to "accepted", or create one if the quote has no order
+  let orderId = draft.orderId || "";
   if (orderId) {
     const orderMetadataResult = await params.db.from("orders").select("metadata").eq("id", orderId).maybeSingle();
     const orderMetadata = toMetadata((orderMetadataResult.data as { metadata?: FlexibleRecord | null } | null)?.metadata);
@@ -1353,7 +1353,39 @@ export const acceptQuoteDraft = async (params: {
         },
       })
       .eq("id", orderId);
-    // Non-critical — continue even if this fails
+  } else if (draft.consumerId && draft.providerId) {
+    const title =
+      trim((draft.metadata as FlexibleRecord)?.task_title as string) ||
+      draft.summary ||
+      "Service order";
+    const orderMetadata: FlexibleRecord = {
+      ...(draft.metadata as FlexibleRecord),
+      title,
+      quote_draft_id: params.quoteId,
+      quote_accepted_at: new Date().toISOString(),
+      fulfillment_status: "pending",
+      fulfillment_status_label: "Awaiting fulfillment setup",
+      payment_status: "pending",
+    };
+    const { data: newOrder } = await params.db
+      .from("orders")
+      .insert({
+        consumer_id: draft.consumerId,
+        provider_id: draft.providerId,
+        price: draft.total,
+        status: "accepted",
+        listing_type: "service",
+        metadata: orderMetadata,
+      })
+      .select("id")
+      .single();
+    if (newOrder) {
+      orderId = newOrder.id;
+      await params.db
+        .from("quote_drafts")
+        .update({ order_id: orderId })
+        .eq("id", params.quoteId);
+    }
   }
 
   // Notify the provider

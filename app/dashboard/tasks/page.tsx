@@ -2157,14 +2157,15 @@ export default function TasksPage() {
                         void loadTasks(true);
                       });
                     }}
-                    onQuoteAccepted={() => {
+                    onAccepted={(quoteId, orderId) => {
                       setNotice({
                         kind: "success",
-                        message: `Quote accepted for ${task.title}.`,
+                        message: `Quote accepted for ${task.title}. Redirecting...`,
                       });
                       startTransition(() => {
                         void loadTasks(true);
                       });
+                      router.push(`/orders/${orderId}`);
                     }}
                     onQuoteRejected={() => {
                       setNotice({

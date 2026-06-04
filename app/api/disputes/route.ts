@@ -26,14 +26,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "CONFIG", message: "No DB client." }, { status: 500 });
   }
 
+  // Verify order exists and user is a party
   const { data: order } = await db
     .from("orders")
-    .select("id,consumer_id,provider_id,status,metadata")
+    .select("id,consumer_id,provider_id,status")
     .eq("id", body.orderId)
-    .single<{
-      id: string; consumer_id: string; provider_id: string | null;
-      status: string; metadata: Record<string, unknown> | null;
-    }>();
+    .single<{ id: string; consumer_id: string; provider_id: string | null; status: string }>();
 
   if (!order) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Order not found." }, { status: 404 });
@@ -43,25 +41,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "You are not a party to this order." }, { status: 403 });
   }
 
-  const { error } = await db.from("feed_card_feedback").insert({
-    user_id: auth.auth.userId,
-    card_id: body.orderId,
-    focus_id: order.provider_id,
-    card_type: "service",
-    feedback_type: "report",
-    reason: `dispute: ${body.reason}`,
-    metadata: {
-      dispute: true,
+  // Check for existing open dispute on this order
+  const { count: existing } = await db
+    .from("disputes")
+    .select("id", { count: "exact", head: true })
+    .eq("order_id", body.orderId)
+    .eq("status", "open");
+
+  if (existing && existing > 0) {
+    return NextResponse.json({ ok: false, code: "CONFLICT", message: "An open dispute already exists for this order." }, { status: 409 });
+  }
+
+  const { data: dispute, error } = await db
+    .from("disputes")
+    .insert({
       order_id: body.orderId,
+      filed_by: auth.auth.userId,
       reason: body.reason,
       description: body.description ?? null,
       status: "open",
-    },
-  });
+    })
+    .select()
+    .single();
 
   if (error) {
     return NextResponse.json({ ok: false, code: "DB", message: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, dispute });
 }

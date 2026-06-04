@@ -2,7 +2,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -139,7 +139,8 @@ type MagicLinkData = { actionLink: string; emailOtp: string; email: string };
 
 export default function PublicLandingPage() {
   const router = useRouter();
-  const [showAuth, setShowAuth] = useState(false);
+  const searchParams = useSearchParams();
+  const [showAuth, setShowAuth] = useState(searchParams.get("signin") === "true");
   const [emailAddress, setEmailAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");

@@ -7,10 +7,17 @@ export const preferredRegion = "auto";
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
 
+if (typeof globalThis !== "undefined" && !WEBHOOK_SECRET) {
+  console.warn("[razorpay-webhook] RAZORPAY_WEBHOOK_SECRET is not set — webhook verification will reject all requests");
+}
+
 function verifySignature(body: string, signature: string): boolean {
   if (!WEBHOOK_SECRET) return false;
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(body).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  const expectedBuf = Buffer.from(expected);
+  const signatureBuf = Buffer.from(signature);
+  if (expectedBuf.length !== signatureBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, signatureBuf);
 }
 
 type RazorpayWebhookPayload = {

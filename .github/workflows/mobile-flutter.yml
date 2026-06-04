@@ -40,5 +40,4 @@ jobs:
       - name: Build Android (debug)
         run: flutter build appbundle --debug
 
-      - name: Build iOS (debug, no codesign)
-        run: flutter build ios --no-codesign
+      # iOS build skipped — runs on ubuntu-latest which lacks Xcode

@@ -30,12 +30,18 @@ type ReportRow = {
 
 type DisputeRow = {
   id: string;
-  user_id: string;
-  card_id: string | null;
-  focus_id: string | null;
-  reason: string | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string | null;
+  order_id: string;
+  filed_by: string;
+  reason: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  orders: {
+    consumer_id: string;
+    provider_id: string;
+    price: number;
+    status: string;
+  } | null;
 };
 
 type UserRow = {
@@ -463,11 +469,9 @@ export default function AdminPage() {
             </div>
           ) : (
             disputes.map((dispute) => {
-              const meta = dispute.metadata ?? {};
-              const orderId = (meta.order_id as string) ?? dispute.card_id ?? "—";
-              const reason = meta.reason as string ?? dispute.reason ?? "—";
-              const description = meta.description as string | null;
-              const status = meta.status as string ?? "open";
+              const order = (dispute as any).orders ?? {};
+              const orderId = dispute.order_id ?? "—";
+              const status = dispute.status ?? "open";
 
               return (
                 <div key={dispute.id} className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -478,45 +482,52 @@ export default function AdminPage() {
                         Dispute
                       </p>
                       <p className="text-sm text-slate-600">Order: {orderId}</p>
-                      <p className="text-sm text-slate-600">Reason: {reason}</p>
-                      {description ? (
-                        <p className="text-sm text-slate-500">{description}</p>
+                      <p className="text-sm text-slate-600">Reason: {dispute.reason}</p>
+                      {dispute.description ? (
+                        <p className="text-sm text-slate-500">{dispute.description}</p>
                       ) : null}
-                      <p className="text-xs text-slate-400">Filed by: {dispute.user_id}</p>
+                      <p className="text-xs text-slate-400">Filed by: {dispute.filed_by}</p>
                       <p className="text-xs text-slate-400">
-                        Status: <span className="font-medium text-amber-600">{status}</span>
+                        Status: <span className={`font-medium ${status === "open" ? "text-amber-600" : status === "resolved_for_consumer" ? "text-emerald-600" : "text-slate-600"}`}>{status}</span>
                       </p>
+                      {order.price != null ? (
+                        <p className="text-xs text-slate-400">Order value: ₹{Number(order.price)}</p>
+                      ) : null}
                       <p className="text-xs text-slate-400">{formatDate(dispute.created_at)}</p>
                     </div>
-                    <div className="flex shrink-0 flex-col gap-1.5">
-                      <button
-                        type="button"
-                        disabled={busyId === `${dispute.id}_dismiss`}
-                        onClick={() => void handleResolveDispute(dispute.id, "dismiss")}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
-                      >
-                        {busyId === `${dispute.id}_dismiss` ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
-                        Dismiss
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === `${dispute.id}_resolve_for_consumer`}
-                        onClick={() => void handleResolveDispute(dispute.id, "resolve_for_consumer")}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
-                      >
-                        {busyId === `${dispute.id}_resolve_for_consumer` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                        For consumer
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === `${dispute.id}_resolve_for_provider`}
-                        onClick={() => void handleResolveDispute(dispute.id, "resolve_for_provider")}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
-                      >
-                        {busyId === `${dispute.id}_resolve_for_provider` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                        For provider
-                      </button>
-                    </div>
+                    {status === "open" ? (
+                      <div className="flex shrink-0 flex-col gap-1.5">
+                        <button
+                          type="button"
+                          disabled={busyId === `${dispute.id}_dismiss`}
+                          onClick={() => void handleResolveDispute(dispute.id, "dismiss")}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                        >
+                          {busyId === `${dispute.id}_dismiss` ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                          Dismiss
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === `${dispute.id}_resolve_for_consumer`}
+                          onClick={() => void handleResolveDispute(dispute.id, "resolve_for_consumer")}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                        >
+                          {busyId === `${dispute.id}_resolve_for_consumer` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                          For consumer
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === `${dispute.id}_resolve_for_provider`}
+                          onClick={() => void handleResolveDispute(dispute.id, "resolve_for_provider")}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          {busyId === `${dispute.id}_resolve_for_provider` ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                          For provider
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400 italic">Resolved</div>
+                    )}
                   </div>
                 </div>
               );

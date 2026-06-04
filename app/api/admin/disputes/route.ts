@@ -19,15 +19,20 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+  const statusFilter = url.searchParams.get("status") || "open";
   const limit = Math.min(Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10)), 200);
   const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
 
-  const { data, error } = await db
-    .from("feed_card_feedback")
-    .select("id,user_id,card_id,focus_id,reason,metadata,created_at")
-    .contains("metadata", { dispute: true })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+  let query = db
+    .from("disputes")
+    .select("*, orders!inner(consumer_id,provider_id,price,status)")
+    .order("created_at", { ascending: false });
+
+  if (["open", "dismissed", "resolved_for_consumer", "resolved_for_provider"].includes(statusFilter)) {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data, error } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     return NextResponse.json({ ok: false, code: "DB", message: error.message }, { status: 500 });
@@ -50,7 +55,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, code: "CONFIG", message: "No DB client." }, { status: 500 });
   }
 
-  let body: { id: string; action: "dismiss" | "resolve_for_consumer" | "resolve_for_provider" };
+  let body: { id: string; action: "dismiss" | "resolve_for_consumer" | "resolve_for_provider"; note?: string };
   try {
     body = await request.json();
   } catch {
@@ -61,26 +66,59 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, code: "INVALID_PAYLOAD", message: "Dispute id is required." }, { status: 400 });
   }
 
-  const resolutionKey = body.action === "dismiss" ? "dismissed" :
-    body.action === "resolve_for_consumer" ? "resolved_for_consumer" : "resolved_for_provider";
+  const resolutionStatus =
+    body.action === "dismiss" ? "dismissed" :
+    body.action === "resolve_for_consumer" ? "resolved_for_consumer" :
+    "resolved_for_provider";
 
+  // Fetch dispute with order info
   const { data: dispute } = await db
-    .from("feed_card_feedback")
-    .select("metadata")
+    .from("disputes")
+    .select("*, orders!inner(id,price,platform_fee_paise,provider_payout_paise,metadata,status)")
     .eq("id", body.id)
-    .maybeSingle<{ metadata: Record<string, unknown> | null }>();
+    .single<Record<string, unknown>>();
 
   if (!dispute) {
     return NextResponse.json({ ok: false, code: "NOT_FOUND", message: "Dispute not found." }, { status: 404 });
   }
 
-  const { error } = await db.from("feed_card_feedback").update({
-    metadata: { ...(dispute.metadata ?? {}), status: resolutionKey, resolved_at: new Date().toISOString() },
-  }).eq("id", body.id);
+  const order = dispute.orders as Record<string, unknown>;
 
-  if (error) {
-    return NextResponse.json({ ok: false, code: "DB", message: error.message }, { status: 500 });
+  // Resolve in a transaction-like batch
+  const updates: Promise<unknown>[] = [];
+
+  // 1. Update dispute status
+  updates.push(
+    db.from("disputes").update({
+      status: resolutionStatus,
+      resolution_note: body.note ?? null,
+      resolved_by: auth.auth.userId,
+      resolved_at: new Date().toISOString(),
+    }).eq("id", body.id)
+  );
+
+  // 2. If resolved for consumer, reverse the provider payout
+  if (body.action === "resolve_for_consumer") {
+    const orderId = order.id as string;
+
+    // Refund: reset platform_fee and provider_payout to 0 (full refund to consumer)
+    updates.push(
+      db.from("orders").update({
+        platform_fee_paise: 0,
+        provider_payout_paise: 0,
+        metadata: {
+          ...((order.metadata as Record<string, unknown>) ?? {}),
+          refunded_via_dispute: true,
+          refunded_at: new Date().toISOString(),
+          refunded_by: auth.auth.userId,
+          original_platform_fee_paise: order.platform_fee_paise,
+          original_provider_payout_paise: order.provider_payout_paise,
+        },
+      }).eq("id", orderId)
+    );
   }
 
-  return NextResponse.json({ ok: true, action: resolutionKey });
+  await Promise.all(updates);
+
+  return NextResponse.json({ ok: true, action: resolutionStatus });
 }

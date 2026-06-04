@@ -217,7 +217,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       // Calculate platform commission
       try {
         const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 5.0;
+        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 12.5;
         const feePaise = Math.round(pricePaise * (rate / 100));
         const payoutPaise = pricePaise - feePaise;
 

@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   const pricePaise = o.price != null ? Math.round(o.price * 100) : 0;
-  const rate = o.commission_rate ?? 5.0;
+  const rate = o.commission_rate ?? 12.5;
   const feePaise = Math.round(pricePaise * (rate / 100));
   const payoutPaise = pricePaise - feePaise;
 

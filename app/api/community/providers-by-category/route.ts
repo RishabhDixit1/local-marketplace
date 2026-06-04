@@ -38,8 +38,8 @@ export async function GET(request: Request) {
   const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
   const minRating = minRatingParam ? parseFloat(minRatingParam) : null;
   const onlineOnly = onlineOnlyParam === "true" || onlineOnlyParam === "1";
-  const sortBy = ["distance", "rating", "jobs", "response"].includes(sortByParam)
-    ? (sortByParam as "distance" | "rating" | "jobs" | "response")
+  const sortBy = ["distance", "rating", "jobs", "response", "featured"].includes(sortByParam)
+    ? (sortByParam as "distance" | "rating" | "jobs" | "response" | "featured")
     : "distance";
   const search = searchParam.trim().toLowerCase();
 
@@ -108,7 +108,14 @@ export async function GET(request: Request) {
       return { data: results, error: null };
     };
 
-    const [servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
+    const now = new Date().toISOString();
+    const [{ data: featuredRows }, servicesResult, reviewsResult, presenceResult, orderStatsResult] = await Promise.all([
+      admin
+        .from("featured_placements")
+        .select("provider_id")
+        .eq("active", true)
+        .lte("starts_at", now)
+        .gte("ends_at", now),
       batchInQuery<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>(
         admin.from("service_listings"),
         "provider_id, id, title, category, price, metadata",
@@ -129,6 +136,8 @@ export async function GET(request: Request) {
       ),
       admin.rpc("get_provider_order_stats", { provider_ids: profileIds }),
     ]);
+
+    const featuredProviderIds = new Set((featuredRows ?? []).map((r) => r.provider_id));
 
     const servicesData = (servicesResult.data || []) as Array<{ provider_id: string; id: string; title: string; category: string; price: number | null; metadata: unknown }>;
     const reviewsData = (reviewsResult.data || []) as Array<{ provider_id: string; rating: number }>;
@@ -215,6 +224,7 @@ export async function GET(request: Request) {
         priceMax: maxPrice,
         distanceKm: dist != null ? Math.round(dist * 10) / 10 : null,
         verified: pVerificationStatus === "verified",
+        featured: featuredProviderIds.has(p.id),
         listings: serviceMap[p.id] || [],
         sortScore: 0,
       };
@@ -230,7 +240,9 @@ export async function GET(request: Request) {
       filteredProviders = filteredProviders.filter((p) => p.isOnline);
     }
 
+    // Featured providers always float to top within each sort
     filteredProviders.sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
       switch (sortBy) {
         case "rating":
           return (b.avgRating || 0) - (a.avgRating || 0);
@@ -238,6 +250,8 @@ export async function GET(request: Request) {
           return b.completedJobs - a.completedJobs;
         case "response":
           return (a.responseMinutes || 60) - (b.responseMinutes || 60);
+        case "featured":
+          return (b.avgRating || 0) - (a.avgRating || 0);
         case "distance":
         default:
           const da = a.distanceKm ?? Infinity;

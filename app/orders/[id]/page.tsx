@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -24,6 +24,12 @@ import { getOrderFulfillmentOption, type OrderFulfillmentMethod } from "@/lib/or
 import { getOrderPaymentSummary, type PaymentStatusTone } from "@/lib/paymentFlow";
 import BookingSlotPicker from "@/app/components/BookingSlotPicker";
 import DisputeFormModal from "@/app/components/DisputeFormModal";
+
+declare global {
+  interface Window {
+    Razorpay?: new (opts: Record<string, unknown>) => { open: () => void };
+  }
+}
 
 const INR = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -93,6 +99,8 @@ export default function OrderStatusPage() {
   const [disputeLoading] = useState(false);
   const [disputeSent, setDisputeSent] = useState(false);
   const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const scriptLoadedRef = useRef(false);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -123,6 +131,18 @@ export default function OrderStatusPage() {
     return () => { void supabase.removeChannel(channel); };
   }, [id]);
 
+  // Load Razorpay script
+  useEffect(() => {
+    if (scriptLoadedRef.current) return;
+    scriptLoadedRef.current = true;
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setRazorpayAvailable(true);
+    script.onerror = () => setRazorpayAvailable(false);
+    document.head.appendChild(script);
+  }, []);
+
   const updateStatus = useCallback(async (nextStatus: CanonicalOrderStatus) => {
     setBusy(true); setActionError("");
     try {
@@ -140,6 +160,58 @@ export default function OrderStatusPage() {
   const raiseDispute = useCallback(async () => {
     setShowDisputeForm(true);
   }, []);
+
+  const handlePayNow = useCallback(async () => {
+    if (!razorpayAvailable || !window.Razorpay || !order?.price) return;
+    setBusy(true); setActionError("");
+    try {
+      const amountPaise = Math.round(order.price * 100);
+      const pgRes = await fetchAuthedJson<{
+        ok: boolean; orderId: string; amount: number; currency: string; keyId: string;
+      }>(supabase, "/api/payment/create-order", {
+        method: "POST",
+        body: JSON.stringify({ amount: amountPaise, receipt: `ord_${order.id}_${Date.now()}` }),
+      });
+      if (!pgRes.ok) throw new Error("Payment gateway unavailable.");
+      await new Promise<void>((resolve, reject) => {
+        const rz = new window.Razorpay!({
+          key: pgRes.keyId,
+          amount: pgRes.amount,
+          currency: pgRes.currency,
+          order_id: pgRes.orderId,
+          name: "ServiQ",
+          description: `Order #${order.id.slice(0, 8).toUpperCase()}`,
+          theme: { color: "#2563eb" },
+          handler: async (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              await fetchAuthedJson(supabase, "/api/payment/verify", {
+                method: "POST",
+                body: JSON.stringify({
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                  serviQOrderIds: [order.id],
+                }),
+              });
+              resolve();
+            } catch (e) {
+              reject(e instanceof Error ? e : new Error("Payment verification failed."));
+            }
+          },
+          modal: { ondismiss: () => { setBusy(false); reject(new Error("Payment cancelled.")); } },
+        });
+        rz.open();
+      });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Payment failed.");
+    } finally {
+      setBusy(false);
+    }
+  }, [order, razorpayAvailable]);
 
   if (loading) {
     return (
@@ -368,7 +440,21 @@ export default function OrderStatusPage() {
 
         {/* Consumer actions */}
         {isConsumer && !isFinal && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-white p-5 shadow-sm space-y-3">
+            {paymentStatus === "pending" && (
+              <button
+                type="button"
+                disabled={busy || !razorpayAvailable}
+                onClick={() => void handlePayNow()}
+                className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {busy ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                ) : (
+                  <><CreditCard className="h-4 w-4" /> Pay Now {order.price ? INR(order.price) : ""}</>
+                )}
+              </button>
+            )}
             <button type="button" disabled={busy} onClick={() => void updateStatus("cancelled")}
               className="w-full rounded-xl border border-rose-200 bg-rose-50 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:opacity-60 flex items-center justify-center gap-2">
               <XCircle className="h-4 w-4" /> Cancel Order

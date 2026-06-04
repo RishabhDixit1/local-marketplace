@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { BadgeCheck, FileUp, Loader2, ShieldCheck, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BadgeCheck, CheckCircle2, FileUp, Loader2, ShieldCheck, Upload, X } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
+import { calculateVerificationStatus, verificationLabel } from "@/lib/business";
 
 const DOCUMENT_TYPES = [
   { value: "id_proof", label: "ID Proof (Aadhaar, PAN, DL)" },
@@ -42,6 +43,38 @@ export default function VerificationPage() {
 
   const status = profile?.verification_status || "unverified";
   const badge = STATUS_BADGES[status] || STATUS_BADGES.unverified;
+
+  const progression = useMemo(() => {
+    const completion = profile?.profile_completion_percent ?? 0;
+    const hasServices = (profile?.services?.length ?? 0) > 0;
+    const hasBio = (profile?.bio?.length ?? 0) > 20;
+    const hasTrustScore = (profile?.trust_score ?? 0) >= 60;
+    const phoneVerified = (profile?.verification_level ?? "") === "phone" || (profile?.verification_level ?? "") === "identity" || (profile?.verification_level ?? "") === "business";
+    const idVerified = (profile?.verification_level ?? "") === "identity" || (profile?.verification_level ?? "") === "business";
+
+    return [
+      {
+        label: "Complete profile",
+        met: completion >= 70 && hasBio && hasServices,
+        detail: "70% profile completion, bio, and at least 1 service",
+      },
+      {
+        label: "Verify phone / email",
+        met: phoneVerified,
+        detail: "Verify your phone number or email",
+      },
+      {
+        label: "Upload ID document",
+        met: idVerified,
+        detail: "Submit a government-issued ID for verification",
+      },
+      {
+        label: "Build trust score",
+        met: hasTrustScore,
+        detail: "Complete jobs and earn positive reviews (score ≥ 60)",
+      },
+    ];
+  }, [profile]);
 
   const fetchDocuments = useCallback(async () => {
     const data = await fetchAuthedJson<{ ok: boolean; documents: Document[] }>(
@@ -103,6 +136,27 @@ export default function VerificationPage() {
           <ShieldCheck className="h-3.5 w-3.5" />
           {badge.label}
         </span>
+      </div>
+
+      {/* Badge progression */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-bold text-slate-900 mb-1">Verification Progress</h2>
+        <p className="text-xs text-slate-500 mb-4">
+          {status === "verified" ? "Your profile is verified. Great job!" : "Complete these steps to get verified."}
+        </p>
+        <div className="space-y-3">
+          {progression.map((step) => (
+            <div key={step.label} className={`flex items-start gap-3 rounded-xl p-3 ${step.met ? "bg-emerald-50" : "bg-slate-50"}`}>
+              <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step.met ? "bg-emerald-500" : "bg-slate-300"}`}>
+                {step.met ? <CheckCircle2 className="h-4 w-4 text-white" /> : <div className="h-2 w-2 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${step.met ? "text-emerald-800" : "text-slate-700"}`}>{step.label}</p>
+                <p className="text-xs text-slate-500">{step.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
