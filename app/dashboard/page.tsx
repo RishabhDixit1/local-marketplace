@@ -478,7 +478,7 @@ export default function MarketplacePage() {
               View Market
             </Link>
             <Link
-              href={filters.category ? `/dashboard/providers?category=${encodeURIComponent(filters.category)}` : "/dashboard/providers"}
+              href="/dashboard/providers"
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
             >
               <Users className="h-3.5 w-3.5" />

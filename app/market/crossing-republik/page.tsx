@@ -320,7 +320,7 @@ export default function CrossingRepublikPage() {
                 />
             ))}
           </div>
-        ) : (
+        ) : selectedCategory ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
             <Users className="mx-auto mb-3 h-8 w-8 text-slate-300" />
             <p className="text-sm font-semibold text-slate-600">No providers found nearby</p>
@@ -328,25 +328,17 @@ export default function CrossingRepublikPage() {
               Try adjusting your filters or browse all providers
             </p>
             <div className="mt-5 flex items-center justify-center gap-3">
-              {selectedCategory && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory(null)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300"
-                >
-                  <X className="h-3 w-3" />
-                  Clear Filter
-                </button>
-              )}
-              <Link
-                href="/dashboard/people"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300"
               >
-                Browse All Providers <ArrowRight className="h-3 w-3" />
-              </Link>
+                <X className="h-3 w-3" />
+                Clear Filter
+              </button>
             </div>
           </div>
-        )}
+        ) : null}
       </section>
 
       {/* ── Join CTA ── */}
