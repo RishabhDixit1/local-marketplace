@@ -11,19 +11,18 @@ function getInitialStatus(): "idle" | "granted" | "denied" | "unsupported" | "su
   return Notification.permission === "granted" ? "granted" : "idle";
 }
 
+function getInitialDismissed(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export default function PushNotificationSubscriber() {
   const [status, setStatus] = useState<"idle" | "granted" | "denied" | "unsupported" | "subscribed">(getInitialStatus);
-  const [dismissed, setDismissed] = useState(true);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem(DISMISSED_KEY);
-      if (stored !== "true") setDismissed(false);
-    } catch {
-      setDismissed(false);
-    }
-  }, []);
+  const [dismissed, setDismissed] = useState(getInitialDismissed);
 
   useEffect(() => {
     if (status !== "granted") return;
