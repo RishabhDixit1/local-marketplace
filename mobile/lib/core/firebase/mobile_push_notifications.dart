@@ -59,9 +59,7 @@ class MobilePushNotificationService {
 
   // ignore: unused_field
   final AppFirebaseState _firebaseState;
-  // ignore: unused_field
   final MobileApiClient _apiClient;
-  // ignore: unused_field
   final AppBootstrap _bootstrap;
   final NotificationTapRouteController _tapRouteController;
   // ignore: unused_field
@@ -92,10 +90,12 @@ class MobilePushNotificationService {
     final token = await messaging.getAPNSToken() ?? await messaging.getToken();
     if (token != null) {
       debugPrint('ServiQ: FCM token=$token');
+      await _registerToken(token);
     }
 
     _tokenRefreshSubscription = messaging.onTokenRefresh.listen((t) {
       debugPrint('ServiQ: FCM token refreshed=$t');
+      _registerToken(t);
     });
 
     _tapSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
@@ -108,6 +108,21 @@ class MobilePushNotificationService {
     _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
       debugPrint('ServiQ: foreground notification=${message.messageId}');
     });
+  }
+
+  Future<void> _registerToken(String token) async {
+    if (!_bootstrap.supabaseReady) return;
+    try {
+      await _apiClient.postJson(
+        '/api/notifications/subscribe',
+        body: {
+          'fcmToken': token,
+          'platform': 'android',
+        },
+      );
+    } catch (e) {
+      debugPrint('ServiQ: FCM token registration failed: $e');
+    }
   }
 
   void _handleNotificationTap(RemoteMessage message) {
