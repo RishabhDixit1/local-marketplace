@@ -714,6 +714,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
+          <div className={desktopNavCollapsed ? "px-2 py-2" : "px-4 py-2"}>
+            <PushNotificationSubscriber />
+          </div>
+
           <div
             className={`border-t border-slate-200 ${desktopNavCollapsed ? "px-2 py-4" : "px-4 py-4"}`}
           >
@@ -849,7 +853,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             )}
             <OnboardingGuard>{children}</OnboardingGuard>
             <QuickOnboardingSheet />
-            <PushNotificationSubscriber />
           </main>
         </div>
       </div>

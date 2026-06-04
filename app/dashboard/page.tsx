@@ -653,17 +653,7 @@ export default function MarketplacePage() {
                      </div>
                    ))}
                  </div>
-                ) : filters.category ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-                    <Users className="h-7 w-7 text-slate-400" />
-                  </div>
-                  <p className="mt-4 text-sm font-bold text-slate-800">No providers found nearby</p>
-                  <p className="mt-1.5 text-xs text-slate-500">
-                    Try adjusting your filters or browse all providers
-                  </p>
-                </div>
-              ) : null}
+                 ) : null}
            </div>
 
          {showPostExplainer && (

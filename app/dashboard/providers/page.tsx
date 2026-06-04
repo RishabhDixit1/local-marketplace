@@ -333,7 +333,7 @@ function ProviderQuickViewModal({
         <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/90 px-5 py-4 backdrop-blur-sm">
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href={`/dashboard/chat?recipientId=${encodeURIComponent(provider.id)}`}
+              href={`/dashboard/chat/${encodeURIComponent(provider.id)}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
             >
               <MessageCircle className="h-4 w-4" />
@@ -1153,13 +1153,13 @@ export default function ProvidersPage() {
                 )}
 
                  <div className="mt-1.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                   <Link
-                     href={`/dashboard/chat?recipientId=${encodeURIComponent(provider.id)}`}
-                     className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
-                   >
-                     <MessageCircle className="h-3.5 w-3.5" />
-                     Chat
-                   </Link>
+                    <Link
+                      href={`/dashboard/chat/${encodeURIComponent(provider.id)}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      Chat
+                    </Link>
 
                    <Link
                      href={`/dashboard/chat?recipientId=${encodeURIComponent(provider.id)}&draft_kind=interest&draft_title=${encodeURIComponent(`Quote request for ${provider.name}`)}`}
