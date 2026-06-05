@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import type { User } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -138,6 +138,15 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
 type MagicLinkData = { actionLink: string; emailOtp: string; email: string };
 
 export default function PublicLandingPage() {
+  return (
+    <Suspense fallback={null}>
+      <LandingPageContent />
+    </Suspense>
+  );
+}
+
+
+function LandingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showAuth, setShowAuth] = useState(searchParams.get("signin") === "true");
