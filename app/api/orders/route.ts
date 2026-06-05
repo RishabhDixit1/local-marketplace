@@ -361,7 +361,7 @@ export async function POST(request: Request) {
             },
           };
         })
-        .filter(Boolean);
+        .filter((x): x is NonNullable<typeof x> => x != null);
 
       if (notificationRows.length > 0) {
         await admin.from("notifications").insert(notificationRows);
