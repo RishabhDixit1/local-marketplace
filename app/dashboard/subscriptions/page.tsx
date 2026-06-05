@@ -4,11 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   Crown,
-  CreditCard,
   Loader2,
   Sparkles,
   Star,
-  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";

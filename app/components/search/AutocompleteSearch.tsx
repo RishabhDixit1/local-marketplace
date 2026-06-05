@@ -47,13 +47,9 @@ export function AutocompleteSearch({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent] = useState<string[]>(() => loadRecent());
   const [activeIndex, setActiveIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setRecent(loadRecent());
-  }, []);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

@@ -547,6 +547,7 @@ export default function ProvidersPage() {
       loadProviders();
     }, 300);
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, searchQuery]);
 
   useEffect(() => {

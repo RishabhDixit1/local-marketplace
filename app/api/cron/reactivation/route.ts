@@ -13,7 +13,6 @@ export async function POST() {
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   let reactivated = 0;
 

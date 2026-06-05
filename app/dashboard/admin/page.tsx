@@ -469,7 +469,7 @@ export default function AdminPage() {
             </div>
           ) : (
             disputes.map((dispute) => {
-              const order = (dispute as any).orders ?? {};
+              const order = (dispute.orders ?? {}) as Record<string, unknown>;
               const orderId = dispute.order_id ?? "—";
               const status = dispute.status ?? "open";
 

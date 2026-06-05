@@ -85,7 +85,7 @@ export async function PATCH(request: Request) {
   const order = dispute.orders as Record<string, unknown>;
 
   // Resolve in a transaction-like batch
-  const updates: Promise<unknown>[] = [];
+  const updates: unknown[] = [];
 
   // 1. Update dispute status
   updates.push(

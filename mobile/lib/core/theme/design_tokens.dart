@@ -129,6 +129,10 @@ class AppShadows {
   static const glow = <BoxShadow>[
     BoxShadow(color: AppColors.glow, blurRadius: 28, offset: Offset(0, 10)),
   ];
+
+  static const soft = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 12, offset: Offset(0, 4)),
+  ];
 }
 
 /// Semantic tints for marketplace card types and surfaces (Phase 1 parity references).

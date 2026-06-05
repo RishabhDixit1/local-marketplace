@@ -13,7 +13,14 @@ export function PressScale({
   as?: "button" | "div" | "a";
   onClick?: () => void;
 }) {
-  const Component = motion[as as keyof typeof motion];
+  const Component = motion[as as keyof typeof motion] as React.ComponentType<{
+    children: React.ReactNode;
+    className?: string;
+    whileTap?: object;
+    whileHover?: object;
+    transition?: object;
+    onClick?: () => void;
+  }>;
   return (
     <Component
       whileTap={{ scale: 0.97 }}

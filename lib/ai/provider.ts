@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { generateObject, generateText } from "ai";
+import { generateObject, generateText, type FlexibleSchema } from "ai";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 
@@ -14,13 +14,13 @@ export async function generate<T>({
   model,
 }: {
   prompt: string;
-  schema: { parse: (input: unknown) => T };
+  schema: FlexibleSchema<T>;
   system?: string;
   model?: string;
 }): Promise<T> {
   const result = await generateObject({
     model: getModel(model),
-    schema: schema as any,
+    schema,
     prompt,
     system,
   });

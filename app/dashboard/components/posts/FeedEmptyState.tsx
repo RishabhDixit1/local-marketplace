@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Inbox, RotateCcw, Sparkles, Zap } from "lucide-react";
+import { Inbox, RotateCcw, Sparkles } from "lucide-react";
 
 type FeedEmptyStateProps = {
   hasAnyFeed: boolean;

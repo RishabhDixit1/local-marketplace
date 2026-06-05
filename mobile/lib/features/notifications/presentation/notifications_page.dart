@@ -222,28 +222,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     }
   }
 
-      ref.invalidate(notificationListProvider);
-      await ref.read(notificationListProvider.future);
-      if (!mounted) return;
-      ServiqToast.show(
-        context,
-        message: decision == 'accepted'
-            ? 'Connection accepted'
-            : 'Connection declined',
-        tone: ServiqToastTone.success,
-      );
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      ServiqToast.show(
-        context,
-        message: error.message,
-        tone: ServiqToastTone.danger,
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   bool _matchesFilter(MobileNotificationItem item) {
     switch (_filter) {
       case _NotificationFilter.all:

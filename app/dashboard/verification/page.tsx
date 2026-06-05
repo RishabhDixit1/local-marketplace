@@ -5,7 +5,7 @@ import { BadgeCheck, CheckCircle2, FileUp, Loader2, ShieldCheck, Upload, X } fro
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
-import { calculateVerificationStatus, verificationLabel } from "@/lib/business";
+
 
 const DOCUMENT_TYPES = [
   { value: "id_proof", label: "ID Proof (Aadhaar, PAN, DL)" },
