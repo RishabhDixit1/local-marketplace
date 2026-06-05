@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/design_system/design_system.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/theme/design_tokens.dart';
@@ -12,6 +13,7 @@ import '../../../core/widgets/section_card.dart';
 import '../../../shared/components/app_search_field.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../../../shared/components/trust_badge.dart';
+
 import '../data/notification_repository.dart';
 import '../domain/notification_models.dart';
 
@@ -38,6 +40,36 @@ enum _NotificationFilter {
   }
 }
 
+String _sectionLabel(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.message:
+      return 'Messages';
+    case MobileNotificationKind.order:
+      return 'Orders';
+    case MobileNotificationKind.review:
+      return 'Reviews';
+    case MobileNotificationKind.connection:
+      return 'Connections';
+    case MobileNotificationKind.system:
+      return 'System';
+  }
+}
+
+IconData _sectionIcon(MobileNotificationKind kind) {
+  switch (kind) {
+    case MobileNotificationKind.message:
+      return Icons.chat_bubble_outline_rounded;
+    case MobileNotificationKind.order:
+      return Icons.assignment_outlined;
+    case MobileNotificationKind.review:
+      return Icons.star_outline_rounded;
+    case MobileNotificationKind.connection:
+      return Icons.people_outline_rounded;
+    case MobileNotificationKind.system:
+      return Icons.notifications_none_rounded;
+  }
+}
+
 class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
@@ -51,6 +83,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   RealtimeChannel? _channel;
   SupabaseClient? _client;
   bool _busy = false;
+  final Set<MobileNotificationKind> _collapsedSections = {};
 
   @override
   void initState() {
@@ -143,7 +176,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         await ref.read(notificationRepositoryProvider).markAsRead(item.id);
       }
     } catch (_) {
-      // Keep navigation usable even if the read state fails.
     }
 
     ref.invalidate(notificationListProvider);
@@ -153,6 +185,63 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     }
 
     context.push(action.location);
+  }
+
+  Future<void> _respondConnection({
+    required String requestId,
+    required String decision,
+  }) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(mobileApiClientProvider).patchJson(
+        '/api/connections/$requestId',
+        body: {'decision': decision},
+        authenticated: true,
+      );
+
+      ref.invalidate(notificationListProvider);
+      await ref.read(notificationListProvider.future);
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: decision == 'accepted'
+            ? 'Connection accepted'
+            : 'Connection declined',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+      ref.invalidate(notificationListProvider);
+      await ref.read(notificationListProvider.future);
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: decision == 'accepted'
+            ? 'Connection accepted'
+            : 'Connection declined',
+        tone: ServiqToastTone.success,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ServiqToast.show(
+        context,
+        message: error.message,
+        tone: ServiqToastTone.danger,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   bool _matchesFilter(MobileNotificationItem item) {
@@ -260,40 +349,71 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     return haystack.contains(query);
                   }).toList();
 
+                  final grouped = <MobileNotificationKind, List<MobileNotificationItem>>{};
+                  for (final item in filtered) {
+                    grouped.putIfAbsent(item.kind, () => []).add(item);
+                  }
+
+                  final kindOrder = [
+                    MobileNotificationKind.message,
+                    MobileNotificationKind.order,
+                    MobileNotificationKind.connection,
+                    MobileNotificationKind.review,
+                    MobileNotificationKind.system,
+                  ];
+                  kindOrder.removeWhere((k) => !grouped.containsKey(k));
+
+                  if (filtered.isEmpty) {
+                    return const SectionCard(
+                      child: EmptyStateView(
+                        title: 'No matching notifications',
+                        message:
+                            'New chats, task updates, and trust signals will appear here as activity comes in.',
+                      ),
+                    );
+                  }
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      if (filtered.isEmpty)
-                        const SectionCard(
-                          child: EmptyStateView(
-                            title: 'No matching notifications',
-                            message:
-                                'New chats, task updates, and trust signals will appear here as activity comes in.',
-                          ),
-                        )
-                      else
-                        ...filtered.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.sm,
-                            ),
-                            child: _NotificationCard(
-                              item: item,
-                              busy: _busy,
-                              actionLabel: resolveMobileNotificationAction(
-                                item,
-                              ).label,
-                              onOpen: () => _openNotification(item),
-                              onClear: () => _runAction(
-                                () => ref
-                                    .read(notificationRepositoryProvider)
-                                    .clearNotification(item.id),
-                                successMessage: 'Notification cleared.',
+                      for (final kind in kindOrder) ...[
+                        _buildSectionHeader(kind, grouped[kind]!.length),
+                        if (!_collapsedSections.contains(kind))
+                          ...grouped[kind]!.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
+                              child: _NotificationCard(
+                                item: item,
+                                busy: _busy,
+                                actionLabel:
+                                    resolveMobileNotificationAction(item).label,
+                                onOpen: () => _openNotification(item),
+                                onClear: () => _runAction(
+                                  () => ref
+                                      .read(notificationRepositoryProvider)
+                                      .clearNotification(item.id),
+                                  successMessage: 'Notification cleared.',
+                                ),
+                                onAcceptConnection: item.kind ==
+                                        MobileNotificationKind.connection
+                                    ? () => _respondConnection(
+                                          requestId: item.entityId ?? item.id,
+                                          decision: 'accepted',
+                                        )
+                                    : null,
+                                onRejectConnection: item.kind ==
+                                        MobileNotificationKind.connection
+                                    ? () => _respondConnection(
+                                          requestId: item.entityId ?? item.id,
+                                          decision: 'rejected',
+                                        )
+                                    : null,
                               ),
                             ),
                           ),
-                        ),
+                      ],
                     ],
                   );
                 },
@@ -304,35 +424,65 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       ),
     );
   }
-}
 
-String _kindLabel(MobileNotificationKind kind) {
-  switch (kind) {
-    case MobileNotificationKind.order:
-      return 'Order';
-    case MobileNotificationKind.message:
-      return 'Message';
-    case MobileNotificationKind.review:
-      return 'Review';
-    case MobileNotificationKind.system:
-      return 'System';
-    case MobileNotificationKind.connection:
-      return 'Connection';
-  }
-}
-
-IconData _kindIcon(MobileNotificationKind kind) {
-  switch (kind) {
-    case MobileNotificationKind.order:
-      return Icons.assignment_outlined;
-    case MobileNotificationKind.message:
-      return Icons.chat_bubble_outline_rounded;
-    case MobileNotificationKind.review:
-      return Icons.star_outline_rounded;
-    case MobileNotificationKind.system:
-      return Icons.notifications_none_rounded;
-    case MobileNotificationKind.connection:
-      return Icons.people_outline_rounded;
+  Widget _buildSectionHeader(MobileNotificationKind kind, int count) {
+    final collapsed = _collapsedSections.contains(kind);
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () {
+          setState(() {
+            if (collapsed) {
+              _collapsedSections.remove(kind);
+            } else {
+              _collapsedSections.add(kind);
+            }
+          });
+        },
+        child: Row(
+          children: [
+            Icon(
+              _sectionIcon(kind),
+              size: 18,
+              color: AppColors.inkSubtle,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              _sectionLabel(kind),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkStrong,
+                  ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkSubtle,
+                ),
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              collapsed
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_up_rounded,
+              size: 20,
+              color: AppColors.inkSubtle,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -343,6 +493,8 @@ class _NotificationCard extends StatelessWidget {
     required this.actionLabel,
     required this.onOpen,
     required this.onClear,
+    this.onAcceptConnection,
+    this.onRejectConnection,
   });
 
   final MobileNotificationItem item;
@@ -350,10 +502,27 @@ class _NotificationCard extends StatelessWidget {
   final String actionLabel;
   final VoidCallback onOpen;
   final VoidCallback onClear;
+  final VoidCallback? onAcceptConnection;
+  final VoidCallback? onRejectConnection;
+
+  IconData _icon() {
+    switch (item.kind) {
+      case MobileNotificationKind.order:
+        return Icons.assignment_outlined;
+      case MobileNotificationKind.message:
+        return Icons.chat_bubble_outline_rounded;
+      case MobileNotificationKind.review:
+        return Icons.star_outline_rounded;
+      case MobileNotificationKind.system:
+        return Icons.notifications_none_rounded;
+      case MobileNotificationKind.connection:
+        return Icons.people_outline_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final icon = _kindIcon(item.kind);
+    final icon = _icon();
 
     return SectionCard(
       variant: item.unread
@@ -403,24 +572,53 @@ class _NotificationCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       item.message,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.inkSubtle,
+                          ),
                     ),
-
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
+          Row(
             children: [
               TrustBadge(label: _kindLabel(item.kind)),
+              const Spacer(),
+              Text(
+                item.timeLabel,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.inkSubtle,
+                    ),
+              ),
             ],
           ),
+          if (onAcceptConnection != null && onRejectConnection != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: busy ? null : onAcceptConnection,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Accept'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: busy ? null : onRejectConnection,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: const Text('Decline'),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           ServiqActionBar(
             primaryLabel: actionLabel,
@@ -437,5 +635,20 @@ class _NotificationCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _kindLabel(MobileNotificationKind kind) {
+    switch (kind) {
+      case MobileNotificationKind.order:
+        return 'Order';
+      case MobileNotificationKind.message:
+        return 'Message';
+      case MobileNotificationKind.review:
+        return 'Review';
+      case MobileNotificationKind.system:
+        return 'System';
+      case MobileNotificationKind.connection:
+        return 'Connection';
+    }
   }
 }

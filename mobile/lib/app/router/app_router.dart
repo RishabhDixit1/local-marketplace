@@ -78,15 +78,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       final onboardingValue = onboardingComplete.asData?.value;
-      if (onboardingValue != null) {
+      if (onboardingValue == null) {
+        if (location.startsWith('/app')) {
+          return AppRoutes.onboarding;
+        }
+      } else {
         if (!onboardingValue && location != AppRoutes.onboarding) {
           return AppRoutes.onboarding;
         }
         if (onboardingValue && location == AppRoutes.onboarding) {
           return AppRoutes.root;
         }
-      } else {
-        return null;
       }
 
       if (!authState.isAuthenticated && location.startsWith('/app')) {

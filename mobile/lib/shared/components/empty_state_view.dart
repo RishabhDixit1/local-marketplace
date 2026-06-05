@@ -11,6 +11,7 @@ class EmptyStateView extends StatelessWidget {
     this.icon = Icons.inbox_rounded,
     this.actionLabel,
     this.onAction,
+    this.gradientColors,
   });
 
   final String title;
@@ -18,6 +19,14 @@ class EmptyStateView extends StatelessWidget {
   final IconData icon;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final List<Color>? gradientColors;
+
+  List<Color> get _gradient {
+    if (gradientColors != null && gradientColors!.length >= 2) {
+      return gradientColors!;
+    }
+    return [AppColors.accentSoft, AppColors.primarySoft];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,20 +36,36 @@ class EmptyStateView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              color: AppColors.accentSoft,
-              borderRadius: BorderRadius.circular(AppRadii.md),
+              gradient: LinearGradient(
+                colors: _gradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              boxShadow: AppShadows.soft,
             ),
-            child: Icon(icon, size: 26, color: AppColors.accentDeep),
+            child: Icon(icon, size: 28, color: Colors.white),
           ),
-          const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
           const SizedBox(height: 8),
-          Text(message, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.inkSubtle,
+                  height: 1.4,
+                ),
+          ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             GhostButton(label: actionLabel!, onPressed: onAction),
           ],
         ],

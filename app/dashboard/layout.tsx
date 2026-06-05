@@ -58,6 +58,9 @@ import {
   Users,
 } from "lucide-react";
 import PushNotificationSubscriber from "@/app/components/PushNotificationSubscriber";
+import { PageTransition } from "@/app/components/motion/PageTransition";
+import { ToastProvider } from "@/app/components/toast/ToastProvider";
+import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 
 import type { PublishPostResult } from "@/app/components/CreatePostModal";
 
@@ -112,7 +115,9 @@ export default function DashboardLayout({
     <ProfileProvider>
       <DashboardPromptProvider>
         <CartProvider>
-          <DashboardShell>{children}</DashboardShell>
+          <ToastProvider>
+            <DashboardShell>{children}</DashboardShell>
+          </ToastProvider>
         </CartProvider>
       </DashboardPromptProvider>
     </ProfileProvider>
@@ -240,6 +245,26 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       width: `${panelWidth}px`,
     });
   }, []);
+
+  useKeyboardShortcuts([
+    {
+      key: "n",
+      handler: () => {
+        if (!pathname.startsWith("/dashboard/chat") && !pathname.startsWith("/dashboard/tasks")) {
+          setOpenCreatePost(true);
+        }
+      },
+      enabled: authReady,
+    },
+    {
+      key: "/",
+      handler: () => {
+        const search = document.querySelector<HTMLInputElement>('input[type="search"]');
+        search?.focus();
+      },
+      enabled: authReady,
+    },
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -855,7 +880,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             )}
-            <OnboardingGuard>{children}</OnboardingGuard>
+            <OnboardingGuard><PageTransition>{children}</PageTransition></OnboardingGuard>
             <QuickOnboardingSheet />
           </main>
         </div>
