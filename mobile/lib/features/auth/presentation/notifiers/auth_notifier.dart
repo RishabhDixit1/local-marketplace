@@ -283,9 +283,18 @@ class AuthNotifier extends Notifier<AuthFormState> {
   Future<void> signInWithApple(BuildContext context) async {
     state = state.copyWith(isSubmitting: true, clearError: true, clearSuccess: true);
 
+    await _handoffController.prepareForAuth(MobileAuthMethod.apple);
+    _analyticsService.trackEvent(
+      'mobile_auth_method_chosen',
+      extras: _handoffController.analyticsExtras(method: MobileAuthMethod.apple),
+    );
+
     try {
-      await _authService.signInWithGoogle();
-      state = state.copyWith(isSubmitting: false, successMessage: 'Apple sign-in opened.');
+      await _authService.signInWithApple();
+      state = state.copyWith(
+        isSubmitting: false,
+        successMessage: 'Apple sign-in opened in your browser.',
+      );
     } catch (error) {
       state = state.copyWith(
         isSubmitting: false,
@@ -294,6 +303,7 @@ class AuthNotifier extends Notifier<AuthFormState> {
           fallbackPrefix: 'Unable to start Apple sign-in',
         ),
       );
+      unawaited(_handoffController.completeAuthHandoff(clearStoredRoute: false));
     }
   }
 

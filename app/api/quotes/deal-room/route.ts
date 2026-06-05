@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import type {
   DealRoomScope,
   DealRoomTimelineItem,
@@ -85,7 +86,7 @@ const loadOrderContext = async (
       scope,
       status: normalizedStatus,
       counterpartyName: counterpartyName?.data?.name || "User",
-      counterpartyAvatarUrl: counterpartyName?.data?.avatar_url ? String(counterpartyName.data.avatar_url) : null,
+      counterpartyAvatarUrl: counterpartyName?.data?.avatar_url ? resolveProfileAvatarUrl(String(counterpartyName.data.avatar_url)) : null,
       canEditQuote: actorRole === "provider" && ["new_lead", "quoted"].includes(normalizedStatus),
       canAcceptQuote: actorRole === "consumer" && normalizedStatus === "quoted",
       canAddAttachment: true,
@@ -190,7 +191,7 @@ export async function GET(request: Request) {
         scope,
         status,
         counterpartyName: counterparty?.data?.name || "User",
-        counterpartyAvatarUrl: counterparty?.data?.avatar_url ? String(counterparty.data.avatar_url) : null,
+        counterpartyAvatarUrl: counterparty?.data?.avatar_url ? resolveProfileAvatarUrl(String(counterparty.data.avatar_url)) : null,
         canEditQuote: actorRole === "provider",
         canAcceptQuote: false,
         canAddAttachment: true,

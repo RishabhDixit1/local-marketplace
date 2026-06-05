@@ -165,6 +165,17 @@ class MobileAuthService {
     );
   }
 
+  Future<void> signInWithApple() async {
+    final launched = await _client.auth.signInWithOAuth(
+      OAuthProvider.apple,
+      redirectTo: _bootstrap.config.magicLinkRedirectUrl,
+    );
+
+    if (!launched) {
+      throw StateError('Could not open Apple sign-in.');
+    }
+  }
+
   Future<void> signInWithGoogle() async {
     final launched = await _client.auth.signInWithOAuth(
       OAuthProvider.google,

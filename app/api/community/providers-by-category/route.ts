@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
 export const runtime = "nodejs";
 
@@ -91,7 +92,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const BATCH_SIZE = 40;
+    const BATCH_SIZE = 500;
     const batchInQuery = async <T>(
       table: ReturnType<typeof admin.from>,
       selectCols: string,
@@ -210,7 +211,7 @@ export async function GET(request: Request) {
         location: p.location || "",
         lat: p.latitude,
         lng: p.longitude,
-        avatarUrl: p.avatar_url || "",
+        avatarUrl: resolveProfileAvatarUrl(p.avatar_url) || "",
         bio: p.bio || "",
         role: p.role || "provider",
         services: p.services || [],

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabase";
+import { supabase, getSupabaseBrowserClient } from "../../../lib/supabase-browser";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
 
@@ -22,6 +22,11 @@ export default function AuthCallbackPage() {
     const completeLogin = async () => {
       let subscription: { unsubscribe: () => void } | null = null;
       try {
+        // DEBUG: Log the Supabase client URL
+        const client = getSupabaseBrowserClient();
+        console.log("[auth/callback] supabase client URL:", (client as any).supabaseUrl || (client as any).gotrueUrl);
+        console.log("[auth/callback] window.location.origin:", window.location.origin);
+        console.log("[auth/callback] NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
         const params = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const authCode = params.get("code");

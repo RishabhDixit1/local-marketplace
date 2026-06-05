@@ -24,6 +24,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/nextjs": "^10.53.1",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.93.3",
     "@types/web-push": "^3.6.4",
     "@vercel/analytics": "^1.6.1",

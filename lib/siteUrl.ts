@@ -112,22 +112,9 @@ export const resolveAuthCallbackUrl = ({
   const configuredOrigin = getConfiguredSiteUrl();
   const requestOrigin = resolveRequestOrigin(request) || configuredOrigin;
 
-  const stripWww = (host: string) => host.replace(/^www\./i, "");
-  let callbackOrigin: string;
-  let isProductionDomain: boolean;
-  try {
-    const configuredHost = stripWww(new URL(configuredOrigin).hostname);
-    const requestHost = stripWww(new URL(requestOrigin).hostname);
-    isProductionDomain = configuredHost === requestHost;
-    callbackOrigin = isProductionDomain ? configuredOrigin : requestOrigin;
-  } catch {
-    isProductionDomain = false;
-    callbackOrigin = requestOrigin;
-  }
+  const callbackOrigin = requestOrigin;
 
-  const fallbackRedirectTo = isProductionDomain
-    ? buildAuthCallbackUrl(callbackOrigin)
-    : callbackOrigin;
+  const fallbackRedirectTo = cleanSiteUrl(callbackOrigin);
   const requestedMobileRedirect = normalizeMobileRedirectUrl(requestedRedirectTo);
 
   if (requestedMobileRedirect && getAllowedMobileAuthRedirectUrls().has(requestedMobileRedirect)) {

@@ -225,6 +225,16 @@ function LandingPageContent() {
   );
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    if (params.has("code") || params.has("error_description") || /\baccess_token=/.test(hash)) {
+      const suffix = window.location.search + window.location.hash;
+      window.location.replace(`/auth/callback${suffix}`);
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
     const bootstrapSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();

@@ -122,6 +122,18 @@ const createNextConfig = (phase: string): NextConfig => ({
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/auth/v1/:path*",
+        destination: "http://54.253.40.174:8000/auth/v1/:path*",
+      },
+      {
+        source: "/rest/v1/:path*",
+        destination: "http://54.253.40.174:8000/rest/v1/:path*",
+      },
+    ];
+  },
 });
 
 const sentryOptions: Parameters<typeof withSentryConfig>[1] = {

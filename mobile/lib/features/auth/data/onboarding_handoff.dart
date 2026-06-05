@@ -8,7 +8,7 @@ import '../../../core/constants/app_routes.dart';
 
 enum MobileOnboardingIntent { findHelp, earnNearby, businessSetup }
 
-enum MobileAuthMethod { emailCode, magicLink, google, password, passwordSignUp, phoneSms }
+enum MobileAuthMethod { emailCode, magicLink, google, apple, password, passwordSignUp, phoneSms }
 
 extension MobileOnboardingIntentDetails on MobileOnboardingIntent {
   String get storageValue {
@@ -65,6 +65,7 @@ extension MobileAuthMethodDetails on MobileAuthMethod {
       MobileAuthMethod.emailCode => 'email_code',
       MobileAuthMethod.magicLink => 'magic_link',
       MobileAuthMethod.google => 'google',
+      MobileAuthMethod.apple => 'apple',
       MobileAuthMethod.password => 'password',
       MobileAuthMethod.passwordSignUp => 'password_sign_up',
       MobileAuthMethod.phoneSms => 'phone_sms',

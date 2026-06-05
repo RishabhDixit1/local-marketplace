@@ -168,6 +168,7 @@ export async function POST(request: Request) {
   }
 
   const redirectTo = resolveAuthCallbackUrl({ request, requestedRedirectTo: body.redirectTo });
+  console.log("[send-link] redirectTo:", redirectTo);
 
   const adminUrl = new URL("/auth/v1/admin/generate_link", supabaseUrl.origin);
   let generateResult: GenerateLinkResponse;
@@ -195,6 +196,7 @@ export async function POST(request: Request) {
       type: "magiclink",
       redirect_to: redirectTo,
     })}`;
+    console.log("[send-link] actionLink:", actionLink);
 
   const appName = "ServiQ";
   const emailHtml = buildMagicLinkEmailHtml({

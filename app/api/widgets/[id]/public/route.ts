@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,7 @@ export async function GET(
     provider: {
       id: profile.id,
       name: profile.full_name,
-      avatar: profile.avatar_url,
+      avatar: resolveProfileAvatarUrl(profile.avatar_url),
       locality: profile.locality,
       bio: profile.bio,
       trustScore: profile.trust_score,
