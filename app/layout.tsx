@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { appName, appTagline } from "@/lib/branding";
+import { AppFooter } from "@/components/AppFooter";
 
 export const metadata: Metadata = {
   title: {
@@ -52,8 +53,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
-        {children}
+      <body className="flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
+        <div className="flex-1">{children}</div>
+        <AppFooter />
         <Analytics />
         {process.env.NODE_ENV === "production" && (
           <script

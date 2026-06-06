@@ -93,10 +93,23 @@ export default function SettingsPage() {
     if (deleteConfirmText !== "DELETE") return;
     setDeleting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to delete account");
+      }
       await supabase.auth.signOut();
       router.replace("/");
-    } catch {
+    } catch (e) {
       setDeleting(false);
+      alert(e instanceof Error ? e.message : "Failed to delete account. Please try again.");
     }
   }, [deleteConfirmText, router]);
 

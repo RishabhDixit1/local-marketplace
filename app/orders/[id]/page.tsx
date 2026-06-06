@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  FileText,
   Gavel,
   Loader2,
   MapPin,
@@ -488,6 +489,10 @@ export default function OrderStatusPage() {
           </div>
         ) : null}
 
+        {status === "completed" ? (
+          <InvoiceSection orderId={id} />
+        ) : null}
+
         <DisputeFormModal
           orderId={id}
           open={showDisputeForm}
@@ -520,5 +525,68 @@ export default function OrderStatusPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function InvoiceSection({ orderId }: { orderId: string }) {
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch(`/api/invoices?orderId=${orderId}`);
+      if (res.ok) {
+        const body = (await res.json()) as { invoice: { id: string } };
+        setInvoiceUrl(`/dashboard/invoices/${body.invoice.id}`);
+      }
+    })();
+  }, [orderId]);
+
+  const generate = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/invoices/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as { invoiceId: string };
+        setInvoiceUrl(`/dashboard/invoices/${body.invoiceId}`);
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (invoiceUrl) {
+    return (
+      <Link href={invoiceUrl}
+        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-slate-100 p-2">
+            <FileText className="h-5 w-5 text-slate-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Tax Invoice</p>
+            <p className="text-xs text-slate-500">View or download invoice</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-slate-900">View &rarr;</span>
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={generating}
+      onClick={generate}
+      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+    >
+      {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+      {generating ? "Generating invoice..." : "Generate Tax Invoice"}
+    </button>
   );
 }

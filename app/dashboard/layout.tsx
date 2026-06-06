@@ -45,6 +45,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Crown,
+  FileText,
   Gift,
   LogOut,
   MessageCircle,
@@ -99,6 +100,7 @@ const secondaryNavItems = [
   { name: "Payouts", path: "/dashboard/payouts", icon: Banknote },
   { name: "Verification", path: "/dashboard/verification", icon: BadgeCheck },
   { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
+  { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
