@@ -95,6 +95,19 @@ class AppConfig {
       ),
       allowBadCertificates:
           allowBadCertificates || fallback.allowBadCertificates,
+      firebaseApiKey: _pickNonNull(firebaseApiKey, fallback.firebaseApiKey),
+      firebaseProjectId: _pickNonNull(
+        firebaseProjectId, fallback.firebaseProjectId,
+      ),
+      firebaseMessagingSenderId: _pickNonNull(
+        firebaseMessagingSenderId, fallback.firebaseMessagingSenderId,
+      ),
+      firebaseAndroidAppId: _pickNonNull(
+        firebaseAndroidAppId, fallback.firebaseAndroidAppId,
+      ),
+      firebaseIosAppId: _pickNonNull(
+        firebaseIosAppId, fallback.firebaseIosAppId,
+      ),
     );
   }
 
@@ -240,5 +253,13 @@ class AppConfig {
     }
 
     return fallback.trim();
+  }
+
+  static String? _pickNonNull(String? primary, String? fallback) {
+    if (primary != null && primary.trim().isNotEmpty) {
+      return primary.trim();
+    }
+
+    return fallback?.trim();
   }
 }

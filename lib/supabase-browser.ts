@@ -1,13 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const getSupabaseUrl = () => {
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-  if (typeof window !== "undefined" && envUrl) {
-    return window.location.origin;
-  }
-  return envUrl;
-};
+const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 
 const getSupabaseAnonKey = () =>
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";

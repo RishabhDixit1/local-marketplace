@@ -1,12 +1,7 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-const getSupabaseUrl = () => {
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-  if (typeof window !== "undefined" && envUrl) {
-    return window.location.origin;
-  }
-  return envUrl;
-};
+const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const getSupabaseAnonKey = () => process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
 let cachedClient: SupabaseClient | null = null;
@@ -18,7 +13,7 @@ const createMissingEnvClient = (): SupabaseClient =>
       get(_target, prop) {
         const missingEnvMessage =
           "Supabase client is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
-        if (prop === "then") return undefined; // avoid being treated as a thenable
+        if (prop === "then") return undefined;
         throw new Error(missingEnvMessage);
       },
     }
@@ -31,7 +26,7 @@ export function getSupabaseClient(): SupabaseClient {
   const anonKey = getSupabaseAnonKey();
 
   if (url && anonKey) {
-    cachedClient = createClient(url, anonKey);
+    cachedClient = createBrowserClient(url, anonKey);
     return cachedClient;
   }
 

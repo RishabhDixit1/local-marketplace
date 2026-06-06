@@ -665,7 +665,7 @@ class _StorefrontMetrics extends StatelessWidget {
         'Rating',
         provider.reviewCount == 0
             ? 'New'
-            : provider.averageRating!.toStringAsFixed(1),
+            : provider.averageRating?.toStringAsFixed(1) ?? '—',
         '${provider.reviewCount} reviews',
         Icons.star_rounded,
       ),
@@ -1013,7 +1013,7 @@ class _ReviewsCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${provider.averageRating!.toStringAsFixed(1)} average from ${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}.',
+                      '${provider.averageRating?.toStringAsFixed(1) ?? '—'} average from ${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}.',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),

@@ -283,7 +283,7 @@ class NextActionPanel extends StatelessWidget {
         : AppColors.accent;
     final icon = action == null
         ? Icons.arrow_forward_rounded
-        : _actionIconData(action!.kind);
+        : _actionIconData(action?.kind ?? MobileTaskPrimaryActionKind.acceptOrder);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -646,7 +646,7 @@ String _providerTimelineMessage(
 
 String _nextStepShortLabel(MobileTaskItem task) {
   if (task.primaryAction != null) {
-    return task.primaryAction!.label;
+        return task.primaryAction?.label ?? 'Next step';
   }
 
   return switch (task.status) {

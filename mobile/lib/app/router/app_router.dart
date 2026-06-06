@@ -50,6 +50,8 @@ import '../../features/welcome/presentation/welcome_page.dart';
 import '../presentation/app_shell.dart';
 import 'post_auth_route_resolver.dart';
 
+final appNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final bootstrap = ref.watch(appBootstrapProvider);
   final authState = ref.watch(authStateControllerProvider);
@@ -67,6 +69,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   var initialLandingServed = false;
 
   return GoRouter(
+    navigatorKey: appNavigatorKey,
     initialLocation: AppRoutes.root,
     debugLogDiagnostics: false,
     refreshListenable: Listenable.merge([authState, onboardingHandoff]),

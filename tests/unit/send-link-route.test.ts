@@ -20,6 +20,14 @@ vi.mock("@aws-sdk/client-ses", () => ({
   SendEmailCommand: MockSendEmailCommand,
 }));
 
+vi.mock("@/lib/server/rateLimit", () => ({
+  applyRateLimit: () => Promise.resolve({ limited: false, response: null }),
+  AUTH_ROUTE_CONFIG: { windowSeconds: 60, maxRequests: 5 },
+  checkRateLimit: () =>
+    Promise.resolve({ allowed: true, remaining: 999, resetInSeconds: 0 }),
+  rateLimitResponse: () => new Response(null, { status: 429 }),
+}));
+
 const BASE_ENV: Record<string, string> = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",

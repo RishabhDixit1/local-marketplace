@@ -19,6 +19,7 @@ class AuthFormState {
   final AuthTab activeTab;
   final bool otpSent;
   final String? otpDestination;
+  final String? fallbackOtp;
 
   const AuthFormState({
     this.isSubmitting = false,
@@ -29,6 +30,7 @@ class AuthFormState {
     this.activeTab = AuthTab.emailOtp,
     this.otpSent = false,
     this.otpDestination,
+    this.fallbackOtp,
   });
 
   AuthFormState copyWith({
@@ -40,6 +42,7 @@ class AuthFormState {
     AuthTab? activeTab,
     bool? otpSent,
     String? otpDestination,
+    String? fallbackOtp,
     bool clearError = false,
     bool clearSuccess = false,
     bool clearOtp = false,
@@ -53,6 +56,7 @@ class AuthFormState {
       activeTab: activeTab ?? this.activeTab,
       otpSent: clearOtp ? false : (otpSent ?? this.otpSent),
       otpDestination: clearOtp ? null : (otpDestination ?? this.otpDestination),
+      fallbackOtp: clearOtp ? null : (fallbackOtp ?? this.fallbackOtp),
     );
   }
 }
@@ -131,14 +135,26 @@ class AuthNotifier extends Notifier<AuthFormState> {
     );
 
     try {
-      await _authService.sendEmailCode(email);
+      final result = await _authService.sendEmailCode(email);
       if (!context.mounted) return;
-      state = state.copyWith(
-        isSubmitting: false,
-        otpSent: true,
-        otpDestination: email,
-        successMessage: 'Code sent to $email',
-      );
+
+      if (!result.emailSent && result.fallbackOtp != null && result.fallbackOtp!.isNotEmpty) {
+        otpCodeController.text = result.fallbackOtp!;
+        state = state.copyWith(
+          isSubmitting: false,
+          otpSent: true,
+          otpDestination: email,
+          fallbackOtp: result.fallbackOtp,
+          successMessage: 'Email delivery unavailable. Use the code below to sign in.',
+        );
+      } else {
+        state = state.copyWith(
+          isSubmitting: false,
+          otpSent: true,
+          otpDestination: email,
+          successMessage: 'Code sent to $email',
+        );
+      }
     } catch (error) {
       if (!context.mounted) return;
       state = state.copyWith(

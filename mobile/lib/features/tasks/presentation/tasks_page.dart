@@ -429,7 +429,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
         break;
       }
     }
-    if (match == null) {
+    final m = match;
+    if (m == null) {
       return;
     }
 
@@ -438,13 +439,13 @@ class _TasksPageState extends ConsumerState<TasksPage> {
         return;
       }
       setState(() {
-        _selectedLane = switch (match!.status) {
+        _selectedLane = switch (m.status) {
           MobileTaskStatus.active => _TaskBoardLane.active,
           MobileTaskStatus.inProgress => _TaskBoardLane.inProgress,
           MobileTaskStatus.completed ||
           MobileTaskStatus.cancelled => _TaskBoardLane.done,
         };
-        _selectedRole = match.isProviderTask
+        _selectedRole = m.isProviderTask
             ? _TaskRoleFilter.provider
             : _TaskRoleFilter.requester;
       });
@@ -1073,7 +1074,7 @@ class _TasksLoadingState extends StatelessWidget {
 
 String _nextStepShortLabel(MobileTaskItem task) {
   if (task.primaryAction != null) {
-    return task.primaryAction!.label;
+    return task.primaryAction?.label ?? 'Next step';
   }
 
   return switch (task.status) {

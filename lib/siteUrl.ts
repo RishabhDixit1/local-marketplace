@@ -114,7 +114,7 @@ export const resolveAuthCallbackUrl = ({
 
   const callbackOrigin = requestOrigin;
 
-  const fallbackRedirectTo = cleanSiteUrl(callbackOrigin);
+  const fallbackRedirectTo = buildAuthCallbackUrl(callbackOrigin);
   const requestedMobileRedirect = normalizeMobileRedirectUrl(requestedRedirectTo);
 
   if (requestedMobileRedirect && getAllowedMobileAuthRedirectUrls().has(requestedMobileRedirect)) {

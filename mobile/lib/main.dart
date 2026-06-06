@@ -35,6 +35,7 @@ Future<void> main() async {
       );
     },
     (error, stackTrace) {
+      debugPrint('ServiQ mobile: Uncaught error: $error');
       unawaited(AppFirebase.recordError(error, stackTrace, fatal: true));
     },
   );

@@ -554,11 +554,11 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             trustedFeedAsync.hasError ||
             peopleAsync.hasError)) {
       final message = allFeedAsync.hasError
-          ? AppErrorMapper.toMessage(allFeedAsync.error!)
+          ? AppErrorMapper.toMessage(allFeedAsync.error ?? 'Unknown error')
           : trustedFeedAsync.hasError
-          ? AppErrorMapper.toMessage(trustedFeedAsync.error!)
+          ? AppErrorMapper.toMessage(trustedFeedAsync.error ?? 'Unknown error')
           : peopleAsync.hasError
-          ? AppErrorMapper.toMessage(peopleAsync.error!)
+          ? AppErrorMapper.toMessage(peopleAsync.error ?? 'Unknown error')
           : 'Unable to load home right now.';
       final needsSignIn = _isSessionRecoveryMessage(message);
 
@@ -2132,9 +2132,9 @@ class _TrustedConnectionRailCard extends StatelessWidget {
               imageUrl: item.thumbnailUrl,
               count: item.mediaCount,
               title: item.category,
-              height: 70,
+              height: 56,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
           ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

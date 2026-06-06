@@ -1047,10 +1047,7 @@ export const loadCommunityFeedSnapshot = async (
           .rpc("get_provider_order_stats", { provider_ids: profileIds })
           .then((result) => {
             if (result.error) {
-              if (isMissingRelationError(result.error.message || "")) {
-                return [] as FlexibleRow[];
-              }
-              throw new Error(result.error.message);
+              return [] as FlexibleRow[];
             }
             return toFlexibleRows(result.data);
           })
@@ -1208,6 +1205,7 @@ export const loadCommunityPeopleSnapshot = async (
     selectRowsWithFallback(db, "profiles", "*", {
       orderBy: { column: "updated_at", ascending: false },
       limit: 200,
+      allowMissingRelation: true,
     }),
     selectRowsWithFallback(
       db,
@@ -1370,10 +1368,7 @@ export const loadCommunityPeopleSnapshot = async (
           .rpc("get_provider_order_stats", { provider_ids: memberIds })
           .then((result) => {
             if (result.error) {
-              if (isMissingRelationError(result.error.message || "")) {
-                return [] as FlexibleRow[];
-              }
-              throw new Error(result.error.message);
+              return [] as FlexibleRow[];
             }
             return toFlexibleRows(result.data);
           })

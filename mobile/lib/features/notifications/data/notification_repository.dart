@@ -39,7 +39,7 @@ class NotificationRepository {
     return client;
   }
 
-  String get currentUserId => _client.auth.currentUser!.id;
+  String get currentUserId => _client.auth.currentUser?.id ?? (throw StateError('NotificationRepository.currentUserId called with no signed-in user.'));
 
   Future<List<MobileNotificationItem>> fetchNotifications() async {
     try {

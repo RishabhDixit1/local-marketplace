@@ -520,7 +520,7 @@ class _ProviderLandingCard extends StatelessWidget {
                         if (provider.avgRating != null)
                           _SignalChip(
                             icon: Icons.star_rounded,
-                            label: '${provider.avgRating!.toStringAsFixed(1)} (${provider.reviewCount})',
+                            label: '${provider.avgRating?.toStringAsFixed(1) ?? '0.0'} (${provider.reviewCount})',
                             color: AppColors.warm,
                           ),
                         if (provider.responseMinutes != null)
@@ -538,7 +538,7 @@ class _ProviderLandingCard extends StatelessWidget {
                         if (provider.distanceKm != null)
                           _SignalChip(
                             icon: Icons.location_on_rounded,
-                            label: '${provider.distanceKm!.toStringAsFixed(1)} km',
+                            label: '${provider.distanceKm?.toStringAsFixed(1) ?? '?'} km',
                             color: AppColors.inkSubtle,
                           ),
                       ],
@@ -657,13 +657,13 @@ class _ProviderDetailSheet extends StatelessWidget {
         Row(
           children: [
             if (provider.avgRating != null)
-              _DetailStat(icon: Icons.star_rounded, value: provider.avgRating!.toStringAsFixed(1), label: '${provider.reviewCount} reviews'),
+              _DetailStat(icon: Icons.star_rounded, value: provider.avgRating?.toStringAsFixed(1) ?? '—', label: '${provider.reviewCount} reviews'),
             if (provider.completedJobs > 0)
               _DetailStat(icon: Icons.check_circle_outline_rounded, value: provider.completedJobs.toString(), label: 'jobs done'),
             if (provider.responseMinutes != null)
               _DetailStat(icon: Icons.bolt_rounded, value: '${provider.responseMinutes} min', label: 'response'),
             if (provider.distanceKm != null)
-              _DetailStat(icon: Icons.location_on_rounded, value: provider.distanceKm!.toStringAsFixed(1), label: 'km away'),
+              _DetailStat(icon: Icons.location_on_rounded, value: provider.distanceKm?.toStringAsFixed(1) ?? '?', label: 'km away'),
           ],
         ),
         if (provider.bio.isNotEmpty) ...[

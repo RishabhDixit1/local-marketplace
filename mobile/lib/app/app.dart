@@ -48,17 +48,6 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
               'firebase_ready': firebase.initialized,
             },
           );
-
-      ref.read(appUpdateServiceProvider).checkForUpdate().then((info) {
-        if (!mounted || !info.updateAvailable) return;
-        showUpdateDialog(
-          context,
-          latestVersion: info.latestVersion,
-          isCritical: info.isCritical,
-          releaseNotes: info.releaseNotes,
-          updateUrl: info.updateUrl,
-        );
-      });
     });
   }
 
@@ -133,6 +122,44 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
         Locale('mr', 'IN'),
       ],
       routerConfig: router,
+      builder: (context, child) {
+        return _UpdateCheckGate(updateService: ref.read(appUpdateServiceProvider), child: child!);
+      },
     );
   }
+}
+
+class _UpdateCheckGate extends StatefulWidget {
+  const _UpdateCheckGate({required this.child, required this.updateService});
+
+  final Widget child;
+  final AppUpdateService updateService;
+
+  @override
+  State<_UpdateCheckGate> createState() => _UpdateCheckGateState();
+}
+
+class _UpdateCheckGateState extends State<_UpdateCheckGate> {
+  @override
+  void initState() {
+    super.initState();
+    widget.updateService.checkForUpdate().then((info) {
+      if (!mounted || !info.updateAvailable) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final overlayContext = appNavigatorKey.currentState?.overlay?.context;
+        if (overlayContext == null) return;
+        showUpdateDialog(
+          overlayContext,
+          latestVersion: info.latestVersion,
+          isCritical: info.isCritical,
+          releaseNotes: info.releaseNotes,
+          updateUrl: info.updateUrl,
+        );
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

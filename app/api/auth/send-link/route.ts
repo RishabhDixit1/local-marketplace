@@ -246,28 +246,25 @@ export async function POST(request: Request) {
     if (/rate|throttl/i.test(message)) {
       return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
     }
-    if (/not.verified|sandbox|not.authorized|could not load credentials/i.test(message)) {
-      const backupSent = await tryBackupProvider({
-        to: email,
-        subject: `Your Magic Link to Sign In to ${appName}`,
-        html: emailHtml,
-      });
-      if (backupSent) {
-        recordMagicLinkRequest(email);
-        return NextResponse.json({ ok: true, emailSent: true });
-      }
-      return NextResponse.json({
-        ok: true,
-        emailSent: false,
-        actionLink,
-        emailOtp: generateResult.email_otp,
-        message: "Email delivery unavailable. Use the link or code below to sign in.",
-      });
+    console.warn("[send-link] SES failed, trying Resend backup:", message);
+    const backupSent = await tryBackupProvider({
+      to: email,
+      subject: `Your Magic Link to Sign In to ${appName}`,
+      html: emailHtml,
+    });
+    if (backupSent) {
+      recordMagicLinkRequest(email);
+      return NextResponse.json({ ok: true, emailSent: true });
     }
-    return NextResponse.json(
-      { ok: false, error: `Failed to send email. ${message}` },
-      { status: 502 }
-    );
+    console.warn("[send-link] All email providers failed, returning OTP fallback");
+    recordMagicLinkRequest(email);
+    return NextResponse.json({
+      ok: true,
+      emailSent: false,
+      actionLink,
+      emailOtp: generateResult.email_otp,
+      message: "Email delivery unavailable. Use the link or code below to sign in.",
+    });
   }
 
   recordMagicLinkRequest(email);

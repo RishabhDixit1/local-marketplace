@@ -79,11 +79,37 @@ class MobileAuthService {
     return '$fallbackPrefix: $rawMessage';
   }
 
-  Future<void> sendEmailCode(String email) async {
-    await _client.auth.signInWithOtp(
-      email: email.trim(),
-      shouldCreateUser: true,
+  Future<({bool emailSent, String? fallbackOtp})> sendEmailCode(String email) async {
+    final apiClient = MobileApiClient(
+      config: _bootstrap.config,
+      supabaseClient: _bootstrap.client,
     );
+
+    try {
+      final payload = await apiClient.postJson(
+        '/api/auth/send-link',
+        body: {
+          'email': email.trim(),
+          'redirectTo': _bootstrap.config.magicLinkRedirectUrl,
+        },
+        authenticated: false,
+      );
+
+      if (payload['ok'] != true) {
+        throw ApiException(
+          (payload['message'] as String?) ??
+              (payload['error'] as String?) ??
+              'Unable to send email code.',
+        );
+      }
+
+      final emailSent = payload['emailSent'] == true;
+      final fallbackOtp = payload['emailOtp'] as String?;
+
+      return (emailSent: emailSent, fallbackOtp: fallbackOtp);
+    } finally {
+      apiClient.dispose();
+    }
   }
 
   Future<String> sendMagicLink(String email) async {
@@ -140,7 +166,7 @@ class MobileAuthService {
     return _client.auth.verifyOTP(
       email: email.trim(),
       token: code.trim(),
-      type: OtpType.email,
+      type: OtpType.magiclink,
     );
   }
 

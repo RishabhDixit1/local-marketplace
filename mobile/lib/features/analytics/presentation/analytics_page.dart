@@ -127,7 +127,7 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
             SizedBox(width: half, child: _metricCard(Icons.trending_up, 'Revenue', _inr(summary.totalRevenuePaise ~/ 100), AppColors.primary)),
             SizedBox(width: half, child: _metricCard(Icons.shopping_cart_outlined, 'Orders', '${summary.totalOrders}', AppColors.ink)),
             SizedBox(width: half, child: _metricCard(Icons.people_outline, 'Customers', '${summary.uniqueCustomers}', AppColors.accent)),
-            SizedBox(width: half, child: _metricCard(Icons.star_outline, 'Rating', summary.avgRating != null ? '${summary.avgRating!.toStringAsFixed(1)}/5' : '—', AppColors.warning)),
+            SizedBox(width: half, child: _metricCard(Icons.star_outline, 'Rating', summary.avgRating != null ? '${summary.avgRating?.toStringAsFixed(1) ?? '?'}/5' : '—', AppColors.warning)),
           ],
         );
       },

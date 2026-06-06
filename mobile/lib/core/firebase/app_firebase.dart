@@ -83,8 +83,12 @@ class AppFirebase {
     StackTrace stackTrace, {
     bool fatal = false,
   }) async {
-    await FirebaseCrashlytics.instance.recordError(error, stackTrace,
-      fatal: fatal,
-    );
+    try {
+      await FirebaseCrashlytics.instance.recordError(error, stackTrace,
+        fatal: fatal,
+      );
+    } catch (_) {
+      debugPrint('ServiQ mobile: Crashlytics unavailable (Firebase not initialized).');
+    }
   }
 }

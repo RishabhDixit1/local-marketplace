@@ -87,8 +87,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   void dispose() {
     _searchController.dispose();
     _composerController.dispose();
-    if (_client != null && _messagesChannel != null) {
-      _client!.removeChannel(_messagesChannel!);
+    final c = _client;
+    final ch = _messagesChannel;
+    if (c != null && ch != null) {
+      c.removeChannel(ch);
     }
     super.dispose();
   }

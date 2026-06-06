@@ -99,8 +99,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   @override
   void dispose() {
     _searchController.dispose();
-    if (_client != null && _channel != null) {
-      _client!.removeChannel(_channel!);
+    final c = _client;
+    final ch = _channel;
+    if (c != null && ch != null) {
+      c.removeChannel(ch);
     }
     super.dispose();
   }

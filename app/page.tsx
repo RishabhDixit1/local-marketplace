@@ -155,6 +155,9 @@ function LandingPageContent() {
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [magicLinkData, setMagicLinkData] = useState<MagicLinkData | null>(null);
+  const [otpStep, setOtpStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(true);
@@ -214,11 +217,13 @@ function LandingPageContent() {
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
       const profile = await ensureProfileForUser(user).catch(() => null);
       const target = contactProviderRef.current
-        ? `/dashboard?providerId=${contactProviderRef.current.id}`
+        ? `/dashboard/chat?providerId=${contactProviderRef.current.id}`
         : resolveCurrentProfileDestination(profile);
-      setShowAuth(false);
-      setContactProvider(null);
-      setSelectedProvider(null);
+    setShowAuth(false);
+    setOtpStep(false);
+    setVerificationCode("");
+    setContactProvider(null);
+    setSelectedProvider(null);
       router.replace(target);
     },
     [router]
@@ -255,6 +260,8 @@ function LandingPageContent() {
     setErrorMessage("");
     setInfoMessage("");
     setMagicLinkData(null);
+    setOtpStep(false);
+    setVerificationCode("");
     const email = emailAddress.trim().toLowerCase();
     if (!isEmailLike(email)) { setErrorMessage("Enter a valid email address."); return; }
     setLoading(true);
@@ -268,9 +275,8 @@ function LandingPageContent() {
       if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Unable to send magic link.");
       if (payload.emailSent === false) {
         setMagicLinkData({ actionLink: payload.actionLink!, emailOtp: payload.emailOtp!, email });
-        setInfoMessage(payload.message || "Use the link or code below to sign in.");
       } else {
-        setInfoMessage(`Magic link sent to ${email}. Open the email to continue.`);
+        setOtpStep(true);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send magic link.";
@@ -279,7 +285,27 @@ function LandingPageContent() {
     } finally { setLoading(false); }
   };
 
-  const emailLinkSent = infoMessage.startsWith("Magic link sent") || magicLinkData !== null;
+  const verifyOtpCode = async () => {
+    setErrorMessage("");
+    setInfoMessage("");
+    const code = verificationCode.trim();
+    if (!code || code.length < 6) { setErrorMessage("Enter the complete code from your email."); return; }
+    setVerifying(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: emailAddress.trim().toLowerCase(),
+        token: code,
+        type: "magiclink",
+      });
+      if (error) throw error;
+      if (data?.user) {
+        await completeAuth(data.user);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid or expired code.";
+      setErrorMessage(message);
+    } finally { setVerifying(false); }
+  };
 
   return (
     <div className="relative min-h-screen bg-white">
@@ -617,7 +643,7 @@ function LandingPageContent() {
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
             <button
               type="button"
-              onClick={() => { setShowAuth(false); setContactProvider(null); }}
+              onClick={() => { setShowAuth(false); setContactProvider(null); setOtpStep(false); setVerificationCode(""); setMagicLinkData(null); setErrorMessage(""); setInfoMessage(""); }}
               className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               aria-label="Close"
             >
@@ -651,7 +677,7 @@ function LandingPageContent() {
               </div>
 
               <div className="space-y-3">
-                {emailLinkSent && !magicLinkData ? (
+                {otpStep && !magicLinkData ? (
                   <div className="space-y-4 py-2 text-center">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50">
                       <CheckCircle2 className="h-6 w-6 text-emerald-600" />
@@ -659,26 +685,31 @@ function LandingPageContent() {
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Check Your Email</p>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        We emailed a secure login link to{" "}
+                        We sent a verification code to{" "}
                         <span className="font-medium text-slate-700">{emailAddress}</span>
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-                      >Open Gmail <ArrowRight size={13} /></a>
-                      <a href="https://outlook.live.com" target="_blank" rel="noopener noreferrer"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-                      >Open Outlook <ArrowRight size={13} /></a>
+                      <input type="text" inputMode="numeric" autoComplete="one-time-code"
+                        placeholder="Enter code from email"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-lg font-mono tracking-widest text-slate-900 placeholder:text-sm placeholder:tracking-normal placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
+                        value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") void verifyOtpCode(); }}
+                        maxLength={8}
+                        autoFocus
+                      />
+                      <button type="button" onClick={verifyOtpCode} disabled={verifying || verificationCode.trim().length < 6}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+                      >{verifying ? "Verifying\u2026" : "Verify & Sign In"}{!verifying && <ArrowRight size={15} />}</button>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left">
                       <p className="text-xs leading-[1.6] text-slate-500">
-                        Link valid for 24&nbsp;hours.{" "}
-                        <button type="button" onClick={() => { setInfoMessage(""); setErrorMessage(""); }}
+                        Code valid for 24&nbsp;hours.{" "}
+                        <button type="button" onClick={() => { setOtpStep(false); setInfoMessage(""); setErrorMessage(""); setVerificationCode(""); }}
                           className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">Use a different email</button>{" "}
                         or{" "}
-                        <button type="button" onClick={() => { setInfoMessage(""); void sendEmailLink(); }}
-                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend</button>.
+                        <button type="button" onClick={() => { setVerificationCode(""); void sendEmailLink(); }}
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend code</button>.
                       </p>
                     </div>
                   </div>
@@ -700,7 +731,7 @@ function LandingPageContent() {
                       {magicLinkData.emailOtp}
                     </p>
                     <div className="flex justify-center">
-                      <button type="button" onClick={() => { setInfoMessage(""); setMagicLinkData(null); setErrorMessage(""); }}
+                      <button type="button" onClick={() => { setInfoMessage(""); setMagicLinkData(null); setErrorMessage(""); setOtpStep(false); }}
                         className="text-xs text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">
                         Use a different email
                       </button>
@@ -718,21 +749,22 @@ function LandingPageContent() {
                     </div>
                     <button type="button" onClick={sendEmailLink} disabled={loading}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                    >{loading ? "Sending\u2026" : "Send Login Link"}{!loading && <ArrowRight size={15} />}</button>
+                    >{loading ? "Sending\u2026" : "Send Code"}{!loading && <ArrowRight size={15} />}</button>
                     <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-500)]" />
-                      <p className="text-xs leading-[1.55] text-slate-500">No password needed — a secure link is sent to your inbox. First-time users get an account created automatically.</p>
+                      <p className="text-xs leading-[1.55] text-slate-500">No password needed &mdash; we&apos;ll email you a verification code. First-time users get an account created automatically.</p>
                     </div>
                   </>
                 )}
 
-                {infoMessage && !emailLinkSent && !magicLinkData ? (
+                {infoMessage && !otpStep && !magicLinkData ? (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-700">{infoMessage}</div>
                 ) : null}
                 {errorMessage ? (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-600">{errorMessage}</div>
                 ) : null}
               </div>
+
             </div>
           </div>
         </div>

@@ -89,9 +89,12 @@ export default function ServicesSection({
       setBusy("hire");
       setNotice(null);
       try {
-        await sendConnectionRequest(profileId);
+        const [conversationId] = await Promise.all([
+          getOrCreateDirectConversationId(supabase, viewerId, profileId),
+          sendConnectionRequest(profileId),
+        ]);
         setNotice(`Request sent to ${displayName}.`);
-        router.push(`/dashboard/chat?open=${service.id}`);
+        router.push(`/dashboard/chat?open=${conversationId}&service=${service.id}`);
       } catch (error) {
         setNotice(error instanceof Error ? error.message : "Unable to send request.");
       } finally {
