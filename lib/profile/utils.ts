@@ -39,6 +39,7 @@ type FlexibleProfileShape = {
   repeat_clients_count?: number | null;
   trust_score?: number | null;
   onboarding_completed?: boolean | null;
+  seeker_onboarding_completed?: boolean | null;
   profile_completion_percent?: number | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -566,5 +567,10 @@ export const buildOnboardingProfileHref = () => `${PROFILE_ROUTE}?onboarding=1`;
 
 export const resolveAuthenticatedProfilePath = (profile: FlexibleProfileShape | null | undefined, nextPath?: string) => {
   if (nextPath) return nextPath;
+  if (!profile) return FIRST_TIME_POST_LOGIN_REDIRECT_ROUTE;
+  const role = normalizeStoredProfileRole(profile.role);
+  if (role === "seeker" && !profile.seeker_onboarding_completed) {
+    return "/onboarding/seeker";
+  }
   return profile?.onboarding_completed ? POST_LOGIN_REDIRECT_ROUTE : FIRST_TIME_POST_LOGIN_REDIRECT_ROUTE;
 };

@@ -33,6 +33,7 @@ export type ProfileRecord = {
   repeat_clients_count: number | null;
   trust_score: number | null;
   onboarding_completed: boolean;
+  seeker_onboarding_completed?: boolean;
   profile_completion_percent: number;
   latitude: number | null;
   longitude: number | null;
