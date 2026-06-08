@@ -136,29 +136,35 @@ jobs:
               --env-file .env.ec2 \
               serviq:latest
 
-            # Wait for container health (uses Docker HEALTHCHECK, no curl/wget needed on host)
+            # Show container start logs immediately
+            sleep 2
+            echo "Container startup logs:"
+            docker logs serviq --tail 30 2>/dev/null || echo "(no logs yet)"
+
+            # Wait for container health
             echo "Waiting for container to be healthy..."
             for i in $(seq 1 15); do
-              STATUS=$(docker inspect --format='{{.State.Health.Status}}' serviq 2>/dev/null || echo "unknown")
-              if [ "$STATUS" = "healthy" ]; then
-                echo "Deploy successful — container is healthy!"
-                docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
-                exit 0
-              fi
-              # Also succeed if running but no healthcheck configured
-              if [ "$STATUS" = "unknown" ]; then
-                RUNNING=$(docker inspect --format='{{.State.Running}}' serviq 2>/dev/null)
-                if [ "$RUNNING" = "true" ]; then
+              RUNNING=$(docker inspect --format='{{.State.Running}}' serviq 2>/dev/null || echo "false")
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' serviq 2>/dev/null || echo "")
+              EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' serviq 2>/dev/null || echo "")
+              echo "  [${i}/15] Running=${RUNNING} Health=${STATUS:-none} ExitCode=${EXIT_CODE}"
+
+              if [ "$RUNNING" = "true" ]; then
+                if [ -z "$STATUS" ] || [ "$STATUS" = "healthy" ]; then
                   echo "Deploy successful — container is running!"
                   docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
                   exit 0
                 fi
+              elif [ "$RUNNING" = "false" ] && [ "$EXIT_CODE" != "" ] && [ "$EXIT_CODE" != "0" ]; then
+                echo "Container exited with code $EXIT_CODE — dumping logs..."
+                docker logs serviq --tail 50 2>/dev/null || true
+                exit 1
               fi
               sleep 4
             done
 
-            echo "ERROR: Health check failed after 60s (status: $STATUS)"
-            docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}" 2>/dev/null || true
-            docker logs serviq --tail 50 2>/dev/null || true
+            echo "ERROR: Health check failed after 60s"
+            docker ps -a --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}" 2>/dev/null || true
+            docker logs serviq --tail 80 2>/dev/null || true
             exit 1
           command_timeout: 5m
