@@ -1,32 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { enqueueJob, processPendingJobs, registerJobHandler } from "@/lib/server/backgroundJobs";
 
-function createMockDb(overrides: Record<string, unknown> = {}) {
-  const from = vi.fn(() => mockQueryBuilder);
-
-  const mockQueryBuilder = {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    lte: vi.fn().mockReturnThis(),
-    single: vi.fn(),
-    then: vi.fn(),
-
-    ...overrides,
-  };
-
-  return { from, ...mockQueryBuilder, _from: from } as unknown as ReturnType<typeof createMockDb>;
-}
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 describe("enqueueJob", () => {
   it("inserts a background_job row", async () => {
     const insert = vi.fn().mockResolvedValue({ error: null });
-    const db = { from: vi.fn(() => ({ insert })) } as unknown as ReturnType<typeof createMockDb>;
+    const db = { from: vi.fn(() => ({ insert })) } as unknown as unknown as SupabaseClient;
 
-    await enqueueJob(db as never, "send-push", { userId: "abc" });
+    await enqueueJob(db as unknown as SupabaseClient, "send-push", { userId: "abc" });
 
     expect(db.from).toHaveBeenCalledWith("background_jobs");
     expect(insert).toHaveBeenCalledWith({
@@ -39,10 +21,10 @@ describe("enqueueJob", () => {
 
   it("handles insert error gracefully", async () => {
     const insert = vi.fn().mockResolvedValue({ error: { message: "DB error" } });
-    const db = { from: vi.fn(() => ({ insert })) } as unknown as ReturnType<typeof createMockDb>;
+    const db = { from: vi.fn(() => ({ insert })) } as unknown as unknown as SupabaseClient;
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await enqueueJob(db as never, "test-job", {});
+    await enqueueJob(db as unknown as SupabaseClient, "test-job", {});
 
     expect(consoleSpy).toHaveBeenCalledWith("[bg-jobs] Failed to enqueue test-job:", "DB error");
     consoleSpy.mockRestore();
@@ -50,11 +32,6 @@ describe("enqueueJob", () => {
 });
 
 describe("processPendingJobs", () => {
-  beforeEach(() => {
-    // clear handlers between tests
-    // We re-register each time, which is fine since it's just a Map.set
-  });
-
   it("returns zero when no pending jobs", async () => {
     const db = {
       from: vi.fn(() => ({
@@ -64,9 +41,9 @@ describe("processPendingJobs", () => {
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue({ data: [], error: null }),
       })),
-    } as unknown as ReturnType<typeof createMockDb>;
+    } as unknown as unknown as SupabaseClient;
 
-    const result = await processPendingJobs(db as never, 10);
+    const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 0, failed: 0 });
   });
 
@@ -96,12 +73,12 @@ describe("processPendingJobs", () => {
         }),
         update,
       })),
-    } as unknown as ReturnType<typeof createMockDb>;
+    } as unknown as unknown as SupabaseClient;
 
     // make eq chain return update mock properly
     (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
-    const result = await processPendingJobs(db as never, 10);
+    const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 1, failed: 0 });
   });
 
@@ -133,11 +110,11 @@ describe("processPendingJobs", () => {
         }),
         update,
       })),
-    } as unknown as ReturnType<typeof createMockDb>;
+    } as unknown as unknown as SupabaseClient;
 
     (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
-    const result = await processPendingJobs(db as never, 10);
+    const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 0, failed: 1 });
   });
 
@@ -169,11 +146,11 @@ describe("processPendingJobs", () => {
         }),
         update,
       })),
-    } as unknown as ReturnType<typeof createMockDb>;
+    } as unknown as unknown as SupabaseClient;
 
     (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
-    const result = await processPendingJobs(db as never, 10);
+    const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     // Should NOT count as failed because it will retry
     expect(result).toEqual({ processed: 0, failed: 0 });
   });
@@ -202,11 +179,11 @@ describe("processPendingJobs", () => {
         }),
         update,
       })),
-    } as unknown as ReturnType<typeof createMockDb>;
+    } as unknown as unknown as SupabaseClient;
 
     (eq as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ error: null });
 
-    const result = await processPendingJobs(db as never, 10);
+    const result = await processPendingJobs(db as unknown as SupabaseClient, 10);
     expect(result).toEqual({ processed: 0, failed: 1 });
   });
 });
