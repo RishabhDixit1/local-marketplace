@@ -17,6 +17,7 @@ import {
   updateProviderListing,
 } from "@/lib/server/providerListings";
 import { getProviderSubscription, hasFeature } from "@/lib/server/subscriptionCheck";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -69,7 +70,7 @@ const readJsonBody = async (request: Request) => {
   }
 };
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
   } satisfies ListProviderListingsResponse);
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
@@ -167,7 +168,7 @@ export async function POST(request: Request) {
   } satisfies ProviderListingMutationResponse);
 }
 
-export async function PATCH(request: Request) {
+async function patchHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
@@ -212,7 +213,7 @@ export async function PATCH(request: Request) {
   } satisfies ProviderListingMutationResponse);
 }
 
-export async function DELETE(request: Request) {
+async function deleteHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
@@ -256,3 +257,8 @@ export async function DELETE(request: Request) {
     strippedColumns: deleteResult.strippedColumns,
   } satisfies ProviderListingMutationResponse);
 }
+
+export const GET = withErrorHandling(getHandler, "provider:listings");
+export const POST = withErrorHandling(postHandler, "provider:listings-create");
+export const PATCH = withErrorHandling(patchHandler, "provider:listings-update");
+export const DELETE = withErrorHandling(deleteHandler, "provider:listings-delete");

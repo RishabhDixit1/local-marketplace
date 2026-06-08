@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
 
 
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const requestUrl = new URL(request.url);
   const category = requestUrl.searchParams.get("category") || "";
   const latParam = requestUrl.searchParams.get("lat");
@@ -314,3 +315,5 @@ export async function GET(request: Request) {
     });
   }
 }
+
+export const GET = withErrorHandling(getHandler, "community:providers-by-category");

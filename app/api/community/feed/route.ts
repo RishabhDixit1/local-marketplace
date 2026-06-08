@@ -6,10 +6,11 @@ import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { loadCommunityFeedSnapshot } from "@/lib/server/communityData";
 import { proxyCommunityFeedImages } from "@/lib/server/imageProxy";
 import { resolveRequestOrigin } from "@/lib/siteUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const requestUrl = new URL(request.url);
   const viewerCoordinates = getCoordinates(requestUrl.searchParams.get("lat"), requestUrl.searchParams.get("lng"));
   const scope = requestUrl.searchParams.get("scope") === "connected" ? "connected" : "all";
@@ -66,3 +67,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withErrorHandling(getHandler, "community:feed");

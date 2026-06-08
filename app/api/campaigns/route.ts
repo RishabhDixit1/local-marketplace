@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
 const toError = (status: number, code: string, message: string) =>
   NextResponse.json({ ok: false, code, message }, { status });
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, campaigns: data });
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
@@ -73,3 +74,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, campaign: data });
 }
+
+export const GET = withErrorHandling(getHandler, "campaigns:list");
+export const POST = withErrorHandling(postHandler, "campaigns:create");

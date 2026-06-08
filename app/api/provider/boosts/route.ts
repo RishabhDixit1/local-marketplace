@@ -3,6 +3,7 @@ import Razorpay from "razorpay";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getProviderSubscription, hasFeature } from "@/lib/server/subscriptionCheck";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ const BOOST_PRICES: Record<string, { label: string; days: number; pricePaise: nu
 };
 
 // GET — list active placements for the current provider
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
 }
 
 // POST — create a Razorpay order for a boost
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -132,3 +133,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: msg }, { status: 502 });
   }
 }
+
+export const GET = withErrorHandling(getHandler, "provider:boosts");
+export const POST = withErrorHandling(postHandler, "provider:boosts-create");

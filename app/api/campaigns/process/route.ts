@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { sendSms } from "@/lib/server/twilioClient";
 import { CronExpressionParser } from "cron-parser";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ const parseCron = (expression: string): boolean => {
   }
 };
 
-export async function POST() {
+async function postHandler() {
   const db = createSupabaseAdminClient();
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 
@@ -140,3 +141,5 @@ export async function POST() {
 
   return NextResponse.json({ ok: true, processed });
 }
+
+export const POST = withErrorHandling(postHandler, "campaigns:process");

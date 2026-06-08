@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ type PayoutRequest = {
   payout_detail?: string;
 };
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
@@ -181,3 +182,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, payout });
 }
+
+export const GET = withErrorHandling(getHandler, "provider:payouts");
+export const POST = withErrorHandling(postHandler, "provider:payouts-create");

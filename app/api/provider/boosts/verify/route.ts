@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const BOOST_DAYS: Record<string, number> = {
   "30": 30,
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -100,3 +101,5 @@ export async function POST(request: Request) {
     placement,
   });
 }
+
+export const POST = withErrorHandling(postHandler, "provider:boosts-verify");

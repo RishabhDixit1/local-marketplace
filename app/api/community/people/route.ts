@@ -5,10 +5,11 @@ import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { loadCommunityPeopleSnapshot } from "@/lib/server/communityData";
 import { proxyCommunityPeopleImages } from "@/lib/server/imageProxy";
 import { resolveRequestOrigin } from "@/lib/siteUrl";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const requestUrl = new URL(request.url);
   const shouldProxyImages = requestUrl.searchParams.get("imageProxy") === "next";
 
@@ -61,3 +62,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withErrorHandling(getHandler, "community:people");
