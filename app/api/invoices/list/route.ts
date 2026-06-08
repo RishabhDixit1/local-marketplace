@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
@@ -21,3 +22,5 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ invoices: data ?? [] });
 }
+
+export const GET = withErrorHandling(getHandler, "invoices:list");

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return NextResponse.json({ ok: false, message: auth.message }, { status: 401 });
 
@@ -25,3 +26,5 @@ export async function GET(request: Request) {
     level: data?.verification_level || "email",
   });
 }
+
+export const GET = withErrorHandling(getHandler, "verification:status");

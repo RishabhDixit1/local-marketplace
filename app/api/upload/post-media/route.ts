@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getPostMediaLimitBytes, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,7 @@ const ALLOWED_TYPES = [
   "audio/ogg",
 ];
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -82,3 +83,5 @@ export async function POST(request: Request) {
     },
   });
 }
+
+export const POST = withErrorHandling(postHandler, "upload:post-media");

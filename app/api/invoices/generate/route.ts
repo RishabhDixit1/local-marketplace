@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 function generateInvoiceNumber(): string {
   const date = new Date();
@@ -11,7 +12,7 @@ function generateInvoiceNumber(): string {
   return `INV-${y}${m}${d}-${rand}`;
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.message }, { status: auth.status });
@@ -95,3 +96,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, invoiceId: invoice.id, invoiceNumber: invoice.invoice_number });
 }
+
+export const POST = withErrorHandling(postHandler, "invoices:generate");

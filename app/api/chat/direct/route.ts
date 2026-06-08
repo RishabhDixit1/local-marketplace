@@ -3,6 +3,7 @@ import type { DirectConversationResponse } from "@/lib/api/chat";
 import { getOrCreateDirectConversationIdForUsers } from "@/lib/server/directConversations";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ type DirectConversationRequest = {
   recipientId?: string;
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -105,3 +106,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withErrorHandling(postHandler, "chat:direct-conversation");

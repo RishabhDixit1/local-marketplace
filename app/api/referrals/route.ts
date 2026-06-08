@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ const generateCode = (length = 8) => {
   return code;
 };
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
@@ -93,3 +94,6 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ ok: true, rewardPoints: codeData.reward_points });
 }
+
+export const GET = withErrorHandling(getHandler, "referrals:info");
+export const POST = withErrorHandling(postHandler, "referrals:redeem");

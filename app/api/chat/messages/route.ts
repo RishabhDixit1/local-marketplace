@@ -3,6 +3,7 @@ import type { SendChatMessageResponse } from "@/lib/api/chat";
 import { getConversationContext } from "@/lib/server/chatGuards";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ type SendChatMessageRequest = {
   content?: string;
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -105,3 +106,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withErrorHandling(postHandler, "chat:send-message");

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
 const POINTS_PER_RUPEE = 1;
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return NextResponse.json({ ok: false, message: auth.message }, { status: 401 });
 
@@ -88,3 +89,5 @@ export async function GET(request: Request) {
     availablePoints: totalPoints - redeemedPoints,
   });
 }
+
+export const POST = withErrorHandling(postHandler, "referrals:payout");

@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 const INTERNAL_PUSH_HEADER = "x-serviq-internal-key";
@@ -26,7 +27,7 @@ const hasTrustedInternalKey = (request: Request) => {
   return timingSafeEqual(expectedBuffer, providedBuffer);
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   if (!process.env.SERVIQ_INTERNAL_PUSH_KEY?.trim()) {
     return NextResponse.json(
       { ok: false, code: "CONFIG", message: "SERVIQ_INTERNAL_PUSH_KEY is required for push delivery." },
@@ -72,3 +73,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, sent: result.sent, failed: result.failed });
 }
+
+export const POST = withErrorHandling(postHandler, "notifications:send-push");
