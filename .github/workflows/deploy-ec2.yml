@@ -46,18 +46,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Package deploy artifacts
-        run: |
-          docker save serviq:latest | gzip > /tmp/serviq-docker.tar.gz
-          cp docker-compose.yml /tmp/deploy-docker-compose.yml
+      - name: Package deploy artifact
+        run: docker save serviq:latest | gzip > /tmp/serviq-docker.tar.gz
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: serviq-deploy
-          path: |
-            /tmp/serviq-docker.tar.gz
-            /tmp/deploy-docker-compose.yml
+          path: /tmp/serviq-docker.tar.gz
           retention-days: 7
 
   deploy:
@@ -71,13 +67,13 @@ jobs:
         with:
           name: serviq-deploy
 
-      - name: Copy artifacts to EC2
+      - name: Copy Docker image to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "serviq-docker.tar.gz,deploy-docker-compose.yml"
+          source: serviq-docker.tar.gz
           target: /home/ec2-user/serviq
           strip_components: 0
 
@@ -120,40 +116,35 @@ jobs:
               echo ".env.ec2 already exists, keeping existing"
             fi
 
-            # Replace docker-compose.yml (CI version is authoritative)
-            mv deploy-docker-compose.yml docker-compose.yml
-
             # Load the new image
             gzip -d -f serviq-docker.tar.gz
             docker load -i serviq-docker.tar
             rm -f serviq-docker.tar
 
-            # Detect compose command: prefer docker-compose (standalone) over docker compose (plugin)
-            if command -v docker-compose &>/dev/null; then
-              DC="docker-compose"
-            else
-              DC="docker compose"
-            fi
-
             # Stop existing container gracefully
             docker stop serviq --time 30 2>/dev/null || true
             docker rm serviq 2>/dev/null || true
 
-            # Start via docker compose (reads .env.ec2 automatically)
-            $DC up -d --remove-orphans
+            # Start via docker run with env_file (avoids docker-compose build issue on older Docker)
+            docker run -d \
+              --name serviq \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              --env-file .env.ec2 \
+              serviq:latest
 
             # Health check
             echo "Waiting for container to be healthy..."
             for i in $(seq 1 15); do
               if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
                 echo "Deploy successful — container is healthy!"
-                $DC ps
+                docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
                 exit 0
               fi
               sleep 4
             done
 
             echo "ERROR: Health check failed after 60s"
-            $DC logs --tail 50
+            docker logs serviq --tail 50
             exit 1
           command_timeout: 5m
