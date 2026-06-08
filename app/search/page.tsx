@@ -348,9 +348,45 @@ function SearchPageContent() {
   );
 }
 
+function SearchPageFallback() {
+  return (
+    <div className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-6">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="h-10 w-full max-w-md animate-pulse rounded-xl bg-slate-200" />
+        <div className="h-10 w-24 animate-pulse rounded-xl bg-slate-200" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 animate-pulse rounded-full bg-slate-200" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/5 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
+            <div className="mt-3 h-3 w-full animate-pulse rounded bg-slate-200" />
+            <div className="mt-2 h-3 w-4/5 animate-pulse rounded bg-slate-200" />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div className="h-6 w-16 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-6 w-14 animate-pulse rounded-full bg-slate-200" />
+            </div>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="h-4 w-16 animate-pulse rounded bg-slate-200" />
+              <div className="h-4 w-20 animate-pulse rounded bg-slate-200" />
+              <div className="h-4 w-14 animate-pulse rounded bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+    <Suspense fallback={<SearchPageFallback />}>
       <SearchPageContent />
     </Suspense>
   );
