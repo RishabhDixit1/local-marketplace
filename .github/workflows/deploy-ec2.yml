@@ -121,12 +121,12 @@ jobs:
             docker load -i serviq-docker.tar
             rm -f serviq-docker.tar
 
-            # Stop any container using port 3000 (handles orphan containers from docker-compose)
+            # Kill ANY process on port 3000 (handles orphan containers, old PM2/node, etc.)
             docker ps -q --filter publish=3000 | xargs -r docker stop --time 10 2>/dev/null || true
             docker ps -q --filter publish=3000 | xargs -r docker rm -f 2>/dev/null || true
-            # Also remove by name in case the port filter misses it
             docker stop serviq --time 10 2>/dev/null || true
             docker rm serviq 2>/dev/null || true
+            fuser -k 3000/tcp 2>/dev/null || true
 
             # Start via docker run with env_file (avoids docker-compose build issue on older Docker)
             docker run -d \
