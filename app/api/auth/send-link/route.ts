@@ -2,6 +2,7 @@ import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NextResponse } from "next/server";
 import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import {
   getLastMagicLinkRequestAt,
   MAGIC_LINK_COOLDOWN_MS,
@@ -112,7 +113,7 @@ const buildMagicLinkEmailHtml = ({
 </body>
 </html>`;
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
 
@@ -270,3 +271,5 @@ export async function POST(request: Request) {
   recordMagicLinkRequest(email);
   return NextResponse.json({ ok: true, emailSent: true });
 }
+
+export const POST = withErrorHandling(postHandler, "auth:send-link");

@@ -4,6 +4,7 @@ import { normalizeOrderStatus } from "@/lib/orderWorkflow";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,7 @@ function isValidBody(body: unknown): body is VerifyBody {
   );
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -242,3 +243,5 @@ export async function POST(request: Request) {
     idempotent: updatedOrders === 0,
   });
 }
+
+export const POST = withErrorHandling(postHandler, "payment:verify");

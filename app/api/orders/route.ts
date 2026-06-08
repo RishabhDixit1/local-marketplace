@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { isOrderFulfillmentMethod, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
@@ -96,7 +97,7 @@ function isBulkOrderRequest(body: unknown): body is BulkOrderRequest {
   return b.items.every((item) => isOrderRequest(item));
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -445,3 +446,5 @@ export async function POST(request: Request) {
     { status: 201 }
   );
 }
+
+export const POST = withErrorHandling(postHandler, "orders:create");
