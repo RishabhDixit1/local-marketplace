@@ -116,6 +116,23 @@ jobs:
               echo ".env.ec2 already exists, keeping existing"
             fi
 
+            # Report disk before cleanup
+            echo "Disk before cleanup:"
+            df -h / | tail -1
+
+            # Free up disk space before loading — old Docker artifacts and build cache
+            docker system prune -f --all 2>/dev/null || true
+            docker volume prune -f 2>/dev/null || true
+            docker builder prune -f --all 2>/dev/null || true
+            rm -rf /tmp/* 2>/dev/null || true
+
+            # Also clean old deployment artifacts from pre-Docker era
+            rm -rf /home/ec2-user/serviq/node_modules 2>/dev/null || true
+            rm -rf /home/ec2-user/serviq/.next 2>/dev/null || true
+
+            echo "Disk after cleanup:"
+            df -h / | tail -1
+
             # Load the new image
             gzip -d -f serviq-docker.tar.gz
             docker load -i serviq-docker.tar
