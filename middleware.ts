@@ -1,3 +1,4 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -28,32 +29,50 @@ function isPublic(pathname: string): boolean {
   return publicPathPrefixes.some((p) => pathname.startsWith(p));
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublic(pathname) || !isProtected(pathname)) {
     return NextResponse.next();
   }
 
-  const hasAuthCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-"));
-  if (!hasAuthCookie) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next();
+  }
+
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
+
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session?.user) {
     const signInUrl = new URL("/", request.url);
     signInUrl.searchParams.set("signin", "true");
     return NextResponse.redirect(signInUrl);
   }
 
-  return NextResponse.next();
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public assets (images, manifests, service workers)
-     */
     "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|robots.txt|sitemap.xml|images/|app/releases/).*)",
   ],
 };

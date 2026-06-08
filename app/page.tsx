@@ -219,11 +219,12 @@ function LandingPageContent() {
       const target = contactProviderRef.current
         ? `/dashboard/chat?providerId=${contactProviderRef.current.id}`
         : resolveCurrentProfileDestination(profile);
-    setShowAuth(false);
-    setOtpStep(false);
-    setVerificationCode("");
-    setContactProvider(null);
-    setSelectedProvider(null);
+      setShowAuth(false);
+      setOtpStep(false);
+      setVerificationCode("");
+      setMagicLinkData(null);
+      setContactProvider(null);
+      setSelectedProvider(null);
       router.replace(target);
     },
     [router]

@@ -49,6 +49,22 @@ const makeInsertChain = <T,>(result: { data: T; error: { message: string } | nul
   return chain;
 };
 
+const makeRateLimitChain = () => {
+  const chain = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    update: vi.fn(),
+    maybeSingle: vi.fn(),
+    insert: vi.fn(),
+  };
+  chain.select.mockReturnValue(chain);
+  chain.eq.mockReturnValue(chain);
+  chain.update.mockReturnValue(chain);
+  chain.maybeSingle.mockResolvedValue({ data: null, error: null });
+  chain.insert.mockResolvedValue({ error: null });
+  return chain;
+};
+
 describe("POST /api/orders", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -95,6 +111,16 @@ describe("POST /api/orders", () => {
         if (table === "service_listings") return servicesChain;
         if (table === "orders") return insertChain;
         if (table === "notifications") return notificationsChain;
+        if (table === "rate_limits") {
+          const rl = {
+            select: vi.fn(() => rl),
+            eq: vi.fn(() => rl),
+            update: vi.fn(() => rl),
+            maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+            insert: vi.fn(async () => ({ error: null })),
+          };
+          return rl;
+        }
         throw new Error(`Unexpected table lookup: ${table}`);
       }),
       auth: {
@@ -185,6 +211,7 @@ describe("POST /api/orders", () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
 
     const fromMock = vi.fn();
+    fromMock.mockReturnValue(makeRateLimitChain());
     createSupabaseAdminClientMock.mockReturnValue({
       from: fromMock,
       auth: {
@@ -221,13 +248,14 @@ describe("POST /api/orders", () => {
       code: "BAD_REQUEST",
       message: "Invalid payment method.",
     });
-    expect(fromMock).toHaveBeenCalledTimes(1);
+    expect(fromMock).toHaveBeenCalledTimes(2);
   });
 
   it("rejects invalid fulfillment methods before any database lookup runs", async () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
 
     const fromMock = vi.fn();
+    fromMock.mockReturnValue(makeRateLimitChain());
     createSupabaseAdminClientMock.mockReturnValue({
       from: fromMock,
       auth: {
@@ -264,6 +292,6 @@ describe("POST /api/orders", () => {
       code: "BAD_REQUEST",
       message: "Invalid fulfillment method.",
     });
-    expect(fromMock).toHaveBeenCalledTimes(1);
+    expect(fromMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase-browser";
 import ServiQLogo from "@/app/components/ServiQLogo";
@@ -9,6 +9,7 @@ import { appName, appTagline } from "@/lib/branding";
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [message, setMessage] = useState("Completing sign-in...");
+  const handledRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -17,10 +18,40 @@ export default function AuthCallbackPage() {
         setMessage("Sign-in is taking longer than expected. Redirecting to login...");
         router.replace("/");
       }
-    }, 30000);
+    }, 60000);
+
+    const redirectToDestination = async (session: NonNullable<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]>) => {
+      if (handledRef.current || cancelled) return;
+      handledRef.current = true;
+
+      const providers = session.user.app_metadata?.providers;
+      const providerList = Array.isArray(providers) ? providers : [];
+      const needsPassword = !session.user.user_metadata?.password_set && providerList.includes("email");
+      if (needsPassword) {
+        if (!cancelled) router.replace("/auth/set-password");
+        return;
+      }
+      const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
+      const profile = await ensureProfileForUser(session.user).catch(() => null);
+      if (!cancelled) {
+        router.replace(resolveCurrentProfileDestination(profile));
+      }
+    };
 
     const completeLogin = async () => {
       let subscription: { unsubscribe: () => void } | null = null;
+
+      // Register auth listener FIRST so no SIGNED_IN event is missed
+      // between getSession() checking and the listener being attached.
+      const {
+        data: { subscription: authSubscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!cancelled && event === "SIGNED_IN" && session) {
+          void redirectToDestination(session);
+        }
+      });
+      subscription = authSubscription;
+
       try {
         const params = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -53,47 +84,16 @@ export default function AuthCallbackPage() {
           if (exchangeError) throw exchangeError;
         }
 
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        // Session might already be set by the listener above (via SIGNED_IN event
+        // from setSession/exchangeCodeForSession). Only redirect if not handled.
+        if (!handledRef.current && !cancelled) {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
 
-        if (data.session?.user) {
-          const user = data.session.user;
-          const providers = user.app_metadata?.providers as string[] | undefined;
-          const needsPassword = !user.user_metadata?.password_set && providers?.includes("email");
-          if (needsPassword) {
-            router.replace("/auth/set-password");
-            return;
+          if (data.session?.user) {
+            await redirectToDestination(data.session);
           }
-          const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
-          const profile = await ensureProfileForUser(user).catch(() => null);
-          router.replace(resolveCurrentProfileDestination(profile));
-          return;
         }
-
-        const {
-          data: { subscription: authSubscription },
-        } = supabase.auth.onAuthStateChange((event, session) => {
-          if (!cancelled && event === "SIGNED_IN" && session) {
-            const providers = session.user.app_metadata?.providers as string[] | undefined;
-            const needsPassword = !session.user.user_metadata?.password_set && providers?.includes("email");
-            if (needsPassword) {
-              if (!cancelled) router.replace("/auth/set-password");
-              return;
-            }
-            import("@/lib/profile/client").then(({ ensureProfileForUser, resolveCurrentProfileDestination }) => {
-              void ensureProfileForUser(session.user)
-                .catch(() => null)
-                .then((profile) => {
-                  if (!cancelled) {
-                    router.replace(resolveCurrentProfileDestination(profile));
-                  }
-                });
-            });
-          }
-        });
-        subscription = authSubscription;
-
-        return () => subscription?.unsubscribe();
       } catch (error) {
         const message =
           error instanceof Error && error.message
@@ -103,15 +103,11 @@ export default function AuthCallbackPage() {
       }
     };
 
-    let unsubscribe: (() => void) | undefined;
-    void completeLogin().then((cleanup) => {
-      if (cleanup) unsubscribe = cleanup;
-    });
+    void completeLogin();
 
     return () => {
       cancelled = true;
       window.clearTimeout(fallbackTimeout);
-      if (unsubscribe) unsubscribe();
     };
   }, [router]);
 
