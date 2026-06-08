@@ -15,7 +15,6 @@ import {
   getProfileRoleFamily,
   normalizeProfileRecord,
   normalizeTopics,
-  slugifyProfileName,
 } from "@/lib/profile/utils";
 import { getServerSupabase } from "@/lib/supabaseServer";
 
@@ -544,15 +543,12 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
 
   const selectClause =
     "id,full_name,name,location,role,bio,interests,services,email,phone,website,avatar_url,availability,profile_completion_percent,verification_level,metadata,created_at,updated_at";
-  const slugCandidates = Array.from(new Set([trimmedSlug, slugifyProfileName(trimmedSlug)])).filter(Boolean);
   const lookupCandidates: Array<{ column: "id" | "username"; value: string }> = [];
 
   if (profileId) {
     lookupCandidates.push({ column: "id", value: profileId });
-  }
-
-  for (const candidate of slugCandidates) {
-    lookupCandidates.push({ column: "username", value: candidate });
+  } else {
+    lookupCandidates.push({ column: "username", value: trimmedSlug });
   }
 
   let profileRow: Record<string, unknown> | null = null;

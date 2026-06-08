@@ -166,6 +166,13 @@ export const createPublicProfileSlug = (name: string | null | undefined, id: str
 };
 
 export const extractProfileIdFromSlug = (slug: string) => {
+  const lastSep = slug.lastIndexOf("-");
+  if (lastSep !== -1) {
+    const candidate = slug.slice(lastSep + 1);
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidate)) {
+      return candidate;
+    }
+  }
   const match = slug.match(profileIdPattern);
   return match ? match[0] : null;
 };
