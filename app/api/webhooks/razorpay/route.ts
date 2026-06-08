@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 export const preferredRegion = "auto";
@@ -60,7 +61,7 @@ type RazorpayWebhookPayload = {
   };
 };
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const bodyText = await request.text();
   const signature = request.headers.get("x-razorpay-signature") ?? "";
 
@@ -230,3 +231,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: err instanceof Error ? err.message : "Processing error" }, { status: 500 });
   }
 }
+
+export const POST = withErrorHandling(postHandler, "webhooks:razorpay");

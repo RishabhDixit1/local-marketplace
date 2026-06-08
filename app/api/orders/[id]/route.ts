@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import type { CanonicalOrderStatus, OrderActorRole } from "@/lib/orderWorkflow";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkflow";
 import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
@@ -59,7 +60,7 @@ const fulfillmentForStatus = (status: CanonicalOrderStatus) => {
 };
 
 // GET /api/orders/[id]
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -87,7 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 // PATCH /api/orders/[id]  — status transition
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function patchHandler(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -310,3 +311,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   return NextResponse.json({ ok: true, status });
 }
+
+export const GET = withErrorHandling(getHandler, "orders:get");
+export const PATCH = withErrorHandling(patchHandler, "orders:update");

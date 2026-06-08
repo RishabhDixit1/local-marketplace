@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import { exchangeGoogleCode } from "@/lib/server/oauth/google";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
@@ -56,6 +57,8 @@ export async function GET(request: Request) {
 
   return NextResponse.redirect(new URL(redirectTo, request.url));
 }
+
+export const GET = withErrorHandling(getHandler, "auth:google-callback");
 
 function redirectWithError(stateRaw: string | null, message: string) {
   let redirectTo = "/dashboard/settings";

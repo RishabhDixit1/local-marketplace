@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ function isValidBody(body: unknown): body is CreatePaymentOrderBody {
   return typeof b.amount === "number" && b.amount > 0 && typeof b.receipt === "string";
 }
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json(
@@ -72,3 +73,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, code: "GATEWAY_ERROR", message: msg }, { status: 502 });
   }
 }
+
+export const POST = withErrorHandling(postHandler, "payment:create-order");

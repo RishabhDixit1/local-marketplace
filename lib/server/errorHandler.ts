@@ -36,12 +36,16 @@ export const captureApiError = (error: unknown, context: ApiErrorContext) => {
   return NextResponse.json({ ok: false, message }, { status });
 };
 
-export type RouteHandler = (request: Request, ...args: unknown[]) => Promise<NextResponse>;
+// Next.js route handler signatures vary (static vs dynamic params),
+// so we use a loose type rather than enumerating every permutation.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RouteHandler = (...args: any[]) => Promise<NextResponse>;
 
 export const withErrorHandling = (handler: RouteHandler, route: string): RouteHandler => {
-  return async (request, ...args) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (...args: any[]) => {
     try {
-      return await handler(request, ...args);
+      return await handler(...args);
     } catch (error) {
       return captureApiError(error, { route });
     }

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -30,3 +31,5 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ ok: true, subscription: data ?? null });
 }
+
+export const GET = withErrorHandling(getHandler, "subscriptions:current");

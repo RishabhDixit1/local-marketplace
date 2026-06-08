@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+async function getHandler() {
   const db = createSupabaseAdminClient();
   if (!db) {
     return NextResponse.json({ ok: false, message: "Server config error" }, { status: 500 });
@@ -21,3 +22,5 @@ export async function GET() {
 
   return NextResponse.json({ ok: true, plans: data ?? [] });
 }
+
+export const GET = withErrorHandling(getHandler, "subscriptions:plans");

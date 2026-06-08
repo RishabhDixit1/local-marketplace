@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
 
-export async function POST(request: Request) {
+async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
@@ -87,3 +88,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, subscription });
 }
+
+export const POST = withErrorHandling(postHandler, "subscriptions:verify");

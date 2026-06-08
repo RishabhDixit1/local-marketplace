@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ type BookSlotBody = {
   end_time: string;
 };
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function postHandler(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
@@ -106,3 +107,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ ok: true, booking });
 }
+
+export const POST = withErrorHandling(postHandler, "orders:book-slot");

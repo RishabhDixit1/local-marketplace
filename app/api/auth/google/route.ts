@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 import { getGoogleAuthUrl } from "@/lib/server/oauth/google";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.redirect(
@@ -21,3 +22,5 @@ export async function GET(request: Request) {
   const googleUrl = getGoogleAuthUrl(state);
   return NextResponse.redirect(googleUrl);
 }
+
+export const GET = withErrorHandling(getHandler, "auth:google");
