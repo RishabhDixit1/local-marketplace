@@ -10,6 +10,9 @@ const trim = (value: unknown) => (typeof value === "string" ? value.trim() : "")
 const trimLeadingSlashes = (value: string) => value.replace(/^\/+/, "");
 
 const getSupabaseOrigin = () => {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
   const value = trim(process.env.NEXT_PUBLIC_SUPABASE_URL);
   if (!value) return "";
 

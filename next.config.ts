@@ -132,6 +132,14 @@ const createNextConfig = (phase: string): NextConfig => ({
         source: "/rest/v1/:path*",
         destination: "http://54.253.40.174:8000/rest/v1/:path*",
       },
+      {
+        source: "/storage/v1/:path*",
+        destination: "http://54.253.40.174:8000/storage/v1/:path*",
+      },
+      {
+        source: "/realtime/v1/:path*",
+        destination: "http://54.253.40.174:8000/realtime/v1/:path*",
+      },
     ];
   },
 });
