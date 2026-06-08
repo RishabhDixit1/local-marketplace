@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
-import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { enqueueJob } from "@/lib/server/backgroundJobs";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
@@ -86,7 +86,8 @@ export async function PATCH(request: Request) {
 
   await db.from("referral_codes").update({ times_used: db.rpc("increment", { x: 1 }) }).eq("id", codeData.id);
 
-  void sendPushToUser(db, codeData.user_id, {
+  await enqueueJob(db, "send-push", {
+    userId: codeData.user_id,
     title: "Someone used your referral code!",
     body: `You earned ${codeData.reward_points} reward points.`,
     data: { url: "/dashboard/referrals" },

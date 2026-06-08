@@ -98,6 +98,7 @@ const securityHeaders = [
 ];
 
 const createNextConfig = (phase: string): NextConfig => ({
+  ...(process.env.DOCKER_BUILD ? { output: "standalone" as const } : {}),
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   images: {
     ...images,

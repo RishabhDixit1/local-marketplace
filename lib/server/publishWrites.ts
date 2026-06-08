@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublishPayloadBase, UploadedMediaPayload } from "@/lib/api/publish";
 import { buildMarketplaceComposerMetadata } from "@/lib/marketplaceMetadata";
-import { sendPushToMatchedProviders } from "@/lib/server/pushNotifications";
+import { enqueueJob } from "@/lib/server/backgroundJobs";
 
 type WriteResult = {
   id?: string;
@@ -666,9 +666,28 @@ export const runImmediateMatching = async (
     matchedCount = notifiedProviders;
   }
 
-  // Fire web-push to all matched providers (non-blocking, best-effort)
+  // Fire web-push to all matched providers via background job queue
   if (matchedCount > 0) {
-    void sendPushToMatchedProviders(admin, helpRequestId, requestTitle);
+    const { data: matchedIds } = await admin
+      .from("help_request_matches")
+      .select("provider_id")
+      .eq("help_request_id", helpRequestId)
+      .eq("status", "open")
+      .limit(30);
+
+    const userIds = ((matchedIds as { provider_id: string }[] | null) || []).map((r) => r.provider_id);
+
+    if (userIds.length > 0) {
+      await enqueueJob(admin, "send-push-to-many", {
+        userIds,
+        title: "New request nearby",
+        body: requestTitle || "Someone nearby needs help. Open ServiQ to accept.",
+        data: {
+          url: `/dashboard/tasks?tab=inbox&focus=${helpRequestId}`,
+          help_request_id: helpRequestId,
+        },
+      });
+    }
   }
 
   return {

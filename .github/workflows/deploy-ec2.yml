@@ -23,43 +23,40 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write
+      packages: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
         with:
-          node-version: 22
-          cache: npm
+          context: .
+          file: Dockerfile
+          load: true
+          tags: serviq:latest
+          build-args: |
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: NEXT_TELEMETRY_DISABLED=1 npm run build
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-
-      - name: Package build artifacts
+      - name: Package deploy artifacts
         run: |
-          tar czf /tmp/serviq-build.tar.gz \
-            --exclude='public/app/releases/*.apk' \
-            .next \
-            public \
-            package.json \
-            package-lock.json
+          docker save serviq:latest | gzip > /tmp/serviq-docker.tar.gz
+          cp docker-compose.yml /tmp/deploy-docker-compose.yml
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: serviq-build
-          path: /tmp/serviq-build.tar.gz
+          name: serviq-deploy
+          path: |
+            /tmp/serviq-docker.tar.gz
+            /tmp/deploy-docker-compose.yml
           retention-days: 7
 
   deploy:
@@ -68,22 +65,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Download build artifact
+      - name: Download deploy artifact
         uses: actions/download-artifact@v4
         with:
-          name: serviq-build
+          name: serviq-deploy
 
-      - name: Deploy to EC2
+      - name: Copy artifacts to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: serviq-build.tar.gz
+          source: "serviq-docker.tar.gz,deploy-docker-compose.yml"
           target: /home/ec2-user/serviq
           strip_components: 0
 
-      - name: Extract and restart on EC2
+      - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -91,44 +88,58 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
             cd /home/ec2-user/serviq
-            tar xzf serviq-build.tar.gz
-            rm serviq-build.tar.gz
-            npm ci --production --prefer-offline
 
-            cat > ecosystem.config.js << 'ENDCONFIG'
-            module.exports = {
-              apps: [{
-                name: "serviq",
-                cwd: "/home/ec2-user/serviq",
-                script: "node_modules/next/dist/bin/next",
-                args: "start",
-                env: {
-                  NODE_ENV: "production",
-                  NEXT_PUBLIC_SUPABASE_URL: "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}",
-                  NEXT_PUBLIC_SUPABASE_ANON_KEY: "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}",
-                  SUPABASE_SERVICE_ROLE_KEY: "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}",
-                  NEXT_PUBLIC_SITE_URL: "${{ secrets.NEXT_PUBLIC_SITE_URL }}",
-                  RESEND_API_KEY: "${{ secrets.RESEND_API_KEY }}",
-                  BACKUP_EMAIL_API_KEY: "${{ secrets.BACKUP_EMAIL_API_KEY }}",
-                  SENTRY_DSN: "${{ secrets.SENTRY_DSN }}",
-                  RAZORPAY_KEY_ID: "${{ secrets.RAZORPAY_KEY_ID }}",
-                  RAZORPAY_KEY_SECRET: "${{ secrets.RAZORPAY_KEY_SECRET }}",
-                  SERVIQ_INTERNAL_PUSH_KEY: "${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }}",
-                  VAPID_PUBLIC_KEY: "${{ secrets.VAPID_PUBLIC_KEY }}",
-                  VAPID_PRIVATE_KEY: "${{ secrets.VAPID_PRIVATE_KEY }}",
-                  VAPID_EMAIL: "${{ secrets.VAPID_EMAIL }}",
-                  FIREBASE_PROJECT_ID: "${{ secrets.FIREBASE_PROJECT_ID }}",
-                  FIREBASE_SERVICE_ACCOUNT_JSON: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}"
-                }
-              }]
-            };
-            ENDCONFIG
+            # Create .env.ec2 from secrets if it doesn't exist
+            if [ ! -f .env.ec2 ]; then
+              cat > .env.ec2 << 'ENVEOF'
+            NODE_ENV=production
+            SUPABASE_URL=http://54.253.40.174:8000
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }}
+            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}
+            FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+            FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+            ENVEOF
+              echo "Created .env.ec2"
+            else
+              echo ".env.ec2 already exists, keeping existing"
+            fi
 
-            pm2 delete serviq 2>/dev/null || true
-            pm2 start ecosystem.config.js
-            pm2 save
+            # Replace docker-compose.yml (CI version is authoritative)
+            mv deploy-docker-compose.yml docker-compose.yml
+
+            # Load the new image
+            gzip -d -f serviq-docker.tar.gz
+            docker load -i serviq-docker.tar
+            rm -f serviq-docker.tar
+
+            # Start via docker-compose (reads .env.ec2 automatically)
+            docker compose up -d --remove-orphans
+
+            # Health check
+            echo "Waiting for container to be healthy..."
+            for i in $(seq 1 15); do
+              if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
+                echo "Deploy successful — container is healthy!"
+                docker compose ps
+                exit 0
+              fi
+              sleep 4
+            done
+
+            echo "ERROR: Health check failed after 60s"
+            docker compose logs --tail 50
+            exit 1
           command_timeout: 5m

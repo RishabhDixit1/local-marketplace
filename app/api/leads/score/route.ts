@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { scoreLead, computeCategoryFit, type LeadScoreInput, type LeadScoreBreakdown } from "@/lib/leads/scoring";
-import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { enqueueJob } from "@/lib/server/backgroundJobs";
 
 export const runtime = "nodejs";
 
@@ -175,17 +175,15 @@ export async function POST(request: Request) {
     }
 
     const requestTitle = helpRequest.title || helpRequest.category || "Service request";
-    for (const lead of topLeads) {
-      void sendPushToUser(db, lead.providerId, {
-        title: "New high-quality lead",
-        body: `Score ${lead.score}/100 · ${requestTitle}`,
-        data: {
-          url: `/dashboard/leads?help_request_id=${body.helpRequestId}`,
-          help_request_id: body.helpRequestId,
-          score: lead.score,
-        },
-      });
-    }
+    await enqueueJob(db, "send-push-to-many", {
+      userIds: topLeads.map((l) => l.providerId),
+      title: "New high-quality lead",
+      body: `High-quality lead available · ${requestTitle}`,
+      data: {
+        url: `/dashboard/leads?help_request_id=${body.helpRequestId}`,
+        help_request_id: body.helpRequestId,
+      },
+    });
   }
 
   return NextResponse.json({

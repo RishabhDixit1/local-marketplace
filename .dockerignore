@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env*
+.vercel
+.vercelignore
+.next
+.next-dev
+node_modules
+coverage
+playwright-report
+test-results
+tests
+mobile
+scripts
+public/app/releases
+*.md
+.DS_Store

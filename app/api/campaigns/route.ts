@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
-import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { enqueueJob } from "@/lib/server/backgroundJobs";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
@@ -60,7 +60,8 @@ async function postHandler(request: Request) {
 
   if (data.schedule_type === "immediate") {
     const titleExpr = data.title;
-    void sendPushToUser(db, auth.auth.userId, {
+    await enqueueJob(db, "send-push", {
+      userId: auth.auth.userId,
       title: titleExpr,
       body: data.message_template,
       data: { campaign_id: data.id, campaign_type: data.campaign_type },
