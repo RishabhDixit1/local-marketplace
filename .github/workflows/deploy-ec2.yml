@@ -128,21 +128,32 @@ jobs:
             docker load -i serviq-docker.tar
             rm -f serviq-docker.tar
 
-            # Start via docker-compose (reads .env.ec2 automatically)
-            docker compose up -d --remove-orphans
+            # Detect compose command: prefer docker-compose (standalone) over docker compose (plugin)
+            if command -v docker-compose &>/dev/null; then
+              DC="docker-compose"
+            else
+              DC="docker compose"
+            fi
+
+            # Stop existing container gracefully
+            docker stop serviq --time 30 2>/dev/null || true
+            docker rm serviq 2>/dev/null || true
+
+            # Start via docker compose (reads .env.ec2 automatically)
+            $DC up -d --remove-orphans
 
             # Health check
             echo "Waiting for container to be healthy..."
             for i in $(seq 1 15); do
               if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then
                 echo "Deploy successful — container is healthy!"
-                docker compose ps
+                $DC ps
                 exit 0
               fi
               sleep 4
             done
 
             echo "ERROR: Health check failed after 60s"
-            docker compose logs --tail 50
+            $DC logs --tail 50
             exit 1
           command_timeout: 5m
