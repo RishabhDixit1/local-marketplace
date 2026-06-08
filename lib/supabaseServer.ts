@@ -2,8 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 
 const clean = (value: string | undefined): string => value?.trim() ?? "";
 
+const getSupabaseUrl = (): string => {
+  const internalUrl = clean(process.env.SUPABASE_URL);
+  if (internalUrl) return internalUrl;
+  return clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+};
+
 export const getServerSupabase = () => {
-  const supabaseUrl = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const serviceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 

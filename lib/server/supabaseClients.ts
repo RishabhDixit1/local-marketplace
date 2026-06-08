@@ -2,6 +2,12 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const clean = (value: string | undefined): string => value?.trim() ?? "";
 
+const getSupabaseUrl = (): string => {
+  const internalUrl = clean(process.env.SUPABASE_URL);
+  if (internalUrl) return internalUrl;
+  return clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+};
+
 export type SupabaseServerEnv = {
   url: string;
   anonKey: string;
@@ -9,7 +15,7 @@ export type SupabaseServerEnv = {
 };
 
 export const getSupabaseServerEnv = (): SupabaseServerEnv | null => {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = getSupabaseUrl();
   const anonKey = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const serviceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -23,7 +29,7 @@ export const getSupabaseServerEnv = (): SupabaseServerEnv | null => {
 };
 
 export const createSupabaseAnonServerClient = (): SupabaseClient | null => {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = getSupabaseUrl();
   const anonKey = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!url || !anonKey) return null;
@@ -37,7 +43,7 @@ export const createSupabaseAnonServerClient = (): SupabaseClient | null => {
 };
 
 export const createSupabaseUserServerClient = (accessToken: string): SupabaseClient | null => {
-  const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = getSupabaseUrl();
   const anonKey = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const token = clean(accessToken);
 

@@ -184,6 +184,30 @@ const selectRowsWithFallback = async (
     ) {
       return [];
     }
+
+    if ((options.orderBy || options.limit) && isMissingColumnError(fallbackResult.error.message || "")) {
+      let bareQuery = db.from(table).select("*");
+      if (options.eqFilters?.length) {
+        for (const filter of options.eqFilters) {
+          bareQuery = bareQuery.eq(filter.column, filter.value);
+        }
+      }
+      if (options.inFilter?.column && options.inFilter.values.length > 0) {
+        bareQuery = bareQuery.in(options.inFilter.column, options.inFilter.values);
+      }
+      if (options.orFilter) {
+        bareQuery = bareQuery.or(options.orFilter);
+      }
+      const bareResult = await bareQuery;
+      if (bareResult.error) {
+        if (options.allowMissingRelation && isMissingRelationError(bareResult.error.message || "")) {
+          return [];
+        }
+        throw new Error(bareResult.error.message);
+      }
+      return toFlexibleRows(bareResult.data);
+    }
+
     throw new Error(fallbackResult.error.message);
   }
 

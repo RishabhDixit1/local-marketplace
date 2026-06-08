@@ -50,6 +50,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    console.error("[community/people] Failed to load people snapshot:", error);
     return NextResponse.json(
       {
         ok: false,

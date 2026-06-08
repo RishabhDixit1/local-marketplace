@@ -1,7 +1,13 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const getSupabaseUrl = () => process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+const getSupabaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
+  if (typeof window !== "undefined" && envUrl) {
+    return window.location.origin;
+  }
+  return envUrl;
+};
 const getSupabaseAnonKey = () => process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 
 let cachedClient: SupabaseClient | null = null;

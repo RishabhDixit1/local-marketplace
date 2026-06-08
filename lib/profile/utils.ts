@@ -445,6 +445,12 @@ export const normalizeProfileRecord = (
             role,
             bio: typeof row?.bio === "string" ? row.bio : "",
           }),
+    seeker_onboarding_completed:
+      typeof row?.seeker_onboarding_completed === "boolean"
+        ? row.seeker_onboarding_completed
+        : typeof row?.full_name === "string" && row.full_name.trim()
+          ? true
+          : undefined,
     profile_completion_percent:
       typeof row?.profile_completion_percent === "number"
         ? row.profile_completion_percent
