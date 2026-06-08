@@ -16,7 +16,7 @@
     "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify",
     "supabase:sql-editor": "bash scripts/supabase_copy_sql.sh",
     "phase0:api-coverage": "bash scripts/phase0_verify_api_coverage.sh",
-    "prepare": "husky"
+    "prepare": "npx husky || true"
   },
   "lint-staged": {
     "*.{ts,tsx}": ["eslint --fix --max-warnings 200"]
