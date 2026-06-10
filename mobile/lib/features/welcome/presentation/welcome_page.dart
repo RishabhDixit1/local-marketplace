@@ -670,9 +670,34 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         context.push(AppRoutes.createRequest);
                       },
                     ),
-
-
-
+                    const SizedBox(height: 18),
+                    SectionHeader(
+                      title: _resolvedSurface == _WelcomeSurface.nearby
+                          ? 'Explore all'
+                          : 'Switch view',
+                      actionLabel: _resolvedSurface == _WelcomeSurface.nearby
+                          ? 'Explore all'
+                          : 'Switch view',
+                      onAction: () {
+                        if (_resolvedSurface == _WelcomeSurface.nearby) {
+                          context.go(AppRoutes.explore);
+                          return;
+                        }
+                        _setSurface(_WelcomeSurface.nearby);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _SurfaceTabsRow(
+                      value: _resolvedSurface,
+                      onChanged: _setSurface,
+                    ),
+                    const SizedBox(height: 12),
+                    ...activeEntries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildEntryCard(entry, model),
+                      );
+                    }),
                     if (model.quickCategories.isNotEmpty) ...[
                       const SizedBox(height: 18),
                       SectionHeader(
@@ -734,31 +759,6 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                             onPeopleTap: () => context.go(AppRoutes.people),
                             onExploreTap: () => context.go(AppRoutes.explore),
                           ),
-                    SectionHeader(
-                      title: 'Recent',
-                      actionLabel: _resolvedSurface == _WelcomeSurface.nearby
-                          ? 'Explore all'
-                          : 'Switch view',
-                      onAction: () {
-                        if (_resolvedSurface == _WelcomeSurface.nearby) {
-                          context.go(AppRoutes.explore);
-                          return;
-                        }
-                        _setSurface(_WelcomeSurface.nearby);
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _SurfaceTabsRow(
-                      value: _resolvedSurface,
-                      onChanged: _setSurface,
-                    ),
-                    const SizedBox(height: 12),
-                    ...activeEntries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _buildEntryCard(entry, model),
-                      );
-                    }),
                   ]),
                 ),
               ),

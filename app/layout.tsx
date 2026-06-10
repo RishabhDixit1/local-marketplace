@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { appName, appTagline } from "@/lib/branding";
 import { AppFooter } from "@/components/AppFooter";
+import { NavigationProgress } from "@/app/components/NavigationProgress";
 
 export const metadata: Metadata = {
   title: {
@@ -54,6 +55,7 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
+        <NavigationProgress />
         <div className="flex-1">{children}</div>
         <AppFooter />
         <Analytics />

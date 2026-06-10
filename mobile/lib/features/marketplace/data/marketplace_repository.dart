@@ -22,14 +22,14 @@ class MarketplaceRepository {
   final MobileApiClient _apiClient;
 
   Future<List<MarketplaceProvider>> fetchProviders({String? category}) async {
-    final query = <String, String>{};
+    final body = <String, dynamic>{};
     if (category != null && category.isNotEmpty) {
-      query['category'] = category;
+      body['category'] = category;
     }
 
-    final payload = await _apiClient.getJson(
+    final payload = await _apiClient.postJson(
       '/api/community/providers-by-category',
-      queryParameters: query.isNotEmpty ? query : null,
+      body: body.isNotEmpty ? body : null,
       authenticated: false,
     );
 

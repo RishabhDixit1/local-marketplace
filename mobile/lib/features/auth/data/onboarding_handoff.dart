@@ -287,8 +287,16 @@ class OnboardingHandoffController extends ChangeNotifier {
   String? get lastRoute => _lastRoute;
   bool get hasStoredHandoff => _lastRoute != null || _pendingAuthMethod != null;
 
-  String get postAuthDestination =>
-      _lastRoute ?? _selectedIntent.destinationRoute;
+  bool _isAllowedPostAuthRoute(String route) {
+    return route.startsWith('/app/');
+  }
+
+  String get postAuthDestination {
+    if (_lastRoute != null && _isAllowedPostAuthRoute(_lastRoute!)) {
+      return _lastRoute!;
+    }
+    return _selectedIntent.destinationRoute;
+  }
 
   String resolvePostAuthDestination({String fallback = AppRoutes.home}) {
     return _pendingAuthMethod == null ? fallback : postAuthDestination;

@@ -12,9 +12,20 @@ const supabaseUrl = (() => {
   }
 })();
 
+const supabasePublicUrl = (() => {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  if (!value) return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+})();
+
 const supabaseApiOrigin = supabaseUrl ? `${supabaseUrl.protocol}//${supabaseUrl.host}` : null;
 const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
+const supabasePublicHostname = supabasePublicUrl?.hostname || supabaseHostname;
 
 const images: NonNullable<NextConfig["images"]> = {
   remotePatterns: [
@@ -29,9 +40,17 @@ const images: NonNullable<NextConfig["images"]> = {
     ...(supabaseHostname
       ? [
           {
-            protocol: supabaseProtocol,
+            protocol: supabaseProtocol as "http" | "https",
             hostname: supabaseHostname,
-          },
+          } as const,
+        ]
+      : []),
+    ...(supabasePublicHostname && supabasePublicHostname !== supabaseHostname
+      ? [
+          {
+            protocol: "https" as const,
+            hostname: supabasePublicHostname,
+          } as const,
         ]
       : []),
     {

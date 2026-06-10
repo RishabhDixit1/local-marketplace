@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
@@ -41,6 +43,28 @@ class AppBootstrap {
         supabaseReady: false,
         initializationError:
             'Missing SUPABASE_URL or SUPABASE_ANON_KEY. Add dart defines or create mobile/config/local.json.',
+      );
+    }
+
+    // Pre-flight connectivity checks — fail fast instead of waiting 15s for
+    // Supabase.initialize() to time out on an unreachable host.
+    final apiPing = await _checkUrlReachable('API server', config.apiBaseUrl);
+    if (apiPing != null) {
+      return AppBootstrap(
+        config: config,
+        client: null,
+        supabaseReady: false,
+        initializationError: apiPing,
+      );
+    }
+    final supabasePing =
+        await _checkUrlReachable('Supabase', config.supabaseUrl);
+    if (supabasePing != null) {
+      return AppBootstrap(
+        config: config,
+        client: null,
+        supabaseReady: false,
+        initializationError: supabasePing,
       );
     }
 
@@ -85,6 +109,35 @@ class AppBootstrap {
         supabaseReady: false,
         initializationError: 'Supabase initialization failed: $error',
       );
+    }
+  }
+
+  static Future<String?> _checkUrlReachable(
+    String label,
+    String url, {
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      return 'Invalid URL for $label: $url.';
+    }
+    try {
+      final client = http.Client();
+      try {
+        await client.head(uri).timeout(timeout);
+        return null;
+      } finally {
+        client.close();
+      }
+    } on TimeoutException {
+      return '$label ($url) is not reachable — '
+          'connection timed out after ${timeout.inSeconds}s. '
+          'Verify the URL and your internet connection.';
+    } on SocketException catch (e) {
+      return '$label ($url) is not reachable: ${e.message}. '
+          'Check the URL and network connectivity.';
+    } catch (e) {
+      return '$label ($url) check failed: $e.';
     }
   }
 }

@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import DealRoom from "@/app/components/quotes/DealRoom";
+import QuoteRoom from "@/app/components/quotes/QuoteRoom";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
   TaskCard,
@@ -2133,7 +2133,7 @@ export default function TasksPage() {
       >
               <div className="space-y-4">
                 {(canManageQuote(task) || canViewQuote(task)) && quoteEditorTaskId === task.orderId ? (
-                  <DealRoom
+                  <QuoteRoom
                     orderId={task.source === "order" ? task.orderId : null}
                     helpRequestId={task.source === "help_request" ? task.helpRequestId : null}
                     surface="tasks"

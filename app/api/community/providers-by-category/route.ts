@@ -20,30 +20,23 @@ function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): num
   return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+type ProvidersFilter = {
+  category: string;
+  lat: number | null;
+  lng: number | null;
+  limit: number;
+  offset: number;
+  minRating: number | null;
+  onlineOnly: boolean;
+  sortBy: "distance" | "rating" | "jobs" | "response" | "featured";
+  search: string;
+};
 
-
-async function getHandler(request: Request) {
-  const requestUrl = new URL(request.url);
-  const category = requestUrl.searchParams.get("category") || "";
-  const latParam = requestUrl.searchParams.get("lat");
-  const lngParam = requestUrl.searchParams.get("lng");
-  const limitParam = requestUrl.searchParams.get("limit");
-  const offsetParam = requestUrl.searchParams.get("offset");
-  const minRatingParam = requestUrl.searchParams.get("minRating");
-  const onlineOnlyParam = requestUrl.searchParams.get("onlineOnly");
-  const sortByParam = requestUrl.searchParams.get("sortBy") || "distance";
-  const searchParam = requestUrl.searchParams.get("search") || "";
-
-  const userLat = latParam ? parseFloat(latParam) : null;
-  const userLng = lngParam ? parseFloat(lngParam) : null;
-  const limit = limitParam ? parseInt(limitParam, 10) : 100;
-  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
-  const minRating = minRatingParam ? parseFloat(minRatingParam) : null;
-  const onlineOnly = onlineOnlyParam === "true" || onlineOnlyParam === "1";
-  const sortBy = ["distance", "rating", "jobs", "response", "featured"].includes(sortByParam)
-    ? (sortByParam as "distance" | "rating" | "jobs" | "response" | "featured")
-    : "distance";
-  const search = searchParam.trim().toLowerCase();
+async function executeProvidersQuery(filter: ProvidersFilter) {
+  const {
+    category, lat: userLat, lng: userLng, limit, offset,
+    minRating, onlineOnly, sortBy, search,
+  } = filter;
 
   const safeLimit = Math.min(Math.max(limit, 1), 200);
   const safeOffset = Math.max(offset, 0);
@@ -316,4 +309,72 @@ async function getHandler(request: Request) {
   }
 }
 
+async function getHandler(request: Request) {
+  const requestUrl = new URL(request.url);
+  const category = requestUrl.searchParams.get("category") || "";
+  const latParam = requestUrl.searchParams.get("lat");
+  const lngParam = requestUrl.searchParams.get("lng");
+  const limitParam = requestUrl.searchParams.get("limit");
+  const offsetParam = requestUrl.searchParams.get("offset");
+  const minRatingParam = requestUrl.searchParams.get("minRating");
+  const onlineOnlyParam = requestUrl.searchParams.get("onlineOnly");
+  const sortByParam = requestUrl.searchParams.get("sortBy") || "distance";
+  const searchParam = requestUrl.searchParams.get("search") || "";
+
+  const userLat = latParam ? parseFloat(latParam) : null;
+  const userLng = lngParam ? parseFloat(lngParam) : null;
+  const limit = limitParam ? parseInt(limitParam, 10) : 100;
+  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+  const minRating = minRatingParam ? parseFloat(minRatingParam) : null;
+  const onlineOnly = onlineOnlyParam === "true" || onlineOnlyParam === "1";
+  const sortBy = ["distance", "rating", "jobs", "response", "featured"].includes(sortByParam)
+    ? (sortByParam as "distance" | "rating" | "jobs" | "response" | "featured")
+    : "distance";
+  const search = searchParam.trim().toLowerCase();
+
+  return executeProvidersQuery({
+    category, lat: userLat, lng: userLng, limit, offset,
+    minRating, onlineOnly, sortBy, search,
+  });
+}
+
+async function postHandler(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const {
+    category = "",
+    lat = null,
+    lng = null,
+    limit: rawLimit,
+    offset: rawOffset,
+    minRating = null,
+    onlineOnly = false,
+    sortBy: rawSortBy,
+    search: rawSearch = "",
+  } = body as Record<string, unknown>;
+
+  const userLat = lat != null ? Number(lat) : null;
+  const userLng = lng != null ? Number(lng) : null;
+  const limit = typeof rawLimit === "number" ? rawLimit : 100;
+  const offset = typeof rawOffset === "number" ? rawOffset : 0;
+  const parsedSortBy = String(rawSortBy || "distance");
+  const sortBy = (["distance", "rating", "jobs", "response", "featured"] as const).includes(
+    parsedSortBy as "distance" | "rating" | "jobs" | "response" | "featured"
+  )
+    ? (parsedSortBy as "distance" | "rating" | "jobs" | "response" | "featured")
+    : "distance";
+
+  return executeProvidersQuery({
+    category: String(category || ""),
+    lat: userLat,
+    lng: userLng,
+    limit,
+    offset,
+    minRating: minRating != null ? Number(minRating) : null,
+    onlineOnly: onlineOnly === true || onlineOnly === "true",
+    sortBy,
+    search: String(rawSearch || "").trim().toLowerCase(),
+  });
+}
+
 export const GET = withErrorHandling(getHandler, "community:providers-by-category");
+export const POST = withErrorHandling(postHandler, "community:providers-by-category");

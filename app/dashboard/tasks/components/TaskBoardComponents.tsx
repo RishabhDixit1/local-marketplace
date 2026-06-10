@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
 
@@ -294,12 +295,18 @@ export function TaskCard({
                   onClick={onProfileClick}
                   className="shrink-0 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                  {/^(data:image\/|blob:)/i.test(avatarUrl) ? (
+                    <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                  ) : (
+                    <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                  )}
                 </button>
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                /^(data:image\/|blob:)/i.test(avatarUrl) ? (
+                  <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                ) : (
+                  <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
+                )
               )}
 
               <div className="min-w-0 flex-1">

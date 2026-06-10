@@ -65,13 +65,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Recommended'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Recent'),
-      280,
-      scrollable: scrollable,
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Recent'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

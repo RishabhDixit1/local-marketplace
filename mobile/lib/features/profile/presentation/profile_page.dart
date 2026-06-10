@@ -402,7 +402,7 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: isProvider
                   ? 'Setup, leads, listings, quote readiness'
                   : 'Start provider setup when you are ready',
-              route: AppRoutes.profile,
+              route: AppRoutes.control,
               emphasized: isProvider,
             ),
             _HubTileData(

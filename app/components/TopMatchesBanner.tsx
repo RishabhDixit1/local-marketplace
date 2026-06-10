@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import Image from "next/image";
 import { BadgeCheck, Loader2, MapPin, Star, User } from "lucide-react";
 
 type MatchProvider = {
@@ -70,7 +71,11 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
               {provider.avatarUrl ? (
-                <img src={provider.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                /^(data:image\/|blob:)/i.test(provider.avatarUrl) ? (
+                  <img src={provider.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <Image src={provider.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
+                )
               ) : (
                 <User className="h-4 w-4" />
               )}

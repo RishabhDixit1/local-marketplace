@@ -10,7 +10,7 @@ import { buildInterestDraftMessage, parseChatDraftTemplate } from "@/lib/chatNav
 import { insertTextAtSelection } from "@/lib/chatComposer";
 import type { DashboardPromptConfig } from "@/app/components/prompt/DashboardPromptContext";
 import { useDashboardPrompt } from "@/app/components/prompt/DashboardPromptContext";
-import DealRoom from "@/app/components/quotes/DealRoom";
+import QuoteRoom from "@/app/components/quotes/QuoteRoom";
 import LiveTalkCall from "@/app/components/LiveTalkCall";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
@@ -1677,7 +1677,7 @@ export default function ChatPage() {
 
                 {activeQuoteTarget && showQuotePanel && (
                   <div className="mb-4">
-                    <DealRoom
+                    <QuoteRoom
                       orderId={activeQuoteTarget.orderId}
                       helpRequestId={activeQuoteTarget.helpRequestId}
                       conversationId={selectedChat}

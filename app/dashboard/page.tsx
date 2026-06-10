@@ -161,12 +161,13 @@ export default function MarketplacePage() {
   useEffect(() => {
     let active = true;
     const category = searchParams.get("category") || filters.category;
-    const url = category
-      ? `/api/community/providers-by-category?category=${encodeURIComponent(category)}`
-      : `/api/community/providers-by-category?limit=6`;
 
     setProvidersLoading(true);
-    fetch(url)
+    fetch("/api/community/providers-by-category", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: category || undefined, limit: category ? 24 : 6 }),
+    })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return;
@@ -489,11 +490,11 @@ export default function MarketplacePage() {
 
          <div className="space-y-3">
                {providersLoading ? (
-                 <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                   {Array.from({ length: 4 }).map((_, index) => (
-                     <div
-                       key={`skeleton-${index}`}
-                       className="group flex min-w-[240px] max-w-[280px] shrink-0 flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4"
+          <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div
+                        key={`skeleton-${index}`}
+                        className="group flex min-w-[200px] sm:min-w-[240px] max-w-[280px] shrink-0 flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4"
                      >
                        <div className="flex items-center gap-3">
                          <div className="flex h-10 w-10 shrink-0 animate-pulse items-center justify-center rounded-full bg-slate-200" />
@@ -523,7 +524,7 @@ export default function MarketplacePage() {
                    {providers.map((p) => (
                      <div
                        key={p.id}
-                       className="group flex min-w-[250px] max-w-[290px] shrink-0 flex-col gap-2.5 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50"
+                        className="group flex min-w-[200px] sm:min-w-[250px] max-w-[290px] shrink-0 flex-col gap-2.5 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50"
                      >
                        <div className="flex items-center gap-3">
                           <div className="relative">

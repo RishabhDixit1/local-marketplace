@@ -442,7 +442,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         );
                       }
 
-                      final grouped = _groupDealRoomConversations(filtered);
+                      final grouped = _groupQuoteRoomConversations(filtered);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1345,7 +1345,7 @@ class _ChatThread extends ConsumerWidget {
           if (requestContext.visible)
             _RequestContextCard(contextData: requestContext),
           if (requestContext.taskIdText.isNotEmpty)
-            _DealRoomShortcut(
+            _QuoteRoomShortcut(
               contextData: requestContext,
               conversationId: conversationId,
             ),
@@ -1572,8 +1572,8 @@ class _ChatThread extends ConsumerWidget {
   }
 }
 
-class _DealRoomShortcut extends StatelessWidget {
-  const _DealRoomShortcut({
+class _QuoteRoomShortcut extends StatelessWidget {
+  const _QuoteRoomShortcut({
     required this.contextData,
     required this.conversationId,
   });
@@ -1806,7 +1806,7 @@ class _ConversationGroups {
   final List<ChatConversation> archived;
 }
 
-_ConversationGroups _groupDealRoomConversations(
+_ConversationGroups _groupQuoteRoomConversations(
   List<ChatConversation> conversations,
 ) {
   final needsReply = <ChatConversation>[];

@@ -52,6 +52,12 @@ class AppConfig {
 
   static Future<AppConfig> load() async {
     final environmentConfig = AppConfig.fromEnvironment();
+
+    if (environmentConfig.environment == 'production') {
+      _assertProductionConfig(environmentConfig);
+      return environmentConfig;
+    }
+
     if (environmentConfig.hasSupabaseConfig) {
       return environmentConfig;
     }
@@ -62,6 +68,32 @@ class AppConfig {
     }
 
     return environmentConfig.mergeWith(localConfig);
+  }
+
+  static void _assertProductionConfig(AppConfig config) {
+    assert(
+      config.supabaseUrl.trim().isNotEmpty &&
+          config.supabaseAnonKey.trim().isNotEmpty &&
+          config.apiBaseUrl.trim().isNotEmpty,
+      'Production build requires SUPABASE_URL, SUPABASE_ANON_KEY, and '
+      'API_BASE_URL to be set via --dart-define.\n'
+      'Run: flutter build apk --release '
+      '--dart-define=APP_ENV=production '
+      '--dart-define=SUPABASE_URL="..." '
+      '--dart-define=SUPABASE_ANON_KEY="..." '
+      '--dart-define=API_BASE_URL="https://www.serviqapp.com"',
+    );
+
+    final url = config.apiBaseUrl.trim().toLowerCase();
+    final localAliases = ['localhost', '127.0.0.1', '10.0.2.2', '0.0.0.0'];
+    final isLocal = localAliases.any((alias) => url.contains(alias));
+    if (isLocal) {
+      throw ArgumentError(
+        'API_BASE_URL resolves to a localhost variant ($url) in a production build.\n'
+        'Set API_BASE_URL to your production server URL via --dart-define.\n'
+        'Example: --dart-define=API_BASE_URL=https://www.serviqapp.com',
+      );
+    }
   }
 
   final String appName;

@@ -31,12 +31,12 @@ import type {
 import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
 import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 import {
-  loadDealRoom,
+  loadQuoteRoom,
   rejectQuoteDraft,
   uploadQuoteMedia,
   addQuoteAttachment,
   removeQuoteAttachment,
-} from "@/lib/quotes/dealRoom";
+} from "@/lib/quotes/quoteRoom";
 import {
   getOrderStatusLabel,
   getOrderStatusPillClass,
@@ -79,7 +79,7 @@ const formatAgo = (timestamp: string | null | undefined) => {
   return new Date(timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 
-export default function DealRoom({
+export default function QuoteRoom({
   orderId,
   helpRequestId,
   conversationId,
@@ -214,7 +214,7 @@ export default function DealRoom({
       setError(null);
 
       try {
-        const result = await loadDealRoom({ orderId, helpRequestId });
+        const result = await loadQuoteRoom({ orderId, helpRequestId });
 
         if (cancelled) return;
 
@@ -317,7 +317,7 @@ export default function DealRoom({
              )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
               <Receipt className="h-3.5 w-3.5" />
-              Deal Room
+              Quote Room
             </span>
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getOrderStatusPillClass(canonicalStatus)}`}>
               {getOrderStatusLabel(canonicalStatus)}

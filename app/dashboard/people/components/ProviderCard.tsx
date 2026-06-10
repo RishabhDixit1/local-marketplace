@@ -15,9 +15,6 @@ type Props = {
   busyActionKey: ConnectionActionKey | null;
   chatBusy: boolean;
   isActive: boolean;
-  saved: boolean;
-  saveBusy: boolean;
-  shareBusy: boolean;
   onActivate: (providerId: string) => void;
   onConnect: (providerId: string) => void;
   onAccept: (requestId: string) => void;
@@ -187,10 +184,7 @@ const ProviderCard = (props: Props) => {
   };
 
   return (
-    <article
-      data-provider-card="true"
-      data-provider-id={provider.id}
-      data-has-store={provider.listingCount > 0 ? "true" : undefined}
+    <div
       role="link"
       tabIndex={0}
       onClick={handleOpenProfile}
@@ -279,7 +273,7 @@ const ProviderCard = (props: Props) => {
           </div>
         </div>
       </div>
-    </article>
+    </div>
   );
 };
 

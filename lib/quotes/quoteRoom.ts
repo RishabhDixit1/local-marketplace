@@ -25,7 +25,7 @@ const buildQuery = (params: { orderId?: string | null; helpRequestId?: string | 
   return value ? `?${value}` : "";
 };
 
-export const loadDealRoom = (params: { orderId?: string | null; helpRequestId?: string | null }) =>
+export const loadQuoteRoom = (params: { orderId?: string | null; helpRequestId?: string | null }) =>
   fetchAuthedJson<GetDealRoomResponse>(supabase, `/api/quotes/deal-room${buildQuery(params)}`, {
     method: "GET",
   });

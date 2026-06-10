@@ -90,7 +90,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       final client = ref.read(mobileApiClientProvider);
       final locs = await client.getLocalities(zoneType: 'society', phase: 1);
       if (mounted) setState(() => _localities = locs);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[_loadLocalities] Failed to load localities: $e');
+    }
   }
 
   @override

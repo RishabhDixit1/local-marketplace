@@ -150,7 +150,7 @@ function ProviderQuickViewModal({
   provider: ProviderCard;
   isFavorite: boolean;
   onClose: () => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, name: string) => void;
   onConnect: (id: string, name: string) => void;
   connecting: boolean;
 }) {
@@ -183,7 +183,7 @@ function ProviderQuickViewModal({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onToggleFavorite(provider.id)}
+              onClick={() => onToggleFavorite(provider.id, provider.name)}
               className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition ${
                 isFavorite
                   ? "border-rose-200 bg-rose-50 text-rose-600"
@@ -413,21 +413,11 @@ export default function ProvidersPage() {
   const loadMoreCallbackRef = useRef<() => void>(() => {});
   const toastTimersRef = useRef<Map<string, number>>(new Map());
 
+  const mountedRef = useRef(true);
+
   useEffect(() => {
     setFavoriteProviderIds(getFavorites());
-  }, []);
-
-  const toggleFavorite = useCallback((providerId: string) => {
-    setFavoriteProviderIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(providerId)) {
-        next.delete(providerId);
-      } else {
-        next.add(providerId);
-      }
-      saveFavorites(next);
-      return next;
-    });
+    return () => { mountedRef.current = false; };
   }, []);
 
   const pushToast = useCallback(
@@ -448,6 +438,21 @@ export default function ProvidersPage() {
     },
     []
   );
+
+  const toggleFavorite = useCallback((providerId: string, providerName: string) => {
+    setFavoriteProviderIds((prev) => {
+      const next = new Set(prev);
+      const wasFav = next.has(providerId);
+      if (wasFav) {
+        next.delete(providerId);
+      } else {
+        next.add(providerId);
+      }
+      saveFavorites(next);
+      pushToast(wasFav ? "info" : "success", wasFav ? `Removed ${providerName} from favorites` : `Added ${providerName} to favorites`);
+      return next;
+    });
+  }, [pushToast]);
 
   useEffect(() => {
     const timers = toastTimersRef.current;
@@ -472,43 +477,25 @@ export default function ProvidersPage() {
     setError(null);
 
     try {
-      const params = new URLSearchParams();
       const categoryFromUrl = searchParams.get("category");
+      const category = (!append && categoryFromUrl) || filters.category || "";
 
-      if (categoryFromUrl && !append) {
-        params.set("category", categoryFromUrl);
-      } else if (filters.category) {
-        params.set("category", filters.category);
-      }
-
-      if (filters.minRating != null) {
-        params.set("minRating", String(filters.minRating));
-      }
-
-      if (filters.showOnlineOnly) {
-        params.set("onlineOnly", "true");
-      }
-
-      if (filters.sortBy) {
-        params.set("sortBy", filters.sortBy);
-      }
-
-      if (searchQuery) {
-        params.set("search", searchQuery);
-      }
-
-      if (append) {
-        params.set("offset", String(offset));
-      }
-      params.set("limit", "24");
+      const body: Record<string, unknown> = { limit: 24 };
+      if (category) body.category = category;
+      if (filters.minRating != null) body.minRating = filters.minRating;
+      if (filters.showOnlineOnly) body.onlineOnly = true;
+      if (filters.sortBy) body.sortBy = filters.sortBy;
+      if (searchQuery) body.search = searchQuery;
+      if (append) body.offset = offset;
 
       const data = await fetchAuthedJson<{
         ok: boolean;
         providers: ProviderCard[];
         facets: Facets;
         pagination: PaginationInfo;
-      }>(supabase, `/api/community/providers-by-category?${params.toString()}`, {
-        method: "GET",
+      }>(supabase, "/api/community/providers-by-category", {
+        method: "POST",
+        body: JSON.stringify(body),
       });
 
       if (data?.ok) {
@@ -608,6 +595,7 @@ export default function ProvidersPage() {
           body: JSON.stringify({ targetUserId: providerId }),
         });
 
+        if (!mountedRef.current) return;
         if (result?.ok) {
           setConnectedProviderIds((prev) => new Set(prev).add(providerId));
           pushToast("success", `Connection request sent to ${providerName}`);
@@ -620,6 +608,7 @@ export default function ProvidersPage() {
           });
         }
       } catch (err) {
+        if (!mountedRef.current) return;
         const errMsg =
           err instanceof Error ? err.message : `Failed to connect with ${providerName}`;
         pushToast("error", errMsg);
@@ -628,7 +617,9 @@ export default function ProvidersPage() {
           message: errMsg,
         });
       } finally {
-        setConnectingProviderId(null);
+        if (mountedRef.current) {
+          setConnectingProviderId(null);
+        }
       }
     },
     [connectedProviderIds, pushToast]
@@ -1102,7 +1093,7 @@ export default function ProvidersPage() {
                   <div className="flex flex-col items-end gap-1">
                     <button
                       type="button"
-                      onClick={() => toggleFavorite(provider.id)}
+                      onClick={() => toggleFavorite(provider.id, provider.name)}
                       className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border transition ${
                         isFavorite
                           ? "border-rose-200 bg-rose-50 text-rose-600"

@@ -59,7 +59,9 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       final client = ref.read(mobileApiClientProvider);
       final locs = await client.getLocalities(zoneType: 'society', phase: 1);
       if (mounted) setState(() => _localities = locs);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[_loadLocalities] Failed to load localities: $e');
+    }
   }
 
   @override
@@ -293,7 +295,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Connection request sent.')));
+      ).showSnackBar(SnackBar(content: Text('Connection request sent to ${person.name}.')));
     } catch (error) {
       if (!mounted) {
         return;
