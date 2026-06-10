@@ -4,6 +4,7 @@ import { validateProfileValues } from "@/lib/profile/validation";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { isProfileSaveRequest, saveProfileRow } from "@/lib/server/profileWrites";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,9 @@ export async function POST(request: Request) {
   if (!authResult.ok) {
     return toErrorResponse(authResult.status, "UNAUTHORIZED", authResult.message);
   }
+
+  const rateLimit = await applyRateLimit(authResult.auth.userId, "profile:save", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   let body: unknown;
   try {

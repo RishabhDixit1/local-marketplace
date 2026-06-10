@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseAdminClient, createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { NextResponse } from "next/server";
 
 export type RequestAuthContext = {
   userId: string;
@@ -95,3 +96,21 @@ export const isAdminEmail = (email: string): boolean => {
   const admins = parseEmailList(allowlist);
   return admins.includes(normalizedEmail);
 };
+
+export const CRON_SECRET_HEADER = "x-cron-secret";
+
+export const verifyCronSecret = (request: Request): boolean => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.warn("CRON_SECRET env var is not set — cron routes are unprotected!");
+    return true;
+  }
+  const headerValue = request.headers.get(CRON_SECRET_HEADER) || "";
+  return headerValue === secret;
+};
+
+export const cronAuthFailure = () =>
+  NextResponse.json(
+    { ok: false, message: "Unauthorized" },
+    { status: 401 }
+  );

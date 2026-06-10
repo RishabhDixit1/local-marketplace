@@ -109,11 +109,15 @@ export const rateLimitResponse = (resetInSeconds: number) =>
     },
   );
 
+type ApplyRateLimitResult =
+  | { limited: true; response: NextResponse }
+  | { limited: false; response: null };
+
 export const applyRateLimit = async (
   userId: string | null,
   route: string,
   config?: RateLimitConfig,
-) => {
+): Promise<ApplyRateLimitResult> => {
   const identifier = userId || "anonymous";
   const result = await checkRateLimit({ identifier, route }, config);
 

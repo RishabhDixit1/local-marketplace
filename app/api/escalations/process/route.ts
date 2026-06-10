@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendWhatsApp, sendSms } from "@/lib/server/twilioClient";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
 
 export const runtime = "nodejs";
 
@@ -12,7 +14,9 @@ const buildMessage = (reason: string | null, helpRequestTitle: string | null): s
   return `Update from ServiQ regarding your service request.`;
 };
 
-export async function POST() {
+async function postHandler(request: Request) {
+  if (!verifyCronSecret(request)) return cronAuthFailure();
+
   const db = createSupabaseAdminClient();
   if (!db) return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });
 
@@ -81,3 +85,5 @@ export async function POST() {
 
   return NextResponse.json({ ok: true, processed, failed });
 }
+
+export const POST = withErrorHandling(postHandler, "escalations:process");

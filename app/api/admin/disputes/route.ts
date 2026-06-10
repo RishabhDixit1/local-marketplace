@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
+import { withErrorHandling } from "@/lib/server/errorHandler";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, disputes: data ?? [] });
 }
 
-export async function PATCH(request: Request) {
+export const PATCH = withErrorHandling(async (request: Request) => {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
@@ -49,6 +51,9 @@ export async function PATCH(request: Request) {
   if (!isAdminEmail(auth.auth.email)) {
     return NextResponse.json({ ok: false, code: "FORBIDDEN", message: "Admin access required." }, { status: 403 });
   }
+
+  const rateLimit = await applyRateLimit(auth.auth.userId, "admin:disputes", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   const db = createSupabaseAdminClient();
   if (!db) {
@@ -121,4 +126,4 @@ export async function PATCH(request: Request) {
   await Promise.all(updates);
 
   return NextResponse.json({ ok: true, action: resolutionStatus });
-}
+}, "admin:disputes");

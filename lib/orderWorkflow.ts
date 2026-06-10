@@ -4,6 +4,8 @@ export type CanonicalOrderStatus =
   | "new_lead"
   | "quoted"
   | "accepted"
+  | "paid"
+  | "payment_failed"
   | "in_progress"
   | "completed"
   | "closed"
@@ -23,6 +25,8 @@ const STATUS_LABELS: Record<CanonicalOrderStatus, string> = {
   new_lead: "New Lead",
   quoted: "Quoted",
   accepted: "Accepted",
+  paid: "Paid",
+  payment_failed: "Payment Failed",
   in_progress: "In Progress",
   completed: "Completed",
   closed: "Closed",
@@ -34,6 +38,8 @@ const STATUS_DESCRIPTIONS: Record<CanonicalOrderStatus, string> = {
   new_lead: "New lead received",
   quoted: "Provider sent quote",
   accepted: "Quote accepted",
+  paid: "Payment received",
+  payment_failed: "Payment failed, retry available",
   in_progress: "Work in progress",
   completed: "Completed",
   closed: "Closed",
@@ -45,6 +51,8 @@ const STATUS_PILL_CLASSES: Record<CanonicalOrderStatus, string> = {
   new_lead: "bg-amber-100 text-amber-700",
   quoted: "bg-blue-100 text-blue-700",
   accepted: "bg-indigo-100 text-indigo-700",
+  paid: "bg-emerald-100 text-emerald-700",
+  payment_failed: "bg-rose-100 text-rose-700",
   in_progress: "bg-purple-100 text-purple-700",
   completed: "bg-emerald-100 text-emerald-700",
   closed: "bg-emerald-100 text-emerald-700",
@@ -62,8 +70,16 @@ const transitionMap: Record<CanonicalOrderStatus, Record<OrderActorRole, Canonic
     consumer: ["accepted", "cancelled"],
   },
   accepted: {
+    provider: ["in_progress"],
+    consumer: ["paid", "cancelled"],
+  },
+  paid: {
     provider: ["in_progress", "completed"],
-    consumer: ["completed", "cancelled"],
+    consumer: ["cancelled"],
+  },
+  payment_failed: {
+    provider: [],
+    consumer: ["accepted", "cancelled"],
   },
   in_progress: {
     provider: ["completed"],
@@ -93,6 +109,8 @@ export const normalizeOrderStatus = (status: string | null | undefined): Canonic
   if (["new_lead", "lead", "pending", "active", "open"].includes(normalized)) return "new_lead";
   if (["quoted", "quote_sent"].includes(normalized)) return "quoted";
   if (["accepted", "booked"].includes(normalized)) return "accepted";
+  if (["paid"].includes(normalized)) return "paid";
+  if (["payment_failed"].includes(normalized)) return "payment_failed";
   if (["in_progress", "in-progress", "active_work"].includes(normalized)) return "in_progress";
   if (["completed", "done"].includes(normalized)) return "completed";
   if (["closed"].includes(normalized)) return "closed";
@@ -161,6 +179,7 @@ export const getTransitionActionLabel = (params: {
 
   if (actor === "consumer") {
     if (nextStatus === "accepted") return "Accept Quote";
+    if (nextStatus === "paid") return "Pay Now";
     if (nextStatus === "completed") return "Confirm Completion";
     if (nextStatus === "cancelled") return "Cancel Request";
     if (nextStatus === "closed") return "Close Order";
@@ -173,6 +192,7 @@ export const stageOrder: CanonicalOrderStatus[] = [
   "new_lead",
   "quoted",
   "accepted",
+  "paid",
   "in_progress",
   "completed",
   "closed",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
@@ -8,7 +9,8 @@ const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
-async function postHandler() {
+async function postHandler(request: Request) {
+  if (!verifyCronSecret(request)) return cronAuthFailure();
   if (!RESEND_API_KEY) {
     return NextResponse.json({ ok: false, message: "Resend not configured" }, { status: 500 });
   }

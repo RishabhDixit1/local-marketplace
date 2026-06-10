@@ -3,6 +3,7 @@ import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getPostMediaLimitBytes, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,9 @@ async function postHandler(request: Request) {
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
   }
+
+  const rateLimit = await applyRateLimit(authResult.auth.userId, "upload:post-media", WRITE_ROUTE_CONFIG);
+  if (rateLimit.limited) return rateLimit.response;
 
   const formData = await request.formData().catch(() => null);
   if (!formData) {
