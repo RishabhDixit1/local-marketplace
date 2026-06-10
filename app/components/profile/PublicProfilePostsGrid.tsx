@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -123,6 +121,7 @@ function MediaCarousel({ media, title }: { media: PublicProfilePostMedia[]; titl
       <div className="relative aspect-[16/9]">
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
           isBrowserLocalImageUrl(current.url) ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={current.url} alt={title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <Image
@@ -746,6 +745,7 @@ export default function PublicProfilePostsGrid({
               <header className="flex items-start gap-3">
                 <div className="relative shrink-0 rounded-full">
                   {isBrowserLocalImageUrl(resolvedAvatar) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={resolvedAvatar}
                       alt={`${displayName} avatar`}

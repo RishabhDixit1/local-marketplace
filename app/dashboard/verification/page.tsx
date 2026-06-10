@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, CheckCircle2, FileUp, Loader2, ShieldCheck, Upload, X } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
@@ -40,6 +40,7 @@ export default function VerificationPage() {
   const [selectedType, setSelectedType] = useState(DOCUMENT_TYPES[0].value);
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const mountedRef = useRef(true);
 
   const status = profile?.verification_status || "unverified";
   const badge = STATUS_BADGES[status] || STATUS_BADGES.unverified;
@@ -80,10 +81,11 @@ export default function VerificationPage() {
     const data = await fetchAuthedJson<{ ok: boolean; documents: Document[] }>(
       supabase, "/api/verification/documents", { method: "GET" }
     );
-    if (data?.ok) setDocuments(data.documents);
+    if (data?.ok && mountedRef.current) setDocuments(data.documents);
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
@@ -91,7 +93,7 @@ export default function VerificationPage() {
       if (!cancelled) setLoading(false);
     };
     void load();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; mountedRef.current = false; };
   }, [fetchDocuments]);
 
   const handleUpload = async () => {
@@ -104,6 +106,7 @@ export default function VerificationPage() {
     const data = await fetchAuthedJson<{ ok: boolean; message?: string; fileUrl?: string }>(
       supabase, "/api/verification/documents", { method: "POST", body: formData }
     );
+    if (!mountedRef.current) return;
     if (data?.ok) {
       setMessage("Document uploaded. Submit for review once ready.");
       setFile(null);
@@ -119,6 +122,7 @@ export default function VerificationPage() {
     const data = await fetchAuthedJson<{ ok: boolean; message?: string }>(
       supabase, "/api/verification/submit", { method: "POST" }
     );
+    if (!mountedRef.current) return;
     setMessage(data?.message || (data?.ok ? "Submitted!" : "Error"));
     if (data?.ok) await fetchDocuments();
   };

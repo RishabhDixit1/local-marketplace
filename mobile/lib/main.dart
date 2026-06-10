@@ -60,15 +60,31 @@ class _BootstrapHostState extends State<_BootstrapHost> {
   late Future<AppBootstrap> _bootstrapFuture;
   bool _timedOut = false;
   bool _bootstrapDone = false;
+  Timer? _timeoutTimer;
 
   @override
   void initState() {
     super.initState();
+    _startBootstrap();
+  }
+
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startBootstrap() {
     _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
     _bootstrapFuture.then((_) {
       if (mounted) setState(() => _bootstrapDone = true);
     });
-    Future.delayed(const Duration(seconds: 8), () {
+    _scheduleTimeout();
+  }
+
+  void _scheduleTimeout() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(const Duration(seconds: 8), () {
       if (mounted && !_timedOut && !_bootstrapDone) {
         setState(() => _timedOut = true);
       }
@@ -81,19 +97,12 @@ class _BootstrapHostState extends State<_BootstrapHost> {
       return _BootstrapErrorApp(
         message: 'Taking longer than expected. Check your connection and restart.',
         onRetry: () {
+          _timeoutTimer?.cancel();
           setState(() {
             _timedOut = false;
             _bootstrapDone = false;
-            _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
           });
-          _bootstrapFuture.then((_) {
-            if (mounted) setState(() => _bootstrapDone = true);
-          });
-          Future.delayed(const Duration(seconds: 8), () {
-            if (mounted && _timedOut == false && !_bootstrapDone) {
-              setState(() => _timedOut = true);
-            }
-          });
+          _startBootstrap();
         },
       );
     }
@@ -111,18 +120,11 @@ class _BootstrapHostState extends State<_BootstrapHost> {
               snapshot.data?.initializationError ??
               'Could not start ServiQ.';
           return _BootstrapErrorApp(message: msg, onRetry: () {
+            _timeoutTimer?.cancel();
             setState(() {
               _bootstrapDone = false;
-              _bootstrapFuture = AppBootstrap.initialize(config: widget.appConfig);
             });
-            _bootstrapFuture.then((_) {
-              if (mounted) setState(() => _bootstrapDone = true);
-            });
-            Future.delayed(const Duration(seconds: 8), () {
-              if (mounted && !_bootstrapDone) {
-                setState(() => _timedOut = true);
-              }
-            });
+            _startBootstrap();
           });
         }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, Loader2, LogOut, Moon, Shield, Sun, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -27,12 +27,14 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const saveSuccessTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let active = true;
     const loadSettings = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!active || !user) return;
 
         const { data } = await supabase
           .from("user_settings")
@@ -40,13 +42,13 @@ export default function SettingsPage() {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (data) {
+        if (active && data) {
           setSettings(data as UserSettings);
         }
       } catch {
         // Defaults will be used
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
@@ -56,12 +58,18 @@ export default function SettingsPage() {
     if (stored === "dark" || (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
       setTheme("dark");
     }
+
+    return () => { active = false; };
   }, []);
 
   const saveSettings = useCallback(async () => {
     setSaving(true);
     setSaveError("");
     setSaveSuccess(false);
+
+    if (saveSuccessTimerRef.current) {
+      window.clearTimeout(saveSuccessTimerRef.current);
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +82,7 @@ export default function SettingsPage() {
 
       if (error) throw error;
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
+      saveSuccessTimerRef.current = window.setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save settings.");
     } finally {

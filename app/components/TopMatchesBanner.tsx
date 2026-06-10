@@ -72,6 +72,7 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
               {provider.avatarUrl ? (
                 /^(data:image\/|blob:)/i.test(provider.avatarUrl) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={provider.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
                   <Image src={provider.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />

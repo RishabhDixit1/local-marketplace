@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
@@ -28,6 +28,7 @@ export default function ConsumerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [consumerId, setConsumerId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   const loadOrders = useCallback(async (userId: string) => {
     const { data: orderRows, error } = await supabase
@@ -36,11 +37,12 @@ export default function ConsumerOrdersPage() {
       .eq("consumer_id", userId)
       .order("created_at", { ascending: false });
 
-    if (error) return;
+    if (error || !mountedRef.current) return;
     setOrders((orderRows as Order[] | null) || []);
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     let isMounted = true;
 
     void supabase.auth.getUser().then(async ({ data }) => {
@@ -59,6 +61,7 @@ export default function ConsumerOrdersPage() {
 
     return () => {
       isMounted = false;
+      mountedRef.current = false;
     };
   }, [loadOrders]);
 

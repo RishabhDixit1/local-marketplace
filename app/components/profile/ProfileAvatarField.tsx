@@ -27,6 +27,7 @@ export default function ProfileAvatarField({
         <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[28px] border border-white bg-white text-3xl font-semibold uppercase text-slate-900 shadow-sm">
           {avatarUrl ? (
             /^(data:image\/|blob:)/i.test(avatarUrl) ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={avatarUrl} alt={name || "Profile avatar"} className="h-full w-full object-cover" />
             ) : (
               <Image src={avatarUrl} alt={name || "Profile avatar"} fill className="object-cover" sizes="96px" />

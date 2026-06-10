@@ -171,8 +171,7 @@ const sentryOptions: Parameters<typeof withSentryConfig>[1] = {
   project: "serviq-web",
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
-  automaticVercelMonitors: true,
+
 };
 
 export default withSentryConfig(createNextConfig, sentryOptions);

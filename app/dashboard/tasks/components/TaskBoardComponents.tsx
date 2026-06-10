@@ -296,6 +296,7 @@ export function TaskCard({
                   className="shrink-0 rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
                 >
                   {/^(data:image\/|blob:)/i.test(avatarUrl) ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
                   ) : (
                     <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
@@ -303,6 +304,7 @@ export function TaskCard({
                 </button>
               ) : (
                 /^(data:image\/|blob:)/i.test(avatarUrl) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={avatarUrl} alt={avatarAlt} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />
                 ) : (
                   <Image src={avatarUrl} alt={avatarAlt} width={48} height={48} className="h-12 w-12 shrink-0 rounded-[var(--radius-control)] border border-slate-200 object-cover" />

@@ -40,20 +40,24 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAnalytics = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/provider/analytics?year=${year}`);
+      const res = await fetch(`/api/provider/analytics?year=${year}`, { signal });
       const json = await res.json();
-      if (json.ok) setData(json.analytics);
+      if (json.ok && !signal?.aborted) setData(json.analytics);
     } catch {
       // ignore
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [year]);
 
-  useEffect(() => { void fetchAnalytics(); }, [fetchAnalytics]);
+  useEffect(() => {
+    const abort = new AbortController();
+    void fetchAnalytics(abort.signal);
+    return () => abort.abort();
+  }, [fetchAnalytics]);
 
   if (loading && !data) {
     return (
