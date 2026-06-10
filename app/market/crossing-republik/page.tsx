@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   Loader2,
+  LogIn,
   MapPin,
   Phone,
   Star,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ServiceCategoryGrid from "@/app/components/services/ServiceCategoryGrid";
+import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName } from "@/lib/branding";
 import type { LocalityResponse } from "@/app/api/localities/route";
 
@@ -190,7 +192,30 @@ export default function CrossingRepublikPage() {
   };
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10">
+    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 sm:px-6">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md sm:-mx-6 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-between py-3">
+          <ServiQLogo href="/" ariaLabel="ServiQ home" />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/market/crossing-republik"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
+            >
+              <Store className="h-4 w-4" />
+              Explore
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* ── Hero ── */}
       <section className="mb-10 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--brand-100)]">

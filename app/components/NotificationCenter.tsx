@@ -183,8 +183,11 @@ export default function NotificationCenter({
 
           setNotifications([]);
           setLoading(false);
+          const permissionError = /permission denied|permission denied for|violates row-level security/i.test(error.message);
           setErrorMessage(
-            "Unable to load notifications. Please refresh and try again.",
+            permissionError
+              ? "Notifications are not available yet. Check back after applying the latest database migrations."
+              : "Unable to load notifications. Please refresh and try again.",
           );
           setDemoMode(false);
           return;

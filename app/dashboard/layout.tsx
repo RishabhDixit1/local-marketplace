@@ -49,6 +49,7 @@ import {
   Gift,
   LogOut,
   MessageCircle,
+  MoreHorizontal,
   Plus,
   Rocket,
   Shield,
@@ -183,6 +184,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const userMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const userMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [userMenuDesktopStyle, setUserMenuDesktopStyle] =
@@ -682,7 +684,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav
-            className={`flex-1 py-6 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2" : "px-4"}`}
+            className={`flex-1 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2 py-6" : "px-4 py-6"}`}
           >
             {navigationTabs.map((tab) => {
               const isActive = isNavigationTabActive(pathname, tab.path);
@@ -715,35 +717,35 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-          </nav>
 
-          {!desktopNavCollapsed && secondaryNavItems.length > 0 && (
-            <div className="border-t border-slate-100 px-4 py-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                More
-              </p>
-              <div className="space-y-1">
-                {secondaryNavItems.map((item) => {
-                  const isActive = isNavigationTabActive(pathname, item.path);
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                        isActive
-                          ? "bg-slate-100 text-slate-900"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
+            {!desktopNavCollapsed && secondaryNavItems.length > 0 && (
+              <div className="border-t border-slate-100 pt-4 mt-4">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  More
+                </p>
+                <div className="space-y-1">
+                  {secondaryNavItems.map((item) => {
+                    const isActive = isNavigationTabActive(pathname, item.path);
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
+                          isActive
+                            ? "bg-slate-100 text-slate-900"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </nav>
 
           <div className={desktopNavCollapsed ? "px-2 py-2" : "px-4 py-2"}>
             <PushNotificationSubscriber />
@@ -930,7 +932,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div
           className="grid gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]"
           style={{
-            gridTemplateColumns: `repeat(${navigationTabs.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${navigationTabs.length + 1}, minmax(0, 1fr))`,
           }}
         >
           {navigationTabs.map((tab) => {
@@ -958,8 +960,50 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setShowMobileMoreMenu((v) => !v)}
+            className={`relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
+              showMobileMoreMenu
+                ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+            aria-label="More options"
+            aria-expanded={showMobileMoreMenu}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span>More</span>
+          </button>
         </div>
       </nav>
+
+      {showMobileMoreMenu ? (
+        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:hidden">
+          <div className="max-h-[60vh] overflow-y-auto p-3">
+            <div className="grid grid-cols-2 gap-1">
+              {secondaryNavItems.map((item) => {
+                const isActive = isNavigationTabActive(pathname, item.path);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={() => setShowMobileMoreMenu(false)}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                      isActive
+                        ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showLogoutConfirm ? (
         <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">

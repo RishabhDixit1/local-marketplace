@@ -683,9 +683,22 @@ export const useFeedActions = ({
         return;
       }
 
-      await toggleSaveListing(item);
+      if (action === "save") {
+        await toggleSaveListing(item);
+        return;
+      }
+
+      if (action === "hide") {
+        pushToast("info", "Post hidden from your feed.");
+        return;
+      }
+
+      if (action === "report") {
+        pushToast("info", "Post reported. Our team will review it.");
+        return;
+      }
     },
-    [shareListing, toggleSaveListing]
+    [shareListing, toggleSaveListing, pushToast]
   );
 
   const resolveActionModel = useCallback(

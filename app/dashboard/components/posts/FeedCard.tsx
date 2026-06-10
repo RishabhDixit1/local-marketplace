@@ -199,7 +199,7 @@ export default function FeedCard({
     <article
       data-testid={testId}
       data-card-id={item.id}
-      className={`h-full w-full min-w-0 overflow-hidden rounded-[1.35rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-[1.6rem] sm:p-3.5 ${
+      className={`flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-[1.6rem] sm:p-3.5 ${
         active
           ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
           : "border-slate-200"
@@ -208,7 +208,7 @@ export default function FeedCard({
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
     >
-      <header className="flex items-start gap-2.5 sm:gap-3">
+      <header className="flex shrink-0 items-start gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={() => void onPrimaryAction("view_profile")}
@@ -343,7 +343,7 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2.5">
+      <div className="mt-2.5 flex min-w-0 flex-1 flex-col">
         {hasMedia ? (
           <div data-testid="feed-card-main-image">
             <FeedMediaCarousel
@@ -382,111 +382,111 @@ export default function FeedCard({
             </div>
           </div>
         )}
-      </div>
 
-      <div className="mt-2.5">
-        {hasMedia ? (
-          <>
-            <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere] sm:text-[1.02rem]">
-              {item.displayTitle}
-            </h3>
+        <div className={hasMedia ? "mt-2.5" : "mt-0"}>
+          {hasMedia ? (
+            <>
+              <h3 className="line-clamp-2 break-words text-[15px] font-semibold leading-tight text-slate-900 [overflow-wrap:anywhere] sm:text-[1.02rem]">
+                {item.displayTitle}
+              </h3>
+              <p
+                className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-relaxed ${
+                  detailsExpanded ? "" : descriptionClampClassName
+                }`}
+              >
+                {item.displayDescription}
+              </p>
+            </>
+          ) : null}
+
+          {visibleMetaPills.length > 0 ? (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {visibleMetaPills.map((pill) => (
+                <span
+                  key={`${item.id}:${pill.label}`}
+                  className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${pill.className}`}
+                  title={pill.label}
+                >
+                  <span className="truncate">{pill.label}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {shouldShowDetailsToggle ? (
+            <button
+              type="button"
+              onClick={() => setDetailsExpanded((expanded) => !expanded)}
+              className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-800)]"
+            >
+              {detailsExpanded ? "Show less" : "Show more"}
+            </button>
+          ) : null}
+
+          {item.locationLabel ? (
             <p
-              className={`mt-1.5 break-words text-[13px] leading-5 text-slate-600 [overflow-wrap:anywhere] sm:text-sm sm:leading-relaxed ${
-                detailsExpanded ? "" : descriptionClampClassName
+              className={`mt-2 items-start gap-1.5 text-[11px] text-slate-500 sm:text-xs ${
+                detailsExpanded ? "flex" : "hidden sm:flex"
               }`}
             >
-              {item.displayDescription}
-            </p>
-          </>
-        ) : null}
-
-        {visibleMetaPills.length > 0 ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {visibleMetaPills.map((pill) => (
-              <span
-                key={`${item.id}:${pill.label}`}
-                className={`inline-flex max-w-full items-center overflow-hidden rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-[11px] ${pill.className}`}
-                title={pill.label}
-              >
-                <span className="truncate">{pill.label}</span>
+              <MapPin size={12} className="mt-0.5 shrink-0" />
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                {item.locationLabel}
               </span>
-            ))}
-          </div>
-        ) : null}
+            </p>
+          ) : null}
 
-        {shouldShowDetailsToggle ? (
-          <button
-            type="button"
-            onClick={() => setDetailsExpanded((expanded) => !expanded)}
-            className="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-[var(--brand-700)] transition hover:border-[var(--brand-300)] hover:text-[var(--brand-800)]"
-          >
-            {detailsExpanded ? "Show less" : "Show more"}
-          </button>
-        ) : null}
-
-        {item.locationLabel ? (
-          <p
-            className={`mt-2 items-start gap-1.5 text-[11px] text-slate-500 sm:text-xs ${
-              detailsExpanded ? "flex" : "hidden sm:flex"
-            }`}
-          >
-            <MapPin size={12} className="mt-0.5 shrink-0" />
-            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
-              {item.locationLabel}
-            </span>
-          </p>
-        ) : null}
-
-        {!isOwner ? (
-          <TrustSnapshot
-            items={[
-              {
-                label:
-                  item.verificationStatus === "verified"
-                    ? "Verified"
-                    : item.reviewCount && item.reviewCount > 0
-                      ? "Active profile"
-                      : "New profile",
-                tone:
-                  item.verificationStatus === "verified"
-                    ? "good"
-                    : item.reviewCount && item.reviewCount > 0
-                      ? "neutral"
-                      : "caution",
-              },
-              item.averageRating && item.averageRating > 0
-                ? {
-                    label: `${item.averageRating.toFixed(1)} stars`,
-                    tone: "good" as const,
-                  }
-                : {
-                    label: "No ratings",
-                    tone: "neutral" as const,
-                  },
-              item.completedJobs && item.completedJobs > 0
-                ? {
-                    label: `${item.completedJobs} jobs done`,
-                    tone: "good" as const,
-                  }
-                : null,
-              item.responseMinutes > 0
-                ? {
-                    label: `~${item.responseMinutes} min reply`,
-                    tone:
-                      item.responseMinutes <= 15
-                        ? ("good" as const)
-                        : ("neutral" as const),
-                  }
-                : null,
-            ].filter((value): value is { label: string; tone: "neutral" | "good" | "caution" } => value !== null)}
-            compact
-            mobileItemLimit={2}
-            className="mt-2"
-          />
-        ) : null}
+          {!isOwner ? (
+            <TrustSnapshot
+              items={[
+                {
+                  label:
+                    item.verificationStatus === "verified"
+                      ? "Verified"
+                      : item.reviewCount && item.reviewCount > 0
+                        ? "Active profile"
+                        : "New profile",
+                  tone:
+                    item.verificationStatus === "verified"
+                      ? "good"
+                      : item.reviewCount && item.reviewCount > 0
+                        ? "neutral"
+                        : "caution",
+                },
+                item.averageRating && item.averageRating > 0
+                  ? {
+                      label: `${item.averageRating.toFixed(1)} stars`,
+                      tone: "good" as const,
+                    }
+                  : {
+                      label: "No ratings",
+                      tone: "neutral" as const,
+                    },
+                item.completedJobs && item.completedJobs > 0
+                  ? {
+                      label: `${item.completedJobs} jobs done`,
+                      tone: "good" as const,
+                    }
+                  : null,
+                item.responseMinutes > 0
+                  ? {
+                      label: `~${item.responseMinutes} min reply`,
+                      tone:
+                        item.responseMinutes <= 15
+                          ? ("good" as const)
+                          : ("neutral" as const),
+                    }
+                  : null,
+              ].filter((value): value is { label: string; tone: "neutral" | "good" | "caution" } => value !== null)}
+              compact
+              mobileItemLimit={2}
+              className="mt-2"
+            />
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:mt-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-auto flex flex-col gap-2 pt-3 sm:flex-row sm:items-center sm:justify-between sm:pt-3.5">
         <div className="flex flex-wrap items-center gap-2">
           {primaryButton ? (
             <button
@@ -517,7 +517,7 @@ export default function FeedCard({
             </button>
           ) : null}
 
-          {sendQuoteButton ? (
+          {sendQuoteButton && primaryButton !== sendQuoteButton ? (
             <button
               type="button"
               data-testid="feed-action-message"

@@ -626,9 +626,10 @@ export default function CreatePostModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[var(--layer-modal)] flex flex-col overflow-hidden bg-white" style={{ height: "100dvh" }}>
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center sm:items-center sm:bg-slate-950/45">
+      <div className="flex max-h-[100dvh] w-full flex-col overflow-hidden bg-white sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[1.6rem] sm:shadow-2xl">
       {/* header */}
-      <div className="border-b border-slate-200 px-4 py-3">
+      <div className="shrink-0 border-b border-slate-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Step {step} of 2</p>
@@ -914,6 +915,7 @@ export default function CreatePostModal({
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
     </div>

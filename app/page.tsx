@@ -198,6 +198,8 @@ function LandingPageContent() {
     return () => { active = false; };
   }, [selectedCategory, retryCount]);
 
+  const LANDING_PAGE_PROVIDER_LIMIT = 6;
+
   const providers = useMemo(() => {
     const list = realProviders.length > 0 ? realProviders : [];
     if (searchQuery.trim()) {
@@ -209,7 +211,7 @@ function LandingPageContent() {
           (p.services && p.services.some((s: string) => s.toLowerCase().includes(q)))
       );
     }
-    return list;
+    return list.slice(0, LANDING_PAGE_PROVIDER_LIMIT);
   }, [searchQuery, realProviders]);
 
   const completeAuth = useCallback(

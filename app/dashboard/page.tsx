@@ -423,7 +423,7 @@ export default function MarketplacePage() {
   );
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pb-24 pt-5 text-slate-900 sm:pt-6">
+    <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] pt-5 text-slate-900 sm:pt-6">
       <RouteObservability route="dashboard" />
 
       <div className="mx-auto w-full max-w-[1360px] space-y-4 px-3 sm:space-y-5 sm:px-6">
