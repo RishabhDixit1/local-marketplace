@@ -40,8 +40,7 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
   }
 
-  const { data: urlData } = db.storage.from("verification-docs").getPublicUrl(fileName);
-  const fileUrl = urlData?.publicUrl || fileName;
+  const fileUrl = `/storage/v1/object/public/verification-docs/${fileName}`;
 
   const { error: insertError } = await db.from("verification_documents").insert({
     profile_id: auth.auth.userId,

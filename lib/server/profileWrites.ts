@@ -256,10 +256,10 @@ export const uploadProfileAvatarFile = async (params: {
     };
   }
 
-  const { data } = params.db.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(objectPath);
+  const relativeUrl = `/storage/v1/object/public/${PROFILE_AVATAR_BUCKET}/${objectPath}`;
   return {
     ok: true,
-    publicUrl: data.publicUrl,
+    publicUrl: relativeUrl,
     compatibilityMode: !params.usingAdminClient,
   };
 };

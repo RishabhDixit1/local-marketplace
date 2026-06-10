@@ -55,10 +55,9 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "Upload failed: " + error.message }, { status: 500 });
   }
 
-  const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path);
-  const publicUrl = urlData.publicUrl;
+  const relativeUrl = `/storage/v1/object/public/${BUCKET}/${path}`;
 
-  return NextResponse.json({ ok: true, path, url: publicUrl });
+  return NextResponse.json({ ok: true, path, url: relativeUrl });
 }
 
 export const POST = withErrorHandling(postHandler, "upload:listing-image");

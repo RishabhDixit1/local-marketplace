@@ -70,15 +70,15 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: `Upload failed: ${error.message}` }, { status: 500 });
   }
 
-  const { data } = admin.storage.from(BUCKET).getPublicUrl(path);
+  const relativeUrl = `/storage/v1/object/public/${BUCKET}/${path}`;
 
   return NextResponse.json({
     ok: true,
     path,
-    url: data.publicUrl,
+    url: relativeUrl,
     media: {
       name: file.name,
-      url: data.publicUrl,
+      url: relativeUrl,
       type: file.type,
     },
   });

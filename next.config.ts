@@ -3,7 +3,7 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const supabaseUrl = (() => {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const value = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
   if (!value) return null;
   try {
     return new URL(value);
@@ -12,6 +12,7 @@ const supabaseUrl = (() => {
   }
 })();
 
+const supabaseApiOrigin = supabaseUrl ? `${supabaseUrl.protocol}//${supabaseUrl.host}` : null;
 const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
 
@@ -55,7 +56,7 @@ const csp = [
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `img-src 'self' data: blob: https: http:`,
   `font-src 'self' https://fonts.gstatic.com data:`,
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
+  `connect-src 'self' http://54.253.40.174:8000 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
   `frame-src https://checkout.razorpay.com https://accounts.google.com`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
@@ -124,22 +125,23 @@ const createNextConfig = (phase: string): NextConfig => ({
     ];
   },
   async rewrites() {
+    const origin = supabaseApiOrigin || "http://54.253.40.174:8000";
     return [
       {
         source: "/auth/v1/:path*",
-        destination: "http://54.253.40.174:8000/auth/v1/:path*",
+        destination: `${origin}/auth/v1/:path*`,
       },
       {
         source: "/rest/v1/:path*",
-        destination: "http://54.253.40.174:8000/rest/v1/:path*",
+        destination: `${origin}/rest/v1/:path*`,
       },
       {
         source: "/storage/v1/:path*",
-        destination: "http://54.253.40.174:8000/storage/v1/:path*",
+        destination: `${origin}/storage/v1/:path*`,
       },
       {
         source: "/realtime/v1/:path*",
-        destination: "http://54.253.40.174:8000/realtime/v1/:path*",
+        destination: `${origin}/realtime/v1/:path*`,
       },
     ];
   },

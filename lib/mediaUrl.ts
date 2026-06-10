@@ -5,6 +5,7 @@ const httpUrlPattern = /^https?:\/\//i;
 const protocolRelativePattern = /^\/\//;
 const inlineImagePattern = /^data:image\//i;
 const blobUrlPattern = /^blob:/i;
+const supabaseStoragePathPattern = /\/storage\/v1\/object\/public\//i;
 
 const trim = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 const trimLeadingSlashes = (value: string) => value.replace(/^\/+/, "");
@@ -23,6 +24,13 @@ const getSupabaseOrigin = () => {
   }
 };
 
+const resolveAsWebappRelativePath = (absoluteUrl: string): string => {
+  const match = absoluteUrl.match(supabaseStoragePathPattern);
+  if (!match) return absoluteUrl;
+  const pathStart = match.index!;
+  return absoluteUrl.substring(pathStart);
+};
+
 export const resolveSupabasePublicUrl = (
   value: string | null | undefined,
   options: { bucket?: string } = {}
@@ -31,10 +39,20 @@ export const resolveSupabasePublicUrl = (
   if (!candidate) return null;
 
   if (httpUrlPattern.test(candidate) || inlineImagePattern.test(candidate) || blobUrlPattern.test(candidate)) {
+    if (supabaseStoragePathPattern.test(candidate)) {
+      const relative = resolveAsWebappRelativePath(candidate);
+      const supabaseOrigin = getSupabaseOrigin();
+      return supabaseOrigin ? `${supabaseOrigin}/${relative}` : candidate;
+    }
     return candidate;
   }
 
   if (protocolRelativePattern.test(candidate)) {
+    if (supabaseStoragePathPattern.test(candidate)) {
+      const relative = resolveAsWebappRelativePath(candidate);
+      const supabaseOrigin = getSupabaseOrigin();
+      return supabaseOrigin ? `${supabaseOrigin}/${relative}` : candidate;
+    }
     return `https:${candidate}`;
   }
 
