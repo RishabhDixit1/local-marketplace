@@ -211,8 +211,11 @@ function LandingPageContent() {
           (p.services && p.services.some((s: string) => s.toLowerCase().includes(q)))
       );
     }
+    if (selectedCategory) {
+      return list;
+    }
     return list.slice(0, LANDING_PAGE_PROVIDER_LIMIT);
-  }, [searchQuery, realProviders]);
+  }, [searchQuery, realProviders, selectedCategory]);
 
   const completeAuth = useCallback(
     async (user: User) => {
@@ -435,7 +438,9 @@ function LandingPageContent() {
         {/* ── Results count ── */}
         <div className="mt-8 flex items-center justify-between">
           <p className="text-sm text-slate-500">
-            {providers.length} {providers.length === 1 ? "provider" : "providers"} near you
+            {!searchQuery && !selectedCategory && realProviders.length > LANDING_PAGE_PROVIDER_LIMIT
+              ? `Showing ${LANDING_PAGE_PROVIDER_LIMIT} of ${realProviders.length} providers near you`
+              : `${realProviders.length} ${realProviders.length === 1 ? "provider" : "providers"} near you`}
           </p>
           {selectedCategory && (
             <button

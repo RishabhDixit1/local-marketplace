@@ -1253,7 +1253,7 @@ export default function ChatPage() {
       : null;
 
   return (
-    <div className="relative -mx-3 h-[calc(100dvh-12rem)] min-h-[24rem] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem)] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-8rem)]">
+    <div className="relative -mx-3 h-[calc(100dvh-12rem-env(safe-area-inset-top,0px))] min-h-[24rem] overflow-hidden border-y border-slate-200/80 bg-white shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] sm:mx-0 sm:h-[calc(100dvh-10rem-env(safe-area-inset-top,0px))] sm:rounded-3xl sm:border sm:shadow-[0_20px_70px_-45px_rgba(15,23,42,0.65)] lg:h-[calc(100dvh-8rem)]">
       <RouteObservability route="chat" />
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-16 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />

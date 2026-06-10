@@ -87,7 +87,7 @@ const formatTimeAgo = (nowMs: number, timestamp: string) => {
 const normalizeNotificationRows = (
   rows: NotificationRowRaw[] | null | undefined,
 ): NotificationRow[] => {
-  return (rows || []).map((row) => ({
+  return (rows || []).filter(Boolean).map((row) => ({
     ...row,
     kind: getNotificationKind(row.kind),
     metadata: row.metadata || null,
@@ -138,6 +138,13 @@ export default function NotificationCenter({
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadInFlightRef = useRef(false);
   const queuedReloadRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const loadNotifications = useCallback(
     async (soft = false) => {
@@ -158,6 +165,8 @@ export default function NotificationCenter({
       }
 
       if (!soft) setLoading(true);
+
+      if (!mountedRef.current) return;
 
       try {
         const { data, error } = await supabase
@@ -296,7 +305,7 @@ export default function NotificationCenter({
     if (!enabled || !userId || demoMode) return;
 
     const channel = supabase
-      .channel(`notifications-live-${userId}`)
+      .channel(`notifications-live-${userId}-${isStandalonePage ? "page" : "trigger"}`)
       .on(
         "postgres_changes",
         {

@@ -343,7 +343,7 @@ export default function FeedCard({
         ) : null}
       </header>
 
-      <div className="mt-2.5 flex min-w-0 flex-1 flex-col">
+      <div className="mt-2.5 flex min-w-0 min-h-0 flex-1 flex-col">
         {hasMedia ? (
           <div data-testid="feed-card-main-image">
             <FeedMediaCarousel
@@ -536,7 +536,7 @@ export default function FeedCard({
             </button>
           ) : null}
 
-          {openButton ? (
+          {openButton && primaryButton !== openButton ? (
             <button
               type="button"
               data-testid="feed-action-network"

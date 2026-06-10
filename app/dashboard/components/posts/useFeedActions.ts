@@ -689,6 +689,10 @@ export const useFeedActions = ({
       }
 
       if (action === "hide") {
+        setFeed((current) => current.filter((feedItem) => {
+          const cardId = buildMarketplaceFeedCardId(item);
+          return feedItem.id !== item.id && buildMarketplaceFeedCardId(feedItem) !== cardId;
+        }));
         pushToast("info", "Post hidden from your feed.");
         return;
       }
@@ -698,7 +702,7 @@ export const useFeedActions = ({
         return;
       }
     },
-    [shareListing, toggleSaveListing, pushToast]
+    [shareListing, toggleSaveListing, pushToast, setFeed, buildMarketplaceFeedCardId]
   );
 
   const resolveActionModel = useCallback(

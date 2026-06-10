@@ -41,6 +41,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  ChevronDown,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
@@ -184,6 +185,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const { showPrompt } = useDashboardPromptState();
   const [openCreatePost, setOpenCreatePost] = useState(false);
+  const [showDesktopMore, setShowDesktopMore] = useState(true);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const userMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const userMenuPanelRef = useRef<HTMLDivElement | null>(null);
@@ -481,6 +483,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setShowMobileMoreMenu(false);
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
     if (!showUserMenu || !isDesktopUserMenu) return;
 
     const handleLayoutChange = () => {
@@ -720,9 +731,15 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
             {!desktopNavCollapsed && secondaryNavItems.length > 0 && (
               <div className="border-t border-slate-100 pt-4 mt-4">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => setShowDesktopMore((v) => !v)}
+                  className="flex w-full items-center justify-between mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+                >
                   More
-                </p>
+                  <ChevronDown className={`h-3 w-3 transition ${showDesktopMore ? "" : "-rotate-90"}`} />
+                </button>
+                {showDesktopMore && (
                 <div className="space-y-1">
                   {secondaryNavItems.map((item) => {
                     const isActive = isNavigationTabActive(pathname, item.path);
@@ -743,6 +760,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     );
                   })}
                 </div>
+                )}
               </div>
             )}
           </nav>
@@ -861,7 +879,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             ) : null}
           </header>
 
-          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-8 lg:px-8 lg:py-8 lg:pb-8">
+          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(7rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">
@@ -978,7 +996,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {showMobileMoreMenu ? (
-        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:hidden">
+        <>
+          <div
+            className="fixed inset-0 z-[var(--layer-popover-backdrop)] lg:hidden"
+            onClick={() => setShowMobileMoreMenu(false)}
+          />
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:hidden">
           <div className="max-h-[60vh] overflow-y-auto p-3">
             <div className="grid grid-cols-2 gap-1">
               {secondaryNavItems.map((item) => {
@@ -1002,7 +1025,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               })}
             </div>
           </div>
-        </div>
+          </div>
+        </>
       ) : null}
 
       {showLogoutConfirm ? (
