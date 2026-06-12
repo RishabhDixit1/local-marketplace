@@ -62,11 +62,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       final cats = await client.getServiceCategories();
       if (mounted) {
         setState(() { _categories = cats; });
-        if (_query.isNotEmpty) _doSearch();
       }
     } catch (_) {
       // Categories failed to load — search will still work
     }
+    if (mounted && _query.isNotEmpty) _doSearch();
   }
 
   @override
