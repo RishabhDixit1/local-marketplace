@@ -21,6 +21,8 @@ import 'package:serviq_mobile/features/provider/presentation/provider_profile_pa
 import 'package:serviq_mobile/features/profile/data/profile_repository.dart';
 import 'package:serviq_mobile/features/profile/domain/mobile_profile_snapshot.dart';
 import 'package:serviq_mobile/features/profile/presentation/profile_page.dart';
+import 'package:serviq_mobile/features/search/data/search_repository.dart';
+import 'package:serviq_mobile/features/search/domain/search_models.dart';
 import 'package:serviq_mobile/features/search/presentation/search_page.dart';
 import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
 import 'package:serviq_mobile/shared/components/feed_card.dart';
@@ -262,6 +264,7 @@ void main() {
           peopleSnapshotProvider.overrideWith(
             (ref) async => _samplePeopleSnapshot,
           ),
+          searchRepositoryProvider.overrideWithValue(_MockSearchRepository()),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -654,6 +657,40 @@ void main() {
     expect(find.text('Lead control'), findsOneWidget);
     expect(find.text('Trust and revenue'), findsOneWidget);
   });
+}
+
+class _MockSearchRepository implements SearchRepository {
+  const _MockSearchRepository();
+
+  @override
+  Future<SearchResponse> search({
+    String? category,
+    String? query,
+    double? lat,
+    double? lng,
+    int limit = 50,
+    int offset = 0,
+    double? minRating,
+    bool onlineOnly = false,
+    String sortBy = 'distance',
+  }) async {
+    return const SearchResponse(
+      total: 1,
+      providers: [
+        SearchResult(
+          id: 'provider-1',
+          name: 'Priyanka Narayanan',
+          location: 'Koramangala 6th Block, Bengaluru',
+          avgRating: 4.9,
+          reviewCount: 18,
+          completedJobs: 37,
+          isOnline: true,
+          verified: true,
+          priceMin: 1200,
+        ),
+      ],
+    );
+  }
 }
 
 Future<void> _pumpFeedPage(
