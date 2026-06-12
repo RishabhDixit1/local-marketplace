@@ -41,10 +41,12 @@ import {
   BarChart3,
   Bell,
   Building2,
+  CalendarCheck,
   ChevronDown,
   ClipboardList,
   ChevronsLeft,
   ChevronsRight,
+  Clock,
   Crown,
   FileText,
   Gift,
@@ -59,6 +61,7 @@ import {
   TrendingUp,
   User,
   Users,
+  Zap,
 } from "lucide-react";
 import PushNotificationSubscriber from "@/app/components/PushNotificationSubscriber";
 import { PageTransition } from "@/app/components/motion/PageTransition";
@@ -100,9 +103,12 @@ const secondaryNavItems = [
   { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
   { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
   { name: "Payouts", path: "/dashboard/payouts", icon: Banknote },
+  { name: "Availability", path: "/dashboard/availability", icon: Clock },
+  { name: "Bookings", path: "/dashboard/bookings", icon: CalendarCheck },
   { name: "Verification", path: "/dashboard/verification", icon: BadgeCheck },
   { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
   { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
+  { name: "Leads", path: "/dashboard/leads", icon: Zap },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";

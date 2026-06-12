@@ -448,11 +448,25 @@ class _ProfileCommandHub extends StatelessWidget {
               route: AppRoutes.availability,
             ),
             _HubTileData(
+              key: 'profile-tile-bookings',
+              icon: Icons.calendar_month_outlined,
+              title: 'Bookings',
+              subtitle: 'Upcoming and past appointments',
+              route: AppRoutes.bookings,
+            ),
+            _HubTileData(
               key: 'profile-tile-payouts',
               icon: Icons.account_balance_wallet_outlined,
               title: 'Payouts',
               subtitle: 'Earnings, withdrawals, and payout accounts',
               route: AppRoutes.payouts,
+            ),
+            _HubTileData(
+              key: 'profile-tile-transactions',
+              icon: Icons.receipt_long_outlined,
+              title: 'Transactions',
+              subtitle: 'Payment history and receipts',
+              route: AppRoutes.transactions,
             ),
             _HubTileData(
               key: 'profile-tile-referrals',

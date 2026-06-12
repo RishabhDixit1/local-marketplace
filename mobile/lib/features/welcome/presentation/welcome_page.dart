@@ -721,6 +721,29 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                         },
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () => context.push(AppRoutes.mapDiscovery),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.map_outlined, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 10),
+                            Text('Discover on Map',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            const Spacer(),
+                            Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 18),
                     SectionHeader(
                       title: 'Recommended',

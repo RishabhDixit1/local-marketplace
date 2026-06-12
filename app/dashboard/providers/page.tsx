@@ -28,6 +28,7 @@ import { buildPublicProfilePath } from "@/lib/profile/utils";
 import ProfileToastViewport, {
   type ProfileToast,
 } from "@/app/components/profile/ProfileToastViewport";
+import ProviderTrustPanel from "@/app/components/ProviderTrustPanel";
 
 type ProviderCard = {
   id: string;
@@ -154,6 +155,7 @@ function ProviderQuickViewModal({
   onConnect: (id: string, name: string) => void;
   connecting: boolean;
 }) {
+  const [showTrustPanel, setShowTrustPanel] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -357,6 +359,15 @@ function ProviderQuickViewModal({
                 Full Profile
               </Link>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShowTrustPanel(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Trust & Reviews
+            </button>
           </div>
 
           <button
@@ -374,6 +385,14 @@ function ProviderQuickViewModal({
           </button>
         </div>
       </div>
+
+      {showTrustPanel && (
+        <ProviderTrustPanel
+          userId={provider.id}
+          open={showTrustPanel}
+          onClose={() => setShowTrustPanel(false)}
+        />
+      )}
     </div>
   );
 }

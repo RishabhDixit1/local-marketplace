@@ -1,0 +1,56 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and sign the iOS app for App Store distribution"
+  lane :build do
+    match(type: "appstore", readonly: true)
+    build_app(
+      scheme: "Runner",
+      workspace: "ios/Runner.xcworkspace",
+      export_method: "app-store",
+      clean: true,
+    )
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :testflight do
+    match(type: "appstore", readonly: true)
+    build_app(
+      scheme: "Runner",
+      workspace: "ios/Runner.xcworkspace",
+      export_method: "app-store",
+      clean: true,
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: false,
+    )
+  end
+
+  desc "Build for ad-hoc distribution (internal testing)"
+  lane :adhoc do
+    match(type: "adhoc", readonly: true)
+    build_app(
+      scheme: "Runner",
+      workspace: "ios/Runner.xcworkspace",
+      export_method: "ad-hoc",
+      clean: true,
+    )
+  end
+
+  desc "Register a new device and update profiles"
+  lane :register_device do |options|
+    register_devices(
+      devices: {
+        options[:name] => options[:udid],
+      },
+    )
+    match(type: "adhoc", force: true)
+  end
+end
+
+platform :android do
+  desc "Build the Android app bundle"
+  lane :build do
+    gradle(task: "bundleRelease")
+  end
+end

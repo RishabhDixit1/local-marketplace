@@ -1,6 +1,11 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import { Analytics } from "@vercel/analytics/next";
+
+const CookieConsentBanner = dynamic(
+  () => import("@/app/components/CookieConsentBanner"),
+);
 import { appName, appTagline } from "@/lib/branding";
 import { AppFooter } from "@/components/AppFooter";
 import { NavigationProgress } from "@/app/components/NavigationProgress";
@@ -59,6 +64,7 @@ export default function RootLayout({
         <div className="flex-1">{children}</div>
         <AppFooter />
         <Analytics />
+        <CookieConsentBanner />
         {process.env.NODE_ENV === "production" && (
           <script
             dangerouslySetInnerHTML={{

@@ -92,9 +92,12 @@ class FeedCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               item.description,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.inkSubtle,
+                height: 1.35,
+              ),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),

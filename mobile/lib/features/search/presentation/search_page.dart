@@ -6,43 +6,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/design_system/serviq_async_state.dart';
-import '../../../core/error/app_error_mapper.dart';
-import '../../../core/services/analytics_service.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/section_card.dart';
-import '../../../features/feed/data/feed_repository.dart';
-import '../../../features/feed/domain/feed_snapshot.dart';
-import '../../../features/people/data/people_repository.dart';
-import '../../../features/people/domain/people_snapshot.dart';
-import '../../../shared/components/app_search_field.dart';
+import '../../../core/theme/design_tokens.dart';
 import '../../../shared/components/empty_state_view.dart';
-import '../../../shared/components/feed_card.dart';
-import '../../../shared/components/filter_chip_group.dart';
-import '../../../shared/components/provider_card.dart';
-import '../../../shared/components/section_header.dart';
+import '../data/search_repository.dart';
+import '../domain/search_models.dart';
 
-enum _SearchScope {
-  all,
-  providers,
-  requests,
-  services,
-  products;
+enum _SortBy {
+  distance('Nearest'),
+  rating('Top Rated'),
+  jobs('Most Jobs'),
+  response('Fastest'),
+  featured('Featured');
 
-  String get label {
-    switch (this) {
-      case _SearchScope.all:
-        return 'All';
-      case _SearchScope.providers:
-        return 'Providers';
-      case _SearchScope.requests:
-        return 'Requests';
-      case _SearchScope.services:
-        return 'Services';
-      case _SearchScope.products:
-        return 'Products';
-    }
-  }
+  final String label;
+  const _SortBy(this.label);
 }
 
 class SearchPage extends ConsumerStatefulWidget {
@@ -54,20 +31,18 @@ class SearchPage extends ConsumerStatefulWidget {
   ConsumerState<SearchPage> createState() => _SearchPageState();
 }
 
-const _searchCategories = [
-  'Electrician', 'Plumber', 'RO Repair', 'AC Repair',
-  'Geyser Repair', 'Appliance Repair', 'Carpenter',
-];
-
 class _SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _query = '';
-  _SearchScope _scope = _SearchScope.all;
-  final Set<String> _flags = <String>{};
   String? _selectedCategory;
-  List<Map<String, dynamic>> _localities = [];
-  String? _selectedLocalityId;
+  _SortBy _sortBy = _SortBy.distance;
+  double? _minRating;
+  bool _onlineOnly = false;
+  List<Map<String, dynamic>> _categories = [];
+  SearchResponse? _results;
+  bool _loading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -76,22 +51,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _searchController.text = initial;
     _query = initial;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      ref.read(analyticsServiceProvider).trackScreen('search');
-      _trackSearchSubmit(initial);
-      _loadLocalities();
+      if (!mounted) return;
+      _initialize();
     });
   }
 
-  Future<void> _loadLocalities() async {
+  Future<void> _initialize() async {
     try {
       final client = ref.read(mobileApiClientProvider);
-      final locs = await client.getLocalities(zoneType: 'society', phase: 1);
-      if (mounted) setState(() => _localities = locs);
-    } catch (e) {
-      debugPrint('[_loadLocalities] Failed to load localities: $e');
+      final cats = await client.getServiceCategories();
+      if (mounted) {
+        setState(() { _categories = cats; });
+        if (_query.isNotEmpty) _doSearch();
+      }
+    } catch (_) {
+      // Categories failed to load — search will still work
     }
   }
 
@@ -104,261 +78,55 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   void _onQueryChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 220), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
-        final nextQuery = value.trim();
-        setState(() => _query = nextQuery);
-        _trackSearchSubmit(nextQuery);
+        setState(() => _query = value.trim());
+        _doSearch();
       }
     });
   }
 
-  void _trackSearchSubmit(String query) {
-    final normalized = query.trim();
-    if (normalized.length < 2) {
+  Future<void> _doSearch() async {
+    if (_query.isEmpty && _selectedCategory == null) {
+      setState(() { _results = null; _loading = false; _error = null; });
       return;
     }
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'search_submit',
-          extras: {'query_length': normalized.length, 'scope': _scope.name},
-        );
+
+    setState(() { _loading = true; _error = null; });
+
+    try {
+      final repo = ref.read(searchRepositoryProvider);
+      final results = await repo.search(
+        category: _selectedCategory,
+        query: _query.isNotEmpty ? _query : null,
+        limit: 50,
+        offset: 0,
+        minRating: _minRating,
+        onlineOnly: _onlineOnly,
+        sortBy: _sortBy.name,
+      );
+      if (mounted) setState(() { _results = results; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
   }
 
-  void _trackSearchFilterChange() {
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'search_filter_changed',
-          extras: {'scope': _scope.name, 'filter_count': _flags.length},
-        );
-  }
-
-  void _openProvider(String providerId, {required String source}) {
-    ref
-        .read(analyticsServiceProvider)
-        .trackEvent(
-          'provider_open',
-          extras: {'source': source, 'provider_id': providerId},
-        );
-    context.push(AppRoutes.provider(providerId));
-  }
-
-  void _openListing(MobileFeedItem item) {
-    context.push(
-      AppRoutes.listingDetail(item.id, source: item.source.apiValue),
-    );
+  void _openProvider(SearchResult provider) {
+    context.push(AppRoutes.provider(provider.id));
   }
 
   @override
   Widget build(BuildContext context) {
-    final feedAsync = ref.watch(feedSnapshotProvider(MobileFeedScope.all));
-    final peopleAsync = ref.watch(peopleSnapshotProvider);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Search nearby')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: Column(
           children: [
-            AppSearchField(
-              controller: _searchController,
-              hintText: 'Service, provider, product, or request',
-              autofocus: true,
-              onChanged: _onQueryChanged,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _SearchScope.values.map((scope) {
-                return ChoiceChip(
-                  label: Text(scope.label),
-                  selected: _scope == scope,
-                  onSelected: (_) {
-                    setState(() => _scope = scope);
-                    _trackSearchFilterChange();
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 32,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _searchCategories.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
-                itemBuilder: (context, index) {
-                  final cat = _searchCategories[index];
-                  final selected = _selectedCategory == cat;
-                  return FilterChip(
-                    label: Text(cat, style: const TextStyle(fontSize: 11)),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _selectedCategory = selected ? null : cat),
-                    visualDensity: VisualDensity.compact,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadii.xl),
-                border: Border.all(color: AppColors.border),
-                color: AppColors.surface,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _selectedLocalityId,
-                  hint: const Text('All localities', style: TextStyle(fontSize: 13)),
-                  style: const TextStyle(fontSize: 13, color: AppColors.inkStrong),
-                  isExpanded: true,
-                  isDense: true,
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('All localities', style: TextStyle(fontSize: 13))),
-                    ..._localities.map((loc) => DropdownMenuItem(
-                      value: loc['id'] as String?,
-                      child: Text(loc['name'] as String? ?? '', style: const TextStyle(fontSize: 13)),
-                    )),
-                  ],
-                  onChanged: (val) => setState(() => _selectedLocalityId = val),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            FilterChipGroup<String>(
-              options: const [
-                FilterOption(value: 'verified', label: 'Verified'),
-                FilterOption(value: 'urgent', label: 'Urgent'),
-                FilterOption(value: 'open_now', label: 'Open now'),
-                FilterOption(value: 'top_rated', label: 'Top rated'),
-              ],
-              selectedValues: _flags,
-              onChanged: (next) {
-                setState(() {
-                  _flags
-                    ..clear()
-                    ..addAll(next);
-                });
-                _trackSearchFilterChange();
-              },
-            ),
-            const SizedBox(height: 16),
-            ServiqAsyncBody<MobileFeedSnapshot>(
-              value: feedAsync,
-              errorTitle: 'Unable to search',
-              errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-              onRetry: () =>
-                  ref.invalidate(feedSnapshotProvider(MobileFeedScope.all)),
-              loadingBuilder: () =>
-                  const Center(child: CircularProgressIndicator()),
-              data: (feed) => ServiqAsyncBody<MobilePeopleSnapshot>(
-                value: peopleAsync,
-                errorTitle: 'Unable to load people',
-                errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: () => ref.invalidate(peopleSnapshotProvider),
-                loadingBuilder: () =>
-                    const Center(child: CircularProgressIndicator()),
-                data: (people) {
-                  final providerResults = _filterProviders(people.people);
-                  final feedResults = _filterFeed(feed.items);
-
-                  if (providerResults.isEmpty && feedResults.isEmpty) {
-                    return const SectionCard(
-                      child: EmptyStateView(
-                        title: 'No nearby matches',
-                        message:
-                            'Try a broader term, remove a filter, or post a request so the right local people can find you.',
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (providerResults.isNotEmpty &&
-                          (_scope == _SearchScope.all ||
-                              _scope == _SearchScope.providers)) ...[
-                        SectionHeader(
-                          title: 'Providers',
-                          subtitle:
-                              '${providerResults.length} nearby people match your search.',
-                        ),
-                        const SizedBox(height: 12),
-                        ...providerResults
-                            .take(6)
-                            .map(
-                              (person) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: ProviderCard(
-                                  person: person,
-                                  onOpenProfile: () => _openProvider(
-                                    person.id,
-                                    source: 'search_provider',
-                                  ),
-                                  onMessage: () => context.push(
-                                    AppRoutes.chatDirect(
-                                      recipientId: person.id,
-                                      contextTitle: person.name,
-                                      source: 'search_provider',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        const SizedBox(height: 12),
-                      ],
-                      if (feedResults.isNotEmpty &&
-                          _scope != _SearchScope.providers) ...[
-                        SectionHeader(
-                          title: 'Listings and requests',
-                          subtitle:
-                              '${feedResults.length} results near your current network.',
-                        ),
-                        const SizedBox(height: 12),
-                        ...feedResults
-                            .take(8)
-                            .map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: FeedCard(
-                                  item: item,
-                                  primaryLabel:
-                                      item.type == MobileFeedItemType.demand
-                                      ? 'Open request'
-                                      : 'View details',
-                                  secondaryLabel: 'Contact',
-                                  onPrimaryTap: item.providerId.trim().isEmpty
-                                      ? null
-                                      : item.type == MobileFeedItemType.demand
-                                      ? () => _openProvider(
-                                          item.providerId,
-                                          source: 'search_result',
-                                        )
-                                      : () => _openListing(item),
-                                  onSecondaryTap: item.providerId.trim().isEmpty
-                                      ? null
-                                      : () => context.push(
-                                          AppRoutes.chatDirect(
-                                            recipientId: item.providerId,
-                                            contextTitle: item.title,
-                                            contextTaskId: item.id,
-                                            contextStatus: item.statusLabel,
-                                            source: 'search_result',
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ),
-                      ],
-                    ],
-                  );
-                },
-              ),
+            _buildSearchBar(),
+            Expanded(
+              child: _results == null && !_loading
+                  ? _buildInitialState()
+                  : _buildResults(),
             ),
           ],
         ),
@@ -366,87 +134,390 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  List<MobilePersonCard> _filterProviders(List<MobilePersonCard> people) {
-    return people.where((person) {
-      if (_scope != _SearchScope.all && _scope != _SearchScope.providers) {
-        return false;
-      }
-      if (_flags.contains('verified') && person.completionPercent < 80) {
-        return false;
-      }
-      if (_flags.contains('open_now') && !person.isOnline) {
-        return false;
-      }
-      if (_flags.contains('top_rated') &&
-          ((person.averageRating ?? 0) < 4.5 || person.reviewCount < 1)) {
-        return false;
-      }
-      if (_selectedCategory != null &&
-          !person.primaryTags.any((t) => t.toLowerCase() == _selectedCategory!.toLowerCase())) {
-        return false;
-      }
-      if (_selectedLocalityId != null) {
-        final locName = _localities
-            .where((l) => l['id'] == _selectedLocalityId)
-            .map((l) => (l['name'] as String? ?? '').toLowerCase())
-            .firstOrNull;
-        if (locName != null && !person.locationLabel.toLowerCase().contains(locName)) {
-          return false;
-        }
-      }
-      return person.matchesQuery(_query);
-    }).toList();
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Service, provider, or category...',
+              prefixIcon: const Icon(Icons.search, size: 18),
+              suffixIcon: _query.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onQueryChanged('');
+                      },
+                    )
+                  : null,
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.border),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            ),
+            onChanged: _onQueryChanged,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _doSearch(),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 28,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final cat in _categories)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(
+                        '${cat['name'] ?? ''}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      selected: _selectedCategory == cat['name'],
+                      onSelected: (v) {
+                        setState(() => _selectedCategory = v ? cat['name'] as String? : null);
+                        _doSearch();
+                      },
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<_SortBy>(
+                      value: _sortBy,
+                      isExpanded: true,
+                      isDense: true,
+                      style: const TextStyle(fontSize: 11, color: AppColors.inkStrong),
+                      items: _SortBy.values.map((s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(s.label, style: const TextStyle(fontSize: 11)),
+                      )).toList(),
+                      onChanged: (v) {
+                        if (v != null) { setState(() => _sortBy = v); _doSearch(); }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: () => setState(() { _onlineOnly = !_onlineOnly; _doSearch(); }),
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _onlineOnly ? AppColors.primary : AppColors.border,
+                    ),
+                    color: _onlineOnly ? AppColors.primarySoft : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.circle, size: 6, color: _onlineOnly ? AppColors.primary : AppColors.inkFaint),
+                      const SizedBox(width: 4),
+                      Text('Online', style: TextStyle(fontSize: 11, color: _onlineOnly ? AppColors.primary : AppColors.inkSubtle)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: () {
+                  _showRatingFilter();
+                },
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _minRating != null ? AppColors.primary : AppColors.border,
+                    ),
+                    color: _minRating != null ? AppColors.primarySoft : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 12, color: AppColors.warning),
+                      const SizedBox(width: 3),
+                      Text(
+                        _minRating != null ? '${_minRating!.toStringAsFixed(0)}+' : 'Rating',
+                        style: TextStyle(fontSize: 11, color: _minRating != null ? AppColors.primary : AppColors.inkSubtle),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
   }
 
-  List<MobileFeedItem> _filterFeed(List<MobileFeedItem> items) {
-    return items.where((item) {
-      if (_scope == _SearchScope.requests &&
-          item.type != MobileFeedItemType.demand) {
-        return false;
-      }
-      if (_scope == _SearchScope.services &&
-          item.type != MobileFeedItemType.service) {
-        return false;
-      }
-      if (_scope == _SearchScope.products &&
-          item.type != MobileFeedItemType.product) {
-        return false;
-      }
-      if (_flags.contains('verified') && !item.isVerified) {
-        return false;
-      }
-      if (_flags.contains('urgent') && !item.urgent) {
-        return false;
-      }
-      if (_flags.contains('top_rated') &&
-          ((item.averageRating ?? 0) < 4.5 || item.reviewCount < 1)) {
-        return false;
-      }
-      if (_selectedCategory != null &&
-          !item.category.toLowerCase().contains(_selectedCategory!.toLowerCase())) {
-        return false;
-      }
-      if (_selectedLocalityId != null) {
-        final locName = _localities
-            .where((l) => l['id'] == _selectedLocalityId)
-            .map((l) => (l['name'] as String? ?? '').toLowerCase())
-            .firstOrNull;
-        if (locName != null && !item.locationLabel.toLowerCase().contains(locName)) {
-          return false;
-        }
+  void _showRatingFilter() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 32, height: 3, decoration: BoxDecoration(color: AppColors.inkFaint, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Minimum Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ...['Any', '3+', '4+', '4.5+'].map((label) {
+              final val = label == 'Any' ? null : double.tryParse(label.replaceAll('+', ''));
+              return ListTile(
+                title: Text(label),
+                trailing: _minRating == val ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _minRating = val);
+                  _doSearch();
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search, size: 48, color: AppColors.inkFaint),
+            const SizedBox(height: 16),
+            Text('Search for providers nearby',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSubtle)),
+            const SizedBox(height: 8),
+            Text('Try "Electrician", "AC Repair", or "Plumber"',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResults() {
+      if (_loading && (_results == null || _results!.providers.isEmpty)) {
+        return const Center(child: CircularProgressIndicator());
       }
 
-      if (_query.isEmpty) {
-        return true;
-      }
-      final haystack = [
-        item.title,
-        item.description,
-        item.category,
-        item.creatorName,
-        item.locationLabel,
-      ].join(' ').toLowerCase();
-      return haystack.contains(_query.toLowerCase());
-    }).toList();
+    if (_error != null && (_results == null || _results!.providers.isEmpty)) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 40, color: AppColors.danger),
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+              const SizedBox(height: 12),
+              FilledButton.tonal(onPressed: _doSearch, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final results = _results!;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: LinearProgressIndicator(),
+          ),
+        if (results.providers.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '${results.total} provider${results.total == 1 ? '' : 's'} found',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSubtle),
+            ),
+          ),
+          ...results.providers.map((p) => _ProviderResultCard(
+            provider: p,
+            onTap: () => _openProvider(p),
+          )),
+          if (results.hasMore)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: FilledButton.tonal(
+                  onPressed: () {},
+                  child: const Text('Load more'),
+                ),
+              ),
+            ),
+        ] else if (!_loading) ...[
+          const SizedBox(height: 32),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: EmptyStateView(
+              title: 'No providers found',
+              message: 'Try a different search term or adjust your filters.',
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProviderResultCard extends StatelessWidget {
+  final SearchResult provider;
+  final VoidCallback onTap;
+
+  const _ProviderResultCard({
+    required this.provider,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: provider.avatarUrl.isNotEmpty
+                    ? NetworkImage(provider.avatarUrl)
+                    : null,
+                child: provider.avatarUrl.isEmpty
+                    ? Text(provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
+                        style: const TextStyle(fontWeight: FontWeight.bold))
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(provider.name,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        ),
+                        if (provider.verified)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Icon(Icons.verified, size: 14, color: AppColors.primary),
+                          ),
+                        if (provider.featured)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 2),
+                            child: Icon(Icons.auto_awesome, size: 12, color: AppColors.warning),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    if (provider.location.isNotEmpty)
+                      Text(provider.location,
+                          style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (provider.avgRating != null)
+                          _Tag(label: provider.ratingLabel, icon: Icons.star, color: AppColors.warning),
+                        if (provider.distanceKm != null)
+                          _Tag(label: '${provider.distanceKm!.toStringAsFixed(1)} km', icon: Icons.location_on),
+                        if (provider.isOnline)
+                          const _Tag(label: 'Online', icon: Icons.circle, color: AppColors.primary),
+                        if (provider.completedJobs > 0)
+                          _Tag(label: '${provider.completedJobs} jobs'),
+                      ],
+                    ),
+                    if (provider.priceLabel.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(provider.priceLabel,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkStrong)),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 16, color: AppColors.inkFaint),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final Color? color;
+
+  const _Tag({required this.label, this.icon, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: (color ?? AppColors.inkFaint).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: color ?? AppColors.inkSubtle),
+            const SizedBox(width: 2),
+          ],
+          Text(label, style: TextStyle(fontSize: 10, color: color ?? AppColors.inkSubtle)),
+        ],
+      ),
+    );
   }
 }

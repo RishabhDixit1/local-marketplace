@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
 import '../data/settings_repository.dart';
@@ -120,6 +122,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _buildNotificationsSection(notifAsync),
             const SizedBox(height: 16),
             _buildAppearanceSection(themeMode),
+            const SizedBox(height: 16),
+            _buildGeneralSection(),
             const SizedBox(height: 16),
             _buildAccountSection(),
           ],
@@ -241,6 +245,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGeneralSection() {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('General', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.language_rounded, color: AppColors.ink),
+            title: const Text('Language', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: const Text('English', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkSubtle),
+            onTap: () {
+              ServiqToast.show(context, message: 'More languages coming soon.', tone: ServiqToastTone.neutral);
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline_rounded, color: AppColors.ink),
+            title: const Text('App Version', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: const Text('1.0.0+1', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined, color: AppColors.ink),
+            title: const Text('Privacy Policy', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSubtle),
+            onTap: () async {
+              final uri = Uri.parse('https://serviq.app/privacy');
+              if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined, color: AppColors.ink),
+            title: const Text('Terms of Service', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.inkSubtle),
+            onTap: () async {
+              final uri = Uri.parse('https://serviq.app/terms');
+              if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+        ],
       ),
     );
   }

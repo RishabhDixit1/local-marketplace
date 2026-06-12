@@ -8,6 +8,22 @@ import '../../../core/widgets/section_card.dart';
 import '../data/availability_repository.dart';
 import '../domain/availability_models.dart';
 
+const _commonTimezones = [
+  'Asia/Kolkata',
+  'Asia/Dubai',
+  'Asia/Singapore',
+  'Asia/Hong_Kong',
+  'Asia/Tokyo',
+  'Australia/Sydney',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Moscow',
+  'US/Eastern',
+  'US/Central',
+  'US/Mountain',
+  'US/Pacific',
+];
+
 class AvailabilityPage extends ConsumerStatefulWidget {
   const AvailabilityPage({super.key});
 
@@ -20,6 +36,8 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
   bool _saving = false;
   bool _loaded = false;
   String? _message;
+  String _timezone = 'Asia/Kolkata';
+  List<AvailabilityException> _exceptions = [];
 
   @override
   void didChangeDependencies() {
@@ -32,7 +50,10 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
 
   Future<void> _initFromProvider() async {
     final slots = await ref.read(availabilitySlotsProvider.future);
+    final exceptions = await ref.read(availabilityExceptionsProvider.future);
     if (!mounted) return;
+    _exceptions = exceptions;
+    if (slots.isNotEmpty) _timezone = slots.first.timezone;
     _groupByDay(slots);
   }
 
@@ -62,10 +83,10 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
       for (final ds in _slots) {
         if (!ds.enabled) continue;
         for (final slot in ds.slots) {
-          allSlots.add(slot.copyWith(isActive: true));
+          allSlots.add(slot.copyWith(isActive: true, timezone: _timezone));
         }
       }
-      await ref.read(availabilityRepositoryProvider).update(allSlots);
+      await ref.read(availabilityRepositoryProvider).update(allSlots, timezone: _timezone);
       ref.invalidate(availabilitySlotsProvider);
       if (mounted) setState(() => _message = 'Availability saved.');
     } on ApiException catch (e) {
@@ -113,6 +134,58 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
     });
   }
 
+  Future<void> _addException() async {
+    final datePicked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (datePicked == null || !mounted) return;
+
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Reason (optional)'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'e.g. Holiday, Personal day'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Add')),
+          ],
+        );
+      },
+    );
+    if (reason == null || !mounted) return;
+
+    try {
+      final dateStr = '${datePicked.year.toString().padLeft(4, '0')}-${datePicked.month.toString().padLeft(2, '0')}-${datePicked.day.toString().padLeft(2, '0')}';
+      final updated = await ref.read(availabilityRepositoryProvider).addException(
+        AvailabilityException(exceptionDate: dateStr, isAvailable: false, reason: reason.isEmpty ? null : reason),
+      );
+      if (mounted) setState(() => _exceptions = updated);
+      ref.invalidate(availabilityExceptionsProvider);
+    } catch (e) {
+      if (mounted) setState(() => _message = 'Failed to add day off.');
+    }
+  }
+
+  Future<void> _removeException(String date) async {
+    try {
+      await ref.read(availabilityRepositoryProvider).removeException(date);
+      if (mounted) {
+        setState(() => _exceptions.removeWhere((e) => e.exceptionDate == date));
+      }
+      ref.invalidate(availabilityExceptionsProvider);
+    } catch (e) {
+      if (mounted) setState(() => _message = 'Failed to remove day off.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final asyncSlots = ref.watch(availabilitySlotsProvider);
@@ -137,6 +210,10 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
             const SizedBox(height: 16),
             ...List.generate(7, (i) => _buildDayRow(i)),
             const SizedBox(height: 16),
+            _buildTimezoneSelector(),
+            const SizedBox(height: 12),
+            _buildExceptionsSection(),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -160,6 +237,104 @@ class _AvailabilityPageState extends ConsumerState<AvailabilityPage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimezoneSelector() {
+    return SectionCard(
+      child: Row(
+        children: [
+          const Icon(Icons.access_time, size: 16, color: AppColors.inkSubtle),
+          const SizedBox(width: 8),
+          Text('Timezone', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _timezone,
+                isExpanded: true,
+                items: _commonTimezones.map((tz) => DropdownMenuItem(
+                  value: tz,
+                  child: Text(tz.replaceAll('_', ' '), style: const TextStyle(fontSize: 12)),
+                )).toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _timezone = v);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExceptionsSection() {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.block, size: 16, color: AppColors.danger),
+              const SizedBox(width: 6),
+              Text('Days off / exceptions',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              InkWell(
+                onTap: _addException,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.dangerSoft,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 12, color: AppColors.danger),
+                      SizedBox(width: 3),
+                      Text('Block', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.danger)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Mark specific dates when you are unavailable.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint, fontSize: 11)),
+          if (_exceptions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ..._exceptions.map((ex) => Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.dangerSoft,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.block, size: 12, color: AppColors.danger),
+                  const SizedBox(width: 6),
+                  Text(ex.exceptionDate,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                  if (ex.reason != null && ex.reason!.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    Text('— ${ex.reason}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.danger)),
+                  ],
+                  const Spacer(),
+                  InkWell(
+                    onTap: () => _removeException(ex.exceptionDate),
+                    child: const Icon(Icons.close, size: 14, color: AppColors.danger),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ],
       ),
     );
   }

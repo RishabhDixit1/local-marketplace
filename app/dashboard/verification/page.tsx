@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, CheckCircle2, FileUp, Loader2, ShieldCheck, Upload, X } from "lucide-react";
+import { BadgeCheck, CheckCircle2, FileUp, Loader2, Scan, ShieldCheck, Upload, X } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
@@ -220,6 +220,19 @@ export default function VerificationPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-bold text-slate-900 mb-3">
+          <span className="inline-flex items-center gap-1.5">
+            <Scan className="h-4 w-4 text-[var(--brand-700)]" />
+            Instant KYC (Aadhaar / PAN)
+          </span>
+        </h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Verify instantly via government databases — no manual review needed.
+        </p>
+        <InstantKycForm />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-sm font-bold text-slate-900 mb-3">Document History</h2>
         {loading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
@@ -248,6 +261,99 @@ export default function VerificationPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const KYC_DOC_TYPES = [
+  { value: "aadhaar", label: "Aadhaar", placeholder: "12-digit Aadhaar number", pattern: "d{12}" },
+  { value: "pan", label: "PAN", placeholder: "10-character PAN (AAAAA9999A)", pattern: "[A-Z]{5}[0-9]{4}[A-Z]" },
+] as const;
+
+function InstantKycForm() {
+  const [docType, setDocType] = useState<string>("aadhaar");
+  const [docNumber, setDocNumber] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const handleVerify = async () => {
+    setResult(null);
+    setVerifying(true);
+    try {
+      const data = await fetchAuthedJson<{ ok: boolean; message: string }>(
+        supabase, "/api/verification/kyc", {
+          method: "POST",
+          body: JSON.stringify({
+            documentType: docType,
+            documentNumber: docNumber.replace(/\s+/g, ""),
+            fullName: fullName.trim() || undefined,
+          }),
+        },
+      );
+      setResult(data ?? { ok: false, message: "No response from server." });
+    } catch {
+      setResult({ ok: false, message: "Network error. Please try again." });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const selected = KYC_DOC_TYPES.find((t) => t.value === docType) ?? KYC_DOC_TYPES[0];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        {KYC_DOC_TYPES.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => { setDocType(t.value); setResult(null); }}
+            className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+              docType === t.value
+                ? "border-[var(--brand-400)] bg-[var(--brand-50)] text-[var(--brand-800)]"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <input
+        type="text"
+        value={docNumber}
+        onChange={(e) => setDocNumber(e.target.value)}
+        placeholder={selected.placeholder}
+        maxLength={docType === "aadhaar" ? 14 : 10}
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
+      />
+
+      <input
+        type="text"
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        placeholder="Full name (optional, for name matching)"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
+      />
+
+      <button
+        type="button"
+        onClick={handleVerify}
+        disabled={verifying || docNumber.replace(/\s+/g, "").length < (docType === "aadhaar" ? 12 : 10)}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
+      >
+        {verifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Scan className="h-3.5 w-3.5" />}
+        {verifying ? "Verifying..." : "Verify Instantly"}
+      </button>
+
+      {result && (
+        <div className={`rounded-xl px-3 py-2 text-xs ${
+          result.ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
+        }`}>
+          {result.message}
+        </div>
+      )}
     </div>
   );
 }

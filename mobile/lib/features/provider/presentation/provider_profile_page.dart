@@ -24,6 +24,8 @@ import '../../../shared/components/section_header.dart';
 import '../../../shared/components/sticky_bottom_cta.dart';
 import '../../../shared/components/trust_badge.dart';
 import '../../profile/data/profile_repository.dart';
+import '../../reviews/data/review_repository.dart';
+import '../../reviews/presentation/review_card.dart';
 
 class ProviderProfilePage extends ConsumerWidget {
   const ProviderProfilePage({super.key, required this.providerId});
@@ -979,53 +981,53 @@ class _TrustProofCard extends StatelessWidget {
   }
 }
 
-class _ReviewsCard extends StatelessWidget {
+class _ReviewsCard extends ConsumerWidget {
   const _ReviewsCard({required this.provider});
 
   final MobilePersonCard provider;
 
   @override
-  Widget build(BuildContext context) {
-    final hasReviews =
-        provider.reviewCount > 0 && provider.averageRating != null;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncReviews = ref.watch(providerReviewsProvider(provider.id));
+
     return SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(
             title: 'Reviews',
-            subtitle: hasReviews
-                ? '${provider.reviewCount} local review${provider.reviewCount == 1 ? '' : 's'} summarized for quick trust.'
+            subtitle: provider.reviewCount > 0
+                ? '${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}'
                 : 'Review history will grow as marketplace work completes.',
           ),
           const SizedBox(height: 14),
-          if (hasReviews)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.warningSoft,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star_rounded, color: AppColors.warning),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '${provider.averageRating?.toStringAsFixed(1) ?? '—'} average from ${provider.reviewCount} review${provider.reviewCount == 1 ? '' : 's'}.',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ],
+          if (asyncReviews.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (asyncReviews.hasError)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Unable to load reviews.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
               ),
             )
-          else
+          else if (asyncReviews.hasValue && asyncReviews.value!.isEmpty)
             const EmptyStateView(
               icon: Icons.rate_review_outlined,
               title: 'No reviews yet',
-              message:
-                  'Ask for scope, timing, and quote details in chat before booking.',
+              message: 'Ask for scope, timing, and quote details in chat before booking.',
+            )
+          else
+            Column(
+              children: [
+                ...?asyncReviews.value?.map((review) => ReviewCard(
+                      review: review,
+                      userId: provider.id,
+                    )),
+              ],
             ),
         ],
       ),

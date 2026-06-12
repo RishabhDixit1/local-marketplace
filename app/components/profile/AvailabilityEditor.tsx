@@ -1,10 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Clock, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, CalendarX, CheckCircle, Clock, Loader2, Plus, Save, Trash2 } from "lucide-react";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+const COMMON_TIMEZONES = [
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Asia/Hong_Kong",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "Europe/London",
+  "Europe/Berlin",
+  "Europe/Moscow",
+  "US/Eastern",
+  "US/Central",
+  "US/Mountain",
+  "US/Pacific",
+];
 
 type Slot = {
   day_of_week: number;
@@ -12,17 +28,30 @@ type Slot = {
   end_time: string;
 };
 
+type DateException = {
+  exception_date: string;
+  is_available: boolean;
+  reason?: string | null;
+};
+
 export default function AvailabilityEditor() {
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [timezone, setTimezone] = useState("Asia/Kolkata");
+  const [exceptions, setExceptions] = useState<DateException[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [exceptionDate, setExceptionDate] = useState("");
+  const [exceptionReason, setExceptionReason] = useState("");
 
   const fetchSlots = useCallback(async () => {
     try {
       const res = await fetch("/api/provider/availability");
       const json = await res.json();
-      if (json.ok) setSlots(json.slots);
+      if (json.ok) {
+        setSlots(json.slots);
+        if (json.timezone) setTimezone(json.timezone);
+      }
     } catch {
       setMessage("Failed to load availability.");
     } finally {
@@ -30,7 +59,18 @@ export default function AvailabilityEditor() {
     }
   }, []);
 
-  useEffect(() => { void fetchSlots(); }, [fetchSlots]);
+  const fetchExceptions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/provider/availability/exceptions");
+      const json = await res.json();
+      if (json.ok) setExceptions(json.exceptions);
+    } catch { /* best-effort */ }
+  }, []);
+
+  useEffect(() => {
+    void fetchSlots();
+    void fetchExceptions();
+  }, [fetchSlots, fetchExceptions]);
 
   const addSlot = (day: number) => {
     setSlots((prev) => [...prev, { day_of_week: day, start_time: "09:00", end_time: "17:00" }]);
@@ -55,7 +95,7 @@ export default function AvailabilityEditor() {
       const res = await fetch("/api/provider/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slots),
+        body: JSON.stringify({ slots, timezone }),
       });
       const json = await res.json();
       if (json.ok) {
@@ -68,6 +108,37 @@ export default function AvailabilityEditor() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addException = async () => {
+    if (!exceptionDate) return;
+    try {
+      const res = await fetch("/api/provider/availability/exceptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exception_date: exceptionDate,
+          is_available: false,
+          reason: exceptionReason.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setExceptions(json.exceptions);
+        setExceptionDate("");
+        setExceptionReason("");
+      }
+    } catch { /* best-effort */ }
+  };
+
+  const removeException = async (date: string) => {
+    try {
+      const res = await fetch(`/api/provider/availability/exceptions?date=${date}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.ok) {
+        setExceptions((prev) => prev.filter((e) => e.exception_date !== date));
+      }
+    } catch { /* best-effort */ }
   };
 
   if (loading) {
@@ -157,6 +228,76 @@ export default function AvailabilityEditor() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Timezone selector */}
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+        <Clock className="h-4 w-4 shrink-0 text-slate-400" />
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-blue-400"
+        >
+          {COMMON_TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>{tz.replace("_", " ")}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Date exceptions */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <div className="flex items-center gap-2">
+          <CalendarX className="h-4 w-4 text-slate-500" />
+          <h3 className="text-sm font-semibold text-slate-900">Days off / exceptions</h3>
+        </div>
+        <p className="mt-1 text-xs text-slate-400">Mark specific dates when you&apos;re unavailable.</p>
+
+        {exceptions.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {exceptions.map((ex) => (
+              <div key={ex.exception_date} className="flex items-center justify-between rounded-lg bg-rose-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Ban className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                  <span className="text-xs font-medium text-rose-700">{ex.exception_date}</span>
+                  {ex.reason && <span className="text-xs text-rose-500">— {ex.reason}</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void removeException(ex.exception_date)}
+                  className="rounded p-1 text-rose-400 hover:bg-rose-100 hover:text-rose-700 transition"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="date"
+            value={exceptionDate}
+            onChange={(e) => setExceptionDate(e.target.value)}
+            className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-blue-400"
+            min={new Date().toISOString().slice(0, 10)}
+          />
+          <input
+            type="text"
+            value={exceptionReason}
+            onChange={(e) => setExceptionReason(e.target.value)}
+            placeholder="Reason (optional)"
+            className="hidden sm:block flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-blue-400"
+          />
+          <button
+            type="button"
+            onClick={() => void addException()}
+            disabled={!exceptionDate}
+            className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 disabled:opacity-50"
+          >
+            <Plus className="h-3 w-3" />
+            Block
+          </button>
+        </div>
       </div>
 
       {message && (

@@ -31,17 +31,32 @@ async function getHandler(request: Request) {
     .eq("provider_id", userId)
     .order("created_at", { ascending: false });
 
-  // Get total available earnings (sum of provider_payout_paise from completed orders minus already paid out)
+  // Get total available earnings (sum of provider_payout_paise from completed/closed orders)
   const { data: orders } = await db
     .from("orders")
     .select("provider_payout_paise, metadata")
     .eq("provider_id", userId)
     .in("status", ["completed", "closed"]);
 
-  const totalEarnedPaise = (orders ?? []).reduce(
-    (sum, o) => sum + (typeof o.provider_payout_paise === "number" ? o.provider_payout_paise : 0),
-    0
-  );
+  const now = Date.now();
+
+  const totalEarnedPaise = (orders ?? []).reduce((sum, o) => {
+    const meta =
+      typeof o.metadata === "object" && o.metadata !== null
+        ? (o.metadata as Record<string, unknown>)
+        : {};
+    const fundsStatus = String(meta.funds_status ?? "");
+
+    // Skip orders where funds are still held and not yet due for release
+    if (fundsStatus === "held") {
+      const heldUntil = meta.funds_held_until
+        ? new Date(String(meta.funds_held_until)).getTime()
+        : Infinity;
+      if (heldUntil > now) return sum;
+    }
+
+    return sum + (typeof o.provider_payout_paise === "number" ? o.provider_payout_paise : 0);
+  }, 0);
 
   const { data: paidPayouts } = await db
     .from("provider_payouts")

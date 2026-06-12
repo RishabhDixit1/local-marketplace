@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, BadgeCheck, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, XCircle } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, BadgeCheck, CheckCircle2, Flag, Gavel, Loader2, Search, Shield, TrendingUp, Users, ShoppingCart, XCircle } from "lucide-react";
 
 type AdminStats = {
   totalUsers: number;
@@ -14,6 +14,13 @@ type AdminStats = {
   averageRating: number | null;
   totalHelpRequests: number;
   averageTrustScore: number | null;
+};
+
+type DayBucket = { date: string; count: number };
+
+type TrendData = {
+  ordersByDay: DayBucket[];
+  registrationsByDay: DayBucket[];
 };
 
 type ReportRow = {
@@ -71,12 +78,14 @@ type SystemHealth = {
   summary: { total: number; present: number; missing: number };
 };
 
-type TabId = "overview" | "reports" | "users" | "system" | "disputes" | "verifications" | "payouts";
+type TabId = "overview" | "reports" | "users" | "providers" | "orders" | "system" | "disputes" | "verifications" | "payouts";
 
 const TAB_LABELS: Record<TabId, string> = {
   overview: "Overview",
   reports: "Reports",
   users: "Users",
+  providers: "Providers",
+  orders: "Orders",
   system: "System",
   disputes: "Disputes",
   verifications: "Verifications",
@@ -99,12 +108,16 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [trend, setTrend] = useState<TrendData | null>(null);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const [providerRows, setProviderRows] = useState<Record<string, unknown>[]>([]);
+  const [providerQuery, setProviderQuery] = useState("");
   const [users, setUsers] = useState<UserRow[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [verifications, setVerifications] = useState<Record<string, unknown>[]>([]);
 
+  const [orders, setOrders] = useState<Record<string, unknown>[]>([]);
   const [userQuery, setUserQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -123,8 +136,11 @@ export default function AdminPage() {
   }, []);
 
   const fetchStats = useCallback(async () => {
-    const data = await tryFetch<{ stats: AdminStats }>("/api/admin/stats");
-    if (data) setStats(data.stats);
+    const data = await tryFetch<{ stats: AdminStats; trend?: TrendData }>("/api/admin/stats");
+    if (data) {
+      setStats(data.stats);
+      if (data.trend) setTrend(data.trend);
+    }
   }, []);
 
   const fetchReports = useCallback(async () => {
@@ -143,9 +159,22 @@ export default function AdminPage() {
     if (data) setUsers(data.users);
   }, []);
 
+  const fetchProviders = useCallback(async (q: string = "") => {
+    const url = q.trim()
+      ? `/api/admin/users?role=provider&q=${encodeURIComponent(q.trim())}&limit=50`
+      : "/api/admin/users?role=provider&limit=50";
+    const data = await tryFetch<{ users: Record<string, unknown>[] }>(url);
+    if (data) setProviderRows(data.users);
+  }, []);
+
   const fetchVerifications = useCallback(async (status: string = "pending") => {
     const data = await tryFetch<{ verifications: Record<string, unknown>[] }>(`/api/admin/verifications?status=${status}`);
     if (data) setVerifications(data.verifications);
+  }, []);
+
+  const fetchOrders = useCallback(async (status: string = "") => {
+    const data = await tryFetch<{ orders: Record<string, unknown>[] }>(`/api/admin/orders?status=${status}&limit=50`);
+    if (data) setOrders(data.orders);
   }, []);
 
   const fetchSystem = useCallback(async () => {
@@ -157,10 +186,12 @@ export default function AdminPage() {
     if (!isAdmin) return;
     void fetchStats();
     void fetchReports();
+    void fetchOrders();
+    void fetchProviders();
     void fetchDisputes();
     void fetchSystem();
     void fetchVerifications();
-  }, [isAdmin, fetchStats, fetchReports, fetchDisputes, fetchSystem, fetchVerifications]);
+  }, [isAdmin, fetchStats, fetchReports, fetchOrders, fetchProviders, fetchDisputes, fetchSystem, fetchVerifications]);
 
   const handleDismiss = async (id: string) => {
     setBusyId(id);
@@ -250,6 +281,28 @@ export default function AdminPage() {
     }
   };
 
+  const handleRefundOrder = async (id: string) => {
+    setBusyId(`refund_${id}`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "refund" }),
+      });
+      const json = await res.json();
+      if (json?.ok) {
+        setOrders((prev) => prev.filter((o) => o.id !== id));
+      } else {
+        setError(json?.message || "Failed to refund.");
+      }
+    } catch {
+      setError("Failed to refund order.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (isAdmin === null) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -310,17 +363,36 @@ export default function AdminPage() {
       ) : null}
 
       {activeTab === "overview" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Total users" value={stats?.totalUsers ?? "—"} />
-          <StatCard label="Providers" value={stats?.totalProviders ?? "—"} />
-          <StatCard label="Seekers" value={stats?.totalSeekers ?? "—"} />
-          <StatCard label="Total orders" value={stats?.totalOrders ?? "—"} />
-          <StatCard label="Completed orders" value={stats?.completedOrders ?? "—"} />
-          <StatCard label="Cancelled orders" value={stats?.cancelledOrders ?? "—"} />
-          <StatCard label="Reviews" value={stats?.totalReviews ?? "—"} />
-          <StatCard label="Avg rating" value={stats?.averageRating != null ? `${stats.averageRating} / 5` : "—"} />
-          <StatCard label="Help requests" value={stats?.totalHelpRequests ?? "—"} />
-          <StatCard label="Avg trust score" value={stats?.averageTrustScore != null ? `${stats.averageTrustScore}` : "—"} />
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard label="Total users" value={stats?.totalUsers ?? "—"} icon={<Users className="h-4 w-4" />} />
+            <StatCard label="Providers" value={stats?.totalProviders ?? "—"} />
+            <StatCard label="Seekers" value={stats?.totalSeekers ?? "—"} />
+            <StatCard label="Total orders" value={stats?.totalOrders ?? "—"} icon={<ShoppingCart className="h-4 w-4" />} />
+            <StatCard label="Completed orders" value={stats?.completedOrders ?? "—"} />
+            <StatCard label="Cancelled orders" value={stats?.cancelledOrders ?? "—"} />
+            <StatCard label="Reviews" value={stats?.totalReviews ?? "—"} />
+            <StatCard label="Avg rating" value={stats?.averageRating != null ? `${stats.averageRating} / 5` : "—"} />
+            <StatCard label="Help requests" value={stats?.totalHelpRequests ?? "—"} />
+            <StatCard label="Avg trust score" value={stats?.averageTrustScore != null ? `${stats.averageTrustScore}` : "—"} />
+          </div>
+
+          {trend ? (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <TrendChart
+                title="Orders (30 days)"
+                data={trend.ordersByDay}
+                icon={<ShoppingCart className="h-4 w-4 text-blue-600" />}
+                barColor="bg-blue-500"
+              />
+              <TrendChart
+                title="Registrations (30 days)"
+                data={trend.registrationsByDay}
+                icon={<Users className="h-4 w-4 text-emerald-600" />}
+                barColor="bg-emerald-500"
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -455,6 +527,66 @@ export default function AdminPage() {
               </table>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {activeTab === "providers" ? (
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={providerQuery}
+              onChange={(e) => {
+                setProviderQuery(e.target.value);
+                void fetchProviders(e.target.value);
+              }}
+              placeholder="Search providers by name, email, or phone..."
+              className="w-full rounded-2xl border border-slate-200 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2]"
+            />
+          </div>
+
+          {providerRows.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-4 py-3 font-semibold text-slate-700">Name</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Email</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Location</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Verification</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Trust</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {providerRows.map((p) => (
+                    <tr key={p.id as string} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {(p.full_name as string) || (p.name as string) || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{(p.email as string) || "—"}</td>
+                      <td className="px-4 py-3 text-slate-600">{(p.location as string) || "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          (p.verification_status as string) === "verified"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {(p.verification_status as string) || "unverified"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{p.trust_score != null ? `${p.trust_score}` : "—"}</td>
+                      <td className="px-4 py-3 text-slate-500">{formatDate(p.created_at as string | null)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+              {providerQuery.trim() ? "No providers match your search." : "No providers found."}
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -605,6 +737,95 @@ export default function AdminPage() {
         </div>
       ) : null}
 
+      {activeTab === "orders" ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-600">
+              {orders.length > 0 ? `${orders.length} recent orders` : "No orders found."}
+            </span>
+            <select
+              onChange={(e) => { void fetchOrders(e.target.value); }}
+              className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
+            >
+              <option value="">All statuses</option>
+              <option value="new_lead">New lead</option>
+              <option value="quoted">Quoted</option>
+              <option value="accepted">Accepted</option>
+              <option value="in_progress">In progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          {orders.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+              No orders to display.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-4 py-3 font-semibold text-slate-700">Order ID</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Price</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Payment</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => {
+                    const meta = (order.metadata as Record<string, unknown>) ?? {};
+                    const paymentStatus = (meta.payment_status as string) ?? "—";
+                    return (
+                      <tr key={order.id as string} className="border-b border-slate-100 last:border-0">
+                        <td className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-slate-900">
+                          {order.id as string}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            order.status === "completed" ? "bg-emerald-100 text-emerald-800" :
+                            order.status === "cancelled" ? "bg-rose-100 text-rose-800" :
+                            order.status === "in_progress" ? "bg-blue-100 text-blue-800" :
+                            "bg-slate-100 text-slate-800"
+                          }`}>
+                            {(order.status as string)?.replace(/_/g, " ") ?? "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-900">₹{Number(order.price ?? 0).toFixed(0)}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">
+                          <span className={`font-medium ${
+                            paymentStatus === "paid" ? "text-emerald-700" :
+                            paymentStatus === "refunded" ? "text-rose-700" :
+                            "text-slate-500"
+                          }`}>{paymentStatus}</span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500">{formatDate(order.created_at as string | null)}</td>
+                        <td className="px-4 py-3">
+                          {(order.status as string) === "completed" && paymentStatus === "paid" ? (
+                            <button
+                              type="button"
+                              disabled={busyId === `refund_${order.id}`}
+                              onClick={() => void handleRefundOrder(order.id as string)}
+                              className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                            >
+                              {busyId === `refund_${order.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                              Refund
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {activeTab === "payouts" ? (
         <AdminPayoutsTab />
       ) : null}
@@ -668,11 +889,44 @@ export default function AdminPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+        {icon ? <span className="opacity-60">{icon}</span> : null}
+      </div>
       <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function TrendChart({ title, data, icon, barColor }: { title: string; data: DayBucket[]; icon: React.ReactNode; barColor: string }) {
+  const maxVal = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center gap-2 mb-4">
+        {icon}
+        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+        <span className="ml-auto text-xs text-slate-400">{data.length} days</span>
+      </div>
+      <div className="flex items-end gap-[2px] h-24">
+        {data.map((d) => (
+          <div key={d.date} className="flex-1 flex flex-col items-center justify-end h-full">
+            <div
+              className={`w-full rounded-t ${barColor} transition-all duration-300`}
+              style={{ height: `${Math.max((d.count / maxVal) * 100, 1)}%` }}
+              title={`${d.date}: ${d.count}`}
+            />
+          </div>
+        ))}
+      </div>
+      {data.length > 0 ? (
+        <div className="flex justify-between mt-2 text-[10px] text-slate-400">
+          <span>{data[0]?.date}</span>
+          <span>{data[data.length - 1]?.date}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -691,6 +945,8 @@ function AdminPayoutsTab() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("pending");
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchResult, setBatchResult] = useState<string | null>(null);
 
   const fetchPayouts = useCallback(async (status: string) => {
     setLoading(true);
@@ -744,7 +1000,37 @@ function AdminPayoutsTab() {
           <option value="cancelled">Cancelled</option>
         </select>
         <span className="text-sm text-slate-500">{payouts.length} payout{payouts.length !== 1 ? "s" : ""}</span>
+        <button
+          type="button"
+          disabled={batchRunning}
+          onClick={async () => {
+            setBatchRunning(true);
+            setBatchResult(null);
+            try {
+              const res = await fetch("/api/admin/batch-payouts", { method: "POST" });
+              const json = await res.json();
+              if (json.ok) {
+                setBatchResult(`Processed: ${json.processed}, Failed: ${json.failed}`);
+                void fetchPayouts(filterStatus);
+              } else {
+                setBatchResult(json.message || "Batch failed");
+              }
+            } catch {
+              setBatchResult("Network error");
+            } finally {
+              setBatchRunning(false);
+            }
+          }}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+        >
+          {batchRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+          Process All Pending Payouts
+        </button>
       </div>
+
+      {batchResult ? (
+        <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">{batchResult}</div>
+      ) : null}
 
       {loading ? (
         <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>

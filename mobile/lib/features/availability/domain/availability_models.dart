@@ -5,6 +5,7 @@ class AvailabilitySlot {
     required this.startTime,
     required this.endTime,
     this.isActive = true,
+    this.timezone = 'Asia/Kolkata',
   });
 
   factory AvailabilitySlot.fromJson(Map<String, dynamic> json) {
@@ -14,6 +15,7 @@ class AvailabilitySlot {
       startTime: _readString(json['start_time']),
       endTime: _readString(json['end_time']),
       isActive: json['is_active'] != false,
+      timezone: _readString(json['timezone'], fallback: 'Asia/Kolkata'),
     );
   }
 
@@ -22,6 +24,7 @@ class AvailabilitySlot {
   final String startTime;
   final String endTime;
   final bool isActive;
+  final String timezone;
 
   Map<String, dynamic> toPayload() => {
     'day_of_week': dayOfWeek,
@@ -36,6 +39,7 @@ class AvailabilitySlot {
     String? startTime,
     String? endTime,
     bool? isActive,
+    String? timezone,
   }) {
     return AvailabilitySlot(
       id: id,
@@ -43,8 +47,35 @@ class AvailabilitySlot {
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       isActive: isActive ?? this.isActive,
+      timezone: timezone ?? this.timezone,
     );
   }
+}
+
+class AvailabilityException {
+  const AvailabilityException({
+    required this.exceptionDate,
+    this.isAvailable = false,
+    this.reason,
+  });
+
+  factory AvailabilityException.fromJson(Map<String, dynamic> json) {
+    return AvailabilityException(
+      exceptionDate: _readString(json['exception_date']),
+      isAvailable: json['is_available'] != false,
+      reason: json['reason'] as String?,
+    );
+  }
+
+  final String exceptionDate;
+  final bool isAvailable;
+  final String? reason;
+
+  Map<String, dynamic> toPayload() => {
+    'exception_date': exceptionDate,
+    'is_available': isAvailable,
+    'reason': reason,
+  };
 }
 
 String _readString(Object? value, {String fallback = ''}) {

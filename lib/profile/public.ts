@@ -40,6 +40,8 @@ type ReviewRow = {
   rating: number | null;
   comment: string | null;
   created_at: string | null;
+  reviewer_id?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type OrderRow = {
@@ -100,6 +102,9 @@ export type PublicProfileReview = {
   rating: number;
   comment: string | null;
   createdAt: string | null;
+  reviewerId?: string;
+  isVerifiedPurchase?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 export type PublicProfilePost = {
@@ -606,7 +611,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
       .limit(6),
     supabase
       .from("reviews")
-      .select("rating,comment,created_at", { count: "exact" })
+      .select("rating,comment,created_at,reviewer_id,metadata", { count: "exact" })
       .eq("provider_id", profile.id)
       .limit(6),
     loadProfilePosts(supabase, profile.id),
@@ -651,24 +656,43 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
   const products = ((productsResult.data as ProductRow[] | null) || [])
     .map((row) => normalizeProductListing(row))
     .filter((row): row is PublicProfileListing => !!row);
-  const reviewRows = ((reviewsResult.data as ReviewRow[] | null) || []).map((row) => ({
+  const reviewRows = ((reviewsResult.data as ReviewRow[] | null) || []);
+  const reviewerIds = [...new Set(reviewRows.map((r) => r.reviewer_id).filter(Boolean))];
+  let verifiedReviewers = new Set<string>();
+  if (reviewerIds.length > 0 && profile.id) {
+    const { data: verifiedOrders } = await supabase
+      .from("orders")
+      .select("consumer_id, provider_id, status")
+      .eq("provider_id", profile.id)
+      .eq("status", "completed")
+      .in("consumer_id", reviewerIds);
+    if (verifiedOrders) {
+      verifiedReviewers = new Set(
+        (verifiedOrders as Array<{ consumer_id: string }>).map((o) => o.consumer_id)
+      );
+    }
+  }
+  const mappedReviewRows = reviewRows.map((row) => ({
     rating: typeof row.rating === "number" && Number.isFinite(row.rating) ? row.rating : 0,
     comment: row.comment?.trim() || null,
     createdAt: row.created_at || null,
+    reviewerId: row.reviewer_id || undefined,
+    isVerifiedPurchase: row.reviewer_id ? verifiedReviewers.has(row.reviewer_id) : false,
+    metadata: (row.metadata ?? {}) as Record<string, unknown>,
   }));
   const helpRequestRows = (helpRequestsResult.data as HelpRequestRow[] | null) || [];
   const usedHelpRequestIds = new Set<string>();
   const postRows = (postsResult.data || [])
     .map((row) => normalizePublicPost({ row, helpRequests: helpRequestRows, usedHelpRequestIds }))
     .filter((row): row is PublicProfilePost => !!row);
-  const ratingValues = reviewRows.map((row) => row.rating).filter((rating) => rating > 0);
+  const ratingValues = mappedReviewRows.map((row) => row.rating).filter((rating) => rating > 0);
   const averageRating = ratingValues.length
     ? Number((ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length).toFixed(1))
     : 0;
   const activeOrders = ((ordersResult.data as OrderRow[] | null) || []).filter((row) => !isFinalOrderStatus(row.status)).length;
   const serviceCount = servicesResult.count || 0;
   const productCount = productsResult.count || 0;
-  const reviewCount = reviewsResult.count || reviewRows.length;
+  const reviewCount = reviewsResult.count || mappedReviewRows.length;
   const postsCount = postsResult.count || 0;
   const topics = normalizeTopics([...(profile.interests || []), ...(profile.services || [])]);
 
@@ -785,7 +809,7 @@ export async function loadPublicProfileBySlug(slug: string): Promise<PublicProfi
     products,
     offerings: [...services, ...products],
     posts: postRows,
-    reviews: reviewRows,
+    reviews: mappedReviewRows,
     averageRating,
     reviewCount,
     serviceCount,

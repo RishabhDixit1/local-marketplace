@@ -523,7 +523,6 @@ const buildHelpRequestContext = async (
   userId: string
 ): Promise<QuoteContextSuccess | QuoteMutationError> => {
   const consumerId = pickString(helpRequest.requester_id);
-  const providerId = pickString(helpRequest.accepted_provider_id);
 
   if (!consumerId) {
     return createMutationError("This request is missing the customer record.", {
@@ -531,13 +530,30 @@ const buildHelpRequestContext = async (
     });
   }
 
-  if (userId !== consumerId && (!providerId || userId !== providerId)) {
+  const isConsumer = userId === consumerId;
+
+  let isMatchedProvider = false;
+  if (!isConsumer) {
+    const { data: match } = await db
+      .from("help_request_matches")
+      .select("status")
+      .eq("help_request_id", helpRequest.id)
+      .eq("provider_id", userId)
+      .in("status", ["interested", "accepted"])
+      .maybeSingle();
+
+    isMatchedProvider = match !== null;
+  }
+
+  if (!isConsumer && !isMatchedProvider) {
     return createMutationError("You do not have access to this quote workspace.", {
       forbidden: true,
     });
   }
 
-  const actorRole = providerId && userId === providerId ? "provider" : "consumer";
+  const actorRole = isConsumer ? "consumer" : "provider";
+  const acceptedProviderId = pickString(helpRequest.accepted_provider_id);
+  const providerId = actorRole === "provider" ? userId : acceptedProviderId;
   const names = await getCounterpartyName(db, [consumerId, providerId || ""]);
   const counterpartyName =
     actorRole === "provider"
@@ -557,11 +573,11 @@ const buildHelpRequestContext = async (
       consumerId,
       providerId,
       actorRole,
-      canEdit: actorRole === "provider" && Boolean(providerId) && normalizeOrderStatus(helpRequest.status) === "accepted",
-      taskTitle: trim(helpRequest.title) || "Accepted request",
+      canEdit: actorRole === "provider" && helpRequest.status === "open",
+      taskTitle: trim(helpRequest.title) || "Service request",
       taskDescription: trim(helpRequest.details) || "Review the request details and prepare a quote.",
       locationLabel: trim(helpRequest.location_label) || "Nearby",
-      currentStatus: helpRequest.status || "accepted",
+      currentStatus: helpRequest.status || "open",
       suggestedAmount: toFiniteNumber(helpRequest.budget_max) ?? toFiniteNumber(helpRequest.budget_min),
       counterpartyName,
     },
@@ -705,7 +721,9 @@ const loadQuoteDraftByContext = async (
   const result =
     context.mode === "order"
       ? await query.eq("order_id", context.orderId)
-      : await query.eq("help_request_id", context.helpRequestId);
+      : await query
+          .eq("help_request_id", context.helpRequestId)
+          .eq("provider_id", context.providerId);
 
   if (result.error) {
     return createMutationError(result.error.message || "Unable to load quote draft.", {
@@ -1299,18 +1317,15 @@ export const acceptQuoteDraft = async (params: {
   userId: string;
   quoteId: string;
 }): Promise<QuoteAcceptSuccess | QuoteMutationError> => {
-  // Load the draft
   const draftResult = await loadQuoteDraftById(params.db, params.quoteId);
   if (!draftResult.ok) return draftResult;
 
   const draft = draftResult.draft;
 
-  // Only the consumer can accept
   if (!draft.consumerId || draft.consumerId !== params.userId) {
     return createMutationError("Only the customer on this quote can accept it.", { forbidden: true });
   }
 
-  // Must be in sent status
   if (draft.status !== "sent") {
     return createMutationError(
       draft.status === "accepted"
@@ -1322,7 +1337,24 @@ export const acceptQuoteDraft = async (params: {
     );
   }
 
-  // Update quote status to accepted
+  // Resolve the help request ID from the linked order or draft metadata
+  let helpRequestId: string | null = null;
+  if (draft.orderId) {
+    const orderResult = await params.db
+      .from("orders")
+      .select("help_request_id, metadata")
+      .eq("id", draft.orderId)
+      .maybeSingle();
+    if (orderResult.data) {
+      const orderData = orderResult.data as Record<string, unknown>;
+      helpRequestId = orderData.help_request_id ? String(orderData.help_request_id) : null;
+    }
+  }
+  if (!helpRequestId) {
+    helpRequestId = ((draft.metadata as Record<string, unknown>)?.source_help_request_id as string) || null;
+  }
+
+  // Accept the chosen quote
   const quoteUpdateResult = await params.db
     .from("quote_drafts")
     .update({ status: "accepted" })
@@ -1338,8 +1370,8 @@ export const acceptQuoteDraft = async (params: {
   // Sync the linked order to "accepted", or create one if the quote has no order
   let orderId = draft.orderId || "";
   if (orderId) {
-    const orderMetadataResult = await params.db.from("orders").select("metadata").eq("id", orderId).maybeSingle();
-    const orderMetadata = toMetadata((orderMetadataResult.data as { metadata?: FlexibleRecord | null } | null)?.metadata);
+    const orderResult = await params.db.from("orders").select("metadata").eq("id", orderId).maybeSingle();
+    const orderMetadata = toMetadata((orderResult.data as { metadata?: FlexibleRecord | null } | null)?.metadata);
     await params.db
       .from("orders")
       .update({
@@ -1388,7 +1420,71 @@ export const acceptQuoteDraft = async (params: {
     }
   }
 
-  // Notify the provider
+  // Update the help request to reflect the accepted provider
+  if (helpRequestId && draft.providerId) {
+    await params.db
+      .from("help_requests")
+      .update({
+        accepted_provider_id: draft.providerId,
+        status: "accepted",
+      })
+      .eq("id", helpRequestId);
+
+    // Reject all other sent quotes for the same help request
+    const otherQuotesResult = await params.db
+      .from("quote_drafts")
+      .select("id, provider_id")
+      .eq("help_request_id", helpRequestId)
+      .eq("status", "sent")
+      .neq("id", params.quoteId);
+
+    if (!otherQuotesResult.error && otherQuotesResult.data?.length) {
+      const otherQuoteIds = otherQuotesResult.data.map((q: Record<string, unknown>) => String(q.id));
+      const otherProviderIds = otherQuotesResult.data.map((q: Record<string, unknown>) => String(q.provider_id));
+
+      await params.db
+        .from("quote_drafts")
+        .update({ status: "rejected" })
+        .in("id", otherQuoteIds);
+
+      // Notify losing providers
+      for (const loserId of otherProviderIds) {
+        if (loserId && loserId !== params.userId) {
+          const taskTitle = trim((draft.metadata as Record<string, unknown>)?.task_title as string) || "a request";
+          try {
+            await params.db.from("notifications").insert({
+              user_id: loserId,
+              kind: "order",
+              title: "Quote declined",
+              message: `The customer accepted another quote for ${taskTitle}.`,
+              entity_type: "quote",
+              entity_id: orderId || null,
+              metadata: {
+                order_id: orderId || null,
+                quote_draft_id: params.quoteId,
+                source: "quote_flow",
+              },
+            });
+          } catch {
+            // Notification best-effort
+          }
+        }
+      }
+
+      // Update other providers' matches to rejected
+      const allOtherProviderIds = [...new Set(otherProviderIds.filter(Boolean))];
+      if (allOtherProviderIds.length > 0) {
+        await params.db
+          .from("help_request_matches")
+          .update({ status: "rejected" })
+          .eq("help_request_id", helpRequestId)
+          .in("provider_id", allOtherProviderIds)
+          .in("status", ["interested", "accepted"]);
+      }
+    }
+  }
+
+  // Notify the winning provider
   const providerId = draft.providerId;
   if (providerId && providerId !== params.userId) {
     const taskTitle = trim((draft.metadata as Record<string, unknown>)?.task_title as string) || "your quote";

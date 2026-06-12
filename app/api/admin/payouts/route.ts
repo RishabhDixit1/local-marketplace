@@ -23,19 +23,32 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const status = url.searchParams.get("status") ?? "pending";
 
-  const { data: payouts } = await db
+  // Fetch provider payouts
+  const { data: providerPayouts } = await db
     .from("provider_payouts")
     .select("*, profiles!inner(full_name, avatar_url)")
     .eq("status", status)
     .order("created_at", { ascending: false });
 
-  return NextResponse.json({ ok: true, payouts: payouts ?? [] });
+  // Fetch referral payouts
+  const { data: referralPayouts } = await db
+    .from("referral_payouts")
+    .select("*, profiles!inner(full_name, avatar_url)")
+    .eq("status", status)
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({
+    ok: true,
+    payouts: providerPayouts ?? [],
+    referral_payouts: referralPayouts ?? [],
+  });
 }
 
 type PatchBody = {
   payoutId: string;
   action: "approve" | "reject" | "complete" | "fail";
   notes?: string;
+  kind?: "provider" | "referral";
 };
 
 export async function PATCH(request: Request) {
@@ -82,8 +95,27 @@ export async function PATCH(request: Request) {
     updateData.processed_at = new Date().toISOString();
   }
 
+  const table = body.kind === "referral" ? "referral_payouts" : "provider_payouts";
+
+  // For referral payouts, also mark the referrer's pending events as approved
+  if (body.kind === "referral" && body.action === "approve") {
+    const { data: payout } = await db
+      .from("referral_payouts")
+      .select("user_id")
+      .eq("id", body.payoutId)
+      .single<{ user_id: string }>();
+
+    if (payout) {
+      await db
+        .from("referral_events")
+        .update({ status: "approved" })
+        .eq("referrer_id", payout.user_id)
+        .eq("status", "pending");
+    }
+  }
+
   const { error } = await db
-    .from("provider_payouts")
+    .from(table)
     .update(updateData)
     .eq("id", body.payoutId);
 

@@ -22,11 +22,13 @@ import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
 import '../../features/payouts/presentation/payouts_page.dart';
+import '../../features/payments/presentation/transactions_page.dart';
 import '../../features/referrals/presentation/referrals_page.dart';
 import '../../features/verification/presentation/verification_page.dart';
 import '../../features/analytics/presentation/analytics_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/availability/presentation/availability_page.dart';
+import '../../features/bookings/presentation/bookings_page.dart';
 import '../../features/workspaces/presentation/workspaces_page.dart';
 import '../../features/workspaces/presentation/workspace_detail_page.dart';
 import '../../features/profile/data/profile_repository.dart';
@@ -44,6 +46,7 @@ import '../../features/provider/presentation/provider_profile_page.dart';
 import '../../features/quotes/domain/quote_models.dart';
 import '../../features/quotes/presentation/quote_room_page.dart';
 import '../../features/search/presentation/search_page.dart';
+import '../../features/search/presentation/map_discovery_page.dart';
 import '../../features/tasks/presentation/tasks_page.dart';
 import '../../features/welcome/presentation/onboarding_walkthrough_page.dart';
 import '../../features/welcome/presentation/welcome_page.dart';
@@ -164,6 +167,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             SearchPage(initialQuery: state.uri.queryParameters['q']),
       ),
       GoRoute(
+        path: AppRoutes.mapDiscovery,
+        builder: (context, state) => const MapDiscoveryPage(),
+      ),
+      GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) => const NotificationsPage(),
       ),
@@ -208,6 +215,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PayoutsPage(),
       ),
       GoRoute(
+        path: AppRoutes.transactions,
+        builder: (context, state) => const TransactionsPage(),
+      ),
+      GoRoute(
         path: AppRoutes.referrals,
         builder: (context, state) => const ReferralsPage(),
       ),
@@ -222,6 +233,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.availability,
         builder: (context, state) => const AvailabilityPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.bookings,
+        builder: (context, state) => const BookingsPage(),
       ),
       GoRoute(
         path: AppRoutes.workspaces,

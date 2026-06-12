@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, X } from "lucide-react";
+import { BadgeCheck, Loader2, Plus, ThumbsUp, X } from "lucide-react";
 import PublicProfileAbout from "@/app/components/profile/PublicProfileAbout";
 import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import PublicProfileStoreTab from "@/app/components/profile/PublicProfileStoreTab";
@@ -237,13 +237,7 @@ export default function PublicProfileContentTabs({
             {reviews.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 {reviews.map((review, index) => (
-                  <article key={`${review.createdAt || "review"}-${index}`} className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1 text-lg">{renderStars(review.rating)}</div>
-                      <span className="text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</span>
-                    </div>
-                    <p className="mt-3 text-sm leading-7 text-slate-700">{review.comment || "Verified marketplace interaction."}</p>
-                  </article>
+                  <ReviewCard key={`${review.createdAt || "review"}-${index}`} review={review} viewerId={viewerId} />
                 ))}
               </div>
             ) : (
@@ -385,5 +379,107 @@ export default function PublicProfileContentTabs({
         </div>
       )}
     </section>
+  );
+}
+
+function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerId: string | null }) {
+  const [voteState, setVoteState] = useState<{ helpful: number; notHelpful: number; userVote: string | null } | null>(null);
+  const [voting, setVoting] = useState(false);
+
+  useEffect(() => {
+    if (!viewerId) return;
+    const fetchVotes = async () => {
+      try {
+        const res = await fetch(`/api/reviews/${review.reviewerId ?? "none"}/vote/status`);
+        const json = await res.json();
+        if (json.ok) {
+          setVoteState({
+            helpful: json.helpful_count ?? 0,
+            notHelpful: json.not_helpful_count ?? 0,
+            userVote: json.user_vote ?? null,
+          });
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    void fetchVotes();
+  }, [review.reviewerId, viewerId]);
+
+  const photos = review.metadata?.photos as string[] | undefined;
+  const helpfulCount = voteState?.helpful ?? (review.metadata?.helpful_count as number | undefined) ?? 0;
+
+  const handleVote = async (vote: string) => {
+    if (!viewerId || voting) return;
+    setVoting(true);
+    try {
+      const res = await fetch(`/api/reviews/${review.reviewerId ?? "none"}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vote }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setVoteState((prev) => ({
+          helpful: json.action === "removed" && voteState?.userVote === "helpful" ? (prev?.helpful ?? 1) - 1 : json.vote === "helpful" ? (prev?.helpful ?? 0) + 1 : prev?.helpful ?? 0,
+          notHelpful: json.action === "removed" && voteState?.userVote === "not_helpful" ? (prev?.notHelpful ?? 1) - 1 : json.vote === "not_helpful" ? (prev?.notHelpful ?? 0) + 1 : prev?.notHelpful ?? 0,
+          userVote: json.action === "removed" ? null : json.vote,
+        }));
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  return (
+    <article className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1 text-lg">{renderStars(review.rating)}</div>
+        <div className="flex items-center gap-2">
+          {review.isVerifiedPurchase && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <BadgeCheck className="h-3 w-3" />
+              Verified
+            </span>
+          )}
+          <span className="text-xs font-medium text-slate-500">{formatReviewDate(review.createdAt)}</span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-sm leading-7 text-slate-700">{review.comment || "Verified marketplace interaction."}</p>
+
+      {photos && photos.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {photos.map((photo) => (
+            <img
+              key={photo}
+              src={photo}
+              alt="Review photo"
+              className="h-20 w-20 rounded-lg object-cover"
+            />
+          ))}
+        </div>
+      )}
+
+      {viewerId && (
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            type="button"
+            disabled={voting}
+            onClick={() => void handleVote("helpful")}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+              voteState?.userVote === "helpful"
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : "border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+            }`}
+          >
+            <ThumbsUp className="h-3 w-3" />
+            Helpful{helpfulCount > 0 ? ` (${helpfulCount})` : ""}
+          </button>
+        </div>
+      )}
+    </article>
   );
 }

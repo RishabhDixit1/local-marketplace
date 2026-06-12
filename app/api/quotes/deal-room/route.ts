@@ -149,13 +149,26 @@ export async function GET(request: Request) {
       const acceptedProviderId = hr.accepted_provider_id ? String(hr.accepted_provider_id) : null;
 
       const isConsumer = requesterId === authResult.auth.userId;
-      const isProvider = acceptedProviderId && acceptedProviderId === authResult.auth.userId;
+      const isAcceptedProvider = acceptedProviderId && acceptedProviderId === authResult.auth.userId;
 
-      if (!isConsumer && !isProvider) {
+      let isMatchedProvider = false;
+      if (!isConsumer && !isAcceptedProvider) {
+        const { data: match } = await db
+          .from("help_request_matches")
+          .select("status")
+          .eq("help_request_id", helpRequestId)
+          .eq("provider_id", authResult.auth.userId)
+          .in("status", ["interested", "accepted"])
+          .maybeSingle();
+        isMatchedProvider = match !== null;
+      }
+
+      if (!isConsumer && !isAcceptedProvider && !isMatchedProvider) {
         return toErrorResponse(403, "FORBIDDEN", "You do not have access to this deal room.");
       }
 
-      const actorRole: "provider" | "consumer" = isProvider ? "provider" : "consumer";
+      const actorRole: "provider" | "consumer" = (isAcceptedProvider || isMatchedProvider) ? "provider" : "consumer";
+      const providerId = actorRole === "provider" ? authResult.auth.userId : acceptedProviderId;
       const status = String(hr.status ?? "open");
 
       const linkedOrderResult = await db
@@ -176,7 +189,7 @@ export async function GET(request: Request) {
         budgetMax: toFiniteNumber(hr.budget_max),
       };
 
-      const counterpartyId: string | null = actorRole === "provider" ? requesterId : acceptedProviderId;
+      const counterpartyId: string | null = actorRole === "provider" ? requesterId : providerId;
       const counterparty = counterpartyId
         ? await db.from("profiles").select("id,name,avatar_url").eq("id", counterpartyId).maybeSingle()
         : null;
@@ -185,7 +198,7 @@ export async function GET(request: Request) {
         orderId: linkedOrder?.id ? String(linkedOrder.id) : null,
         helpRequestId,
         consumerId: requesterId,
-        providerId: acceptedProviderId,
+        providerId,
         currentUserId: authResult.auth.userId,
         actorRole,
         scope,
@@ -202,6 +215,12 @@ export async function GET(request: Request) {
           db,
           userId: authResult.auth.userId,
           orderId: String(linkedOrder.id),
+        });
+      } else if (actorRole === "provider") {
+        quoteDraftResult = await loadQuoteDraft({
+          db,
+          userId: authResult.auth.userId,
+          helpRequestId,
         });
       }
     }

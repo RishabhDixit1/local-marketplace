@@ -11,25 +11,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install aws-cli
+        run: |
+          curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp
+          sudo /tmp/aws/install --update
+          rm -rf /tmp/aws /tmp/awscliv2.zip
 
-      - name: Run backup
-        env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_BACKUP_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_BACKUP_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_BACKUP_REGION }}
-          BACKUP_S3_BUCKET: ${{ secrets.AWS_BACKUP_S3_BUCKET }}
-        run: bash scripts/backup-db.sh
+      - name: Run backup on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_DEFAULT_REGION,BACKUP_S3_BUCKET
+          script: |
+            set -e
+            SCRIPT="/home/ec2-user/serviq/scripts/backup-db.sh"
+            if [ ! -f "$SCRIPT" ]; then
+              echo "Script not found — fetching from repo..."
+              mkdir -p /home/ec2-user/serviq/scripts
+              curl -sfL \
+                "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/scripts/backup-db.sh" \
+                -o "$SCRIPT"
+              chmod +x "$SCRIPT"
+            fi
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}" \
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}" \
+            AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}" \
+            BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-}" \
+            bash "$SCRIPT"
 
       - name: Notify on failure
         if: failure()
-        uses: slackapi/slack-github-action@v2
-        with:
-          webhook: ${{ secrets.SLACK_BACKUP_WEBHOOK }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "text": "❌ Database backup failed for ${{ github.repository }}. Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+        shell: bash
+        run: |
+          WEBHOOK="${{ secrets.SLACK_BACKUP_WEBHOOK }}"
+          if [ -n "$WEBHOOK" ]; then
+            curl -sf -X POST "$WEBHOOK" \
+              -H "Content-Type: application/json" \
+              -d '{"text":"❌ Database backup failed for ${{ github.repository }}. Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}'
+          else
+            echo "SLACK_BACKUP_WEBHOOK not set — skipping notification."
+          fi

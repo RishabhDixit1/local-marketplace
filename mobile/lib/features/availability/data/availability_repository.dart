@@ -12,6 +12,10 @@ final availabilitySlotsProvider = FutureProvider<List<AvailabilitySlot>>((ref) {
   return ref.watch(availabilityRepositoryProvider).fetch();
 });
 
+final availabilityExceptionsProvider = FutureProvider<List<AvailabilityException>>((ref) {
+  return ref.watch(availabilityRepositoryProvider).fetchExceptions();
+});
+
 class AvailabilityRepository {
   const AvailabilityRepository(this._apiClient);
 
@@ -33,9 +37,16 @@ class AvailabilityRepository {
         .toList();
   }
 
-  Future<List<AvailabilitySlot>> update(List<AvailabilitySlot> slots) async {
-    final body = slots.map((s) => s.toPayload()).toList();
-    final payload = await _apiClient.postJsonArray(
+  Future<List<AvailabilitySlot>> update(
+    List<AvailabilitySlot> slots, {
+    String timezone = 'Asia/Kolkata',
+  }) async {
+    final body = {
+      'slots': slots.map((s) => s.toPayload()).toList(),
+      'timezone': timezone,
+    };
+
+    final payload = await _apiClient.postJson(
       '/api/provider/availability',
       body: body,
     );
@@ -51,5 +62,53 @@ class AvailabilityRepository {
         .whereType<Map<String, dynamic>>()
         .map(AvailabilitySlot.fromJson)
         .toList();
+  }
+
+  Future<List<AvailabilityException>> fetchExceptions() async {
+    final payload = await _apiClient.getJson('/api/provider/availability/exceptions');
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to load exceptions.',
+      );
+    }
+
+    final items = (payload['exceptions'] as List?) ?? [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(AvailabilityException.fromJson)
+        .toList();
+  }
+
+  Future<List<AvailabilityException>> addException(AvailabilityException exception) async {
+    final payload = await _apiClient.postJson(
+      '/api/provider/availability/exceptions',
+      body: exception.toPayload(),
+    );
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to add exception.',
+      );
+    }
+
+    final items = (payload['exceptions'] as List?) ?? [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(AvailabilityException.fromJson)
+        .toList();
+  }
+
+  Future<void> removeException(String date) async {
+    final payload = await _apiClient.deleteJson(
+      '/api/provider/availability/exceptions',
+      queryParameters: {'date': date},
+    );
+
+    if (payload['ok'] != true) {
+      throw ApiException(
+        (payload['message'] as String?) ?? 'Unable to remove exception.',
+      );
+    }
   }
 }

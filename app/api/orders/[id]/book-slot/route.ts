@@ -54,24 +54,19 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: false, message: "Not a party to this order" }, { status: 403 });
   }
 
-  // Conflict check: existing booking for this provider on this date/time
-  const { data: conflicts } = await db
-    .from("booking_slots")
-    .select("id, start_time, end_time")
-    .eq("provider_id", order.provider_id)
-    .eq("scheduled_date", body.scheduled_date)
-    .in("status", ["confirmed"])
-    .not("order_id", "eq", orderId);
+  // Conflict check using the database function (respects exceptions + timezone)
+  const { data: available } = await db.rpc("check_booking_slot_available", {
+    p_provider_id: order.provider_id,
+    p_scheduled_date: body.scheduled_date,
+    p_start_time: body.start_time,
+    p_end_time: body.end_time,
+  });
 
-  if (conflicts) {
-    for (const existing of conflicts) {
-      if (body.start_time < existing.end_time && body.end_time > existing.start_time) {
-        return NextResponse.json({
-          ok: false,
-          message: "Time slot conflicts with an existing booking",
-        }, { status: 409 });
-      }
-    }
+  if (available === false) {
+    return NextResponse.json({
+      ok: false,
+      message: "This time slot is not available. It may conflict with an existing booking, a day off, or be outside the provider's hours.",
+    }, { status: 409 });
   }
 
   // Create booking slot

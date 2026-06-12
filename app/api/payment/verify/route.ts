@@ -170,10 +170,14 @@ async function postHandler(request: Request) {
         ? "accepted"
         : trimText(order.status) || normalizedStatus;
 
+    const heldUntil = new Date(Date.now() + 7 * 86400000).toISOString();
+
     const nextMetadata = {
       ...currentMetadata,
       payment_method: trimText(currentMetadata.payment_method) || "razorpay",
       payment_status: "paid",
+      funds_status: "held",
+      funds_held_until: heldUntil,
       razorpay_order_id: normalizedBody.razorpayOrderId,
       razorpay_payment_id: normalizedBody.razorpayPaymentId,
       paid_at: trimText(currentMetadata.paid_at) || paidAt,

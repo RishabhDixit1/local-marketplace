@@ -90,12 +90,14 @@ class MobileApiClient {
   Future<Map<String, dynamic>> deleteJson(
     String path, {
     Map<String, dynamic>? body,
+    Map<String, String>? queryParameters,
     bool authenticated = true,
   }) {
     return _sendJson(
       method: 'DELETE',
       path: path,
       body: body,
+      queryParameters: queryParameters,
       authenticated: authenticated,
     );
   }
@@ -173,6 +175,38 @@ class MobileApiClient {
         'service_area_radius_km': serviceAreaRadiusKm,
       },
       authenticated: true,
+    );
+  }
+
+  Future<Map<String, dynamic>> searchProviders({
+    String? category,
+    String? search,
+    double? lat,
+    double? lng,
+    int limit = 50,
+    int offset = 0,
+    double? minRating,
+    bool onlineOnly = false,
+    String sortBy = 'distance',
+  }) async {
+    final params = <String, String>{
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+    };
+    if (category != null && category.isNotEmpty) params['category'] = category;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (lat != null) params['lat'] = lat.toString();
+    if (lng != null) params['lng'] = lng.toString();
+    if (minRating != null) params['minRating'] = minRating.toString();
+    if (onlineOnly) params['onlineOnly'] = 'true';
+    if (['distance', 'rating', 'jobs', 'response', 'featured'].contains(sortBy)) {
+      params['sortBy'] = sortBy;
+    }
+
+    return getJson(
+      '/api/community/providers-by-category',
+      queryParameters: params,
+      authenticated: false,
     );
   }
 

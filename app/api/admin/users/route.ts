@@ -20,13 +20,18 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim();
+  const roleFilter = url.searchParams.get("role") || "";
   const limit = Math.min(Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10)), 100);
   const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10));
 
   let query = db
     .from("profiles")
-    .select("id,full_name,name,email,phone,role,location,onboarding_completed,created_at,trust_score,abuse_reports")
+    .select("id,full_name,name,email,phone,role,location,onboarding_completed,created_at,trust_score,abuse_reports,verification_status")
     .order("created_at", { ascending: false });
+
+  if (roleFilter && ["provider", "business", "seeker"].includes(roleFilter)) {
+    query = query.eq("role", roleFilter);
+  }
 
   if (q) {
     query = query.or(

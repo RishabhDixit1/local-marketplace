@@ -172,3 +172,43 @@ export async function sendOrderEmail(opts: OrderEmailOptions): Promise<void> {
     console.error("[sendOrderEmail] fetch error:", e);
   }
 }
+
+type OrderSmsType = "order_placed_provider" | "payment_received_provider" | "completed_consumer";
+
+type OrderSmsOptions = {
+  type: OrderSmsType;
+  to: string;
+  orderId: string;
+  itemTitle: string;
+  price?: number;
+  consumerName?: string;
+  providerName?: string;
+};
+
+function buildSmsMessage(opts: OrderSmsOptions): string {
+  const orderUrl = `${APP_URL}/orders/${opts.orderId}`;
+  const priceStr = opts.price ? INR(opts.price) : "";
+
+  switch (opts.type) {
+    case "order_placed_provider":
+      return `New order received on ${APP_NAME}! ${opts.consumerName ?? "A customer"} ordered ${opts.itemTitle}${priceStr ? ` (${priceStr})` : ""}. View: ${orderUrl}`;
+    case "payment_received_provider":
+      return `Payment received on ${APP_NAME} for ${opts.itemTitle}${priceStr ? ` — ${priceStr}` : ""}. Check your earnings: ${orderUrl}`;
+    case "completed_consumer":
+      return `Your order for ${opts.itemTitle} on ${APP_NAME} is complete. We hope everything went smoothly! Review your order: ${orderUrl}`;
+  }
+}
+
+export async function sendOrderSms(opts: OrderSmsOptions): Promise<void> {
+  const { sendSms } = await import("@/lib/server/sms");
+  const message = buildSmsMessage(opts);
+
+  try {
+    const result = await sendSms(opts.to, message);
+    if (!result.ok) {
+      console.error("[sendOrderSms] failed:", result.error);
+    }
+  } catch (e) {
+    console.error("[sendOrderSms] error:", e);
+  }
+}

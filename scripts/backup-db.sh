@@ -2,84 +2,88 @@
 set -euo pipefail
 
 # Database backup: pg_dump → compress → S3
-# Usage:
-#   DATABASE_URL="postgresql://user:pass@host:5432/db" \
+# Designed to run ON the EC2 instance where Supabase (self-hosted) lives.
+#
+# Auto-detects the Supabase Postgres container, dumps via docker exec,
+# compresses, and uploads to S3 if aws-cli is configured.
+#
+# Usage (on EC2):
 #   AWS_ACCESS_KEY_ID=xxx AWS_SECRET_ACCESS_KEY=xxx \
 #   BACKUP_S3_BUCKET=my-bucket \
-#   BACKUP_S3_PREFIX=serviq/db \
 #   bash scripts/backup-db.sh
 
-: "${DATABASE_URL:?Required: DATABASE_URL (postgresql://...)}"
-: "${BACKUP_S3_BUCKET:?Required: BACKUP_S3_BUCKET}"
-: "${AWS_ACCESS_KEY_ID:=}"
-: "${AWS_SECRET_ACCESS_KEY:=}"
-: "${AWS_DEFAULT_REGION:=ap-southeast-2}"
-: "${BACKUP_S3_PREFIX:=serviq/db}"
-: "${BACKUP_RETENTION_DAYS:=30}"
-: "${PG_DUMP_EXTRA_ARGS:=--no-owner --no-acl}"
+BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-}"
+BACKUP_S3_PREFIX="${BACKUP_S3_PREFIX:-serviq/db}"
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-southeast-2}"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
 FILENAME="${BACKUP_S3_PREFIX}/${TIMESTAMP}.sql.gz"
 TMPFILE=$(mktemp /tmp/serviq-backup-XXXXXX.sql.gz)
 trap 'rm -f "$TMPFILE"' EXIT
 
-echo "==> Dumping database to ${TMPFILE}..."
-pg_dump "$DATABASE_URL" $PG_DUMP_EXTRA_ARGS | gzip > "$TMPFILE"
+# --- Auto-detect Supabase Postgres container ---
+SUPABASE_CONTAINER=""
+for candidate in supabase-db supabase_db_db supabase_db; do
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${candidate}$"; then
+    SUPABASE_CONTAINER=$candidate
+    break
+  fi
+done
 
-FILESIZE=$(stat -f%z "$TMPFILE" 2>/dev/null || stat -c%s "$TMPFILE" 2>/dev/null || echo "?")
-echo "Dump complete: $(numfmt --to=iec-i 2>/dev/null || echo "$FILESIZE bytes")"
+if [[ -z "$SUPABASE_CONTAINER" ]]; then
+  # Fallback: pick the first container running postgres image
+  SUPABASE_CONTAINER=$(docker ps --filter ancestor=postgres --format '{{.Names}}' 2>/dev/null | head -1)
+fi
 
-# Upload to S3 via AWS API (no aws-cli dependency)
-if [[ -n "$AWS_ACCESS_KEY_ID" && -n "$AWS_SECRET_ACCESS_KEY" ]]; then
-  echo "==> Uploading to s3://${BACKUP_S3_BUCKET}/${FILENAME}..."
-
-  RESOURCE="/${BACKUP_S3_BUCKET}/${FILENAME}"
-  CONTENT_TYPE="application/gzip"
-  DATE=$(date -u +"%a, %d %b %Y %H:%M:%S GMT")
-  PAYLOAD_HASH=$(openssl dgst -sha256 < "$TMPFILE" | cut -d' ' -f2)
-
-  # String to sign for AWS Signature V4
-  # Uses a simplified signing approach (works with most S3-compatible stores)
-  SIGNATURE_STRING="PUT\n\n${CONTENT_TYPE}\n${DATE}\nx-amz-acl:private\n/${BACKUP_S3_BUCKET}/${FILENAME}"
-
-  SIGNATURE=$(printf "%s" "$SIGNATURE_STRING" | \
-    openssl dgst -sha1 -hmac "$AWS_SECRET_ACCESS_KEY" -binary | \
-    xxd -p | tr -d '\n')
-
-  AUTH_HEADER="AWS ${AWS_ACCESS_KEY_ID}:${SIGNATURE}"
-
-  curl -sf -X PUT \
-    -H "Date: ${DATE}" \
-    -H "Content-Type: ${CONTENT_TYPE}" \
-    -H "Authorization: ${AUTH_HEADER}" \
-    -H "x-amz-acl: private" \
-    --data-binary @"$TMPFILE" \
-    "https://${BACKUP_S3_BUCKET}.s3.${AWS_DEFAULT_REGION}.amazonaws.com/${FILENAME}"
-
-  echo "Upload complete."
-else
-  echo "==> AWS credentials not set — skipping S3 upload."
-  echo "    Backup saved locally at: ${TMPFILE}"
-  echo "    Copy it manually to secure storage."
+if [[ -z "$SUPABASE_CONTAINER" ]]; then
+  echo "ERROR: Could not find a Postgres container. Is Supabase running?"
+  echo "Tried: supabase-db, supabase_db_db, supabase_db, and any postgres image."
   exit 1
 fi
 
-# Cleanup old backups (list and delete via S3 API)
-if command -v aws &>/dev/null; then
+echo "==> Found Postgres container: ${SUPABASE_CONTAINER}"
+
+# --- Dump inside the container ---
+echo "==> Dumping database via docker exec..."
+docker exec "$SUPABASE_CONTAINER" pg_dump -U postgres --no-owner --no-acl postgres 2>/dev/null | gzip > "$TMPFILE"
+
+FILESIZE=$(stat -c%s "$TMPFILE" 2>/dev/null || echo "?")
+echo "Dump complete: $FILESIZE bytes"
+
+# --- Upload to S3 ---
+if [[ -n "$BACKUP_S3_BUCKET" ]] && command -v aws &>/dev/null; then
+  echo "==> Uploading to s3://${BACKUP_S3_BUCKET}/${FILENAME}..."
+  aws s3 cp "$TMPFILE" "s3://${BACKUP_S3_BUCKET}/${FILENAME}" --region "$AWS_DEFAULT_REGION" --no-progress
+  echo "Upload complete."
+
+  # --- Cleanup old backups ---
   echo "==> Cleaning up backups older than ${BACKUP_RETENTION_DAYS} days..."
-  aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/" \
+  aws s3api list-objects-v2 \
+    --bucket "$BACKUP_S3_BUCKET" \
+    --prefix "${BACKUP_S3_PREFIX}/" \
+    --query "Contents[?LastModified<=\`$(date -u -d "${BACKUP_RETENTION_DAYS} days ago" +%Y-%m-%dT00:00:00Z)\`].Key" \
+    --output text \
     --region "$AWS_DEFAULT_REGION" \
-    | while read -r line; do
-    KEY=$(echo "$line" | awk '{print $4}')
-    DATE=$(echo "$line" | awk '{print $1" "$2}')
-    AGE=$(( ( $(date -d "$DATE" +%s) - $(date -d "$(date -u +"%Y-%m-%d %H:%M:%S")" +%s) ) / 86400 ))
-    if [ "$AGE" -gt "$BACKUP_RETENTION_DAYS" ]; then
-      aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX}/${KEY}" --region "$AWS_DEFAULT_REGION"
-      echo "Deleted old backup: ${KEY}"
+  | while read -r key; do
+    if [[ -n "$key" && "$key" != "None" ]]; then
+      aws s3 rm "s3://${BACKUP_S3_BUCKET}/${key}" --region "$AWS_DEFAULT_REGION" --no-progress
+      echo "Deleted old backup: ${key}"
     fi
   done
-else
-  echo "==> aws-cli not found — skipping retention cleanup."
+elif [[ -z "$BACKUP_S3_BUCKET" ]]; then
+  echo "==> BACKUP_S3_BUCKET not set — saving locally."
+  LOCAL_DIR="/home/ec2-user/backups"
+  mkdir -p "$LOCAL_DIR"
+  cp "$TMPFILE" "${LOCAL_DIR}/${FILENAME}"
+  echo "    Backup saved to: ${LOCAL_DIR}/${FILENAME}"
+  echo "    To upload later, copy to S3 or SCP."
+elif ! command -v aws &>/dev/null; then
+  echo "==> aws-cli not found — saving locally."
+  LOCAL_DIR="/home/ec2-user/backups"
+  mkdir -p "$LOCAL_DIR"
+  cp "$TMPFILE" "${LOCAL_DIR}/${FILENAME}"
+  echo "    Backup saved to: ${LOCAL_DIR}/${FILENAME}"
 fi
 
 echo "==> Backup complete: ${FILENAME}"

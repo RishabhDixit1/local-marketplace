@@ -8,6 +8,9 @@ import {
 import {
   ArrowUpRight, DollarSign, Loader2, ShoppingCart, Star, TrendingUp, Users,
 } from "lucide-react";
+import TrustStats from "@/app/components/profile/TrustStats";
+import { supabase } from "@/lib/supabase";
+import type { ProfileRecord } from "@/lib/profile/types";
 
 const INR = (paise: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
@@ -39,6 +42,18 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [profile, setProfile] = useState<ProfileRecord | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user || !active) return;
+      void supabase.from("profiles").select("*").eq("id", user.id).maybeSingle().then(({ data }) => {
+        if (active && data) setProfile(data as ProfileRecord);
+      });
+    });
+    return () => { active = false; };
+  }, []);
 
   const fetchAnalytics = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -95,6 +110,17 @@ export default function AnalyticsPage() {
         <SummaryCard icon={<Users className="h-4 w-4" />} label="Customers" value={String(data?.summary.uniqueCustomers ?? 0)} />
         <SummaryCard icon={<Star className="h-4 w-4" />} label="Rating" value={data?.summary.avgRating != null ? `${data.summary.avgRating}/5` : "—"} />
       </div>
+
+      {/* Trust stats */}
+      {profile && (
+        <TrustStats
+          profile={profile}
+          averageRating={data?.summary.avgRating ?? 0}
+          reviewCount={0}
+          completionPercent={Math.round(profile.profile_completion_percent ?? 0)}
+          trustScore={profile.trust_score ?? 0}
+        />
+      )}
 
       {/* Earnings chart */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">

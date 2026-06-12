@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Loader2 } from "lucide-react";
+import { Loader2, CreditCard } from "lucide-react";
 import {
   canTransitionOrderStatus,
   getAllowedTransitions,
@@ -14,12 +14,20 @@ import {
   normalizeOrderStatus,
   type CanonicalOrderStatus,
 } from "@/lib/orderWorkflow";
+import { fetchAuthedJson } from "@/lib/clientApi";
+
+declare global {
+  interface Window {
+    Razorpay?: new (opts: Record<string, unknown>) => { open: () => void };
+  }
+}
 
 type Order = {
   id: string;
   listing_type: string;
   status: string;
   price: number;
+  metadata: Record<string, unknown>;
   created_at: string;
 };
 
@@ -28,12 +36,15 @@ export default function ConsumerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [consumerId, setConsumerId] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
+  const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const scriptLoadedRef = useRef(false);
   const mountedRef = useRef(true);
 
   const loadOrders = useCallback(async (userId: string) => {
     const { data: orderRows, error } = await supabase
       .from("orders")
-      .select("id,listing_type,status,price,created_at")
+      .select("id,listing_type,status,price,metadata,created_at")
       .eq("consumer_id", userId)
       .order("created_at", { ascending: false });
 
@@ -64,6 +75,18 @@ export default function ConsumerOrdersPage() {
       mountedRef.current = false;
     };
   }, [loadOrders]);
+
+  // Load Razorpay script
+  useEffect(() => {
+    if (scriptLoadedRef.current) return;
+    scriptLoadedRef.current = true;
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setRazorpayAvailable(true);
+    script.onerror = () => setRazorpayAvailable(false);
+    document.head.appendChild(script);
+  }, []);
 
   useEffect(() => {
     if (!consumerId) return;
@@ -130,6 +153,61 @@ export default function ConsumerOrdersPage() {
     );
     setBusyOrderId(null);
   };
+
+  const handleRetryPayment = useCallback(async (order: Order) => {
+    if (!razorpayAvailable || !window.Razorpay) {
+      alert("Payment gateway not loaded. Please refresh and try again.");
+      return;
+    }
+    setRetryingOrderId(order.id);
+    try {
+      const pgRes = await fetchAuthedJson<{ ok: boolean; orderId: string; amount: number; keyId: string }>(
+        supabase,
+        `/api/orders/${order.id}/retry-payment`,
+        { method: "POST" }
+      );
+      if (!pgRes.ok) throw new Error("Payment gateway unavailable.");
+      await new Promise<void>((resolve, reject) => {
+        const rz = new window.Razorpay!({
+          key: pgRes.keyId,
+          amount: pgRes.amount,
+          currency: "INR",
+          order_id: pgRes.orderId,
+          name: "ServiQ",
+          description: `Order #${order.id.slice(0, 8).toUpperCase()}`,
+          theme: { color: "#2563eb" },
+          handler: async (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              await fetchAuthedJson(supabase, "/api/payment/verify", {
+                method: "POST",
+                body: JSON.stringify({
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                  serviQOrderIds: [order.id],
+                }),
+              });
+              // Refresh orders to reflect updated status
+              if (consumerId) await loadOrders(consumerId);
+              resolve();
+            } catch (e) {
+              reject(e instanceof Error ? e : new Error("Payment verification failed."));
+            }
+          },
+          modal: { ondismiss: () => { setRetryingOrderId(null); reject(new Error("Payment cancelled.")); } },
+        });
+        rz.open();
+      });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Payment failed.");
+    } finally {
+      setRetryingOrderId(null);
+    }
+  }, [razorpayAvailable, consumerId, loadOrders]);
 
   if (loading)
     return (
@@ -210,6 +288,24 @@ export default function ConsumerOrdersPage() {
 
               {!transitions.length && (
                 <p className="mt-3 text-xs text-slate-400">No further actions for this order.</p>
+              )}
+
+              {normalizedStatus === "payment_failed" && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void handleRetryPayment(order);
+                    }}
+                    disabled={retryingOrderId === order.id || !razorpayAvailable}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-200 disabled:opacity-70"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {retryingOrderId === order.id ? "Processing..." : "Retry Payment"}
+                  </button>
+                </div>
               )}
 
               {isBusy && (

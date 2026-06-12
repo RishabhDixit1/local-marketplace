@@ -33,6 +33,20 @@ export default function AuthCallbackPage() {
       }
       const { ensureProfileForUser, resolveCurrentProfileDestination } = await import("@/lib/profile/client");
       const profile = await ensureProfileForUser(session.user).catch(() => null);
+
+      try {
+        const referralCode = typeof localStorage !== "undefined" ? localStorage.getItem("referral_code") : null;
+        if (referralCode) {
+          localStorage.removeItem("referral_code");
+          const { fetchAuthedJson } = await import("@/lib/clientApi");
+          await fetchAuthedJson(supabase, `/api/referrals?code=${encodeURIComponent(referralCode)}`, {
+            method: "PATCH",
+          }).catch(() => {});
+        }
+      } catch {
+        // referral redemption is best-effort
+      }
+
       if (!cancelled) {
         router.replace(resolveCurrentProfileDestination(profile));
       }

@@ -18,6 +18,7 @@ class AppRoutes {
   static const createRequest = createNeed;
   static const control = '/app/control';
   static const search = '/app/search';
+  static const mapDiscovery = '/app/map';
   static const notifications = '/app/notifications';
   static const profilePublic = '/app/profile/public';
   static const profileEdit = '/app/profile/edit';
@@ -35,10 +36,12 @@ class AppRoutes {
   static const quote = '/app/quote';
   static const marketZones = '/app/market-zones';
   static const payouts = '/app/payouts';
+  static const transactions = '/app/transactions';
   static const referrals = '/app/referrals';
   static const verification = '/app/verification';
   static const analytics = '/app/analytics';
   static const availability = '/app/availability';
+  static const bookings = '/app/bookings';
   static const workspaces = '/app/workspaces';
   static String workspaceDetail(String workspaceId) => '/app/workspaces/$workspaceId';
 

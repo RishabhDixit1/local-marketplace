@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,11 +16,13 @@ import {
   PenTool,
   Plus,
   Receipt,
+  Send,
   Trash2,
   XCircle,
 } from "lucide-react";
 import type {
   DealRoomContext,
+  DealRoomTimelineItem,
   ProviderCatalogItem,
   QuoteAttachmentRecord,
   QuoteDraftRecord,
@@ -28,7 +30,7 @@ import type {
   SaveQuoteDraftResponse,
   SendQuoteDraftResponse,
 } from "@/lib/api/quotes";
-import QuoteDraftEditor from "@/app/components/quotes/QuoteDraftEditor";
+import QuoteDraftEditor, { type QuoteDraftEditorHandle } from "@/app/components/quotes/QuoteDraftEditor";
 import WhatHappensNext from "@/app/components/trust/WhatHappensNext";
 import {
   loadQuoteRoom,
@@ -102,8 +104,11 @@ export default function QuoteRoom({
   const [versions, setVersions] = useState<QuoteVersionRecord[]>([]);
   const [attachments, setAttachments] = useState<QuoteAttachmentRecord[]>([]);
   const [catalogItems, setCatalogItems] = useState<ProviderCatalogItem[]>([]);
+  const [timeline, setTimeline] = useState<DealRoomTimelineItem[]>([]);
+  const [showTimeline, setShowTimeline] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const draftEditorRef = useRef<QuoteDraftEditorHandle | null>(null);
   const [quoteSent, setQuoteSent] = useState(false);
   const [quoteAccepted, setQuoteAccepted] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -228,6 +233,7 @@ export default function QuoteRoom({
         setVersions(result.versions);
         setAttachments(result.attachments);
         setCatalogItems(result.catalogItems);
+        setTimeline(result.timeline);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load deal room");
@@ -422,9 +428,74 @@ export default function QuoteRoom({
         </div>
       )}
 
+       {/* Timeline */}
+      {timeline.length > 0 && (
+        <div className="py-4 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => setShowTimeline((prev) => !prev)}
+            className="flex w-full items-center justify-between text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100">
+                <FileText className="h-3.5 w-3.5 text-amber-700" />
+              </span>
+              <span className="font-semibold text-slate-700">Activity</span>
+              <span className="text-xs text-slate-400">({timeline.length} events)</span>
+            </div>
+            {showTimeline ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+
+          {showTimeline && (
+            <div className="mt-3 space-y-1">
+              {timeline.map((event, idx) => (
+                <div key={event.id} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
+                      event.kind === "quote_accepted"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : event.kind === "quote_sent"
+                          ? "bg-sky-100 text-sky-700"
+                          : event.kind === "attachment"
+                            ? "bg-teal-100 text-teal-700"
+                            : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {event.kind === "quote_accepted" ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : event.kind === "quote_sent" ? (
+                        <Send className="h-3.5 w-3.5" />
+                      ) : event.kind === "attachment" ? (
+                        <Paperclip className="h-3.5 w-3.5" />
+                      ) : (
+                        <FileText className="h-3.5 w-3.5" />
+                      )}
+                    </span>
+                    {idx < timeline.length - 1 && (
+                      <div className="mt-1 h-full w-px bg-slate-200" />
+                    )}
+                  </div>
+                  <div className="min-w-0 pb-4">
+                    <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                    {event.description && (
+                      <p className="text-xs text-slate-500 mt-0.5">{event.description}</p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-0.5">{formatAgo(event.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
        {/* Quote Draft Editor */}
       <div className="py-4">
         <QuoteDraftEditor
+          ref={draftEditorRef}
           orderId={orderId}
           helpRequestId={helpRequestId}
           conversationId={conversationId}
@@ -494,8 +565,9 @@ export default function QuoteRoom({
                   </div>
                   <button
                     type="button"
+                    onClick={() => draftEditorRef.current?.addLineItem(item.title, item.description || "", item.price ?? 0)}
                     className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
-                    title="Not yet wired to editor - shows catalog availability"
+                    title="Add to quote line items"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Add

@@ -4,6 +4,8 @@ import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
+type DayBucket = { date: string; count: number };
+
 export async function GET(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) {
@@ -17,6 +19,8 @@ export async function GET(request: Request) {
   if (!db) {
     return NextResponse.json({ ok: false, code: "CONFIG", message: "No DB client." }, { status: 500 });
   }
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
   const [
     { count: totalUsers },
@@ -42,6 +46,18 @@ export async function GET(request: Request) {
     db.from("trust_scores").select("trust_score"),
   ]);
 
+  // Trend data — gracefully handle if the RPC function doesn't exist yet
+  let ordersByDay: DayBucket[] = [];
+  let registrationsByDay: DayBucket[] = [];
+  try {
+    const { data: ordersTrend } = await db.rpc("count_by_day", { table_name: "orders", since: thirtyDaysAgo });
+    const { data: regTrend } = await db.rpc("count_by_day", { table_name: "profiles", since: thirtyDaysAgo });
+    ordersByDay = (ordersTrend as DayBucket[]) ?? [];
+    registrationsByDay = (regTrend as DayBucket[]) ?? [];
+  } catch {
+    // RPC not available — serve stats without trend
+  }
+
   const ratings = (ratingData as { rating: number | null }[] | null) || [];
   const avgRating = ratings.length > 0
     ? ratings.reduce((sum, r) => sum + (r.rating || 0), 0) / ratings.length
@@ -65,6 +81,10 @@ export async function GET(request: Request) {
       averageRating: avgRating ? Math.round(avgRating * 10) / 10 : null,
       totalHelpRequests: totalHelpRequests ?? 0,
       averageTrustScore: avgTrustScore ? Math.round(avgTrustScore) : null,
+    },
+    trend: {
+      ordersByDay: (ordersByDay as DayBucket[]) ?? [],
+      registrationsByDay: (registrationsByDay as DayBucket[]) ?? [],
     },
   });
 }

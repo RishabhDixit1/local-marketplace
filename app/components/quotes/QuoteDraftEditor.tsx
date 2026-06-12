@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { CheckCircle2, DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Sparkles, Trash2, XCircle } from "lucide-react";
 import type {
   QuoteContextRecord,
@@ -89,7 +89,11 @@ const buildDraftPayload = (params: {
   lineItems: toLineItemInput(params.lineItems),
 });
 
-export default function QuoteDraftEditor({
+export type QuoteDraftEditorHandle = {
+  addLineItem: (label: string, description: string, unitPrice: number) => void;
+};
+
+const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProps>(function QuoteDraftEditor({
   orderId,
   helpRequestId,
   conversationId,
@@ -99,7 +103,7 @@ export default function QuoteDraftEditor({
   onOpenChat,
   onAccepted,
   onReject,
-}: QuoteDraftEditorProps) {
+}: QuoteDraftEditorProps, ref) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -115,6 +119,25 @@ export default function QuoteDraftEditor({
   const [taxAmount, setTaxAmount] = useState("0");
   const [expiresAt, setExpiresAt] = useState("");
   const [lineItems, setLineItems] = useState<EditableLineItem[]>([]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      addLineItem: (label: string, description: string, unitPrice: number) => {
+        setLineItems((current) => [
+          ...current,
+          {
+            id: buildLocalLineItemId("catalog", current.length),
+            label,
+            description,
+            quantity: "1",
+            unitPrice: unitPrice > 0 ? `${unitPrice}` : "",
+          },
+        ]);
+      },
+    }),
+    []
+  );
 
   useEffect(() => {
     if (!orderId && !helpRequestId) {
@@ -635,4 +658,6 @@ export default function QuoteDraftEditor({
       </div>
     </section>
   );
-}
+});
+
+export default QuoteDraftEditor;
