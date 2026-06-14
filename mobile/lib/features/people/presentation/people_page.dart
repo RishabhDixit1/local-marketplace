@@ -35,6 +35,7 @@ class PeoplePage extends ConsumerStatefulWidget {
 class _PeoplePageState extends ConsumerState<PeoplePage> {
   final _searchController = TextEditingController();
   Timer? _debounce;
+  Timer? _localityRetryTimer;
   String _query = '';
   final Set<String> _filters = <String>{};
   String _selectedCategory = 'All';
@@ -42,10 +43,18 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   String? _busyConnectId;
   List<Map<String, dynamic>> _localities = [];
   String? _selectedLocalityId;
+  bool _localityLoadError = false;
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () {
+        ref.invalidate(peopleSnapshotProvider);
+        _loadLocalities();
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(analyticsServiceProvider).trackScreen('people');
@@ -55,20 +64,37 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   }
 
   Future<void> _loadLocalities() async {
+    _localityRetryTimer?.cancel();
     try {
       final client = ref.read(mobileApiClientProvider);
       final locs = await client.getLocalities(zoneType: 'society', phase: 1);
-      if (mounted) setState(() => _localities = locs);
+      if (mounted) {
+        setState(() {
+          _localities = locs;
+          _localityLoadError = false;
+        });
+      }
     } catch (e) {
-      debugPrint('[_loadLocalities] Failed to load localities: $e');
+      debugPrint('[_loadLocalities] Failed: $e');
+      if (mounted) {
+        setState(() => _localityLoadError = true);
+      }
     }
   }
 
   @override
   void dispose() {
+    _lifecycleListener?.dispose();
+    _localityRetryTimer?.cancel();
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(peopleSnapshotProvider);
+    await _loadLocalities();
+    await ref.read(peopleSnapshotProvider.future);
   }
 
   int get _activeDiscoveryFilterCount {
@@ -80,11 +106,6 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       count += 1;
     }
     return count;
-  }
-
-  Future<void> _refresh() async {
-    ref.invalidate(peopleSnapshotProvider);
-    await ref.read(peopleSnapshotProvider.future);
   }
 
   void _onQueryChanged(String value) {
@@ -352,7 +373,27 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                       onChanged: _onQueryChanged,
                     ),
                     const SizedBox(height: 8),
-                    Container(
+                    _localityLoadError
+                        ? GestureDetector(
+                          onTap: _loadLocalities,
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppRadii.xl),
+                              border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+                              color: AppColors.dangerSoft,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.cloud_off_rounded, size: 14, color: AppColors.danger),
+                                const SizedBox(width: 6),
+                                const Expanded(child: Text('Localities unavailable — tap to retry', style: TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                          ),
+                        )
+                        : Container(
                       height: 40,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(AppRadii.xl),

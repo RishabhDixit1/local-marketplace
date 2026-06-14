@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
+import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -126,6 +127,7 @@ class ProviderProfilePage extends ConsumerWidget {
                     onPrimary: () => _openPrimaryOffer(context, primaryOffer),
                     onCopy: () =>
                         _copyProvider(context, provider, primaryOffer),
+                    onMore: () => _showMoreOptions(context, ref, provider),
                   ),
                   const SizedBox(height: 16),
                   _StorefrontMetrics(
@@ -214,6 +216,269 @@ class ProviderProfilePage extends ConsumerWidget {
         contextTitle: provider.name,
         source: 'provider_storefront',
       ),
+    );
+  }
+
+  void _showMoreOptions(
+    BuildContext context,
+    WidgetRef ref,
+    MobilePersonCard provider,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.outlined_flag_rounded),
+                  title: const Text('Report'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _showReportDialog(context, ref, provider);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.shield_outlined),
+                  title: const Text('Block'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _showBlockConfirm(context, ref, provider);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReportDialog(
+    BuildContext context,
+    WidgetRef ref,
+    MobilePersonCard provider,
+  ) {
+    var selectedReason = 0;
+    var description = '';
+    var submitting = false;
+
+    final reasons = [
+      'Spam or suspicious',
+      'Inappropriate content',
+      'Harassment or bullying',
+      'Fake profile or identity',
+      'Scam or fraud',
+      'Other',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20, 12, 20,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Report ${provider.name}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Why are you reporting this user?',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...List.generate(reasons.length, (index) {
+                      return RadioListTile<int>(
+                        value: index,
+                        groupValue: selectedReason,
+                        title: Text(reasons[index]),
+                        onChanged: (v) =>
+                            setSheetState(() => selectedReason = v!),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Additional details (optional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                      onChanged: (v) => description = v,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: submitting
+                            ? null
+                            : () async {
+                          setSheetState(() => submitting = true);
+                          try {
+                            final reasonKey = [
+                              'spam',
+                              'inappropriate',
+                              'harassment',
+                              'fake',
+                              'scam',
+                              'other',
+                            ][selectedReason];
+                            final client =
+                                ref.read(mobileApiClientProvider);
+                            await client.postJson('/api/reports', body: {
+                              'targetType': 'provider',
+                              'targetId': provider.id,
+                              'reason': reasonKey,
+                              if (description.trim().isNotEmpty)
+                                'description': description.trim(),
+                            });
+                            if (sheetContext.mounted) {
+                              Navigator.of(sheetContext).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Report submitted. Our team will review it.'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setSheetState(() => submitting = false);
+                            if (sheetContext.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to submit report. ${AppErrorMapper.toMessage(e)}'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: submitting
+                            ? const SizedBox(
+                                height: 18, width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Submit report'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showBlockConfirm(
+    BuildContext context,
+    WidgetRef ref,
+    MobilePersonCard provider,
+  ) {
+    var blocking = false;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shield_outlined, size: 48),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Block ${provider.name}?',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'They won\'t be able to message you or interact with your content.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.danger,
+                        ),
+                        onPressed: blocking
+                            ? null
+                            : () async {
+                          setSheetState(() => blocking = true);
+                          try {
+                            final client = ref.read(mobileApiClientProvider);
+                            await client.postJson('/api/block', body: {
+                              'blockedId': provider.id,
+                            });
+                            if (sheetContext.mounted) {
+                              Navigator.of(sheetContext).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      '${provider.name} has been blocked.'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setSheetState(() => blocking = false);
+                            if (sheetContext.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to block user. ${AppErrorMapper.toMessage(e)}'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: blocking
+                            ? const SizedBox(
+                                height: 18, width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Block'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: blocking ? null : () => Navigator.of(sheetContext).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -583,6 +848,7 @@ class _StorefrontActionRow extends StatelessWidget {
     required this.onMessage,
     required this.onPrimary,
     required this.onCopy,
+    required this.onMore,
   });
 
   final MobilePersonCard provider;
@@ -590,6 +856,7 @@ class _StorefrontActionRow extends StatelessWidget {
   final VoidCallback onMessage;
   final VoidCallback onPrimary;
   final VoidCallback onCopy;
+  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -613,6 +880,12 @@ class _StorefrontActionRow extends StatelessWidget {
           tooltip: 'Copy profile',
           icon: Icons.ios_share_rounded,
           onTap: onCopy,
+        ),
+        const SizedBox(width: 8),
+        _SquareStorefrontButton(
+          tooltip: 'More',
+          icon: Icons.more_vert_rounded,
+          onTap: onMore,
         ),
       ],
     );

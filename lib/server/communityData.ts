@@ -1216,7 +1216,12 @@ export const loadCommunityFeedSnapshot = async (
 export const loadCommunityPeopleSnapshot = async (
   db: SupabaseClient,
   currentUserId: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {},
 ): Promise<Extract<CommunityPeopleResponse, { ok: true }>> => {
+  const { limit = 2000, offset = 0 } = options;
   const [
     currentUserProfileRow,
     discoverableProfileRowsRaw,
@@ -1228,7 +1233,7 @@ export const loadCommunityPeopleSnapshot = async (
     selectProfileById(db, currentUserId),
     selectRowsWithFallback(db, "profiles", "*", {
       orderBy: { column: "updated_at", ascending: false },
-      limit: 200,
+      limit,
       allowMissingRelation: true,
     }),
     selectRowsWithFallback(

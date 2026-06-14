@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:serviq_mobile/core/config/app_config.dart';
 import 'package:serviq_mobile/core/supabase/app_bootstrap.dart';
@@ -254,6 +255,7 @@ void main() {
   testWidgets('search page shows nearby provider matches', (
     WidgetTester tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

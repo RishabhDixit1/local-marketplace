@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
@@ -10,6 +11,41 @@ import '../../../core/theme/design_tokens.dart';
 import '../../../shared/components/empty_state_view.dart';
 import '../data/search_repository.dart';
 import '../domain/search_models.dart';
+
+const _recentKey = 'serviq_recent_searches';
+const _maxRecent = 5;
+
+const _suggestions = [
+  'Electrician',
+  'Plumber',
+  'AC Repair',
+  'RO Repair',
+  'Carpenter',
+  'Appliance Repair',
+  'Mobile Repair',
+  'Bike Repair',
+  'Hardware Shop',
+  'Painter',
+];
+
+Future<List<String>> _loadRecent() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_recentKey) ?? [];
+  } catch (_) {
+    return [];
+  }
+}
+
+Future<void> _saveRecent(String query) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final recent = (prefs.getStringList(_recentKey) ?? [])
+      ..remove(query)
+      ..insert(0, query);
+    prefs.setStringList(_recentKey, recent.take(_maxRecent).toList());
+  } catch (_) {}
+}
 
 enum _SortBy {
   distance('Nearest'),
@@ -33,6 +69,7 @@ class SearchPage extends ConsumerStatefulWidget {
 
 class _SearchPageState extends ConsumerState<SearchPage> {
   final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
   Timer? _debounce;
   String _query = '';
   String? _selectedCategory;
@@ -43,6 +80,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   SearchResponse? _results;
   bool _loading = false;
   String? _error;
+  List<String> _recent = [];
+
 
   @override
   void initState() {
@@ -50,8 +89,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final initial = widget.initialQuery?.trim() ?? '';
     _searchController.text = initial;
     _query = initial;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      _recent = await _loadRecent();
+      if (mounted) setState(() {});
       _initialize();
     });
   }
@@ -73,10 +117,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
   void _onQueryChanged(String value) {
+    setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
@@ -90,6 +136,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (_query.isEmpty && _selectedCategory == null) {
       setState(() { _results = null; _loading = false; _error = null; });
       return;
+    }
+
+    if (_query.isNotEmpty) {
+      await _saveRecent(_query);
+      setState(() => _recent = [_query, ..._recent.where((s) => s != _query)].take(_maxRecent).toList());
     }
 
     setState(() { _loading = true; _error = null; });
@@ -145,6 +196,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         children: [
           TextField(
             controller: _searchController,
+            focusNode: _focusNode,
             decoration: InputDecoration(
               hintText: 'Service, provider, or category...',
               prefixIcon: const Icon(Icons.search, size: 18),
@@ -312,22 +364,68 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildInitialState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search, size: 48, color: AppColors.inkFaint),
-            const SizedBox(height: 16),
-            Text('Search for providers nearby',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSubtle)),
-            const SizedBox(height: 8),
-            Text('Try "Electrician", "AC Repair", or "Plumber"',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint)),
-          ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        if (_recent.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.history_rounded, size: 14, color: AppColors.inkMuted),
+                const SizedBox(width: 6),
+                Text('Recent searches',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.inkMuted)),
+              ],
+            ),
+          ),
+          ..._recent.map((s) => ListTile(
+            dense: true,
+            leading: Icon(Icons.history_rounded, size: 18, color: AppColors.inkFaint),
+            title: Text(s, style: const TextStyle(fontSize: 14)),
+            trailing: IconButton(
+              icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
+              onPressed: () {
+                _searchController.text = s;
+                _query = s;
+                _doSearch();
+              },
+              visualDensity: VisualDensity.compact,
+            ),
+            onTap: () {
+              _searchController.text = s;
+              _query = s;
+              _doSearch();
+            },
+          )),
+          const Divider(height: 24),
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.trending_up_rounded, size: 14, color: AppColors.inkMuted),
+              const SizedBox(width: 6),
+              Text('Suggestions',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.inkMuted)),
+            ],
+          ),
         ),
-      ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _suggestions.map((s) => ActionChip(
+            label: Text(s, style: const TextStyle(fontSize: 12)),
+            onPressed: () {
+              _searchController.text = s;
+              _query = s;
+              _doSearch();
+            },
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          )).toList(),
+        ),
+      ],
     );
   }
 

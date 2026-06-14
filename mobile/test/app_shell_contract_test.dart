@@ -47,7 +47,7 @@ void main() {
   });
 
   test('post action stays contextual and off dense workflow branches', () {
-    expect(shouldShowPostActionForBranch(0), isFalse);
+    expect(shouldShowPostActionForBranch(0), isTrue);
     expect(shouldShowPostActionForBranch(1), isTrue);
     expect(shouldShowPostActionForBranch(2), isFalse);
     expect(shouldShowPostActionForBranch(3), isFalse);
@@ -73,8 +73,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Market'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('People'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
+    expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
   });
 
@@ -95,8 +97,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Market'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('People'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
+    expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('You'), findsOneWidget);
   });
 }

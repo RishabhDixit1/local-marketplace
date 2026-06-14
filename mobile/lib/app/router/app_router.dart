@@ -346,6 +346,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) =>
                     const FeedPage(mode: FeedPageMode.explore),
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
               GoRoute(
                 path: AppRoutes.people,
                 builder: (context, state) => const PeoplePage(),
@@ -361,6 +365,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   focusSource: state.uri.queryParameters['source'],
                 ),
               ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
               GoRoute(
                 path: AppRoutes.chat,
                 builder: (context, state) => ChatPage(

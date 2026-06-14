@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AutocompleteSearch } from "@/app/components/search/AutocompleteSearch";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,7 +12,6 @@ import {
   MapPin,
   X,
   Star,
-  Search,
   Phone,
   LogIn,
   Zap,
@@ -155,7 +155,6 @@ export function LandingPageClient({
   const [verificationCode, setVerificationCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(true);
   const [contactProvider, setContactProvider] = useState<ProviderCardData | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderCardData | null>(null);
@@ -198,20 +197,11 @@ export function LandingPageClient({
 
   const providers = useMemo(() => {
     const list = realProviders.length > 0 ? realProviders : [];
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.bio && p.bio.toLowerCase().includes(q)) ||
-          (p.services && p.services.some((s: string) => s.toLowerCase().includes(q)))
-      );
-    }
     if (selectedCategory) {
       return list;
     }
     return list.slice(0, LANDING_PAGE_PROVIDER_LIMIT);
-  }, [searchQuery, realProviders, selectedCategory]);
+  }, [realProviders, selectedCategory]);
 
   const completeAuth = useCallback(
     async (user: User) => {
@@ -382,22 +372,7 @@ export function LandingPageClient({
             Find trusted providers near you in Crossings Republik
           </p>
           <div className="mx-auto mt-6 max-w-2xl">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder='Try "AC repair", "electrician", "plumber nearby"...'
-                className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-slate-900 outline-none shadow-sm transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    e.preventDefault();
-                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-                  }
-                }}
-              />
-            </div>
+            <AutocompleteSearch placeholder='Try "AC repair", "electrician", "plumber nearby"...' />
           </div>
           <div className="mt-3 flex items-center justify-center gap-3 text-xs text-slate-400">
             <span>or</span>
@@ -434,7 +409,7 @@ export function LandingPageClient({
         {/* ── Results count ── */}
         <div className="mt-8 flex items-center justify-between">
           <p className="text-sm text-slate-500">
-            {!searchQuery && !selectedCategory && realProviders.length > LANDING_PAGE_PROVIDER_LIMIT
+            {!selectedCategory && realProviders.length > LANDING_PAGE_PROVIDER_LIMIT
               ? `Showing ${LANDING_PAGE_PROVIDER_LIMIT} of ${realProviders.length} providers near you`
               : `${realProviders.length} ${realProviders.length === 1 ? "provider" : "providers"} near you`}
           </p>

@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
+  Clock,
   MapPin,
   Search,
   Star,
+  TrendingUp,
   X,
   Zap,
   CheckCircle2,
@@ -50,12 +52,47 @@ const SORT_OPTIONS = [
   { value: "response", label: "Fastest Response" },
 ];
 
+const SEARCH_SUGGESTIONS = [
+  "AC repair",
+  "Plumber",
+  "Electrician",
+  "Carpenter",
+  "RO repair",
+  "Appliance repair",
+  "Mobile repair",
+  "Bike repair",
+  "Hardware shop",
+  "Painter",
+];
+
+const RECENT_STORAGE_KEY = "serviq-recent-searches";
+const MAX_RECENT = 5;
+
+function loadRecent(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(query: string) {
+  const recent = loadRecent().filter((s) => s !== query);
+  recent.unshift(query);
+  localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+}
+
 function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const suggestRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [minRating, setMinRating] = useState(searchParams.get("minRating") ? parseFloat(searchParams.get("minRating")!) : null);
   const [onlineOnly, setOnlineOnly] = useState(searchParams.get("onlineOnly") === "true");
@@ -79,12 +116,23 @@ function SearchPageContent() {
     }
   }, []);
 
-  const doSearch = useCallback(async (searchOffset = 0, append = false) => {
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (suggestRef.current && !suggestRef.current.contains(e.target as Node)) {
+        setSuggestOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const doSearch = useCallback(async (searchOffset = 0, append = false, overrideQuery?: string) => {
+    const activeQuery = overrideQuery ?? query;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (query) params.set("search", query);
+      if (activeQuery) params.set("search", activeQuery);
       if (category) params.set("category", category);
       if (minRating) params.set("minRating", minRating.toString());
       if (onlineOnly) params.set("onlineOnly", "true");
@@ -121,13 +169,16 @@ function SearchPageContent() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const q = query.trim();
+    if (q) saveRecent(q);
     const params = new URLSearchParams();
-    if (query) params.set("q", query);
+    if (q) params.set("q", q);
     if (category) params.set("category", category);
     if (minRating) params.set("minRating", minRating.toString());
     if (onlineOnly) params.set("onlineOnly", "true");
     if (sortBy) params.set("sortBy", sortBy);
     router.replace(`/search?${params.toString()}`);
+    setSuggestOpen(false);
     doSearch(0, false);
   };
 
@@ -149,16 +200,112 @@ function SearchPageContent() {
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0 text-sm font-bold text-[var(--brand-700)]">ServiQ</Link>
           <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2">
-            <div className="relative flex-1">
+            <div ref={suggestRef} className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 ref={searchInputRef}
-                type="text"
+                type="search"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSuggestOpen(true);
+                  setActiveIndex(-1);
+                }}
+                onFocus={() => setSuggestOpen(true)}
+                onKeyDown={(e) => {
+                  const items = query.trim()
+                    ? SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase()))
+                    : loadRecent();
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1));
+                  } else if (e.key === "Escape") {
+                    setSuggestOpen(false);
+                  } else if (e.key === "Enter" && suggestOpen && activeIndex >= 0 && activeIndex < items.length) {
+                    e.preventDefault();
+                    const selected = items[activeIndex];
+                    setQuery(selected);
+                    saveRecent(selected);
+                    setSuggestOpen(false);
+                    doSearch(0, false, selected);
+                  }
+                }}
                 placeholder="Search services, providers..."
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[var(--brand-400)] focus:bg-white focus:ring-2 focus:ring-[var(--brand-ring)]"
+                role="combobox"
+                aria-expanded={suggestOpen}
+                aria-autocomplete="list"
               />
+              {suggestOpen && (query.trim()
+                ? SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase())).length > 0
+                : loadRecent().length > 0) && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+                  role="listbox">
+                  {query.trim() ? (
+                    <>
+                      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2">
+                        <TrendingUp size={14} className="text-slate-400" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Suggestions</span>
+                      </div>
+                      {SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase())).map((s, i) => (
+                        <button
+                          key={s}
+                          type="button"
+                          role="option"
+                          aria-selected={activeIndex === i}
+                          onClick={() => {
+                            setQuery(s);
+                            saveRecent(s);
+                            setSuggestOpen(false);
+                            doSearch(0, false, s);
+                          }}
+                          onMouseEnter={() => setActiveIndex(i)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
+                            activeIndex === i
+                              ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Search size={14} className="shrink-0 text-slate-400" />
+                          <span className="font-medium">{s}</span>
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2">
+                        <Clock size={14} className="text-slate-400" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recent</span>
+                      </div>
+                      {loadRecent().map((s, i) => (
+                        <button
+                          key={s}
+                          type="button"
+                          role="option"
+                          aria-selected={activeIndex === i}
+                          onClick={() => {
+                            setQuery(s);
+                            setSuggestOpen(false);
+                            doSearch(0, false, s);
+                          }}
+                          onMouseEnter={() => setActiveIndex(i)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
+                            activeIndex === i
+                              ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Clock size={14} className="shrink-0 text-slate-400" />
+                          <span className="font-medium">{s}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <button
               type="button"

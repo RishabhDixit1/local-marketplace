@@ -523,18 +523,13 @@ double _sortScore(MobilePersonCard person) {
     score += 300;
   }
   score += person.mutualConnectionsCount * 40;
-  score += person.completedJobs * 8;
-  score += person.openLeads * 2;
-  score += person.reviewCount * 3;
-  score += (person.averageRating ?? 0) * 25;
+  score += person.completedJobs * 18;
+  score += person.openLeads * 8;
+  score += person.reviewCount * 5;
+  score += (person.averageRating ?? 0) * 45;
   score += person.completionPercent.toDouble();
-  score += person.completedJobs * 10;
-  score += person.openLeads * 6;
   score += person.postCount * 3;
   score += person.openNeedsCount * 2;
-  score += (person.averageRating ?? 0) * 20;
-  score += person.reviewCount * 2;
-  score += person.completionPercent / 10;
   return score;
 }
 

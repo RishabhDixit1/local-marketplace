@@ -406,24 +406,42 @@ export default function AdminPage() {
               All clear — no reported content.
             </div>
           ) : (
-            reports.map((report) => (
+            reports.map((report) => {
+              const meta = report.metadata ?? {};
+              const description = meta.description as string | undefined;
+              const targetType = meta.target_type as string | undefined;
+              const targetId = meta.target_id as string | undefined;
+              const reasonLabel = report.reason
+                ? report.reason.charAt(0).toUpperCase() + report.reason.slice(1)
+                : "Unknown";
+              const reasonBadgeColor =
+                report.reason === "spam" ? "bg-slate-100 text-slate-700" :
+                report.reason === "harassment" ? "bg-rose-100 text-rose-700" :
+                report.reason === "scam" || report.reason === "fake" ? "bg-amber-100 text-amber-700" :
+                "bg-slate-50 text-slate-600";
+
+              return (
               <div key={report.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {report.card_type ? `${report.card_type} card` : "Unknown type"}
-                    </p>
-                    {report.reason ? (
-                      <p className="text-sm text-slate-600">Reason: {report.reason}</p>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {targetType ? `${targetType.replace(/_/g, " ")} report` : report.card_type ? `${report.card_type} card` : "Report"}
+                      </p>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${reasonBadgeColor}`}>
+                        {reasonLabel}
+                      </span>
+                    </div>
+                    {description ? (
+                      <p className="text-sm leading-5 text-slate-600">
+                        {description.length > 120 ? `${description.slice(0, 120)}…` : description}
+                      </p>
                     ) : null}
-                    {report.focus_id ? (
-                      <p className="text-xs text-slate-500">Focus ID: {report.focus_id}</p>
-                    ) : null}
-                    {report.card_id ? (
-                      <p className="text-xs text-slate-500">Card ID: {report.card_id}</p>
-                    ) : null}
-                    <p className="text-xs text-slate-400">Reporter: {report.user_id}</p>
-                    <p className="text-xs text-slate-400">{formatDate(report.created_at)}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-400">
+                      <span>Reporter: {report.user_id}</span>
+                      <span>Target: {targetId ?? report.focus_id ?? report.card_id ?? "—"}</span>
+                      <span>{formatDate(report.created_at)}</span>
+                    </div>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1.5">
                     <button
@@ -456,7 +474,8 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
-            ))
+            );
+          })
           )}
         </div>
       ) : null}

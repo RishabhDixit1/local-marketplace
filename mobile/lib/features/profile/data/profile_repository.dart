@@ -72,16 +72,45 @@ class ProfileRepository {
     }
   }
 
-  Future<void> submitReview({
+  Future<String?> submitReview({
     required String providerId,
     required int rating,
     String? comment,
+    Map<String, dynamic>? metadata,
   }) async {
-    await _apiClient.postJson('/api/profile/review', body: {
+    final body = <String, dynamic>{
       'providerId': providerId,
       'rating': rating.clamp(1, 5),
-      if (comment != null && comment.trim().isNotEmpty) 'comment': comment.trim(),
-    });
+    };
+    if (comment != null && comment.trim().isNotEmpty) {
+      body['comment'] = comment.trim();
+    }
+    if (metadata != null) {
+      body['metadata'] = metadata;
+    }
+    final response = await _apiClient.postJson('/api/profile/review', body: body);
+    return response['reviewId'] as String?;
+  }
+
+  Future<void> uploadReviewPhoto({
+    required String reviewId,
+    required String filePath,
+  }) async {
+    final fileName = filePath.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final mediaType = switch (ext) {
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    await _apiClient.uploadFile(
+      '/api/reviews/$reviewId/photos',
+      filePath: filePath,
+      fileName: fileName,
+      mediaType: mediaType,
+      fieldName: 'file',
+    );
   }
 
   Map<String, dynamic> _profileSavePayload(

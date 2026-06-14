@@ -12,7 +12,8 @@ import '../../features/tasks/data/task_repository.dart';
 import 'main_bottom_nav.dart';
 
 @visibleForTesting
-bool shouldShowPostActionForBranch(int index) => index == 1;
+bool shouldShowPostActionForBranch(int index) =>
+    index == 0 || index == 1;
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});

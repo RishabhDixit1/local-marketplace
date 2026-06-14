@@ -18,6 +18,7 @@ import type { ProfileFormValues, ProfileValidationErrors } from "@/lib/profile/t
 import { getOrCreateDirectConversationId } from "@/lib/directMessages";
 import { supabase } from "@/lib/supabase";
 import { setPublicProfileModalOpen } from "@/app/components/profile/publicProfileModalState";
+import ProfileMoreMenu from "@/app/components/profile/ProfileMoreMenu";
 
 type PublicProfileActionsProps = {
   profileUserId: string;
@@ -310,7 +311,7 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
   return (
     <>
       <div className={`public-profile-primary-actions w-full transition ${editDialogOpen ? "pointer-events-none opacity-0" : "opacity-100"}`}>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           {connectButton}
 
           <button
@@ -322,6 +323,8 @@ export default function PublicProfileActions({ profileUserId, displayName, initi
             {messageBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
             {isSelf ? "Open chat" : authResolved && !viewerId ? "Sign in to chat" : "Chat"}
           </button>
+
+          <ProfileMoreMenu profileUserId={profileUserId} displayName={displayName} />
         </div>
         {connectionState.kind === "incoming_pending" && connectionState.requestId ? (
           <div className="mt-3 flex flex-wrap gap-2">

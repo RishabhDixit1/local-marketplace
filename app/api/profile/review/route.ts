@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
   if (!db) return toError(500, "CONFIG", "No DB client");
 
-  let body: { providerId: string; rating: number; comment?: string };
+  let body: { providerId: string; rating: number; comment?: string; metadata?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   const providerId = body.providerId?.trim();
   const rating = Math.max(1, Math.min(5, Math.round(body.rating || 0)));
   const comment = body.comment?.trim() || null;
+  const metadata = body.metadata ?? null;
 
   if (!providerId) {
     return toError(400, "INVALID_PAYLOAD", "providerId is required.");
@@ -34,12 +35,15 @@ export async function POST(request: Request) {
     return toError(400, "SELF_REVIEW", "You cannot review yourself.");
   }
 
-  const { error } = await db.from("reviews").insert({
+  const insertPayload: Record<string, unknown> = {
     provider_id: providerId,
     reviewer_id: auth.auth.userId,
     rating,
     comment,
-  });
+  };
+  if (metadata != null) insertPayload.metadata = metadata;
+
+  const { data: inserted, error } = await db.from("reviews").insert(insertPayload).select("id").single();
 
   if (error) return toError(500, "DB", error.message);
 
@@ -68,5 +72,5 @@ export async function POST(request: Request) {
     }
   })();
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, reviewId: inserted?.id });
 }

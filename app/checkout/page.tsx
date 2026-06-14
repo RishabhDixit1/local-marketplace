@@ -247,7 +247,7 @@ export default function CheckoutPage() {
           name: "ServiQ",
           description: `Order — ${items.length} item${items.length !== 1 ? "s" : ""}`,
           prefill: { name: userName, email: userEmail, contact: userPhone },
-          theme: { color: "#2563eb" },
+          theme: { color: "#0ea5a4" },
           handler: async (response: {
             razorpay_order_id: string;
             razorpay_payment_id: string;
@@ -342,7 +342,7 @@ export default function CheckoutPage() {
 
   if (!hydrated || !authResolved) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <Loader2 className="h-12 w-12 animate-spin text-slate-300" />
           <p className="font-semibold text-slate-700">Loading checkout…</p>
@@ -353,7 +353,7 @@ export default function CheckoutPage() {
 
   if (success !== null) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <CheckCircle2 className="h-14 w-14 text-emerald-500" />
           <h1 className="text-xl font-bold text-slate-900">Order Placed!</h1>
@@ -369,18 +369,18 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#f4f2ee] px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--surface-app)] px-4">
         <div className="flex flex-col items-center gap-4 rounded-3xl bg-white p-6 sm:p-10 shadow-lg max-w-sm w-full text-center">
           <ShoppingBag className="h-12 w-12 text-slate-300" />
           <p className="font-semibold text-slate-700">Your cart is empty</p>
-          <Link href="/dashboard" className="text-sm font-medium text-blue-600 hover:underline">Browse marketplace</Link>
+          <Link href="/dashboard" className="text-sm font-medium text-[var(--brand-500)] hover:underline">Browse marketplace</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f2ee]">
+    <div className="min-h-screen bg-[var(--surface-app)]">
       <RouteObservability route="checkout" />
 
       {/* Top bar */}
@@ -504,11 +504,11 @@ export default function CheckoutPage() {
                     setFulfillmentMethod(method);
                   }}
                   className={`rounded-2xl border p-3 text-left transition ${
-                    active ? "border-blue-500 bg-blue-50 shadow-[0_12px_28px_-24px_rgba(37,99,235,0.9)]" : "border-slate-200 bg-white hover:border-slate-300"
+                    active ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_12px_28px_-24px_rgba(14,165,164,0.28)]" : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${active ? "bg-white text-blue-600" : "bg-slate-100 text-slate-600"}`}>
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${active ? "bg-white text-[var(--brand-500)]" : "bg-slate-100 text-slate-600"}`}>
                       <Icon className="h-3.5 w-3.5" />
                     </span>
                     {recommended ? (
@@ -542,7 +542,7 @@ export default function CheckoutPage() {
             Address
           </h2>
           <textarea
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
             placeholder={fulfillmentOption.addressPlaceholder}
             aria-label={fulfillmentOption.addressLabel}
             rows={2}
@@ -559,7 +559,7 @@ export default function CheckoutPage() {
             </p>
           </div>
           <textarea
-            className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none"
+            className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)] resize-none"
             placeholder={buildNotesPlaceholder(fulfillmentMethod)}
             rows={2}
             maxLength={1000}
@@ -592,7 +592,7 @@ export default function CheckoutPage() {
                   aria-checked={payMethod === opt.id}
                   className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
                     payMethod === opt.id
-                      ? "border-blue-500 bg-blue-50 shadow-[0_12px_28px_-24px_rgba(37,99,235,0.9)]"
+                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] shadow-[0_12px_28px_-24px_rgba(14,165,164,0.28)]"
                       : disabled
                       ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-40"
                       : "border-slate-200 hover:border-slate-300"
@@ -639,7 +639,7 @@ export default function CheckoutPage() {
                 script.onload = () => setRazorpayAvailable(true);
                 document.head.appendChild(script);
               }}
-              className="mt-2 text-xs text-blue-600 hover:underline"
+              className="mt-2 text-xs text-[var(--brand-500)] hover:underline"
             >
               Retry loading payment gateway
             </button>
@@ -659,7 +659,7 @@ export default function CheckoutPage() {
           type="button"
           onClick={payMethod === "razorpay" ? handleRazorpay : handleCOD}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-blue-700 disabled:opacity-60 lg:col-start-1"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-500)] py-3.5 text-base font-bold text-white shadow-lg transition hover:bg-[var(--brand-600)] disabled:opacity-60 lg:col-start-1"
         >
           {busy ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>

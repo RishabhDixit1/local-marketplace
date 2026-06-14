@@ -12,6 +12,8 @@ export const runtime = "nodejs";
 async function getHandler(request: Request) {
   const requestUrl = new URL(request.url);
   const shouldProxyImages = requestUrl.searchParams.get("imageProxy") === "next";
+  const limitParam = requestUrl.searchParams.get("limit");
+  const offsetParam = requestUrl.searchParams.get("offset");
 
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
@@ -40,7 +42,10 @@ async function getHandler(request: Request) {
   }
 
   try {
-    const snapshot = await loadCommunityPeopleSnapshot(dbClient, authResult.auth.userId);
+    const snapshot = await loadCommunityPeopleSnapshot(dbClient, authResult.auth.userId, {
+      limit: limitParam ? Math.max(1, Math.min(5000, Number(limitParam) || 2000)) : undefined,
+      offset: offsetParam ? Math.max(0, Number(offsetParam) || 0) : undefined,
+    });
     const responseSnapshot = shouldProxyImages
       ? proxyCommunityPeopleImages(snapshot, resolveRequestOrigin(request) || requestUrl.origin)
       : snapshot;

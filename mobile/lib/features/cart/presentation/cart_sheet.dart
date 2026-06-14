@@ -27,7 +27,7 @@ Future<void> showServiqCartSheet(BuildContext context) async {
             ),
             data: (items) => _CartSheetBody(
               items: items,
-              maxHeight: MediaQuery.sizeOf(context).height * 0.55,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.6,
               onCheckout: items.isEmpty
                   ? null
                   : () {
@@ -75,16 +75,52 @@ class _CartSheetBody extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cart', style: Theme.of(context).textTheme.titleLarge),
+          Row(
+            children: [
+              Text('Cart', style: Theme.of(context).textTheme.titleLarge),
+              if (items.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${items.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryDeep,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 12),
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                'Your cart is empty. Add services or products from the feed.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.inkMuted,
-                ),
+              child: Column(
+                children: [
+                  Icon(Icons.shopping_cart_outlined, size: 48, color: AppColors.inkFaint),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Your cart is empty',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.inkSubtle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add services or products from the feed.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.inkFaint,
+                    ),
+                  ),
+                ],
               ),
             )
           else
@@ -96,36 +132,85 @@ class _CartSheetBody extends StatelessWidget {
                     const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${item.providerName} · INR ${item.price.round()} each',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          onPressed: item.quantity <= 1
-                              ? null
-                              : () => onQuantity(item.key, item.quantity - 1),
-                          icon: const Icon(Icons.remove_rounded),
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceAlt,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            item.itemType == 'product'
+                                ? Icons.inventory_2_outlined
+                                : Icons.build_outlined,
+                            color: AppColors.inkSubtle,
+                            size: 20,
+                          ),
                         ),
-                        Text('${item.quantity}'),
-                        IconButton(
-                          onPressed: () =>
-                              onQuantity(item.key, item.quantity + 1),
-                          icon: const Icon(Icons.add_rounded),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${item.providerName} · INR ${item.price.round()} each',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.inkMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        IconButton(
-                          onPressed: () => onRemove(item.key),
-                          icon: const Icon(Icons.delete_outline_rounded),
+                        const SizedBox(width: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: item.quantity <= 1
+                                  ? null
+                                  : () => onQuantity(item.key, item.quantity - 1),
+                              icon: const Icon(Icons.remove_rounded, size: 18),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            SizedBox(
+                              width: 20,
+                              child: Text(
+                                '${item.quantity}',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () =>
+                                  onQuantity(item.key, item.quantity + 1),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              onPressed: () => onRemove(item.key),
+                              icon: Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.inkFaint),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -135,16 +220,37 @@ class _CartSheetBody extends StatelessWidget {
             ),
           const SizedBox(height: 12),
           if (items.isNotEmpty) ...[
-            Text(
-              'Subtotal · INR ${total.round()}',
-              style: Theme.of(context).textTheme.titleMedium,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Subtotal',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.inkSubtle,
+                    ),
+                  ),
+                  Text(
+                    'INR ${total.round()}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FilledButton.icon(
                 onPressed: onCheckout,
-                child: const Text('Checkout'),
+                icon: const Icon(Icons.shopping_bag_outlined),
+                label: const Text('Proceed to checkout'),
               ),
             ),
           ],

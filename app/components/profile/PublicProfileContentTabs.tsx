@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Loader2, Plus, ThumbsUp, X } from "lucide-react";
+import { BadgeCheck, Camera, Loader2, Plus, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import PublicProfileAbout from "@/app/components/profile/PublicProfileAbout";
 import PublicProfilePostsGrid from "@/app/components/profile/PublicProfilePostsGrid";
 import PublicProfileStoreTab from "@/app/components/profile/PublicProfileStoreTab";
@@ -77,6 +77,10 @@ export default function PublicProfileContentTabs({
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewBreakdown, setReviewBreakdown] = useState({ quality: 5, communication: 5, timeliness: 5, value: 5 });
+  const [reviewWouldRecommend, setReviewWouldRecommend] = useState(true);
+  const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
+  const [reviewPhotoPreviews, setReviewPhotoPreviews] = useState<string[]>([]);
 
   const marketplacePosts = useMemo(() => posts, [posts]);
 
@@ -124,28 +128,91 @@ export default function PublicProfileContentTabs({
     setReviewModalOpen(true);
   }, [authResolved, isSelf, requestReviewComposer, viewerId]);
 
+  const handleReviewPhotos = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const selected = Array.from(files).slice(0, 5);
+    setReviewPhotos((prev) => [...prev, ...selected].slice(0, 5));
+    selected.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setReviewPhotoPreviews((prev) => [...prev, dataUrl].slice(0, 5));
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const removeReviewPhoto = useCallback((index: number) => {
+    setReviewPhotos((prev) => prev.filter((_, i) => i !== index));
+    setReviewPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const resetReviewForm = useCallback(() => {
+    setReviewComment("");
+    setReviewRating(5);
+    setReviewBreakdown({ quality: 5, communication: 5, timeliness: 5, value: 5 });
+    setReviewWouldRecommend(true);
+    setReviewPhotos([]);
+    setReviewPhotoPreviews([]);
+    setReviewError(null);
+  }, []);
+
   const handleSubmitReview = useCallback(async () => {
     if (isSelf || !viewerId) return;
     setReviewSubmitting(true);
     setReviewError(null);
     try {
-      const { error } = await supabase.from("reviews").insert({
-        provider_id: profileUserId,
-        reviewer_id: viewerId,
-        rating: reviewRating,
-        comment: reviewComment.trim() || null,
-      });
+      const { data: inserted, error } = await supabase
+        .from("reviews")
+        .insert({
+          provider_id: profileUserId,
+          reviewer_id: viewerId,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+          metadata: {
+            quality: reviewBreakdown.quality,
+            communication: reviewBreakdown.communication,
+            timeliness: reviewBreakdown.timeliness,
+            value: reviewBreakdown.value,
+            wouldRecommend: reviewWouldRecommend,
+          },
+        })
+        .select("id")
+        .single();
+
       if (error) throw error;
+
+      if (reviewPhotos.length > 0 && inserted?.id) {
+        for (const photo of reviewPhotos) {
+          const formData = new FormData();
+          formData.append("file", photo);
+          await fetch(`/api/reviews/${inserted.id}/photos`, {
+            method: "POST",
+            body: formData,
+          });
+        }
+      }
+
       setReviewModalOpen(false);
-      setReviewComment("");
-      setReviewRating(5);
+      resetReviewForm();
       router.refresh();
     } catch (error) {
       setReviewError(error instanceof Error ? error.message : "Unable to submit review right now.");
     } finally {
       setReviewSubmitting(false);
     }
-  }, [isSelf, profileUserId, reviewComment, reviewRating, router, viewerId]);
+  }, [
+    isSelf,
+    profileUserId,
+    reviewComment,
+    reviewRating,
+    reviewBreakdown,
+    reviewWouldRecommend,
+    reviewPhotos,
+    router,
+    viewerId,
+    resetReviewForm,
+  ]);
 
   const tabs = [
     { id: "marketplace" as const, label: "Marketplace" },
@@ -323,9 +390,11 @@ export default function PublicProfileContentTabs({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              <div className="grid gap-4">
+              <div className="grid gap-5">
+
+                {/* Overall Rating */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-900">Rating</label>
+                  <label className="text-sm font-semibold text-slate-900">Overall Rating</label>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -341,6 +410,93 @@ export default function PublicProfileContentTabs({
                   </div>
                 </div>
 
+                {/* Rating Breakdown */}
+                <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Breakdown</p>
+                  {(["quality", "communication", "timeliness", "value"] as const).map((key) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="w-28 shrink-0 text-xs font-medium capitalize text-slate-700">{key}</span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewBreakdown((prev) => ({ ...prev, [key]: star }))}
+                            className={`text-base transition ${star <= reviewBreakdown[key] ? "text-yellow-400" : "text-slate-200 hover:text-yellow-300"}`}
+                            aria-label={`${key} ${star} star${star > 1 ? "s" : ""}`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Would recommend toggle */}
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    {reviewWouldRecommend ? (
+                      <ThumbsUp className="h-5 w-5 text-emerald-500" />
+                    ) : (
+                      <ThumbsDown className="h-5 w-5 text-rose-400" />
+                    )}
+                    <span className="text-sm font-medium text-slate-900">
+                      {reviewWouldRecommend ? "I would recommend this provider" : "I would not recommend this provider"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReviewWouldRecommend((prev) => !prev)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      reviewWouldRecommend ? "bg-emerald-500" : "bg-slate-300"
+                    }`}
+                    role="switch"
+                    aria-checked={reviewWouldRecommend}
+                    aria-label="Toggle recommendation"
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                        reviewWouldRecommend ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Photo upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-900">Photos</label>
+                  <div className="flex flex-wrap gap-3">
+                    {reviewPhotoPreviews.map((preview, i) => (
+                      <div key={preview} className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200">
+                        <img src={preview} alt={`Review photo ${i + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeReviewPhoto(i)}
+                          className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80"
+                          aria-label="Remove photo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {reviewPhotos.length < 5 && (
+                      <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-slate-400 hover:bg-slate-100">
+                        <Camera className="h-6 w-6 text-slate-400" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleReviewPhotos(e.target.files)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">Up to 5 photos</p>
+                </div>
+
+                {/* Comment */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-900">Comment</label>
                   <textarea
@@ -348,7 +504,7 @@ export default function PublicProfileContentTabs({
                     onChange={(e) => setReviewComment(e.target.value)}
                     rows={4}
                     placeholder="Describe your experience with this provider..."
-                    className="min-h-[120px] w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#0a66c2] focus:ring-4 focus:ring-[#0a66c2]/10"
+                    className="min-h-[120px] w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
                   />
                 </div>
 
