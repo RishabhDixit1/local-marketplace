@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app/app.dart';
 import 'core/config/app_config.dart';
 import 'core/firebase/app_firebase.dart';
+import 'core/firebase/local_notification_service.dart';
 import 'core/firebase/mobile_push_notifications.dart';
 import 'core/supabase/app_bootstrap.dart';
 import 'core/theme/app_theme.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
       final onboardingStore = SharedPreferencesOnboardingHandoffStore(
         await SharedPreferences.getInstance(),
       );
+      await initializeLocalNotifications();
       if (firebaseState.initialized) {
         MobilePushNotificationService.registerBackgroundHandler();
       }

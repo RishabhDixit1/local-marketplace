@@ -4,10 +4,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/notifications/domain/notification_models.dart';
 import '../api/mobile_api_client.dart';
 import '../api/mobile_api_provider.dart';
 import '../supabase/app_bootstrap.dart';
 import 'app_firebase.dart';
+import 'local_notification_service.dart';
 
 final notificationTapRouteControllerProvider =
     Provider<NotificationTapRouteController>((ref) {
@@ -39,8 +41,34 @@ Future<void> _firebaseMessagingBackgroundHandler(
 ) async {
   final data = message.data;
   final route = data['route'] as String?;
-  if (route != null && route.isNotEmpty) {
+  final title = message.notification?.title ?? (data['title'] as String?);
+  final body = message.notification?.body ?? (data['message'] as String? ?? data['body'] as String?);
+  if (title != null && body != null) {
+    final kindRaw = data['kind'] as String?;
+    final kind = _parseKind(kindRaw);
+    await showLocalNotification(
+      title: title,
+      body: body,
+      kind: kind,
+      route: route,
+    );
+  } else if (route != null && route.isNotEmpty) {
     debugPrint('ServiQ: background notification route=$route');
+  }
+}
+
+MobileNotificationKind _parseKind(String? raw) {
+  switch (raw?.toLowerCase()) {
+    case 'order':
+      return MobileNotificationKind.order;
+    case 'message':
+      return MobileNotificationKind.message;
+    case 'review':
+      return MobileNotificationKind.review;
+    case 'connection':
+      return MobileNotificationKind.connection;
+    default:
+      return MobileNotificationKind.system;
   }
 }
 
@@ -79,6 +107,8 @@ class MobilePushNotificationService {
     }
     _started = true;
 
+    await createNotificationChannels();
+
     final messaging = FirebaseMessaging.instance;
 
     await messaging.requestPermission(
@@ -105,8 +135,20 @@ class MobilePushNotificationService {
       _handleNotificationTap(initialMessage);
     }
 
-    _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
-      debugPrint('ServiQ: foreground notification=${message.messageId}');
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) async {
+      final data = message.data;
+      final title = message.notification?.title ?? (data['title'] as String?);
+      final body = message.notification?.body ?? (data['message'] as String? ?? data['body'] as String?);
+      if (title != null && body != null) {
+        final kindRaw = data['kind'] as String?;
+        final kind = _parseKind(kindRaw);
+        await showLocalNotification(
+          title: title,
+          body: body,
+          kind: kind,
+          route: data['route'] as String?,
+        );
+      }
     });
   }
 
