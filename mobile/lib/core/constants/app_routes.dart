@@ -37,6 +37,7 @@ class AppRoutes {
   static const marketZones = '/app/market-zones';
   static const payouts = '/app/payouts';
   static const transactions = '/app/transactions';
+  static const blockedUsers = '/app/blocked-users';
   static const referrals = '/app/referrals';
   static const verification = '/app/verification';
   static const analytics = '/app/analytics';

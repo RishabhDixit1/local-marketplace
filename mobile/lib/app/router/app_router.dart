@@ -26,6 +26,7 @@ import '../../features/payments/presentation/transactions_page.dart';
 import '../../features/referrals/presentation/referrals_page.dart';
 import '../../features/verification/presentation/verification_page.dart';
 import '../../features/analytics/presentation/analytics_page.dart';
+import '../../features/blocking/presentation/blocked_users_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/availability/presentation/availability_page.dart';
 import '../../features/bookings/presentation/bookings_page.dart';
@@ -189,6 +190,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.profileSettings,
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.blockedUsers,
+        builder: (context, state) => const BlockedUsersPage(),
       ),
       GoRoute(
         path: AppRoutes.control,

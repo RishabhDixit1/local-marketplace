@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
+import '../../../features/blocking/data/block_repository_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/error/app_error_mapper.dart';
@@ -303,17 +304,23 @@ class ProviderProfilePage extends ConsumerWidget {
                           ),
                     ),
                     const SizedBox(height: 12),
-                    ...List.generate(reasons.length, (index) {
-                      return RadioListTile<int>(
-                        value: index,
-                        groupValue: selectedReason,
-                        title: Text(reasons[index]),
-                        onChanged: (v) =>
-                            setSheetState(() => selectedReason = v!),
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      );
-                    }),
+                    RadioGroup<int>(
+                      groupValue: selectedReason,
+                      onChanged: (v) {
+                        if (v != null) setSheetState(() => selectedReason = v);
+                      },
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < reasons.length; i++)
+                            RadioListTile<int>(
+                              value: i,
+                              title: Text(reasons[i]),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextField(
                       decoration: const InputDecoration(
@@ -432,10 +439,7 @@ class ProviderProfilePage extends ConsumerWidget {
                             : () async {
                           setSheetState(() => blocking = true);
                           try {
-                            final client = ref.read(mobileApiClientProvider);
-                            await client.postJson('/api/block', body: {
-                              'blockedId': provider.id,
-                            });
+                            await ref.read(blockRepositoryProvider).blockUser(provider.id);
                             if (sheetContext.mounted) {
                               Navigator.of(sheetContext).pop();
                               ScaffoldMessenger.of(context).showSnackBar(

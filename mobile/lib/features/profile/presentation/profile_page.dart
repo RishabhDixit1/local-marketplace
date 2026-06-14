@@ -517,6 +517,13 @@ class _ProfileCommandHub extends StatelessWidget {
               subtitle: 'Notifications, appearance, and account',
               route: AppRoutes.profileSettings,
             ),
+            _HubTileData(
+              key: 'profile-tile-blocked',
+              icon: Icons.shield_outlined,
+              title: 'Blocked Users',
+              subtitle: 'Manage blocked accounts',
+              route: AppRoutes.blockedUsers,
+            ),
           ],
         ),
         const SizedBox(height: 16),
