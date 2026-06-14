@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -138,26 +139,23 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                   itemBuilder: (context, index) {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        review.photos[index],
+                      child: CachedNetworkImage(
+                        imageUrl: review.photos[index],
                         width: 72,
                         height: 72,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
+                        errorWidget: (_, _, _) => Container(
                           width: 72,
                           height: 72,
                           color: AppColors.surfaceAlt,
                           child: const Icon(Icons.broken_image_outlined, size: 24, color: AppColors.inkFaint),
                         ),
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 72,
-                            height: 72,
-                            color: AppColors.surfaceAlt,
-                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                          );
-                        },
+                        placeholder: (context, url) => Container(
+                          width: 72,
+                          height: 72,
+                          color: AppColors.surfaceAlt,
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
                       ),
                     );
                   },

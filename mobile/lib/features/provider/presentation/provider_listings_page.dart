@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -547,7 +548,12 @@ class _ListingCardBody extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadii.sm),
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: Image.network(imageUrl, fit: BoxFit.cover),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: AppColors.surfaceAlt),
+                errorWidget: (context, url, error) => Container(color: AppColors.surfaceAlt, child: Icon(Icons.broken_image, color: AppColors.inkMuted)),
+              ),
             ),
           ),
           const SizedBox(height: 12),

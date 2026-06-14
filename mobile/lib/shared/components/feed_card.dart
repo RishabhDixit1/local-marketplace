@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/design_system/design_system.dart';
@@ -214,10 +215,11 @@ class _FeedPreview extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            item.thumbnailUrl,
+          CachedNetworkImage(
+            imageUrl: item.thumbnailUrl,
             fit: BoxFit.cover,
-            errorBuilder: (context, _, _) => _PreviewFallback(item: item),
+            errorWidget: (context, url, error) => _PreviewFallback(item: item),
+            placeholder: (context, url) => _PreviewFallback(item: item),
           ),
           const DecoratedBox(
             decoration: BoxDecoration(

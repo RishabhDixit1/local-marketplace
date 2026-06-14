@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -155,10 +156,12 @@ class _ListingHeroGallery extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (item.hasPreviewImage)
-              Image.network(
-                item.thumbnailUrl,
+              CachedNetworkImage(
+                imageUrl: item.thumbnailUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, _, _) =>
+                errorWidget: (context, url, error) =>
+                    _ListingMediaFallback(item: item),
+                placeholder: (context, url) =>
                     _ListingMediaFallback(item: item),
               )
             else

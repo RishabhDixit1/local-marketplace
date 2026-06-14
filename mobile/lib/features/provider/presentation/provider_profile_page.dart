@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -676,11 +677,12 @@ class _StorefrontHero extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (imageUrl.trim().isNotEmpty)
-                    Image.network(
-                      imageUrl,
+                    CachedNetworkImage(
+                      imageUrl: imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
+                      errorWidget: (context, url, error) =>
                           const _StorefrontHeroFallback(),
+                      placeholder: (context, url) => const _StorefrontHeroFallback(),
                     )
                   else
                     const _StorefrontHeroFallback(),
@@ -1154,10 +1156,10 @@ class _OfferTile extends StatelessWidget {
                             : Icons.design_services_outlined,
                         color: AppColors.primary,
                       )
-                    : Image.network(
-                        offer.thumbnailUrl,
+                    : CachedNetworkImage(
+                        imageUrl: offer.thumbnailUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
+                        errorWidget: (context, url, error) =>
                             const Icon(
                               Icons.storefront_outlined,
                               color: AppColors.primary,
