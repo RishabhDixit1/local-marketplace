@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../network/debug_http_overrides.dart';
+import '../secure_storage/local_storage.dart';
 
 final appBootstrapProvider = Provider<AppBootstrap>((ref) {
   throw UnimplementedError('AppBootstrap must be overridden in main().');
@@ -78,6 +79,12 @@ class AppBootstrap {
         anonKey: config.supabaseAnonKey,
         httpClient: httpClient,
         debug: kDebugMode,
+        authOptions: FlutterAuthClientOptions(
+          localStorage: SecureLocalStorage(
+            persistSessionKey: 'serviq_supabase_session',
+          ),
+          pkceAsyncStorage: SecureGotrueAsyncStorage(),
+        ),
       ).timeout(_initializationTimeout);
 
       debugPrint('ServiQ mobile: Supabase bootstrap completed.');

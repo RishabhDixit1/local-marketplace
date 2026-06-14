@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../network/rate_limiter.dart';
 
 class ApiException implements Exception {
   const ApiException(this.message, {this.statusCode});
@@ -25,13 +26,16 @@ class MobileApiClient {
   MobileApiClient({
     required AppConfig config,
     required SupabaseClient? supabaseClient,
+    RateLimiter? rateLimiter,
   }) : _config = config,
        _supabaseClient = supabaseClient,
-       _httpClient = http.Client();
+       _httpClient = http.Client(),
+       _rateLimiter = rateLimiter ?? RateLimiter();
 
   final AppConfig _config;
   final SupabaseClient? _supabaseClient;
   final http.Client _httpClient;
+  final RateLimiter _rateLimiter;
   static Completer<void>? _refreshCompleter;
 
   Future<Map<String, dynamic>> getJson(
@@ -302,6 +306,11 @@ class MobileApiClient {
     }
 
     final uri = _buildUri(path, queryParameters: queryParameters);
+
+    final rateLimitKey = '$method ${uri.path}';
+    if (!_rateLimiter.tryConsume(rateLimitKey)) {
+      throw RateLimitExceeded('API request', retryAfterMs: 1000);
+    }
 
     final headers = <String, String>{
       'Content-Type': 'application/json',

@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.serviq.serviq_mobile",
+        "paths": [
+          "/app/*",
+          "/auth/*",
+          "/listing/*",
+          "/provider/*",
+          "/checkout/*"
+        ]
+      }
+    ]
+  }
+}
