@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_routes.dart';
 import '../../core/firebase/mobile_push_notifications.dart';
+import '../../core/network/offline_banner.dart';
+import '../../core/network/offline_sync_manager.dart';
 import '../../core/realtime/mobile_live_hub.dart';
 import '../../core/services/analytics_service.dart';
 import '../../features/chat/data/chat_repository.dart';
@@ -36,6 +38,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(mobileLiveHubProvider);
     ref.watch(mobilePushNotificationServiceProvider).start();
+    ref.watch(offlineSyncManagerProvider);
     final chatConversations = ref.watch(chatConversationsProvider);
     final taskSnapshot = ref.watch(taskSnapshotProvider);
     final showPostAction = shouldShowPostActionForBranch(
@@ -65,19 +68,26 @@ class AppShell extends ConsumerWidget {
 
         return Scaffold(
           extendBody: !useRail,
-          body: useRail
-              ? Row(
-                  children: [
-                    MainNavigationRail(
-                      currentIndex: navigationShell.currentIndex,
-                      onTap: destinationSelected,
-                      chatCount: unreadChatCount,
-                      taskCount: activeTaskCount,
-                    ),
-                    Expanded(child: navigationShell),
-                  ],
-                )
-              : navigationShell,
+          body: Column(
+            children: [
+              const OfflineBanner(),
+              Expanded(
+                child: useRail
+                    ? Row(
+                        children: [
+                          MainNavigationRail(
+                            currentIndex: navigationShell.currentIndex,
+                            onTap: destinationSelected,
+                            chatCount: unreadChatCount,
+                            taskCount: activeTaskCount,
+                          ),
+                          Expanded(child: navigationShell),
+                        ],
+                      )
+                    : navigationShell,
+              ),
+            ],
+          ),
           floatingActionButton: AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
