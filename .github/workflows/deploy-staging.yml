@@ -1,0 +1,147 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build staging Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          tags: serviq:staging
+          build-args: |
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Package deploy artifact
+        run: docker save serviq:staging | gzip > /tmp/serviq-staging-docker.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serviq-staging-deploy
+          path: /tmp/serviq-staging-docker.tar.gz
+          retention-days: 3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download deploy artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: serviq-staging-deploy
+
+      - name: Copy Docker image to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: serviq-staging-docker.tar.gz
+          target: /home/ec2-user/serviq-staging
+          strip_components: 0
+
+      - name: Deploy staging on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            cd /home/ec2-user/serviq-staging
+
+            # Create .env.staging from secrets
+            cat > .env.staging << 'ENVEOF'
+            NODE_ENV=production
+            SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            BACKUP_EMAIL_API_KEY=${{ secrets.BACKUP_EMAIL_API_KEY }}
+            SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            SERVIQ_INTERNAL_PUSH_KEY=${{ secrets.SERVIQ_INTERNAL_PUSH_KEY }}
+            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_EMAIL=${{ secrets.VAPID_EMAIL }}
+            FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}
+            FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.STAGING_FIREBASE_SERVICE_ACCOUNT_JSON }}
+            ENVEOF
+
+            docker system prune -f --all 2>/dev/null || true
+
+            gzip -d -f serviq-staging-docker.tar.gz
+            docker load -i serviq-staging-docker.tar
+            rm -f serviq-staging-docker.tar
+
+            docker stop serviq-staging --time 10 2>/dev/null || true
+            docker rm serviq-staging 2>/dev/null || true
+            fuser -k 3001/tcp 2>/dev/null || true
+
+            docker run -d \
+              --name serviq-staging \
+              --restart unless-stopped \
+              -p 3001:3000 \
+              --env-file .env.staging \
+              serviq:staging
+
+            sleep 2
+            echo "Staging container startup logs:"
+            docker logs serviq-staging --tail 20 2>/dev/null || true
+
+            for i in $(seq 1 15); do
+              RUNNING=$(docker inspect --format='{{.State.Running}}' serviq-staging 2>/dev/null || echo "false")
+              if [ "$RUNNING" = "true" ]; then
+                echo "Staging deploy successful — container running on port 3001!"
+                docker ps --filter name=serviq-staging --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
+                exit 0
+              fi
+              sleep 4
+            done
+
+            echo "ERROR: Staging health check failed"
+            docker logs serviq-staging --tail 50 2>/dev/null || true
+            exit 1
