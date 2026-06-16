@@ -9,8 +9,5 @@
         android:usesCleartextTraffic="true"
         tools:replace="android:usesCleartextTraffic"
         android:networkSecurityConfig="@xml/debug_network_security_config">
-        <meta-data
-            android:name="io.flutter.embedding.android.EnableImpeller"
-            android:value="false" />
     </application>
 </manifest>

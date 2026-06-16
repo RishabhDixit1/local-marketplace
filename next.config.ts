@@ -122,6 +122,14 @@ const createNextConfig = (phase: string): NextConfig => ({
   distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
   images: {
     ...images,
+    remotePatterns: [
+      ...images.remotePatterns!,
+      ...(phase === PHASE_DEVELOPMENT_SERVER
+        ? [
+            { protocol: "http" as const, hostname: "localhost" },
+          ]
+        : []),
+    ],
     dangerouslyAllowLocalIP: phase === PHASE_DEVELOPMENT_SERVER,
   },
   compress: true,

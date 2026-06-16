@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../features/settings/data/theme_mode_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +12,6 @@ import '../core/firebase/app_firebase.dart';
 import '../core/firebase/mobile_push_notifications.dart';
 import '../core/services/analytics_service.dart';
 import '../core/services/app_update_service.dart';
-import '../core/services/update_dialog.dart';
 import '../core/supabase/app_bootstrap.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/data/onboarding_handoff.dart';
@@ -36,18 +36,22 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
         return;
       }
       _trackedAppOpen = true;
-      final bootstrap = ref.read(appBootstrapProvider);
-      final firebase = ref.read(appFirebaseProvider);
-      ref
-          .read(analyticsServiceProvider)
-          .trackEvent(
-            'app_open_mobile',
-            extras: {
-              'environment': bootstrap.config.environment,
-              'supabase_ready': bootstrap.supabaseReady,
-              'firebase_ready': firebase.initialized,
-            },
-          );
+      try {
+        final bootstrap = ref.read(appBootstrapProvider);
+        final firebase = ref.read(appFirebaseProvider);
+        ref
+            .read(analyticsServiceProvider)
+            .trackEvent(
+              'app_open_mobile',
+              extras: {
+                'environment': bootstrap.config.environment,
+                'supabase_ready': bootstrap.supabaseReady,
+                'firebase_ready': firebase.initialized,
+              },
+            );
+      } catch (_) {
+        // Analytics must never block or crash startup
+      }
     });
   }
 
@@ -163,26 +167,90 @@ class _UpdateCheckGateState extends State<_UpdateCheckGate> {
   }
 
   void _showUpdateGateDialog(AppUpdateInfo info) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final navigator = appNavigatorKey.currentState;
-      if (navigator == null) return;
-      final overlayContext = navigator.overlay?.context;
-      if (overlayContext == null) return;
-      try {
-        showUpdateDialog(
-          overlayContext,
-          latestVersion: info.latestVersion,
-          isCritical: info.isCritical,
-          releaseNotes: info.releaseNotes,
-          updateUrl: info.updateUrl,
-        );
-      } catch (_) {
-        // Dialog failed — non-blocking
-      }
+    final navigator = appNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    navigator.push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _UpdateGatePage(info: info),
+      ),
+    ).then((shouldUpdate) {
+      if (shouldUpdate != true || !mounted) return;
+      _launchUpdateUrl(info.updateUrl);
     });
+  }
+
+  Future<void> _launchUpdateUrl(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      if (await canLaunchUrl(uri).timeout(const Duration(seconds: 3))) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication)
+            .timeout(const Duration(seconds: 5));
+      }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+class _UpdateGatePage extends StatelessWidget {
+  const _UpdateGatePage({required this.info});
+
+  final AppUpdateInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !info.isCritical,
+      child: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.system_update_alt_rounded,
+                    size: 64,
+                    color: info.isCritical ? AppColors.danger : AppColors.primary,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    info.isCritical ? 'Update required' : 'Update available',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Version ${info.latestVersion} is now available.'),
+                  if (info.releaseNotes != null && info.releaseNotes!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('What\'s new:', style: Theme.of(context).textTheme.labelLarge),
+                    const SizedBox(height: 4),
+                    Text(info.releaseNotes!),
+                  ],
+                  const SizedBox(height: 32),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, true),
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text('Update'),
+                  ),
+                  if (!info.isCritical) ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Later'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

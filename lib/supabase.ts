@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
 
 const getSupabaseUrl = () => {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
@@ -32,7 +33,9 @@ export function getSupabaseClient(): SupabaseClient {
   const anonKey = getSupabaseAnonKey();
 
   if (url && anonKey) {
-    cachedClient = createBrowserClient(url, anonKey);
+    cachedClient = createBrowserClient(url, anonKey, {
+      cookieOptions: { name: getSupabaseAuthCookieName() },
+    });
     return cachedClient;
   }
 

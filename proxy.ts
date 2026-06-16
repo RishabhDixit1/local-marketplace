@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
 
 const protectedPaths = ["/dashboard", "/checkout", "/orders"];
 
@@ -46,6 +47,7 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { name: getSupabaseAuthCookieName() },
     cookies: {
       getAll() {
         return request.cookies.getAll();

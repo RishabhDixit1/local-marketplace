@@ -42,7 +42,7 @@ export const resolveSupabasePublicUrl = (
     if (supabaseStoragePathPattern.test(candidate)) {
       const relative = resolveAsWebappRelativePath(candidate);
       const supabaseOrigin = getSupabaseOrigin();
-      return supabaseOrigin ? `${supabaseOrigin}/${relative}` : candidate;
+      return supabaseOrigin ? `${supabaseOrigin}/${trimLeadingSlashes(relative)}` : candidate;
     }
     return candidate;
   }
@@ -51,7 +51,7 @@ export const resolveSupabasePublicUrl = (
     if (supabaseStoragePathPattern.test(candidate)) {
       const relative = resolveAsWebappRelativePath(candidate);
       const supabaseOrigin = getSupabaseOrigin();
-      return supabaseOrigin ? `${supabaseOrigin}/${relative}` : candidate;
+      return supabaseOrigin ? `${supabaseOrigin}/${trimLeadingSlashes(relative)}` : candidate;
     }
     return `https:${candidate}`;
   }

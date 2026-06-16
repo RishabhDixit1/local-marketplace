@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../features/notifications/domain/notification_models.dart';
 import '../api/mobile_api_client.dart';
 import '../api/mobile_api_provider.dart';
@@ -155,6 +157,13 @@ class MobilePushNotificationService {
 
   Future<void> _registerToken(String token) async {
     if (!_bootstrap.supabaseReady) return;
+
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null || session.isExpired) {
+      debugPrint('ServiQ: FCM token registration skipped — no valid session');
+      return;
+    }
+
     try {
       await _apiClient.postJson(
         '/api/notifications/subscribe',

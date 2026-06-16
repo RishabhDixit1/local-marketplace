@@ -35,6 +35,6 @@ class AnalyticsService {
     if (kDebugMode) {
       debugPrint('ServiQ analytics event=$name extras=$extras');
     }
-    _firebase?.logEvent(name: name, parameters: extras as Map<String, Object>?);
+    _firebase?.logEvent(name: name, parameters: extras.isEmpty ? null : extras.cast<String, Object>());
   }
 }
