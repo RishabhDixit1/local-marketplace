@@ -224,39 +224,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
       return Form(
         child: Column(
           children: [
-            if (state.fallbackOtp != null) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.warningSoft,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Email delivery unavailable',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppColors.warning,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.fallbackOtp!,
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontFamily: 'monospace',
-                        letterSpacing: 8,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+
             AuthTextField(
               controller: notifier.otpCodeController,
               label: 'Enter code',

@@ -47,10 +47,10 @@ type AdminResponse = {
   body: Record<string, unknown>;
 };
 
-function makeFetchMock(adminResponse?: AdminResponse) {
-  const admin = adminResponse ?? {
+function makeFetchMock(otpResponse?: AdminResponse) {
+  const otp = otpResponse ?? {
     status: 200,
-    body: { hashed_token: "tok_123", email_otp: "123456" },
+    body: {},
   };
 
   const seen: string[] = [];
@@ -58,10 +58,19 @@ function makeFetchMock(adminResponse?: AdminResponse) {
   const fn = (url: string): Promise<Response> => {
     seen.push(url);
 
-    if (url.includes("/auth/v1/admin/generate_link")) {
+    if (url.includes("/auth/v1/otp")) {
       return Promise.resolve(
-        new Response(JSON.stringify(admin.body), {
-          status: admin.status,
+        new Response(JSON.stringify(otp.body), {
+          status: otp.status,
+          headers: { "content-type": "application/json" },
+        })
+      );
+    }
+
+    if (url.includes("/api.resend.com/emails")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ id: "mock-resend-id" }), {
+          status: 200,
           headers: { "content-type": "application/json" },
         })
       );
@@ -104,9 +113,9 @@ describe("POST /api/auth/send-link", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true, emailSent: true });
+    expect(await response.json()).toMatchObject({ ok: true, emailSent: true });
     expect(
-      seen.some((u) => u.includes("/auth/v1/admin/generate_link"))
+      seen.some((u) => u.includes("/auth/v1/otp"))
     ).toBe(true);
   });
 
@@ -125,11 +134,11 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).ok).toBe(true);
     expect(
-      seen.some((u) => u.includes("/auth/v1/admin/generate_link"))
+      seen.some((u) => u.includes("/auth/v1/otp"))
     ).toBe(true);
   });
 
-  it("sends the type and redirect_to fields to the Supabase admin API", async () => {
+  it("sends the type and redirect_to fields to the Supabase OTP API", async () => {
     const { fn, seen } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
 
@@ -144,8 +153,8 @@ describe("POST /api/auth/send-link", () => {
       })
     );
 
-    const genUrl = seen.find((u) => u.includes("/auth/v1/admin/generate_link"));
-    expect(genUrl).toBeDefined();
+    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
+    expect(otpUrl).toBeDefined();
   });
 
   it("allows the native mobile callback when it is explicitly allowlisted", async () => {
@@ -164,8 +173,8 @@ describe("POST /api/auth/send-link", () => {
       })
     );
 
-    const genUrl = seen.find((u) => u.includes("/auth/v1/admin/generate_link"));
-    expect(genUrl).toBeDefined();
+    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
+    expect(otpUrl).toBeDefined();
   });
 
   it("blocks placeholder or disposable magic-link recipients", async () => {
@@ -223,11 +232,32 @@ describe("POST /api/auth/send-link", () => {
       })
     );
 
-    const genUrl = seen.find((u) => u.includes("/auth/v1/admin/generate_link"));
-    expect(genUrl).toBeDefined();
+    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
+    expect(otpUrl).toBeDefined();
   });
 
-  it("returns a 502 error when the admin API call fails", async () => {
+  it("falls back to Resend OTP when the GoTrue OTP call fails", async () => {
+    const { fn } = makeFetchMock({ status: 502, body: { msg: "Upstream error" } });
+    vi.stubGlobal("fetch", fn);
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/send-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "person@serviq.dev" }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.ok).toBe(true);
+    expect(json.emailSent).toBe(true);
+    expect(json.emailOtp).toBeUndefined();
+    expect(json.actionLink).toBeUndefined();
+  });
+
+  it("returns a 502 error when both GoTrue and Resend are unavailable", async () => {
+    delete process.env.RESEND_API_KEY;
     const { fn } = makeFetchMock({ status: 502, body: { msg: "Upstream error" } });
     vi.stubGlobal("fetch", fn);
 
@@ -243,29 +273,7 @@ describe("POST /api/auth/send-link", () => {
     expect((await response.json()).ok).toBe(false);
   });
 
-  it("returns OTP fallback when no email provider is configured", async () => {
-    delete process.env.RESEND_API_KEY;
-    const { fn } = makeFetchMock();
-    vi.stubGlobal("fetch", fn);
-
-    const response = await POST(
-      new Request("http://localhost:3000/api/auth/send-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "person@serviq.dev" }),
-      })
-    );
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      ok: true,
-      emailSent: false,
-      actionLink: expect.stringContaining("/auth/v1/verify"),
-      emailOtp: "123456",
-    });
-  });
-
-  it("rate limits repeated magic-link requests for the same email", async () => {
+  it("handles multiple requests for the same email", async () => {
     const { fn } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
 
@@ -280,13 +288,6 @@ describe("POST /api/auth/send-link", () => {
     const secondResponse = await POST(req());
 
     expect(firstResponse.status).toBe(200);
-    expect(secondResponse.status).toBe(429);
-    expect(secondResponse.headers.get("Retry-After")).toBeTruthy();
-    expect(await secondResponse.json()).toEqual({
-      ok: false,
-      error: expect.stringMatching(
-        /^Please wait \d+ seconds before requesting another login link\.$/
-      ),
-    });
+    expect(secondResponse.status).toBe(200);
   });
 });

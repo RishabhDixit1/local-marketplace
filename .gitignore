@@ -50,6 +50,10 @@ next-env.d.ts
 # Local config with credentials
 mobile/config/local.json
 
+# Firebase platform configs (generated per-environment)
+**/google-services.json
+**/GoogleService-Info.plist
+
 # APK releases (hosted as GitHub Releases instead)
 public/app/releases/
 ecosystem.config.js

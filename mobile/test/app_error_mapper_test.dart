@@ -66,15 +66,7 @@ void main() {
       );
     });
 
-    test('uses custom fallback when toString is empty', () {
-      // An object whose toString() returns empty string.
-      final emptyError = Object();
-      // Workaround: create a class that returns empty toString.
-      // For now, an int always has a non-empty toString, so we just verify
-      // that a regular non-empty toString is used over fallback.
-    });
-
-    test('uses toString for unrecognized errors', () {
+    test('falls back to toString for unrecognized errors', () {
       final error = FormatException('Bad format');
       expect(
         AppErrorMapper.toMessage(error),

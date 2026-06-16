@@ -1,0 +1,45 @@
+name: Web CI
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "lib/**"
+      - "tests/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "next.config.ts"
+      - ".github/workflows/web-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "lib/**"
+      - "tests/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "next.config.ts"
+      - ".github/workflows/web-ci.yml"
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit

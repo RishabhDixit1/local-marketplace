@@ -14,6 +14,15 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/data/onboarding_handoff.dart';
 
 Future<void> main() async {
+  FlutterError.onError = (details) {
+    debugPrint('ServiQ mobile: FlutterError: ${details.exception}');
+    unawaited(AppFirebase.recordError(
+      details.exception,
+      details.stack ?? StackTrace.current,
+      fatal: true,
+    ));
+  };
+
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();

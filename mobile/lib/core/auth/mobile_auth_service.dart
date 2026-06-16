@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -79,7 +81,7 @@ class MobileAuthService {
     return '$fallbackPrefix: $rawMessage';
   }
 
-  Future<({bool emailSent, String? fallbackOtp})> sendEmailCode(String email) async {
+  Future<bool> sendEmailCode(String email) async {
     final apiClient = MobileApiClient(
       config: _bootstrap.config,
       supabaseClient: _bootstrap.client,
@@ -103,10 +105,7 @@ class MobileAuthService {
         );
       }
 
-      final emailSent = payload['emailSent'] == true;
-      final fallbackOtp = payload['emailOtp'] as String?;
-
-      return (emailSent: emailSent, fallbackOtp: fallbackOtp);
+      return payload['emailSent'] == true;
     } finally {
       apiClient.dispose();
     }
@@ -136,18 +135,6 @@ class MobileAuthService {
         );
       }
 
-      final emailSent = payload['emailSent'] == true;
-      final emailOtp = payload['emailOtp'] as String?;
-
-      if (!emailSent && emailOtp != null && emailOtp.isNotEmpty) {
-        await _client.auth.verifyOTP(
-          email: email.trim(),
-          token: emailOtp,
-          type: OtpType.magiclink,
-        );
-        return '';
-      }
-
       final resolvedRedirect = payload['redirectTo'];
       if (resolvedRedirect is String && resolvedRedirect.trim().isNotEmpty) {
         return resolvedRedirect.trim();
@@ -163,11 +150,52 @@ class MobileAuthService {
     required String email,
     required String code,
   }) async {
-    return _client.auth.verifyOTP(
-      email: email.trim(),
-      token: code.trim(),
-      type: OtpType.magiclink,
+    final trimmedEmail = email.trim();
+    final trimmedCode = code.trim();
+
+    try {
+      return await _client.auth.verifyOTP(
+        email: trimmedEmail,
+        token: trimmedCode,
+        type: OtpType.email,
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // GoTrue unreachable or timeout — try custom fallback
+    }
+
+    final apiClient = MobileApiClient(
+      config: _bootstrap.config,
+      supabaseClient: _bootstrap.client,
     );
+
+    try {
+      final payload = await apiClient.postJson(
+        '/api/auth/verify-link',
+        body: {'email': trimmedEmail, 'otp': trimmedCode},
+        authenticated: false,
+      );
+
+      if (payload['ok'] != true) {
+        throw ApiException(
+          (payload['error'] as String?) ?? 'Invalid or expired code.',
+        );
+      }
+
+      final sessionJson = payload['session'];
+      if (sessionJson is Map<String, dynamic>) {
+        try {
+          return await _client.auth
+              .recoverSession(jsonEncode(sessionJson))
+              .timeout(const Duration(seconds: 5));
+        } catch (_) {
+          // recoverSession may also contact GoTrue or timeout
+        }
+      }
+
+      throw ApiException('Could not complete sign-in. Try again.');
+    } finally {
+      apiClient.dispose();
+    }
   }
 
   Future<AuthResponse> signInWithPassword({

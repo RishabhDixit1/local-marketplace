@@ -28,8 +28,14 @@ class AppRoutes {
   static const providerOnboarding = '/app/provider-onboarding';
   static const providerLaunchpad = '/app/provider-launchpad';
   static const providerListings = '/app/provider-listings';
+  static const publicBusiness = '/app/public-business';
   static const listings = '/app/listings';
   static const orders = '/app/orders';
+  static const providerOrders = '/app/provider-orders';
+  static const providerLeads = '/app/provider-leads';
+  static const providerBoosts = '/app/provider-boosts';
+  static const providerSubscriptions = '/app/provider-subscriptions';
+  static const invoices = '/app/invoices';
   static const checkout = '/app/checkout';
   static const saved = '/app/saved';
   static const providerLaunchpadReview = '/app/provider-launchpad-review';
@@ -43,6 +49,8 @@ class AppRoutes {
   static const analytics = '/app/analytics';
   static const availability = '/app/availability';
   static const bookings = '/app/bookings';
+  static const connections = '/app/connections';
+  static const admin = '/app/admin';
   static const workspaces = '/app/workspaces';
   static String workspaceDetail(String workspaceId) => '/app/workspaces/$workspaceId';
 

@@ -6,7 +6,7 @@
     "dev": "bash scripts/dev_server.sh",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --max-warnings 200",
+    "lint": "eslint --max-warnings 30",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:auth": "bash scripts/run_e2e_authenticated.sh",
@@ -19,7 +19,7 @@
     "prepare": "npx husky || true"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["eslint --fix --max-warnings 200"]
+    "*.{ts,tsx}": ["eslint --fix --max-warnings 30"]
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

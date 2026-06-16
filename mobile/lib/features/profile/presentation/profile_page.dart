@@ -410,7 +410,7 @@ class _ProfileCommandHub extends StatelessWidget {
               icon: Icons.visibility_outlined,
               title: 'Public Profile',
               subtitle: 'Preview what nearby people trust first',
-              route: AppRoutes.profile,
+              route: AppRoutes.publicBusiness,
             ),
             _HubTileData(
               key: 'profile-tile-edit-profile',

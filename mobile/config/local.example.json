@@ -5,5 +5,10 @@
   "API_BASE_URL": "http://localhost:3000",
   "AUTH_REDIRECT_SCHEME": "serviq",
   "AUTH_REDIRECT_HOST": "auth-callback",
-  "ALLOW_BAD_CERTIFICATES": false
+  "ALLOW_BAD_CERTIFICATES": false,
+  "FIREBASE_API_KEY": "your-firebase-api-key",
+  "FIREBASE_PROJECT_ID": "your-firebase-project-id",
+  "FIREBASE_MESSAGING_SENDER_ID": "your-sender-id",
+  "FIREBASE_ANDROID_APP_ID": "your-android-app-id",
+  "FIREBASE_IOS_APP_ID": "your-ios-app-id"
 }

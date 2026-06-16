@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -159,7 +160,7 @@ class MobilePushNotificationService {
         '/api/notifications/subscribe',
         body: {
           'fcmToken': token,
-          'platform': 'android',
+          'platform': Platform.isAndroid ? 'android' : 'ios',
         },
       );
     } catch (e) {

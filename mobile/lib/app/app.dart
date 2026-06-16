@@ -140,15 +140,36 @@ class _UpdateCheckGate extends StatefulWidget {
 }
 
 class _UpdateCheckGateState extends State<_UpdateCheckGate> {
+  bool _updateChecked = false;
+
   @override
-  void initState() {
-    super.initState();
-    widget.updateService.checkForUpdate().then((info) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_updateChecked) return;
+    _updateChecked = true;
+    _performUpdateCheck();
+  }
+
+  Future<void> _performUpdateCheck() async {
+    try {
+      final info = await widget.updateService
+          .checkForUpdate()
+          .timeout(const Duration(seconds: 10));
       if (!mounted || !info.updateAvailable) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final overlayContext = appNavigatorKey.currentState?.overlay?.context;
-        if (overlayContext == null) return;
+      _showUpdateGateDialog(info);
+    } catch (_) {
+      // Update check failed silently — non-blocking
+    }
+  }
+
+  void _showUpdateGateDialog(AppUpdateInfo info) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = appNavigatorKey.currentState;
+      if (navigator == null) return;
+      final overlayContext = navigator.overlay?.context;
+      if (overlayContext == null) return;
+      try {
         showUpdateDialog(
           overlayContext,
           latestVersion: info.latestVersion,
@@ -156,7 +177,9 @@ class _UpdateCheckGateState extends State<_UpdateCheckGate> {
           releaseNotes: info.releaseNotes,
           updateUrl: info.updateUrl,
         );
-      });
+      } catch (_) {
+        // Dialog failed — non-blocking
+      }
     });
   }
 

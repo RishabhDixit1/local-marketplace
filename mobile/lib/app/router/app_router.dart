@@ -7,12 +7,14 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_state_controller.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/supabase/app_bootstrap.dart';
+import '../../features/admin/presentation/admin_page.dart';
 import '../../features/auth/data/onboarding_handoff.dart';
 import '../../features/auth/presentation/setup_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/sign_up_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/chat/presentation/chat_page.dart';
+import '../../features/connections/presentation/connections_page.dart';
 import '../../features/feed/presentation/feed_page.dart';
 import '../../features/listings/presentation/listing_detail_page.dart';
 import '../../features/notifications/presentation/notifications_page.dart';
@@ -21,12 +23,18 @@ import '../../features/orders/domain/order_models.dart';
 import '../../features/orders/presentation/checkout_page.dart';
 import '../../features/orders/presentation/order_detail_page.dart';
 import '../../features/orders/presentation/orders_page.dart';
+import '../../features/orders/presentation/provider_leads_page.dart';
+import '../../features/orders/presentation/provider_orders_page.dart';
+import '../../features/promotions/presentation/provider_boosts_page.dart';
+import '../../features/subscriptions/presentation/provider_subscriptions_page.dart';
+import '../../features/invoices/presentation/invoices_page.dart';
 import '../../features/payouts/presentation/payouts_page.dart';
 import '../../features/payments/presentation/transactions_page.dart';
 import '../../features/referrals/presentation/referrals_page.dart';
 import '../../features/verification/presentation/verification_page.dart';
 import '../../features/analytics/presentation/analytics_page.dart';
 import '../../features/blocking/presentation/blocked_users_page.dart';
+import '../../features/public_profile/presentation/public_business_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/availability/presentation/availability_page.dart';
 import '../../features/bookings/presentation/bookings_page.dart';
@@ -177,7 +185,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.profilePublic,
-        redirect: (context, state) => AppRoutes.profile,
+        redirect: (context, state) => AppRoutes.publicBusiness,
+      ),
+      GoRoute(
+        path: AppRoutes.publicBusiness,
+        builder: (context, state) => const PublicBusinessPage(),
       ),
       GoRoute(
         path: AppRoutes.profileEdit,
@@ -266,6 +278,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.providerOrders,
+        builder: (context, state) => const ProviderOrdersPage(),
+        routes: [
+          GoRoute(
+            path: ':orderId',
+            builder: (context, state) => OrderDetailPage(
+              orderId: state.pathParameters['orderId']?.trim() ?? '',
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.providerLeads,
+        builder: (context, state) => const ProviderLeadsPage(),
+        routes: [
+          GoRoute(
+            path: ':orderId',
+            builder: (context, state) => OrderDetailPage(
+              orderId: state.pathParameters['orderId']?.trim() ?? '',
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.providerBoosts,
+        builder: (context, state) => const ProviderBoostsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.providerSubscriptions,
+        builder: (context, state) => const ProviderSubscriptionsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.invoices,
+        builder: (context, state) => const InvoicesPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.connections,
+        builder: (context, state) => const ConnectionsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.admin,
+        builder: (context, state) => const AdminPage(),
       ),
       GoRoute(
         path: AppRoutes.checkout,

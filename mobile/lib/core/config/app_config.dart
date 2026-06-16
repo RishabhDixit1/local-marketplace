@@ -84,6 +84,12 @@ class AppConfig {
       '--dart-define=API_BASE_URL="https://www.serviqapp.com"',
     );
 
+    assert(
+      !config.allowBadCertificates,
+      'ALLOW_BAD_CERTIFICATES must be false in production builds.\n'
+      'Remove --dart-define=ALLOW_BAD_CERTIFICATES=true or set it to false.',
+    );
+
     final url = config.apiBaseUrl.trim().toLowerCase();
     final localAliases = ['localhost', '127.0.0.1', '10.0.2.2', '0.0.0.0'];
     final isLocal = localAliases.any((alias) => url.contains(alias));

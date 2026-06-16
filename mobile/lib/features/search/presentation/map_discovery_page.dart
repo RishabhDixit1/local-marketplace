@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/design_tokens.dart';
@@ -33,15 +35,21 @@ class MapDiscoveryPage extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        loading: () =>
+            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.cloud_off, size: 40, color: AppColors.inkFaint),
               const SizedBox(height: 12),
-              Text('Unable to load nearby providers',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.inkSubtle)),
+              Text(
+                'Unable to load nearby providers',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: AppColors.inkSubtle),
+              ),
               const SizedBox(height: 12),
               FilledButton.tonal(
                 onPressed: () => ref.invalidate(_mapProvidersProvider),
@@ -50,8 +58,90 @@ class MapDiscoveryPage extends ConsumerWidget {
             ],
           ),
         ),
-        data: (response) => _MapContent(providers: response.providers),
+        data: (response) => _MapWithList(providers: response.providers),
       ),
+    );
+  }
+}
+
+class _MapWithList extends StatelessWidget {
+  const _MapWithList({required this.providers});
+  final List<SearchResult> providers;
+
+  @override
+  Widget build(BuildContext context) {
+    final withLocation =
+        providers.where((p) => p.lat != null && p.lng != null).toList();
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 280,
+          child: withLocation.isEmpty
+              ? const Center(child: Text('No location data available'))
+              : FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(
+                      withLocation.first.lat!,
+                      withLocation.first.lng!,
+                    ),
+                    initialZoom: 11,
+                    minZoom: 8,
+                    maxZoom: 16,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.serviq.app',
+                    ),
+                    MarkerLayer(
+                      markers: withLocation.map((p) {
+                        return Marker(
+                          point: LatLng(p.lat!, p.lng!),
+                          width: 36,
+                          height: 36,
+                          child: GestureDetector(
+                            onTap: () =>
+                                context.push(AppRoutes.provider(p.id)),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.white, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  p.name.isNotEmpty
+                                      ? p.name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+        ),
+        Expanded(
+          child: _MapContent(providers: providers),
+        ),
+      ],
     );
   }
 }
@@ -72,14 +162,14 @@ class _MapContent extends StatelessWidget {
       );
     }
 
-    // Group providers by whether they have location data
-    final withLocation = providers.where((p) => p.lat != null && p.lng != null).toList();
-    final withoutLocation = providers.where((p) => p.lat == null || p.lng == null).toList();
+    final withLocation =
+        providers.where((p) => p.lat != null && p.lng != null).toList();
+    final withoutLocation =
+        providers.where((p) => p.lat == null || p.lng == null).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        // Summary header
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -92,35 +182,38 @@ class _MapContent extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '${providers.length} providers available ${withLocation.length} with location data',
-                  style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
+                  '${providers.length} providers · ${withLocation.length} on map',
+                  style:
+                      const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-
-        // Section: Nearby (closest first)
         if (withLocation.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text('Nearby',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold)),
           ),
           ...withLocation.take(20).map((p) => _MapProviderTile(provider: p)),
         ],
-
         if (withoutLocation.isNotEmpty) ...[
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text('Other providers',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold)),
           ),
           ...withoutLocation.take(20).map((p) => _MapProviderTile(provider: p)),
         ],
-
         if (providers.length > 40)
           Padding(
             padding: const EdgeInsets.only(top: 12),
@@ -158,8 +251,12 @@ class _MapProviderTile extends StatelessWidget {
                     ? NetworkImage(provider.avatarUrl)
                     : null,
                 child: provider.avatarUrl.isEmpty
-                    ? Text(provider.name.isNotEmpty ? provider.name[0].toUpperCase() : '?',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
+                    ? Text(
+                        provider.name.isNotEmpty
+                            ? provider.name[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12))
                     : null,
               ),
               const SizedBox(width: 10),
@@ -171,23 +268,27 @@ class _MapProviderTile extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(provider.name,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13)),
                         ),
                         if (provider.verified)
                           const Padding(
                             padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.verified, size: 12, color: AppColors.primary),
+                            child: Icon(Icons.verified,
+                                size: 12, color: AppColors.primary),
                           ),
                       ],
                     ),
                     if (provider.location.isNotEmpty)
                       Text(provider.location,
-                          style: const TextStyle(fontSize: 11, color: AppColors.inkSubtle),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.inkSubtle),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                     if (provider.listings.isNotEmpty)
                       Text(provider.listings.first.title,
-                          style: const TextStyle(fontSize: 10, color: AppColors.inkFaint),
+                          style: const TextStyle(
+                              fontSize: 10, color: AppColors.inkFaint),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                   ],
@@ -195,13 +296,18 @@ class _MapProviderTile extends StatelessWidget {
               ),
               if (provider.distanceKm != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text('${provider.distanceKm!.toStringAsFixed(1)} km',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  child: Text(
+                      '${provider.distanceKm!.toStringAsFixed(1)} km',
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary)),
                 ),
             ],
           ),

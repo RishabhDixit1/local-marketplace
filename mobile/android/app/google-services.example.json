@@ -1,0 +1,35 @@
+{
+  "project_info": {
+    "project_number": "your-project-number",
+    "project_id": "your-firebase-project-id",
+    "storage_bucket": "your-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:your-project-number:android:your-android-hash",
+        "android_client_info": {
+          "package_name": "com.yourcompany.yourapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "your-firebase-api-key"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1
+        },
+        "google_cast_api": {
+          "status": 0
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

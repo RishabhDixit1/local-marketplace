@@ -517,6 +517,41 @@ class _ControlActionPanel extends StatelessWidget {
             label: 'Manage listings',
             route: AppRoutes.providerListings,
           ),
+          _ControlLinkRow(
+            icon: Icons.receipt_long_outlined,
+            label: 'Provider orders',
+            route: AppRoutes.providerOrders,
+          ),
+          _ControlLinkRow(
+            icon: Icons.handshake_outlined,
+            label: 'Manage leads',
+            route: AppRoutes.providerLeads,
+          ),
+          _ControlLinkRow(
+            icon: Icons.trending_up_rounded,
+            label: 'Boosts & promotions',
+            route: AppRoutes.providerBoosts,
+          ),
+          _ControlLinkRow(
+            icon: Icons.card_membership_outlined,
+            label: 'Subscriptions',
+            route: AppRoutes.providerSubscriptions,
+          ),
+          _ControlLinkRow(
+            icon: Icons.receipt_long_rounded,
+            label: 'Invoices',
+            route: AppRoutes.invoices,
+          ),
+          _ControlLinkRow(
+            icon: Icons.people_outline_rounded,
+            label: 'Connections',
+            route: AppRoutes.connections,
+          ),
+          _ControlLinkRow(
+            icon: Icons.shield_outlined,
+            label: 'Admin',
+            route: AppRoutes.admin,
+          ),
         ],
       ),
     );

@@ -135,8 +135,6 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
   );
 }
 
-type MagicLinkData = { actionLink: string; emailOtp: string; email: string };
-
 export function LandingPageClient({
   initialSignIn,
   initialCategory,
@@ -150,7 +148,6 @@ export function LandingPageClient({
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [magicLinkData, setMagicLinkData] = useState<MagicLinkData | null>(null);
   const [otpStep, setOtpStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -213,7 +210,6 @@ export function LandingPageClient({
       setShowAuth(false);
       setOtpStep(false);
       setVerificationCode("");
-      setMagicLinkData(null);
       setContactProvider(null);
       setSelectedProvider(null);
       router.replace(target);
@@ -251,7 +247,6 @@ export function LandingPageClient({
   const sendEmailLink = async () => {
     setErrorMessage("");
     setInfoMessage("");
-    setMagicLinkData(null);
     setOtpStep(false);
     setVerificationCode("");
     const email = emailAddress.trim().toLowerCase();
@@ -263,13 +258,9 @@ export function LandingPageClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; emailSent?: boolean; actionLink?: string; emailOtp?: string; message?: string } | null;
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; emailSent?: boolean; message?: string } | null;
       if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Unable to send magic link.");
-      if (payload.emailSent === false) {
-        setMagicLinkData({ actionLink: payload.actionLink!, emailOtp: payload.emailOtp!, email });
-      } else {
-        setOtpStep(true);
-      }
+      setOtpStep(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send magic link.";
       if (/rate|too many/i.test(message)) setErrorMessage("Too many requests. Wait 60 seconds.");
@@ -283,16 +274,49 @@ export function LandingPageClient({
     const code = verificationCode.trim();
     if (!code || code.length < 6) { setErrorMessage("Enter the complete code from your email."); return; }
     setVerifying(true);
+    const email = emailAddress.trim().toLowerCase();
+
     try {
       const { data, error } = await supabase.auth.verifyOtp({
-        email: emailAddress.trim().toLowerCase(),
+        email,
         token: code,
-        type: "magiclink",
+        type: "email",
       });
       if (error) throw error;
       if (data?.user) {
         await completeAuth(data.user);
+        return;
       }
+    } catch {
+      // GoTrue is unreachable — try custom fallback
+    }
+
+    try {
+      const response = await fetch("/api/auth/verify-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: code }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        user?: { id: string; email: string };
+        session?: Record<string, unknown>;
+      };
+      if (!payload.ok) throw new Error(payload.error || "Invalid or expired code.");
+
+      if (payload.session) {
+        const { error: sessionError } = await supabase.auth.setSession(
+          payload.session as never,
+        );
+        if (!sessionError) return;
+      }
+
+      if (payload.user) {
+        await completeAuth(payload.user as unknown as User);
+        return;
+      }
+      setErrorMessage("Signed in, but could not load your profile. Try refreshing.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid or expired code.";
       setErrorMessage(message);
@@ -622,7 +646,7 @@ export function LandingPageClient({
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
             <button
               type="button"
-              onClick={() => { setShowAuth(false); setContactProvider(null); setOtpStep(false); setVerificationCode(""); setMagicLinkData(null); setErrorMessage(""); setInfoMessage(""); }}
+              onClick={() => { setShowAuth(false); setContactProvider(null); setOtpStep(false); setVerificationCode(""); setErrorMessage(""); setInfoMessage(""); }}
               className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               aria-label="Close"
             >
@@ -656,7 +680,7 @@ export function LandingPageClient({
               </div>
 
               <div className="space-y-3">
-                {otpStep && !magicLinkData ? (
+                {otpStep ? (
                   <div className="space-y-4 py-2 text-center">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50">
                       <CheckCircle2 className="h-6 w-6 text-emerald-600" />
@@ -684,36 +708,12 @@ export function LandingPageClient({
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left">
                       <p className="text-xs leading-[1.6] text-slate-500">
                         Code valid for 24&nbsp;hours.{" "}
-                        <button type="button" onClick={() => { setOtpStep(false); setInfoMessage(""); setErrorMessage(""); setVerificationCode(""); }}
+                         <button type="button" onClick={() => { setOtpStep(false); setInfoMessage(""); setErrorMessage(""); setVerificationCode(""); }}
                           className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">Use a different email</button>{" "}
                         or{" "}
                         <button type="button" onClick={() => { setVerificationCode(""); void sendEmailLink(); }}
                           className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend code</button>.
                       </p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {magicLinkData ? (
-                  <div className="space-y-3 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4">
-                    <p className="text-center text-xs text-slate-600">
-                      {infoMessage || "Email delivery unavailable. Use the link or code below to sign in."}
-                    </p>
-                    <div className="rounded-xl bg-white border border-[var(--brand-200)] overflow-hidden">
-                      <a href={magicLinkData.actionLink}
-                        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[var(--brand-700)] hover:bg-[var(--brand-50)] transition">
-                        <LogIn className="h-4 w-4" />
-                        Click to Sign In
-                      </a>
-                    </div>
-                    <p className="text-center text-sm font-mono tracking-widest text-slate-500">
-                      {magicLinkData.emailOtp}
-                    </p>
-                    <div className="flex justify-center">
-                      <button type="button" onClick={() => { setInfoMessage(""); setMagicLinkData(null); setErrorMessage(""); setOtpStep(false); }}
-                        className="text-xs text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">
-                        Use a different email
-                      </button>
                     </div>
                   </div>
                 ) : (
@@ -736,7 +736,7 @@ export function LandingPageClient({
                   </>
                 )}
 
-                {infoMessage && !otpStep && !magicLinkData ? (
+                {infoMessage && !otpStep ? (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-700">{infoMessage}</div>
                 ) : null}
                 {errorMessage ? (

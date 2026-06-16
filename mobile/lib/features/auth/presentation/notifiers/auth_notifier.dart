@@ -19,8 +19,6 @@ class AuthFormState {
   final AuthTab activeTab;
   final bool otpSent;
   final String? otpDestination;
-  final String? fallbackOtp;
-
   const AuthFormState({
     this.isSubmitting = false,
     this.errorMessage,
@@ -30,7 +28,6 @@ class AuthFormState {
     this.activeTab = AuthTab.emailOtp,
     this.otpSent = false,
     this.otpDestination,
-    this.fallbackOtp,
   });
 
   AuthFormState copyWith({
@@ -42,7 +39,6 @@ class AuthFormState {
     AuthTab? activeTab,
     bool? otpSent,
     String? otpDestination,
-    String? fallbackOtp,
     bool clearError = false,
     bool clearSuccess = false,
     bool clearOtp = false,
@@ -54,9 +50,8 @@ class AuthFormState {
       obscurePassword: obscurePassword ?? this.obscurePassword,
       obscureConfirmPassword: obscureConfirmPassword ?? this.obscureConfirmPassword,
       activeTab: activeTab ?? this.activeTab,
-      otpSent: clearOtp ? false : (otpSent ?? this.otpSent),
-      otpDestination: clearOtp ? null : (otpDestination ?? this.otpDestination),
-      fallbackOtp: clearOtp ? null : (fallbackOtp ?? this.fallbackOtp),
+      otpSent: otpSent ?? this.otpSent,
+      otpDestination: otpDestination ?? this.otpDestination,
     );
   }
 }
@@ -135,26 +130,15 @@ class AuthNotifier extends Notifier<AuthFormState> {
     );
 
     try {
-      final result = await _authService.sendEmailCode(email);
+      await _authService.sendEmailCode(email);
       if (!context.mounted) return;
 
-      if (!result.emailSent && result.fallbackOtp != null && result.fallbackOtp!.isNotEmpty) {
-        otpCodeController.text = result.fallbackOtp!;
-        state = state.copyWith(
-          isSubmitting: false,
-          otpSent: true,
-          otpDestination: email,
-          fallbackOtp: result.fallbackOtp,
-          successMessage: 'Email delivery unavailable. Use the code below to sign in.',
-        );
-      } else {
-        state = state.copyWith(
-          isSubmitting: false,
-          otpSent: true,
-          otpDestination: email,
-          successMessage: 'Code sent to $email',
-        );
-      }
+      state = state.copyWith(
+        isSubmitting: false,
+        otpSent: true,
+        otpDestination: email,
+        successMessage: 'Code sent to $email',
+      );
     } catch (error) {
       if (!context.mounted) return;
       state = state.copyWith(

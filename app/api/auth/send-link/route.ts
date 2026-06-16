@@ -1,15 +1,10 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { NextResponse } from "next/server";
-import { cleanSiteUrl, resolveAuthCallbackUrl } from "@/lib/siteUrl";
+import { resolveAuthCallbackUrl } from "@/lib/siteUrl";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
-import {
-  getLastMagicLinkRequestAt,
-  MAGIC_LINK_COOLDOWN_MS,
-  pruneExpiredMagicLinkCooldowns,
-  recordMagicLinkRequest,
-} from "./cooldown";
-import { tryBackupProvider } from "@/lib/server/backupEmailProvider";
+import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { createOtp } from "@/lib/server/otpStore";
+import { buildSupabaseSessionCookieValue } from "@/lib/server/customAuth";
 
 export const runtime = "nodejs";
 
@@ -34,15 +29,6 @@ const BUILTIN_BLOCKED_MAGIC_LINK_DOMAINS = new Set([
 ]);
 
 type SendLinkBody = { email?: string; redirectTo?: string };
-
-type GenerateLinkResponse = {
-  action_link?: string;
-  email_otp?: string;
-  hashed_token?: string;
-  id?: string;
-  error?: string;
-  msg?: string;
-};
 
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const normalizeRecipientEntry = (value: string) => value.trim().toLowerCase();
@@ -80,57 +66,7 @@ const resolveMagicLinkRecipientError = (email: string) => {
   return null;
 };
 
-const buildMagicLinkEmailHtml = ({
-  appName,
-  actionLink,
-  otpCode,
-}: {
-  appName: string;
-  actionLink: string;
-  otpCode: string;
-}) => `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px">
-<table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-<tr><td style="padding:32px 32px 0">
-<h1 style="margin:0;font-size:20px;color:#1a1a2e">Sign in to ${appName}</h1>
-<p style="margin:12px 0 0;font-size:14px;color:#666;line-height:1.5">Click the button below to sign in instantly.</p>
-</td></tr>
-<tr><td style="padding:24px 32px">
-<a href="${actionLink}" style="display:inline-block;padding:14px 32px;background:#1a1a2e;color:#ffffff;text-decoration:none;border-radius:12px;font-size:15px;font-weight:600">Sign In to ${appName}</a>
-</td></tr>
-<tr><td style="padding:0 32px 24px;border-bottom:1px solid #eee">
-<p style="margin:0;font-size:13px;color:#999">Or enter this code on the sign-in page:</p>
-<p style="margin:8px 0 0;font-size:28px;font-weight:700;color:#1a1a2e;letter-spacing:6px">${otpCode}</p>
-</td></tr>
-<tr><td style="padding:16px 32px">
-<p style="margin:0;font-size:12px;color:#aaa;line-height:1.4">This link and code expire in 24 hours. If you didn't request this, you can ignore this email.</p>
-</td></tr>
-</table>
-</td></tr></table>
-</body>
-</html>`;
-
 async function postHandler(request: Request) {
-  const supabaseUrlValue = cleanSiteUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
-
-  if (!supabaseUrlValue || !serviceRoleKey) {
-    return NextResponse.json(
-      { ok: false, error: "Supabase environment variables are missing." },
-      { status: 500 }
-    );
-  }
-
-  let supabaseUrl: URL;
-  try {
-    supabaseUrl = new URL(supabaseUrlValue);
-  } catch {
-    return NextResponse.json({ ok: false, error: "NEXT_PUBLIC_SUPABASE_URL is invalid." }, { status: 500 });
-  }
-
   let body: SendLinkBody;
   try {
     body = (await request.json()) as SendLinkBody;
@@ -153,123 +89,76 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: recipientError }, { status: 400 });
   }
 
-  const now = Date.now();
-  pruneExpiredMagicLinkCooldowns(now);
-  const previousRequestAt = getLastMagicLinkRequestAt(email);
-  const retryAfterMs = MAGIC_LINK_COOLDOWN_MS - (now - previousRequestAt);
-  if (retryAfterMs > 0) {
-    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
-    return NextResponse.json(
-      {
-        ok: false,
-        error: `Please wait ${retryAfterSeconds} seconds before requesting another login link.`,
-      },
-      { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } }
-    );
-  }
-
   const redirectTo = resolveAuthCallbackUrl({ request, requestedRedirectTo: body.redirectTo });
   console.log("[send-link] redirectTo:", redirectTo);
 
-  const adminUrl = new URL("/auth/v1/admin/generate_link", supabaseUrl.origin);
-  let generateResult: GenerateLinkResponse;
-    try {
-      const res = await fetch(adminUrl.toString(), {
-        method: "POST",
-        headers: {
-          apikey: serviceRoleKey,
-          Authorization: `Bearer ${serviceRoleKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type: "magiclink", email, redirect_to: redirectTo }),
-      });
-      generateResult = (await res.json()) as GenerateLinkResponse;
-      if (!res.ok || !generateResult.hashed_token) {
-        throw new Error(generateResult.msg || generateResult.error || `GoTrue admin API error (${res.status})`);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to generate magic link.";
-      return NextResponse.json({ ok: false, error: message }, { status: 502 });
-    }
-
-    const actionLink = `${supabaseUrl.origin}/auth/v1/verify?${new URLSearchParams({
-      token: generateResult.hashed_token,
-      type: "magiclink",
-      redirect_to: redirectTo,
-    })}`;
-    console.log("[send-link] actionLink:", actionLink);
-
-  const appName = "ServiQ";
-  const emailHtml = buildMagicLinkEmailHtml({
-    appName,
-    actionLink,
-    otpCode: generateResult.email_otp!,
-  });
-
-  const resendSent = process.env.RESEND_API_KEY
-    ? await tryBackupProvider({
-        to: email,
-        subject: `Your Magic Link to Sign In to ${appName}`,
-        html: emailHtml,
-      })
-    : false;
-
-  if (resendSent) {
-    recordMagicLinkRequest(email);
-    return NextResponse.json({ ok: true, emailSent: true });
-  }
-
-  if (!process.env.AWS_ACCESS_KEY_ID && !process.env.RESEND_API_KEY) {
-    recordMagicLinkRequest(email);
-    return NextResponse.json({
-      ok: true,
-      emailSent: false,
-      actionLink,
-      emailOtp: generateResult.email_otp,
-    });
+  const supabase = createSupabaseAnonServerClient();
+  if (!supabase) {
+    return NextResponse.json(
+      { ok: false, error: "Supabase client is not available. Check your environment variables." },
+      { status: 500 }
+    );
   }
 
   try {
-    const ses = new SESClient({ region: "ap-southeast-2" });
-    await ses.send(
-      new SendEmailCommand({
-        Source: `"${appName}" <info@serviqapp.com>`,
-        Destination: { ToAddresses: [email] },
-        ReplyToAddresses: ["info@serviqapp.com"],
-        Message: {
-          Subject: { Data: `Your Magic Link to Sign In to ${appName}` },
-          Body: { Html: { Data: emailHtml } },
-        },
-      })
-    );
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to send email.";
-    if (/rate|throttl/i.test(message)) {
-      return NextResponse.json({ ok: false, error: "Too many requests. Please try again later." }, { status: 429 });
+    const message = error instanceof Error ? error.message : "Unable to send login code.";
+    console.warn("[send-link] GoTrue OTP failed, falling back to Resend:", message);
+
+    const resendKey = process.env.RESEND_API_KEY?.trim();
+    if (!resendKey) {
+      return NextResponse.json({ ok: false, error: "Email delivery unavailable. Resend is not configured." }, { status: 502 });
     }
-    console.warn("[send-link] SES failed, trying Resend backup:", message);
-    const backupSent = await tryBackupProvider({
-      to: email,
-      subject: `Your Magic Link to Sign In to ${appName}`,
-      html: emailHtml,
-    });
-    if (backupSent) {
-      recordMagicLinkRequest(email);
-      return NextResponse.json({ ok: true, emailSent: true });
+
+    const { otp } = createOtp(email);
+    const fromEmail = process.env.EMAIL_FROM ?? "auth@serviqapp.com";
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+    const html = `<div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
+      <div style="margin-bottom:24px"><span style="font-size:20px;font-weight:700;color:#2563eb">ServiQ</span></div>
+      <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">Your Verification Code</h2>
+      <p style="color:#475569">Use the code below to sign in:</p>
+      <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;margin:20px 0;font-size:32px;font-weight:700;letter-spacing:8px;color:#0f172a;font-family:monospace">${otp}</div>
+      <p style="color:#475569;font-size:14px">This code expires in 10 minutes.</p>
+      <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
+        <a href="${appUrl}" style="color:#2563eb">ServiQ</a>
+      </div>
+    </div>`;
+
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ from: fromEmail, to: email, subject: "Your ServiQ verification code", html }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error("[send-link] Resend error:", res.status, body);
+        return NextResponse.json({ ok: false, error: "Unable to send verification code via email." }, { status: 502 });
+      }
+    } catch (sendError) {
+      console.error("[send-link] Resend fetch error:", sendError);
+      return NextResponse.json({ ok: false, error: "Unable to send verification code. Check your network connection." }, { status: 502 });
     }
-    console.warn("[send-link] All email providers failed, returning OTP fallback");
-    recordMagicLinkRequest(email);
-    return NextResponse.json({
-      ok: true,
-      emailSent: false,
-      actionLink,
-      emailOtp: generateResult.email_otp,
-      message: "Email delivery unavailable. Use the link or code below to sign in.",
-    });
+
+    return NextResponse.json({ ok: true, emailSent: true });
   }
 
-  recordMagicLinkRequest(email);
-  return NextResponse.json({ ok: true, emailSent: true });
+  return NextResponse.json({ ok: true, emailSent: true, redirectTo });
 }
 
 export const POST = withErrorHandling(postHandler, "auth:send-link");
