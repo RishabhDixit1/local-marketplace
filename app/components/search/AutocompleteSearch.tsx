@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Search, TrendingUp, X } from "lucide-react";
@@ -50,6 +50,7 @@ export function AutocompleteSearch({
   const [recent] = useState<string[]>(() => loadRecent());
   const [activeIndex, setActiveIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -124,6 +125,7 @@ export function AutocompleteSearch({
             className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] py-3 pl-11 pr-10 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
             role="combobox"
             aria-expanded={showDropdown}
+            aria-controls={listboxId}
             aria-autocomplete="list"
           />
           {query && (
@@ -148,6 +150,7 @@ export function AutocompleteSearch({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
+            id={listboxId}
             className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] shadow-lg"
             role="listbox"
           >

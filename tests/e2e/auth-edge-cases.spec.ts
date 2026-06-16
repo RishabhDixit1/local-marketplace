@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { hasE2EAuthConfig, resolveMagicLinkUrl } from "./helpers/auth";
-
-const siteUrl = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
+import { hasE2EAuthConfig } from "./helpers/auth";
 
 test.describe("auth edge cases", () => {
   test("unauthenticated access redirects to login", async ({ browser }) => {

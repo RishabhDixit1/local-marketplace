@@ -8,35 +8,35 @@ export function NavigationProgress() {
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const stop = () => {
-    if (timerRef.current !== undefined) clearInterval(timerRef.current);
-    if (hideTimerRef.current !== undefined) clearTimeout(hideTimerRef.current);
-    setProgress(100);
-    hideTimerRef.current = setTimeout(() => {
-      setVisible(false);
-      setProgress(0);
-    }, 300);
-  };
-
-  const start = () => {
-    if (timerRef.current !== undefined) clearInterval(timerRef.current);
-    if (hideTimerRef.current !== undefined) clearTimeout(hideTimerRef.current);
-    setProgress(0);
-    setVisible(true);
-    let p = 0;
-    timerRef.current = setInterval(() => {
-      p += 2 + Math.random() * 4;
-      if (p >= 85) {
-        if (timerRef.current !== undefined) clearInterval(timerRef.current);
-        timerRef.current = undefined;
-        p = 85;
-      }
-      setProgress(p);
-    }, 150);
-    hideTimerRef.current = setTimeout(stop, 5000);
-  };
-
   useEffect(() => {
+    const stop = () => {
+      if (timerRef.current !== undefined) clearInterval(timerRef.current);
+      if (hideTimerRef.current !== undefined) clearTimeout(hideTimerRef.current);
+      setProgress(100);
+      hideTimerRef.current = setTimeout(() => {
+        setVisible(false);
+        setProgress(0);
+      }, 300);
+    };
+
+    const start = () => {
+      if (timerRef.current !== undefined) clearInterval(timerRef.current);
+      if (hideTimerRef.current !== undefined) clearTimeout(hideTimerRef.current);
+      setProgress(0);
+      setVisible(true);
+      let p = 0;
+      timerRef.current = setInterval(() => {
+        p += 2 + Math.random() * 4;
+        if (p >= 85) {
+          if (timerRef.current !== undefined) clearInterval(timerRef.current);
+          timerRef.current = undefined;
+          p = 85;
+        }
+        setProgress(p);
+      }, 150);
+      hideTimerRef.current = setTimeout(stop, 5000);
+    };
+
     const handleClick = (e: MouseEvent) => {
       const link = (e.target as HTMLElement).closest("a");
       if (!link || link.target || link.hasAttribute("download")) return;

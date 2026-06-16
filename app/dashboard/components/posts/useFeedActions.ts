@@ -702,7 +702,7 @@ export const useFeedActions = ({
         return;
       }
     },
-    [shareListing, toggleSaveListing, pushToast, setFeed, buildMarketplaceFeedCardId]
+    [shareListing, toggleSaveListing, pushToast, setFeed]
   );
 
   const resolveActionModel = useCallback(

@@ -1221,7 +1221,7 @@ export const loadCommunityPeopleSnapshot = async (
     offset?: number;
   } = {},
 ): Promise<Extract<CommunityPeopleResponse, { ok: true }>> => {
-  const { limit = 2000, offset = 0 } = options;
+  const { limit = 2000 } = options;
   const [
     currentUserProfileRow,
     discoverableProfileRowsRaw,

@@ -37,6 +37,16 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Google Services JSON
+        env:
+          FIREBASE_GOOGLE_SERVICES_JSON: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$FIREBASE_GOOGLE_SERVICES_JSON" ]; then
+            echo "$FIREBASE_GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          else
+            echo "::warning::FIREBASE_GOOGLE_SERVICES_JSON secret not set — skipping debug build"
+          fi
+
       - name: Build Android (debug)
         run: flutter build appbundle --debug
 

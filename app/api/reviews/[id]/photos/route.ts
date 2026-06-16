@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
-import { withErrorHandling } from "@/lib/server/errorHandler";
+
 
 export const runtime = "nodejs";
 
@@ -50,7 +50,7 @@ export async function POST(
   const ext = file.name.split(".").pop() ?? "jpg";
   const fileName = `${reviewId}/${crypto.randomUUID()}.${ext}`;
 
-  const { data: uploadData, error: uploadError } = await db.storage
+  const { error: uploadError } = await db.storage
     .from("review-photos")
     .upload(fileName, file, {
       contentType: file.type,

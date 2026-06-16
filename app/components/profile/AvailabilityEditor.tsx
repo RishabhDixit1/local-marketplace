@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Ban, CalendarX, CheckCircle, Clock, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, CalendarX, Clock, Loader2, Plus, Save, Trash2 } from "lucide-react";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

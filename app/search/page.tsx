@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Clock,
@@ -88,6 +88,7 @@ function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const listboxId = useId();
 
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -237,12 +238,14 @@ function SearchPageContent() {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm outline-none transition focus:border-[var(--brand-400)] focus:bg-white focus:ring-2 focus:ring-[var(--brand-ring)]"
                 role="combobox"
                 aria-expanded={suggestOpen}
+                aria-controls={listboxId}
                 aria-autocomplete="list"
               />
               {suggestOpen && (query.trim()
                 ? SEARCH_SUGGESTIONS.filter((s) => s.toLowerCase().includes(query.toLowerCase())).length > 0
                 : loadRecent().length > 0) && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+                <div id={listboxId}
+                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
                   role="listbox">
                   {query.trim() ? (
                     <>

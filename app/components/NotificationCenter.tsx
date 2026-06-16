@@ -346,7 +346,7 @@ export default function NotificationCenter({
       }
       supabase.removeChannel(channel);
     };
-  }, [demoMode, enabled, scheduleLoadNotifications, userId]);
+  }, [demoMode, enabled, isStandalonePage, scheduleLoadNotifications, userId]);
 
   useEffect(() => {
     if (!enabled || !userId || demoMode) return;

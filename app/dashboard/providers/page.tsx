@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -207,11 +208,13 @@ function ProviderQuickViewModal({
         <div className="px-5 py-5">
           <div className="flex items-start gap-4">
             <div className="relative">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-3xl font-bold text-[var(--brand-700)]">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-3xl font-bold text-[var(--brand-700)]">
                 {provider.avatarUrl ? (
-                  <img
+                  <Image
                     src={provider.avatarUrl}
                     alt={provider.name}
+                    fill
+                    sizes="80px"
                     className="h-20 w-20 rounded-2xl object-cover"
                   />
                 ) : (
@@ -1023,11 +1026,13 @@ export default function ProvidersPage() {
                       onClick={() => setQuickViewProvider(provider)}
                       className="relative"
                     >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-xl font-bold text-[var(--brand-700)] transition hover:opacity-80">
+                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-xl font-bold text-[var(--brand-700)] transition hover:opacity-80">
                         {provider.avatarUrl ? (
-                          <img
+                          <Image
                             src={provider.avatarUrl}
                             alt={provider.name}
+                            fill
+                            sizes="56px"
                             className="h-14 w-14 rounded-2xl object-cover"
                           />
                         ) : (

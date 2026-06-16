@@ -1,8 +1,5 @@
 ﻿import { Suspense } from "react";
 import { LandingPageClient } from "./components/landing/LandingPageClient";
-import Link from "next/link";
-import { MapPin, Store } from "lucide-react";
-import { CROSSINGS_REPUBLIK_COORDS, LOCAL_SOCIETIES } from "@/lib/demo/crossings-republik";
 
 function LandingSkeleton() {
   return (

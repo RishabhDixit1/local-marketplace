@@ -4,7 +4,6 @@ import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 import { createOtp } from "@/lib/server/otpStore";
-import { buildSupabaseSessionCookieValue } from "@/lib/server/customAuth";
 
 export const runtime = "nodejs";
 

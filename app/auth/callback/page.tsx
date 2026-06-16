@@ -53,18 +53,13 @@ export default function AuthCallbackPage() {
     };
 
     const completeLogin = async () => {
-      let subscription: { unsubscribe: () => void } | null = null;
-
       // Register auth listener FIRST so no SIGNED_IN event is missed
       // between getSession() checking and the listener being attached.
-      const {
-        data: { subscription: authSubscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
+      supabase.auth.onAuthStateChange((event, session) => {
         if (!cancelled && event === "SIGNED_IN" && session) {
           void redirectToDestination(session);
         }
       });
-      subscription = authSubscription;
 
       try {
         const params = new URLSearchParams(window.location.search);

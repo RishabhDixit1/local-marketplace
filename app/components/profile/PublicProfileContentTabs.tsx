@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeCheck, Camera, Loader2, Plus, ThumbsDown, ThumbsUp, X } from "lucide-react";
@@ -469,7 +470,7 @@ export default function PublicProfileContentTabs({
                   <div className="flex flex-wrap gap-3">
                     {reviewPhotoPreviews.map((preview, i) => (
                       <div key={preview} className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200">
-                        <img src={preview} alt={`Review photo ${i + 1}`} className="h-full w-full object-cover" />
+                        <Image src={preview} alt={`Review photo ${i + 1}`} fill sizes="80px" className="object-cover" />
                         <button
                           type="button"
                           onClick={() => removeReviewPhoto(i)}
@@ -609,12 +610,9 @@ function ReviewCard({ review, viewerId }: { review: PublicProfileReview; viewerI
       {photos && photos.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {photos.map((photo) => (
-            <img
-              key={photo}
-              src={photo}
-              alt="Review photo"
-              className="h-20 w-20 rounded-lg object-cover"
-            />
+            <div key={photo} className="relative h-20 w-20 overflow-hidden rounded-lg">
+              <Image src={photo} alt="Review photo" fill sizes="80px" className="object-cover" />
+            </div>
           ))}
         </div>
       )}

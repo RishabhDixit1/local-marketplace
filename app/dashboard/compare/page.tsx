@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BadgeCheck, Banknote, CalendarDays, CheckCircle2, Clock, FileText, Loader2, Scale } from "lucide-react";
 import { acceptQuoteDraft } from "@/lib/quotes/client";
@@ -152,13 +153,11 @@ export default function QuoteComparisonPage() {
                 <div className="border-b border-slate-100 p-4">
                   <div className="flex items-center gap-3">
                     {quote.provider_avatar ? (
-                      <img
-                        src={quote.provider_avatar}
-                        alt={quote.provider_name}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                        <Image src={quote.provider_avatar} alt={quote.provider_name} fill sizes="40px" className="object-cover" />
+                      </div>
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600">
                         {quote.provider_name.charAt(0)}
                       </div>
                     )}
