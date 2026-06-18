@@ -34,6 +34,12 @@ class AppBootstrap {
 
   static Future<AppBootstrap> initialize({AppConfig? config}) async {
     config ??= await AppConfig.load();
+
+    // Android emulator: 10.0.2.2 routes to host loopback
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      config = config.rewriteLoopbackForEmulator();
+    }
+
     DebugNetworkTrust.installIfNeeded(config);
     final httpClient = DebugNetworkTrust.createHttpClient(config);
 

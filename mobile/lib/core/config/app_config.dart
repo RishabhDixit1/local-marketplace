@@ -285,6 +285,32 @@ class AppConfig {
     );
   }
 
+  /// On Android emulators, [localhost] and [127.0.0.1] resolve to the
+  /// emulator itself rather than the host machine. Rewrite them to
+  /// [10.0.2.2] so the emulator can reach services running on the host.
+  AppConfig rewriteLoopbackForEmulator() {
+    String rewrite(String url) => url
+        .replaceFirst('://localhost', '://10.0.2.2')
+        .replaceFirst('://127.0.0.1', '://10.0.2.2')
+        .replaceFirst('://0.0.0.0', '://10.0.2.2');
+
+    return AppConfig(
+      appName: appName,
+      environment: environment,
+      supabaseUrl: rewrite(supabaseUrl),
+      supabaseAnonKey: supabaseAnonKey,
+      apiBaseUrl: rewrite(apiBaseUrl),
+      authRedirectScheme: authRedirectScheme,
+      authRedirectHost: authRedirectHost,
+      allowBadCertificates: allowBadCertificates,
+      firebaseApiKey: firebaseApiKey,
+      firebaseProjectId: firebaseProjectId,
+      firebaseMessagingSenderId: firebaseMessagingSenderId,
+      firebaseAndroidAppId: firebaseAndroidAppId,
+      firebaseIosAppId: firebaseIosAppId,
+    );
+  }
+
   static String _pickNonEmpty(String primary, String fallback) {
     if (primary.trim().isNotEmpty) {
       return primary.trim();
