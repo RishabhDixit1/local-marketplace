@@ -123,7 +123,15 @@ jobs:
             echo "Disk before cleanup:"
             df -h / | tail -1
 
-            # Free up disk space before loading — old Docker artifacts and build cache
+            # Kill the running container and remove the old image FIRST to free space
+            docker stop serviq --time 10 2>/dev/null || true
+            docker rm serviq 2>/dev/null || true
+            docker rmi serviq:latest 2>/dev/null || true
+            docker ps -q --filter publish=3000 | xargs -r docker stop --time 10 2>/dev/null || true
+            docker ps -q --filter publish=3000 | xargs -r docker rm -f 2>/dev/null || true
+            fuser -k 3000/tcp 2>/dev/null || true
+
+            # Prune remaining dangling layers, build cache, temp files
             docker system prune -f --all 2>/dev/null || true
             docker volume prune -f 2>/dev/null || true
             docker builder prune -f --all 2>/dev/null || true
@@ -140,13 +148,6 @@ jobs:
             gzip -d -f serviq-docker.tar.gz
             docker load -i serviq-docker.tar
             rm -f serviq-docker.tar
-
-            # Kill ANY process on port 3000 (handles orphan containers, old PM2/node, etc.)
-            docker ps -q --filter publish=3000 | xargs -r docker stop --time 10 2>/dev/null || true
-            docker ps -q --filter publish=3000 | xargs -r docker rm -f 2>/dev/null || true
-            docker stop serviq --time 10 2>/dev/null || true
-            docker rm serviq 2>/dev/null || true
-            fuser -k 3000/tcp 2>/dev/null || true
 
             # Start via docker run with env_file (avoids docker-compose build issue on older Docker)
             docker run -d \
