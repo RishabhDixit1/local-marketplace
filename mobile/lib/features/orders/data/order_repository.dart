@@ -80,6 +80,18 @@ class OrderRepository {
     _expectOk(payload, 'Unable to update order status.');
   }
 
+  Future<void> updateDeliveryStatus({
+    required String orderId,
+    required String status,
+    Map<String, dynamic>? extra,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/api/orders/$orderId/delivery',
+      body: {'status': status, if (extra != null) ...extra},
+    );
+    _expectOk(payload, 'Unable to update delivery status.');
+  }
+
   Future<void> raiseDispute({
     required String orderId,
     required String reason,

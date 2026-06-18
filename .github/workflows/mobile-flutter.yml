@@ -1,5 +1,8 @@
 name: Mobile Flutter
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   pull_request:
     paths:
@@ -79,6 +82,16 @@ jobs:
 
       - name: Install CocoaPods
         run: cd ios && pod install --repo-update
+
+      - name: Google Services Plist
+        env:
+          FIREBASE_GOOGLE_SERVICES_PLIST: ${{ secrets.FIREBASE_GOOGLE_SERVICES_PLIST }}
+        run: |
+          if [ -n "$FIREBASE_GOOGLE_SERVICES_PLIST" ]; then
+            echo "$FIREBASE_GOOGLE_SERVICES_PLIST" | base64 -d > ios/Runner/GoogleService-Info.plist
+          else
+            echo "::warning::FIREBASE_GOOGLE_SERVICES_PLIST secret not set — iOS build may fail"
+          fi
 
       - name: Build iOS (release)
         run: flutter build ios --release --no-codesign

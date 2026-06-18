@@ -69,6 +69,12 @@ read_env_value() {
 }
 
 SUPABASE_URL="$(read_env_value "NEXT_PUBLIC_SUPABASE_URL")"
+
+# Android emulator uses 10.0.2.2 to reach the host machine's localhost
+if [[ "$DEVICE_ID" == emulator-* ]]; then
+  SUPABASE_URL="${SUPABASE_URL//localhost/10.0.2.2}"
+fi
+
 SUPABASE_ANON_KEY="$(read_env_value "NEXT_PUBLIC_SUPABASE_ANON_KEY")"
 
 FIREBASE_API_KEY="$(read_env_value "FIREBASE_API_KEY")"

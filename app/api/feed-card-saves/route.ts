@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { invalidateUserFeed } from "@/lib/cache/invalidation";
 
 export const runtime = "nodejs";
 
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
       return toErrorResponse(500, error.message || "Unable to save feed card.");
     }
 
+    invalidateUserFeed(authResult.auth.userId).catch(() => {});
     return NextResponse.json({
       ok: true,
     });
@@ -153,6 +155,7 @@ export async function POST(request: Request) {
     return toErrorResponse(500, error.message || "Unable to remove feed card save.");
   }
 
+  invalidateUserFeed(authResult.auth.userId).catch(() => {});
   return NextResponse.json({
     ok: true,
   });

@@ -161,6 +161,15 @@ class TaskCard extends StatelessWidget {
                           background: AppColors.surfaceMuted,
                           foreground: AppColors.inkMuted,
                         ),
+                        if (task.needsDeliveryTracking &&
+                            !task.isFinalDeliveryStatus)
+                          _TaskPill(
+                            label: task.deliveryStatus.isNotEmpty
+                                ? 'Delivery: ${task.deliveryStatus}'
+                                : 'Awaiting delivery',
+                            background: AppColors.primarySoft,
+                            foreground: AppColors.primary,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 12),

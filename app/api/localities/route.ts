@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -38,32 +39,34 @@ export async function GET(request: Request) {
   }
 
   try {
-    let query = supabase
-      .from("localities")
-      .select("*")
-      .order("zone_type", { ascending: true })
-      .order("name", { ascending: true });
+    const cacheKey = queryCacheKey("localities", zoneType ?? "all", phase ?? "all");
+    const result = await withCache<LocalityResponse[]>(
+      async () => {
+        let query = supabase
+          .from("localities")
+          .select("*")
+          .order("zone_type", { ascending: true })
+          .order("name", { ascending: true });
 
-    if (zoneType) {
-      query = query.eq("zone_type", zoneType);
-    }
+        if (zoneType) {
+          query = query.eq("zone_type", zoneType);
+        }
 
-    if (phase) {
-      query = query.eq("phase", parseInt(phase, 10));
-    }
+        if (phase) {
+          query = query.eq("phase", parseInt(phase, 10));
+        }
 
-    const { data, error } = await query;
+        const { data, error } = await query;
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, code: "DB", message: error.message } satisfies LocalitiesApiResponse,
-        { status: 500 }
-      );
-    }
+        if (error) throw new Error(error.message);
+        return data as LocalityResponse[];
+      },
+      { key: cacheKey, ttlSeconds: 3600 },
+    );
 
     return NextResponse.json({
       ok: true,
-      localities: data as LocalityResponse[],
+      localities: result,
     } satisfies LocalitiesApiResponse);
   } catch (error) {
     return NextResponse.json(

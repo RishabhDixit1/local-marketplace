@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -37,36 +38,39 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { data, error } = await supabase
-      .from("service_categories")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
+    const cacheKey = queryCacheKey("service-categories", localityId ?? "all");
+    const categories = await withCache<ServiceCategoryResponse[]>(
+      async () => {
+        const { data, error } = await supabase
+          .from("service_categories")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, code: "DB", message: error.message } satisfies ServiceCategoriesApiResponse,
-        { status: 500 }
-      );
-    }
+        if (error) throw new Error(error.message);
 
-    let categories = (data || []) as ServiceCategoryResponse[];
+        let result = (data || []) as ServiceCategoryResponse[];
 
-    if (localityId) {
-      const enriched = await Promise.all(
-        categories.map(async (cat) => {
-          const { count } = await supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true })
-            .eq("role", "provider")
-            .or(`locality_id.eq.${localityId},service_zone_ids.cs.{${localityId}}`)
-            .contains("service_category_ids", [cat.id]);
+        if (localityId) {
+          const enriched = await Promise.all(
+            result.map(async (cat) => {
+              const { count } = await supabase
+                .from("profiles")
+                .select("id", { count: "exact", head: true })
+                .eq("role", "provider")
+                .or(`locality_id.eq.${localityId},service_zone_ids.cs.{${localityId}}`)
+                .contains("service_category_ids", [cat.id]);
 
-          return { ...cat, provider_count: count ?? 0 };
-        })
-      );
-      categories = enriched;
-    }
+              return { ...cat, provider_count: count ?? 0 };
+            })
+          );
+          result = enriched;
+        }
+
+        return result;
+      },
+      { key: cacheKey, ttlSeconds: localityId ? 300 : 3600 },
+    );
 
     return NextResponse.json({
       ok: true,

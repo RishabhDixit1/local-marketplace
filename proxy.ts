@@ -16,6 +16,7 @@ const publicPathPrefixes = [
   "/referral",
   "/favicon",
   "/images",
+  "/storage",
   "/app",
 ];
 
@@ -37,7 +38,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
+  const supabaseUrl = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "";
 
   if (!supabaseUrl || !supabaseAnonKey) {

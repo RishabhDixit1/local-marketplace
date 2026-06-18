@@ -18,6 +18,7 @@ type ImageProxyOptions = {
 const remoteImageUrlPattern = /^https?:\/\//i;
 const supabaseStorageImagePathPattern = /^\/storage\/v1\/(?:object\/public|render\/image\/public)\//;
 const proxyableImageExtensionPattern = /\.(?:avif|jpe?g|png|webp)$/i;
+const loopbackHostPattern = /^(?:localhost|127\.0\.0\.1|\[::1\])$/i;
 
 const isProxyableImageUrl = (value: string | null | undefined) => {
   const candidate = typeof value === "string" ? value.trim() : "";
@@ -28,7 +29,10 @@ const isProxyableImageUrl = (value: string | null | undefined) => {
     return (
       parsed.pathname !== "/_next/image" &&
       supabaseStorageImagePathPattern.test(parsed.pathname) &&
-      proxyableImageExtensionPattern.test(parsed.pathname)
+      proxyableImageExtensionPattern.test(parsed.pathname) &&
+      // Avoid proxying images from localhost — they won't exist in local Supabase storage
+      // and the upstream 400 just creates noisy server-side errors
+      !loopbackHostPattern.test(parsed.hostname)
     );
   } catch {
     return false;

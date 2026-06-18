@@ -34,6 +34,88 @@ enum MobileOrderFulfillmentMethod {
   }
 }
 
+class MobileDeliveryUpdateEvent {
+  const MobileDeliveryUpdateEvent({
+    required this.status,
+    required this.timestamp,
+    this.note = '',
+  });
+
+  factory MobileDeliveryUpdateEvent.fromJson(Map<String, dynamic> json) {
+    return MobileDeliveryUpdateEvent(
+      status: _readString(json['status'], fallback: 'pending'),
+      timestamp: _readString(json['timestamp']),
+      note: _readString(json['note']),
+    );
+  }
+
+  final String status;
+  final String timestamp;
+  final String note;
+
+  Map<String, dynamic> toJson() => {
+    'status': status,
+    'timestamp': timestamp,
+    if (note.isNotEmpty) 'note': note,
+  };
+}
+
+class MobileDeliveryInfo {
+  const MobileDeliveryInfo({
+    required this.status,
+    this.driverId = '',
+    this.driverName = '',
+    this.driverPhone = '',
+    this.trackingNumber = '',
+    this.carrier = '',
+    this.estimatedAt = '',
+    this.deliveredAt = '',
+    this.address = '',
+    this.notes = '',
+    this.photoUrls = const [],
+    required this.updates,
+  });
+
+  factory MobileDeliveryInfo.fromJson(Map<String, dynamic> json) {
+    return MobileDeliveryInfo(
+      status: _readString(json['status'], fallback: 'pending'),
+      driverId: _readString(json['driverId']),
+      driverName: _readString(json['driverName']),
+      driverPhone: _readString(json['driverPhone']),
+      trackingNumber: _readString(json['trackingNumber']),
+      carrier: _readString(json['carrier']),
+      estimatedAt: _readString(json['estimatedAt']),
+      deliveredAt: _readString(json['deliveredAt']),
+      address: _readString(json['address']),
+      notes: _readString(json['notes']),
+      photoUrls: (json['photoUrls'] as List<dynamic>?)
+              ?.map((u) => u.toString())
+              .toList() ??
+          const [],
+      updates: (json['updates'] as List<dynamic>?)
+              ?.map((u) =>
+                  MobileDeliveryUpdateEvent.fromJson(u as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  final String status;
+  final String driverId;
+  final String driverName;
+  final String driverPhone;
+  final String trackingNumber;
+  final String carrier;
+  final String estimatedAt;
+  final String deliveredAt;
+  final String address;
+  final String notes;
+  final List<String> photoUrls;
+  final List<MobileDeliveryUpdateEvent> updates;
+
+  bool get isFinal => status == 'delivered' || status == 'failed';
+}
+
 class MobileOrderRecord {
   const MobileOrderRecord({
     required this.id,
@@ -90,6 +172,19 @@ class MobileOrderRecord {
       _readString(metadata['fulfillment_status_label']);
 
   int get quantity => _toInt(metadata['quantity'], fallback: 1);
+
+  bool get needsDeliveryTracking {
+    final method = fulfillmentMethod.toLowerCase();
+    return method == 'provider' || method == 'platform' || method == 'courier';
+  }
+
+  MobileDeliveryInfo? get deliveryInfo {
+    final delivery = metadata['delivery'];
+    if (delivery is Map<String, dynamic>) {
+      return MobileDeliveryInfo.fromJson(delivery);
+    }
+    return null;
+  }
 }
 
 class MobileCheckoutItem {

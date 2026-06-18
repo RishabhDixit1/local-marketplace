@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
+  Camera,
   CheckCircle2,
   Clock3,
   CreditCard,
@@ -23,6 +24,17 @@ import { fetchAuthedJson } from "@/lib/clientApi";
 import type { CanonicalOrderStatus } from "@/lib/orderWorkflow";
 import { getOrderFulfillmentOption, type OrderFulfillmentMethod } from "@/lib/orderFulfillment";
 import { getOrderPaymentSummary, type PaymentStatusTone } from "@/lib/paymentFlow";
+import {
+  needsDeliveryTracking,
+  getDeliveryStatusLabel,
+  getDeliveryStatusDescription,
+  getDeliveryStatusPillClass,
+  deliveryTimelineSteps,
+  normalizeDeliveryStatus,
+  getAllowedDeliveryTransitions,
+  type DeliveryInfo,
+  type DeliveryStatus,
+} from "@/lib/deliveryWorkflow";
 import BookingSlotPicker from "@/app/components/BookingSlotPicker";
 import DisputeFormModal from "@/app/components/DisputeFormModal";
 
@@ -162,6 +174,23 @@ export default function OrderStatusPage() {
     }
   }, [id]);
 
+  const updateDeliveryStatus = useCallback(async (nextStatus: DeliveryStatus, extra?: Record<string, string | undefined>) => {
+    setBusy(true); setActionError("");
+    try {
+      const res = await fetchAuthedJson<{ ok: boolean; delivery: DeliveryInfo }>(supabase, `/api/orders/${id}/delivery`, {
+        method: "POST",
+        body: JSON.stringify({ status: nextStatus, ...extra }),
+      });
+      if (res.ok && res.delivery) {
+        setOrder((prev) => prev ? { ...prev, metadata: { ...prev.metadata, delivery: res.delivery } } : null);
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to update delivery.");
+    } finally {
+      setBusy(false);
+    }
+  }, [id]);
+
   const raiseDispute = useCallback(async () => {
     setShowDisputeForm(true);
   }, []);
@@ -254,12 +283,17 @@ export default function OrderStatusPage() {
   const paymentCollectedAt = order.metadata?.paid_at as string | undefined;
   const razorpayOrderId = order.metadata?.razorpay_order_id as string | undefined;
   const razorpayPaymentId = order.metadata?.razorpay_payment_id as string | undefined;
-  const fulfillmentOption = getOrderFulfillmentOption(order.metadata?.fulfillment_method);
+  const fulfillmentMethod = order.metadata?.fulfillment_method as string | undefined;
+  const fulfillmentOption = getOrderFulfillmentOption(fulfillmentMethod);
   const paymentSummary = getOrderPaymentSummary({
     paymentMethod,
     paymentStatus,
-    fulfillmentMethod: order.metadata?.fulfillment_method as OrderFulfillmentMethod | undefined,
+    fulfillmentMethod: fulfillmentMethod as OrderFulfillmentMethod | undefined,
   });
+
+  const showDelivery = needsDeliveryTracking(fulfillmentMethod);
+  const deliveryInfo = (order.metadata?.delivery as DeliveryInfo | undefined) ?? null;
+  const deliveryStatus = deliveryInfo?.status ? normalizeDeliveryStatus(deliveryInfo.status) : null;
 
   const timelineIdx = TIMELINE.indexOf(status);
 
@@ -396,6 +430,164 @@ export default function OrderStatusPage() {
             {notes && (
               <p className="text-xs text-slate-500 italic pl-6">&ldquo;{notes}&rdquo;</p>
             )}
+          </section>
+        )}
+
+        {/* Delivery tracking */}
+        {showDelivery && deliveryInfo && (
+          <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-700">Delivery Tracking</h2>
+              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getDeliveryStatusPillClass(deliveryStatus ?? "pending")}`}>
+                {getDeliveryStatusLabel(deliveryStatus ?? "pending")}
+              </span>
+            </div>
+
+            {deliveryInfo.trackingNumber && (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <Package className="h-4 w-4 text-slate-400" />
+                <div className="text-xs">
+                  <p className="font-medium text-slate-700">Tracking # {deliveryInfo.trackingNumber}</p>
+                  {deliveryInfo.carrier && <p className="text-slate-500">via {deliveryInfo.carrier}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Delivery photos */}
+            {deliveryInfo.photoUrls && deliveryInfo.photoUrls.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {deliveryInfo.photoUrls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                    className="block h-20 w-20 overflow-hidden rounded-xl border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Delivery photo ${i + 1}`} className="h-full w-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Upload photo button (provider only, not final) */}
+            {isProvider && !isFinal && (
+              <div className="mb-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                  <Camera className="h-4 w-4" />
+                  Add Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      setBusy(true);
+                      try {
+                        const session = await supabase.auth.getSession();
+                        const token = session.data.session?.access_token;
+                        await fetch(`/api/orders/${id}/delivery/photos`, {
+                          method: "POST",
+                          headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          body: formData,
+                        });
+                      } catch {
+                        // silently fail, photo attachment is optional
+                      } finally {
+                        setBusy(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+
+            <div className="relative">
+              <div className="absolute left-[18px] top-0 bottom-0 w-0.5 bg-slate-100" />
+              <div className="space-y-4">
+                {deliveryTimelineSteps.map((step, idx) => {
+                  const done = deliveryStatus
+                    ? deliveryTimelineSteps.indexOf(deliveryStatus as typeof step) >= idx
+                    : false;
+                  const active = step === deliveryStatus;
+                  const stepTimestamp = deliveryInfo?.updates?.find(
+                    (u) => normalizeDeliveryStatus(u.status) === step
+                  )?.timestamp;
+                  return (
+                    <div key={step} className="relative flex items-start gap-3 pl-10">
+                      <div className={`absolute left-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                        done ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-white text-slate-400"
+                      } ${active ? "ring-4 ring-blue-100" : ""}`}>
+                        {done ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+                      </div>
+                      <div className="pt-0.5">
+                        <p className={`text-sm font-medium ${done ? "text-slate-900" : "text-slate-400"}`}>
+                          {getDeliveryStatusLabel(step)}
+                        </p>
+                        <p className="text-xs text-slate-500">{getDeliveryStatusDescription(step)}</p>
+                        {stepTimestamp && (
+                          <p className="mt-0.5 text-[11px] text-slate-400">{formatTimestamp(stepTimestamp)}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Assign delivery (provider, no delivery info yet) */}
+        {showDelivery && isProvider && !deliveryInfo && !isFinal && (
+          <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Assign Delivery</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const formData = new FormData(form);
+                void updateDeliveryStatus("assigned", {
+                  driverName: (formData.get("driverName") as string) || undefined,
+                  driverPhone: (formData.get("driverPhone") as string) || undefined,
+                  trackingNumber: (formData.get("trackingNumber") as string) || undefined,
+                  carrier: (formData.get("carrier") as string) || undefined,
+                });
+              }}
+              className="space-y-3"
+            >
+              <input name="driverName" placeholder="Driver name" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="driverPhone" placeholder="Driver phone" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="trackingNumber" placeholder="Tracking number" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <input name="carrier" placeholder="Carrier (e.g. Delhivery, Shadowfax)" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-400" />
+              <button type="submit" disabled={busy} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+                {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <>Start Delivery</>}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* Provider delivery actions */}
+        {showDelivery && isProvider && deliveryStatus && !isFinal && (
+          <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Update Delivery</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {getAllowedDeliveryTransitions(deliveryStatus).map((nextStatus) => (
+                <button
+                  key={nextStatus}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void updateDeliveryStatus(nextStatus)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+                >
+                  {nextStatus === "delivered" ? <CheckCircle2 className="h-4 w-4" /> : null}
+                  {nextStatus === "picked_up" ? <Package className="h-4 w-4" /> : null}
+                  {nextStatus === "in_transit" ? <MapPin className="h-4 w-4" /> : null}
+                  {nextStatus === "failed" ? <XCircle className="h-4 w-4" /> : null}
+                  {nextStatus === "assigned" ? <Clock3 className="h-4 w-4" /> : null}
+                  Mark {getDeliveryStatusLabel(nextStatus as DeliveryStatus)}
+                </button>
+              ))}
+            </div>
           </section>
         )}
 

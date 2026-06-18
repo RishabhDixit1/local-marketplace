@@ -120,6 +120,8 @@ class MobileTaskItem {
     required this.budgetLabel,
     required this.locationLabel,
     required this.listingTypeLabel,
+    this.fulfillmentMethod = '',
+    this.deliveryStatus = '',
     required this.createdAt,
   });
 
@@ -134,6 +136,8 @@ class MobileTaskItem {
   final String budgetLabel;
   final String locationLabel;
   final String listingTypeLabel;
+  final String fulfillmentMethod;
+  final String deliveryStatus;
   final DateTime? createdAt;
 
   String get createdLabel => _formatTimeAgo(createdAt);
@@ -141,6 +145,14 @@ class MobileTaskItem {
   String get statusLabel => _humanizeStatus(rawStatus);
 
   bool get isProviderTask => role == MobileTaskRole.accepted;
+
+  bool get needsDeliveryTracking =>
+    fulfillmentMethod == 'provider' ||
+    fulfillmentMethod == 'platform' ||
+    fulfillmentMethod == 'courier';
+
+  bool get isFinalDeliveryStatus =>
+    deliveryStatus == 'delivered' || deliveryStatus == 'failed';
 
   List<MobileTaskTrackerStep> get trackerSteps {
     final progress = progressStage;

@@ -38,7 +38,8 @@ enum _TaskBoardLane {
   needsAction,
   active,
   inProgress,
-  done;
+  done,
+  delivery;
 
   String get id => name;
 
@@ -52,6 +53,8 @@ enum _TaskBoardLane {
         return 'In Progress';
       case _TaskBoardLane.done:
         return 'Done';
+      case _TaskBoardLane.delivery:
+        return 'Delivery';
     }
   }
 }
@@ -385,6 +388,8 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                   item.status == MobileTaskStatus.cancelled,
             )
             .toList(),
+      _TaskBoardLane.delivery =>
+        snapshot.items.where((item) => item.needsDeliveryTracking).toList(),
     };
 
     return _applyRoleFilter(items);

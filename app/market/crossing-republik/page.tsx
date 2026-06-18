@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Building2,
+  LayoutDashboard,
   Loader2,
   LogIn,
   MapPin,
@@ -20,7 +21,9 @@ import ZoneBrowser from "@/app/components/locality/ZoneBrowser";
 import ServiceCategoryGrid from "@/app/components/services/ServiceCategoryGrid";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName } from "@/lib/branding";
+import { supabase } from "@/lib/supabase";
 import type { LocalityResponse } from "@/app/api/localities/route";
+import type { User } from "@supabase/supabase-js";
 
 type ProviderCardData = {
   id: string; name: string; location: string; lat: number | null; lng: number | null;
@@ -134,8 +137,17 @@ export default function CrossingRepublikPage() {
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
-
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) setUser(data.session.user);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => listener?.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -205,13 +217,23 @@ export default function CrossingRepublikPage() {
               <Store className="h-4 w-4" />
               Explore
             </Link>
-            <Link
-              href="/?signin=true"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
-            >
-              <LogIn className="h-4 w-4" />
-              Sign In
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-800)]"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/?signin=true"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+              >
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>

@@ -67,6 +67,14 @@ import {
   normalizeOrderStatus,
 } from "@/lib/orderWorkflow";
 import {
+  getAllowedDeliveryTransitions,
+  getDeliveryStatusLabel,
+  getDeliveryStatusPillClass,
+  isFinalDeliveryStatus,
+  needsDeliveryTracking,
+  type DeliveryInfo,
+} from "@/lib/deliveryWorkflow";
+import {
   buildFallbackTaskEventFeed,
   formatAgo,
   formatCompactCurrency,
@@ -145,6 +153,7 @@ export default function TasksPage() {
     if (tab === "active") return "active";
     if (tab === "in-progress") return "in-progress";
     if (tab === "completed" || tab === "cancelled" || tab === "done") return "done";
+    if (tab === "delivery") return "delivery";
     return "active";
   });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -175,6 +184,7 @@ export default function TasksPage() {
   const [taskReviews, setTaskReviews] = useState<Record<string, TaskReviewDraft>>({});
   const [reviewBusyTaskId, setReviewBusyTaskId] = useState<string | null>(null);
   const [commentComposerTaskId, setCommentComposerTaskId] = useState<string | null>(null);
+  const [orderMetadataById, setOrderMetadataById] = useState<Record<string, Record<string, unknown> | null>>({});
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const loadTasks = useCallback(async (soft = false) => {
@@ -227,6 +237,8 @@ export default function TasksPage() {
       }
 
       const liveOrders = (ordersRes.data as OrderRow[] | null) || [];
+      const orderMeta: Record<string, Record<string, unknown> | null> = {};
+      liveOrders.forEach((o) => { orderMeta[o.id] = o.metadata ?? null; });
       let helpRequestErrorMessage: string | null = null;
       let liveHelpRequests: HelpRequestRow[] = [];
 
@@ -401,6 +413,7 @@ export default function TasksPage() {
 
       startTransition(() => {
         setTasks(mappedTasks);
+        setOrderMetadataById(orderMeta);
         setTaskEvents(safeTaskEvents);
         setSupportRequests(safeSupportRequests);
         setLastSyncAt(new Date().toISOString());
@@ -911,8 +924,16 @@ export default function TasksPage() {
           return canonical === "completed" || canonical === "closed" || canonical === "cancelled" || canonical === "rejected";
         }).length,
       },
+      {
+        value: "delivery" as const,
+        label: "Delivery",
+        count: filteredTasks.filter((task) => {
+          const fm = orderMetadataById[task.orderId]?.fulfillment_method as string | undefined;
+          return needsDeliveryTracking(fm ?? null);
+        }).length,
+      },
     ],
-    [filteredTasks, inboxMatches.length]
+    [filteredTasks, inboxMatches.length, orderMetadataById]
   );
 
   const visibleTasks = useMemo(() => {
@@ -932,11 +953,18 @@ export default function TasksPage() {
       return filteredTasks.filter((task) => getCanonicalTaskStatus(task) === "in_progress");
     }
 
+    if (selectedTaskView === "delivery") {
+      return filteredTasks.filter((task) => {
+        const fm = orderMetadataById[task.orderId]?.fulfillment_method as string | undefined;
+        return needsDeliveryTracking(fm ?? null);
+      });
+    }
+
     return filteredTasks.filter((task) => {
       const canonical = getCanonicalTaskStatus(task);
       return canonical === "new_lead" || canonical === "quoted" || canonical === "accepted";
     });
-  }, [filteredTasks, selectedTaskView]);
+  }, [filteredTasks, selectedTaskView, orderMetadataById]);
 
   const handleTaskPromptSubmit = useCallback(() => {
     const firstMatch = filteredTasks[0];
@@ -1234,6 +1262,40 @@ export default function TasksPage() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update this task right now.");
       return false;
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const updateDeliveryStatus = async (orderId: string, status: string) => {
+    setErrorMessage("");
+    setUpdatingOrderId(orderId);
+
+    try {
+      const result = await fetchAuthedJson<{ ok: boolean; message?: string }>(
+        supabase,
+        `/api/orders/${orderId}/delivery`,
+        {
+          method: "POST",
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      if (!result.ok) {
+        setErrorMessage(result.message || "Failed to update delivery status.");
+        return;
+      }
+
+      setNotice({
+        kind: "success",
+        message: `Delivery updated to ${getDeliveryStatusLabel(status)}.`,
+      });
+
+      startTransition(() => {
+        void loadTasks(true);
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update delivery status right now.");
     } finally {
       setUpdatingOrderId(null);
     }
@@ -1966,6 +2028,15 @@ export default function TasksPage() {
       };
     }
 
+    if (selectedTaskView === "delivery") {
+      return {
+        title: "No deliveries to track",
+        copy: "Orders that need delivery tracking will appear here.",
+        actionLabel: "Open marketplace",
+        onAction: () => router.push("/dashboard"),
+      };
+    }
+
     if (tasks.length === 0) {
       return {
         title: "No live tasks yet",
@@ -2687,6 +2758,145 @@ export default function TasksPage() {
     );
   };
 
+  const renderDeliveryTaskCard = (task: OperationalTask) => {
+    const orderMeta = orderMetadataById[task.orderId];
+    const fm = orderMeta?.fulfillment_method as string | undefined;
+    if (!needsDeliveryTracking(fm ?? null)) return null;
+
+    const rawDelivery = orderMeta?.delivery as Record<string, unknown> | undefined;
+    const deliveryInfo = rawDelivery ? (rawDelivery as unknown as DeliveryInfo) : null;
+    const deliveryStatus = deliveryInfo?.status ?? "pending";
+    const deliveryLabel = getDeliveryStatusLabel(deliveryStatus);
+    const deliveryPillClass = getDeliveryStatusPillClass(deliveryStatus);
+    const isFinal = isFinalDeliveryStatus(deliveryStatus);
+    const allowedTransitions = getAllowedDeliveryTransitions(deliveryStatus);
+    const isExpanded = expandedTaskId === task.orderId;
+    const creatorName = getTaskCreatorName(task);
+    const creatorAvatar = getTaskCreatorAvatar(task);
+    const creatorSummary = getTaskCreatorSummary(task);
+    const latestEvent = latestEventByOrderId.get(task.orderId);
+    const latestUpdateAt = formatAgo(latestEvent?.createdAtRaw || task.createdAtRaw, clockMs);
+    const canonical = getCanonicalTaskStatus(task);
+    const busy = updatingOrderId === task.orderId;
+
+    const summaryItems = [
+      { icon: DollarSign, label: task.budget || "Price on request" },
+      { icon: MapPin, label: task.location },
+      { icon: Clock, label: task.timeline || "Open" },
+      { icon: Calendar, label: latestUpdateAt },
+    ];
+
+    const timelineLabels = [
+      canonical !== "completed" && canonical !== "cancelled" ? getTaskStatusLabel(task) : "Completed",
+      ...(!isFinal ? ["Delivery"] : [deliveryLabel]),
+    ];
+    const timelineSteps: TaskTimelineStep[] = timelineLabels.map((label, index) => {
+      const last = index === timelineLabels.length - 1;
+      return {
+        id: `${task.orderId}-delivery-${index}`,
+        label,
+        helper: last ? deliveryLabel : undefined,
+        state: last ? (isFinal ? "done" : "active") : "done",
+      };
+    });
+
+    const nextAction: NextActionPanelProps = {
+      title: !isFinal ? "Update delivery status" : "Delivery complete",
+      helper: !isFinal
+        ? `Current: ${deliveryLabel}. Move to the next stage.`
+        : `Delivery is ${deliveryStatus} (final).`,
+      tone: deliveryStatus === "delivered" ? "success" : deliveryStatus === "failed" ? "danger" : "progress",
+    };
+
+    return (
+      <TaskCard
+        key={task.id}
+        id={`task-${task.orderId}`}
+        setNode={(node) => {
+          taskCardRefs.current.set(task.orderId, node);
+        }}
+        title={task.title}
+        description={task.description || "No additional details"}
+        avatarUrl={creatorAvatar}
+        avatarAlt={creatorName}
+        ownerName={creatorName}
+        ownerSummary={creatorSummary}
+        statusLabel={deliveryLabel}
+        statusClassName={deliveryPillClass}
+        accentClassName={getStatusAccentClass(task.status)}
+        sourceLabel="Delivery"
+        referenceLabel={`#${task.orderId.slice(0, 8)}`}
+        meta={summaryItems}
+        nextAction={nextAction}
+        timelineSteps={timelineSteps}
+        expanded={isExpanded}
+        actions={
+          !isFinal && allowedTransitions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {allowedTransitions.map((nextStatus) => {
+                const btnClassName =
+                  nextStatus === "delivered"
+                    ? "inline-flex min-h-[44px] sm:min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60 border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    : nextStatus === "failed"
+                      ? "inline-flex min-h-[44px] sm:min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      : "inline-flex min-h-[44px] sm:min-h-9 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-[12px] leading-5 font-semibold transition sm:text-[13px] disabled:cursor-not-allowed disabled:opacity-60 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100";
+                const TransitionIcon =
+                  nextStatus === "delivered"
+                    ? CheckCircle2
+                    : nextStatus === "failed"
+                      ? AlertCircle
+                      : ArrowUpRight;
+
+                return (
+                  <button
+                    key={`${task.orderId}-delivery-${nextStatus}`}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void updateDeliveryStatus(task.orderId, nextStatus)}
+                    className={btnClassName}
+                  >
+                    <TransitionIcon className="h-4 w-4" />
+                    {busy ? "Updating..." : getDeliveryStatusLabel(nextStatus)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null
+        }
+      >
+        {isExpanded && deliveryInfo ? (
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Delivery tracking</p>
+            {deliveryInfo.driverName ? (
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <span className="font-semibold">Driver:</span>
+                <span>{deliveryInfo.driverName}</span>
+              </div>
+            ) : null}
+            {deliveryInfo.trackingNumber ? (
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <span className="font-semibold">Tracking:</span>
+                <span>{deliveryInfo.trackingNumber}</span>
+              </div>
+            ) : null}
+            {deliveryInfo.address ? (
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>{deliveryInfo.address}</span>
+              </div>
+            ) : null}
+            {deliveryInfo.estimatedAt ? (
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>Estimated: {formatAgo(deliveryInfo.estimatedAt, clockMs)}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </TaskCard>
+    );
+  };
+
   const realtimeMeta = realtimeStateMeta[realtimeState];
   const RealtimeIcon = realtimeMeta.icon;
 
@@ -2855,7 +3065,9 @@ export default function TasksPage() {
                       ? "Done"
                       : selectedTaskView === "in-progress"
                         ? "In Progress"
-                        : "Active"}
+                        : selectedTaskView === "delivery"
+                          ? "Delivery"
+                          : "Active"}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {selectedTaskView === "inbox"
@@ -2864,7 +3076,9 @@ export default function TasksPage() {
                       ? "Closed, completed, and declined work."
                       : selectedTaskView === "in-progress"
                         ? "Work that is actively moving."
-                        : "Open requests, quotes, and accepted work."}
+                        : selectedTaskView === "delivery"
+                          ? "Orders that need delivery tracking."
+                          : "Open requests, quotes, and accepted work."}
                 </p>
               </div>
               <p className="text-sm text-slate-500">
@@ -3020,9 +3234,11 @@ export default function TasksPage() {
                 {visibleTasks.map((task) =>
                   selectedTaskView === "in-progress"
                     ? renderTrackedHelpRequestRow(task)
-                    : selectedTaskView === "done" && getCanonicalTaskStatus(task) !== "cancelled" && getCanonicalTaskStatus(task) !== "rejected"
-                      ? renderCompletedTaskRow(task)
-                      : renderTaskCardPremium(task)
+                    : selectedTaskView === "delivery"
+                      ? renderDeliveryTaskCard(task)
+                      : selectedTaskView === "done" && getCanonicalTaskStatus(task) !== "cancelled" && getCanonicalTaskStatus(task) !== "rejected"
+                        ? renderCompletedTaskRow(task)
+                        : renderTaskCardPremium(task)
                 )}
               </div>
             ) : null}

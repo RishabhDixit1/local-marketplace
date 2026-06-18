@@ -200,7 +200,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
     })();
   }
 
-  // Auto-create review request + commission on completion
+  // Auto-create review request + commission + payout on completion
   if (status === "completed") {
     void (async () => {
       try {
@@ -218,7 +218,7 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
       // Calculate platform commission
       try {
         const pricePaise = ex.price != null ? Math.round(ex.price * 100) : 0;
-        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 12.5;
+        const rate = typeof ex.metadata?.commission_rate === "number" ? ex.metadata.commission_rate : 5.0;
         const feePaise = Math.round(pricePaise * (rate / 100));
         const payoutPaise = pricePaise - feePaise;
 
@@ -230,6 +230,23 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
             commission_calculated_at: new Date().toISOString(),
           },
         }).eq("id", id);
+
+        // Auto-create pending payout
+        if (ex.provider_id && payoutPaise > 0) {
+          const { error: payoutErr } = await admin.from("provider_payouts").insert({
+            provider_id: ex.provider_id,
+            amount_paise: pricePaise,
+            fee_paise: feePaise,
+            net_amount_paise: payoutPaise,
+            status: "pending",
+            payout_method: "auto",
+            notes: `Auto-payout for order ${id}`,
+          });
+
+          if (payoutErr) {
+            console.error("[auto-payout] insert failed for order", id, payoutErr.message);
+          }
+        }
       } catch (err) {
         console.error("[commission] calculation failed for order", id, err);
       }

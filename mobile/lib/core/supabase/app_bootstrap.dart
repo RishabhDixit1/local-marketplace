@@ -76,7 +76,7 @@ class AppBootstrap {
 
       final instance = await Supabase.initialize(
         url: config.supabaseUrl,
-        anonKey: config.supabaseAnonKey,
+        publishableKey: config.supabaseAnonKey,
         httpClient: httpClient,
         debug: kDebugMode,
         authOptions: FlutterAuthClientOptions(

@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL?.trim() || "";
+const cdnHostname = cdnUrl ? new URL(cdnUrl).hostname : null;
+
 const supabaseUrl = (() => {
   const value = process.env.SUPABASE_URL?.trim() || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || "";
   if (!value) return null;
@@ -27,6 +30,11 @@ const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
 const supabasePublicHostname = supabasePublicUrl?.hostname || supabaseHostname;
 
+// Derive non-www variant so both www.serviqapp.com and serviqapp.com work
+const rootHostname = supabasePublicHostname.startsWith("www.")
+  ? supabasePublicHostname.slice(4)
+  : null;
+
 const images: NonNullable<NextConfig["images"]> = {
   remotePatterns: [
     {
@@ -48,9 +56,15 @@ const images: NonNullable<NextConfig["images"]> = {
     ...(supabasePublicHostname && supabasePublicHostname !== supabaseHostname
       ? [
           {
-            protocol: "https" as const,
+            protocol: (supabasePublicUrl?.protocol?.replace(":", "") || "https") as "http" | "https",
             hostname: supabasePublicHostname,
           } as const,
+          ...(rootHostname
+            ? [{
+                protocol: (supabasePublicUrl?.protocol?.replace(":", "") || "https") as "http" | "https",
+                hostname: rootHostname,
+              } as const]
+            : []),
         ]
       : []),
     {
@@ -61,6 +75,12 @@ const images: NonNullable<NextConfig["images"]> = {
       protocol: "https",
       hostname: "*.supabase.co",
     },
+    ...(cdnHostname
+      ? [{
+          protocol: (cdnUrl.startsWith("https") ? "https" : "http") as "http" | "https",
+          hostname: cdnHostname,
+        } as const]
+      : []),
   ],
   minimumCacheTTL: 31536000,
   formats: ["image/avif", "image/webp"],
@@ -170,6 +190,12 @@ const createNextConfig = (phase: string): NextConfig => ({
         source: "/realtime/v1/:path*",
         destination: `${origin}/realtime/v1/:path*`,
       },
+      ...(cdnUrl
+        ? [{
+            source: "/cdn/:path*",
+            destination: `${cdnUrl}/:path*`,
+          }]
+        : []),
     ];
   },
 });

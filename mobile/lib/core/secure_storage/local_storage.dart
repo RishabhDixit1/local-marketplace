@@ -3,9 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SecureLocalStorage extends LocalStorage {
   SecureLocalStorage({required this.persistSessionKey})
-      : _storage = const FlutterSecureStorage(
-          aOptions: AndroidOptions(encryptedSharedPreferences: true),
-        );
+      : _storage = const FlutterSecureStorage();
 
   final String persistSessionKey;
   final FlutterSecureStorage _storage;
@@ -37,9 +35,7 @@ class SecureLocalStorage extends LocalStorage {
 
 class SecureGotrueAsyncStorage extends GotrueAsyncStorage {
   SecureGotrueAsyncStorage()
-      : _storage = const FlutterSecureStorage(
-          aOptions: AndroidOptions(encryptedSharedPreferences: true),
-        );
+      : _storage = const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 

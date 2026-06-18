@@ -4,6 +4,7 @@ import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { insertPostRow } from "@/lib/server/publishWrites";
+import { invalidateUserFeed } from "@/lib/cache/invalidation";
 
 export const runtime = "nodejs";
 
@@ -102,6 +103,8 @@ export async function POST(request: Request) {
       writeResult.details || undefined
     );
   }
+
+  invalidateUserFeed(authResult.auth.userId).catch(() => {});
 
   return NextResponse.json({
     ok: true,

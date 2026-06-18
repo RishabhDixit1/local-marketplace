@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { ProductDeliveryMethod } from "@/lib/provider/listings";
+import { supabase } from "@/lib/supabase";
 
 export type CartItem = {
   /** Unique key: `${itemType}:${itemId}` */
@@ -30,6 +31,7 @@ type CartContextValue = {
   totalItems: number;
   totalPrice: number;
   hydrated: boolean;
+  serverSynced: boolean;
   addItem: (item: Omit<CartItem, "key" | "quantity">) => void;
   replaceItems: (items: Array<Omit<CartItem, "key" | "quantity">>) => void;
   removeItem: (key: string) => void;
@@ -43,18 +45,18 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = "serviq_cart_v1";
-const CART_SCHEMA_VERSION = 3; // Bump this to force a cart reset on schema changes
+const CART_SCHEMA_VERSION = 3;
 const STORAGE_VERSION_KEY = "serviq_cart_schema_v";
+
+// ── Local storage helpers ───────────────────────────────────────────
 
 const readFromStorage = (): CartItem[] => {
   if (typeof window === "undefined") return [];
   try {
-    // Check schema version — if mismatch, clear and reset
     const storedVersion = window.localStorage.getItem(STORAGE_VERSION_KEY);
     if (storedVersion !== String(CART_SCHEMA_VERSION)) {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.setItem(STORAGE_VERSION_KEY, String(CART_SCHEMA_VERSION));
-      console.info("[cart] schema version mismatch — cart cleared");
       return [];
     }
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -72,7 +74,6 @@ const readFromStorage = (): CartItem[] => {
         (item as CartItem).quantity > 0
     );
   } catch {
-    // Shape invalid — clear corrupted data
     try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     return [];
   }
@@ -88,11 +89,92 @@ const writeToStorage = (items: CartItem[]) => {
   }
 };
 
+// ── Server sync helpers ─────────────────────────────────────────────
+
+async function fetchServerCart(): Promise<CartItem[] | null> {
+  try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) return null;
+    const token = session.data.session.access_token;
+    const res = await fetch("/api/cart", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const body: { items: Record<string, unknown>[] } = await res.json();
+    const items: CartItem[] = body.items.map((i: Record<string, unknown>) => {
+      const raw = i.deliveryMethod;
+      return {
+        key: `${String(i.itemType)}:${String(i.itemId)}`,
+        itemType: String(i.itemType) as "service" | "product",
+        itemId: String(i.itemId),
+        providerId: String(i.providerId),
+        providerName: String(i.providerName ?? ""),
+        title: String(i.title ?? ""),
+        price: Number(i.price ?? 0),
+        quantity: Number(i.quantity ?? 1),
+        deliveryMethod: (raw != null && raw !== "" ? raw : null) as ProductDeliveryMethod | null,
+      };
+    });
+    return items;
+  } catch {
+    return null;
+  }
+}
+
+async function pushToServer(items: CartItem[]): Promise<boolean> {
+  try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) return false;
+    const token = session.data.session.access_token;
+    const res = await fetch("/api/cart", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ items: items.map(toPayload) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function toPayload(item: CartItem) {
+  return {
+    itemType: item.itemType,
+    itemId: item.itemId,
+    providerId: item.providerId,
+    providerName: item.providerName,
+    title: item.title,
+    price: item.price,
+    quantity: item.quantity,
+    deliveryMethod: item.deliveryMethod,
+  };
+}
+
+// Merge server items into local items — server wins on conflicts
+function mergeCarts(local: CartItem[], server: CartItem[]): CartItem[] {
+  if (server.length === 0) return local;
+  if (local.length === 0) return server;
+  const merged = new Map<string, CartItem>();
+  for (const item of server) merged.set(item.key, item);
+  for (const item of local) {
+    if (!merged.has(item.key)) merged.set(item.key, item);
+  }
+  return Array.from(merged.values());
+}
+
+// ── Provider ────────────────────────────────────────────────────────
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [serverSynced, setServerSynced] = useState(false);
   const itemsRef = useRef<CartItem[]>([]);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedRef = useRef(false);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -101,12 +183,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const hydrateTimer = window.setTimeout(() => {
       setItems(storedItems);
       setHydrated(true);
+      hydratedRef.current = true;
     }, 0);
-
     return () => window.clearTimeout(hydrateTimer);
   }, []);
 
-  // Persist whenever items change
+  // Sync from server after hydration + auth check
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    let cancelled = false;
+    (async () => {
+      const serverItems = await fetchServerCart();
+      if (cancelled) return;
+      if (serverItems) {
+        const merged = mergeCarts(itemsRef.current, serverItems);
+        itemsRef.current = merged;
+        writeToStorage(merged);
+        setItems(merged);
+      }
+      setServerSynced(true);
+    })();
+    return () => { cancelled = true; };
+  }, [hydrated]);
+
+  // Debounced sync to server whenever items change (after initial server sync)
+  useEffect(() => {
+    if (!serverSynced) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      pushToServer(itemsRef.current);
+    }, 2000);
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+  }, [items, serverSynced]);
+
+  // Persist locally whenever items change
   useEffect(() => {
     if (!hydrated) return;
     itemsRef.current = items;
@@ -153,6 +265,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     commitItems([]);
+    // Also clear server cart immediately
+    supabase.auth.getSession().then((session) => {
+      if (!session.data.session?.access_token) return;
+      fetch("/api/cart", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.data.session.access_token}` },
+      }).catch(() => {});
+    });
   }, [commitItems]);
 
   const openCart = useCallback(() => setIsOpen(true), []);
@@ -174,6 +294,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalItems,
       totalPrice,
       hydrated,
+      serverSynced,
       addItem,
       replaceItems,
       removeItem,
@@ -184,18 +305,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       closeCart,
     }),
     [
-      items,
-      totalItems,
-      totalPrice,
-      hydrated,
-      addItem,
-      replaceItems,
-      removeItem,
-      updateQuantity,
-      clearCart,
-      isOpen,
-      openCart,
-      closeCart,
+      items, totalItems, totalPrice, hydrated, serverSynced,
+      addItem, replaceItems, removeItem, updateQuantity, clearCart,
+      isOpen, openCart, closeCart,
     ]
   );
 

@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AutocompleteSearch } from "@/app/components/search/AutocompleteSearch";
+import { AiPromptBar } from "@/app/components/search/AiPromptBar";
 import {
   ArrowRight,
   CheckCircle2,
@@ -396,7 +396,7 @@ export function LandingPageClient({
             Find trusted providers near you in Crossings Republik
           </p>
           <div className="mx-auto mt-6 max-w-2xl">
-            <AutocompleteSearch placeholder='Try "AC repair", "electrician", "plumber nearby"...' />
+            <AiPromptBar placeholder='Try "AC repair", "electrician", "plumber nearby"...' />
           </div>
           <div className="mt-3 flex items-center justify-center gap-3 text-xs text-slate-400">
             <span>or</span>

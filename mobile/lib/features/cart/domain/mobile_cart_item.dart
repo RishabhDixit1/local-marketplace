@@ -67,6 +67,24 @@ class MobileCartItem {
     );
   }
 
+  factory MobileCartItem.fromServerJson(Map<String, dynamic> json) {
+    final itemType = _readString(json['itemType']);
+    final itemId = _readString(json['itemId']);
+    return MobileCartItem(
+      key: '$itemType:$itemId',
+      itemType: itemType,
+      itemId: itemId,
+      providerId: _readString(json['providerId']),
+      providerName: _readString(
+        json['providerName'],
+        fallback: 'Local provider',
+      ),
+      title: _readString(json['title'], fallback: 'Item'),
+      price: _toDouble(json['price']),
+      quantity: _toInt(json['quantity'], fallback: 1),
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'key': key,

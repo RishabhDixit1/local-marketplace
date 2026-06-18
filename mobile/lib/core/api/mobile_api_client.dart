@@ -91,6 +91,23 @@ class MobileApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> putJson(
+    String path, {
+    Object? body,
+    Map<String, String>? queryParameters,
+    required bool authenticated,
+    bool isRetry = false,
+  }) {
+    return _sendJson(
+      method: 'PUT',
+      path: path,
+      queryParameters: queryParameters,
+      body: body,
+      authenticated: authenticated,
+      isRetry: isRetry,
+    );
+  }
+
   Future<Map<String, dynamic>> deleteJson(
     String path, {
     Map<String, dynamic>? body,
@@ -210,6 +227,17 @@ class MobileApiClient {
     return getJson(
       '/api/community/providers-by-category',
       queryParameters: params,
+      authenticated: false,
+    );
+  }
+
+  Future<Map<String, dynamic>> sendPrompt({
+    required String query,
+    Map<String, dynamic>? context,
+  }) async {
+    return postJson(
+      '/api/ai/prompt',
+      body: {'query': query, 'context': context},
       authenticated: false,
     );
   }

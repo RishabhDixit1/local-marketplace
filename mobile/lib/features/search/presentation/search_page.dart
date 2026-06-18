@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +7,7 @@ import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../shared/components/empty_state_view.dart';
+import '../../../shared/widgets/ai_prompt_bar.dart';
 import '../data/search_repository.dart';
 import '../domain/search_models.dart';
 
@@ -68,9 +67,6 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
-  final _searchController = TextEditingController();
-  final _focusNode = FocusNode();
-  Timer? _debounce;
   String _query = '';
   String? _selectedCategory;
   _SortBy _sortBy = _SortBy.distance;
@@ -82,16 +78,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   String? _error;
   List<String> _recent = [];
 
-
   @override
   void initState() {
     super.initState();
-    final initial = widget.initialQuery?.trim() ?? '';
-    _searchController.text = initial;
-    _query = initial;
-    _focusNode.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _query = widget.initialQuery?.trim() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       _recent = await _loadRecent();
@@ -112,26 +102,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     }
     if (mounted && _query.isNotEmpty) _doSearch();
   }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _onQueryChanged(String value) {
-    setState(() {});
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        setState(() => _query = value.trim());
-        _doSearch();
-      }
-    });
-  }
-
   Future<void> _doSearch() async {
     if (_query.isEmpty && _selectedCategory == null) {
       setState(() { _results = null; _loading = false; _error = null; });
@@ -194,31 +164,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       ),
       child: Column(
         children: [
-          TextField(
-            controller: _searchController,
-            focusNode: _focusNode,
-            decoration: InputDecoration(
-              hintText: 'Service, provider, or category...',
-              prefixIcon: const Icon(Icons.search, size: 18),
-              suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onQueryChanged('');
-                      },
-                    )
-                  : null,
-              isDense: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppColors.border),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-            ),
-            onChanged: _onQueryChanged,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _doSearch(),
+          AiPromptBar(
+            placeholder: 'Service, provider, or category...',
+            initialQuery: widget.initialQuery,
+            onResult: (result) {
+              setState(() => _query = result.response);
+              if (result.redirect != null) {
+                context.push(result.redirect!);
+              } else if (_query.isNotEmpty) {
+                _doSearch();
+              }
+            },
           ),
           const SizedBox(height: 6),
           SizedBox(
@@ -386,14 +342,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             trailing: IconButton(
               icon: Icon(Icons.north_west_rounded, size: 16, color: AppColors.primary),
               onPressed: () {
-                _searchController.text = s;
                 _query = s;
                 _doSearch();
               },
               visualDensity: VisualDensity.compact,
             ),
             onTap: () {
-              _searchController.text = s;
               _query = s;
               _doSearch();
             },
@@ -417,7 +371,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           children: _suggestions.map((s) => ActionChip(
             label: Text(s, style: const TextStyle(fontSize: 12)),
             onPressed: () {
-              _searchController.text = s;
               _query = s;
               _doSearch();
             },

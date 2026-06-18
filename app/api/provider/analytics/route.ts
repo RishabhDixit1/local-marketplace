@@ -126,6 +126,49 @@ async function getHandler(request: Request) {
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : null;
 
+  // ── Conversion Funnel ──
+  // Count orders at each stage of the funnel
+  const funnelLabels = ["new_lead", "quoted", "accepted", "paid", "in_progress", "completed"];
+  const funnelData = funnelLabels.map((stage) => ({
+    stage,
+    count: (monthlyOrders ?? []).filter((o) => {
+      const idx = funnelLabels.indexOf(o.status);
+      const stageIdx = funnelLabels.indexOf(stage);
+      return idx >= stageIdx || (["completed", "closed"].includes(o.status) && stageIdx <= 5);
+    }).length,
+  }));
+
+  // ── Repeat Customer Rate ──
+  const customerOrderCounts = Object.values(customerMap).map((c) => c.orders);
+  const repeatCustomers = customerOrderCounts.filter((c) => c > 1).length;
+  const totalCustomers = customerIds.size;
+  const repeatCustomerRate = totalCustomers > 0
+    ? Math.round((repeatCustomers / totalCustomers) * 100)
+    : 0;
+
+  // ── Prior Year Comparison (same period) ──
+  const { data: priorYearOrders } = await db
+    .from("orders")
+    .select("provider_payout_paise, price, status, created_at")
+    .eq("provider_id", userId)
+    .gte("created_at", `${year - 1}-01-01`)
+    .lt("created_at", `${year}-01-01`)
+    .in("status", ["completed", "closed"]);
+
+  const priorYearEarnedPaise = (priorYearOrders ?? []).reduce(
+    (s, o) => s + (typeof o.provider_payout_paise === "number" ? o.provider_payout_paise : 0), 0
+  );
+
+  const earningsGrowth = priorYearEarnedPaise > 0
+    ? Math.round(((totalEarnedPaise - priorYearEarnedPaise) / priorYearEarnedPaise) * 100)
+    : totalEarnedPaise > 0 ? 100 : 0;
+
+  // ── Average Order Value ──
+  const completedCount = (allOrders ?? []).length;
+  const avgOrderValuePaise = completedCount > 0
+    ? Math.round(totalRevenuePaise / completedCount)
+    : 0;
+
   return NextResponse.json({
     ok: true,
     analytics: {
@@ -139,8 +182,13 @@ async function getHandler(request: Request) {
         completedOrders: (allOrders ?? []).length,
         uniqueCustomers: customerIds.size,
         avgRating,
+        repeatCustomerRate,
+        earningsGrowth,
+        avgOrderValuePaise,
+        priorYearEarnedPaise,
       },
       topCustomers,
+      funnelData,
     },
   });
 }

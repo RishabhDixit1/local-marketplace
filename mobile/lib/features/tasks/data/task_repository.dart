@@ -174,6 +174,19 @@ class TaskRepository {
     });
   }
 
+  Future<void> updateDeliveryStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    await _expectOk(
+      _apiClient.postJson(
+        '/api/orders/$orderId/delivery',
+        body: {'status': status},
+      ),
+      fallbackMessage: 'Unable to update delivery status.',
+    );
+  }
+
   Future<void> submitReview({
     required String taskId,
     required int rating,
@@ -274,6 +287,8 @@ MobileTaskItem _mapOrderToTask(
     budgetLabel: _formatCurrency(_readNum(row['price'])),
     locationLabel: locationLabel,
     listingTypeLabel: listingType,
+    fulfillmentMethod: _readString(metadata['fulfillment_method']),
+    deliveryStatus: (metadata['delivery'] is Map<String, dynamic> ? _readString((metadata['delivery'] as Map<String, dynamic>)['status']) : ''),
     createdAt: _parseDate(row['created_at']),
   );
 }
@@ -316,6 +331,8 @@ MobileTaskItem _mapHelpRequestToTask(
       'Nearby',
     ]),
     listingTypeLabel: _firstNonEmpty([_readString(row['category']), 'Demand']),
+    fulfillmentMethod: '',
+    deliveryStatus: '',
     createdAt: _parseDate(row['created_at']),
   );
 }

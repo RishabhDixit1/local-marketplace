@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { resolveProfileAvatarUrl } from "@/lib/mediaUrl";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,15 @@ type ProvidersFilter = {
   search: string;
 };
 
-async function executeProvidersQuery(filter: ProvidersFilter) {
+type ProvidersQueryResult = {
+  ok: boolean;
+  providers: Record<string, unknown>[];
+  facets: Record<string, unknown> | null;
+  pagination: { total: number; offset: number; limit: number; hasMore: boolean };
+  error?: string;
+};
+
+async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQueryResult> {
   const {
     category, lat: userLat, lng: userLng, limit, offset,
     minRating, onlineOnly, sortBy, search,
@@ -43,7 +52,7 @@ async function executeProvidersQuery(filter: ProvidersFilter) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    return NextResponse.json({ ok: false, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } });
+    return { ok: false, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } };
   }
 
   try {
@@ -65,13 +74,13 @@ async function executeProvidersQuery(filter: ProvidersFilter) {
 
     const { data: profiles, error } = await query;
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } });
+      return { ok: false, error: error.message, providers: [], facets: null, pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false } };
     }
 
     const profileIds = (profiles || []).map((p) => p.id).filter(Boolean);
 
     if (profileIds.length === 0) {
-      return NextResponse.json({
+      return {
         ok: true,
         providers: [],
         facets: {
@@ -83,7 +92,7 @@ async function executeProvidersQuery(filter: ProvidersFilter) {
           onlineCount: 0,
         },
         pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false },
-      });
+      };
     }
 
     const BATCH_SIZE = 500;
@@ -277,7 +286,7 @@ async function executeProvidersQuery(filter: ProvidersFilter) {
     const total = filteredProviders.length;
     const paginatedProviders = filteredProviders.slice(safeOffset, safeOffset + safeLimit);
 
-    return NextResponse.json({
+    return {
       ok: true,
       providers: paginatedProviders,
       facets: {
@@ -297,16 +306,26 @@ async function executeProvidersQuery(filter: ProvidersFilter) {
         limit: safeLimit,
         hasMore: safeOffset + safeLimit < total,
       },
-    });
+    };
   } catch (e) {
     console.error("Providers API error:", e);
-    return NextResponse.json({
+    return {
       ok: false,
       providers: [],
       facets: null,
       pagination: { total: 0, offset: 0, limit: safeLimit, hasMore: false },
-    });
+    };
   }
+}
+
+async function executeProvidersQuery(filter: ProvidersFilter): Promise<NextResponse> {
+  const { category, limit, offset, sortBy, search } = filter;
+  const cacheKey = queryCacheKey("providers-by-category", category, sortBy, search, String(limit), String(offset));
+  const result = await withCache(
+    () => loadProvidersData(filter),
+    { key: cacheKey, ttlSeconds: 60 },
+  );
+  return NextResponse.json(result);
 }
 
 async function getHandler(request: Request) {

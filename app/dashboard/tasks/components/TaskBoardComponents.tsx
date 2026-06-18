@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
 
-export type TaskBoardStatusTabValue = "inbox" | "active" | "in-progress" | "done";
+export type TaskBoardStatusTabValue = "inbox" | "active" | "in-progress" | "done" | "delivery";
 
 export type TaskBoardTab = {
   value: TaskBoardStatusTabValue;

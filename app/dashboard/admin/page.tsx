@@ -121,6 +121,11 @@ export default function AdminPage() {
   const [userQuery, setUserQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("");
+  const [orderDeliveryFilter, setOrderDeliveryFilter] = useState("");
+  const [orderProviderFilter, setOrderProviderFilter] = useState("");
+  const [orderDateFrom, setOrderDateFrom] = useState("");
+  const [orderDateTo, setOrderDateTo] = useState("");
 
   useEffect(() => {
     const check = async () => {
@@ -172,10 +177,25 @@ export default function AdminPage() {
     if (data) setVerifications(data.verifications);
   }, []);
 
-  const fetchOrders = useCallback(async (status: string = "") => {
-    const data = await tryFetch<{ orders: Record<string, unknown>[] }>(`/api/admin/orders?status=${status}&limit=50`);
+  const fetchOrders = useCallback(async (overrides?: {
+    status?: string; deliveryStatus?: string; providerId?: string;
+    from?: string; to?: string;
+  }) => {
+    const params = new URLSearchParams();
+    const s = overrides?.status ?? orderStatusFilter;
+    if (s) params.set("status", s);
+    const ds = overrides?.deliveryStatus ?? orderDeliveryFilter;
+    if (ds) params.set("delivery_status", ds);
+    const pid = overrides?.providerId ?? orderProviderFilter;
+    if (pid) params.set("provider_id", pid);
+    const f = overrides?.from ?? orderDateFrom;
+    if (f) params.set("from", f);
+    const t = overrides?.to ?? orderDateTo;
+    if (t) params.set("to", t);
+    params.set("limit", "50");
+    const data = await tryFetch<{ orders: Record<string, unknown>[] }>(`/api/admin/orders?${params.toString()}`);
     if (data) setOrders(data.orders);
-  }, []);
+  }, [orderStatusFilter, orderDeliveryFilter, orderProviderFilter, orderDateFrom, orderDateTo]);
 
   const fetchSystem = useCallback(async () => {
     const data = await tryFetch<SystemHealth>("/api/admin/system");
@@ -186,7 +206,7 @@ export default function AdminPage() {
     if (!isAdmin) return;
     void fetchStats();
     void fetchReports();
-    void fetchOrders();
+    void fetchOrders({});
     void fetchProviders();
     void fetchDisputes();
     void fetchSystem();
@@ -298,6 +318,50 @@ export default function AdminPage() {
       }
     } catch {
       setError("Failed to refund order.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleStatusOverride = async (id: string, status: string) => {
+    setBusyId(`override_${id}`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "status_override", status }),
+      });
+      const json = await res.json();
+      if (json?.ok) {
+        await fetchOrders({});
+      } else {
+        setError(json?.message || "Failed to override status.");
+      }
+    } catch {
+      setError("Failed to override status.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCreatePayout = async (id: string) => {
+    setBusyId(`payout_${id}`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "create_payout" }),
+      });
+      const json = await res.json();
+      if (json?.ok) {
+        setError("");
+      } else {
+        setError(json?.message || "Failed to create payout.");
+      }
+    } catch {
+      setError("Failed to create payout.");
     } finally {
       setBusyId(null);
     }
@@ -758,12 +822,13 @@ export default function AdminPage() {
 
       {activeTab === "orders" ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-slate-600">
-              {orders.length > 0 ? `${orders.length} recent orders` : "No orders found."}
+              {orders.length > 0 ? `${orders.length} orders` : "No orders found."}
             </span>
-            <select
-              onChange={(e) => { void fetchOrders(e.target.value); }}
+            <select value={orderStatusFilter}
+              onChange={(e) => { setOrderStatusFilter(e.target.value); void fetchOrders({ status: e.target.value }); }}
               className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
             >
               <option value="">All statuses</option>
@@ -774,19 +839,50 @@ export default function AdminPage() {
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <select value={orderDeliveryFilter}
+              onChange={(e) => { setOrderDeliveryFilter(e.target.value); void fetchOrders({ deliveryStatus: e.target.value }); }}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700"
+            >
+              <option value="">All delivery</option>
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="picked_up">Picked up</option>
+              <option value="in_transit">In transit</option>
+              <option value="delivered">Delivered</option>
+              <option value="failed">Failed</option>
+            </select>
+            <input type="text" placeholder="Provider ID..."
+              value={orderProviderFilter}
+              onChange={(e) => setOrderProviderFilter(e.target.value)}
+              onBlur={() => void fetchOrders({})}
+              onKeyDown={(e) => { if (e.key === "Enter") void fetchOrders({}); }}
+              className="w-40 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400"
+            />
+            <input type="date" value={orderDateFrom}
+              onChange={(e) => { setOrderDateFrom(e.target.value); void fetchOrders({ from: e.target.value }); }}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700"
+            />
+            <span className="text-xs text-slate-400">—</span>
+            <input type="date" value={orderDateTo}
+              onChange={(e) => { setOrderDateTo(e.target.value); void fetchOrders({ to: e.target.value }); }}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700"
+            />
           </div>
+          {error && <p className="text-xs text-rose-600">{error}</p>}
           {orders.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
               No orders to display.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-4 py-3 font-semibold text-slate-700">Order ID</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Delivery</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Price</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Fee</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Payment</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Actions</th>
@@ -796,44 +892,86 @@ export default function AdminPage() {
                   {orders.map((order) => {
                     const meta = (order.metadata as Record<string, unknown>) ?? {};
                     const paymentStatus = (meta.payment_status as string) ?? "—";
+                    const deliveryMeta = meta.delivery as Record<string, unknown> | undefined;
+                    const deliveryStatus = deliveryMeta?.status as string ?? "";
+                    const orderStatus = order.status as string;
+                    const price = Number(order.price ?? 0);
+                    const fee = Number(order.platform_fee_paise ?? 0);
+                    const completed = orderStatus === "completed";
+                    const paid = paymentStatus === "paid";
+                    const canRefund = completed && paid;
+                    const canCreatePayout = completed && paid && !fee;
                     return (
                       <tr key={order.id as string} className="border-b border-slate-100 last:border-0">
-                        <td className="max-w-[120px] truncate px-4 py-3 font-mono text-xs text-slate-900">
+                        <td className="max-w-[100px] truncate px-4 py-3 font-mono text-xs text-slate-900">
                           {order.id as string}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            order.status === "completed" ? "bg-emerald-100 text-emerald-800" :
-                            order.status === "cancelled" ? "bg-rose-100 text-rose-800" :
-                            order.status === "in_progress" ? "bg-blue-100 text-blue-800" :
+                            orderStatus === "completed" ? "bg-emerald-100 text-emerald-800" :
+                            orderStatus === "cancelled" ? "bg-rose-100 text-rose-800" :
+                            orderStatus === "in_progress" ? "bg-blue-100 text-blue-800" :
                             "bg-slate-100 text-slate-800"
                           }`}>
-                            {(order.status as string)?.replace(/_/g, " ") ?? "—"}
+                            {orderStatus.replace(/_/g, " ") || "—"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-900">₹{Number(order.price ?? 0).toFixed(0)}</td>
+                        <td className="px-4 py-3">
+                          {deliveryStatus ? (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              deliveryStatus === "delivered" ? "bg-emerald-100 text-emerald-800" :
+                              deliveryStatus === "failed" ? "bg-rose-100 text-rose-800" :
+                              deliveryStatus === "in_transit" ? "bg-blue-100 text-blue-800" :
+                              "bg-slate-100 text-slate-800"
+                            }`}>
+                              {deliveryStatus.replace(/_/g, " ")}
+                            </span>
+                          ) : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-900">₹{price.toFixed(0)}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500">₹{(fee / 100).toFixed(2)}</td>
                         <td className="px-4 py-3 text-xs text-slate-600">
                           <span className={`font-medium ${
-                            paymentStatus === "paid" ? "text-emerald-700" :
+                            paid ? "text-emerald-700" :
                             paymentStatus === "refunded" ? "text-rose-700" :
                             "text-slate-500"
                           }`}>{paymentStatus}</span>
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(order.created_at as string | null)}</td>
                         <td className="px-4 py-3">
-                          {(order.status as string) === "completed" && paymentStatus === "paid" ? (
-                            <button
-                              type="button"
-                              disabled={busyId === `refund_${order.id}`}
-                              onClick={() => void handleRefundOrder(order.id as string)}
-                              className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
-                            >
-                              {busyId === `refund_${order.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                              Refund
-                            </button>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {canRefund ? (
+                              <button type="button" disabled={busyId === `refund_${order.id}`}
+                                onClick={() => void handleRefundOrder(order.id as string)}
+                                className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                              >
+                                {busyId === `refund_${order.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                Refund
+                              </button>
+                            ) : null}
+                            {canCreatePayout ? (
+                              <button type="button" disabled={busyId === `payout_${order.id}`}
+                                onClick={() => void handleCreatePayout(order.id as string)}
+                                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                              >
+                                {busyId === `payout_${order.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                Payout
+                              </button>
+                            ) : null}
+                            {orderStatus !== "cancelled" && orderStatus !== "closed" ? (
+                              <select
+                                disabled={busyId === `override_${order.id}`}
+                                onChange={(e) => { if (e.target.value) void handleStatusOverride(order.id as string, e.target.value); }}
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Override</option>
+                                <option value="cancelled">Cancel</option>
+                                <option value="closed">Close</option>
+                                <option value="completed">Complete</option>
+                              </select>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     );

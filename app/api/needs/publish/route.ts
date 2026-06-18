@@ -3,6 +3,7 @@ import type { PublishNeedRequest, PublishNeedResponse, PublishApiErrorCode } fro
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { insertHelpRequestRow, insertPostRow, runImmediateMatching } from "@/lib/server/publishWrites";
+import { invalidateUserFeed } from "@/lib/cache/invalidation";
 
 export const runtime = "nodejs";
 
@@ -171,6 +172,8 @@ export async function POST(request: Request) {
       }
     }
   }
+
+  invalidateUserFeed(authResult.auth.userId).catch(() => {});
 
   return NextResponse.json({
     ok: true,

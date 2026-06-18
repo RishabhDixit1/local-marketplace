@@ -7,6 +7,7 @@ import { loadCommunityFeedSnapshot } from "@/lib/server/communityData";
 import { proxyCommunityFeedImages } from "@/lib/server/imageProxy";
 import { resolveRequestOrigin } from "@/lib/siteUrl";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -43,17 +44,29 @@ async function getHandler(request: Request) {
   }
 
   try {
-    const snapshot = await loadCommunityFeedSnapshot(dbClient, authResult.auth.userId, {
-      viewerOverride: viewerCoordinates ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude } : null,
-      scope,
-    });
+    const cacheKey = queryCacheKey("feed", authResult.auth.userId, scope);
+    const snapshot = await withCache(
+      () => loadCommunityFeedSnapshot(dbClient, authResult.auth.userId, {
+        viewerOverride: viewerCoordinates ? { lat: viewerCoordinates.latitude, lng: viewerCoordinates.longitude } : null,
+        scope,
+      }),
+      { key: cacheKey, ttlSeconds: 30 },
+    );
+
+    if (!snapshot) {
+      return NextResponse.json(
+        { ok: false, code: "NOT_FOUND", message: "Feed unavailable." } satisfies CommunityFeedResponse,
+        { status: 404 }
+      );
+    }
+
     const responseSnapshot = shouldProxyImages
       ? proxyCommunityFeedImages(snapshot, resolveRequestOrigin(request) || requestUrl.origin)
       : snapshot;
 
     return NextResponse.json(responseSnapshot satisfies CommunityFeedResponse, {
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, max-age=0, stale-while-revalidate=30",
       },
     });
   } catch (error) {

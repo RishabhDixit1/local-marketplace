@@ -5,6 +5,7 @@ import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { isProfileSaveRequest, saveProfileRow } from "@/lib/server/profileWrites";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { invalidateUserPeople } from "@/lib/cache/invalidation";
 
 export const runtime = "nodejs";
 
@@ -67,6 +68,8 @@ export async function POST(request: Request) {
   if (!result.ok || !result.profile) {
     return toErrorResponse(500, "DB", result.message || "Unable to save profile.", result.details || undefined);
   }
+
+  invalidateUserPeople(authResult.auth.userId).catch(() => {});
 
   return NextResponse.json({
     ok: true,

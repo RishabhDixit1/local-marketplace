@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { invalidateUserFeed } from "@/lib/cache/invalidation";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,7 @@ export async function PATCH(request: Request) {
     if (error) {
       return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
     }
+    invalidateUserFeed(userId).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 
@@ -83,6 +85,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
 
+  invalidateUserFeed(userId).catch(() => {});
   return NextResponse.json({ ok: true });
 }
 
@@ -131,5 +134,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
 
+  invalidateUserFeed(userId).catch(() => {});
   return NextResponse.json({ ok: true });
 }

@@ -6,6 +6,7 @@ import { loadCommunityPeopleSnapshot } from "@/lib/server/communityData";
 import { proxyCommunityPeopleImages } from "@/lib/server/imageProxy";
 import { resolveRequestOrigin } from "@/lib/siteUrl";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { withCache, queryCacheKey } from "@/lib/cache/withCache";
 
 export const runtime = "nodejs";
 
@@ -42,17 +43,29 @@ async function getHandler(request: Request) {
   }
 
   try {
-    const snapshot = await loadCommunityPeopleSnapshot(dbClient, authResult.auth.userId, {
-      limit: limitParam ? Math.max(1, Math.min(5000, Number(limitParam) || 2000)) : undefined,
-      offset: offsetParam ? Math.max(0, Number(offsetParam) || 0) : undefined,
-    });
+    const limit = limitParam ? Math.max(1, Math.min(5000, Number(limitParam) || 2000)) : undefined;
+    const offset = offsetParam ? Math.max(0, Number(offsetParam) || 0) : undefined;
+
+    const cacheKey = queryCacheKey("people", authResult.auth.userId, String(limit ?? 2000), String(offset ?? 0));
+    const snapshot = await withCache(
+      () => loadCommunityPeopleSnapshot(dbClient, authResult.auth.userId, { limit, offset }),
+      { key: cacheKey, ttlSeconds: 60 },
+    );
+
+    if (!snapshot) {
+      return NextResponse.json(
+        { ok: false, code: "NOT_FOUND", message: "People directory unavailable." } satisfies CommunityPeopleResponse,
+        { status: 404 }
+      );
+    }
+
     const responseSnapshot = shouldProxyImages
       ? proxyCommunityPeopleImages(snapshot, resolveRequestOrigin(request) || requestUrl.origin)
       : snapshot;
 
     return NextResponse.json(responseSnapshot satisfies CommunityPeopleResponse, {
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, max-age=0, stale-while-revalidate=60",
       },
     });
   } catch (error) {
