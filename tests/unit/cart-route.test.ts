@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const requireRequestAuthMock = vi.fn();
@@ -198,7 +199,7 @@ describe("PUT /api/cart", () => {
 
     const { PUT } = await import("../../app/api/cart/route");
     const response = await PUT(
-      new Request("http://localhost:3000/api/cart", {
+      new NextRequest("http://localhost:3000/api/cart", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -242,7 +243,7 @@ describe("PUT /api/cart", () => {
 
     const { PUT } = await import("../../app/api/cart/route");
     const response = await PUT(
-      new Request("http://localhost:3000/api/cart", {
+      new NextRequest("http://localhost:3000/api/cart", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: [] }),

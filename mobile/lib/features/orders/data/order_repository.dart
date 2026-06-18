@@ -87,7 +87,7 @@ class OrderRepository {
   }) async {
     final payload = await _apiClient.postJson(
       '/api/orders/$orderId/delivery',
-      body: {'status': status, if (extra != null) ...extra},
+      body: {'status': status, ...?extra},
     );
     _expectOk(payload, 'Unable to update delivery status.');
   }
