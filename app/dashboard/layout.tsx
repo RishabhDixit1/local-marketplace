@@ -12,8 +12,10 @@ import {
   type CSSProperties,
 } from "react";
 import { supabase } from "../../lib/supabase";
+import { MobileBottomNav } from "@/app/components/MobileBottomNav";
 import NotificationCenter from "@/app/components/NotificationCenter";
 import { CartProvider } from "@/app/components/store/CartContext";
+import { MarketAiFloating } from "@/app/components/market/MarketAiBar";
 import {
   DashboardPromptBar,
   DashboardPromptProvider,
@@ -239,7 +241,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const hideFloatingPostAction =
     pathname.startsWith("/dashboard/chat") ||
     pathname.startsWith("/dashboard/tasks") ||
-    pathname.startsWith("/dashboard/create_post") ||
+    pathname.startsWith("/dashboard/create") ||
     (desktopNavAutoCollapsed && isFeedLandingRoute);
   const shellIconButtonClassName =
     "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:h-9 md:w-9 md:rounded-xl";
@@ -677,8 +679,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
-            desktopNavCollapsed ? "md:w-24" : "md:w-72"
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
+            desktopNavCollapsed ? "w-24" : "w-72"
           }`}
         >
           <div
@@ -707,7 +709,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   onClick={() =>
                     setDesktopNavManuallyCollapsed((current) => !current)
                   }
-                  className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
+                  className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
                   aria-label={
                     desktopNavCollapsed
                       ? "Expand navigation"
@@ -834,7 +836,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex min-w-0 flex-col overflow-x-clip">
           <header className="sticky top-0 z-40 overflow-x-clip border-b border-slate-200/80 bg-white/96 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.45)] backdrop-blur-none md:bg-white/92 md:shadow-[0_16px_30px_-28px_rgba(15,23,42,0.55)] md:backdrop-blur-xl">
             <div
-              className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 lg:px-8"
+              className="flex min-h-16 items-center gap-2.5 px-3 sm:px-6 sm:gap-3 md:px-8"
               style={{ paddingTop: "env(safe-area-inset-top)" }}
             >
               <div className="relative flex min-w-0 shrink-0 items-center gap-3">
@@ -846,8 +848,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                     ariaLabel="Open Market dashboard"
                   />
                 </div>
-                {/* Tablet (sm-lg): compact logo shortcut to Welcome */}
-                <div className="hidden sm:block lg:hidden min-w-0">
+                {/* Tablet (sm-md): compact logo shortcut to Welcome */}
+                <div className="hidden sm:block md:hidden min-w-0">
                   <ServiQLogo
                     compact
                     className="max-w-[180px]"
@@ -857,7 +859,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <div className="hidden lg:flex min-w-0 flex-1 justify-center px-2">
+              <div className="hidden md:flex min-w-0 flex-1 justify-center px-2">
                 <DashboardPromptBar placement="header" />
               </div>
 
@@ -908,13 +910,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             {showPrompt ? (
-              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 lg:hidden">
+              <div className="border-t border-slate-200/80 px-3 pb-3 pt-2.5 sm:px-4 md:hidden">
                 <DashboardPromptBar placement="header" />
               </div>
             ) : null}
           </header>
 
-          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(7rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8">
+          <main className="flex-1 overflow-x-clip px-3 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(7rem+env(safe-area-inset-bottom))] md:px-8 md:py-8 md:pb-8">
             {showStartupIssues && (
               <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
                 <p className="text-sm font-semibold">
@@ -957,6 +959,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <span>Post Need</span>
         </button>
       )}
+      <MarketAiFloating />
       {openCreatePost && (
         <CreatePostModal
           open={openCreatePost}
@@ -977,66 +980,30 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       <CartDrawer />
 
-      {/* ── Mobile bottom navigation bar ───────────────────────────── */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-[var(--layer-mobile-nav)] border-t border-slate-200/90 bg-white/98 shadow-[0_-14px_36px_-28px_rgba(15,23,42,0.42)] backdrop-blur-none lg:hidden"
-        aria-label="Main navigation"
-      >
-        <div
-          className="grid gap-1 px-2 pt-2 [padding-bottom:calc(env(safe-area-inset-bottom)+0.5rem)]"
-          style={{
-            gridTemplateColumns: `repeat(${navigationTabs.length + 1}, minmax(0, 1fr))`,
-          }}
-        >
-          {navigationTabs.map((tab) => {
-            const isActive = isNavigationTabActive(pathname, tab.path);
-            const Icon = tab.icon;
-            return (
-              <Link
-                key={tab.path}
-                href={tab.path}
-                className={`relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
-                  navigationTabs.length >= 5 ? "text-[9px]" : "text-[10px]"
-                } ${
-                  isActive
-                    ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-                aria-label={tab.name}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{tab.name}</span>
-                {isActive ? (
-                  <span className="absolute top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--brand-600)]" />
-                ) : null}
-              </Link>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => setShowMobileMoreMenu((v) => !v)}
-            className={`relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold transition ${
-              showMobileMoreMenu
-                ? "bg-[var(--brand-50)] text-[var(--brand-700)]"
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-            }`}
-            aria-label="More options"
-            aria-expanded={showMobileMoreMenu}
-          >
-            <MoreHorizontal className="h-5 w-5" />
-            <span>More</span>
-          </button>
-        </div>
-      </nav>
+      <MobileBottomNav
+        items={[
+          ...navigationTabs.map((tab) => ({
+            label: tab.name,
+            icon: tab.icon,
+            href: tab.path,
+            isActive: isNavigationTabActive(pathname, tab.path),
+          })),
+          {
+            label: "More",
+            icon: MoreHorizontal,
+            onClick: () => setShowMobileMoreMenu((v) => !v),
+            isActive: showMobileMoreMenu,
+          },
+        ]}
+      />
 
       {showMobileMoreMenu ? (
         <>
           <div
-            className="fixed inset-0 z-[var(--layer-popover-backdrop)] lg:hidden"
+            className="fixed inset-0 z-[var(--layer-popover-backdrop)] md:hidden"
             onClick={() => setShowMobileMoreMenu(false)}
           />
-          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 lg:hidden">
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--layer-popover)] mx-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 md:hidden">
           <div className="max-h-[60vh] overflow-y-auto p-3">
             <div className="grid grid-cols-2 gap-1">
               {secondaryNavItems.map((item) => {

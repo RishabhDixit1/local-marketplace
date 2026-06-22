@@ -33,6 +33,7 @@ type Props = {
   onClose: () => void;
   onPublished?: (result?: PublishPostResult) => void | Promise<void>;
   allowedPostTypes?: PostType[];
+  variant?: "modal" | "page";
 };
 
 export type PublishPostResult = {
@@ -155,6 +156,7 @@ export default function CreatePostModal({
   onClose,
   onPublished,
   allowedPostTypes = DEFAULT_ALLOWED_POST_TYPES,
+  variant = "modal",
 }: Props) {
   const availableTypeOptions = useMemo(() => {
     const allowedSet = new Set(allowedPostTypes);
@@ -246,7 +248,7 @@ export default function CreatePostModal({
     };
   }, [attachments]);
 
-  if (!open) return null;
+  if (variant !== "page" && !open) return null;
 
   //  GPS 
   const handleGps = async () => {
@@ -625,9 +627,31 @@ export default function CreatePostModal({
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center sm:items-center sm:bg-slate-950/45">
-      <div className="flex max-h-[100dvh] w-full flex-col overflow-hidden bg-white sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[1.6rem] sm:shadow-2xl">
+  const headerAction =
+    variant === "page" ? (
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={posting}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+        aria-label="Go back"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={posting}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
+        aria-label="Close"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    );
+
+  const formContent = (
+    <>
       {/* header */}
       <div className="shrink-0 border-b border-slate-200 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -635,15 +659,7 @@ export default function CreatePostModal({
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Step {step} of 2</p>
             <h2 className="mt-1 text-lg font-bold text-slate-900">{stepTitle}</h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={posting}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {headerAction}
         </div>
         <p className="mt-2 max-w-lg text-sm text-slate-500">{stepDescription}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -917,6 +933,23 @@ export default function CreatePostModal({
           </button>
           </div>
         </div>
+    </>
+  );
+
+  if (variant === "page") {
+    return (
+      <div className="mx-auto w-full max-w-2xl">
+        <div className="flex min-h-screen flex-col bg-white">
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex items-end justify-center sm:items-center sm:bg-slate-950/45">
+      <div className="flex max-h-[100dvh] w-full flex-col overflow-hidden bg-white sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[1.6rem] sm:shadow-2xl">
+        {formContent}
       </div>
     </div>
   );
