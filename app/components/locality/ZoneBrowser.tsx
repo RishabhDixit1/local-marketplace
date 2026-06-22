@@ -88,7 +88,7 @@ export default function ZoneBrowser({
   return (
     <div className="space-y-4">
       <div className="relative">
-        <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1 scrollbar-hide">
         {zoneTabs.map((tab) => (
           <button
             key={tab.key}

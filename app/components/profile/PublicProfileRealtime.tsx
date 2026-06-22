@@ -11,7 +11,7 @@ type PublicProfileRealtimeProps = {
   roleFamily: ProfileRoleFamily;
 };
 
-type LiveState = "connecting" | "live" | "syncing";
+type LiveState = "connecting" | "live" | "syncing" | "error";
 const POST_OWNER_FIELDS = ["user_id", "author_id", "created_by", "requester_id", "owner_id", "provider_id"] as const;
 
 export default function PublicProfileRealtime({ profileId, roleFamily }: PublicProfileRealtimeProps) {
@@ -87,6 +87,10 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setLiveState("live");
+        } else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          setLiveState("error");
+        } else if (status !== "CLOSED") {
+          setLiveState("connecting");
         }
       });
 
@@ -99,15 +103,23 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
   }, [profileId, roleFamily, router]);
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+    <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+      liveState === "error"
+        ? "border-rose-200 bg-rose-50 text-rose-700"
+        : liveState === "connecting"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700"
+    }`}>
       {liveState === "connecting" ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : liveState === "syncing" ? (
         <Activity className="h-3.5 w-3.5" />
+      ) : liveState === "error" ? (
+        <Radio className="h-3.5 w-3.5" />
       ) : (
         <Radio className="h-3.5 w-3.5" />
       )}
-      {liveState === "connecting" ? "Connecting live updates" : liveState === "syncing" ? "Syncing changes" : "Live profile"}
+      {liveState === "connecting" ? "Connecting live updates" : liveState === "syncing" ? "Syncing changes" : liveState === "error" ? "Live updates degraded" : "Live profile"}
     </div>
   );
 }

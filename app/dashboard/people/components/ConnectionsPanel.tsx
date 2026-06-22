@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { Card } from "@/app/components/ui/Card";
+import { SafeImage, InitialsAvatar } from "@/app/components/ui/SafeImage";
 import { Check, X } from "lucide-react";
 import type { ConnectionActionKey, ConnectionBucketEntry } from "@/lib/connectionState";
 import { createAvatarFallback } from "@/lib/avatarFallback";
@@ -51,8 +52,13 @@ export default function ConnectionsPanel({
 }: Props) {
 
   return (
-    <section
-      className={`rounded-[1.45rem] border border-white/70 bg-white/92 p-3 shadow-[0_18px_48px_-40px_rgba(15,23,42,0.38)] backdrop-blur sm:rounded-[1.85rem] sm:p-4 ${className || ""}`}
+    <Card
+      variant="elevated"
+      radius="xl"
+      radiusSm="2xl"
+      padding="md"
+      as="section"
+      className={`backdrop-blur ${className || ""}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2.5">
         <div className="min-w-0">
@@ -100,12 +106,13 @@ export default function ConnectionsPanel({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 items-start gap-2">
                       <span className="relative inline-flex">
-                        <Image
+                        <SafeImage
                           src={preview.avatar}
                           alt={preview.name}
                           width={36}
                           height={36}
                           className="h-9 w-9 rounded-lg border border-slate-200 object-cover"
+                          fallback={<InitialsAvatar name={preview.name} size="sm" />}
                         />
                         <span
                           className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white ${presenceDotByTone[preview.presenceTone]}`}
@@ -146,6 +153,6 @@ export default function ConnectionsPanel({
         )}
       </div>
       </div>
-    </section>
+    </Card>
   );
 }

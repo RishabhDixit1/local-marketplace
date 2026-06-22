@@ -704,7 +704,11 @@ export default function TasksPage() {
           void loadInboxMatches();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[tasks-inbox] Realtime subscription ${status}, falling back to polling`);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(inboxChannel);
@@ -745,7 +749,11 @@ export default function TasksPage() {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[tasks-notifications] Realtime subscription ${status}, falling back to polling`);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);

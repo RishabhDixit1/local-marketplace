@@ -200,7 +200,11 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[public-store] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);

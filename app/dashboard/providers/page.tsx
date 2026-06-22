@@ -832,8 +832,8 @@ export default function ProvidersPage() {
               <div className="flex flex-wrap gap-2">
                 {[
                   { value: null as number | null, label: "All" },
-                  { value: 3, label: "3+ ⭐" },
-                  { value: 4, label: "4+ ⭐" },
+                  { value: 3, label: "3+ ★" },
+                  { value: 4, label: "4+ ★" },
                 ].map((option) => (
                   <button
                     key={option.value ?? "all"}

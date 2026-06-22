@@ -292,12 +292,14 @@ const countMutualConnections = (
   return count;
 };
 
+const PROFILE_FEED_COLUMNS = "id,full_name,name,username,headline,avatar_url,role,bio,location,availability,services,email,phone,website,latitude,longitude,onboarding_completed,profile_completion_percent,verification_level,created_at,updated_at,metadata,verification_status";
+
 const selectProfileById = async (db: SupabaseClient, userId: string) => {
   if (!userId) return null;
 
   const { data, error } = await db
     .from("profiles")
-    .select("*")
+    .select(PROFILE_FEED_COLUMNS)
     .eq("id", userId)
     .maybeSingle();
   if (error && !isMissingColumnError(error.message || "") && !isMissingRelationError(error.message || "")) {
@@ -314,7 +316,7 @@ const selectProfilesByIds = async (
 
   const { data, error } = await db
     .from("profiles")
-    .select("*")
+    .select(PROFILE_FEED_COLUMNS)
     .in("id", profileIds);
   if (error && !isMissingColumnError(error.message || "")) {
     throw new Error(error.message);
@@ -1062,11 +1064,10 @@ export const loadCommunityFeedSnapshot = async (
           db,
           "provider_presence",
           "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen",
-          { allowMissingRelation: true },
-        ).then((rows) =>
-          rows.filter((row) =>
-            profileIds.includes(stringFromRow(row, ["provider_id"], "")),
-          ),
+          {
+            allowMissingRelation: true,
+            inFilter: { column: "provider_id", values: profileIds },
+          },
         )
       : Promise.resolve([]),
     profileIds.length
@@ -1388,11 +1389,10 @@ export const loadCommunityPeopleSnapshot = async (
           db,
           "provider_presence",
           "provider_id,is_online,availability,response_sla_minutes,rolling_response_minutes,last_seen",
-          { allowMissingRelation: true },
-        ).then((rows) =>
-          rows.filter((row) =>
-            memberIds.includes(stringFromRow(row, ["provider_id"], "")),
-          ),
+          {
+            allowMissingRelation: true,
+            inFilter: { column: "provider_id", values: memberIds },
+          },
         )
       : Promise.resolve([]),
     memberIds.length

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/app/components/ui/SafeImage";
 import { ChevronLeft, ChevronRight, Music2 } from "lucide-react";
 import type { MarketplaceFeedMedia } from "@/lib/marketplaceFeed";
 
@@ -13,8 +13,6 @@ type FeedMediaCarouselProps = {
   className?: string;
 };
 
-const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
-
 export default function FeedMediaCarousel({
   media,
   title,
@@ -23,7 +21,6 @@ export default function FeedMediaCarousel({
   className = "",
 }: FeedMediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [imgError, setImgError] = useState(false);
 
   if (!media.length) {
     return null;
@@ -34,7 +31,6 @@ export default function FeedMediaCarousel({
   const canNavigate = media.length > 1;
 
   const goNext = () => {
-    setImgError(false);
     setActiveIndex((currentIndex) => {
       const normalized = Math.min(currentIndex, media.length - 1);
       return (normalized + 1) % media.length;
@@ -42,7 +38,6 @@ export default function FeedMediaCarousel({
   };
 
   const goPrev = () => {
-    setImgError(false);
     setActiveIndex((currentIndex) => {
       const normalized = Math.min(currentIndex, media.length - 1);
       return (normalized - 1 + media.length) % media.length;
@@ -55,31 +50,18 @@ export default function FeedMediaCarousel({
     >
       <div className={`relative w-full ${aspectClassName} max-h-[16.5rem] sm:max-h-[19rem] lg:max-h-[21rem]`}>
         {current.mimeType.startsWith("image/") && !current.mimeType.startsWith("image/svg") ? (
-          imgError ? (
-            <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
-              <p className="text-xs font-semibold text-slate-500">Image unavailable</p>
-            </div>
-          ) : isBrowserLocalImageUrl(current.url) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={current.url}
-              alt={title}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <Image
-              src={current.url}
-              alt={title}
-              fill
-              quality={70}
-              sizes="(max-width: 640px) 94vw, (max-width: 1024px) 48vw, 420px"
-              className="object-cover"
-              onError={() => setImgError(true)}
-            />
-          )
+          <SafeImage
+            src={current.url}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 94vw, (max-width: 1024px) 48vw, 420px"
+            className="object-cover"
+            fallback={
+              <div className="grid h-full place-items-center bg-gradient-to-br from-slate-50 via-white to-slate-100 text-center">
+                <p className="text-xs font-semibold text-slate-500">Image unavailable</p>
+              </div>
+            }
+          />
         ) : current.mimeType.startsWith("video/") ? (
           <video src={current.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
         ) : current.mimeType.startsWith("audio/") ? (

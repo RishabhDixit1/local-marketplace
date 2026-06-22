@@ -17,13 +17,33 @@
   --surface-border: #e2e8f0;
   --surface-overlay: rgba(255, 255, 255, 0.8);
   --ink-50: #f8fafc;
-  --radius-control: 0.75rem;
-  --radius-card: 1rem;
-  --radius-card-lg: 1.25rem;
+
+  --radius-xs: 0.5rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --radius-card-lg: var(--radius-xl);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
   --shadow-soft: 0 10px 26px -22px rgba(15, 23, 42, 0.52);
   --shadow-card: 0 18px 46px -36px rgba(15, 23, 42, 0.38);
+  --shadow-card-hover: 0 26px 42px -28px rgba(14, 165, 164, 0.32);
+  --shadow-nav: 0 -14px 36px -28px rgba(15, 23, 42, 0.42);
+  --shadow-popover: 0 20px 46px -42px rgba(15, 23, 42, 0.65);
+  --shadow-header: 0 16px 30px -28px rgba(15, 23, 42, 0.55);
+  --shadow-elevated: 0 24px 80px -58px rgba(15, 23, 42, 0.38);
+
   --layer-mobile-nav: 40;
   --layer-floating-action: 50;
+  --layer-ai-panel: 55;
   --layer-popover-backdrop: 59;
   --layer-popover: 60;
   --layer-drawer-backdrop: 70;
@@ -54,6 +74,10 @@
   --surface-border: #1e293b;
   --surface-overlay: rgba(15, 23, 42, 0.85);
   --ink-50: #020617;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.28);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
   --shadow-soft: 0 10px 26px -22px rgba(0, 0, 0, 0.7);
   --shadow-card: 0 18px 46px -36px rgba(0, 0, 0, 0.6);
 }
@@ -75,6 +99,14 @@ html {
   html {
     scroll-behavior: auto;
   }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 ::-webkit-scrollbar {

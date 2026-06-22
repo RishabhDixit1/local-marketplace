@@ -159,7 +159,11 @@ export const useConnectionRequests = ({ enabled = true }: { enabled?: boolean } 
     const channel = supabase
       .channel(`connection-requests-${viewerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "connection_requests" }, scheduleReload)
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[connection-requests] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       if (reloadTimerRef.current) {

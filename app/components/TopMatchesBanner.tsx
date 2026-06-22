@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
-import Image from "next/image";
 import { BadgeCheck, Loader2, MapPin, Star, User } from "lucide-react";
+import { SafeImage } from "@/app/components/ui/SafeImage";
 
 type MatchProvider = {
   providerId: string;
@@ -70,16 +70,14 @@ export default function TopMatchesBanner({ helpRequestId }: { helpRequestId: str
             className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-              {provider.avatarUrl ? (
-                /^(data:image\/|blob:)/i.test(provider.avatarUrl) ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={provider.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
-                ) : (
-                  <Image src={provider.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
-                )
-              ) : (
-                <User className="h-4 w-4" />
-              )}
+              <SafeImage
+                src={provider.avatarUrl}
+                alt=""
+                width={32}
+                height={32}
+                fallback={<User className="h-4 w-4 text-slate-400" />}
+                className="h-8 w-8 rounded-full object-cover"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">

@@ -10,14 +10,32 @@ type PresencePingRequest = {
   responseSlaMinutes?: number;
 };
 
+const recentPings = new Map<string, number>();
+const PRESENCE_THROTTLE_MS = 30_000;
+
+setInterval(() => {
+  const cutoff = Date.now() - PRESENCE_THROTTLE_MS * 2;
+  for (const [userId, ts] of recentPings) {
+    if (ts < cutoff) recentPings.delete(userId);
+  }
+}, PRESENCE_THROTTLE_MS * 2).unref();
+
 export async function POST(request: Request) {
   const authResult = await requireRequestAuth(request);
   if (!authResult.ok) {
     return NextResponse.json({ ok: false, code: "UNAUTHORIZED", message: authResult.message }, { status: authResult.status });
   }
 
+  const now = Date.now();
+  const lastPing = recentPings.get(authResult.auth.userId);
+  if (lastPing && now - lastPing < PRESENCE_THROTTLE_MS) {
+    return NextResponse.json({ ok: true, cached: true, providerId: authResult.auth.userId, isOnline: true, timestamp: new Date().toISOString() });
+  }
+  recentPings.set(authResult.auth.userId, now);
+
+  const userClient = createSupabaseUserServerClient(authResult.auth.accessToken);
   const admin = createSupabaseAdminClient();
-  const dbClient = admin || createSupabaseUserServerClient(authResult.auth.accessToken);
+  const dbClient = userClient || admin;
   if (!dbClient) {
     return NextResponse.json(
       {
@@ -67,15 +85,17 @@ export async function POST(request: Request) {
 
     if (fallbackUpsert.error) {
       const message = fallbackUpsert.error.message || error.message || "Failed to update presence.";
-      const missingSchema = /upsert_provider_presence|provider_presence|does not exist|schema cache/i.test(message);
-      return NextResponse.json(
-        {
-          ok: false,
-          code: missingSchema ? "NOT_FOUND" : "DB",
-          message,
-        },
-        { status: missingSchema ? 503 : 500 }
-      );
+      // Presence ping is best-effort — return 200 even on schema issues to avoid console noise
+      return NextResponse.json({
+        ok: false,
+        code: "DB",
+        message,
+        providerId: authResult.auth.userId,
+        isOnline,
+        availability: availability || "available",
+        responseSlaMinutes,
+        timestamp,
+      });
     }
   }
 

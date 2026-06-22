@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       });
     }
     if (moderation.sanitized) {
-      console.log(`[Moderation] Sanitized query: "${query.slice(0, 100)}" -> "${moderation.sanitized.slice(0, 100)}"`);
+      console.info(`[Moderation] Sanitized query: "${query.slice(0, 100)}"`);
     }
 
     const effectiveQuery = moderation.sanitized ?? query;

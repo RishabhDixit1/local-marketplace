@@ -6,7 +6,7 @@ type Props = {
 
 export default function HorizontalProviderCardSkeleton({ count = 4 }: Props) {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={`horizontal-skeleton-${index}`}

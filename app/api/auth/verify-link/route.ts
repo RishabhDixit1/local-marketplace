@@ -23,11 +23,48 @@ async function getHandler(request: Request) {
     return NextResponse.redirect(new URL("/?error=invalid_or_expired_code", request.url));
   }
 
-  const cookie = buildSupabaseSessionCookieValue(result.userId, email);
+  // Attempt to create a real GoTrue session first
+  const session = await buildGoTrueSession(email);
+  if (session) {
+    const response = NextResponse.redirect(new URL("/", request.url));
+    const { name, value, options } = buildSupabaseSessionCookieValue(session.user.id, email);
+    response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
+    return response;
+  }
+
+  // Fallback: local JWT if GoTrue session creation fails
+  const goTrueUser = await ensureGoTrueUser(email);
+  const fallbackUserId = goTrueUser?.id ?? result.userId;
+  const cookie = buildSupabaseSessionCookieValue(fallbackUserId, email);
   const response = NextResponse.redirect(new URL("/", request.url));
   response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
 
   return response;
+}
+
+async function ensureGoTrueUser(
+  email: string,
+): Promise<{ id: string; email: string } | null> {
+  try {
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) return null;
+
+    const { data, error } = await adminClient.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    });
+    if (data?.user) {
+      return { id: data.user.id, email: data.user.email! };
+    }
+    if (error && /already.+(registered|exists)/i.test(error.message)) {
+      const { data: users } = await adminClient.auth.admin.listUsers();
+      const existing = users?.users.find((u) => u.email?.toLowerCase() === email);
+      if (existing) return { id: existing.id, email: existing.email! };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 async function buildGoTrueSession(
@@ -130,8 +167,11 @@ async function postHandler(request: Request) {
     return response;
   }
 
-  // Fallback: buildSupabaseSessionCookieValue if GoTrue admin API is unavailable
-  const { name, value, options } = buildSupabaseSessionCookieValue(result.userId, emailLowered);
+  // Fallback: ensure user exists in auth.users, then create local JWT
+  const goTrueUser = await ensureGoTrueUser(emailLowered);
+  const fallbackUserId = goTrueUser?.id ?? result.userId;
+
+  const { name, value, options } = buildSupabaseSessionCookieValue(fallbackUserId, emailLowered);
 
   const sessionData = JSON.parse(
     Buffer.from(value.replace("base64-", ""), "base64url").toString(),
@@ -145,7 +185,7 @@ async function postHandler(request: Request) {
 
   const response = NextResponse.json({
     ok: true,
-    user: { id: result.userId, email: emailLowered },
+    user: { id: fallbackUserId, email: emailLowered },
     accessToken: sessionData.access_token,
     refreshToken: sessionData.refresh_token,
     session: {
@@ -155,7 +195,7 @@ async function postHandler(request: Request) {
       expires_in: 34560000,
       expires_at: expiresAt,
       user: {
-        id: result.userId,
+        id: fallbackUserId,
         email: emailLowered,
         role: "authenticated",
       },

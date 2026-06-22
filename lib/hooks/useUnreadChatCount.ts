@@ -164,7 +164,11 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
           scheduleLoadUnreadCount();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[unread-participants] Realtime subscription ${status}`);
+        }
+      });
 
     const messagesChannel = supabase
       .channel(`dashboard-chat-unread-messages-${userId}`)
@@ -185,7 +189,11 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
           scheduleLoadUnreadCount();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[unread-messages] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       if (refreshTimerRef.current) {

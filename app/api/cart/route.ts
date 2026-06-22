@@ -21,11 +21,14 @@ type CartItem = CartItemInput & {
   createdAt: string;
 };
 
+const FK_VIOLATION = /violates foreign key constraint/i;
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 async function ensureCart(
   db: ReturnType<typeof createSupabaseAdminClient>,
   userId: string,
+  email?: string,
 ): Promise<string> {
   if (!db) throw new Error("No DB client.");
 
@@ -44,6 +47,26 @@ async function ensureCart(
     .maybeSingle();
 
   if (created) return created.id;
+
+  // FK violation — try to create the user in auth.users and retry
+  if (error && FK_VIOLATION.test(error.message) && email) {
+    try {
+      const { error: createError } = await db.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      });
+      if (!createError || /already.+(registered|exists)/i.test(createError.message)) {
+        const { data: retry } = await db
+          .from("carts")
+          .insert({ user_id: userId })
+          .select("id")
+          .maybeSingle();
+        if (retry) return retry.id;
+      }
+    } catch {
+      // fall through to error
+    }
+  }
 
   // Insert failed (race / unique constraint / RLS) — retry fetch
   if (error) {
@@ -87,7 +110,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No DB client." }, { status: 500 });
   }
 
-  const cartId = await ensureCart(db, auth.auth.userId);
+  const cartId = await ensureCart(db, auth.auth.userId, auth.auth.email);
 
   const { data: items, error } = await db
     .from("cart_items")
@@ -117,7 +140,7 @@ export async function PUT(request: NextRequest) {
 
   const body: { items?: CartItemInput[] } = await request.json();
   const incoming = body.items ?? [];
-  const cartId = await ensureCart(db, auth.auth.userId);
+  const cartId = await ensureCart(db, auth.auth.userId, auth.auth.email);
 
   const { error: delErr } = await db
     .from("cart_items")
@@ -179,7 +202,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "No DB client." }, { status: 500 });
   }
 
-  const cartId = await ensureCart(db, auth.auth.userId);
+  const cartId = await ensureCart(db, auth.auth.userId, auth.auth.email);
 
   await db.from("cart_items").delete().eq("cart_id", cartId);
   await db

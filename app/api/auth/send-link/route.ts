@@ -5,6 +5,11 @@ import { createOtp } from "@/lib/server/otpStore";
 
 export const runtime = "nodejs";
 
+// ServiQ is open to all signups. The built-in blocked lists below prevent
+// placeholder/abuse emails (example.com, disposable domains). The env-var
+// overrides (AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS / BLOCKED_DOMAINS /
+// BLOCKED_RECIPIENTS) are additive / optional — when unset, signup remains
+// unrestricted for all real email addresses. This is intentional.
 const BUILTIN_BLOCKED_MAGIC_LINK_RECIPIENTS = new Set([
   "test@example.com",
   "user@example.com",
@@ -92,7 +97,6 @@ async function postHandler(request: Request) {
   }
 
   const { otp } = createOtp(email);
-  console.log(`[send-link] OTP for ${email}: ${otp}`);
 
   const fromEmail = process.env.EMAIL_FROM ?? "auth@serviqapp.com";
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

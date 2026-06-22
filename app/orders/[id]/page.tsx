@@ -117,6 +117,7 @@ export default function OrderStatusPage() {
   const [disputeSent, setDisputeSent] = useState(false);
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const [orderRealtimeHealth, setOrderRealtimeHealth] = useState<"connected" | "degraded">("connected");
   const scriptLoadedRef = useRef(false);
 
   const fetchOrder = useCallback(async () => {
@@ -144,8 +145,11 @@ export default function OrderStatusPage() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` }, (payload) => {
         setOrder((prev) => prev ? { ...prev, ...(payload.new as Partial<OrderRow>) } : null);
       })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setOrderRealtimeHealth("connected");
+        else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) setOrderRealtimeHealth("degraded");
+      });
+    return () => { setOrderRealtimeHealth("connected"); void supabase.removeChannel(channel); };
   }, [id]);
 
   // Load Razorpay script
@@ -306,6 +310,12 @@ export default function OrderStatusPage() {
             <ArrowLeft className="h-4 w-4 text-slate-600" />
           </button>
           <span className="font-semibold text-slate-900">Order</span>
+          {orderRealtimeHealth === "degraded" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+              Reconnecting
+            </span>
+          )}
           <span className={`ml-auto rounded-full border px-3 py-0.5 text-xs font-semibold ${STATUS_COLOR[status]}`}>
             {STATUS_LABEL[status]}
           </span>

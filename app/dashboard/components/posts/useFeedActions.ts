@@ -204,7 +204,11 @@ export const useFeedActions = ({
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[feed-saves] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);
