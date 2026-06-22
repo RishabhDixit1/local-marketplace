@@ -745,7 +745,11 @@ export default function ChatPage() {
           setLiveTalkRequest(nextRow);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[live-talk] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       supabase.removeChannel(liveTalkChannel);

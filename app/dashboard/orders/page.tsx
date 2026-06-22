@@ -22,6 +22,8 @@ declare global {
   }
 }
 
+type OrdersRealtimeHealth = "connected" | "degraded";
+
 type Order = {
   id: string;
   listing_type: string;
@@ -38,6 +40,7 @@ export default function ConsumerOrdersPage() {
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const [ordersRealtime, setOrdersRealtime] = useState<OrdersRealtimeHealth>("connected");
   const scriptLoadedRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -105,9 +108,13 @@ export default function ConsumerOrdersPage() {
           void loadOrders(consumerId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setOrdersRealtime("connected");
+        else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) setOrdersRealtime("degraded");
+      });
 
     return () => {
+      setOrdersRealtime("connected");
       supabase.removeChannel(channel);
     };
   }, [consumerId, loadOrders]);
@@ -218,7 +225,7 @@ export default function ConsumerOrdersPage() {
 
   if (!consumerId) {
     return (
-      <div className="w-full max-w-[2200px] mx-auto">
+      <div className="w-full max-w-[1480px] mx-auto">
         <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-700">
           Please log in to view your orders.
         </div>
@@ -227,9 +234,17 @@ export default function ConsumerOrdersPage() {
   }
 
   return (
-    <div className="w-full max-w-[2200px] mx-auto space-y-6">
+    <div className="w-full max-w-[1480px] mx-auto space-y-6">
       <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 p-5 sm:p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">My Orders</h1>
+        <h1 className="text-2xl font-bold">
+          My Orders
+          {ordersRealtime === "degraded" && (
+            <span className="ml-3 inline-flex items-center gap-1.5 rounded-full border border-rose-300/60 bg-rose-500/20 px-2.5 py-0.5 text-xs font-semibold text-rose-100">
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+              Reconnecting
+            </span>
+          )}
+        </h1>
         <p className="mt-1 text-sm text-white/85">Consumer workflow with validated transitions.</p>
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <Metric label="Total" value={orderSummary.total} />

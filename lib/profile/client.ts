@@ -131,7 +131,11 @@ export const subscribeToCurrentUserProfile = (userId: string, onChange: () => vo
       },
       onChange
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        console.warn(`[profile-live] Realtime subscription ${status}`);
+      }
+    });
 
   return () => {
     void supabase.removeChannel(channel);

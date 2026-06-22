@@ -78,7 +78,11 @@ export default function EditProfilePage() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[edit-profile] Realtime subscription ${status}`);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);

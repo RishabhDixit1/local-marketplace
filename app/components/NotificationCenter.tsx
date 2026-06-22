@@ -337,7 +337,11 @@ export default function NotificationCenter({
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          console.warn(`[notifications] Realtime subscription ${status}, falling back to polling`);
+        }
+      });
 
     return () => {
       if (refreshTimerRef.current) {
