@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Building2, Loader2, MapPin, ShieldCheck, Store, Users,
+  ArrowLeft, Building2, Loader2, MapPin, ShieldCheck, Star, Store, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -194,7 +194,7 @@ export default function PeoplePage() {
                   <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
                     {profile.trust_score > 0 && (
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
-                        ⭐ {profile.trust_score.toFixed(1)}
+                        <Star className="mr-0.5 inline h-3 w-3 text-amber-500 fill-amber-500" /> {profile.trust_score.toFixed(1)}
                       </span>
                     )}
                     {profile.trust_score >= 70 && (

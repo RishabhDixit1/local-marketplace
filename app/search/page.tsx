@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { MobileBottomNav } from "@/app/components/MobileBottomNav";
+import { MarketAiFloating } from "@/app/components/market/MarketAiBar";
 import {
   ArrowRight,
   Clock,
@@ -496,6 +497,7 @@ function SearchPageContent() {
         )}
       </main>
       <MobileBottomNav />
+      <MarketAiFloating />
     </div>
   );
 }

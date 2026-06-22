@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import { Card } from "@/app/components/ui/Card";
+import { SafeImage, InitialsAvatar } from "@/app/components/ui/SafeImage";
 import { memo, type KeyboardEvent } from "react";
 import { BadgeCheck, Clock3, MessageCircle, UserCheck, UserPlus, XCircle } from "lucide-react";
 import type { ConnectionActionKey } from "@/lib/connectionState";
@@ -184,7 +185,7 @@ const ProviderCard = (props: Props) => {
   };
 
   return (
-    <div
+    <Card
       role="link"
       tabIndex={0}
       onClick={handleOpenProfile}
@@ -192,35 +193,35 @@ const ProviderCard = (props: Props) => {
       onMouseEnter={() => onActivate(provider.id)}
       onFocus={() => onActivate(provider.id)}
       aria-current={isActive}
-      className={`flex min-h-[17.5rem] cursor-pointer flex-col overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_24px_80px_-58px_rgba(15,23,42,0.38)] transition sm:min-h-[22rem] sm:rounded-[1.7rem] ${
-        isActive
-          ? "border-[var(--brand-500)]/40 shadow-[0_30px_90px_-60px_rgba(14,165,164,0.36)]"
-          : "border-slate-200 hover:border-[var(--brand-500)]/24 hover:shadow-[0_28px_80px_-60px_rgba(15,23,42,0.34)]"
-      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2`}
+      variant="elevated-lg"
+      radius="xl"
+      radiusSm="2xl"
+      padding="none"
+      isActive={isActive}
+      isHoverable
+      className="flex min-h-[17.5rem] cursor-pointer flex-col overflow-hidden sm:min-h-[22rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2"
     >
       <div className="relative h-14 overflow-hidden bg-[linear-gradient(135deg,#0f6da1_0%,#0ea5a4_48%,#0f172a_100%)] sm:h-24">
-        {coverImage ? (
-          <Image
-            src={coverImage}
-            alt={`${provider.name} cover`}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.28),transparent_20%),radial-gradient(circle_at_80%_18%,rgba(255,255,255,0.2),transparent_16%)]" />
-        )}
+        <SafeImage
+          src={coverImage}
+          alt={`${provider.name} cover`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+          fallback={<div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.28),transparent_20%),radial-gradient(circle_at_80%_18%,rgba(255,255,255,0.2),transparent_16%)]" />}
+        />
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col px-3 pb-3 pt-0 sm:px-5 sm:pb-5">
         <div className="-mt-5 flex justify-center sm:-mt-10">
           <div className="relative">
-            <Image
+            <SafeImage
               src={provider.avatar}
               alt={provider.name}
               width={108}
               height={108}
               className="h-[72px] w-[72px] rounded-full border-[3px] border-white object-cover shadow-[0_18px_30px_-24px_rgba(15,23,42,0.45)] sm:h-[96px] sm:w-[96px] sm:border-4"
+              fallback={<InitialsAvatar name={provider.name} size="xl" />}
             />
             <span
               className={`absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-full border-[3px] border-white sm:right-2 sm:top-2 sm:h-4 sm:w-4 ${presenceClasses[presenceTone]}`}
@@ -273,7 +274,7 @@ const ProviderCard = (props: Props) => {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

@@ -29,7 +29,7 @@ export default function ProviderControlNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Provider controls">
+    <nav className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" aria-label="Provider controls">
       {providerTabs.map((tab) => {
         const active = isActiveTab(pathname, tab.href);
         const Icon = tab.icon;

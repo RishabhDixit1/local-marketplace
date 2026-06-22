@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Crown, Loader2, Medal, Star, Trophy, User } from "lucide-react";
+import { ArrowLeft, Crown, Loader2, Medal, Trophy, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import Link from "next/link";
+import { SafeImage } from "@/app/components/ui/SafeImage";
 
 type LeaderboardEntry = {
   rank: number;
@@ -30,7 +30,6 @@ const RANK_ICONS: Record<number, { icon: typeof Crown; className: string }> = {
 };
 
 export default function ReferralLeaderboardPage() {
-  const router = useRouter();
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -110,11 +109,14 @@ export default function ReferralLeaderboardPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-xs font-bold text-[var(--brand-700)]">
-                              {entry.avatarUrl ? (
-                                <img src={entry.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
-                              ) : (
-                                entry.fullName.charAt(0).toUpperCase()
-                              )}
+                              <SafeImage
+                                src={entry.avatarUrl}
+                                alt=""
+                                width={32}
+                                height={32}
+                                fallback={<span>{entry.fullName.charAt(0).toUpperCase()}</span>}
+                                className="h-full w-full rounded-full object-cover"
+                              />
                             </div>
                             <span className="font-semibold text-slate-900 truncate max-w-[180px]">
                               {entry.fullName}
@@ -155,11 +157,14 @@ export default function ReferralLeaderboardPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand-100)] to-[var(--brand-200)] text-xs font-bold text-[var(--brand-700)]">
-                            {data.currentUserRank.avatarUrl ? (
-                              <img src={data.currentUserRank.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
-                            ) : (
-                              data.currentUserRank.fullName.charAt(0).toUpperCase()
-                            )}
+                            <SafeImage
+                              src={data.currentUserRank.avatarUrl}
+                              alt=""
+                              width={32}
+                              height={32}
+                              fallback={<span>{data.currentUserRank.fullName.charAt(0).toUpperCase()}</span>}
+                              className="h-full w-full rounded-full object-cover"
+                            />
                           </div>
                           <span className="font-semibold text-slate-900">
                             {data.currentUserRank.fullName}

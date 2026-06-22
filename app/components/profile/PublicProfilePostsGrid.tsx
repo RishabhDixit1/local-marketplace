@@ -693,7 +693,7 @@ export default function PublicProfilePostsGrid({
         <div
           className={
             horizontal
-              ? "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4"
+              ? "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 scrollbar-hide sm:gap-4"
               : "grid gap-4 md:grid-cols-2 xl:grid-cols-3"
           }
         >

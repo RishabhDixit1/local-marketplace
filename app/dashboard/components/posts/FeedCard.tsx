@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { SafeImage, InitialsAvatar } from "@/app/components/ui/SafeImage";
 import {
   ArrowUpRight,
   Archive,
@@ -22,6 +22,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { Card } from "@/app/components/ui/Card";
 import TrustSnapshot from "@/app/components/trust/TrustSnapshot";
 import type {
   MarketplaceCardActionButton,
@@ -106,8 +107,6 @@ const secondaryActionMeta = {
   }
 >;
 
-const isBrowserLocalImageUrl = (value: string) => /^(data:image\/|blob:)/i.test(value);
-
 export default function FeedCard({
   item,
   index,
@@ -133,8 +132,6 @@ export default function FeedCard({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const ownerMenuRef = useRef<HTMLDivElement>(null);
   const hasMedia = item.media.length > 0;
-  const useBrowserAvatar = isBrowserLocalImageUrl(item.avatarUrl);
-
   useEffect(() => {
     if (!ownerMenuOpen) return;
 
@@ -196,14 +193,15 @@ export default function FeedCard({
     !!item.locationLabel;
 
   return (
-    <article
+    <Card
+      variant="elevated"
+      radius="xl"
+      radiusSm="2xl"
+      padding="sm"
+      isActive={active}
       data-testid={testId}
       data-card-id={item.id}
-      className={`flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.35rem] border bg-white p-3 shadow-[0_18px_32px_-26px_rgba(15,23,42,0.45)] transition-all sm:rounded-[1.6rem] sm:p-3.5 ${
-        active
-          ? "border-[var(--brand-500)]/45 shadow-[0_28px_42px_-28px_rgba(14,165,164,0.48)]"
-          : "border-slate-200"
-      }`}
+      className="flex h-full w-full min-w-0 flex-col overflow-hidden"
       onClickCapture={onFocus}
       onMouseEnter={() => onHoverChange(true)}
       onMouseLeave={() => onHoverChange(false)}
@@ -215,25 +213,15 @@ export default function FeedCard({
           className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 sm:h-10 sm:w-10"
           aria-label={`Open ${item.displayCreator} profile`}
         >
-          {useBrowserAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.avatarUrl}
-              alt={`${item.displayCreator} avatar`}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Image
-              src={item.avatarUrl}
-              alt={`${item.displayCreator} avatar`}
-              width={40}
-              height={40}
-              quality={60}
-              sizes="40px"
-              className="h-full w-full object-cover"
-            />
-          )}
+          <SafeImage
+            src={item.avatarUrl}
+            alt={`${item.displayCreator} avatar`}
+            width={40}
+            height={40}
+            sizes="40px"
+            className="h-full w-full object-cover"
+            fallback={<InitialsAvatar name={item.displayCreator} size="sm" />}
+          />
         </button>
 
         <div className="min-w-0 flex-1">
@@ -584,6 +572,6 @@ export default function FeedCard({
           })}
         </div>
       </div>
-    </article>
+    </Card>
   );
 }

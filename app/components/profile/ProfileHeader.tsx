@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { ProfileRoleFamily, StoredProfileRole } from "@/lib/profile/types";
+import { SafeImage } from "@/app/components/ui/SafeImage";
 
 const roleCopy: Record<ProfileRoleFamily, { label: string; accent: string }> = {
   provider: {
@@ -170,18 +171,18 @@ export default function ProfileHeader({
         <div className="flex w-full items-end gap-3 sm:gap-4">
           <div className="relative shrink-0">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white/90 bg-white/20 text-2xl font-semibold uppercase text-white shadow-xl sm:h-24 sm:w-24 sm:text-3xl">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={fullName || "Profile avatar"}
-                  width={96}
-                  height={96}
-                  quality={70}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span>{heroTitle.slice(0, 2)}</span>
-              )}
+              <SafeImage
+                src={avatarUrl}
+                alt={fullName || "Profile avatar"}
+                width={96}
+                height={96}
+                fallback={
+                  <span className="text-2xl font-semibold uppercase text-white sm:text-3xl">
+                    {heroTitle.slice(0, 2)}
+                  </span>
+                }
+                className="h-full w-full object-cover"
+              />
             </div>
             <button
               type="button"

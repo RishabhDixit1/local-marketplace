@@ -196,7 +196,7 @@ export default function DashboardProviderScroll({
 }: DashboardProviderScrollProps) {
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {Array.from({ length: 4 }).map((_, index) => (
           <ProviderSkeleton key={`skeleton-${index}`} />
         ))}
@@ -208,7 +208,7 @@ export default function DashboardProviderScroll({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
         {providers.map((p) => (
           <ProviderCard
             key={p.id}
