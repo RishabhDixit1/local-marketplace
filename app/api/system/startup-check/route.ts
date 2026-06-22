@@ -4,6 +4,10 @@ import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+let diagnosticsCache: { data: DiagnosticsPayload; ts: number } | null = null;
+const CACHE_TTL = 15_000; // 15s
 
 type DiagnosticsPayload = {
   ok: boolean;
@@ -23,120 +27,71 @@ const baseFixInstructions = [
   "Optional auth hardening: set AUTH_MAGIC_LINK_ALLOWED_RECIPIENTS or AUTH_MAGIC_LINK_BLOCKED_DOMAINS / AUTH_MAGIC_LINK_BLOCKED_RECIPIENTS on the app server.",
 ];
 
-const missingTablePattern = /relation .* does not exist|could not find the table '.*' in the schema cache/i;
 const siteUrlLooksLocal = (value: string) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(value);
 
+const TABLE_NAMES = [
+  "posts", "help_requests", "orders", "connection_requests",
+  "conversations", "messages", "notifications", "provider_presence",
+  "live_talk_requests", "feed_card_saves", "feed_card_shares",
+  "profiles", "subscriber_plans", "disputes", "invoices",
+] as const;
+
+const BUCKET_NAMES = ["post-media", "profile-avatars", "review-photos", "post-photos", "chat-attachments"] as const;
+
+const CHECK_KEYS = [
+  ...TABLE_NAMES.map((t) => `${t}_table` as const),
+  ...BUCKET_NAMES.map((b) => `${b.replace(/-/g, "_")}_bucket` as const),
+  "auth_site_url",
+] as const;
+
 const fallbackDiagnostics = async () => {
-  const checks: Record<string, boolean> = {
-    posts_table: true,
-    help_requests_table: true,
-    orders_table: true,
-    connection_requests_table: true,
-    conversations_table: true,
-    messages_table: true,
-    notifications_table: true,
-    provider_presence_table: true,
-    live_talk_requests_table: true,
-    feed_card_saves_table: true,
-    feed_card_shares_table: true,
-    post_media_bucket: true,
-    profile_avatar_bucket: true,
-    auth_site_url: true,
-  };
+  const checks = Object.fromEntries(CHECK_KEYS.map((k) => [k, true])) as Record<string, boolean>;
   const issues: string[] = [];
   const configuredSiteUrl = getConfiguredSiteUrl();
   const productionLike = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    return {
-      ok: false,
-      checks,
-      issues: ["SUPABASE_SERVICE_ROLE_KEY is missing on server."],
+    return { ok: false, checks, issues: ["SUPABASE_SERVICE_ROLE_KEY is missing on server."] };
+  }
+
+  // Single query to check all tables, buckets, and schema info
+  const { data: schemaCheck, error } = await admin.rpc("get_schema_diagnostics");
+  if (!error && schemaCheck) {
+    const d = schemaCheck as {
+      tables: string[];
+      buckets: string[];
     };
-  }
-
-  const postsProbe = await admin.from("posts").select("id").limit(1);
-  if (postsProbe.error && missingTablePattern.test(postsProbe.error.message || "")) {
-    checks.posts_table = false;
-    issues.push("Missing table: public.posts");
-  }
-
-  const helpRequestsProbe = await admin.from("help_requests").select("id").limit(1);
-  if (helpRequestsProbe.error && missingTablePattern.test(helpRequestsProbe.error.message || "")) {
-    checks.help_requests_table = false;
-    issues.push("Missing table: public.help_requests");
-  }
-
-  const ordersProbe = await admin.from("orders").select("id").limit(1);
-  if (ordersProbe.error && missingTablePattern.test(ordersProbe.error.message || "")) {
-    checks.orders_table = false;
-    issues.push("Missing table: public.orders");
-  }
-
-  const connectionRequestsProbe = await admin.from("connection_requests").select("id").limit(1);
-  if (connectionRequestsProbe.error && missingTablePattern.test(connectionRequestsProbe.error.message || "")) {
-    checks.connection_requests_table = false;
-    issues.push("Missing table: public.connection_requests");
-  }
-
-  const conversationsProbe = await admin.from("conversations").select("id").limit(1);
-  if (conversationsProbe.error && missingTablePattern.test(conversationsProbe.error.message || "")) {
-    checks.conversations_table = false;
-    issues.push("Missing table: public.conversations");
-  }
-
-  const messagesProbe = await admin.from("messages").select("id").limit(1);
-  if (messagesProbe.error && missingTablePattern.test(messagesProbe.error.message || "")) {
-    checks.messages_table = false;
-    issues.push("Missing table: public.messages");
-  }
-
-  const notificationsProbe = await admin.from("notifications").select("id").limit(1);
-  if (notificationsProbe.error && missingTablePattern.test(notificationsProbe.error.message || "")) {
-    checks.notifications_table = false;
-    issues.push("Missing table: public.notifications");
-  }
-
-  const providerPresenceProbe = await admin.from("provider_presence").select("provider_id").limit(1);
-  if (providerPresenceProbe.error && missingTablePattern.test(providerPresenceProbe.error.message || "")) {
-    checks.provider_presence_table = false;
-    issues.push("Missing table: public.provider_presence");
-  }
-
-  const liveTalkProbe = await admin.from("live_talk_requests").select("id").limit(1);
-  if (liveTalkProbe.error && missingTablePattern.test(liveTalkProbe.error.message || "")) {
-    checks.live_talk_requests_table = false;
-    issues.push("Missing table: public.live_talk_requests");
-  }
-
-  const feedCardSavesProbe = await admin.from("feed_card_saves").select("id").limit(1);
-  if (feedCardSavesProbe.error && missingTablePattern.test(feedCardSavesProbe.error.message || "")) {
-    checks.feed_card_saves_table = false;
-    issues.push("Missing table: public.feed_card_saves");
-  }
-
-  const feedCardSharesProbe = await admin.from("feed_card_shares").select("id").limit(1);
-  if (feedCardSharesProbe.error && missingTablePattern.test(feedCardSharesProbe.error.message || "")) {
-    checks.feed_card_shares_table = false;
-    issues.push("Missing table: public.feed_card_shares");
-  }
-
-  const bucketProbe = await admin.schema("storage").from("buckets").select("id").eq("id", "post-media").maybeSingle();
-  if (bucketProbe.error || !(bucketProbe.data as { id?: string } | null)?.id) {
-    checks.post_media_bucket = false;
-    issues.push("Missing storage bucket: post-media");
-  }
-
-  const profileAvatarBucketProbe = await admin
-    .schema("storage")
-    .from("buckets")
-    .select("id")
-    .eq("id", "profile-avatars")
-    .maybeSingle();
-  if (profileAvatarBucketProbe.error || !(profileAvatarBucketProbe.data as { id?: string } | null)?.id) {
-    checks.profile_avatar_bucket = false;
-    issues.push("Missing storage bucket: profile-avatars");
+    for (const table of TABLE_NAMES) {
+      if (!d.tables.includes(table)) {
+        checks[`${table}_table`] = false;
+        issues.push(`Missing table: public.${table}`);
+      }
+    }
+    for (const bucket of BUCKET_NAMES) {
+      if (!d.buckets.includes(bucket)) {
+        checks[`${bucket.replace(/-/g, "_")}_bucket`] = false;
+        issues.push(`Missing storage bucket: ${bucket}`);
+      }
+    }
+  } else {
+    // Fallback: check if information_schema is accessible directly
+    const { data: tableData } = await admin.rpc("get_table_list", { schema_name: "public" });
+    const tableList = (tableData as string[] | null) ?? [];
+    for (const table of TABLE_NAMES) {
+      if (!tableList.includes(table)) {
+        checks[`${table}_table`] = false;
+        issues.push(`Missing table: public.${table}`);
+      }
+    }
+    const { data: bucketData } = await admin.rpc("get_bucket_list");
+    const bucketList = (bucketData as string[] | null) ?? [];
+    for (const bucket of BUCKET_NAMES) {
+      if (!bucketList.includes(bucket)) {
+        checks[`${bucket.replace(/-/g, "_")}_bucket`] = false;
+        issues.push(`Missing storage bucket: ${bucket}`);
+      }
+    }
   }
 
   if (productionLike && siteUrlLooksLocal(configuredSiteUrl)) {
@@ -144,12 +99,8 @@ const fallbackDiagnostics = async () => {
     issues.push(`Auth site URL resolves to a local origin (${configuredSiteUrl}). Set NEXT_PUBLIC_SITE_URL/SITE_URL to your public app domain.`);
   }
 
-  return {
-    ok: issues.length === 0,
-    checks,
-    issues,
-  };
-};
+  return { ok: issues.length === 0, checks, issues };
+}
 
 export async function GET(request: Request) {
   const authResult = await requireRequestAuth(request);
@@ -157,44 +108,39 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, admin: false, issues: [authResult.message] }, { status: authResult.status });
   }
 
-  const admin = createSupabaseAdminClient();
-  if (!admin) {
-    return NextResponse.json(
-      {
-        ok: false,
-        admin: isAdminEmail(authResult.auth.email),
-        issues: ["SUPABASE_SERVICE_ROLE_KEY is missing on server."],
-        checks: {},
-        fixInstructions: baseFixInstructions,
-      },
-      { status: 500 }
-    );
-  }
-
   const adminUser = isAdminEmail(authResult.auth.email);
   if (!adminUser) {
     return NextResponse.json({ ok: true, admin: false, issues: [], checks: {} });
+  }
+
+  // Serve from cache if fresh
+  if (diagnosticsCache && Date.now() - diagnosticsCache.ts < CACHE_TTL) {
+    return NextResponse.json({ ...diagnosticsCache.data, admin: true, fixInstructions: baseFixInstructions, source: "cache" });
+  }
+
+  const admin = createSupabaseAdminClient();
+  if (!admin) {
+    const empty: Record<string, boolean> = {};
+    return NextResponse.json(
+      { ok: false, admin: true, issues: ["SUPABASE_SERVICE_ROLE_KEY is missing on server."], checks: empty, fixInstructions: baseFixInstructions },
+      { status: 500 }
+    );
   }
 
   const { data, error } = await admin.rpc("get_platform_startup_diagnostics");
 
   if (error) {
     const fallback = await fallbackDiagnostics();
+    diagnosticsCache = { data: fallback, ts: Date.now() };
     return NextResponse.json({
-      ok: fallback.ok,
+      ...fallback,
       admin: true,
-      issues: fallback.issues,
-      checks: fallback.checks,
       fixInstructions: baseFixInstructions,
       source: "fallback",
     });
   }
 
-  const diagnostics = (data as DiagnosticsPayload | null) || {
-    ok: true,
-    issues: [],
-    checks: {},
-  };
+  const diagnostics = (data as DiagnosticsPayload | null) || { ok: true, issues: [], checks: {} };
 
   const configuredSiteUrl = getConfiguredSiteUrl();
   const productionLike = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
@@ -208,11 +154,16 @@ export async function GET(request: Request) {
     issues.push(`Auth site URL resolves to a local origin (${configuredSiteUrl}). Set NEXT_PUBLIC_SITE_URL/SITE_URL to your public app domain.`);
   }
 
-  return NextResponse.json({
+  const result: DiagnosticsPayload & { admin?: boolean; fixInstructions?: string[]; source?: string } = {
     ok: diagnostics.ok && issues.length === 0,
-    admin: true,
     issues,
     checks,
+  };
+  diagnosticsCache = { data: result, ts: Date.now() };
+
+  return NextResponse.json({
+    ...result,
+    admin: true,
     fixInstructions: baseFixInstructions,
     source: "rpc",
   });

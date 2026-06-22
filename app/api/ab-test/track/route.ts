@@ -8,13 +8,7 @@ export async function POST(request: NextRequest) {
     variant?: string;
   } = await request.json().catch(() => ({}));
 
-  console.log("[AB-Test Track]", {
-    eventName: body.eventName,
-    data: body.data,
-    testName: body.testName,
-    variant: body.variant,
-    timestamp: new Date().toISOString(),
-  });
+  console.info("[AB-Test Track]", body.eventName, body.variant);
 
   return NextResponse.json({ ok: true });
 }

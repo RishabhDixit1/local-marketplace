@@ -40,10 +40,9 @@ export function useABTest(
   testName: string,
   variants?: string[],
 ): { variant: string; track: (event: string) => void } {
-  const resolvedVariants = variants ?? ["control", "variant"];
   const variant = useMemo(
-    () => pickVariant(testName, resolvedVariants),
-    [testName, resolvedVariants],
+    () => pickVariant(testName, variants ?? ["control", "variant"]),
+    [testName, variants],
   );
 
   const trackCallback = useCallback(

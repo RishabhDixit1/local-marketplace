@@ -56,11 +56,36 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
   }
 
   try {
+    // Step 1: Get total count (fast with proper indexes)
+    let countQuery = admin
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .in("role", ["provider", "business"])
+      .not("full_name", "is", null);
+
+    if (category) {
+      countQuery = countQuery.contains("services", [category]);
+    }
+
+    if (search) {
+      countQuery = countQuery.or(
+        `full_name.ilike.%${search}%,name.ilike.%${search}%,location.ilike.%${search}%,bio.ilike.%${search}%,services.cs.{${search}}`
+      );
+    }
+
+    const countResult = await countQuery;
+    const totalCount = countResult.count ?? null;
+    if (countResult.error) console.error("[providers-by-category] count error:", countResult.error.message);
+
+    // Step 2: Fetch only the page we need (with generous overfetch for in-memory sort stability)
+    const fetchLimit = Math.min(safeLimit * 3 + safeOffset, 200);
     let query = admin
       .from("profiles")
       .select("id, full_name, name, location, latitude, longitude, avatar_url, bio, role, services, created_at, verification_status")
       .in("role", ["provider", "business"])
-      .not("full_name", "is", null);
+      .not("full_name", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(fetchLimit);
 
     if (category) {
       query = query.contains("services", [category]);
@@ -283,7 +308,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
       .filter((p) => p.priceMin != null)
       .flatMap((p) => [p.priceMin!, p.priceMax!].filter(Boolean) as number[]);
 
-    const total = filteredProviders.length;
+    const total = totalCount ?? rawProviders.length;
     const paginatedProviders = filteredProviders.slice(safeOffset, safeOffset + safeLimit);
 
     return {
@@ -297,7 +322,7 @@ async function loadProvidersData(filter: ProvidersFilter): Promise<ProvidersQuer
           min: allRatings.length > 0 ? Math.min(...allRatings) : 0,
           max: allRatings.length > 0 ? Math.max(...allRatings) : 0,
         },
-        totalProviders: rawProviders.length,
+        totalProviders: totalCount ?? rawProviders.length,
         onlineCount,
       },
       pagination: {

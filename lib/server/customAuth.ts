@@ -1,8 +1,16 @@
 import jwt from "jsonwebtoken";
 import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
 
-const getSecret = () =>
-  process.env.SERVIQ_INTERNAL_PUSH_KEY || "serviq-local-dev-fallback-secret";
+const getSecret = (): string => {
+  const key = process.env.SERVIQ_INTERNAL_PUSH_KEY;
+  if (!key) {
+    throw new Error(
+      "SERVIQ_INTERNAL_PUSH_KEY is not set. This variable is required for local auth token creation. " +
+      "Set it to a long random string in your environment."
+    );
+  }
+  return key;
+};
 
 const SESSION_EXPIRY_SECONDS = 400 * 24 * 60 * 60;
 
