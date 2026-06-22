@@ -20,6 +20,15 @@ class AnalyticsService {
     return _analytics;
   }
 
+  /// Converts bool values to strings so Firebase Analytics doesn't reject them.
+  Map<String, Object> _normalise(Map<String, Object?> extras) {
+    return extras.map((key, value) {
+      if (value is bool) return MapEntry(key, value.toString());
+      if (value == null) return MapEntry(key, 'null');
+      return MapEntry(key, value);
+    });
+  }
+
   void trackScreen(String name, {Map<String, Object?> extras = const {}}) {
     if (kDebugMode) {
       debugPrint('ServiQ analytics screen=$name extras=$extras');
@@ -27,7 +36,7 @@ class AnalyticsService {
     _firebase?.logScreenView(
       screenName: name,
       screenClass: name,
-      parameters: extras.isEmpty ? null : extras.cast<String, Object>(),
+      parameters: extras.isEmpty ? null : _normalise(extras),
     );
   }
 
@@ -35,6 +44,6 @@ class AnalyticsService {
     if (kDebugMode) {
       debugPrint('ServiQ analytics event=$name extras=$extras');
     }
-    _firebase?.logEvent(name: name, parameters: extras.isEmpty ? null : extras.cast<String, Object>());
+    _firebase?.logEvent(name: name, parameters: extras.isEmpty ? null : _normalise(extras));
   }
 }

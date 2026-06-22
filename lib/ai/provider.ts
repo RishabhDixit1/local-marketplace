@@ -1,10 +1,10 @@
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import { generateObject, generateText, type FlexibleSchema } from "ai";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gemini-2.0-flash";
 
 export function getModel(model?: string) {
-  return openai(model ?? DEFAULT_MODEL);
+  return google(model ?? DEFAULT_MODEL);
 }
 
 export async function generate<T>({

@@ -115,7 +115,7 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ ok: true, emailSent: true });
     expect(
-      seen.some((u) => u.includes("/auth/v1/otp"))
+      seen.some((u) => u.includes("/api.resend.com/emails"))
     ).toBe(true);
   });
 
@@ -134,11 +134,11 @@ describe("POST /api/auth/send-link", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).ok).toBe(true);
     expect(
-      seen.some((u) => u.includes("/auth/v1/otp"))
+      seen.some((u) => u.includes("/api.resend.com/emails"))
     ).toBe(true);
   });
 
-  it("sends the type and redirect_to fields to the Supabase OTP API", async () => {
+  it("sends the OTP via Resend with the correct email address", async () => {
     const { fn, seen } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
 
@@ -148,13 +148,12 @@ describe("POST /api/auth/send-link", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: "person@serviq.dev",
-          redirectTo: "http://localhost:3000/auth/callback",
         }),
       })
     );
 
-    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
-    expect(otpUrl).toBeDefined();
+    const resendUrl = seen.find((u) => u.includes("/api.resend.com/emails"));
+    expect(resendUrl).toBeDefined();
   });
 
   it("allows the native mobile callback when it is explicitly allowlisted", async () => {
@@ -173,8 +172,9 @@ describe("POST /api/auth/send-link", () => {
       })
     );
 
-    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
-    expect(otpUrl).toBeDefined();
+    expect(
+      seen.some((u) => u.includes("/api.resend.com/emails"))
+    ).toBe(true);
   });
 
   it("blocks placeholder or disposable magic-link recipients", async () => {
@@ -232,12 +232,13 @@ describe("POST /api/auth/send-link", () => {
       })
     );
 
-    const otpUrl = seen.find((u) => u.includes("/auth/v1/otp"));
-    expect(otpUrl).toBeDefined();
+    expect(
+      seen.some((u) => u.includes("/api.resend.com/emails"))
+    ).toBe(true);
   });
 
-  it("falls back to Resend OTP when the GoTrue OTP call fails", async () => {
-    const { fn } = makeFetchMock({ status: 502, body: { msg: "Upstream error" } });
+  it("sends a verification code via Resend when configured", async () => {
+    const { fn } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
 
     const response = await POST(
@@ -252,13 +253,11 @@ describe("POST /api/auth/send-link", () => {
     const json = await response.json() as Record<string, unknown>;
     expect(json.ok).toBe(true);
     expect(json.emailSent).toBe(true);
-    expect(json.emailOtp).toBeUndefined();
-    expect(json.actionLink).toBeUndefined();
   });
 
-  it("returns a 502 error when both GoTrue and Resend are unavailable", async () => {
+  it("returns a 502 error when Resend is not configured", async () => {
     delete process.env.RESEND_API_KEY;
-    const { fn } = makeFetchMock({ status: 502, body: { msg: "Upstream error" } });
+    const { fn } = makeFetchMock();
     vi.stubGlobal("fetch", fn);
 
     const response = await POST(

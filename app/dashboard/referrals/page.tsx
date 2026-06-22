@@ -1,9 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Gift, IndianRupee, Loader2, Share2, Users, Wallet } from "lucide-react";
+import { CheckCircle2, Gift, IndianRupee, Loader2, Lock, Share2, Star, Trophy, Users, Wallet } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+
+type Milestone = {
+  key: string;
+  label: string;
+  referralsRequired: number;
+  bonusPoints: number;
+  achieved: boolean;
+  progress: number;
+};
+
+type MilestonesData = {
+  ok: boolean;
+  referralCount: number;
+  milestones: Milestone[];
+  nextMilestone: (Milestone & { referralsRemaining: number }) | null;
+};
 
 type ReferralCode = {
   id: string; code: string; times_used: number; reward_points: number;
@@ -38,15 +55,19 @@ export default function ReferralsPage() {
   const [payoutPoints, setPayoutPoints] = useState(50);
   const [requestingPayout, setRequestingPayout] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState("");
+  const [milestones, setMilestones] = useState<MilestonesData | null>(null);
 
   const fetchData = useCallback(async () => {
-    const [refData, payoutData] = await Promise.all([
+    const [refData, payoutData, milestoneData] = await Promise.all([
       fetchAuthedJson<{ ok: boolean; codes: ReferralCode[]; referrals: ReferralEvent[]; totalRewards: number }>(
         supabase, "/api/referrals", { method: "GET" }
       ),
       fetchAuthedJson<{ ok: boolean; payouts: Payout[]; totalPoints: number; availablePoints: number }>(
         supabase, "/api/referrals/payout", { method: "GET" }
       ),
+      fetchAuthedJson<MilestonesData>(
+        supabase, "/api/referrals/milestones", { method: "GET" }
+      ).catch(() => null),
     ]);
     if (refData?.ok) {
       setCodes(refData.codes);
@@ -57,6 +78,9 @@ export default function ReferralsPage() {
       setPayouts(payoutData.payouts);
       setTotalPoints(payoutData.totalPoints);
       setAvailablePoints(payoutData.availablePoints);
+    }
+    if (milestoneData?.ok) {
+      setMilestones(milestoneData);
     }
   }, []);
 
@@ -135,6 +159,65 @@ export default function ReferralsPage() {
           <p className="text-2xl font-bold text-slate-900">{totalPoints}</p>
         </div>
       </div>
+
+      {milestones && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-slate-900">Milestones</h2>
+            <Link
+              href="/dashboard/referrals/leaderboard"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <Trophy className="h-3 w-3" />
+              Leaderboard
+            </Link>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            {milestones.referralCount} approved referral{milestones.referralCount === 1 ? "" : "s"}
+            {milestones.nextMilestone ? ` · ${milestones.nextMilestone.referralsRemaining} more for "${milestones.nextMilestone.label}"` : ""}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {milestones.milestones.map((m) => (
+              <div
+                key={m.key}
+                className={`rounded-xl border p-3.5 transition ${
+                  m.achieved
+                    ? "border-emerald-200 bg-emerald-50/50"
+                    : "border-slate-100 bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {m.achieved ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <Lock className="h-4 w-4 text-slate-300" />
+                    )}
+                    <span className={`text-sm font-bold ${m.achieved ? "text-emerald-800" : "text-slate-500"}`}>
+                      {m.label}
+                    </span>
+                  </div>
+                  {m.achieved && (
+                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                  <span>{m.referralsRequired} referral{m.referralsRequired === 1 ? "" : "s"}</span>
+                  <span className="font-medium text-[var(--brand-700)]">+{m.bonusPoints} pts</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      m.achieved ? "bg-emerald-500" : "bg-[var(--brand-400)]"
+                    }`}
+                    style={{ width: `${Math.min(100, m.progress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-sm font-bold text-slate-900 mb-3">Request Payout</h2>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { MobileBottomNav } from "@/app/components/MobileBottomNav";
 import {
   ArrowRight,
   Clock,
@@ -196,7 +197,7 @@ function SearchPageContent() {
   const activeFilterCount = [category, minRating, onlineOnly, sortBy !== "distance"].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-24 lg:pb-0">
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0 text-sm font-bold text-[var(--brand-700)]">ServiQ</Link>
@@ -494,6 +495,7 @@ function SearchPageContent() {
           </div>
         )}
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

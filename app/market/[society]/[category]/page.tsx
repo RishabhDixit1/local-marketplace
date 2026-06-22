@@ -2,6 +2,8 @@ import Link from "next/link";
 import { MapPin, Store, Users, ArrowRight } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { notFound } from "next/navigation";
+import { getConfiguredSiteUrl } from "@/lib/siteUrl";
+import { appName } from "@/lib/branding";
 
 interface PageProps {
   params: Promise<{ society: string; category: string }>;
@@ -54,18 +56,27 @@ export async function generateMetadata({ params }: PageProps) {
   const data = await getData(society, category);
   const catName = CATEGORY_LABELS[category] || category.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+  const siteUrl = getConfiguredSiteUrl();
+
   if (!data) {
-    return { title: `${catName} in Crossings Republik - ServiQ` };
+    return {
+      title: `${catName} in Crossings Republik - ${appName}`,
+      openGraph: { title: `${catName} in Crossings Republik - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers in Crossings Republik, Ghaziabad.` },
+      twitter: { card: "summary_large_image", title: `${catName} in Crossings Republik - ${appName}`, description: `Find trusted ${catName.toLowerCase()} service providers in Crossings Republik, Ghaziabad.` },
+    };
   }
 
-  const title = `${catName} in ${data.locality.name}, Crossings Republik - ServiQ`;
+  const title = `${catName} in ${data.locality.name}, Crossings Republik - ${appName}`;
   const description = `Find trusted ${catName.toLowerCase()} service providers in ${data.locality.name}, Crossings Republik, Ghaziabad. Book verified local professionals near you.`;
+  const url = `${siteUrl}/market/${society}/${category}`;
+  const ogImage = [{ url: `${siteUrl}/api/og?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description.slice(0, 100))}` }];
 
   return {
     title,
     description,
-    openGraph: { title, description },
-    alternates: { canonical: `https://www.serviqapp.com/market/${society}/${category}` },
+    alternates: { canonical: url },
+    openGraph: { title, description, url, siteName: appName, type: "website", images: ogImage },
+    twitter: { card: "summary_large_image", title, description, images: ogImage },
   };
 }
 

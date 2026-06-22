@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Terms of Service",
-};
+  description: "ServiQ's terms of service — the rules and guidelines for using our local marketplace platform as a customer or service provider.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

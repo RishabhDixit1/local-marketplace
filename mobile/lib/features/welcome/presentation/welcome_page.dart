@@ -144,7 +144,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
             'action': action,
             'surface': _resolvedSurface.analyticsValue,
             'within_two_seconds':
-                DateTime.now().difference(_openedAt).inMilliseconds <= 2000,
+                (DateTime.now().difference(_openedAt).inMilliseconds <= 2000).toString(),
           },
         );
   }

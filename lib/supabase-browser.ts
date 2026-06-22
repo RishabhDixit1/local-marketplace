@@ -3,11 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
 
 const getSupabaseUrl = () => {
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-  if (typeof window !== "undefined" && envUrl) {
-    return window.location.origin;
-  }
-  return envUrl;
+  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 };
 
 const getSupabaseAnonKey = () =>

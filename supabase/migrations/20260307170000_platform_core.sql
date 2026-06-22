@@ -310,28 +310,36 @@ $$;
 
 alter table if exists public.profiles enable row level security;
 
-drop policy if exists profiles_select_authenticated on public.profiles;
-drop policy if exists profiles_insert_own on public.profiles;
-drop policy if exists profiles_update_own on public.profiles;
+do $$ begin
+  if exists (select 1 from pg_class where relname = 'profiles' and relnamespace = 'public'::regnamespace) then
+    drop policy if exists profiles_select_authenticated on public.profiles;
+    drop policy if exists profiles_insert_own on public.profiles;
+    drop policy if exists profiles_update_own on public.profiles;
+  end if;
+end $$;
 
-create policy profiles_select_authenticated
-on public.profiles
-for select
-to authenticated
-using (true);
+do $$ begin
+  if exists (select 1 from pg_class where relname = 'profiles' and relnamespace = 'public'::regnamespace) then
+    create policy profiles_select_authenticated
+    on public.profiles
+    for select
+    to authenticated
+    using (true);
 
-create policy profiles_insert_own
-on public.profiles
-for insert
-to authenticated
-with check (id = auth.uid());
+    create policy profiles_insert_own
+    on public.profiles
+    for insert
+    to authenticated
+    with check (id = auth.uid());
 
-create policy profiles_update_own
-on public.profiles
-for update
-to authenticated
-using (id = auth.uid())
-with check (id = auth.uid());
+    create policy profiles_update_own
+    on public.profiles
+    for update
+    to authenticated
+    using (id = auth.uid())
+    with check (id = auth.uid());
+  end if;
+end $$;
 
 drop policy if exists help_requests_select_visible on public.help_requests;
 drop policy if exists help_requests_insert_own on public.help_requests;

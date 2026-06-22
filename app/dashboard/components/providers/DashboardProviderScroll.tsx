@@ -146,7 +146,7 @@ function ProviderCard({
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2.5">
         <Link
           href={`/dashboard/chat?recipientId=${encodeURIComponent(provider.id)}`}
-          className="inline-flex items-center gap-1 rounded-xl bg-[var(--brand-900)] px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
+          className="inline-flex items-center gap-1 rounded-xl bg-[var(--brand-900)] px-3 min-h-9 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)] hover:shadow-md"
         >
           <MessageCircle className="h-3.5 w-3.5" />
           Chat
@@ -155,7 +155,7 @@ function ProviderCard({
         {buildPublicProfilePath(provider) && (
           <Link
             href={buildPublicProfilePath(provider)!}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 min-h-9 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <Store className="h-3.5 w-3.5" />
             Storefront
@@ -163,7 +163,7 @@ function ProviderCard({
         )}
 
         {isConnected ? (
-          <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-semibold text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 min-h-9 py-2 text-xs font-semibold text-emerald-700">
             <Star className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
             Connected
           </span>
@@ -172,7 +172,7 @@ function ProviderCard({
             type="button"
             onClick={() => onConnect(provider.id, provider.name)}
             disabled={isConnecting}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 min-h-9 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isConnecting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

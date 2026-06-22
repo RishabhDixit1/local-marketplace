@@ -9,6 +9,18 @@ const isFormDataBody = (body: RequestInit["body"]) =>
 const parseJsonSafely = async <T>(response: Response) =>
   (await response.json().catch(() => null)) as T | null;
 
+const getLocalAccessToken = (): string | null => {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem("serviq-local-auth");
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { accessToken?: string };
+    return data?.accessToken || null;
+  } catch {
+    return null;
+  }
+};
+
 const shouldRefreshSession = (session: Session | null) => {
   if (!session?.access_token) return true;
   if (typeof session.expires_at !== "number") return false;
@@ -22,6 +34,8 @@ const refreshAccessToken = async (supabase: SupabaseClient) => {
   } = await supabase.auth.refreshSession();
 
   if (error || !session?.access_token) {
+    const localToken = getLocalAccessToken();
+    if (localToken) return localToken;
     throw new Error(error?.message || "Session expired. Please sign in again.");
   }
 
@@ -34,23 +48,23 @@ export const getAccessToken = async (supabase: SupabaseClient) => {
     error,
   } = await supabase.auth.getSession();
 
-  if (error) {
-    throw new Error(error?.message || "Login required.");
+  if (!error && session?.access_token && !shouldRefreshSession(session)) {
+    return session.access_token;
   }
 
-  if (session?.access_token && !shouldRefreshSession(session)) {
-    return session.access_token;
+  // GoTrue may be unreachable — try locally-stored session
+  const localToken = getLocalAccessToken();
+  if (localToken) return localToken;
+
+  if (error) {
+    throw new Error(error?.message || "Login required.");
   }
 
   if (session?.refresh_token) {
     return refreshAccessToken(supabase);
   }
 
-  if (!session?.access_token) {
-    throw new Error("Login required.");
-  }
-
-  return session.access_token;
+  throw new Error("Login required.");
 };
 
 export const fetchAuthed = async (

@@ -6,7 +6,11 @@
     "dev": "bash scripts/dev_server.sh",
     "build": "next build",
     "start": "next start",
+    "build:analyze": "ANALYZE=true next build",
     "lint": "eslint --max-warnings 30",
+    "perf:audit": "bash scripts/performance-audit.sh",
+    "perf:lighthouse": "lhci autorun",
+    "perf:bundle": "ANALYZE=true next build",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:auth": "bash scripts/run_e2e_authenticated.sh",
@@ -15,6 +19,7 @@
     "supabase:setup": "bash scripts/supabase_setup.sh",
     "supabase:migrate": "bash scripts/supabase_setup.sh --with-verify",
     "supabase:sql-editor": "bash scripts/supabase_copy_sql.sh",
+    "test:load": "k6 run tests/load/basic-load-test.js",
     "phase0:api-coverage": "bash scripts/phase0_verify_api_coverage.sh",
     "prepare": "npx husky || true"
   },
@@ -24,7 +29,7 @@
     ]
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.67",
+    "@ai-sdk/google": "^3.0.83",
     "@aws-sdk/client-ses": "^3.1053.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -43,7 +48,6 @@
     "lucide-react": "^1.18.0",
     "maplibre-gl": "^5.21.0",
     "next": "^16.2.9",
-    "next-intl": "^4.13.0",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -33,12 +33,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 service_candidates as (
@@ -314,12 +314,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 review_seed as (
@@ -382,12 +382,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -414,12 +414,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -446,12 +446,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -475,12 +475,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -504,12 +504,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -533,12 +533,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -562,12 +562,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -599,12 +599,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -636,12 +636,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (
@@ -673,12 +673,12 @@ with base_users as (
 ),
 slots as (
   select
-    max(case when rn = 1 then id end) as u1,
-    max(case when rn = 2 then id end) as u2,
-    max(case when rn = 3 then id end) as u3,
-    max(case when rn = 4 then id end) as u4,
-    max(case when rn = 5 then id end) as u5,
-    max(case when rn = 6 then id end) as u6
+    (array_agg(id order by rn))[1] as u1,
+    (array_agg(id order by rn))[2] as u2,
+    (array_agg(id order by rn))[3] as u3,
+    (array_agg(id order by rn))[4] as u4,
+    (array_agg(id order by rn))[5] as u5,
+    (array_agg(id order by rn))[6] as u6
   from base_users
 ),
 resolved as (

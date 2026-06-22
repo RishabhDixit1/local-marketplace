@@ -34,6 +34,7 @@ import {
   isProfileOnboardingComplete,
 } from "@/lib/profile/utils";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { getLocalAuthSession, clearLocalAuthSession } from "@/lib/localAuth";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -49,8 +50,10 @@ import {
   Clock,
   Crown,
   FileText,
+  FlaskConical,
   Gift,
   LogOut,
+  Megaphone,
   MessageCircle,
   MoreHorizontal,
   Plus,
@@ -59,6 +62,7 @@ import {
   ShoppingCart,
   Store,
   TrendingUp,
+  Trophy,
   User,
   Users,
   Zap,
@@ -102,6 +106,7 @@ const secondaryNavItems = [
   { name: "Boosts", path: "/dashboard/boosts", icon: TrendingUp },
   { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
   { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
+  { name: "Referral Leaderboard", path: "/dashboard/referrals/leaderboard", icon: Trophy },
   { name: "Payouts", path: "/dashboard/payouts", icon: Banknote },
   { name: "Availability", path: "/dashboard/availability", icon: Clock },
   { name: "Bookings", path: "/dashboard/bookings", icon: CalendarCheck },
@@ -109,6 +114,8 @@ const secondaryNavItems = [
   { name: "Workspaces", path: "/dashboard/workspaces", icon: Building2 },
   { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
   { name: "Leads", path: "/dashboard/leads", icon: Zap },
+  { name: "Campaigns", path: "/dashboard/campaigns", icon: Megaphone },
+  { name: "A/B Tests", path: "/dashboard/tests", icon: FlaskConical },
 ];
 
 const STARTUP_CHECK_SESSION_KEY = "serviq-startup-check-ran";
@@ -314,6 +321,25 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // GoTrue may be unreachable — check for locally-stored session
+      const localAuth = getLocalAuthSession();
+      if (localAuth?.user && localAuth.accessToken) {
+        try {
+          await supabase.auth.setSession({
+            access_token: localAuth.accessToken,
+            refresh_token: localAuth.refreshToken,
+            user: localAuth.user,
+            token_type: "bearer",
+            expires_in: 34560000,
+            expires_at: Math.floor(Date.now() / 1000) + 34560000,
+          } as never);
+        } catch {
+          // setSession stores session in memory even if GoTrue validation fails
+        }
+        setAuthReady(true);
+        return;
+      }
+
       // Give auth callbacks a short window to hydrate session before redirecting.
       redirectTimer = window.setTimeout(async () => {
         if (!active) return;
@@ -329,6 +355,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         setAuthReady(false);
         setShellEnhancementsPrimed(false);
+        clearLocalAuthSession();
         router.replace("/");
       }, 8000);
     };
@@ -352,6 +379,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       if (event === "SIGNED_OUT") {
         setAuthReady(false);
         setShellEnhancementsPrimed(false);
+        clearLocalAuthSession();
         router.replace("/");
         return;
       }
@@ -568,6 +596,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    clearLocalAuthSession();
     // Auth state change handler will redirect; push is a safety net.
   };
 

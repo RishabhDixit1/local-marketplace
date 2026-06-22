@@ -76,5 +76,42 @@ async function postHandler(request: Request) {
   return NextResponse.json({ ok: true, campaign: data });
 }
 
+async function patchHandler(request: Request) {
+  const auth = await requireRequestAuth(request);
+  if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
+
+  const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
+  if (!db) return toError(500, "CONFIG", "No DB client");
+
+  let body: { id: string; is_active?: boolean; [key: string]: unknown };
+  try { body = await request.json(); } catch { return toError(400, "INVALID_PAYLOAD", "Invalid JSON."); }
+  if (!body.id) return toError(400, "INVALID_PAYLOAD", "id required.");
+
+  const updates: Record<string, unknown> = {};
+  if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
+
+  const { data, error } = await db.from("campaign_schedules").update(updates).eq("id", body.id).eq("provider_id", auth.auth.userId).select().single();
+  if (error) return toError(500, "DB", error.message);
+  return NextResponse.json({ ok: true, campaign: data });
+}
+
+async function deleteHandler(request: Request) {
+  const auth = await requireRequestAuth(request);
+  if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
+
+  const db = createSupabaseAdminClient() || createSupabaseUserServerClient(auth.auth.accessToken);
+  if (!db) return toError(500, "CONFIG", "No DB client");
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+  if (!id) return toError(400, "INVALID_PAYLOAD", "id query param required.");
+
+  const { error } = await db.from("campaign_schedules").delete().eq("id", id).eq("provider_id", auth.auth.userId);
+  if (error) return toError(500, "DB", error.message);
+  return NextResponse.json({ ok: true });
+}
+
 export const GET = withErrorHandling(getHandler, "campaigns:list");
 export const POST = withErrorHandling(postHandler, "campaigns:create");
+export const PATCH = withErrorHandling(patchHandler, "campaigns:update");
+export const DELETE = withErrorHandling(deleteHandler, "campaigns:delete");

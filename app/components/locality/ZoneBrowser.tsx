@@ -87,13 +87,14 @@ export default function ZoneBrowser({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1">
+      <div className="relative">
+        <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {zoneTabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 min-h-9 py-2 text-xs font-semibold transition ${
               activeTab === tab.key
                 ? "bg-[var(--brand-900)] text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-50"
@@ -103,6 +104,7 @@ export default function ZoneBrowser({
             {tab.label}
           </button>
         ))}
+        </div>
       </div>
 
       <div className="relative">

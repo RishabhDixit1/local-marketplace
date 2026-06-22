@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Cookie Policy",
-};
+  description: "ServiQ's cookie policy — how we use cookies and similar technologies to improve your experience on our platform.",
+  path: "/legal/cookie-policy",
+});
 
 const cookieCategories = [
   {

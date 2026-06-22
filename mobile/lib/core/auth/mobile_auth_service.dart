@@ -184,8 +184,14 @@ class MobileAuthService {
       final sessionJson = payload['session'];
       if (sessionJson is Map<String, dynamic>) {
         try {
+          final expiresAt = sessionJson['expires_at'] ??
+              (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 34560000;
+          final recoverJson = jsonEncode({
+            'currentSession': sessionJson,
+            'expiresAt': expiresAt,
+          });
           return await _client.auth
-              .recoverSession(jsonEncode(sessionJson))
+              .recoverSession(recoverJson)
               .timeout(const Duration(seconds: 5));
         } catch (_) {
           // recoverSession may also contact GoTrue or timeout

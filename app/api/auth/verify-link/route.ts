@@ -141,6 +141,8 @@ async function postHandler(request: Request) {
     user: { id: string; email: string };
   };
 
+  const expiresAt = Math.floor(Date.now() / 1000) + 34560000;
+
   const response = NextResponse.json({
     ok: true,
     user: { id: result.userId, email: emailLowered },
@@ -151,6 +153,7 @@ async function postHandler(request: Request) {
       refresh_token: sessionData.refresh_token,
       token_type: "bearer",
       expires_in: 34560000,
+      expires_at: expiresAt,
       user: {
         id: result.userId,
         email: emailLowered,

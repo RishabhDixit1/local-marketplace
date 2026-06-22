@@ -1,77 +1,111 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'l10n_en.dart';
+import 'l10n_hi.dart';
 
 final localeProvider = NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
 
 class LocaleNotifier extends Notifier<Locale> {
   @override
-  Locale build() => const Locale('en', 'US');
-
-  void setLocale(Locale locale) => state = locale;
-}
-
-class AppLocalizations {
-  static AppLocalizations of(BuildContext context) {
-    return AppLocalizations();
+  Locale build() {
+    return const Locale('en', 'US');
   }
 
-  AppLocalizations();
+  Future<void> setLocale(Locale locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('locale', locale.languageCode);
+    state = locale;
+  }
+}
+
+abstract class AppLocalizations {
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   // Auth
-  String get signInTitle => 'Sign in to ServiQ';
-  String get signInSubtitle => 'Access your local marketplace account.';
-  String get emailLabel => 'Email address';
-  String get passwordLabel => 'Password';
-  String get forgotPassword => 'Forgot password?';
-  String get sendResetLink => 'Send reset link';
-  String get resetLinkSent => 'Check your email for the password reset link.';
-  String get continueWithGoogle => 'Continue with Google';
-  String get continueWithEmail => 'Continue with email code';
-  String get sendMagicLink => 'Send magic link';
-  String get createAccount => 'Create account';
-  String get signIn => 'Sign in';
-  String get signOut => 'Sign out';
+  String get signInTitle;
+  String get signInSubtitle;
+  String get emailLabel;
+  String get passwordLabel;
+  String get forgotPassword;
+  String get sendResetLink;
+  String get resetLinkSent;
+  String get continueWithGoogle;
+  String get continueWithEmail;
+  String get sendMagicLink;
+  String get createAccount;
+  String get signIn;
+  String get signOut;
 
   // Navigation
-  String get home => 'Home';
-  String get explore => 'Explore';
-  String get people => 'People';
-  String get tasks => 'Tasks';
-  String get chat => 'Chat';
-  String get profile => 'Profile';
-  String get search => 'Search';
-  String get notifications => 'Notifications';
-  String get saved => 'Saved';
-  String get orders => 'Orders';
+  String get home;
+  String get explore;
+  String get people;
+  String get tasks;
+  String get chat;
+  String get profile;
+  String get search;
+  String get notifications;
+  String get saved;
+  String get orders;
 
   // Actions
-  String get save => 'Save';
-  String get share => 'Share';
-  String get message => 'Message';
-  String get book => 'Book';
-  String get cancel => 'Cancel';
-  String get retry => 'Retry';
-  String get refresh => 'Refresh';
-  String get done => 'Done';
-  String get submit => 'Submit';
-  String get report => 'Report';
+  String get save;
+  String get share;
+  String get message;
+  String get book;
+  String get cancel;
+  String get retry;
+  String get refresh;
+  String get done;
+  String get submit;
+  String get report;
 
   // States
-  String get loading => 'Loading...';
-  String get errorOccurred => 'Something went wrong.';
-  String get offline => 'You are offline. Some features may be limited.';
-  String get noInternet => 'No internet connection.';
-  String get emptyFeed => 'No items to show right now.';
-  String get emptyInbox => 'Inbox is ready.';
-  String get noTasks => 'No tasks yet.';
-  String get noNotifications => 'No notifications yet.';
+  String get loading;
+  String get errorOccurred;
+  String get offline;
+  String get noInternet;
+  String get emptyFeed;
+  String get emptyInbox;
+  String get noTasks;
+  String get noNotifications;
 
   // Marketplace
-  String get postNeed => 'Post a Need';
-  String get findPeople => 'Find People';
-  String get businessControl => 'Business Control';
-  String get editProfile => 'Edit Profile';
-  String get trustScore => 'Trust score';
-  String get reviews => 'Reviews';
-  String get listings => 'Listings';
+  String get postNeed;
+  String get findPeople;
+  String get businessControl;
+  String get editProfile;
+  String get trustScore;
+  String get reviews;
+  String get listings;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) {
+    return ['en', 'hi', 'bn', 'ta', 'te', 'mr'].contains(locale.languageCode);
+  }
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async {
+    switch (locale.languageCode) {
+      case 'hi':
+        return AppLocalizationsHi();
+      default:
+        return AppLocalizationsEn();
+    }
+  }
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
 }

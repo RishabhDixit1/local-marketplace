@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { resolveAuthCallbackUrl } from "@/lib/siteUrl";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
-import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 import { createOtp } from "@/lib/server/otpStore";
 
 export const runtime = "nodejs";
@@ -88,76 +86,48 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: recipientError }, { status: 400 });
   }
 
-  const redirectTo = resolveAuthCallbackUrl({ request, requestedRedirectTo: body.redirectTo });
-  console.log("[send-link] redirectTo:", redirectTo);
-
-  const supabase = createSupabaseAnonServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false, error: "Supabase client is not available. Check your environment variables." },
-      { status: 500 }
-    );
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendKey) {
+    return NextResponse.json({ ok: false, error: "Email delivery unavailable. Resend is not configured." }, { status: 502 });
   }
+
+  const { otp } = createOtp(email);
+  console.log(`[send-link] OTP for ${email}: ${otp}`);
+
+  const fromEmail = process.env.EMAIL_FROM ?? "auth@serviqapp.com";
+  const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const html = `<div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
+    <div style="margin-bottom:24px"><span style="font-size:20px;font-weight:700;color:#2563eb">ServiQ</span></div>
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">Your Verification Code</h2>
+    <p style="color:#475569">Use the code below to sign in:</p>
+    <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;margin:20px 0;font-size:32px;font-weight:700;letter-spacing:8px;color:#0f172a;font-family:monospace">${otp}</div>
+    <p style="color:#475569;font-size:14px">This code expires in 10 minutes.</p>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
+      <a href="${appUrl}" style="color:#2563eb">ServiQ</a>
+    </div>
+  </div>`;
 
   try {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: redirectTo,
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({ from: fromEmail, to: email, subject: "Your ServiQ verification code", html }),
     });
-
-    if (error) {
-      throw new Error(error.message);
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[send-link] Resend error:", res.status, body);
+      return NextResponse.json({ ok: false, error: "Unable to send verification code via email." }, { status: 502 });
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to send login code.";
-    console.warn("[send-link] GoTrue OTP failed, falling back to Resend:", message);
-
-    const resendKey = process.env.RESEND_API_KEY?.trim();
-    if (!resendKey) {
-      return NextResponse.json({ ok: false, error: "Email delivery unavailable. Resend is not configured." }, { status: 502 });
-    }
-
-    const { otp } = createOtp(email);
-    const fromEmail = process.env.EMAIL_FROM ?? "auth@serviqapp.com";
-    const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-    const html = `<div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
-      <div style="margin-bottom:24px"><span style="font-size:20px;font-weight:700;color:#2563eb">ServiQ</span></div>
-      <h2 style="font-size:18px;font-weight:700;margin:0 0 8px">Your Verification Code</h2>
-      <p style="color:#475569">Use the code below to sign in:</p>
-      <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;margin:20px 0;font-size:32px;font-weight:700;letter-spacing:8px;color:#0f172a;font-family:monospace">${otp}</div>
-      <p style="color:#475569;font-size:14px">This code expires in 10 minutes.</p>
-      <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
-        <a href="${appUrl}" style="color:#2563eb">ServiQ</a>
-      </div>
-    </div>`;
-
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ from: fromEmail, to: email, subject: "Your ServiQ verification code", html }),
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        console.error("[send-link] Resend error:", res.status, body);
-        return NextResponse.json({ ok: false, error: "Unable to send verification code via email." }, { status: 502 });
-      }
-    } catch (sendError) {
-      console.error("[send-link] Resend fetch error:", sendError);
-      return NextResponse.json({ ok: false, error: "Unable to send verification code. Check your network connection." }, { status: 502 });
-    }
-
-    return NextResponse.json({ ok: true, emailSent: true });
+  } catch (sendError) {
+    console.error("[send-link] Resend fetch error:", sendError);
+    return NextResponse.json({ ok: false, error: "Unable to send verification code. Check your network connection." }, { status: 502 });
   }
 
-  return NextResponse.json({ ok: true, emailSent: true, redirectTo });
+  return NextResponse.json({ ok: true, emailSent: true });
 }
 
 export const POST = withErrorHandling(postHandler, "auth:send-link");

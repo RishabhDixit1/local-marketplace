@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Privacy Policy",
-};
+  description: "ServiQ's privacy policy — how we collect, use, and protect your personal information when you use our local marketplace platform.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

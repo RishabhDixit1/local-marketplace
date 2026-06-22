@@ -358,7 +358,13 @@ async function getHandler(request: Request) {
 }
 
 async function postHandler(request: Request) {
-  const body = await request.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try {
+    const parsed = await request.json();
+    if (parsed && typeof parsed === "object") body = parsed as Record<string, unknown>;
+  } catch {
+    // Body is not valid JSON — proceed with defaults
+  }
   const {
     category = "",
     lat = null,
@@ -369,7 +375,7 @@ async function postHandler(request: Request) {
     onlineOnly = false,
     sortBy: rawSortBy,
     search: rawSearch = "",
-  } = body as Record<string, unknown>;
+  } = body;
 
   const userLat = lat != null ? Number(lat) : null;
   const userLng = lng != null ? Number(lng) : null;

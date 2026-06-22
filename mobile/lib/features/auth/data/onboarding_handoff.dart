@@ -32,7 +32,7 @@ extension MobileOnboardingIntentDetails on MobileOnboardingIntent {
   String get destinationRoute {
     return switch (this) {
       MobileOnboardingIntent.findHelp => AppRoutes.createNeed,
-      MobileOnboardingIntent.earnNearby => AppRoutes.providerOnboarding,
+      MobileOnboardingIntent.earnNearby => AppRoutes.providerLaunchpad,
       MobileOnboardingIntent.businessSetup => AppRoutes.providerLaunchpad,
     };
   }

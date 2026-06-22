@@ -122,9 +122,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
 
   String? _validateOtp(String? value) {
     final token = value?.trim() ?? '';
-    if (token.isEmpty) return 'Enter the 8-digit code from your email.';
-    if (!RegExp(r'^\d{8}$').hasMatch(token)) {
-      return 'Use the 8-digit code from your email.';
+    if (token.isEmpty) return 'Enter the 6-digit code from your email.';
+    if (!RegExp(r'^\d{6}$').hasMatch(token)) {
+      return 'Use the 6-digit code from your email.';
     }
     return null;
   }
@@ -857,15 +857,15 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                       textInputAction: TextInputAction.done,
                       autofillHints: const [AutofillHints.oneTimeCode],
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      maxLength: 8,
+                      maxLength: 6,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         letterSpacing: 4,
                         color: AppColors.ink,
                       ),
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
-                        labelText: '8-digit code',
-                        hintText: '12345678',
+                        labelText: '6-digit code',
+                        hintText: '123456',
                         counterText: '',
                         filled: true,
                         fillColor: AppColors.surfaceAlt,

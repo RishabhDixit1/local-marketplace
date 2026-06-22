@@ -4,12 +4,34 @@ import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { sendSms } from "@/lib/server/twilioClient";
 import { CronExpressionParser } from "cron-parser";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { appName } from "@/lib/branding";
 
 export const runtime = "nodejs";
 
 const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
+
+const UNSUBSCRIBE_EMAIL = "unsubscribe@serviqapp.com";
+
+const brandedEmailHtml = (title: string, body: string) => `
+  <div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">
+    <div style="margin-bottom:24px">
+      <span style="font-size:20px;font-weight:700;color:#2563eb">${appName}</span>
+    </div>
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 12px">${title}</h2>
+    <div style="color:#475569;line-height:1.6">${body}</div>
+    <div style="margin-top:24px">
+      <a href="${APP_URL}/dashboard" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;font-size:14px;font-weight:600;border-radius:12px;text-decoration:none">Go to Dashboard</a>
+    </div>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8">
+      You received this email because you are a member of ${appName}.
+      <br/>
+      <a href="${APP_URL}" style="color:#2563eb">Visit platform</a>
+      &middot;
+      <a href="mailto:${UNSUBSCRIBE_EMAIL}" style="color:#94a3b8">Unsubscribe</a>
+    </div>
+  </div>`;
 
 const parseCron = (expression: string): boolean => {
   try {
@@ -87,6 +109,9 @@ async function postHandler() {
         const userResp = await db.auth.admin.getUserById(userId).catch(() => null);
         const email = (userResp as { data?: { user?: { email?: string } } } | null)?.data?.user?.email;
         if (email) {
+          const htmlContent = template.includes("<")
+            ? brandedEmailHtml(title, template)
+            : brandedEmailHtml(title, `<p>${template.replace(/\n/g, "<br/>")}</p>`);
           await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -97,7 +122,10 @@ async function postHandler() {
               from: FROM_EMAIL,
               to: email,
               subject: title,
-              html: `<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px"><p>${template}</p><p><a href="${APP_URL}/dashboard">Go to Dashboard</a></p></div>`,
+              html: htmlContent,
+              headers: {
+                "List-Unsubscribe": `<mailto:${UNSUBSCRIBE_EMAIL}>`,
+              },
             }),
           });
         }

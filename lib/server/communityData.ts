@@ -45,7 +45,7 @@ const isMissingColumnError = (message: string) =>
   /column .* does not exist|could not find the '.*' column/i.test(message);
 
 const isMissingRelationError = (message: string) =>
-  /relation .* does not exist|table .* does not exist|function .* does not exist|could not find the table '.*' in the schema cache|could not find the function '.*' in the schema cache/i.test(
+  /relation .* does not exist|table .* does not exist|function .* does not exist|could not find the (table|function) '.*' in the schema cache|does not exist in the schema cache/i.test(
     message,
   );
 
@@ -300,7 +300,7 @@ const selectProfileById = async (db: SupabaseClient, userId: string) => {
     .select("*")
     .eq("id", userId)
     .maybeSingle();
-  if (error && !isMissingColumnError(error.message || "")) {
+  if (error && !isMissingColumnError(error.message || "") && !isMissingRelationError(error.message || "")) {
     throw new Error(error.message);
   }
   return toFlexibleRow(data);
@@ -898,6 +898,7 @@ export const loadCommunityFeedSnapshot = async (
         {
           orderBy: { column: "created_at", ascending: false },
           limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+          allowMissingRelation: true,
         },
       ),
       selectRowsWithFallback(
@@ -907,6 +908,7 @@ export const loadCommunityFeedSnapshot = async (
         {
           orderBy: { column: "created_at", ascending: false },
           limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+          allowMissingRelation: true,
         },
       ),
       selectRowsWithFallback(
@@ -916,6 +918,7 @@ export const loadCommunityFeedSnapshot = async (
         {
           orderBy: { column: "created_at", ascending: false },
           limit: CONNECTED_FEED_LIMIT_PER_TYPE,
+          allowMissingRelation: true,
         },
       ),
       selectRowsWithFallback(

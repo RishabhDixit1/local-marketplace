@@ -9,6 +9,10 @@ const CookieConsentBanner = dynamic(
 import { appName, appTagline } from "@/lib/branding";
 import { AppFooter } from "@/components/AppFooter";
 import { NavigationProgress } from "@/app/components/NavigationProgress";
+import { getConfiguredSiteUrl } from "@/lib/siteUrl";
+
+const siteUrl = getConfiguredSiteUrl();
+const ogImage = [{ url: `${siteUrl}/api/og?title=${encodeURIComponent(appName)}` }];
 
 export const metadata: Metadata = {
   title: {
@@ -28,11 +32,13 @@ export const metadata: Metadata = {
     description: appTagline,
     siteName: appName,
     type: "website",
+    images: ogImage,
   },
   twitter: {
     card: "summary_large_image",
     title: appName,
     description: appTagline,
+    images: ogImage,
   },
 };
 
@@ -55,6 +61,13 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function(){try{var t=localStorage.getItem("serviq-theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})();
+            `,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){try{var l=localStorage.getItem("serviq-locale");if(l){document.documentElement.lang=l}}catch(e){}})();
             `,
           }}
         />

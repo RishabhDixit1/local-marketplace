@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Help Centre",
-};
+  description: "Get help with ServiQ — find answers about accounts, bookings, payments, provider setup, and troubleshooting tips.",
+  path: "/support",
+});
 
 const faqs = [
   {

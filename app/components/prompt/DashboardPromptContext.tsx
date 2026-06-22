@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Search, Sparkles, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { parseIntent } from "@/lib/ai/intentParser";
+import { supabase } from "@/lib/supabase";
+import { StreamingText } from "./StreamingText";
 
 export type DashboardPromptAction = {
   id: string;
@@ -154,7 +156,9 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
   const { effectivePrompt, showPrompt } = useDashboardPromptContext();
   const [focused, setFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<ReactNode>(null);
+  const [aiStream, setAiStream] = useState<ReadableStream<string> | null>(null);
+  const conversationRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const focusHideTimerRef = useRef<number | null>(null);
   const router = useRouter();
 
@@ -189,15 +193,95 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
     if (!query) return;
     setSubmitting(true);
     setAiResponse(null);
+    setAiStream(null);
+
+    // Append user message to conversation history
+    conversationRef.current.push({ role: "user", content: query });
+
     try {
       const parsed = parseIntent(query);
-      setAiResponse(parsed.response);
       const params = new URLSearchParams();
       if (parsed.category) params.set("category", parsed.category);
       if (parsed.action) params.set("action", parsed.action);
-      router.push(`/dashboard?${params.toString()}`);
+
+      // Show keyword-based response immediately while stream loads
+      setAiResponse(parsed.response);
+
+      // Call the streaming AI API for smarter understanding
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+
+        const response = await fetch("/api/ai/prompt/stream", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            query,
+            conversation: conversationRef.current.slice(-6), // last 3 turns
+          }),
+        });
+
+        if (!response.ok) {
+          setSubmitting(false);
+          return;
+        }
+
+        const action = response.headers.get("x-action") || parsed.action;
+        const category = response.headers.get("x-category") || parsed.category;
+        const redirect = response.headers.get("x-redirect");
+
+        if (action) params.set("action", action);
+        if (category) params.set("category", category);
+
+        const body = response.body;
+        if (body) {
+          const reader = body.getReader();
+          const textDecoder = new TextDecoder();
+          let fullResponse = "";
+          const textStream = new ReadableStream<string>({
+            start(controller) {
+              function push() {
+                reader.read().then(({ done, value }) => {
+                  if (done) {
+                    // Save assistant response to conversation history
+                    conversationRef.current.push({ role: "assistant", content: fullResponse });
+                    controller.close();
+                    setSubmitting(false);
+                    return;
+                  }
+                  const chunk = textDecoder.decode(value, { stream: true });
+                  fullResponse += chunk;
+                  controller.enqueue(chunk);
+                  push();
+                }).catch(() => {
+                  controller.error(new Error("Stream cancelled"));
+                  setSubmitting(false);
+                });
+              }
+              push();
+            },
+          });
+
+          setAiStream(textStream);
+        }
+
+        // Navigate after a brief delay to let stream start
+        setTimeout(() => {
+          router.push(redirect || `/dashboard?${params.toString()}`);
+        }, 500);
+      } catch {
+        // Stream unavailable — keyword parse result is sufficient
+        conversationRef.current.push({ role: "assistant", content: parsed.response });
+        setSubmitting(false);
+        setTimeout(() => {
+          router.push(`/dashboard?${params.toString()}`);
+        }, 300);
+      }
     } finally {
-      setSubmitting(false);
+      // Don't set submitting false here — it's set in the stream completion
     }
   }, [effectivePrompt, router]);
 
@@ -217,10 +301,14 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
         }}
         className="w-full max-w-none space-y-2 md:max-w-[760px]"
       >
-        {aiResponse && (
+        {(aiResponse || aiStream) && (
           <div className="flex items-center gap-2 rounded-lg bg-[var(--brand-50)] px-3 py-2 text-sm text-[var(--brand-900)] animate-in slide-in-from-top-1">
             <ArrowRight size={14} className="shrink-0" />
-            <span>{aiResponse}</span>
+            {aiStream ? (
+              <StreamingText stream={aiStream} done={() => {}} />
+            ) : (
+              <span>{aiResponse}</span>
+            )}
           </div>
         )}
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -315,10 +403,14 @@ export function DashboardPromptBar({ placement = "header" }: { placement?: "head
         }}
         className="space-y-2"
       >
-        {aiResponse && (
+        {(aiResponse || aiStream) && (
           <div className="flex items-center gap-2 rounded-lg bg-[var(--brand-50)] px-3 py-2 text-sm text-[var(--brand-900)] animate-in slide-in-from-top-1">
             <ArrowRight size={15} className="shrink-0" />
-            <span>{aiResponse}</span>
+            {aiStream ? (
+              <StreamingText stream={aiStream} done={() => {}} />
+            ) : (
+              <span>{aiResponse}</span>
+            )}
           </div>
         )}
         <div

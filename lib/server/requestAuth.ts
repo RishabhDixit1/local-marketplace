@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { createSupabaseAdminClient, createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
+import { verifyLocalAuthToken } from "@/lib/server/customAuth";
 import { NextResponse } from "next/server";
 
 export type RequestAuthContext = {
@@ -44,10 +45,32 @@ export const requireRequestAuth = async (
 
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) {
+    // GoTrue is unreachable — fall back to local JWT verification
+    const localUser = verifyLocalAuthToken(accessToken);
+    if (!localUser) {
+      return {
+        ok: false,
+        status: 401,
+        message: "Invalid or expired session token.",
+      };
+    }
+
     return {
-      ok: false,
-      status: 401,
-      message: "Invalid or expired session token.",
+      ok: true,
+      auth: {
+        userId: localUser.sub,
+        email: localUser.email,
+        accessToken,
+        user: {
+          id: localUser.sub,
+          email: localUser.email,
+          aud: "authenticated",
+          role: "authenticated",
+          app_metadata: { provider: "email" },
+          user_metadata: { email: localUser.email },
+          created_at: new Date().toISOString(),
+        } as User,
+      },
     };
   }
 

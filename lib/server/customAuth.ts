@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { getSupabaseAuthCookieName } from "@/lib/supabaseAuthCookie";
 
 const getSecret = () =>
   process.env.SERVIQ_INTERNAL_PUSH_KEY || "serviq-local-dev-fallback-secret";
@@ -18,6 +19,38 @@ export function createLocalAuthToken(userId: string, email: string): string {
     getSecret(),
     { expiresIn: SESSION_EXPIRY_SECONDS }
   );
+}
+
+export function verifyLocalAuthToken(
+  token: string,
+): { sub: string; email: string } | null {
+  try {
+    const payload = jwt.verify(token, getSecret()) as jwt.JwtPayload & {
+      sub: string;
+      email?: string;
+    };
+    if (!payload.sub) return null;
+    return { sub: payload.sub, email: payload.email || "" };
+  } catch {
+    return null;
+  }
+}
+
+export function parseLocalSessionCookie(
+  cookieValue: string,
+): { access_token: string; user: { id: string; email: string } } | null {
+  try {
+    if (!cookieValue.startsWith("base64-")) return null;
+    const json = Buffer.from(
+      cookieValue.replace("base64-", ""),
+      "base64url",
+    ).toString();
+    const session = JSON.parse(json);
+    if (!session.access_token || !session.user?.id) return null;
+    return session;
+  } catch {
+    return null;
+  }
 }
 
 function base64url(data: string): string {
@@ -51,7 +84,7 @@ export function buildSupabaseSessionCookieValue(
   const encoded = "base64-" + base64url(JSON.stringify(session));
 
   return {
-    name: "supabase.auth.token",
+    name: getSupabaseAuthCookieName(),
     value: encoded,
     options: {
       path: "/",

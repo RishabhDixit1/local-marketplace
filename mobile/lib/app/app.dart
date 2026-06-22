@@ -15,6 +15,7 @@ import '../core/services/app_update_service.dart';
 import '../core/supabase/app_bootstrap.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/data/onboarding_handoff.dart';
+import '../l10n/l10n.dart';
 import 'router/app_router.dart';
 
 class ServiQApp extends ConsumerStatefulWidget {
@@ -116,7 +117,24 @@ class _ServiQAppState extends ConsumerState<ServiQApp> {
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
+        AppLocalizations.delegate,
       ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        if (locale == null) return supportedLocales.first;
+        for (final supported in supportedLocales) {
+          if (supported.languageCode == locale.languageCode &&
+              (supported.countryCode == null ||
+                  supported.countryCode == locale.countryCode)) {
+            return supported;
+          }
+        }
+        for (final supported in supportedLocales) {
+          if (supported.languageCode == locale.languageCode) {
+            return supported;
+          }
+        }
+        return supportedLocales.first;
+      },
       supportedLocales: const [
         Locale('en', 'US'),
         Locale('hi', 'IN'),

@@ -10,22 +10,7 @@ const messages: Record<Locale, Record<string, Record<string, string>>> = {
 
 const STORAGE_KEY = "serviq-locale";
 
-export function getStoredLocale(): Locale {
-  if (typeof window === "undefined") return "en";
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "hi" || stored === "en") return stored;
-
-  // Detect browser language
-  const browserLang = navigator.language?.startsWith("hi") ? "hi" : "en";
-  return browserLang;
-}
-
-export function setStoredLocale(locale: Locale) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, locale);
-}
-
-export function t(locale: Locale, path: string): string {
+function resolve(locale: Locale, path: string): string | undefined {
   const parts = path.split(".");
   let current: unknown = messages[locale];
 
@@ -33,9 +18,31 @@ export function t(locale: Locale, path: string): string {
     if (current && typeof current === "object" && part in (current as Record<string, unknown>)) {
       current = (current as Record<string, unknown>)[part];
     } else {
-      return path; // fallback to key
+      return undefined;
     }
   }
 
-  return typeof current === "string" ? current : path;
+  return typeof current === "string" ? current : undefined;
+}
+
+export function t(locale: Locale, path: string): string {
+  return resolve(locale, path) ?? resolve("en", path) ?? path;
+}
+
+export function tWithFallback(locale: Locale, path: string): string {
+  return resolve(locale, path) ?? resolve("en", path) ?? path;
+}
+
+export function getStoredLocale(): Locale {
+  if (typeof window === "undefined") return "en";
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === "hi" || stored === "en") return stored;
+
+  const browserLang = navigator.language?.startsWith("hi") ? "hi" : "en";
+  return browserLang;
+}
+
+export function setStoredLocale(locale: Locale) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, locale);
 }

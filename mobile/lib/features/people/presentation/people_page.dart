@@ -76,6 +76,21 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       }
     } catch (e) {
       debugPrint('[_loadLocalities] Failed: $e');
+      if (e.toString().contains('[object Object]') && mounted) {
+        try {
+          final client = ref.read(mobileApiClientProvider);
+          final locs = await client.getLocalities();
+          if (mounted) {
+            setState(() {
+              _localities = locs;
+              _localityLoadError = false;
+            });
+            return;
+          }
+        } catch (fallbackError) {
+          debugPrint('[_loadLocalities] Fallback also failed: $fallbackError');
+        }
+      }
       if (mounted) {
         setState(() => _localityLoadError = true);
       }

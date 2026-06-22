@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAnonServerClient } from "@/lib/server/supabaseClients";
 import { executeQuery } from "@/lib/ai/orchestrator";
+import { moderatePrompt } from "@/lib/ai/contentModeration";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,20 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const moderation = moderatePrompt(query);
+    if (!moderation.safe) {
+      console.warn(`[Moderation] Blocked query: "${query.slice(0, 100)}" — reason: ${moderation.reason}`);
+      return NextResponse.json(
+        { error: moderation.reason },
+        { status: 403 },
+      );
+    }
+    if (moderation.sanitized) {
+      console.log(`[Moderation] Sanitized query: "${query.slice(0, 100)}" -> "${moderation.sanitized.slice(0, 100)}"`);
+    }
+
+    const effectiveQuery = moderation.sanitized ?? query;
 
     let userId: string | undefined;
     let userRole: string | undefined;
@@ -47,7 +62,7 @@ export async function POST(request: Request) {
       location: typeof body?.context?.location === "string" ? body.context.location : undefined,
     };
 
-    const result = await executeQuery(query, context);
+    const result = await executeQuery(effectiveQuery, context);
 
     return NextResponse.json({
       response: result.response,

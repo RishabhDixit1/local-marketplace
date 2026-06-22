@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Refund Policy",
-};
+  description: "ServiQ's refund and cancellation policy for bookings, services, and products purchased through our local marketplace platform.",
+  path: "/legal/refund-policy",
+});
 
 export default function RefundPolicyPage() {
   return (

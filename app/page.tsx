@@ -1,5 +1,15 @@
 ﻿import { Suspense } from "react";
+import type { Metadata } from "next";
 import { LandingPageClient } from "./components/landing/LandingPageClient";
+import { buildPageMetadata } from "@/lib/metadata";
+import { appName } from "@/lib/branding";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildPageMetadata({
+    title: appName,
+    description: "Connecting people with Human-Centered Services Near You! Find trusted local plumbers, electricians, repair services, and more in your neighborhood.",
+  });
+}
 
 function LandingSkeleton() {
   return (

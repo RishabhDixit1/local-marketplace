@@ -334,7 +334,7 @@ const intentSchema = z.object({
 });
 
 export async function parseIntentWithLLM(query: string): Promise<ParsedIntent | null> {
-  if (!process.env.OPENAI_API_KEY) return null;
+  if (!process.env.GOOGLE_GEMINI_API_KEY) return null;
   try {
     const result = await generate({
       prompt: `Parse this user query from an Indian hyperlocal marketplace: "${query}"

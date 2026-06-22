@@ -567,6 +567,7 @@ export default function AdminPage() {
 
           {users.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
@@ -608,6 +609,7 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           ) : null}
         </div>
@@ -627,10 +629,11 @@ export default function AdminPage() {
               className="w-full rounded-2xl border border-slate-200 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-[#0a66c2]"
             />
           </div>
-
           {providerRows.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
+
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-4 py-3 font-semibold text-slate-700">Name</th>
@@ -664,6 +667,7 @@ export default function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
@@ -1009,6 +1013,7 @@ export default function AdminPage() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
@@ -1039,6 +1044,7 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       ) : null}

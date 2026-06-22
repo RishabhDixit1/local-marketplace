@@ -14,7 +14,7 @@ export async function withCache<T>(
   const cached = await cacheGet<string>(opts.key);
   if (cached != null) {
     if (cached === NULL_PLACEHOLDER) return null as unknown as T;
-    return JSON.parse(cached) as T;
+    return cached as unknown as T;
   }
 
   const result = await fn();

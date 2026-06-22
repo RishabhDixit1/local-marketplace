@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Contact Us",
-};
+  description: "Get in touch with the ServiQ team. Email us at support@serviqapp.com for help, feedback, or partnership inquiries.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (
@@ -11,6 +14,19 @@ export default function ContactPage() {
       <p className="mt-2 text-sm text-slate-500">We&apos;d love to hear from you. Here&apos;s how to reach us.</p>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="text-base font-semibold text-slate-900">General Inquiries</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            For general questions, feedback, or partnership inquiries.
+          </p>
+          <a
+            href="mailto:info@serviqapp.com"
+            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 underline"
+          >
+            info@serviqapp.com
+          </a>
+        </div>
+
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <h2 className="text-base font-semibold text-slate-900">Customer Support</h2>
           <p className="mt-2 text-sm text-slate-600">

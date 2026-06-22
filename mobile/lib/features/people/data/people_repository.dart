@@ -22,9 +22,15 @@ class PeopleRepository {
   final MobileApiClient _apiClient;
   final PeopleCache _cache;
 
-  Future<MobilePeopleSnapshot> fetchPeople() async {
+  Future<MobilePeopleSnapshot> fetchPeople({int limit = 50, int offset = 0}) async {
     try {
-      final payload = await _apiClient.getJson('/api/community/people');
+      final payload = await _apiClient.getJson(
+        '/api/community/people',
+        queryParameters: {
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+        },
+      );
       if (payload['ok'] != true) {
         throw ApiException(
           (payload['message'] as String?) ??

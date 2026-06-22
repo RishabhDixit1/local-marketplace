@@ -47,3 +47,6 @@ create policy "users can manage own cart items"
 -- Indexes
 create index if not exists idx_carts_user on carts(user_id);
 create index if not exists idx_cart_items_cart on cart_items(cart_id);
+
+-- Refresh PostgREST schema cache so the new tables are immediately visible
+notify pgrst, 'reload schema';

@@ -2,6 +2,16 @@ import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Bundle analyzer — uncomment to use (requires @next/bundle-analyzer):
+//   npm install -D @next/bundle-analyzer
+// Then run: ANALYZE=true npm run build
+// import withBundleAnalyzer from "@next/bundle-analyzer";
+//
+// Usage — replace the default export at the bottom of this file:
+//   export default withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" })(
+//     withSentryConfig(createNextConfig, sentryOptions),
+//   );
+
 const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL?.trim() || "";
 const cdnHostname = cdnUrl ? new URL(cdnUrl).hostname : null;
 
@@ -26,6 +36,7 @@ const supabasePublicUrl = (() => {
 })();
 
 const supabaseApiOrigin = supabaseUrl ? `${supabaseUrl.protocol}//${supabaseUrl.host}` : null;
+const supabaseStorageOrigin = process.env.SUPABASE_STORAGE_URL?.trim() || supabaseApiOrigin;
 const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
 const supabasePublicHostname = supabasePublicUrl?.hostname || supabaseHostname;
@@ -172,7 +183,11 @@ const createNextConfig = (phase: string): NextConfig => ({
     ];
   },
   async rewrites() {
-    const origin = supabaseApiOrigin || "http://54.253.40.174:8000";
+    const origin = supabaseApiOrigin;
+    if (!origin) {
+      console.warn("Supabase API origin not configured; auth, storage, and API rewrites are disabled.");
+      return [];
+    }
     return [
       {
         source: "/auth/v1/:path*",
@@ -184,7 +199,7 @@ const createNextConfig = (phase: string): NextConfig => ({
       },
       {
         source: "/storage/v1/:path*",
-        destination: `${origin}/storage/v1/:path*`,
+        destination: `${supabaseStorageOrigin || origin}/storage/v1/:path*`,
       },
       {
         source: "/realtime/v1/:path*",

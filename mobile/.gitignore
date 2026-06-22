@@ -53,3 +53,7 @@ app.*.map.json
 /release/*.keystore
 /release/*.jks
 /release/android-signing-credentials.txt
+
+# Integration test artifacts
+/integration_test/screenshots/
+/integration_test/reports/

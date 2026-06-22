@@ -173,34 +173,36 @@ class _BootstrapErrorApp extends StatelessWidget {
             gradient: ServiqThemeTokens.light.authGradient,
           ),
           child: SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.danger),
-                    boxShadow: AppShadows.floating,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.cloud_off_rounded, color: AppColors.danger, size: 48),
-                      const SizedBox(height: 16),
-                      Text('Could not connect', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text(message, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: onRetry,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Retry'),
-                      ),
-                    ],
+            child: SingleChildScrollView(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.danger),
+                      boxShadow: AppShadows.floating,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_off_rounded, color: AppColors.danger, size: 48),
+                        const SizedBox(height: 16),
+                        Text('Could not connect', style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(message, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -226,79 +228,81 @@ class _BootstrapLoadingApp extends StatelessWidget {
             gradient: ServiqThemeTokens.light.authGradient,
           ),
           child: SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: ServiqThemeTokens.light.glassBorder,
+            child: SingleChildScrollView(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: ServiqThemeTokens.light.glassBorder,
+                      ),
+                      boxShadow: AppShadows.floating,
                     ),
-                    boxShadow: AppShadows.floating,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.bolt_rounded,
+                                color: Colors.white,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.bolt_rounded,
-                              color: Colors.white,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ServiQ',
+                                    style: Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Preparing your local marketplace',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'ServiQ',
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Preparing your local marketplace',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      Text(
-                        'Starting ServiQ mobile',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Checking your session, syncing live trust signals, and getting Home ready.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 22),
-                      const ClipRRect(
-                        borderRadius: BorderRadius.all(
-                          Radius.circular(AppRadii.pill),
+                          ],
                         ),
-                        child: LinearProgressIndicator(
-                          minHeight: 6,
-                          backgroundColor: AppColors.surfaceMuted,
+                        const SizedBox(height: 22),
+                        Text(
+                          'Starting ServiQ mobile',
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Checking your session, syncing live trust signals, and getting Home ready.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 22),
+                        const ClipRRect(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(AppRadii.pill),
+                          ),
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            backgroundColor: AppColors.surfaceMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

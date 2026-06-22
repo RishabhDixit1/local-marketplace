@@ -34,16 +34,16 @@ for (const line of envLines) {
   }
 }
 
-const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL; // https://xxx.supabase.co
+const SUPABASE_URL = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error("❌  NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from .env.local");
+  console.error("❌  SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from .env.local");
   process.exit(1);
 }
 
 // Extract project ref from URL: https://hcayrcsmddtqqlvkvaqd.supabase.co → hcayrcsmddtqqlvkvaqd
-const PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0];
+const PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0].replace("http://", "");
 
 // Supavisor session-mode pooler hosts to try (different AWS regions)
 const POOLER_HOSTS = [

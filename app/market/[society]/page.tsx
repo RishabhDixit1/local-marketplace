@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { MobileBottomNav } from "@/app/components/MobileBottomNav";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -123,7 +124,7 @@ export default function SocietyPage() {
   const otherLocalities = allLocalities.filter((l) => l.id !== locality.id).slice(0, 6);
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10">
+    <div className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-6 sm:px-6 sm:pt-10 lg:pb-20">
       <div className="mb-6">
         <Link
           href="/market/crossing-republik"
@@ -275,6 +276,7 @@ export default function SocietyPage() {
           className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
         ><Store className="h-4 w-4" /> List Your Business</Link>
       </section>
+      <MobileBottomNav />
     </div>
   );
 }
