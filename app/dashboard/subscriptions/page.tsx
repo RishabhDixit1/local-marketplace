@@ -89,7 +89,7 @@ export default function SubscriptionsPage() {
 
     try {
       const pgRes = await fetchAuthedJson<{
-        ok: boolean; orderId: string; amount: number; currency: string; keyId: string; plan: Plan;
+        ok: boolean; orderId?: string; subscriptionId?: string; amount: number; currency: string; keyId: string; plan: Plan;
       }>(supabase, "/api/subscriptions/create-order", {
         method: "POST",
         body: JSON.stringify({ planId: plan.id }),
@@ -97,20 +97,15 @@ export default function SubscriptionsPage() {
 
       if (!pgRes.ok) throw new Error("Payment gateway unavailable.");
 
+      const isSubscription = !!pgRes.subscriptionId;
+
       await new Promise<void>((resolve, reject) => {
-        const rz = new window.Razorpay!({
+        const opts: Record<string, unknown> = {
           key: pgRes.keyId,
-          amount: pgRes.amount,
-          currency: pgRes.currency,
-          order_id: pgRes.orderId,
           name: appName,
           description: `${plan.name} — ${plan.interval}ly`,
           theme: { color: "#2563eb" },
-          handler: async (response: {
-            razorpay_order_id: string;
-            razorpay_payment_id: string;
-            razorpay_signature: string;
-          }) => {
+          handler: async (response: Record<string, string>) => {
             try {
               const verifyRes = await fetchAuthedJson<{ ok: boolean; subscription: Subscription }>(
                 supabase, "/api/subscriptions/verify", {
@@ -119,6 +114,7 @@ export default function SubscriptionsPage() {
                     razorpayOrderId: response.razorpay_order_id,
                     razorpayPaymentId: response.razorpay_payment_id,
                     razorpaySignature: response.razorpay_signature,
+                    razorpaySubscriptionId: response.razorpay_subscription_id,
                     planId: plan.id,
                   }),
                 }
@@ -137,7 +133,17 @@ export default function SubscriptionsPage() {
               reject(new Error("Payment cancelled."));
             },
           },
-        });
+        };
+
+        if (isSubscription && pgRes.subscriptionId) {
+          opts.subscription_id = pgRes.subscriptionId;
+        } else {
+          opts.amount = pgRes.amount;
+          opts.currency = pgRes.currency;
+          opts.order_id = pgRes.orderId;
+        }
+
+        const rz = new window.Razorpay!(opts);
         rz.open();
       });
     } catch (e) {

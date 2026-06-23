@@ -1,7 +1,45 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
+
 export const GLOBAL_PRESENCE_CHANNEL = "marketplace-global-presence";
 
 export const getConversationRealtimeChannel = (conversationId: string) =>
   `conversation-live-${conversationId}`;
+
+export function subscribeWithAutoRetry(
+  channel: RealtimeChannel,
+  onStatus: (status: string) => void,
+  options?: { maxRetries?: number; baseDelayMs?: number; maxDelayMs?: number }
+) {
+  const { maxRetries = Infinity, baseDelayMs = 1000, maxDelayMs = 30000 } = options ?? {};
+  let retries = 0;
+  let cancelled = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const doSubscribe = () => {
+    if (cancelled) return;
+    channel.subscribe((status) => {
+      onStatus(status);
+      if (status === "SUBSCRIBED") {
+        retries = 0;
+        return;
+      }
+      if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+        if (retries < maxRetries) {
+          retries++;
+          const delay = Math.min(baseDelayMs * Math.pow(2, retries - 1), maxDelayMs);
+          timer = setTimeout(doSubscribe, delay);
+        }
+      }
+    });
+  };
+
+  doSubscribe();
+
+  return () => {
+    cancelled = true;
+    if (timer) clearTimeout(timer);
+  };
+}
 
 export type TypingEventPayload = {
   conversation_id: string;

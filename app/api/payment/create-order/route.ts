@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { getRazorpay, isRazorpayConfigured } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? "";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
-
 type CreatePaymentOrderBody = {
-  amount: number; // INR paise (1 rupee = 100 paise)
+  amount: number;
   receipt: string;
   notes?: Record<string, string>;
+  promoCode?: string;
 };
 
 function isValidBody(body: unknown): body is CreatePaymentOrderBody {
@@ -29,7 +28,7 @@ async function postHandler(request: Request) {
     );
   }
 
-  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+  if (!isRazorpayConfigured()) {
     return NextResponse.json(
       { ok: false, code: "CONFIG", message: "Payment gateway not configured." },
       { status: 503 }
@@ -50,14 +49,54 @@ async function postHandler(request: Request) {
     );
   }
 
+  let discountPaise = 0;
+  let promoData: Record<string, unknown> | null = null;
+
+  if (body.promoCode) {
+    const db = createSupabaseAdminClient();
+    if (db) {
+      const { data: validation } = await db.rpc("validate_promo_code", {
+        p_code: body.promoCode,
+        p_order_paise: body.amount,
+      });
+
+      if (validation?.ok) {
+        discountPaise = validation.discount_paise;
+        promoData = {
+          promo_code_id: validation.promo_code_id,
+          promo_code: validation.code,
+          discount_paise: validation.discount_paise,
+        };
+      }
+    }
+  }
+
+  const finalAmount = Math.max(Math.round(body.amount - discountPaise), 0);
+
+  if (finalAmount <= 0) {
+    return NextResponse.json({
+      ok: true,
+      orderId: null,
+      amount: 0,
+      currency: "INR",
+      keyId: process.env.RAZORPAY_KEY_ID ?? "",
+      paid: true,
+      discountPaise,
+      promo: promoData,
+    });
+  }
+
   try {
-    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+    const razorpay = getRazorpay();
 
     const order = await razorpay.orders.create({
-      amount: Math.round(body.amount), // must be integer paise
+      amount: finalAmount,
       currency: "INR",
       receipt: body.receipt.slice(0, 40),
-      notes: body.notes ?? {},
+      notes: {
+        ...(body.notes ?? {}),
+        ...(promoData ? { promo_code: String(promoData.promo_code), discount_paise: String(discountPaise) } : {}),
+      },
     });
 
     return NextResponse.json({
@@ -65,7 +104,9 @@ async function postHandler(request: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_KEY_ID ?? "",
+      discountPaise,
+      promo: promoData,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Payment gateway error.";

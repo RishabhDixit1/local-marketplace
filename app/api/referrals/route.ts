@@ -56,7 +56,7 @@ async function postHandler(request: Request) {
   return NextResponse.json({ ok: true, code: data });
 }
 
-export async function PATCH(request: Request) {
+export const PATCH = withErrorHandling(async function patchHandler(request: Request) {
   const auth = await requireRequestAuth(request);
   if (!auth.ok) return toError(401, "UNAUTHORIZED", auth.message);
 
@@ -94,7 +94,7 @@ export async function PATCH(request: Request) {
   });
 
   return NextResponse.json({ ok: true, rewardPoints: codeData.reward_points });
-}
+}, "referrals:redeem");
 
 export const GET = withErrorHandling(getHandler, "referrals:info");
-export const POST = withErrorHandling(postHandler, "referrals:redeem");
+export const POST = withErrorHandling(postHandler, "referrals:generate");

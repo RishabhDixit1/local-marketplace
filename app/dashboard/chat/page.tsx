@@ -35,6 +35,7 @@ import {
   extractPresenceUserIds,
   getConversationRealtimeChannel,
   GLOBAL_PRESENCE_CHANNEL,
+  subscribeWithAutoRetry,
   type TypingEventPayload,
 } from "@/lib/realtime";
 import type {
@@ -680,8 +681,11 @@ export default function ChatPage() {
     presenceChannel
       .on("presence", { event: "sync" }, syncOnlineUsers)
       .on("presence", { event: "join" }, syncOnlineUsers)
-      .on("presence", { event: "leave" }, syncOnlineUsers)
-      .subscribe(async (status) => {
+      .on("presence", { event: "leave" }, syncOnlineUsers);
+
+    const cancelPresenceRetry = subscribeWithAutoRetry(
+      presenceChannel,
+      async (status) => {
         setPresenceConnection(mapChannelHealth(status));
         if (status !== "SUBSCRIBED") return;
         await presenceChannel.track({
@@ -689,7 +693,8 @@ export default function ChatPage() {
           last_seen_at: new Date().toISOString(),
           page: "chat",
         });
-      });
+      }
+    );
 
     const heartbeatTimer = window.setInterval(() => {
       void presenceChannel.track({
@@ -700,6 +705,7 @@ export default function ChatPage() {
     }, 30000);
 
     return () => {
+      cancelPresenceRetry();
       window.clearInterval(heartbeatTimer);
       if (presenceChannelRef.current) {
         void presenceChannelRef.current.untrack();
@@ -744,14 +750,19 @@ export default function ChatPage() {
           }
           setLiveTalkRequest(nextRow);
         }
-      )
-      .subscribe((status) => {
+      );
+
+    const cancelLiveTalkRetry = subscribeWithAutoRetry(
+      liveTalkChannel,
+      (status) => {
         if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[live-talk] Realtime subscription ${status}`);
         }
-      });
+      }
+    );
 
     return () => {
+      cancelLiveTalkRetry();
       supabase.removeChannel(liveTalkChannel);
     };
   }, [selectedChat]);
@@ -794,8 +805,11 @@ export default function ChatPage() {
         remoteTypingTimerRef.current = window.setTimeout(() => {
           setTypingUserId(null);
         }, 2200);
-      })
-      .subscribe(async (status) => {
+      });
+
+    const cancelTypingRetry = subscribeWithAutoRetry(
+      typingChannel,
+      async (status) => {
         setTypingConnection(mapChannelHealth(status));
         if (status !== "SUBSCRIBED") return;
         await typingChannel.track({
@@ -803,9 +817,11 @@ export default function ChatPage() {
           conversation_id: selectedChat,
           last_seen_at: new Date().toISOString(),
         });
-      });
+      }
+    );
 
     return () => {
+      cancelTypingRetry();
       if (remoteTypingTimerRef.current) {
         window.clearTimeout(remoteTypingTimerRef.current);
         remoteTypingTimerRef.current = null;
@@ -905,12 +921,17 @@ export default function ChatPage() {
           setLastRealtimeEventAt(new Date().toISOString());
           void loadConversations(true);
         }
-      )
-      .subscribe((status) => {
+      );
+
+    const cancelMsgRetry = subscribeWithAutoRetry(
+      realtimeChannel,
+      (status) => {
         setStreamConnection(mapChannelHealth(status));
-      });
+      }
+    );
 
     return () => {
+      cancelMsgRetry();
       supabase.removeChannel(realtimeChannel);
       setStreamConnection("offline");
     };
@@ -956,7 +977,7 @@ export default function ChatPage() {
       created_at: new Date().toISOString(),
     };
 
-    setMessages((previous) => [...previous, optimisticMessage]);
+    setMessages((previous) => [...previous, { ...optimisticMessage, status: "sending" }]);
     setInput("");
     messageSelectionRef.current = { start: 0, end: 0 };
     resizeMessageInput();
@@ -978,9 +999,11 @@ export default function ChatPage() {
 
       insertedMessage = payload.message as Message;
     } catch (error) {
-      setMessages((previous) => previous.filter((message) => message.id !== optimisticId));
-      setInput(trimmed);
-      messageSelectionRef.current = { start: trimmed.length, end: trimmed.length };
+      setMessages((previous) =>
+        previous.map((message) =>
+          message.id === optimisticId ? { ...message, status: "failed" as const } : message
+        )
+      );
       setChatError(`Failed to send message: ${error instanceof Error ? error.message : "unknown error"}`);
       setSending(false);
       return;
@@ -1020,6 +1043,32 @@ export default function ChatPage() {
     });
 
     setSending(false);
+  };
+
+  const retryMessage = async (message: Message) => {
+    if (!selectedChat || sending || !userId) return;
+    setMessages((previous) =>
+      previous.map((m) => (m.id === message.id ? { ...m, status: "sending" as const } : m))
+    );
+    try {
+      const payload = await fetchAuthedJson<SendChatMessageResponse>(supabase, "/api/chat/messages", {
+        method: "POST",
+        body: JSON.stringify({
+          conversationId: selectedChat,
+          content: message.content,
+        }),
+      });
+      if (!payload.ok) throw new Error(payload.message || "Unable to send message.");
+      const inserted = payload.message as Message;
+      setMessages((previous) =>
+        previous.map((m) => (m.id === message.id ? { ...inserted, status: undefined } : m))
+      );
+    } catch (error) {
+      setMessages((previous) =>
+        previous.map((m) => (m.id === message.id ? { ...m, status: "failed" as const } : m))
+      );
+      setChatError(`Failed to send message: ${error instanceof Error ? error.message : "unknown error"}`);
+    }
   };
 
   const handleInputChange = useCallback((value: string) => {
@@ -1873,7 +1922,7 @@ export default function ChatPage() {
 
                         {group.items.map((message) => {
                           const mine = message.sender_id === userId;
-                          const optimistic = message.id.startsWith("local-");
+                          const failed = message.status === "failed";
                           return (
                             <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                               <div
@@ -1881,7 +1930,7 @@ export default function ChatPage() {
                                   mine
                                     ? "rounded-br-md bg-gradient-to-r from-indigo-600 to-blue-500 text-white"
                                     : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
-                                }`}
+                                } ${failed ? "opacity-70" : ""}`}
                               >
                                 <p className="whitespace-pre-wrap break-words">{message.content}</p>
                                 <p
@@ -1890,8 +1939,20 @@ export default function ChatPage() {
                                   }`}
                                 >
                                   {formatTime(message.created_at)}
-                                  {mine && optimistic && <Loader2 className="h-3 w-3 animate-spin" />}
-                                  {mine && !optimistic && <CheckCheck className="h-3.5 w-3.5" />}
+                                  {mine && message.status === "sending" && <Loader2 className="h-3 w-3 animate-spin" />}
+                                  {mine && !failed && message.status !== "sending" && <CheckCheck className="h-3.5 w-3.5" />}
+                                  {mine && failed && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void retryMessage(message);
+                                      }}
+                                      className="ml-1 inline-flex items-center gap-0.5 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/30"
+                                    >
+                                      Retry
+                                    </button>
+                                  )}
                                 </p>
                               </div>
                             </div>

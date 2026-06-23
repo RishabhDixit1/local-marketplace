@@ -58,6 +58,29 @@ type RazorpayWebhookPayload = {
         notes?: Record<string, string>;
       };
     };
+    subscription?: {
+      entity: {
+        id: string;
+        plan_id: string;
+        status: string;
+        current_start: number;
+        current_end: number;
+        charge_at: number;
+        notes?: Record<string, string>;
+        created_at: number;
+      };
+    };
+    payout?: {
+      entity: {
+        id: string;
+        status: string;
+        fund_account_id: string;
+        amount: number;
+        currency: string;
+        notes?: Record<string, string>;
+        created_at: number;
+      };
+    };
   };
 };
 
@@ -210,8 +233,81 @@ async function postHandler(request: Request) {
         break;
       }
 
+      case "subscription.charged": {
+        const sub = event.payload.subscription?.entity;
+        if (!sub) break;
+
+        const razorpaySubId = sub.id;
+        const { data: existingSub } = await db
+          .from("provider_subscriptions")
+          .select("id, status, current_period_end")
+          .eq("razorpay_subscription_id", razorpaySubId)
+          .maybeSingle();
+
+        if (existingSub) {
+          const periodEnd = sub.current_end
+            ? new Date(sub.current_end * 1000).toISOString()
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+          await db
+            .from("provider_subscriptions")
+            .update({
+              status: "active",
+              current_period_end: periodEnd,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingSub.id);
+        }
+        break;
+      }
+
+      case "payout.created":
+      case "payout.processed": {
+        const payoutEntity = event.payload.payout?.entity;
+        if (!payoutEntity) break;
+
+        await db
+          .from("provider_payouts")
+          .update({ status: "completed", razorpay_payout_id: payoutEntity.id })
+          .eq("razorpay_payout_id", payoutEntity.id);
+
+        await db
+          .from("referral_payouts")
+          .update({ status: "completed", razorpay_payout_id: payoutEntity.id })
+          .eq("razorpay_payout_id", payoutEntity.id);
+        break;
+      }
+
+      case "payout.failed": {
+        const failedPayout = event.payload.payout?.entity;
+        if (!failedPayout) break;
+
+        await db
+          .from("provider_payouts")
+          .update({ status: "failed", razorpay_payout_id: failedPayout.id })
+          .eq("razorpay_payout_id", failedPayout.id);
+
+        await db
+          .from("referral_payouts")
+          .update({ status: "failed", razorpay_payout_id: failedPayout.id })
+          .eq("razorpay_payout_id", failedPayout.id);
+        break;
+      }
+
+      case "subscription.completed":
+      case "subscription.paused": {
+        const subEnd = event.payload.subscription?.entity;
+        if (!subEnd) break;
+
+        await db
+          .from("provider_subscriptions")
+          .update({ status: "expired", updated_at: new Date().toISOString() })
+          .eq("razorpay_subscription_id", subEnd.id)
+          .eq("status", "active");
+        break;
+      }
+
       default:
-        // Unknown event — just log it
         break;
     }
 

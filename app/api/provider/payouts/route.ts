@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
@@ -174,20 +175,64 @@ async function postHandler(request: Request) {
     }
   }
 
-  const feePaise = 0; // No fee on withdrawals for now
+  const feePaise = 0;
   const netAmountPaise = body.amount_paise - feePaise;
+
+  let razorpayPayoutId: string | null = null;
+  let payoutStatus = "pending";
+
+  if (isRazorpayConfigured() && (body.payout_method === "bank" || body.payout_method === "upi")) {
+    try {
+      const razorpay = getRazorpay();
+
+      const { data: defaultAccount } = await db
+        .from("provider_bank_accounts")
+        .select("razorpay_fund_account_id")
+        .eq("provider_id", userId)
+        .eq("is_default", true)
+        .not("razorpay_fund_account_id", "is", null)
+        .maybeSingle();
+
+      if (defaultAccount?.razorpay_fund_account_id) {
+        const rzPayout = await razorpay.api.post({
+          url: "/payouts",
+          data: {
+            account_number: process.env.RAZORPAY_ACCOUNT_NUMBER ?? "",
+            fund_account_id: defaultAccount.razorpay_fund_account_id,
+            amount: netAmountPaise,
+            currency: "INR",
+            mode: "IMPS",
+            purpose: "payout",
+            reference_id: `wd_${userId.slice(0, 8)}_${Date.now()}`,
+            notes: { provider_id: userId },
+          },
+        }) as { id: string };
+        razorpayPayoutId = rzPayout.id;
+        payoutStatus = "completed";
+      }
+    } catch (err) {
+      console.error("[provider/payouts] Razorpay auto-payout failed:", err);
+    }
+  }
+
+  const insertData: Record<string, unknown> = {
+    provider_id: userId,
+    amount_paise: body.amount_paise,
+    fee_paise: feePaise,
+    net_amount_paise: netAmountPaise,
+    status: payoutStatus,
+    payout_method: body.payout_method,
+    payout_detail: payoutDetail ?? null,
+  };
+
+  if (razorpayPayoutId) {
+    insertData.razorpay_payout_id = razorpayPayoutId;
+    insertData.processed_at = new Date().toISOString();
+  }
 
   const { data: payout, error } = await db
     .from("provider_payouts")
-    .insert({
-      provider_id: userId,
-      amount_paise: body.amount_paise,
-      fee_paise: feePaise,
-      net_amount_paise: netAmountPaise,
-      status: "pending",
-      payout_method: body.payout_method,
-      payout_detail: payoutDetail ?? null,
-    })
+    .insert(insertData)
     .select()
     .single();
 

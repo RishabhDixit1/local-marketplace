@@ -106,6 +106,7 @@ const secondaryNavItems = [
   { name: "Chat", path: "/dashboard/chat", icon: MessageCircle },
   { name: "Subscriptions", path: "/dashboard/subscriptions", icon: Crown },
   { name: "Boosts", path: "/dashboard/boosts", icon: TrendingUp },
+  { name: "Listings", path: "/dashboard/listings", icon: Store },
   { name: "Launchpad", path: "/dashboard/launchpad", icon: Rocket },
   { name: "Referrals", path: "/dashboard/referrals", icon: Gift },
   { name: "Referral Leaderboard", path: "/dashboard/referrals/leaderboard", icon: Trophy },

@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { getRazorpay, isRazorpayConfigured } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
-
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID ?? "";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
 
 async function postHandler(request: Request) {
   const authResult = await requireRequestAuth(request);
@@ -15,7 +12,7 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: authResult.message }, { status: authResult.status });
   }
 
-  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+  if (!isRazorpayConfigured()) {
     return NextResponse.json({ ok: false, message: "Payment gateway not configured" }, { status: 503 });
   }
 
@@ -51,7 +48,29 @@ async function postHandler(request: Request) {
   }
 
   try {
-    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+    const razorpay = getRazorpay();
+
+    if (plan.razorpay_plan_id) {
+      const subscription = await razorpay.subscriptions.create({
+        plan_id: plan.razorpay_plan_id,
+        customer_notify: true,
+        total_count: 100,
+        notes: {
+          provider_id: authResult.auth.userId,
+          plan_id: body.planId,
+          plan_name: plan.name,
+        },
+      });
+
+      return NextResponse.json({
+        ok: true,
+        subscriptionId: subscription.id,
+        amount: plan.price_paise,
+        currency: "INR",
+        keyId: process.env.RAZORPAY_KEY_ID ?? "",
+        plan,
+      });
+    }
 
     const order = await razorpay.orders.create({
       amount: plan.price_paise,
@@ -70,7 +89,7 @@ async function postHandler(request: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_KEY_ID ?? "",
       plan,
     });
   } catch (err) {

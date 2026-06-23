@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { isRazorpayConfigured, getRazorpay } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
@@ -67,13 +68,55 @@ async function postHandler(request: Request) {
 
   const userId = auth.auth.userId;
 
-  // If this is set as default, unset other defaults
   if (body.is_default) {
     await db
       .from("provider_bank_accounts")
       .update({ is_default: false })
       .eq("provider_id", userId)
       .eq("is_default", true);
+  }
+
+  let razorpayContactId: string | null = null;
+  let razorpayFundAccountId: string | null = null;
+
+  if (isRazorpayConfigured()) {
+    try {
+      const razorpay = getRazorpay();
+
+      const contact = await razorpay.api.post({
+        url: "/contacts",
+        data: { name: body.account_holder_name || "Provider", type: "vendor", reference_id: userId },
+      }) as { id: string };
+      razorpayContactId = contact.id;
+
+      if (body.account_type === "bank" && body.account_number && body.ifsc_code) {
+        const fundAccount = await razorpay.api.post({
+          url: "/fund_accounts",
+          data: {
+            contact_id: contact.id,
+            account_type: "bank_account",
+            bank_account: {
+              name: body.account_holder_name || "Provider",
+              account_number: body.account_number,
+              ifsc: body.ifsc_code,
+            },
+          },
+        }) as { id: string };
+        razorpayFundAccountId = fundAccount.id;
+      } else if (body.account_type === "upi" && body.upi_handle) {
+        const fundAccount = await razorpay.api.post({
+          url: "/fund_accounts",
+          data: {
+            contact_id: contact.id,
+            account_type: "vpa",
+            vpa: { address: body.upi_handle },
+          },
+        }) as { id: string };
+        razorpayFundAccountId = fundAccount.id;
+      }
+    } catch (err) {
+      console.error("[bank-accounts] Razorpay contact/fund creation failed:", err);
+    }
   }
 
   const { data: account, error } = await db
@@ -87,6 +130,8 @@ async function postHandler(request: Request) {
       ifsc_code: body.ifsc_code?.trim() ?? null,
       upi_handle: body.upi_handle?.trim() ?? null,
       is_default: body.is_default ?? false,
+      razorpay_contact_id: razorpayContactId,
+      razorpay_fund_account_id: razorpayFundAccountId,
     })
     .select()
     .single();

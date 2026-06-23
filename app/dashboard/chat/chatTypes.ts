@@ -18,6 +18,7 @@ export type Message = {
   content: string;
   sender_id: string;
   created_at: string;
+  status?: "sending" | "failed";
 };
 
 export type ParticipantRow = {
