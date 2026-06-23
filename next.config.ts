@@ -37,6 +37,7 @@ const supabasePublicUrl = (() => {
 
 const supabaseApiOrigin = supabaseUrl ? `${supabaseUrl.protocol}//${supabaseUrl.host}` : null;
 const supabaseStorageOrigin = process.env.SUPABASE_STORAGE_URL?.trim() || supabaseApiOrigin;
+const supabaseWsOrigin = supabaseApiOrigin ? supabaseApiOrigin.replace(/^http/, "ws") : null;
 const supabaseHostname = supabaseUrl?.hostname || "";
 const supabaseProtocol = (supabaseUrl?.protocol?.replace(":", "") || "https") as "http" | "https";
 const supabasePublicHostname = supabasePublicUrl?.hostname || supabaseHostname;
@@ -106,7 +107,8 @@ const csp = [
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `img-src 'self' data: blob: https: http:`,
   `font-src 'self' https://fonts.gstatic.com data:`,
-  `connect-src 'self' http://54.253.40.174:8000 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
+  `media-src 'self' ${supabaseApiOrigin}`,
+  `connect-src 'self' ${supabaseApiOrigin}${supabaseWsOrigin ? ` ${supabaseWsOrigin}` : ""} https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
   `frame-src https://checkout.razorpay.com https://accounts.google.com`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,

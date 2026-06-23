@@ -21,6 +21,15 @@ export function useKeyboardShortcuts(shortcuts: Shortcut[]) {
         const metaMatch = s.meta ? e.metaKey : true;
 
         if (keyMatch && ctrlMatch && metaMatch) {
+          // Don't fire unmodified single-character shortcuts when typing in inputs
+          if (!s.ctrl && !s.meta) {
+            const target = e.target as HTMLElement;
+            const isInput =
+              target.tagName === "INPUT" ||
+              target.tagName === "TEXTAREA" ||
+              target.isContentEditable;
+            if (isInput) continue;
+          }
           e.preventDefault();
           s.handler();
           return;

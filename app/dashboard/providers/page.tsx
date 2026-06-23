@@ -431,8 +431,8 @@ export default function ProvidersPage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [toasts, setToasts] = useState<ProfileToast[]>([]);
 
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const loadMoreCallbackRef = useRef<() => void>(() => {});
+  const loadMoreObserverRef = useRef<IntersectionObserver | null>(null);
   const toastTimersRef = useRef<Map<string, number>>(new Map());
 
   const mountedRef = useRef(true);
@@ -481,6 +481,10 @@ export default function ProvidersPage() {
     return () => {
       timers.forEach((timeoutId) => window.clearTimeout(timeoutId));
       timers.clear();
+      if (loadMoreObserverRef.current) {
+        loadMoreObserverRef.current.disconnect();
+        loadMoreObserverRef.current = null;
+      }
     };
   }, []);
 
@@ -567,9 +571,13 @@ export default function ProvidersPage() {
     };
   }, [pagination.hasMore, loadingMore, loading, loadProviders]);
 
-  useEffect(() => {
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
+  const sentinelRefCallback = useCallback((node: HTMLDivElement | null) => {
+    if (loadMoreObserverRef.current) {
+      loadMoreObserverRef.current.disconnect();
+      loadMoreObserverRef.current = null;
+    }
+
+    if (!node) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -578,14 +586,11 @@ export default function ProvidersPage() {
           loadMoreCallbackRef.current();
         }
       },
-      {
-        rootMargin: "150px 0px",
-        threshold: 0.1,
-      }
+      { rootMargin: "150px 0px", threshold: 0.1 },
     );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    observer.observe(node);
+    loadMoreObserverRef.current = observer;
   }, []);
 
   const filteredProviders = useMemo(() => {
@@ -674,7 +679,7 @@ export default function ProvidersPage() {
         {pagination.total > 0 && (
           <div className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
             <Users className="h-3.5 w-3.5" />
-            {pagination.total} providers
+            {pagination.total} total
           </div>
         )}
       </div>
@@ -926,7 +931,9 @@ export default function ProvidersPage() {
         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
           <span className="flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />
-            {filteredProviders.length} provider{filteredProviders.length === 1 ? "" : "s"} found
+            {pagination.total > filteredProviders.length
+              ? `Showing ${filteredProviders.length} of ${pagination.total} provider${pagination.total === 1 ? "" : "s"}`
+              : `${filteredProviders.length} provider${filteredProviders.length === 1 ? "" : "s"} found`}
             {filters.category && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--brand-50)] px-2 py-0.5 text-[var(--brand-700)]">
                 in {filters.category}
@@ -1239,7 +1246,7 @@ export default function ProvidersPage() {
       )}
 
       {!loading && !error && filteredProviders.length > 0 && (
-        <div ref={loadMoreSentinelRef} className="flex justify-center pt-6 pb-2">
+        <div ref={sentinelRefCallback} className="flex justify-center pt-6 pb-2">
           {loadingMore && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
