@@ -1,7 +1,5 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { SharedArray } from "k6/data";
-
 export const options = {
   vus: __ENV.VUS ? parseInt(__ENV.VUS) : 10,
   duration: __ENV.DURATION || "1m",
@@ -25,7 +23,7 @@ export function setup() {
   return { startedAt: Date.now() };
 }
 
-export default function () {
+export default function loadTestScenario() {
   const term = searchTerms[Math.floor(Math.random() * searchTerms.length)];
 
   const landing = http.get(`${BASE_URL}/`);

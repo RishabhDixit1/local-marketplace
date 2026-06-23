@@ -447,4 +447,13 @@ async function postHandler(request: Request) {
   );
 }
 
+async function getHandler(request: Request) {
+  const auth = await requireRequestAuth(request);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
+  }
+  return NextResponse.json({ ok: false, message: "Not implemented." }, { status: 501 });
+}
+
+export const GET = withErrorHandling(getHandler, "orders:list");
 export const POST = withErrorHandling(postHandler, "orders:create");

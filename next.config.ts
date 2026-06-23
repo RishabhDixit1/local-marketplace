@@ -108,7 +108,7 @@ const csp = [
   `img-src 'self' data: blob: https: http:`,
   `font-src 'self' https://fonts.gstatic.com data:`,
   `media-src 'self' ${supabaseApiOrigin}`,
-  `connect-src 'self' ${supabaseApiOrigin}${supabaseWsOrigin ? ` ${supabaseWsOrigin}` : ""} https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://o*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
+  `connect-src 'self' ${supabaseApiOrigin}${supabaseWsOrigin ? ` ${supabaseWsOrigin}` : ""} https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://*.sentry.io https://maps.googleapis.com https://www.google-analytics.com`,
   `frame-src https://checkout.razorpay.com https://accounts.google.com`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
