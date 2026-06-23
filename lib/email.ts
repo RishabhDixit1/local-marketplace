@@ -4,8 +4,9 @@
  * If the key is absent the function silently no-ops (won't crash the app).
  */
 
+import { FROM_EMAIL } from "@/lib/emailConfig";
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "orders@serviqapp.com";
 const APP_NAME = "ServiQ";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 

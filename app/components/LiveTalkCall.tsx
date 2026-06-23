@@ -116,7 +116,7 @@ export default function LiveTalkCall({ conversationId, userId, otherUserId, onEn
         });
 
         channel.subscribe(async (status) => {
-          if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+          if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
             console.warn(`[LiveTalk] Signaling channel ${status} — WebRTC connection may fail`);
           }
           if (status !== "SUBSCRIBED") return;

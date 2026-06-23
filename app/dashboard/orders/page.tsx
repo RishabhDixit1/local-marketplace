@@ -110,7 +110,7 @@ export default function ConsumerOrdersPage() {
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setOrdersRealtime("connected");
-        else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) setOrdersRealtime("degraded");
+        else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) setOrdersRealtime("degraded");
       });
 
     return () => {

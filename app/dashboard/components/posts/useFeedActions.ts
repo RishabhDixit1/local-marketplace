@@ -205,7 +205,7 @@ export const useFeedActions = ({
         }
       )
       .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[feed-saves] Realtime subscription ${status}`);
         }
       });

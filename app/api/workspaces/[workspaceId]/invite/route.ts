@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
+import { FROM_EMAIL } from "@/lib/emailConfig";
 
 export const runtime = "nodejs";
-
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 

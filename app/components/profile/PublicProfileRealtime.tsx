@@ -87,7 +87,7 @@ export default function PublicProfileRealtime({ profileId, roleFamily }: PublicP
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setLiveState("live");
-        } else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           setLiveState("error");
         } else if (status !== "CLOSED") {
           setLiveState("connecting");

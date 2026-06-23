@@ -160,7 +160,7 @@ export const useConnectionRequests = ({ enabled = true }: { enabled?: boolean } 
       .channel(`connection-requests-${viewerId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "connection_requests" }, scheduleReload)
       .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[connection-requests] Realtime subscription ${status}`);
         }
       });

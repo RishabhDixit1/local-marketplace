@@ -1,12 +1,11 @@
 import "server-only";
+import { FROM_EMAIL } from "@/lib/emailConfig";
 
 type EmailOptions = {
   to: string;
   subject: string;
   html: string;
 };
-
-const FROM_EMAIL = process.env.EMAIL_FROM || "info@serviqapp.com";
 
 const BACKUP_API_KEY = process.env.BACKUP_EMAIL_API_KEY || process.env.RESEND_API_KEY || "";
 

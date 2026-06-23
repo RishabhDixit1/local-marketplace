@@ -201,7 +201,7 @@ export default function PublicProfileStoreTab({ profileUserId, displayName }: Pr
         }
       )
       .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[public-store] Realtime subscription ${status}`);
         }
       });

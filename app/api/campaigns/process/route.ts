@@ -5,10 +5,9 @@ import { sendSms } from "@/lib/server/twilioClient";
 import { CronExpressionParser } from "cron-parser";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { appName } from "@/lib/branding";
+import { FROM_EMAIL } from "@/lib/emailConfig";
 
 export const runtime = "nodejs";
-
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 

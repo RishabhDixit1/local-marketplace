@@ -165,7 +165,7 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
         }
       )
       .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[unread-participants] Realtime subscription ${status}`);
         }
       });
@@ -190,7 +190,7 @@ export default function useUnreadChatCount(enabled = true, userId: string | null
         }
       )
       .subscribe((status) => {
-        if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+        if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
           console.warn(`[unread-messages] Realtime subscription ${status}`);
         }
       });

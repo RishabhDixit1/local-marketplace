@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { createOtp } from "@/lib/server/otpStore";
+import { FROM_EMAIL } from "@/lib/emailConfig";
 
 export const runtime = "nodejs";
 
@@ -98,7 +99,7 @@ async function postHandler(request: Request) {
 
   const { otp } = createOtp(email);
 
-  const fromEmail = process.env.EMAIL_FROM ?? "auth@serviqapp.com";
+  const fromEmail = FROM_EMAIL;
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const html = `<div style="font-family:Inter,-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#0f172a">

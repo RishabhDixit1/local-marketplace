@@ -147,7 +147,7 @@ export default function OrderStatusPage() {
       })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setOrderRealtimeHealth("connected");
-        else if (["CHANNEL_ERROR", "TIMED_OUT"].includes(status)) setOrderRealtimeHealth("degraded");
+        else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) setOrderRealtimeHealth("degraded");
       });
     return () => { setOrderRealtimeHealth("connected"); void supabase.removeChannel(channel); };
   }, [id]);

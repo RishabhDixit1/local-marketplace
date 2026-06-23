@@ -3,10 +3,9 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
+import { FROM_EMAIL } from "@/lib/emailConfig";
 
 export const runtime = "nodejs";
-
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@serviqapp.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://serviqapp.com";
 
