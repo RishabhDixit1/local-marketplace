@@ -39,12 +39,15 @@ export default function AuthCallbackPage() {
         if (referralCode) {
           localStorage.removeItem("referral_code");
           const { fetchAuthedJson } = await import("@/lib/clientApi");
-          await fetchAuthedJson(supabase, `/api/referrals?code=${encodeURIComponent(referralCode)}`, {
+          const res = await fetchAuthedJson(supabase, `/api/referrals?code=${encodeURIComponent(referralCode)}`, {
             method: "PATCH",
-          }).catch(() => {});
+          }) as { ok: boolean; message?: string } | null;
+          if (res && res.ok === false) {
+            console.warn("[callback] Referral redemption failed:", res.message);
+          }
         }
-      } catch {
-        // referral redemption is best-effort
+      } catch (err) {
+        console.error("[callback] Referral redemption error:", err);
       }
 
       if (!cancelled) {
@@ -52,14 +55,17 @@ export default function AuthCallbackPage() {
       }
     };
 
+    let authSubscription: { unsubscribe: () => void } | null = null;
+
     const completeLogin = async () => {
       // Register auth listener FIRST so no SIGNED_IN event is missed
       // between getSession() checking and the listener being attached.
-      supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (!cancelled && event === "SIGNED_IN" && session) {
           void redirectToDestination(session);
         }
       });
+      authSubscription = subscription;
 
       try {
         const params = new URLSearchParams(window.location.search);
@@ -117,6 +123,7 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true;
       window.clearTimeout(fallbackTimeout);
+      authSubscription?.unsubscribe();
     };
   }, [router]);
 

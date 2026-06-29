@@ -102,38 +102,56 @@ export const PATCH = withErrorHandling(async function patchHandler(request: Requ
     }
   }
 
-  if (body.action === "complete" && isRazorpayConfigured() && table === "provider_payouts") {
+  if (body.action === "complete" && isRazorpayConfigured()) {
     try {
       const razorpay = getRazorpay();
+      let fundAccountId: string | null = null;
+      let amountPaise = 0;
 
-      const { data: payout } = await db
-        .from("provider_payouts")
-        .select("*, provider_bank_accounts!inner(razorpay_fund_account_id)")
-        .eq("id", body.payoutId)
-        .single();
+      if (table === "provider_payouts") {
+        const { data: payout } = await db
+          .from("provider_payouts")
+          .select("*, provider_bank_accounts!inner(razorpay_fund_account_id)")
+          .eq("id", body.payoutId)
+          .single<Record<string, unknown>>();
 
-      if (payout?.provider_bank_accounts?.razorpay_fund_account_id) {
+        fundAccountId = (payout?.provider_bank_accounts as Record<string, unknown> | undefined)?.razorpay_fund_account_id as string ?? null;
+        amountPaise = (payout?.net_amount_paise as number) ?? 0;
+      } else if (table === "referral_payouts") {
+        const { data: payout } = await db
+          .from("referral_payouts")
+          .select("user_id, amount_paise")
+          .eq("id", body.payoutId)
+          .single<{ user_id: string; amount_paise: number }>();
+
+        if (payout) {
+          amountPaise = payout.amount_paise;
+          const { data: account } = await db
+            .from("provider_bank_accounts")
+            .select("razorpay_fund_account_id")
+            .eq("provider_id", payout.user_id)
+            .eq("is_default", true)
+            .not("razorpay_fund_account_id", "is", null)
+            .maybeSingle<{ razorpay_fund_account_id: string }>();
+
+          fundAccountId = account?.razorpay_fund_account_id ?? null;
+        }
+      }
+
+      if (fundAccountId && amountPaise > 0) {
         const rzPayout = await razorpay.api.post({
           url: "/payouts",
           data: {
             account_number: process.env.RAZORPAY_ACCOUNT_NUMBER ?? "",
-            fund_account_id: payout.provider_bank_accounts.razorpay_fund_account_id,
-            amount: payout.net_amount_paise,
+            fund_account_id: fundAccountId,
+            amount: amountPaise,
             currency: "INR",
             mode: "NEFT",
             purpose: "payout",
-            reference_id: `payout_${body.payoutId}`,
-            notes: { provider_payout_id: body.payoutId },
+            reference_id: `${table}_${body.payoutId}`,
+            notes: { [`${table}_id`]: body.payoutId },
           },
         }) as { id: string };
-
-        await db
-          .from("provider_payouts")
-          .update({
-            razorpay_payout_id: rzPayout.id,
-            processed_at: new Date().toISOString(),
-          })
-          .eq("id", body.payoutId);
 
         await db
           .from(table)

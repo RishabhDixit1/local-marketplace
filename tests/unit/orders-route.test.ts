@@ -75,7 +75,7 @@ describe("POST /api/orders", () => {
     sendPushToUserMock.mockResolvedValue({ sent: 0, failed: 0 });
   });
 
-  it("persists checkout address, notes, and payment references in order metadata", async () => {
+     it("persists checkout address and notes in order metadata (payment refs stripped)", async () => {
     requireRequestAuthMock.mockResolvedValue(authContext);
     sendOrderEmailMock.mockResolvedValue(undefined);
 
@@ -150,9 +150,6 @@ describe("POST /api/orders", () => {
               notes: "Call on arrival",
               fulfillment_method: "platform",
               payment_method: "razorpay",
-              payment_status: "processing",
-              razorpay_order_id: "rzp_order_123",
-              razorpay_payment_id: "rzp_payment_123",
             },
           ],
         }),
@@ -187,9 +184,6 @@ describe("POST /api/orders", () => {
           fulfillment_status: "platform_coordination_pending",
           fulfillment_status_label: "ServiQ coordination pending",
           payment_method: "razorpay",
-          payment_status: "processing",
-          razorpay_order_id: "rzp_order_123",
-          razorpay_payment_id: "rzp_payment_123",
         }),
       }),
     ]);

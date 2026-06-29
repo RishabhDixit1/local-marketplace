@@ -12,7 +12,7 @@ const getSecret = (): string => {
   return key;
 };
 
-const SESSION_EXPIRY_SECONDS = 400 * 24 * 60 * 60;
+const SESSION_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 
 export function createLocalAuthToken(userId: string, email: string): string {
   return jwt.sign(
@@ -97,7 +97,7 @@ export function buildSupabaseSessionCookieValue(
     options: {
       path: "/",
       sameSite: "lax",
-      httpOnly: false,
+      httpOnly: true,
       maxAge: SESSION_EXPIRY_SECONDS,
     },
   };

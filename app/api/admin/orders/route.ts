@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
@@ -132,6 +133,23 @@ export const PATCH = withErrorHandling(async (request: Request) => {
 
   if (body.action === "refund") {
     const currentMetadata = (order.metadata as Record<string, unknown>) ?? {};
+    const razorpayPaymentId = currentMetadata.razorpay_payment_id as string | undefined;
+    const pricePaise = order.price != null ? Math.round((order.price as number) * 100) : 0;
+
+    let refundId: string | null = null;
+    let refundStatus: string | null = null;
+
+    if (razorpayPaymentId && isRazorpayConfigured()) {
+      const refund = await createRefund(razorpayPaymentId, pricePaise, {
+        order_id: body.id,
+        reason: "Admin refund",
+        refunded_by: auth.auth.userId,
+      });
+      if (refund) {
+        refundId = refund.id;
+        refundStatus = refund.status;
+      }
+    }
 
     await db.from("orders").update({
       status: "cancelled",
@@ -140,6 +158,8 @@ export const PATCH = withErrorHandling(async (request: Request) => {
       metadata: {
         ...currentMetadata,
         payment_status: "refunded",
+        refund_id: refundId,
+        refund_status: refundStatus,
         refunded_at: new Date().toISOString(),
         refunded_by: auth.auth.userId,
         admin_refund: true,
@@ -148,7 +168,7 @@ export const PATCH = withErrorHandling(async (request: Request) => {
       },
     }).eq("id", body.id);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, refund_id: refundId });
   }
 
   if (body.action === "cancel") {

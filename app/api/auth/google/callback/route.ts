@@ -13,7 +13,7 @@ async function getHandler(request: Request) {
 
   if (error || !code) {
     const reason = error || "No code provided";
-    return redirectWithError(stateRaw, `Google auth failed: ${reason}`);
+    return redirectWithError(request, stateRaw, `Google auth failed: ${reason}`);
   }
 
   let userId: string | null = null;
@@ -27,17 +27,17 @@ async function getHandler(request: Request) {
   }
 
   if (!userId) {
-    return redirectWithError(stateRaw, "Missing user ID in state");
+    return redirectWithError(request, stateRaw, "Missing user ID in state");
   }
 
   const tokenResult = await exchangeGoogleCode(code);
   if (!tokenResult.ok) {
-    return redirectWithError(stateRaw, tokenResult.error);
+    return redirectWithError(request, stateRaw, tokenResult.error);
   }
 
   const db = createSupabaseAdminClient();
   if (!db) {
-    return redirectWithError(stateRaw, "No DB client");
+    return redirectWithError(request, stateRaw, "No DB client");
   }
 
   const { error: upsertError } = await db.from("google_business_tokens").upsert({
@@ -52,7 +52,7 @@ async function getHandler(request: Request) {
   });
 
   if (upsertError) {
-    return redirectWithError(stateRaw, `Token storage failed: ${upsertError.message}`);
+    return redirectWithError(request, stateRaw, `Token storage failed: ${upsertError.message}`);
   }
 
   return NextResponse.redirect(new URL(redirectTo, request.url));
@@ -60,7 +60,7 @@ async function getHandler(request: Request) {
 
 export const GET = withErrorHandling(getHandler, "auth:google-callback");
 
-function redirectWithError(stateRaw: string | null, message: string) {
+function redirectWithError(request: Request, stateRaw: string | null, message: string) {
   let redirectTo = "/dashboard/settings";
   if (stateRaw) {
     try {
@@ -68,7 +68,8 @@ function redirectWithError(stateRaw: string | null, message: string) {
       redirectTo = state.redirectTo || "/dashboard/settings";
     } catch { /* ignore */ }
   }
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
   return NextResponse.redirect(
-    new URL(`${redirectTo}?error=${encodeURIComponent(message)}`, "https://www.serviq.in")
+    new URL(`${redirectTo}?error=${encodeURIComponent(message)}`, siteUrl)
   );
 }

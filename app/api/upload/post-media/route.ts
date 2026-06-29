@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { getPostMediaLimitBytes, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { validateFileMagicBytes } from "@/lib/server/fileValidation";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,11 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "Only image, video, or audio uploads are allowed." }, { status: 400 });
   }
 
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  if (!validateFileMagicBytes(buffer, file.type)) {
+    return NextResponse.json({ ok: false, message: "File content does not match its declared type." }, { status: 400 });
+  }
+
   const limitBytes = getPostMediaLimitBytes(file.type);
   if (file.size > limitBytes) {
     return NextResponse.json({ ok: false, message: `File too large. Max ${formatUploadLimit(limitBytes)}.` }, { status: 400 });
@@ -62,9 +68,9 @@ async function postHandler(request: Request) {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
   const safeType = file.type.split("/")[0] || "file";
   const path = `posts/${authResult.auth.userId}/${safeType}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const uploadBuf = Buffer.from(buffer);
 
-  const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
+  const { error } = await admin.storage.from(BUCKET).upload(path, uploadBuf, {
     contentType: file.type,
     cacheControl: STORAGE_CACHE_SECONDS,
     upsert: false,

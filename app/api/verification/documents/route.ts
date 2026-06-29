@@ -34,7 +34,7 @@ async function postHandler(request: Request) {
 
   const { error: uploadError } = await db.storage
     .from("verification-docs")
-    .upload(fileName, file, { contentType: file.type, upsert: true });
+    .upload(fileName, file, { contentType: file.type });
 
   if (uploadError) {
     return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
+import { verifyCronSecret, cronAuthFailure } from "@/lib/server/requestAuth";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!verifyCronSecret(request)) return cronAuthFailure();
+
   const db = createSupabaseAdminClient();
   if (!db) {
     return NextResponse.json({ ok: false, message: "No DB client" }, { status: 500 });

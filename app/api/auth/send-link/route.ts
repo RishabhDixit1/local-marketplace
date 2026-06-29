@@ -33,7 +33,7 @@ const BUILTIN_BLOCKED_MAGIC_LINK_DOMAINS = new Set([
 
 type SendLinkBody = { email?: string; redirectTo?: string };
 
-const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isEmailLike = (value: string): boolean => /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(value);
 const normalizeRecipientEntry = (value: string) => value.trim().toLowerCase();
 const parseRecipientList = (value: string | undefined | null) =>
   new Set(
@@ -82,7 +82,8 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const rateLimitCheck = await applyRateLimit(null, "auth:send-link", AUTH_ROUTE_CONFIG);
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const rateLimitCheck = await applyRateLimit(ip, "auth:send-link", AUTH_ROUTE_CONFIG);
   if (rateLimitCheck.limited) {
     return rateLimitCheck.response as NextResponse;
   }
@@ -97,7 +98,13 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: "Email delivery unavailable. Resend is not configured." }, { status: 502 });
   }
 
-  const { otp } = createOtp(email);
+  let otp: string;
+  try {
+    ({ otp } = await createOtp(email));
+  } catch (otpErr) {
+    console.error("[send-link] OTP creation failed:", otpErr);
+    return NextResponse.json({ ok: false, error: "Unable to generate verification code." }, { status: 500 });
+  }
 
   const fromEmail = FROM_EMAIL;
   const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

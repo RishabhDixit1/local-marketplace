@@ -19,9 +19,6 @@ type OrderRequest = {
   address?: string;
   notes?: string;
   payment_method?: "cod" | "razorpay";
-  payment_status?: string;
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
   fulfillment_method?: OrderFulfillmentMethod;
 };
 
@@ -170,15 +167,7 @@ async function postHandler(request: Request) {
     if (item.fulfillment_method && !isOrderFulfillmentMethod(item.fulfillment_method)) {
       return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Invalid fulfillment method." }, { status: 400 });
     }
-    const paymentStatus = trimText(item.payment_status);
-    if (paymentStatus.length > 64) {
-      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Payment status is too long." }, { status: 400 });
-    }
-    const razorpayOrderId = trimText(item.razorpay_order_id);
-    const razorpayPaymentId = trimText(item.razorpay_payment_id);
-    if (razorpayOrderId.length > 120 || razorpayPaymentId.length > 120) {
-      return NextResponse.json({ ok: false, code: "BAD_REQUEST", message: "Payment identifiers are too long." }, { status: 400 });
-    }
+
   }
 
   // -- Verify providerId exists --
@@ -264,17 +253,11 @@ async function postHandler(request: Request) {
 
     const address = clampText(item.address, 500);
     const notes = clampText(item.notes, 1000);
-    const paymentStatus = clampText(item.payment_status, 64);
-    const razorpayOrderId = clampText(item.razorpay_order_id, 120);
-    const razorpayPaymentId = clampText(item.razorpay_payment_id, 120);
 
     if (address) metadata.address = address;
     if (notes) metadata.notes = notes;
     if (item.payment_method) metadata.payment_method = item.payment_method;
     if (item.fulfillment_method) metadata.fulfillment_method = item.fulfillment_method;
-    if (paymentStatus) metadata.payment_status = paymentStatus;
-    if (razorpayOrderId) metadata.razorpay_order_id = razorpayOrderId;
-    if (razorpayPaymentId) metadata.razorpay_payment_id = razorpayPaymentId;
 
     const insert: Record<string, unknown> = {
       consumer_id: authResult.auth.userId,

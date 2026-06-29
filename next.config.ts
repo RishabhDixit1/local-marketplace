@@ -164,7 +164,6 @@ const createNextConfig = (phase: string): NextConfig => ({
         : []),
     ],
     dangerouslyAllowLocalIP: phase === PHASE_DEVELOPMENT_SERVER,
-    unoptimized: true,
   },
   compress: true,
   poweredByHeader: false,

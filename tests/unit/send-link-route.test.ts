@@ -28,6 +28,10 @@ vi.mock("@/lib/server/rateLimit", () => ({
   rateLimitResponse: () => new Response(null, { status: 429 }),
 }));
 
+vi.mock("@/lib/server/otpStore", () => ({
+  createOtp: () => Promise.resolve({ otp: "123456", userId: "test-user-id" }),
+}));
+
 const BASE_ENV: Record<string, string> = {
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",

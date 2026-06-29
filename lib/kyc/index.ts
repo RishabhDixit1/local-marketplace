@@ -1,4 +1,4 @@
-export { getKycProvider, setKycProvider } from "./provider";
+export { getKycProvider, setKycProvider, isKycConfigured } from "./provider";
 export type { KycProvider } from "./provider";
 export { MockKycProvider } from "./mock";
 export type {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
-import { getKycProvider } from "@/lib/kyc";
+import { getKycProvider, isKycConfigured } from "@/lib/kyc";
 
 export const runtime = "nodejs";
 
@@ -34,6 +34,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: "documentType and documentNumber are required." },
       { status: 400 },
+    );
+  }
+
+  if (process.env.NODE_ENV === "production" && !isKycConfigured()) {
+    return NextResponse.json(
+      { ok: false, message: "KYC verification is not available. Contact support." },
+      { status: 503 },
     );
   }
 

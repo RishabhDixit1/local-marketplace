@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { LISTING_IMAGE_MAX_BYTES, formatUploadLimit, STORAGE_CACHE_SECONDS } from "@/lib/mediaLimits";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { validateFileMagicBytes } from "@/lib/server/fileValidation";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,11 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "Only JPEG, PNG, or WebP images are allowed." }, { status: 400 });
   }
 
+  const buffer = new Uint8Array(await file.arrayBuffer());
+  if (!validateFileMagicBytes(buffer, file.type)) {
+    return NextResponse.json({ ok: false, message: "File content does not match its declared type." }, { status: 400 });
+  }
+
   if (file.size > LISTING_IMAGE_MAX_BYTES) {
     return NextResponse.json({ ok: false, message: `File too large. Max ${formatUploadLimit(LISTING_IMAGE_MAX_BYTES)}.` }, { status: 400 });
   }
@@ -46,9 +52,9 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, message: "Server config error." }, { status: 500 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const uploadBuf = Buffer.from(buffer);
 
-  const { error } = await admin.storage.from(BUCKET).upload(path, buffer, {
+  const { error } = await admin.storage.from(BUCKET).upload(path, uploadBuf, {
     contentType: file.type,
     cacheControl: STORAGE_CACHE_SECONDS,
     upsert: false,

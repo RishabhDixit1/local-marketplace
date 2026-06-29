@@ -36,7 +36,8 @@ export default function SetPasswordPage() {
     setErrorMessage("");
     const pw = newPassword.trim();
     const confirm = confirmPassword.trim();
-    if (pw.length < 6) { setErrorMessage("Password must be at least 6 characters."); return; }
+    if (pw.length < 8) { setErrorMessage("Password must be at least 8 characters."); return; }
+    if (!/[a-zA-Z]/.test(pw) || !/\d/.test(pw)) { setErrorMessage("Password must contain at least one letter and one number."); return; }
     if (pw !== confirm) { setErrorMessage("Passwords do not match."); return; }
     setLoading(true);
     try {

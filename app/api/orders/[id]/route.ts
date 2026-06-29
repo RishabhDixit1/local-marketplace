@@ -6,6 +6,7 @@ import { withErrorHandling } from "@/lib/server/errorHandler";
 import { canTransitionOrderStatus, getOrderStatusLabel } from "@/lib/orderWorkflow";
 import { sendOrderEmail, shouldSkipOrderEmail } from "@/lib/email";
 import { sendPushToUser } from "@/lib/server/pushNotifications";
+import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
@@ -196,6 +197,39 @@ async function patchHandler(request: Request, { params }: { params: Promise<{ id
         });
       } catch (err) {
         console.error("[order-status-notification] failed for order", id, err);
+      }
+    })();
+  }
+
+  // If cancelled, process refund for paid orders
+  if (status === "cancelled") {
+    void (async () => {
+      try {
+        const meta = ex.metadata || {};
+        const paymentStatus = meta.payment_status as string | undefined;
+        const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
+
+        if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
+          const amountPaise = ex.price != null ? Math.round(ex.price * 100) : 0;
+          const refund = await createRefund(razorpayPaymentId, amountPaise, {
+            order_id: id,
+            reason: `Order cancelled (status transition from ${previousStatus})`,
+          });
+
+          if (refund) {
+            await admin.from("orders").update({
+              metadata: {
+                ...meta,
+                payment_status: "refunded",
+                refund_id: refund.id,
+                refund_status: refund.status,
+                refunded_at: new Date().toISOString(),
+              },
+            }).eq("id", id);
+          }
+        }
+      } catch (err) {
+        console.error("[order-refund] failed for order", id, err);
       }
     })();
   }

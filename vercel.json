@@ -42,7 +42,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "https://www.serviqapp.com"
         },
         {
           "key": "Access-Control-Allow-Methods",

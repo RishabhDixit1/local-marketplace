@@ -1,6 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { CheckCircle2 } from "lucide-react";
 
 const STEPS = [
@@ -12,7 +14,32 @@ const STEPS = [
 
 export default function ProviderOnboardingLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
   const currentIdx = STEPS.findIndex((s) => pathname.startsWith(s.path));
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (!session?.user) {
+        router.replace("/");
+        return;
+      }
+      setChecking(false);
+    });
+    return () => { cancelled = true; };
+  }, [router]);
+
+  if (checking) {
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-xl px-4 py-8">
+        <div className="flex items-center justify-center py-20">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-900)]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-xl px-4 py-8">

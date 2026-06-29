@@ -1,40 +1,50 @@
-interface OtpEntry {
-  email: string;
-  otp: string;
-  expiresAt: number;
-  userId: string;
-}
+import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 
-const store = new Map<string, OtpEntry>();
+const TTL_SECONDS = 10 * 60;
 
-const TTL = 10 * 60 * 1000;
+export async function createOtp(email: string): Promise<{ otp: string; userId: string }> {
+  const db = createSupabaseAdminClient();
+  if (!db) throw new Error("OTP store: Supabase admin client unavailable");
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (entry.expiresAt < now) store.delete(key);
-  }
-}, 60 * 1000);
-
-export const createOtp = (email: string): { otp: string; userId: string } => {
   const otp = String(Math.floor(100000 + Math.random() * 900000));
   const userId = crypto.randomUUID();
-  store.set(email, { email, otp, expiresAt: Date.now() + TTL, userId });
+  const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString();
+
+  const { error } = await db.from("otp_codes").insert({
+    email,
+    otp,
+    user_id: userId,
+    expires_at: expiresAt,
+  });
+
+  if (error) throw new Error(`Failed to store OTP: ${error.message}`);
+
   return { otp, userId };
-};
+}
 
-export const verifyOtp = (email: string, otp: string): { userId: string } | null => {
-  const entry = store.get(email);
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) {
-    store.delete(email);
-    return null;
-  }
-  if (entry.otp !== otp) return null;
-  store.delete(email);
-  return { userId: entry.userId };
-};
+export async function verifyOtp(email: string, otp: string): Promise<{ userId: string } | null> {
+  const db = createSupabaseAdminClient();
+  if (!db) return null;
 
-export const clearOtp = (email: string) => {
-  store.delete(email);
-};
+  const { data, error } = await db
+    .from("otp_codes")
+    .select("id, user_id")
+    .eq("email", email)
+    .eq("otp", otp)
+    .eq("used", false)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  await db.from("otp_codes").update({ used: true }).eq("id", data.id);
+
+  return { userId: data.user_id };
+}
+
+export async function clearOtp(email: string): Promise<void> {
+  const db = createSupabaseAdminClient();
+  if (!db) return;
+
+  await db.from("otp_codes").update({ used: true }).eq("email", email).eq("used", false);
+}

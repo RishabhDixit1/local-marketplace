@@ -76,19 +76,29 @@ export const requireRequestAuth = async (
 
   // Check if user is suspended
   const admin = createSupabaseAdminClient();
-  if (admin) {
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("is_suspended")
-      .eq("id", data.user.id)
-      .maybeSingle<{ is_suspended: boolean | null }>();
-    if (profile?.is_suspended === true) {
-      return {
-        ok: false,
-        status: 403,
-        message: "Account suspended. Contact support for assistance.",
-      };
-    }
+  if (!admin) {
+    console.error(
+      "[requestAuth] Admin client unavailable — cannot verify suspension status for user",
+      data.user.id,
+    );
+    return {
+      ok: false,
+      status: 500,
+      message: "Auth service unavailable. Try again later.",
+    };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("is_suspended")
+    .eq("id", data.user.id)
+    .maybeSingle<{ is_suspended: boolean | null }>();
+  if (profile?.is_suspended === true) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Account suspended. Contact support for assistance.",
+    };
   }
 
   return {
@@ -113,7 +123,7 @@ export const isAdminEmail = (email: string): boolean => {
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) return false;
 
-  const allowlist = process.env.ADMIN_EMAIL_ALLOWLIST || process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
+  const allowlist = process.env.ADMIN_EMAIL_ALLOWLIST || "";
   if (!allowlist.trim()) return false;
 
   const admins = parseEmailList(allowlist);
@@ -125,8 +135,8 @@ export const CRON_SECRET_HEADER = "x-cron-secret";
 export const verifyCronSecret = (request: Request): boolean => {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    console.warn("CRON_SECRET env var is not set — cron routes are unprotected!");
-    return true;
+    console.error("[cron] CRON_SECRET env var is not set — denying all cron requests");
+    return false;
   }
   const headerValue = request.headers.get(CRON_SECRET_HEADER) || "";
   return headerValue === secret;

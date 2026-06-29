@@ -101,6 +101,7 @@ export default function ChatPage() {
   const [quotePanelDismissed, setQuotePanelDismissed] = useState(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationIds, setConversationIds] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [input, setInput] = useState<string>(draftMessage);
@@ -358,10 +359,11 @@ export default function ChatPage() {
         return;
       }
 
-      const conversationIds = myParticipantRows.map((row) => row.conversation_id);
+      const ids = myParticipantRows.map((row) => row.conversation_id);
+      setConversationIds(ids);
       const messageScanLimit = Math.min(
         CONVERSATION_MESSAGE_SCAN_MAX,
-        Math.max(CONVERSATION_MESSAGE_SCAN_MIN, conversationIds.length * CONVERSATION_MESSAGE_SCAN_PER_CHAT)
+        Math.max(CONVERSATION_MESSAGE_SCAN_MIN, ids.length * CONVERSATION_MESSAGE_SCAN_PER_CHAT)
       );
 
       const [{ data: allParticipantRows, error: allParticipantsError }, { data: messageRows, error: messagesError }] =
@@ -369,11 +371,11 @@ export default function ChatPage() {
           supabase
             .from("conversation_participants")
             .select("conversation_id,user_id")
-            .in("conversation_id", conversationIds),
+            .in("conversation_id", ids),
           supabase
             .from("messages")
             .select("id,conversation_id,content,created_at,sender_id")
-            .in("conversation_id", conversationIds)
+            .in("conversation_id", ids)
             .order("created_at", { ascending: false })
             .limit(messageScanLimit),
         ]);
@@ -427,7 +429,7 @@ export default function ChatPage() {
         }
       });
 
-      const nextConversations: Conversation[] = conversationIds.map((conversationId) => {
+      const nextConversations: Conversation[] = ids.map((conversationId) => {
         const users = participantRows.filter((row) => row.conversation_id === conversationId);
         const otherUser = users.find((row) => row.user_id !== userId) || null;
         const profile = otherUser ? profilesById.get(otherUser.user_id) : null;
@@ -845,6 +847,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!userId) return;
 
+    const filter = conversationIds.length > 0 ? `conversation_id=in.(${conversationIds.join(",")})` : undefined;
+
     const realtimeChannel = supabase
       .channel(`chat-live-${userId}`)
       .on(
@@ -853,6 +857,7 @@ export default function ChatPage() {
           event: "INSERT",
           schema: "public",
           table: "messages",
+          filter,
         },
         (payload) => {
           const newMessage = payload.new as Message;
@@ -935,7 +940,7 @@ export default function ChatPage() {
       supabase.removeChannel(realtimeChannel);
       setStreamConnection("offline");
     };
-  }, [loadConversations, markConversationAsRead, supportsReadReceipts, userId]);
+  }, [loadConversations, markConversationAsRead, supportsReadReceipts, userId, conversationIds]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

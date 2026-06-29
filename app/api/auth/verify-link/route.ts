@@ -6,41 +6,9 @@ import {
 } from "@/lib/server/supabaseClients";
 import { buildSupabaseSessionCookieValue } from "@/lib/server/customAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { applyRateLimit, AUTH_ROUTE_CONFIG } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
-
-async function getHandler(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email")?.trim().toLowerCase() ?? "";
-  const otp = searchParams.get("otp")?.trim() ?? "";
-
-  if (!email || !otp) {
-    return NextResponse.redirect(new URL("/?error=missing_params", request.url));
-  }
-
-  const result = verifyOtp(email, otp);
-  if (!result) {
-    return NextResponse.redirect(new URL("/?error=invalid_or_expired_code", request.url));
-  }
-
-  // Attempt to create a real GoTrue session first
-  const session = await buildGoTrueSession(email);
-  if (session) {
-    const response = NextResponse.redirect(new URL("/", request.url));
-    const { name, value, options } = buildSupabaseSessionCookieValue(session.user.id, email);
-    response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
-    return response;
-  }
-
-  // Fallback: local JWT if GoTrue session creation fails
-  const goTrueUser = await ensureGoTrueUser(email);
-  const fallbackUserId = goTrueUser?.id ?? result.userId;
-  const cookie = buildSupabaseSessionCookieValue(fallbackUserId, email);
-  const response = NextResponse.redirect(new URL("/", request.url));
-  response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
-
-  return response;
-}
 
 async function ensureGoTrueUser(
   email: string,
@@ -150,9 +118,26 @@ async function postHandler(request: Request) {
     return NextResponse.json({ ok: false, error: "Email and code are required." }, { status: 400 });
   }
 
-  const result = verifyOtp(email, otp);
+  const result = await verifyOtp(email, otp);
   if (!result) {
     return NextResponse.json({ ok: false, error: "Invalid or expired code." }, { status: 401 });
+  }
+
+  // Rate-limit user creation
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const rateLimitCheck = await applyRateLimit(ip, "auth:verify-link-user-create", AUTH_ROUTE_CONFIG);
+  if (rateLimitCheck.limited) {
+    return rateLimitCheck.response as NextResponse;
+  }
+
+  // Domain allowlist check when AUTH_ALLOWED_DOMAINS is set
+  const allowedDomains = process.env.AUTH_ALLOWED_DOMAINS;
+  if (allowedDomains) {
+    const domains = allowedDomains.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
+    const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
+    if (domains.length > 0 && !domains.includes(emailDomain)) {
+      return NextResponse.json({ ok: false, error: "This email domain is not allowed." }, { status: 403 });
+    }
   }
 
   const emailLowered = email;
@@ -206,5 +191,4 @@ async function postHandler(request: Request) {
   return response;
 }
 
-export const GET = withErrorHandling(getHandler, "auth:verify-link");
 export const POST = withErrorHandling(postHandler, "auth:verify-link");

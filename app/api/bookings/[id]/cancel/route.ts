@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { withErrorHandling } from "@/lib/server/errorHandler";
+import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
@@ -59,6 +60,61 @@ async function postHandler(request: Request, { params }: { params: Promise<{ id:
 
   if (error) {
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
+  }
+
+  // Propagate cancellation to parent order
+  if (existing.order_id) {
+    void (async () => {
+      try {
+        const { data: order } = await db
+          .from("orders")
+          .select("id, status, price, metadata")
+          .eq("id", existing.order_id)
+          .single<{ id: string; status: string; price: number | null; metadata: Record<string, unknown> }>();
+
+        if (order && order.status !== "cancelled" && order.status !== "closed") {
+          const meta = order.metadata || {};
+          const razorpayPaymentId = meta.razorpay_payment_id as string | undefined;
+          const paymentStatus = meta.payment_status as string | undefined;
+
+          await db.from("orders").update({
+            status: "cancelled",
+            metadata: {
+              ...meta,
+              cancelled_via_booking: true,
+              cancelled_booking_id: bookingId,
+            },
+            updated_at: new Date().toISOString(),
+          }).eq("id", existing.order_id);
+
+          // Refund if paid
+          if (paymentStatus === "paid" && razorpayPaymentId && isRazorpayConfigured()) {
+            const amountPaise = order.price != null ? Math.round(order.price * 100) : 0;
+            const refund = await createRefund(razorpayPaymentId, amountPaise, {
+              order_id: existing.order_id,
+              reason: "Booking cancelled",
+            });
+            if (refund) {
+              await db.from("orders").update({
+                platform_fee_paise: 0,
+                provider_payout_paise: 0,
+                metadata: {
+                  ...meta,
+                  cancelled_via_booking: true,
+                  cancelled_booking_id: bookingId,
+                  payment_status: "refunded",
+                  refund_id: refund.id,
+                  refund_status: refund.status,
+                  refunded_at: new Date().toISOString(),
+                },
+              }).eq("id", existing.order_id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[booking-cancel] failed to update parent order", existing.order_id, err);
+      }
+    })();
   }
 
   return NextResponse.json({ ok: true, status: "cancelled" });

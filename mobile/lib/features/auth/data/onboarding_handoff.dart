@@ -89,7 +89,7 @@ extension MobileAuthMethodDetails on MobileAuthMethod {
 }
 
 final onboardingHandoffStoreProvider = Provider<OnboardingHandoffStore>((ref) {
-  return MemoryOnboardingHandoffStore();
+  return SharedPreferencesOnboardingHandoffStore.uninitialized();
 });
 
 final onboardingHandoffControllerProvider =

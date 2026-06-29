@@ -272,7 +272,6 @@ class MobileAuthService {
   Future<void> sendPhoneOtp(String phone) async {
     await _client.auth.signInWithOtp(
       phone: phone.trim(),
-      shouldCreateUser: true,
     );
   }
 

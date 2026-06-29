@@ -46,11 +46,15 @@ export const ensureProfileForUser = async (user: User) => {
   if (Object.keys(patch).length > 1 || !existingProfile) {
     for (const payload of bootstrapUpsertVariants(patch)) {
       const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-      if (!error) break;
+      if (!error) {
+        bootstrappedUserIds.add(user.id);
+        break;
+      }
     }
+  } else {
+    bootstrappedUserIds.add(user.id);
   }
 
-  bootstrappedUserIds.add(user.id);
   return fetchProfileByUserId(user.id, user);
 };
 

@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabaseClients";
 import { isAdminEmail, requireRequestAuth } from "@/lib/server/requestAuth";
 import { withErrorHandling } from "@/lib/server/errorHandler";
 import { applyRateLimit, WRITE_ROUTE_CONFIG } from "@/lib/server/rateLimit";
+import { createRefund, isRazorpayConfigured } from "@/lib/server/razorpay";
 
 export const runtime = "nodejs";
 
@@ -102,18 +103,37 @@ export const PATCH = withErrorHandling(async (request: Request) => {
     }).eq("id", body.id)
   );
 
-  // 2. If resolved for consumer, reverse the provider payout
+  // 2. If resolved for consumer, reverse the provider payout and call Razorpay refund
   if (body.action === "resolve_for_consumer") {
     const orderId = order.id as string;
+    const orderMeta = (order.metadata as Record<string, unknown>) ?? {};
+    const razorpayPaymentId = orderMeta.razorpay_payment_id as string | undefined;
+    const pricePaise = order.price != null ? Math.round((order.price as number) * 100) : 0;
 
-    // Refund: reset platform_fee and provider_payout to 0 (full refund to consumer)
+    let refundId: string | null = null;
+    let refundStatus: string | null = null;
+
+    if (razorpayPaymentId && isRazorpayConfigured()) {
+      const refund = await createRefund(razorpayPaymentId, pricePaise, {
+        order_id: orderId,
+        reason: "Dispute resolved for consumer",
+        resolved_by: auth.auth.userId,
+      });
+      if (refund) {
+        refundId = refund.id;
+        refundStatus = refund.status;
+      }
+    }
+
     updates.push(
       db.from("orders").update({
         platform_fee_paise: 0,
         provider_payout_paise: 0,
         metadata: {
-          ...((order.metadata as Record<string, unknown>) ?? {}),
+          ...orderMeta,
           refunded_via_dispute: true,
+          refund_id: refundId,
+          refund_status: refundStatus,
           refunded_at: new Date().toISOString(),
           refunded_by: auth.auth.userId,
           original_platform_fee_paise: order.platform_fee_paise,
