@@ -16,17 +16,29 @@ export type ActionResult = {
   suggestions?: string[];
 };
 
+function toSearchLabel(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => {
+      if (w.length <= 2) return w.toUpperCase();
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(" ");
+}
+
 function buildSearchUrl(intent: ParsedIntent): string {
   const queryParts: string[] = [];
 
+  const url = new URL("/search", "http://localhost");
+
   if (intent.category) {
-    const label = intent.category.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    const label = toSearchLabel(intent.category);
     queryParts.push(label);
+    url.searchParams.set("category", label);
   }
 
   if (intent.location) queryParts.push(`near ${intent.location}`);
 
-  if (intent.urgency === "now") queryParts.push("urgent");
   if (intent.budget.max) queryParts.push(`under ${intent.budget.max}`);
   if (intent.budget.min) queryParts.push(`above ${intent.budget.min}`);
 
@@ -34,7 +46,9 @@ function buildSearchUrl(intent: ParsedIntent): string {
     ? queryParts.join(" ")
     : intent.keywords.slice(0, 5).join(" ");
 
-  return `/search?q=${encodeURIComponent(query)}`;
+  url.searchParams.set("q", query);
+
+  return url.pathname + url.search;
 }
 
 function handleSearch(intent: ParsedIntent, _context: AgentContext): ActionResult {
