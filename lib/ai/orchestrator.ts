@@ -13,6 +13,7 @@ export type ActionResult = {
   action: ParsedIntent["action"];
   redirect?: string;
   data?: Record<string, unknown>;
+  category?: string;
   suggestions?: string[];
 };
 
@@ -65,7 +66,7 @@ function handleSearch(intent: ParsedIntent, _context: AgentContext): ActionResul
         "Browse all categories",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, suggestions };
+  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions };
 }
 
 function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
@@ -82,7 +83,7 @@ function handleBuy(intent: ParsedIntent, _context: AgentContext): ActionResult {
         "Daily needs with home delivery",
       ];
 
-  return { response: intent.response, action: intent.action, redirect: url, suggestions };
+  return { response: intent.response, action: intent.action, redirect: url, data: intent.category ? { category: intent.category } : undefined, category: intent.category || undefined, suggestions };
 }
 
 function handlePostNeed(intent: ParsedIntent, _context: AgentContext): ActionResult {

@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   Loader2,
+  MapPin,
   Search,
   Sparkles,
+  Star,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -15,11 +18,22 @@ import {
 const STORAGE_KEY = "serviq-market-recent";
 const MAX_RECENT = 5;
 
+type SlimProvider = {
+  id: string;
+  name: string;
+  location: string;
+  avatarUrl: string;
+  bio: string;
+  services: string[];
+  rating: number | null;
+  reviewCount: number;
+};
+
 type AiResponse = {
   response: string;
   action: string;
   redirect: string | null;
-  data: Record<string, unknown> | null;
+  data: { providers?: SlimProvider[] } | null;
   suggestions: string[];
 };
 
@@ -255,7 +269,7 @@ export function MarketAiFloating() {
                               className="inline-flex items-center gap-1 rounded-full bg-[var(--brand-500)] px-3 py-1 text-xs font-semibold text-white hover:bg-[var(--brand-600)]"
                             >
                               <Search size={11} />
-                              Browse results
+                              See all
                               <ArrowRight size={11} />
                             </button>
                           )}
@@ -271,6 +285,52 @@ export function MarketAiFloating() {
                       </div>
                     </div>
                   </div>
+                  {aiResponse.data?.providers && aiResponse.data.providers.length > 0 && (
+                    <div className="border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">
+                        <MapPin size={12} className="text-slate-400" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          Nearby providers
+                        </span>
+                      </div>
+                      <div className="max-h-[260px] overflow-y-auto">
+                        {aiResponse.data.providers.slice(0, 5).map((p) => (
+                          <Link
+                            key={p.id}
+                            href={`/profile/${p.id}`}
+                            onClick={() => { setExpanded(false); setShowAiResult(false); }}
+                            className="flex items-center gap-3 border-b border-slate-50 px-3.5 py-2.5 text-left text-sm transition hover:bg-slate-50"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[11px] font-bold text-[var(--brand-700)]">
+                              {p.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate font-medium text-slate-800">
+                                  {p.name}
+                                </span>
+                                {p.rating != null && (
+                                  <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-amber-500">
+                                    <Star size={10} fill="currentColor" />
+                                    {p.rating}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                {p.location && <span className="truncate">{p.location}</span>}
+                                {p.bio && (
+                                  <span className="truncate text-slate-400">
+                                    {p.bio.slice(0, 60)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <ArrowRight size={13} className="shrink-0 text-slate-300" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {aiResponse.suggestions.length > 0 && (
                     <>
                       <div className="flex items-center gap-1.5 border-b border-slate-100 px-3.5 py-1.5">

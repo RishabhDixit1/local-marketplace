@@ -1,16 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowRight,
   Clock,
   Command,
   HelpCircle,
+  MapPin,
   Package,
   Search,
   ShoppingCart,
   Sparkles,
+  Star,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -18,11 +22,22 @@ import {
 const STORAGE_KEY = "serviq-recent-searches";
 const MAX_RECENT = 5;
 
+type SlimProvider = {
+  id: string;
+  name: string;
+  location: string;
+  avatarUrl: string;
+  bio: string;
+  services: string[];
+  rating: number | null;
+  reviewCount: number;
+};
+
 type AiResponse = {
   response: string;
   action: string;
   redirect: string | null;
-  data: Record<string, unknown> | null;
+  data: { providers?: SlimProvider[] } | null;
   suggestions: string[];
 };
 
@@ -336,6 +351,52 @@ export function AiPromptBar({
                 </div>
               </div>
             </div>
+            {aiResponse.data?.providers && aiResponse.data.providers.length > 0 && (
+              <div className="border-b border-[var(--surface-border)]">
+                <div className="flex items-center gap-2 border-b border-[var(--surface-border)] px-4 py-2">
+                  <MapPin size={14} className="text-[var(--ink-500)]" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-500)]">
+                    Nearby providers
+                  </span>
+                </div>
+                <div className="max-h-[280px] overflow-y-auto">
+                  {aiResponse.data.providers.slice(0, 5).map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/profile/${p.id}`}
+                      onClick={() => { setIsOpen(false); setShowAiResult(false); }}
+                      className="flex items-center gap-3 border-b border-[var(--surface-border)] px-4 py-2.5 text-left text-sm transition hover:bg-[var(--surface-soft)]"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-xs font-bold text-[var(--brand-700)]">
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate font-medium text-[var(--ink-900)]">
+                            {p.name}
+                          </span>
+                          {p.rating != null && (
+                            <span className="flex shrink-0 items-center gap-0.5 text-xs text-amber-500">
+                              <Star size={11} fill="currentColor" />
+                              {p.rating}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-[var(--ink-500)]">
+                          {p.location && <span className="truncate">{p.location}</span>}
+                          {p.bio && (
+                            <span className="truncate text-[var(--ink-400)]">
+                              {p.bio.slice(0, 60)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight size={14} className="shrink-0 text-[var(--ink-300)]" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
             {aiResponse.suggestions.length > 0 && (
               <>
                 <div className="flex items-center gap-2 border-b border-[var(--surface-border)] px-4 py-2">
