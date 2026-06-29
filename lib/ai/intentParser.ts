@@ -351,7 +351,8 @@ Identify:
       system: "You are a hyperlocal marketplace intent parser for India. Extract structured intent from natural language queries. Support Hinglish and colloquial Indian English.",
     });
     return { ...result, originalQuery: query, response: "" };
-  } catch {
+  } catch (error) {
+    console.warn("[intentParser] LLM intent parsing failed, falling back to keyword matching:", error instanceof Error ? error.message : error);
     return null;
   }
 }

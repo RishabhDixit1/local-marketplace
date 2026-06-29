@@ -106,6 +106,7 @@ export type LaunchpadDraftRecord = {
   generatedProducts: LaunchpadProductDraft[];
   generatedFaq: LaunchpadFaqItem[];
   generatedServiceAreas: string[];
+  generationSource: "ai" | "template";
   approvedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;

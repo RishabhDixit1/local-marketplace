@@ -1,10 +1,14 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject, generateText, type FlexibleSchema } from "ai";
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
 
+const googleProvider = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+});
+
 export function getModel(model?: string) {
-  return google(model ?? DEFAULT_MODEL);
+  return googleProvider(model ?? DEFAULT_MODEL);
 }
 
 export async function generate<T>({

@@ -36,23 +36,25 @@ for (const line of envLines) {
 
 const SUPABASE_URL = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+const DATABASE_URL = env.DATABASE_URL;
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error("❌  SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from .env.local");
+if (!SUPABASE_URL) {
+  console.error("❌  SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL missing from .env.local");
   process.exit(1);
 }
 
-// Extract project ref from URL: https://hcayrcsmddtqqlvkvaqd.supabase.co → hcayrcsmddtqqlvkvaqd
-const PROJECT_REF = SUPABASE_URL.replace("https://", "").split(".")[0].replace("http://", "");
+const isSelfHosted = !SUPABASE_URL.includes(".supabase.co");
 
-// Supavisor session-mode pooler hosts to try (different AWS regions)
-const POOLER_HOSTS = [
-  `aws-0-ap-south-1.pooler.supabase.com`,  // Mumbai (most likely for Indian projects)
-  `aws-0-us-east-1.pooler.supabase.com`,   // N. Virginia
-  `aws-0-us-west-1.pooler.supabase.com`,   // California
-  `aws-0-eu-central-1.pooler.supabase.com`, // Frankfurt
-  `aws-0-ap-southeast-1.pooler.supabase.com`, // Singapore
-];
+if (isSelfHosted) {
+  if (!DATABASE_URL) {
+    console.error("❌  DATABASE_URL is required for self-hosted Supabase instances.");
+    console.error("    Add it to .env.local, e.g.: DATABASE_URL=postgresql://postgres:password@host:5432/postgres");
+    process.exit(1);
+  }
+} else if (!SERVICE_ROLE_KEY) {
+  console.error("❌  SUPABASE_SERVICE_ROLE_KEY missing from .env.local");
+  process.exit(1);
+}
 
 // ── Migration discovery ───────────────────────────────────────────────────────
 
@@ -74,39 +76,68 @@ if (onlyFlag !== -1) {
   migrationFiles = migrationFiles.filter((f) => f >= from);
 }
 
-console.log(`\n📦  Project ref : ${PROJECT_REF}`);
 console.log(`📂  Migrations  : ${MIGRATIONS_DIR}`);
+if (isSelfHosted) {
+  console.log(`🔧  Mode         : self-hosted (${SUPABASE_URL})`);
+} else {
+  const ref = SUPABASE_URL.replace("https://", "").split(".")[0].replace("http://", "");
+  console.log(`☁️  Mode         : Supabase Cloud (project ref: ${ref})`);
+}
 console.log(`📋  Files to run (${migrationFiles.length}):`);
 for (const f of migrationFiles) console.log(`     • ${f}`);
 
 // ── Connect ───────────────────────────────────────────────────────────────────
 
-async function tryConnect(host) {
-  const client = new Client({
-    host,
-    port: 5432,
-    database: "postgres",
-    user: `postgres.${PROJECT_REF}`,
-    password: SERVICE_ROLE_KEY,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 8000,
-    query_timeout: 60000,
-  });
-  await client.connect();
-  return client;
-}
-
 async function getConnectedClient() {
-  for (const host of POOLER_HOSTS) {
+  if (isSelfHosted) {
+    console.log(`🔌  Connecting to self-hosted database ... `);
+    const client = new Client({
+      connectionString: DATABASE_URL,
+      connectionTimeoutMillis: 8000,
+      query_timeout: 60000,
+    });
+    try {
+      await client.connect();
+      console.log("✅ connected");
+      return client;
+    } catch (err) {
+      console.log(`❌ ${err.message.split("\n")[0]}`);
+      return null;
+    }
+  }
+
+  // Cloud: try Supavisor session-mode pooler hosts
+  const projectRef = SUPABASE_URL.replace("https://", "").split(".")[0].replace("http://", "");
+
+  const poolerHosts = [
+    `aws-0-ap-south-1.pooler.supabase.com`,  // Mumbai (most likely for Indian projects)
+    `aws-0-us-east-1.pooler.supabase.com`,   // N. Virginia
+    `aws-0-us-west-1.pooler.supabase.com`,   // California
+    `aws-0-eu-central-1.pooler.supabase.com`, // Frankfurt
+    `aws-0-ap-southeast-1.pooler.supabase.com`, // Singapore
+  ];
+
+  for (const host of poolerHosts) {
     try {
       process.stdout.write(`🔌  Trying ${host} ... `);
-      const client = await tryConnect(host);
+      const client = new Client({
+        host,
+        port: 5432,
+        database: "postgres",
+        user: `postgres.${projectRef}`,
+        password: SERVICE_ROLE_KEY,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 8000,
+        query_timeout: 60000,
+      });
+      await client.connect();
       console.log("✅ connected");
       return client;
     } catch (err) {
       console.log(`❌ ${err.message.split("\n")[0]}`);
     }
   }
+
   return null;
 }
 
@@ -163,10 +194,15 @@ async function main() {
 
   const client = await getConnectedClient();
   if (!client) {
-    console.error("\n❌  Could not connect to Supabase database via any pooler host.");
-    console.error("    → Get the DB connection string from:");
-    console.error("      Supabase Dashboard → Settings → Database → Connection string");
-    console.error("    → Then run: PGPASSWORD=<password> psql <connection_string> -f supabase-migrations-bundle.sql\n");
+    if (isSelfHosted) {
+      console.error("\n❌  Could not connect to self-hosted database. Check your DATABASE_URL in .env.local.");
+      console.error("    Verify the database is reachable and the credentials are correct.");
+    } else {
+      console.error("\n❌  Could not connect to Supabase Cloud database via any pooler host.");
+      console.error("    → Get the DB connection string from:");
+      console.error("      Supabase Dashboard → Settings → Database → Connection string");
+      console.error("    → Then run: PGPASSWORD=<password> psql <connection_string> -f supabase-migrations-bundle.sql\n");
+    }
     process.exit(1);
   }
 

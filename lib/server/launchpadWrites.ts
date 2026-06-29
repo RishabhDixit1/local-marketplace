@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   LaunchpadAnswers,
   LaunchpadDraftRecord,
+  LaunchpadFaqItem,
   LaunchpadGeneratedProfile,
   LaunchpadInputSource,
   LaunchpadProductDraft,
@@ -9,6 +10,8 @@ import type {
   LaunchpadWorkspaceSummary,
 } from "@/lib/api/launchpad";
 import { createBusinessSlug } from "@/lib/business";
+import { generateBusinessProfile } from "@/lib/ai/launchpad";
+import type { LaunchpadOutput } from "@/lib/ai/launchpad";
 import { generateLaunchpadDraftOutput } from "@/lib/launchpad/generate";
 import {
   inferLaunchpadInputSource,
@@ -38,6 +41,7 @@ type LaunchpadDraftRow = {
   generated_products: Record<string, unknown>[] | null;
   generated_faq: Record<string, unknown>[] | null;
   generated_service_areas: string[] | null;
+  generation_source: string | null;
   approved_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -148,6 +152,7 @@ const toDraftRecord = (row: LaunchpadDraftRow): LaunchpadDraftRecord => ({
     .filter((item): item is LaunchpadProductDraft => !!item),
   generatedFaq: normalizeLaunchpadFaqList(row.generated_faq),
   generatedServiceAreas: normalizeLaunchpadServiceAreas(row.generated_service_areas),
+  generationSource: row.generation_source === "ai" ? "ai" : "template",
   approvedAt: row.approved_at || null,
   createdAt: row.created_at || null,
   updatedAt: row.updated_at || null,
@@ -325,15 +330,108 @@ const insertDraftRow = async (params: {
   };
 };
 
-const resolveDraftForPublish = (draft: LaunchpadDraftRecord) => {
+function adaptAiOutputToDraftShape(aiOutput: LaunchpadOutput, answers: LaunchpadAnswers) {
+  const serviceAreas = dedupeStrings(
+    answers.serviceArea.split(/\r?\n|,|;/g).map((s) => s.trim()).filter(Boolean),
+    6,
+  );
+
+  const generatedProfile: LaunchpadGeneratedProfile = {
+    fullName: answers.businessName,
+    location: answers.location,
+    latitude: answers.latitude ?? null,
+    longitude: answers.longitude ?? null,
+    bio: aiOutput.bio,
+    interests: aiOutput.tags,
+    phone: answers.phone,
+    website: answers.website,
+    availability: "available",
+    metadata: {
+      launchpad: {
+        businessType: answers.businessType,
+        offeringType: answers.offeringType,
+        hours: answers.hours,
+        pricingNotes: answers.pricingNotes,
+        serviceAreas,
+      },
+    },
+  };
+
+  const generatedServices: LaunchpadServiceDraft[] = aiOutput.serviceListings.map((listing, index) => ({
+    title: listing.title,
+    description: listing.description,
+    category: answers.primaryCategory,
+    price: listing.price,
+    availability: "available",
+    metadata: {
+      source: "launchpad",
+      launchpad_type: "service",
+      business_type: answers.businessType,
+      service_area: answers.location,
+      service_index: index,
+    },
+  }));
+
+  const generatedProducts: LaunchpadProductDraft[] = [];
+
+  const generatedFaq: LaunchpadFaqItem[] = aiOutput.faq.map((item) => ({
+    question: item.question,
+    answer: item.answer,
+  }));
+
+  return { generatedProfile, generatedServices, generatedProducts, generatedFaq, generatedServiceAreas: serviceAreas };
+}
+
+function answersToLaunchpadInput(answers: LaunchpadAnswers) {
+  const toneMap: Record<string, "professional" | "friendly" | "expert" | "humble"> = {
+    professional: "professional",
+    friendly: "friendly",
+    premium: "professional",
+    fast: "friendly",
+    community: "friendly",
+  };
+
+  return {
+    businessName: answers.businessName,
+    businessType: (["individual", "shop", "workshop"] as const).includes(answers.businessType as never)
+      ? (answers.businessType as "individual" | "shop" | "workshop")
+      : "individual",
+    category: answers.primaryCategory,
+    description: answers.shortDescription,
+    services: answers.coreOfferings.split(/\r?\n|,|;/g).map((s) => s.trim()).filter(Boolean),
+    pricingModel: "fixed" as const,
+    location: answers.location,
+    serviceRadius: answers.serviceRadiusKm,
+    hours: answers.hours,
+    phone: answers.phone,
+    brandTone: toneMap[answers.brandTone] || "professional",
+  };
+}
+
+async function generateWithFallback(answers: LaunchpadAnswers) {
+  try {
+    const input = answersToLaunchpadInput(answers);
+    const aiOutput = await generateBusinessProfile(input);
+    const adapted = adaptAiOutputToDraftShape(aiOutput, answers);
+    return { ...adapted, generationSource: "ai" as const };
+  } catch (error) {
+    console.warn("[launchpad] AI generation failed, falling back to template:", error instanceof Error ? error.message : error);
+  }
+
+  const template = generateLaunchpadDraftOutput(answers);
+  return { ...template, generationSource: "template" as const };
+}
+
+const resolveDraftForPublish = async (draft: LaunchpadDraftRecord) => {
   if (draft.generatedProfile && draft.generatedServices.length + draft.generatedProducts.length > 0) {
     return draft;
   }
 
-  const generated = generateLaunchpadDraftOutput(draft.answers);
+  const generated = await generateWithFallback(draft.answers);
   return {
     ...draft,
     status: "generated" as const,
+    generationSource: generated.generationSource,
     generatedProfile: generated.generatedProfile,
     generatedServices: generated.generatedServices,
     generatedProducts: generated.generatedProducts,
@@ -561,7 +659,7 @@ export const saveLaunchpadDraft = async (params: {
     };
   }
 
-  const generated = generateLaunchpadDraftOutput(normalizedAnswers);
+  const generated = await generateWithFallback(normalizedAnswers);
   const inputSource = inferLaunchpadInputSource(normalizedAnswers, params.inputSource);
   const payload = {
     owner_id: params.userId,
@@ -574,6 +672,7 @@ export const saveLaunchpadDraft = async (params: {
     generated_products: generated.generatedProducts,
     generated_faq: generated.generatedFaq,
     generated_service_areas: generated.generatedServiceAreas,
+    generation_source: generated.generationSource,
   };
 
   const latest = await getLatestLaunchpadDraftRow(params.db, params.userId);
@@ -637,7 +736,7 @@ export const publishLaunchpadDraft = async (params: {
     };
   }
 
-  const draft = resolveDraftForPublish(sourceDraft);
+  const draft = await resolveDraftForPublish(sourceDraft);
   if (!draft.generatedProfile) {
     return {
       ok: false,
@@ -729,6 +828,7 @@ export const publishLaunchpadDraft = async (params: {
         generated_products: draft.generatedProducts,
         generated_faq: draft.generatedFaq,
         generated_service_areas: draft.generatedServiceAreas,
+        generation_source: draft.generationSource,
       },
     });
 
