@@ -232,6 +232,7 @@ export type RejectQuoteRequest = {
   quoteId: string;
   reason?: string;
   counterRequest?: boolean;
+  counterAmount?: number | null;
 };
 
 export type RejectQuoteResponse =

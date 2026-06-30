@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return toErrorResponse(400, "INVALID_PAYLOAD", "Invalid JSON body.");
   }
 
-  const { quoteId, reason, counterRequest } = payload;
+  const { quoteId, reason, counterRequest, counterAmount } = payload;
 
   if (!quoteId || typeof quoteId !== "string" || quoteId.trim().length === 0) {
     return toErrorResponse(400, "INVALID_PAYLOAD", "quoteId is required.");
@@ -72,6 +72,7 @@ export async function POST(request: Request) {
           rejected_at: new Date().toISOString(),
           rejected_by: userId,
           is_counter_request: counterRequest || false,
+          counter_amount: counterRequest ? counterAmount : null,
         },
       })
       .eq("id", quoteId)

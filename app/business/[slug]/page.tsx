@@ -114,6 +114,8 @@ type LaunchpadMeta = {
   faq: LaunchpadFaq[];
   hours: string | null;
   serviceAreas: string[];
+  pricingNotes: string | null;
+  generationSource: string | null;
 };
 
 type BusinessPost = {
@@ -338,11 +340,18 @@ const readLaunchpadMeta = (value: unknown): LaunchpadMeta => {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 8);
+  const generationSource = typeof launchpad.generationSource === "string"
+    ? launchpad.generationSource
+    : (typeof launchpad.inputSource === "string" ? launchpad.inputSource : null);
 
   return {
     faq,
     hours: typeof launchpad.hours === "string" && launchpad.hours.trim() ? launchpad.hours.trim() : null,
     serviceAreas,
+    pricingNotes: typeof launchpad.pricingNotes === "string" && launchpad.pricingNotes.trim()
+      ? launchpad.pricingNotes.trim()
+      : null,
+    generationSource,
   };
 };
 
@@ -758,7 +767,21 @@ export default async function BusinessProfilePage({ params }: Params) {
 
             {(launchpadMeta.serviceAreas.length > 0 || launchpadMeta.faq.length > 0) && (
               <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 className="text-lg font-semibold">Business Details</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Business Details</h2>
+                  {launchpadMeta.generationSource && (
+                    <span className="rounded-full bg-indigo-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-300">
+                      {launchpadMeta.generationSource === "ai" ? "AI Generated" : "Launchpad"}
+                    </span>
+                  )}
+                </div>
+
+                {launchpadMeta.pricingNotes && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pricing</p>
+                    <p className="mt-2 text-sm text-slate-300">{launchpadMeta.pricingNotes}</p>
+                  </div>
+                )}
 
                 {launchpadMeta.serviceAreas.length > 0 ? (
                   <div className="mt-4">
@@ -774,7 +797,16 @@ export default async function BusinessProfilePage({ params }: Params) {
                 ) : null}
 
                 {launchpadMeta.faq.length > 0 ? (
-                  <div className="mt-5 grid gap-3">
+                  <div className="mt-5 flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">FAQ</span>
+                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">
+                      {launchpadMeta.faq.length}
+                    </span>
+                  </div>
+                ) : null}
+
+                {launchpadMeta.faq.length > 0 ? (
+                  <div className="mt-3 grid gap-3">
                     {launchpadMeta.faq.map((item) => (
                       <div key={item.question} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                         <p className="text-sm font-semibold text-white">{item.question}</p>

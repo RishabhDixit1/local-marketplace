@@ -88,8 +88,8 @@ export const checkRateLimit = async (
       resetInSeconds: config.windowSeconds - elapsed,
     };
   } catch {
-    console.error("Rate limit check failed, denying request:", key);
-    return { allowed: false, remaining: 0, resetInSeconds: 60 };
+    console.error("Rate limit check failed, allowing request (fail-open):", key);
+    return { allowed: true, remaining: 999, resetInSeconds: 0 };
   }
 };
 

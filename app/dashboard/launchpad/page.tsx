@@ -147,7 +147,7 @@ export default function LaunchpadPage() {
     setLocating(false);
   };
 
-  const handleGenerate = async () => {
+  const handleSave = async () => {
     if (!answers.businessName.trim()) { setError("Enter your business name."); return; }
     if (!answers.businessType) { setError("Select a business type."); return; }
     if (!answers.primaryCategory) { setError("Select a primary category."); return; }
@@ -176,12 +176,12 @@ export default function LaunchpadPage() {
       );
 
       if (!payload.ok) {
-        throw new Error(payload.message || "Failed to generate.");
+        throw new Error(payload.message || "Failed to save.");
       }
 
       router.push(`/dashboard/launchpad/review?draft=${payload.draft.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate. Please try again.");
+      setError(err instanceof Error ? err.message : "Could not save. Please try again.");
       setSubmitting(false);
     }
   };
@@ -526,14 +526,14 @@ export default function LaunchpadPage() {
             </div>
             <button
               type="button"
-              onClick={() => void handleGenerate()}
+              onClick={() => void handleSave()}
               disabled={submitting}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--brand-900)] px-5 text-base font-bold text-white transition hover:bg-[var(--brand-700)] disabled:opacity-60"
             >
               {submitting ? (
-                <><Loader2 className="h-5 w-5 animate-spin" /> Generating...</>
+                <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
               ) : (
-                <><Sparkles className="h-5 w-5" /> Generate draft</>
+                <><Sparkles className="h-5 w-5" /> Save & Continue</>
               )}
             </button>
           </div>

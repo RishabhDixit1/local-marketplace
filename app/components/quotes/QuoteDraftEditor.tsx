@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { CheckCircle2, DollarSign, FileText, Loader2, MessageCircle, Plus, Receipt, Send, Sparkles, Trash2, XCircle } from "lucide-react";
 import type {
   QuoteContextRecord,
@@ -91,6 +91,7 @@ const buildDraftPayload = (params: {
 
 export type QuoteDraftEditorHandle = {
   addLineItem: (label: string, description: string, unitPrice: number) => void;
+  focus: () => void;
 };
 
 const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProps>(function QuoteDraftEditor({
@@ -120,6 +121,8 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
   const [expiresAt, setExpiresAt] = useState("");
   const [lineItems, setLineItems] = useState<EditableLineItem[]>([]);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -134,6 +137,10 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
             unitPrice: unitPrice > 0 ? `${unitPrice}` : "",
           },
         ]);
+      },
+      focus: () => {
+        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        containerRef.current?.querySelector<HTMLElement>("textarea, input")?.focus();
       },
     }),
     []
@@ -322,7 +329,7 @@ const QuoteDraftEditor = forwardRef<QuoteDraftEditorHandle, QuoteDraftEditorProp
   }
 
   return (
-    <section className={`rounded-[1.6rem] border p-5 sm:p-6 ${panelToneClassName}`}>
+    <section ref={containerRef} className={`rounded-[1.6rem] border p-5 sm:p-6 ${panelToneClassName}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">

@@ -132,6 +132,13 @@ export type SaveLaunchpadDraftResponse =
     }
   | LaunchpadApiError;
 
+export type GenerateLaunchpadDraftResponse =
+  | {
+      ok: true;
+      draft: LaunchpadDraftRecord;
+    }
+  | LaunchpadApiError;
+
 export type PublishLaunchpadDraftRequest = {
   draftId?: string;
 };

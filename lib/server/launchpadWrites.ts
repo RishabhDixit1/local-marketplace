@@ -480,6 +480,7 @@ const buildProfileLaunchpadMetadata = (draft: LaunchpadDraftRecord) => ({
     businessType: draft.answers.businessType,
     offeringType: draft.answers.offeringType,
     inputSource: draft.inputSource,
+    generationSource: draft.generationSource,
     hours: draft.answers.hours,
     pricingNotes: draft.answers.pricingNotes,
     serviceAreas: draft.generatedServiceAreas,
@@ -641,6 +642,100 @@ export const loadLaunchpadWorkspace = async (params: {
     draft: latest.row ? toDraftRecord(latest.row) : null,
     summary,
   };
+};
+
+export const saveLaunchpadDraftOnly = async (params: {
+  db: SupabaseClient;
+  userId: string;
+  answers: LaunchpadAnswers;
+  inputSource?: LaunchpadInputSource;
+}): Promise<LaunchpadDraftSuccess | LaunchpadMutationError> => {
+  const normalizedAnswers = normalizeLaunchpadAnswers(params.answers);
+  const validationErrors = validateLaunchpadAnswers(normalizedAnswers);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return {
+      ok: false,
+      message: Object.values(validationErrors)[0] || "Launchpad answers are invalid.",
+    };
+  }
+
+  const inputSource = inferLaunchpadInputSource(normalizedAnswers, params.inputSource);
+  const payload = {
+    owner_id: params.userId,
+    status: "draft",
+    input_source: inputSource,
+    answers: normalizedAnswers,
+    import_payload: buildImportPayload(normalizedAnswers),
+    generated_profile: null,
+    generated_services: [],
+    generated_products: [],
+    generated_faq: [],
+    generated_service_areas: [],
+    generation_source: "template",
+  };
+
+  const latest = await getLatestLaunchpadDraftRow(params.db, params.userId);
+  if (!isDraftRowResult(latest)) return latest;
+
+  if (latest.row?.id) {
+    return updateDraftRow({
+      db: params.db,
+      draftId: latest.row.id,
+      payload,
+    });
+  }
+
+  return insertDraftRow({
+    db: params.db,
+    payload,
+  });
+};
+
+export const generateLaunchpadDraft = async (params: {
+  db: SupabaseClient;
+  userId: string;
+  draftId: string;
+}): Promise<LaunchpadDraftSuccess | LaunchpadMutationError> => {
+  const result = await params.db
+    .from("business_launchpad_drafts")
+    .select("*")
+    .eq("id", params.draftId)
+    .eq("owner_id", params.userId)
+    .maybeSingle();
+
+  if (result.error) {
+    return {
+      ok: false,
+      code: result.error.code || null,
+      details: result.error.details || null,
+      message: result.error.message || "Unable to load draft.",
+    };
+  }
+
+  if (!result.data) {
+    return {
+      ok: false,
+      message: "Draft not found.",
+    };
+  }
+
+  const draft = toDraftRecord(result.data as LaunchpadDraftRow);
+  const generated = await generateWithFallback(draft.answers);
+
+  return updateDraftRow({
+    db: params.db,
+    draftId: params.draftId,
+    payload: {
+      status: "generated",
+      generation_source: generated.generationSource,
+      generated_profile: generated.generatedProfile,
+      generated_services: generated.generatedServices,
+      generated_products: generated.generatedProducts,
+      generated_faq: generated.generatedFaq,
+      generated_service_areas: generated.generatedServiceAreas,
+    },
+  });
 };
 
 export const saveLaunchpadDraft = async (params: {
