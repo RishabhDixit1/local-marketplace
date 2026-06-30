@@ -101,6 +101,10 @@ const transitionMap: Record<CanonicalOrderStatus, Record<OrderActorRole, Canonic
     provider: [],
     consumer: [],
   },
+  countered: {
+    provider: ["quoted", "accepted", "rejected"],
+    consumer: ["cancelled"],
+  },
   rejected: {
     provider: [],
     consumer: [],

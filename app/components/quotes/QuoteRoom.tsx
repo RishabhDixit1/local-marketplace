@@ -527,7 +527,7 @@ export default function QuoteRoom({
              </span>
              <div className="min-w-0 flex-1">
                <h4 className="text-sm font-bold text-amber-900">Customer requested changes</h4>
-               {quoteDraft.metadata?.rejected_reason && (
+                {!!quoteDraft.metadata?.rejected_reason && (
                  <p className="mt-1 text-xs text-amber-700 leading-relaxed">
                    {String(quoteDraft.metadata.rejected_reason)}
                  </p>
