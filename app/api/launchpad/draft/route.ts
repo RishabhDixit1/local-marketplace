@@ -6,7 +6,7 @@ import type {
   SaveLaunchpadDraftResponse,
 } from "@/lib/api/launchpad";
 import { normalizeLaunchpadInputSource } from "@/lib/launchpad/validation";
-import { loadLaunchpadWorkspace, saveLaunchpadDraft } from "@/lib/server/launchpadWrites";
+import { loadLaunchpadWorkspace, saveLaunchpadDraftOnly } from "@/lib/server/launchpadWrites";
 import { requireRequestAuth } from "@/lib/server/requestAuth";
 import { createSupabaseAdminClient, createSupabaseUserServerClient } from "@/lib/server/supabaseClients";
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const db = admin || userClient;
   if (!db) return toError(500, "CONFIG", "Supabase server credentials are missing.");
 
-  const result = await saveLaunchpadDraft({
+  const result = await saveLaunchpadDraftOnly({
     db,
     userId: authResult.auth.userId,
     answers: typed.answers,

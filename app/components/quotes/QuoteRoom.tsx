@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -16,6 +17,7 @@ import {
   PenTool,
   Plus,
   Receipt,
+  RefreshCw,
   Send,
   Trash2,
   XCircle,
@@ -115,6 +117,7 @@ export default function QuoteRoom({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [requestCounterOffer, setRequestCounterOffer] = useState(false);
+  const [counterAmount, setCounterAmount] = useState<number | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -125,6 +128,7 @@ export default function QuoteRoom({
   const handleOpenRejectModal = useCallback(() => {
     setRejectReason("");
     setRequestCounterOffer(false);
+    setCounterAmount(null);
     setShowRejectModal(true);
   }, []);
 
@@ -132,6 +136,7 @@ export default function QuoteRoom({
     setShowRejectModal(false);
     setRejectReason("");
     setRequestCounterOffer(false);
+    setCounterAmount(null);
   }, []);
 
   const handleConfirmReject = useCallback(async () => {
@@ -142,17 +147,28 @@ export default function QuoteRoom({
       const result = await rejectQuoteDraft(
         quoteDraft.id,
         rejectReason || undefined,
-        requestCounterOffer
+        requestCounterOffer,
+        requestCounterOffer ? counterAmount : null
       );
       if (!result.ok) {
         setError(result.message || "Failed to reject quote");
         return;
       }
-      setQuoteDraft((current) =>
-        current
-          ? { ...current, status: requestCounterOffer ? "countered" : "rejected" }
-          : current
-      );
+      setQuoteDraft((current) => {
+        if (!current) return current;
+        const newMetadata = {
+          ...current.metadata,
+          rejected_reason: rejectReason || null,
+          rejected_at: new Date().toISOString(),
+          is_counter_request: requestCounterOffer || false,
+          counter_amount: requestCounterOffer ? counterAmount : null,
+        };
+        return {
+          ...current,
+          status: requestCounterOffer ? "countered" : "rejected",
+          metadata: newMetadata,
+        };
+      });
       onQuoteRejected?.();
       handleCloseRejectModal();
     } catch (err) {
@@ -355,6 +371,16 @@ export default function QuoteRoom({
               Open Chat
             </button>
           )}
+          {canonicalStatus === "countered" && dealRoomContext?.canEditQuote && (
+            <button
+              type="button"
+              onClick={() => draftEditorRef.current?.focus?.()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Revise & Resend
+            </button>
+          )}
         </div>
       </div>
 
@@ -491,6 +517,30 @@ export default function QuoteRoom({
           )}
         </div>
       )}
+
+       {/* Counter-offer banner for providers */}
+       {canonicalStatus === "countered" && dealRoomContext?.canEditQuote && quoteDraft && (
+         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+           <div className="flex items-start gap-3">
+             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100">
+               <AlertTriangle className="h-4 w-4 text-amber-700" />
+             </span>
+             <div className="min-w-0 flex-1">
+               <h4 className="text-sm font-bold text-amber-900">Customer requested changes</h4>
+                {!!quoteDraft.metadata?.rejected_reason && (
+                 <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                   {String(quoteDraft.metadata.rejected_reason)}
+                 </p>
+               )}
+               {quoteDraft.metadata?.counter_amount != null && (
+                 <p className="mt-2 text-sm font-semibold text-amber-900">
+                   Suggested budget: {formatCurrency(Number(quoteDraft.metadata.counter_amount))}
+                 </p>
+               )}
+             </div>
+           </div>
+         </div>
+       )}
 
        {/* Quote Draft Editor */}
       <div className="py-4">
@@ -779,6 +829,29 @@ export default function QuoteRoom({
                   </p>
                 </div>
               </label>
+
+              {requestCounterOffer && (
+                <label className="space-y-2 text-sm">
+                  <span className="block font-semibold text-slate-800">
+                    Your desired amount
+                  </span>
+                  <div className="relative">
+                    <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={counterAmount ?? ""}
+                      onChange={(e) => setCounterAmount(e.target.value ? Number(e.target.value) : null)}
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-800 outline-none transition focus:border-sky-400"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Suggest a price you&apos;d be comfortable paying for this job.
+                  </p>
+                </label>
+              )}
             </div>
 
             <div className="mt-5 flex items-center justify-end gap-2">

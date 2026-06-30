@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  CheckCircle2,
   Clock,
   Eye,
   Loader2,
   MapPin,
   MessageCircle,
+  ThumbsDown,
   TrendingUp,
+  XCircle,
   Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -40,6 +43,8 @@ type LeadsResponse = {
   ok: boolean;
   leads: LeadAssignment[];
 };
+
+type StatusFilter = "all" | "assigned" | "converted" | "lost";
 
 const URGENCY_MAP: Record<string, string> = {
   urgent: "Urgent",
@@ -93,12 +98,49 @@ const SCORE_LABELS: Record<string, string> = {
   experienceScore: "Experience",
 };
 
-function LeadCard({ lead, highlighted }: { lead: LeadAssignment; highlighted: boolean }) {
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "assigned", label: "New" },
+  { value: "converted", label: "Converted" },
+  { value: "lost", label: "Lost" },
+];
+
+function LeadCard({
+  lead,
+  highlighted,
+  onStatusChange,
+}: {
+  lead: LeadAssignment;
+  highlighted: boolean;
+  onStatusChange: (leadId: string, newStatus: string) => void;
+}) {
+  const [updating, setUpdating] = useState(false);
   const { label: statusLabel, className: statusClass } = getStatusBadge(lead.status);
   const urgency = getUrgencyLabel(lead.help_requests.category);
   const now = new Date();
   const assignedAt = new Date(lead.assigned_at);
   const daysAgo = Math.floor((now.getTime() - assignedAt.getTime()) / 86400000);
+
+  const active = lead.status === "assigned" || lead.status === "viewed" || lead.status === "responded";
+
+  const updateStatus = async (action: "dismiss" | "convert") => {
+    setUpdating(true);
+    try {
+      const res = await fetchAuthedJson<{ ok: boolean; status: string }>(
+        supabase,
+        "/api/leads/status",
+        {
+          method: "POST",
+          body: JSON.stringify({ leadId: lead.id, action }),
+        }
+      );
+      if (res?.ok) {
+        onStatusChange(lead.id, res.status);
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
     <div
@@ -169,14 +211,44 @@ function LeadCard({ lead, highlighted }: { lead: LeadAssignment; highlighted: bo
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/dashboard/chat?recipientId=${encodeURIComponent(lead.help_request_id)}&draft_kind=interest`}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-            Respond
-          </Link>
+        <div className="flex items-center gap-2">
+          {active && (
+            <>
+              <Link
+                href={`/dashboard/chat?recipientId=${encodeURIComponent(lead.help_request_id)}&draft_kind=interest`}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[var(--brand-800)]"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Respond
+              </Link>
+              <button
+                type="button"
+                onClick={() => void updateStatus("dismiss")}
+                disabled={updating}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {updating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5" />
+                )}
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={() => void updateStatus("convert")}
+                disabled={updating}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {updating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                Closed
+              </button>
+            </>
+          )}
           <Link
             href={`/dashboard/market?helpRequestId=${lead.help_request_id}`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300"
@@ -231,6 +303,14 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [providerId, setProviderId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [minScore, setMinScore] = useState(0);
+
+  const handleStatusChange = useCallback((leadId: string, newStatus: string) => {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, status: newStatus as LeadAssignment["status"] } : l))
+    );
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     if (!providerId) return;
@@ -246,9 +326,6 @@ export default function LeadsPage() {
 
       if (data?.ok) {
         setLeads(data.leads || []);
-        if (data.leads.length === 0) {
-          setError(null);
-        }
       } else {
         setError("Failed to load leads. Please try again.");
       }
@@ -276,6 +353,17 @@ export default function LeadsPage() {
     }
   }, [providerId, fetchLeads]);
 
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+    if (statusFilter !== "all") {
+      result = result.filter((l) => l.status === statusFilter);
+    }
+    if (minScore > 0) {
+      result = result.filter((l) => l.score >= minScore);
+    }
+    return result;
+  }, [leads, statusFilter, minScore]);
+
   const unreadLeads = leads.filter((l) => l.status === "assigned").length;
 
   return (
@@ -302,6 +390,36 @@ export default function LeadsPage() {
           </p>
         </div>
       </div>
+
+      {!loading && leads.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-slate-200 bg-white p-0.5">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  statusFilter === f.value
+                    ? "bg-[var(--brand-900)] text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <select
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none transition focus:border-sky-400"
+          >
+            <option value={0}>All scores</option>
+            <option value={70}>70+ (hot)</option>
+            <option value={40}>40+ (warm)</option>
+          </select>
+        </div>
+      )}
 
       {loading && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -347,13 +465,27 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {!loading && !error && leads.length > 0 && (
+      {!loading && !error && leads.length > 0 && filteredLeads.length === 0 && (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+          <p className="text-sm text-slate-500">No leads match the current filters.</p>
+          <button
+            type="button"
+            onClick={() => { setStatusFilter("all"); setMinScore(0); }}
+            className="text-xs font-semibold text-[var(--brand-900)] underline transition hover:text-[var(--brand-800)]"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && filteredLeads.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {leads.map((lead) => (
+          {filteredLeads.map((lead) => (
             <LeadCard
               key={lead.id}
               lead={lead}
               highlighted={lead.help_request_id === highlightedLeadId}
+              onStatusChange={handleStatusChange}
             />
           ))}
         </div>

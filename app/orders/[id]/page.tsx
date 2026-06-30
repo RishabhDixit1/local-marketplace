@@ -58,6 +58,7 @@ const STATUS_LABEL: Record<CanonicalOrderStatus, string> = {
   closed: "Closed",
   cancelled: "Cancelled",
   rejected: "Rejected",
+  countered: "Changes Requested",
 };
 
 const STATUS_COLOR: Record<CanonicalOrderStatus, string> = {
@@ -71,6 +72,7 @@ const STATUS_COLOR: Record<CanonicalOrderStatus, string> = {
   closed: "bg-emerald-100 text-emerald-700 border-emerald-200",
   cancelled: "bg-rose-100 text-rose-700 border-rose-200",
   rejected: "bg-rose-100 text-rose-700 border-rose-200",
+  countered: "bg-amber-100 text-amber-700 border-amber-200",
 };
 
 const TIMELINE: CanonicalOrderStatus[] = ["new_lead", "accepted", "in_progress", "completed"];

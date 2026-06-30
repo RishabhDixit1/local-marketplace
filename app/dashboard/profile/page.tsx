@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Camera, Check, Loader2, MapPin, PackageCheck, Phone, Send, User } from "lucide-react";
+import { Camera, Check, Loader2, MapPin, PackageCheck, Phone, Send, Sparkles, User } from "lucide-react";
 import { useProfileContext } from "@/app/components/profile/ProfileContext";
 import RouteObservability from "@/app/components/RouteObservability";
 import {
@@ -195,6 +195,24 @@ export default function EditProfilePage() {
       <div className="mb-6 px-4 sm:px-0">
         <h1 className="text-2xl font-bold text-slate-900">Edit Profile</h1>
         <p className="mt-1 text-sm text-slate-500">Step 1 of provider setup: identity.</p>
+      </div>
+
+      <div className="mx-4 sm:mx-0 mb-5">
+        <Link
+          href="/dashboard/launchpad"
+          className="flex items-center gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white p-4 transition hover:border-indigo-300"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-indigo-900">Generate your storefront with AI</p>
+            <p className="text-xs text-indigo-600">Create services, pricing, FAQ, and service areas in one go</p>
+          </div>
+          <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">
+            Launchpad
+          </span>
+        </Link>
       </div>
 
       <div className="mb-6 grid gap-2 px-4 sm:grid-cols-4 sm:px-0">

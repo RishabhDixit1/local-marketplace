@@ -10,7 +10,8 @@ export type CanonicalOrderStatus =
   | "completed"
   | "closed"
   | "cancelled"
-  | "rejected";
+  | "rejected"
+  | "countered";
 
 export type TaskWorkflowStatus = "active" | "in-progress" | "completed" | "cancelled";
 
@@ -32,6 +33,7 @@ const STATUS_LABELS: Record<CanonicalOrderStatus, string> = {
   closed: "Closed",
   cancelled: "Cancelled",
   rejected: "Rejected",
+  countered: "Changes Requested",
 };
 
 const STATUS_DESCRIPTIONS: Record<CanonicalOrderStatus, string> = {
@@ -45,6 +47,7 @@ const STATUS_DESCRIPTIONS: Record<CanonicalOrderStatus, string> = {
   closed: "Closed",
   cancelled: "Cancelled",
   rejected: "Rejected",
+  countered: "Consumer requested changes",
 };
 
 const STATUS_PILL_CLASSES: Record<CanonicalOrderStatus, string> = {
@@ -58,6 +61,7 @@ const STATUS_PILL_CLASSES: Record<CanonicalOrderStatus, string> = {
   closed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-rose-100 text-rose-700",
   rejected: "bg-rose-100 text-rose-700",
+  countered: "bg-amber-100 text-amber-700",
 };
 
 const transitionMap: Record<CanonicalOrderStatus, Record<OrderActorRole, CanonicalOrderStatus[]>> = {
@@ -97,6 +101,10 @@ const transitionMap: Record<CanonicalOrderStatus, Record<OrderActorRole, Canonic
     provider: [],
     consumer: [],
   },
+  countered: {
+    provider: ["quoted", "accepted", "rejected"],
+    consumer: ["cancelled"],
+  },
   rejected: {
     provider: [],
     consumer: [],
@@ -116,6 +124,7 @@ export const normalizeOrderStatus = (status: string | null | undefined): Canonic
   if (["closed"].includes(normalized)) return "closed";
   if (["cancelled", "canceled"].includes(normalized)) return "cancelled";
   if (["rejected", "declined"].includes(normalized)) return "rejected";
+  if (["countered"].includes(normalized)) return "countered";
 
   return "new_lead";
 };

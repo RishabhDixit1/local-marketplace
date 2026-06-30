@@ -39,10 +39,10 @@ export const loadProviderCatalog = (providerId?: string | null) => {
   );
 };
 
-export const rejectQuoteDraft = (quoteId: string, reason?: string, counterRequest?: boolean) =>
+export const rejectQuoteDraft = (quoteId: string, reason?: string, counterRequest?: boolean, counterAmount?: number | null) =>
   fetchAuthedJson<RejectQuoteResponse>(supabase, `/api/quotes/reject`, {
     method: "POST",
-    body: JSON.stringify({ quoteId, reason, counterRequest } satisfies RejectQuoteRequest),
+    body: JSON.stringify({ quoteId, reason, counterRequest, counterAmount } satisfies RejectQuoteRequest),
   });
 
 export type UploadQuoteMediaResult = {
