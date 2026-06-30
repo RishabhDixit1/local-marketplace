@@ -261,7 +261,7 @@ export function LandingPageClient({
         body: JSON.stringify({ email }),
       });
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; emailSent?: boolean; message?: string } | null;
-      if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Unable to send magic link.");
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error || payload?.message || "Unable to send magic link.");
       setOtpStep(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to send magic link.";

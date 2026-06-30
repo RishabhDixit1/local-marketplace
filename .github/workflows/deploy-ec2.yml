@@ -65,6 +65,8 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download deploy artifact
         uses: actions/download-artifact@v4
         with:
@@ -78,6 +80,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: serviq-docker.tar.gz
           target: /home/ec2-user/serviq
+          strip_components: 0
+
+      - name: Copy migration files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: supabase/migrations/
+          target: /home/ec2-user/serviq/migrations
           strip_components: 0
 
       - name: Deploy on EC2
@@ -173,6 +185,33 @@ jobs:
               if [ "$RUNNING" = "true" ]; then
                 if [ -z "$STATUS" ] || [ "$STATUS" = "healthy" ]; then
                   echo "Deploy successful — container is running!"
+
+                  # ── Run pending database migrations ──
+                  echo "--- Applying pending database migrations ---"
+                  MIGRATIONS_DIR="/home/ec2-user/serviq/migrations/supabase/migrations"
+                  DB_CONTAINER=$(docker ps --filter "name=db" --filter "name=supabase" --format "{{.Names}}" | head -1)
+                  if [ -z "$DB_CONTAINER" ]; then
+                    DB_CONTAINER=$(docker ps --filter "ancestor=supabase/postgres" --format "{{.Names}}" | head -1)
+                  fi
+
+                  if [ -n "$DB_CONTAINER" ] && [ -d "$MIGRATIONS_DIR" ]; then
+                    # Extract DB user/password from Supabase container env if needed
+                    DB_USER="postgres"
+                    for f in "$MIGRATIONS_DIR"/*.sql; do
+                      [ -f "$f" ] || continue
+                      echo "  Applying $(basename "$f")..."
+                      docker cp "$f" "$DB_CONTAINER:/tmp/$(basename "$f")"
+                      OUTPUT=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -f "/tmp/$(basename "$f")" 2>&1) || true
+                      echo "$OUTPUT" | grep -i "error\|already exists\|skipped" | head -3 || true
+                      docker exec "$DB_CONTAINER" rm -f "/tmp/$(basename "$f")" 2>/dev/null || true
+                    done
+                    echo "--- Database migrations complete ---"
+                  else
+                    echo "WARNING: Could not find Supabase DB container or migration files. Skipping migrations."
+                    [ -z "$DB_CONTAINER" ] && echo "  (No database container found)"
+                    [ ! -d "$MIGRATIONS_DIR" ] && echo "  (Migrations dir $MIGRATIONS_DIR not found)"
+                  fi
+
                   docker ps --filter name=serviq --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
                   exit 0
                 fi

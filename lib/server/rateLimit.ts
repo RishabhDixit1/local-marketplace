@@ -13,7 +13,7 @@ const DEFAULT_CONFIG: RateLimitConfig = {
 
 const AUTH_ROUTE_CONFIG: RateLimitConfig = {
   windowSeconds: 60,
-  maxRequests: 5,
+  maxRequests: 30,
 };
 
 const WRITE_ROUTE_CONFIG: RateLimitConfig = {
