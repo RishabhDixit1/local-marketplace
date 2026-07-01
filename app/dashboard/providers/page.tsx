@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { buildPublicProfilePath } from "@/lib/profile/utils";
+import { PageHeader } from "@/app/components/ui/PageHeader";
 import ProfileToastViewport, {
   type ProfileToast,
 } from "@/app/components/profile/ProfileToastViewport";
@@ -663,26 +664,19 @@ export default function ProvidersPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1000px] space-y-4 px-3 pb-8 pt-5 sm:px-6 sm:pt-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/dashboard"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">Local Providers</h1>
-          <p className="text-xs text-slate-500">
-            Browse service providers near you — connect, view storefronts, and get help
-          </p>
-        </div>
-        {pagination.total > 0 && (
-          <div className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-            <Users className="h-3.5 w-3.5" />
-            {pagination.total} total
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Local Providers"
+        subtitle="Browse service providers near you — connect, view storefronts, and get help"
+        backHref="/dashboard"
+        rightSlot={
+          pagination.total > 0 ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              <Users className="h-3.5 w-3.5" />
+              {pagination.total} total
+            </div>
+          ) : undefined
+        }
+      />
 
       {categoryOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
