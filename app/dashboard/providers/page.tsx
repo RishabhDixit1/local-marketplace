@@ -1050,7 +1050,7 @@ export default function ProvidersPage() {
                         <button
                           type="button"
                           onClick={() => setQuickViewProvider(provider)}
-                          className="truncate text-sm font-bold text-slate-900 hover:text-[var(--brand-700)] transition"
+                          className="max-w-full truncate text-sm font-bold text-slate-900 hover:text-[var(--brand-700)] transition"
                         >
                           {provider.name}
                         </button>
