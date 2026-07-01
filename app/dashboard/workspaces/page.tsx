@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Building2, Loader2, Plus, Settings, Users } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import { Input } from "@/app/components/ui/Input";
 
 type Workspace = {
   id: string;
@@ -78,26 +79,23 @@ export default function WorkspacesPage() {
 
       {showForm && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <input
+          <Input
             type="text"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
             placeholder="Business name"
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
           />
-          <input
+          <Input
             type="text"
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
             placeholder="Short description (optional)"
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
           />
-          <input
+          <Input
             type="text"
             value={formType}
             onChange={(e) => setFormType(e.target.value)}
             placeholder="Business type (optional)"
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-[var(--brand-400)]"
           />
           <div className="flex gap-2">
             <button

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Clock, Loader2, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { Input } from "@/app/components/ui/Input";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -143,18 +144,16 @@ export default function ProviderAvailabilityOnboarding() {
                   const globalIdx = slots.indexOf(slot);
                   return (
                     <div key={slotIdx} className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="time"
                         value={slot.start_time}
                         onChange={(e) => updateSlot(globalIdx, "start_time", e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs outline-none transition focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
                       />
                       <span className="text-xs text-slate-400">to</span>
-                      <input
+                      <Input
                         type="time"
                         value={slot.end_time}
                         onChange={(e) => updateSlot(globalIdx, "end_time", e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs outline-none transition focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
                       />
                       <button
                         type="button"

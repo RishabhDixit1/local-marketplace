@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
+import { Input } from "@/app/components/ui/Input";
 
 type Locality = {
   id: string;
@@ -120,12 +121,11 @@ export default function ProviderLocalityOnboarding() {
           <label className="mb-1.5 block text-xs font-semibold text-slate-600">
             Primary Locality
           </label>
-          <input
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search localities..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
           />
           <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-100 bg-white p-1">
             {filteredLocalities.length === 0 ? (
@@ -159,12 +159,11 @@ export default function ProviderLocalityOnboarding() {
           <label className="mb-1.5 block text-xs font-semibold text-slate-600">
             Other Areas You Serve <span className="text-slate-400">(optional)</span>
           </label>
-          <input
+          <Input
             type="text"
             value={zoneSearch}
             onChange={(e) => setZoneSearch(e.target.value)}
             placeholder="Search additional zones..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
           />
           <div className="mt-2 flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-xl border border-slate-100 bg-white p-2">
             {filteredZones.length === 0 ? (

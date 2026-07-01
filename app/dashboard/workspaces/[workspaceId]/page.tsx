@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import { Input } from "@/app/components/ui/Input";
 
 type Workspace = {
   id: string; name: string; slug: string; description: string | null;
@@ -215,19 +216,17 @@ export default function WorkspaceDetailPage() {
           </div>
           {addingBranch && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <input
+              <Input
                 type="text"
                 value={branchName}
                 onChange={(e) => setBranchName(e.target.value)}
                 placeholder="Branch name"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
               />
-              <input
+              <Input
                 type="text"
                 value={branchAddress}
                 onChange={(e) => setBranchAddress(e.target.value)}
                 placeholder="Address (optional)"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
               />
               <div className="flex gap-2">
                 <button
@@ -276,19 +275,17 @@ export default function WorkspaceDetailPage() {
           </div>
           {addingRule && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <input
+              <Input
                 type="text"
                 value={ruleName}
                 onChange={(e) => setRuleName(e.target.value)}
                 placeholder="Rule name"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
               />
-              <input
+              <Input
                 type="text"
                 value={ruleCategory}
                 onChange={(e) => setRuleCategory(e.target.value)}
                 placeholder="Category (optional)"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
               />
               <div className="flex gap-2">
                 <button

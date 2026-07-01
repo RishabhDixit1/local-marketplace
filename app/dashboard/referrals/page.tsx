@@ -5,6 +5,7 @@ import { CheckCircle2, Gift, IndianRupee, Loader2, Lock, Share2, Star, Trophy, U
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { Input } from "@/app/components/ui/Input";
 
 type Milestone = {
   key: string;
@@ -225,13 +226,13 @@ export default function ReferralsPage() {
           1 point = ₹1. Minimum 50 points (₹50) to withdraw.
         </p>
         <div className="flex items-center gap-3">
-          <input
+          <Input
             type="number"
             min={50}
             max={availablePoints}
             value={payoutPoints}
             onChange={(e) => setPayoutPoints(Math.max(50, parseInt(e.target.value) || 0))}
-            className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
+            className="w-28"
           />
           <span className="text-xs text-slate-500">points = ₹{payoutPoints}</span>
           <button

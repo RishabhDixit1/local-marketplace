@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { appName, appTagline } from "@/lib/branding";
+import { Input } from "@/app/components/ui/Input";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -85,10 +86,10 @@ export default function SetPasswordPage() {
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-600">New Password</label>
-            <input
+            <Input
               type="password"
+              size="lg"
               placeholder="At least 6 characters"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-200)]"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") void handleSubmit(); }}
@@ -96,10 +97,10 @@ export default function SetPasswordPage() {
           </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-600">Confirm Password</label>
-            <input
+            <Input
               type="password"
+              size="lg"
               placeholder="Re-enter your password"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-200)]"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") void handleSubmit(); }}

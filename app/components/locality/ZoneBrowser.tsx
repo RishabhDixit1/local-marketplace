@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Building2, MapPin, Search, ShoppingBag, Store, TreePine } from "lucide-react";
+import { Input } from "@/app/components/ui/Input";
 
 type Locality = {
   id: string;
@@ -107,16 +108,13 @@ export default function ZoneBrowser({
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Search ${activeTab === "society" ? "societies" : activeTab === "market" ? "markets" : "areas"}...`}
-          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-[var(--brand-400)] focus:ring-1 focus:ring-[var(--brand-400)]"
-        />
-      </div>
+      <Input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={`Search ${activeTab === "society" ? "societies" : activeTab === "market" ? "markets" : "areas"}...`}
+        leftIcon={<Search className="h-4 w-4" />}
+      />
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">

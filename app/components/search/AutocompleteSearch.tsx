@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Search, TrendingUp, X } from "lucide-react";
+import { Input } from "@/app/components/ui/Input";
 
 const STORAGE_KEY = "serviq-recent-searches";
 const MAX_RECENT = 5;
@@ -110,8 +111,7 @@ export function AutocompleteSearch({
     <div ref={ref} className="relative w-full">
       <form onSubmit={handleSubmit}>
         <div className="relative">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ink-500)]" />
-          <input
+          <Input
             type="search"
             value={query}
             onChange={(e) => {
@@ -122,7 +122,7 @@ export function AutocompleteSearch({
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full rounded-xl border border-[var(--surface-border)] bg-[var(--surface-elevated)] py-3 pl-11 pr-10 text-sm text-[var(--ink-950)] outline-none transition focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
+            leftIcon={<Search size={18} />}
             role="combobox"
             aria-expanded={showDropdown}
             aria-controls={listboxId}

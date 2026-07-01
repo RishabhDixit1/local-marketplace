@@ -11,6 +11,7 @@ import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedCard from "@/app/dashboard/components/posts/FeedCard";
 import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
 import { Loader2, Pencil, Save, X } from "lucide-react";
+import { Input } from "@/app/components/ui/Input";
 
 const feedGridClassName =
   "grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,23rem),1fr))] 2xl:gap-4";
@@ -258,12 +259,11 @@ export default function FeedGrid({
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
                   Title
                 </label>
-                <input
+                <Input
                   value={editingPost.title}
                   onChange={(e) =>
                     setEditingPost({ ...editingPost, title: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                 />
               </div>
               <div>
@@ -284,7 +284,7 @@ export default function FeedGrid({
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
                     Category
                   </label>
-                  <input
+                  <Input
                     value={editingPost.category}
                     onChange={(e) =>
                       setEditingPost({
@@ -292,14 +292,13 @@ export default function FeedGrid({
                         category: e.target.value,
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                   />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
                     Budget (INR)
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min={0}
                     value={editingPost.budget}
@@ -309,7 +308,6 @@ export default function FeedGrid({
                         budget: Number(e.target.value),
                       })
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[var(--brand-500)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]/30"
                   />
                 </div>
               </div>

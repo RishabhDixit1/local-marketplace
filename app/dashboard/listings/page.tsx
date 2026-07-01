@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { Input } from "@/app/components/ui/Input";
 import {
   fetchProviderListings,
   createProviderListing,
@@ -438,14 +439,14 @@ function Field({ label, value, onChange, type = "text", multiline }: {
   type?: string;
   multiline?: boolean;
 }) {
-  const cls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
+  const textareaCls = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500";
   return (
     <div>
       <label className="mb-1 block text-xs font-semibold text-slate-700">{label}</label>
       {multiline ? (
-        <textarea className={cls} rows={3} value={value} onChange={(e) => onChange(e.target.value)} />
+        <textarea className={textareaCls} rows={3} value={value} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input className={cls} type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+        <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
   );

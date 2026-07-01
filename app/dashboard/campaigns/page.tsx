@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { supabase } from "@/lib/supabase";
+import { Input } from "@/app/components/ui/Input";
 
 type Campaign = {
   id: string;
@@ -202,11 +203,10 @@ export default function CampaignsPage() {
               <label className="mb-1 block text-xs font-semibold text-slate-600">
                 Title
               </label>
-              <input
+              <Input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                 placeholder="Summer Sale"
               />
             </div>
@@ -252,12 +252,11 @@ export default function CampaignsPage() {
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
                   Delay (minutes)
                 </label>
-                <input
+                <Input
                   type="number"
                   min={1}
                   value={form.delay_minutes}
                   onChange={(e) => setForm((p) => ({ ...p, delay_minutes: parseInt(e.target.value) || 0 }))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                 />
               </div>
             )}
@@ -267,11 +266,10 @@ export default function CampaignsPage() {
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
                   Cron Expression
                 </label>
-                <input
+                <Input
                   type="text"
                   value={form.cron_expression}
                   onChange={(e) => setForm((p) => ({ ...p, cron_expression: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand-400)]"
                   placeholder="0 9 * * 1"
                 />
               </div>
