@@ -30,3 +30,6 @@ $$;
 -- Ensure service_role can manage OTP codes
 grant select, insert, update, delete on public.otp_codes to service_role;
 grant usage on sequence otp_codes_id_seq to service_role;
+
+-- Refresh PostgREST schema cache so the new table is immediately visible
+notify pgrst, 'reload schema';
