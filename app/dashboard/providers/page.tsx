@@ -1016,12 +1016,12 @@ export default function ProvidersPage() {
             return (
               <div
                 key={provider.id}
-                className={`space-y-3 rounded-2xl border border-slate-200 bg-white p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
+                className={`min-w-0 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 transition shadow-sm hover:border-[var(--brand-300)] hover:shadow-lg hover:shadow-slate-200/50 ${
                   quickViewProvider?.id === provider.id ? "border-[var(--brand-400)] ring-2 ring-[var(--brand-100)]" : ""
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                    <div className="flex items-start gap-3 min-w-0">
                     <button
                       type="button"
                       onClick={() => setQuickViewProvider(provider)}
