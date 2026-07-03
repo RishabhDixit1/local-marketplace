@@ -1,6 +1,7 @@
 "use client";
 
-import { type ChangeEvent, useRef } from "react";
+import { animate, motion, useScroll, useTransform } from "framer-motion";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   BadgeCheck,
@@ -103,14 +104,23 @@ export default function ProfileHeader({
     event.target.value = "";
   };
 
-  const activityLabel = role === "provider" ? `${taskCount} active offerings` : `${taskCount} need posts`;
+  const { scrollY } = useScroll();
+  const parallaxY = useTransform(scrollY, [0, 400], [0, 60]);
+
+  const [animatedTasks, setAnimatedTasks] = useState(0);
+  const [animatedReviews, setAnimatedReviews] = useState(0);
+  useEffect(() => {
+    const t = animate(0, taskCount, { duration: 0.7, ease: "easeOut", onUpdate: (v) => setAnimatedTasks(Math.round(v)) });
+    const r = animate(0, reviewCount, { duration: 0.7, ease: "easeOut", delay: 0.1, onUpdate: (v) => setAnimatedReviews(Math.round(v)) });
+    return () => { t.stop(); r.stop(); };
+  }, [taskCount, reviewCount]);
 
   return (
     <section
       className={`relative h-[25svh] min-h-[220px] max-h-[320px] overflow-hidden rounded-[32px] bg-gradient-to-br ${copy.accent} text-white shadow-[0_30px_90px_-40px_rgba(76,29,149,0.9)]`}
     >
       {hasBackgroundImage ? (
-        <>
+        <motion.div className="absolute inset-0" style={{ y: parallaxY }}>
           <Image
             src={backgroundImageUrl}
             alt=""
@@ -120,7 +130,7 @@ export default function ProfileHeader({
             className="object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.45),rgba(79,70,229,0.18),rgba(15,23,42,0.62))]" />
-        </>
+        </motion.div>
       ) : null}
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,167,85,0.9),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(90,88,255,0.9),transparent_30%),radial-gradient(circle_at_75%_82%,rgba(255,85,220,0.35),transparent_26%),linear-gradient(140deg,rgba(255,255,255,0.12),transparent_22%,rgba(255,255,255,0.08)_22%,transparent_36%,rgba(255,255,255,0.04)_36%,transparent_100%)]" />
@@ -230,12 +240,12 @@ export default function ProfileHeader({
               ))}
               <span className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-white/92 backdrop-blur-md">
                 <Star className="h-3 w-3 text-amber-300" />
-                {reviewCount > 0 ? `${averageRating.toFixed(1)} rating` : `${progress}% profile`}
+                {reviewCount > 0 ? `${averageRating.toFixed(1)} (${animatedReviews})` : `${progress}% profile`}
               </span>
               {taskCount > 0 ? (
                 <span className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/10 px-3 py-1 text-xs font-semibold text-white/92 backdrop-blur-md">
                   <BriefcaseBusiness className="h-3 w-3" />
-                  {activityLabel}
+                  {role === "provider" ? `${animatedTasks} active offerings` : `${animatedTasks} need posts`}
                 </span>
               ) : null}
             </div>

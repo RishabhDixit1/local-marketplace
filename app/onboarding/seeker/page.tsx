@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { ArrowRight, Search } from "lucide-react";
 import { useState } from "react";
+import { ArrowRight, Flame, Search } from "lucide-react";
 
 const CATEGORIES = [
-  { id: "home-repairs", label: "Home repairs & maintenance", icon: "🔧" },
-  { id: "cleaning", label: "Cleaning & pest control", icon: "🧹" },
-  { id: "electrical", label: "Electrical & plumbing", icon: "⚡" },
-  { id: "painting", label: "Painting & decoration", icon: "🎨" },
+  { id: "home-repairs", label: "Home repairs & maintenance", icon: "🔧", popular: true },
+  { id: "cleaning", label: "Cleaning & pest control", icon: "🧹", popular: true },
+  { id: "electrical", label: "Electrical & plumbing", icon: "⚡", popular: true },
+  { id: "painting", label: "Painting & decoration", icon: "🎨", popular: true },
   { id: "moving", label: "Packing & moving", icon: "📦" },
   { id: "beauty", label: "Salon & spa at home", icon: "💇" },
   { id: "tutoring", label: "Tutoring & classes", icon: "📚" },
@@ -44,6 +44,9 @@ export default function SeekerOnboardingWelcomePage() {
     router.push("/onboarding/seeker/profile");
   };
 
+  const popular = CATEGORIES.filter((c) => c.popular);
+  const rest = CATEGORIES.filter((c) => !c.popular);
+
   return (
     <div className="mx-auto max-w-lg px-4 py-12 sm:px-6">
       <div className="text-center">
@@ -58,22 +61,52 @@ export default function SeekerOnboardingWelcomePage() {
         </p>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-2.5">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => toggleCategory(cat.id)}
-            className={`flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition ${
-              selected.includes(cat.id)
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-            }`}
-          >
-            <span className="text-lg">{cat.icon}</span>
-            <span>{cat.label}</span>
-          </button>
-        ))}
+      <div className="mt-8">
+        <div className="flex items-center gap-2">
+          <Flame className="h-4 w-4 text-orange-500" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Popular near you</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          {popular.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => toggleCategory(cat.id)}
+              className={`flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition ${
+                selected.includes(cat.id)
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-lg">{cat.icon}</span>
+              <span>{cat.label}</span>
+              {selected.includes(cat.id) ? null : (
+                <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">Popular</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">More services</span>
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          {rest.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => toggleCategory(cat.id)}
+              className={`flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition ${
+                selected.includes(cat.id)
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-lg">{cat.icon}</span>
+              <span>{cat.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-8 space-y-3">

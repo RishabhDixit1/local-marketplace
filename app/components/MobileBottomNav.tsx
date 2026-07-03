@@ -31,7 +31,7 @@ const authItems = [
 ] as const;
 
 const guestItems = [
-  { href: "/?signin=true", label: "Sign In", icon: LogIn },
+  { href: "/login", label: "Sign In", icon: LogIn },
 ] as const;
 
 const ctaItem = { href: "/onboarding/provider/locality", label: "List Business", icon: Plus } as const;

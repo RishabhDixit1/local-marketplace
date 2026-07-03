@@ -680,12 +680,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen overflow-x-clip bg-[var(--surface-app)] text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] lg:transition-[width] lg:duration-200 ${
+          className={`hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:border-r md:border-slate-200 md:bg-white md:shadow-[0_20px_46px_-42px_rgba(15,23,42,0.65)] transition-all duration-300 ${
             desktopNavCollapsed ? "w-24" : "w-72"
           }`}
         >
           <div
-            className={`border-b border-slate-200 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}
+            className={`border-b border-slate-200 transition-all duration-300 ${desktopNavCollapsed ? "px-3 py-5" : "px-6 py-6"}`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -733,7 +733,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav
-            className={`flex-1 space-y-2 overflow-y-auto ${desktopNavCollapsed ? "px-2 py-6" : "px-4 py-6"}`}
+            className={`flex-1 space-y-2 overflow-y-auto transition-all duration-300 ${desktopNavCollapsed ? "px-2 py-6" : "px-4 py-6"}`}
           >
             {navigationTabs.map((tab) => {
               const isActive = isNavigationTabActive(pathname, tab.path);

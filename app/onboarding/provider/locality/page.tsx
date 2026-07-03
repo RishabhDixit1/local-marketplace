@@ -7,6 +7,14 @@ import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
 import { Input } from "@/app/components/ui/Input";
 
+const RADIUS_SNAPS = [1, 2, 3, 5, 10];
+
+function snapRadius(val: number) {
+  return RADIUS_SNAPS.reduce((prev, curr) =>
+    Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev
+  );
+}
+
 type Locality = {
   id: string;
   name: string;
@@ -231,18 +239,39 @@ export default function ProviderLocalityOnboarding() {
           <label className="mb-1.5 block text-xs font-semibold text-slate-600">
             Service Radius: <span className="text-[var(--brand-700)]">{radius} km</span>
           </label>
-          <input
-            type="range"
-            min={1}
-            max={10}
-            step={0.5}
-            value={radius}
-            onChange={(e) => setRadius(parseFloat(e.target.value))}
-            className="w-full accent-[var(--brand-900)]"
-          />
-          <div className="flex justify-between text-[10px] text-slate-400">
-            <span>1 km</span>
-            <span>10 km</span>
+          <div className="relative pt-1">
+            <input
+              type="range"
+              min={1}
+              max={10}
+              step={0.5}
+              value={radius}
+              onChange={(e) => {
+                const raw = parseFloat(e.target.value);
+                setRadius(snapRadius(raw));
+              }}
+              list="radius-ticks"
+              className="w-full accent-[var(--brand-900)]"
+            />
+            <datalist id="radius-ticks">
+              {RADIUS_SNAPS.map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
+            <div className="mt-0.5 flex justify-between px-[2px]">
+              {RADIUS_SNAPS.map((v) => (
+                <span
+                  key={v}
+                  className={`text-[10px] ${
+                    radius === v
+                      ? "font-semibold text-[var(--brand-700)]"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {v}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 

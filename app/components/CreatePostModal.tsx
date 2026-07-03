@@ -760,7 +760,19 @@ export default function CreatePostModal({
                   <span className={`text-xs font-normal ${title.length > TITLE_MAX - 10 ? "text-rose-500" : "text-slate-400"}`}>
                     {title.length}/{TITLE_MAX}
                   </span>
-                </label>
+                  </label>
+                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all duration-200 ${
+                        title.length > TITLE_MAX - 10
+                          ? "bg-rose-400"
+                          : title.length > TITLE_MAX - 40
+                          ? "bg-amber-400"
+                          : "bg-[var(--brand-500)]"
+                      }`}
+                      style={{ width: `${(title.length / TITLE_MAX) * 100}%` }}
+                    />
+                  </div>
                 <textarea
                   id="post-title"
                   value={title}
@@ -772,13 +784,25 @@ export default function CreatePostModal({
                 <p className="mt-2 text-xs text-slate-500">Use the title as the headline people will scan first.</p>
               </div>
 
-              <div>
-                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
-                  <span>Details</span>
-                  <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
-                    {details.length}/{DETAILS_MAX}
-                  </span>
-                </label>
+                <div>
+                  <label className="mb-1.5 flex items-center justify-between text-sm font-semibold text-slate-700" htmlFor="post-details">
+                    <span>Details</span>
+                    <span className={`text-xs font-normal ${details.length > DETAILS_MAX - 80 ? "text-rose-500" : "text-slate-400"}`}>
+                      {details.length}/{DETAILS_MAX}
+                    </span>
+                  </label>
+                  <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all duration-200 ${
+                        details.length > DETAILS_MAX - 80
+                          ? "bg-rose-400"
+                          : details.length > DETAILS_MAX - 200
+                          ? "bg-amber-400"
+                          : "bg-[var(--brand-500)]"
+                      }`}
+                      style={{ width: `${(details.length / DETAILS_MAX) * 100}%` }}
+                    />
+                  </div>
                 <textarea
                   id="post-details"
                   value={details}

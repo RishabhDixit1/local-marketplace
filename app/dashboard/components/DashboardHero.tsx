@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { MapPin, Store, Users, X } from "lucide-react";
 
@@ -14,7 +15,25 @@ interface DashboardHeroProps {
 
 export default function DashboardHero({ activeCategory, providerCount }: DashboardHeroProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--brand-200)] bg-gradient-to-br from-[var(--brand-50)] to-white px-5 py-4">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -inset-32 opacity-20"
+          style={{
+            background:
+              "radial-gradient(800px circle at 0% 50%, var(--brand-200), transparent 50%), radial-gradient(600px circle at 100% 50%, var(--brand-300), transparent 50%)",
+          }}
+          animate={{
+            x: [0, 30, 0],
+            y: [0, -20, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      </div>
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-100)]">
           <MapPin className="h-5 w-5 text-[var(--brand-700)]" />

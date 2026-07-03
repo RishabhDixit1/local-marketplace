@@ -114,6 +114,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [showEmoticonPicker, setShowEmoticonPicker] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [lastSeenMap, setLastSeenMap] = useState<Map<string, string>>(new Map());
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [presenceConnection, setPresenceConnection] = useState<ChannelHealth>("connecting");
   const [typingConnection, setTypingConnection] = useState<ChannelHealth>("offline");
@@ -126,7 +127,10 @@ export default function ChatPage() {
 
   const selectedChatRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const conversationListRef = useRef<HTMLDivElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
   const messageSelectionRef = useRef({ start: input.length, end: input.length });
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const typingChannelRef = useRef<RealtimeChannel | null>(null);
@@ -222,6 +226,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     setShowEmoticonPicker(false);
+  }, [selectedChat]);
+
+  useEffect(() => {
+    if (!selectedChat || !conversationListRef.current) return;
+    const el = conversationListRef.current.querySelector(`[data-chat-id="${selectedChat}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedChat]);
 
   useEffect(() => {
@@ -677,7 +687,19 @@ export default function ChatPage() {
     presenceChannelRef.current = presenceChannel;
 
     const syncOnlineUsers = () => {
-      setOnlineUserIds(extractPresenceUserIds(presenceChannel.presenceState()));
+      const nextIds = extractPresenceUserIds(presenceChannel.presenceState());
+      setOnlineUserIds((prev) => {
+        const gone: string[] = [];
+        prev.forEach((id) => { if (!nextIds.has(id)) gone.push(id); });
+        if (gone.length > 0) {
+          setLastSeenMap((map) => {
+            const updated = new Map(map);
+            gone.forEach((id) => { if (!updated.has(id)) updated.set(id, new Date().toISOString()); });
+            return updated;
+          });
+        }
+        return nextIds;
+      });
     };
 
     presenceChannel
@@ -945,6 +967,18 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUserId]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    setIsScrolledUp(el.scrollHeight - el.scrollTop - el.clientHeight > threshold);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setIsScrolledUp(false);
+  }, []);
 
   useEffect(() => {
     if (!selectedChat) return;
@@ -1414,7 +1448,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-2 sm:p-3">
+          <div ref={conversationListRef} className="flex-1 overflow-y-auto p-2 sm:p-3">
             {loadingConversations && (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, index) => (
@@ -1460,6 +1494,7 @@ export default function ChatPage() {
                   <button
                     type="button"
                     key={chat.id}
+                    data-chat-id={chat.id}
                     onClick={() => selectConversation(chat.id, true)}
                     className={`w-full rounded-[1.15rem] border px-3 py-3 text-left transition-all duration-200 sm:rounded-2xl ${
                       isSelected
@@ -1648,7 +1683,13 @@ export default function ChatPage() {
                                 : "text-slate-500"
                             }`}
                           >
-                            {selectedUserTyping ? "Typing now..." : selectedUserOnline ? "Online now" : "Offline"}
+                            {selectedUserTyping
+                              ? "Typing now..."
+                              : selectedUserOnline
+                              ? "Online now"
+                              : selectedConversation?.otherUserId && lastSeenMap.has(selectedConversation.otherUserId)
+                              ? `Last seen ${formatTimeAgo(lastSeenMap.get(selectedConversation.otherUserId) ?? null)}`
+                              : "Offline"}
                           </p>
                         </div>
                       </>
@@ -1678,8 +1719,14 @@ export default function ChatPage() {
                           type="button"
                           onClick={() => void startLiveTalk()}
                           disabled={liveTalkBusy}
-                          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-2.5 py-2 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:rounded-full sm:px-3 sm:py-1.5"
+                          className="relative inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-2.5 py-2 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-70 sm:rounded-full sm:px-3 sm:py-1.5"
                         >
+                          {liveTalkRequest?.status === "pending" ? (
+                            <>
+                              <span className="absolute -inset-2 animate-ping rounded-full border-2 border-cyan-400 opacity-60" />
+                              <span className="absolute -inset-1 animate-ping rounded-full border-2 border-cyan-300 opacity-30" style={{ animationDelay: "0.5s" }} />
+                            </>
+                          ) : null}
                           {liveTalkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                           <span className="sm:hidden">{liveTalkRequest?.status === "pending" ? "Pending" : "Live"}</span>
                           <span className="hidden sm:inline">{liveTalkRequest?.status === "pending" ? "Live Talk pending" : "Start Live Talk"}</span>
@@ -1726,7 +1773,11 @@ export default function ChatPage() {
                 </div>
               </header>
 
-              <div className="relative flex-1 overflow-y-auto bg-slate-50/65 px-3 py-4 sm:px-6 sm:py-5">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="relative flex-1 overflow-y-auto bg-slate-50/65 px-3 py-4 sm:px-6 sm:py-5"
+              >
                 {chatError ? (
                   <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 md:hidden">
                     {chatError}
@@ -1969,8 +2020,16 @@ export default function ChatPage() {
                     {selectedUserTyping && selectedConversation && (
                       <div className="flex justify-start">
                         <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
-                          <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
-                          {selectedConversation.name} is typing...
+                          <span className="flex items-center gap-0.5">
+                            {[0, 0.15, 0.3].map((delay) => (
+                              <span
+                                key={delay}
+                                className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500"
+                                style={{ animationDelay: `${delay}s` }}
+                              />
+                            ))}
+                          </span>
+                          {selectedConversation.name} is typing
                         </div>
                       </div>
                     )}
@@ -1980,6 +2039,18 @@ export default function ChatPage() {
                 )}
               </div>
 
+              {isScrolledUp ? (
+                <div className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 pb-3">
+                  <button
+                    type="button"
+                    onClick={scrollToBottom}
+                    className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-md transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    Jump to latest
+                  </button>
+                </div>
+              ) : null}
               <footer className="border-t border-slate-200/80 bg-white px-3 pb-[max(env(safe-area-inset-bottom,0px),0.5rem)] pt-3 sm:px-6 sm:pt-4">
                 {showEmoticonPicker && (
                   <button

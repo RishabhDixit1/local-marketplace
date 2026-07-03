@@ -16,6 +16,7 @@ import {
   LogIn,
   Zap,
   Store,
+  SearchX,
   Loader2,
   User as UserIcon,
 } from "lucide-react";
@@ -23,6 +24,9 @@ import { supabase } from "@/lib/supabase";
 import { storeLocalAuthSession } from "@/lib/localAuth";
 import ServiQLogo from "@/app/components/ServiQLogo";
 import { MobileBottomNav } from "@/app/components/MobileBottomNav";
+import { StaggerContainer, StaggerItem } from "@/app/components/motion/StaggerChildren";
+import { PressScale } from "@/app/components/motion/PressScale";
+import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { appName } from "@/lib/branding";
 import {
   CROSSINGS_REPUBLIK_COORDS,
@@ -37,6 +41,42 @@ interface ProviderCardData {
   priceMin: number | null; priceMax: number | null; distanceKm: number | null;
   verified: boolean;
   listings: { id: string; title: string; price: number | null }[];
+}
+
+function RippleButton({ children, className, onClick }: { children: React.ReactNode; className?: string; onClick: () => void }) {
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const rippleIdRef = useRef(0);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (!rect) { onClick(); return; }
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const id = ++rippleIdRef.current;
+    setRipples((prev) => [...prev, { id, x, y }]);
+    setTimeout(() => setRipples((prev) => prev.filter((r) => r.id !== id)), 600);
+    onClick();
+  };
+
+  return (
+    <button ref={btnRef} type="button" onClick={handleClick} className={`relative overflow-hidden ${className || ""}`}>
+      {children}
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="pointer-events-none absolute animate-[ripple-expand_0.6s_ease-out_forwards] rounded-full bg-white/25"
+          style={{ left: r.x - 10, top: r.y - 10, width: 20, height: 20 }}
+        />
+      ))}
+      <style jsx>{`
+        @keyframes ripple-expand {
+          0% { transform: scale(0); opacity: 0.6; }
+          100% { transform: scale(25); opacity: 0; }
+        }
+      `}</style>
+    </button>
+  );
 }
 
 const isEmailLike = (value: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -357,7 +397,7 @@ export function LandingPageClient({
             </Link>
             <button
               type="button"
-              onClick={() => { setShowAuth(true); setContactProvider(null); }}
+              onClick={() => { router.push("/login"); }}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
             >
               <LogIn className="h-4 w-4" />
@@ -425,19 +465,20 @@ export function LandingPageClient({
         <div className="mt-8">
           <div className="flex flex-wrap items-center justify-center gap-2">
             {CATEGORIES.map((cat) => (
-              <button
-                key={cat.label}
-                type="button"
-                onClick={() => setSelectedCategory(selectedCategory === cat.label ? null : cat.label)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border min-h-11 px-4 py-2.5 text-xs font-semibold transition ${
-                  selectedCategory === cat.label
-                    ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
-                    : cat.color + " hover:shadow-sm"
-                }`}
-              >
-                <span className="text-sm">{cat.icon}</span>
-                {cat.label}
-              </button>
+              <PressScale key={cat.label} as="div">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(selectedCategory === cat.label ? null : cat.label)}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border min-h-11 px-4 py-2.5 text-xs font-semibold transition ${
+                    selectedCategory === cat.label
+                      ? "border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]"
+                      : cat.color + " hover:shadow-sm"
+                  }`}
+                >
+                  <span className="text-sm">{cat.icon}</span>
+                  {cat.label}
+                </button>
+              </PressScale>
             ))}
           </div>
         </div>
@@ -461,23 +502,40 @@ export function LandingPageClient({
         </div>
 
         {/* ── Provider cards grid ── */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {providers.map((provider) => (
-            <ProviderCard
-              key={provider.id}
-              provider={provider}
-              onSelect={(p) => setSelectedProvider(p)}
-              onContact={(p) => {
-                setContactProvider(p);
-                setShowAuth(false);
-              }}
-            />
-          ))}
-        </div>
+        <ErrorBoundary>
+          <StaggerContainer>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {providers.map((provider) => (
+                <StaggerItem key={provider.id}>
+                  <ProviderCard
+                    provider={provider}
+                    onSelect={(p) => setSelectedProvider(p)}
+                    onContact={(p) => {
+                      router.push(`/login?next=${encodeURIComponent(`/dashboard/chat?providerId=${p.id}`)}`);
+                    }}
+                  />
+                </StaggerItem>
+              ))}
+            </div>
+          </StaggerContainer>
+        </ErrorBoundary>
 
         {providers.length === 0 && !realProvidersLoading && !realProvidersError && (
           <div className="mt-12 text-center">
-            <p className="text-sm text-slate-500">No providers found. Try a different search or category.</p>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-100">
+              <SearchX className="h-7 w-7 text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700">No providers found</p>
+            <p className="mt-1 text-sm text-slate-500">Try a different search or category above.</p>
+            {selectedCategory && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--brand-700)]"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
 
@@ -631,11 +689,10 @@ export function LandingPageClient({
 
               {/* Contact action */}
               <div className="mt-6 flex gap-2">
-                <button
-                  type="button"
+                <RippleButton
                   onClick={() => { setContactProvider(selectedProvider); setSelectedProvider(null); }}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
-                ><Phone className="h-4 w-4" /> Contact</button>
+                ><Phone className="h-4 w-4" /> Contact</RippleButton>
                 <button
                   type="button"
                   onClick={() => { router.push(`/profile/${selectedProvider.id}`); }}

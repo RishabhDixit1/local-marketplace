@@ -1,10 +1,11 @@
 ﻿"use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Building2, Loader2, MapPin, ShieldCheck, Star, Store, Users,
+  ArrowLeft, Building2, Loader2, MapPin, SearchX, ShieldCheck, Star, Store, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAuthedJson } from "@/lib/clientApi";
@@ -151,18 +152,22 @@ export default function PeoplePage() {
         </div>
       ) : !selectedLocalityId ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-          <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-          <p className="text-sm font-semibold text-slate-700">Select a society</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+            <Users className="h-7 w-7 text-slate-400" />
+          </div>
+          <p className="text-base font-bold text-slate-900">Select a society</p>
+          <p className="mt-1 text-sm text-slate-500">
             Choose a locality above to see providers and neighbours in that area
           </p>
         </div>
       ) : people.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
-          <MapPin className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-          <p className="text-sm font-semibold text-slate-700">No providers found</p>
-          <p className="mt-1 text-xs text-slate-500">
-            No providers have registered in this locality yet
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+            <SearchX className="h-7 w-7 text-slate-400" />
+          </div>
+          <p className="text-base font-bold text-slate-900">No providers found</p>
+          <p className="mt-1 text-sm text-slate-500">
+            No providers have registered in this locality yet. Try selecting a different area.
           </p>
         </div>
       ) : (
@@ -171,10 +176,21 @@ export default function PeoplePage() {
             <Users className="h-3.5 w-3.5" />
             {people.length} provider{people.length === 1 ? "" : "s"} in this area
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <motion.div
+            className="grid gap-3 sm:grid-cols-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
+          >
             {people.map((profile) => (
-              <Link
+              <motion.div
                 key={profile.id}
+                variants={{
+                  hidden: { opacity: 0, y: 12, scale: 0.97 },
+                  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number] } },
+                }}
+              >
+              <Link
                 href={`/dashboard/chat?recipientId=${profile.id}`}
                 className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[var(--brand-300)] hover:shadow-md"
               >
@@ -216,8 +232,9 @@ export default function PeoplePage() {
                 </div>
                 <Store className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
               </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
     </div>

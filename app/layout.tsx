@@ -9,6 +9,8 @@ const CookieConsentBanner = dynamic(
 import { appName, appTagline } from "@/lib/branding";
 import { AppFooter } from "@/components/AppFooter";
 import { NavigationProgress } from "@/app/components/NavigationProgress";
+import { AnimatedPage } from "@/app/components/motion/AnimatedPage";
+import { OfflineBanner } from "@/app/components/OfflineBanner";
 import { getConfiguredSiteUrl } from "@/lib/siteUrl";
 
 const siteUrl = getConfiguredSiteUrl();
@@ -74,7 +76,8 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-screen flex-col bg-[var(--surface-app)] text-[var(--ink-950)] antialiased">
         <NavigationProgress />
-        <div className="flex-1">{children}</div>
+        <OfflineBanner />
+        <div className="flex-1"><AnimatedPage>{children}</AnimatedPage></div>
         <AppFooter />
         <Analytics />
         <CookieConsentBanner />

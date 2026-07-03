@@ -1,5 +1,6 @@
 ﻿import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { LandingPageClient } from "./components/landing/LandingPageClient";
 import { buildPageMetadata } from "@/lib/metadata";
 import { appName } from "@/lib/branding";
@@ -52,13 +53,16 @@ export default async function PublicLandingPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const initialSignIn = params.signin === "true";
   const initialCategory = typeof params.category === "string" ? params.category : null;
+
+  if (params.signin === "true") {
+    redirect("/login");
+  }
 
   return (
     <Suspense fallback={<LandingSkeleton />}>
       <LandingPageClient
-        initialSignIn={initialSignIn}
+        initialSignIn={false}
         initialCategory={initialCategory}
       />
     </Suspense>

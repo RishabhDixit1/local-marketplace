@@ -8,14 +8,22 @@ import { appName, appTagline } from "@/lib/branding";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const [message, setMessage] = useState("Completing sign-in...");
+  const [step, setStep] = useState(0);
+  const [message, setMessage] = useState("Verifying your identity...");
   const handledRef = useRef(false);
+
+  const steps = [
+    { label: "Verifying", progress: 30 },
+    { label: "Creating profile", progress: 65 },
+    { label: "Redirecting", progress: 100 },
+  ];
 
   useEffect(() => {
     let cancelled = false;
     const fallbackTimeout = window.setTimeout(() => {
       if (!cancelled) {
         setMessage("Sign-in is taking longer than expected. Redirecting to login...");
+        setStep(-1);
         router.replace("/");
       }
     }, 60000);
@@ -23,6 +31,9 @@ export default function AuthCallbackPage() {
     const redirectToDestination = async (session: NonNullable<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"]>) => {
       if (handledRef.current || cancelled) return;
       handledRef.current = true;
+
+      setStep(1);
+      setMessage("Creating your profile...");
 
       const providers = session.user.app_metadata?.providers;
       const providerList = Array.isArray(providers) ? providers : [];
@@ -49,6 +60,9 @@ export default function AuthCallbackPage() {
       } catch (err) {
         console.error("[callback] Referral redemption error:", err);
       }
+
+      setStep(2);
+      setMessage("Redirecting to your dashboard...");
 
       if (!cancelled) {
         router.replace(resolveCurrentProfileDestination(profile));
@@ -127,13 +141,37 @@ export default function AuthCallbackPage() {
     };
   }, [router]);
 
+  const progress = step >= 0 && step < steps.length ? steps[step].progress : step === -1 ? 0 : 100;
+
   return (
     <main className="min-h-screen grid place-items-center bg-[var(--surface-app)] px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-[0_24px_60px_-38px_rgba(15,23,42,0.45)] space-y-3 startup-fade">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-[0_24px_60px_-38px_rgba(15,23,42,0.45)] space-y-5 startup-fade">
         <div className="flex justify-center">
           <ServiQLogo compact href="/" ariaLabel="Open homepage" />
         </div>
         <h1 className="brand-display text-2xl font-semibold text-slate-900">Signing You In to {appName}</h1>
+
+        <div className="space-y-2">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[var(--brand-600)] to-[var(--brand-400)] transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <div className="flex justify-between px-0.5">
+            {steps.map((s, i) => (
+              <span
+                key={s.label}
+                className={`text-[10px] font-medium transition-colors duration-300 ${
+                  i <= step ? "text-[var(--brand-700)]" : "text-slate-400"
+                }`}
+              >
+                {s.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
         <p className="text-sm text-slate-600">{message}</p>
         <p className="text-xs text-slate-500">{appTagline}</p>
       </div>

@@ -235,8 +235,9 @@ export default function FeedCard({
               {item.displayCreator}
             </button>
             {item.verificationStatus === "verified" ? (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 sm:px-2 sm:text-[10px]">
+              <span className="relative overflow-hidden rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 sm:px-2 sm:text-[10px]">
                 Verified
+                <span className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-transparent via-white/40 to-transparent" />
               </span>
             ) : null}
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -12,6 +13,28 @@ import FeedCard from "@/app/dashboard/components/posts/FeedCard";
 import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
 import { Loader2, Pencil, Save, X } from "lucide-react";
 import { Input } from "@/app/components/ui/Input";
+
+const staggerContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.04,
+    },
+  },
+};
+
+const staggerCardVariants = {
+  hidden: { opacity: 0, y: 16, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.35,
+      ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number],
+    },
+  },
+};
 
 const feedGridClassName =
   "grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,23rem),1fr))] 2xl:gap-4";
@@ -338,7 +361,12 @@ export default function FeedGrid({
         </div>
       )}
 
-      <div className={feedGridClassName}>
+      <motion.div
+        className={feedGridClassName}
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
           const isOwner =
@@ -348,12 +376,13 @@ export default function FeedGrid({
           const canEditOwnerItem = item.source === "post";
 
           return (
-            <div
+            <motion.div
               key={item.id}
+              variants={staggerCardVariants}
               data-feed-card-id={item.id}
               className="h-full w-full min-w-0 max-w-[40rem] justify-self-center"
               ref={(node) => {
-                cardRefs.current.set(item.id, node);
+                cardRefs.current.set(item.id, node as unknown as HTMLElement | null);
               }}
             >
               <FeedCard
@@ -410,10 +439,10 @@ export default function FeedGrid({
                     : "Delete post"
                 }
               />
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </>
   );
 }
