@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, Mail, ShieldCheck, Star, Users, UserCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Mail, ShieldCheck, Star, Users, UserCheck } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { storeLocalAuthSession } from "@/lib/localAuth";
@@ -457,6 +457,16 @@ function AuthForm() {
     <div className="relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden bg-[var(--surface-app)] px-6 py-12 sm:px-10 lg:px-16">
       <div className="pointer-events-none absolute -right-40 -top-40 h-80 w-80 rounded-full bg-[var(--brand-500)]/5 blur-[120px]" />
       <div className="mx-auto w-full max-w-sm">
+        <FadeInScale delay={0.05}>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ink-500)] transition hover:text-[var(--ink-700)]"
+          >
+            <ArrowLeft size={14} />
+            Back to home
+          </button>
+        </FadeInScale>
         <FadeInScale delay={0.1}>
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-700)]">
@@ -585,11 +595,20 @@ function AuthForm() {
               </motion.div>
             )}
 
-            {errorMessage ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-600">
-                {errorMessage}
-              </div>
-            ) : null}
+            <AnimatePresence mode="wait">
+              {errorMessage ? (
+                <motion.div
+                  key={errorMessage}
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-600"
+                >
+                  {errorMessage}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </motion.div>
         </FadeInScale>
       </div>

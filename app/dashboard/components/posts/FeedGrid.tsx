@@ -1,6 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  type Variants,
+} from "framer-motion";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -11,27 +15,33 @@ import type {
 import type { MarketplaceDisplayFeedItem } from "@/lib/marketplaceFeed";
 import FeedCard from "@/app/dashboard/components/posts/FeedCard";
 import FeedEmptyState from "@/app/dashboard/components/posts/FeedEmptyState";
+import { ConfirmDialog } from "@/app/components/ui/ConfirmDialog";
 import { Loader2, Pencil, Save, X } from "lucide-react";
 import { Input } from "@/app/components/ui/Input";
 
-const staggerContainerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.04,
-    },
-  },
-};
-
-const staggerCardVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.97 },
+const staggerCardVariants: Variants = {
+  hidden: (i: number) => ({
+    opacity: 0,
+    y: 16,
+    scale: 0.97,
+    transition: { delay: i * 0.04 },
+  }),
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
     transition: {
       duration: 0.35,
-      ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number],
+      ease: [0.2, 0.8, 0.2, 1],
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.94,
+    y: -8,
+    transition: {
+      duration: 0.25,
+      ease: [0.4, 0, 1, 1],
     },
   },
 };
@@ -115,61 +125,77 @@ export default function FeedGrid({
     category: string;
     budget: number;
   } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    variant: "danger" | "warning" | "info";
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleOwnerArchive = useCallback(
     async (item: MarketplaceDisplayFeedItem) => {
       if (item.source !== "post") return;
-      if (
-        !window.confirm(
-          "Archive this post? It will no longer appear in the feed.",
-        )
-      )
-        return;
-      setOwnerBusyId(item.id);
-      try {
-        const res = await fetch("/api/posts/manage", {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId: item.id, action: "archive" }),
-        });
-        if (res.ok) onFeedRefresh?.();
-      } finally {
-        setOwnerBusyId(null);
-      }
+      setConfirmDialog({
+        title: "Archive post?",
+        message: "It will no longer appear in the feed. You can restore it later.",
+        variant: "warning",
+        confirmLabel: "Archive",
+        onConfirm: async () => {
+          setConfirmDialog(null);
+          setOwnerBusyId(item.id);
+          try {
+            const res = await fetch("/api/posts/manage", {
+              method: "PATCH",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ postId: item.id, action: "archive" }),
+            });
+            if (res.ok) onFeedRefresh?.();
+          } finally {
+            setOwnerBusyId(null);
+          }
+        },
+      });
     },
     [onFeedRefresh],
   );
 
   const handleOwnerDelete = useCallback(
     async (item: MarketplaceDisplayFeedItem) => {
-      const confirmMessage =
-        item.source === "help_request"
+      const isHelpRequest = item.source === "help_request";
+      setConfirmDialog({
+        title: isHelpRequest ? "Delete request?" : "Delete post?",
+        message: isHelpRequest
           ? "Delete this request from your live feed? This cannot be undone."
-          : "Permanently delete this post? This cannot be undone.";
-      if (!window.confirm(confirmMessage)) return;
-
-      setOwnerBusyId(item.id);
-      try {
-        const res =
-          item.source === "help_request" && item.helpRequestId
-            ? await fetch("/api/needs/status", {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  helpRequestId: item.helpRequestId,
-                  status: "cancelled",
-                }),
-              })
-            : await fetch(`/api/posts/manage?postId=${item.id}`, {
-                method: "DELETE",
-                credentials: "include",
-              });
-        if (res.ok) onFeedRefresh?.();
-      } finally {
-        setOwnerBusyId(null);
-      }
+          : "Permanently delete this post? This cannot be undone.",
+        variant: "danger",
+        confirmLabel: "Delete",
+        onConfirm: async () => {
+          setConfirmDialog(null);
+          setOwnerBusyId(item.id);
+          try {
+            const res =
+              isHelpRequest && item.helpRequestId
+                ? await fetch("/api/needs/status", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      helpRequestId: item.helpRequestId,
+                      status: "cancelled",
+                    }),
+                  })
+                : await fetch(`/api/posts/manage?postId=${item.id}`, {
+                    method: "DELETE",
+                    credentials: "include",
+                  });
+            if (res.ok) onFeedRefresh?.();
+          } finally {
+            setOwnerBusyId(null);
+          }
+        },
+      });
     },
     [onFeedRefresh],
   );
@@ -361,12 +387,8 @@ export default function FeedGrid({
         </div>
       )}
 
-      <motion.div
-        className={feedGridClassName}
-        variants={staggerContainerVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      <div className={feedGridClassName}>
+      <AnimatePresence mode="popLayout">
         {items.map((item, index) => {
           const actionModel = resolveActionModel(item);
           const isOwner =
@@ -378,7 +400,12 @@ export default function FeedGrid({
           return (
             <motion.div
               key={item.id}
+              custom={index}
               variants={staggerCardVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              layout
               data-feed-card-id={item.id}
               className="h-full w-full min-w-0 max-w-[40rem] justify-self-center"
               ref={(node) => {
@@ -442,7 +469,18 @@ export default function FeedGrid({
             </motion.div>
           );
         })}
-      </motion.div>
+      </AnimatePresence>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message ?? ""}
+        variant={confirmDialog?.variant ?? "danger"}
+        confirmLabel={confirmDialog?.confirmLabel ?? "Confirm"}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }

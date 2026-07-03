@@ -354,6 +354,11 @@ export default function MarketplacePage() {
     return () => observer.disconnect();
   }, [displayFeed.length, hasMoreMobileItems, updateMobileVisibleCount]);
 
+  const feedSignature = JSON.stringify(filters);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [feedSignature]);
+
   const handleResetOrRefresh = useCallback(() => {
     resetFilters();
     if (feed.length === 0) {

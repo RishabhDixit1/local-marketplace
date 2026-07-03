@@ -69,6 +69,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import PushNotificationSubscriber from "@/app/components/PushNotificationSubscriber";
 import { PageTransition } from "@/app/components/motion/PageTransition";
 import { ToastProvider } from "@/app/components/toast/ToastProvider";
@@ -947,18 +948,25 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {!hideFloatingPostAction && (
-        <button
-          type="button"
-          onClick={() => {
-            setShowUserMenu(false);
-            setOpenCreatePost(true);
-          }}
-          aria-label="Post a need"
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:bottom-6 md:right-6 md:min-h-12 md:px-5"
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[var(--layer-floating-action)] md:bottom-6 md:right-6"
         >
-          <Plus className="h-4 w-4" />
-          <span>Post Need</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowUserMenu(false);
+              setOpenCreatePost(true);
+            }}
+            aria-label="Post a need"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-900)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-400)] focus-visible:ring-offset-2 md:min-h-12 md:px-5"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Post Need</span>
+          </button>
+        </motion.div>
       )}
       <MarketAiFloating />
       {openCreatePost && (

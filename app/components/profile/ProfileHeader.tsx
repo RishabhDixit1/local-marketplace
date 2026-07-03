@@ -107,12 +107,19 @@ export default function ProfileHeader({
   const { scrollY } = useScroll();
   const parallaxY = useTransform(scrollY, [0, 400], [0, 60]);
 
-  const [animatedTasks, setAnimatedTasks] = useState(0);
-  const [animatedReviews, setAnimatedReviews] = useState(0);
+  const [animatedTasks, setAnimatedTasks] = useState(taskCount);
+  const [animatedReviews, setAnimatedReviews] = useState(reviewCount);
+  const animatedRef = useRef(false);
   useEffect(() => {
-    const t = animate(0, taskCount, { duration: 0.7, ease: "easeOut", onUpdate: (v) => setAnimatedTasks(Math.round(v)) });
-    const r = animate(0, reviewCount, { duration: 0.7, ease: "easeOut", delay: 0.1, onUpdate: (v) => setAnimatedReviews(Math.round(v)) });
-    return () => { t.stop(); r.stop(); };
+    if (!animatedRef.current) {
+      animatedRef.current = true;
+      const t = animate(0, taskCount, { duration: 0.7, ease: "easeOut", onUpdate: (v) => setAnimatedTasks(Math.round(v)) });
+      const r = animate(0, reviewCount, { duration: 0.7, ease: "easeOut", delay: 0.1, onUpdate: (v) => setAnimatedReviews(Math.round(v)) });
+      return () => { t.stop(); r.stop(); };
+    } else {
+      setAnimatedTasks(taskCount);
+      setAnimatedReviews(reviewCount);
+    }
   }, [taskCount, reviewCount]);
 
   return (
