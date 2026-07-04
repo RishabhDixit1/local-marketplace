@@ -23,7 +23,7 @@ export default function ProviderOnboardingLayout({ children }: { children: React
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
       if (!session?.user) {
-        router.replace("/");
+        router.replace("/login?next=/onboarding/provider/locality");
         return;
       }
       setChecking(false);
