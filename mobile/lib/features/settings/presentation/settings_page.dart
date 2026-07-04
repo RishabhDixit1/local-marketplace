@@ -10,6 +10,7 @@ import '../../../core/design_system/serviq_async_state.dart';
 import '../../../core/design_system/serviq_chrome.dart';
 import '../../../core/theme/design_tokens.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../l10n/l10n.dart';
 import '../data/settings_repository.dart';
 import '../data/theme_mode_provider.dart';
 import '../domain/settings_models.dart';
@@ -249,6 +250,59 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  void _showLanguagePicker(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.read(localeProvider);
+    final localeOptions = [
+      (Locale('en', 'US'), 'English'),
+      (Locale('hi', 'IN'), 'हिन्दी'),
+      (Locale('bn', 'BD'), 'বাংলা'),
+      (Locale('ta', 'IN'), 'தமிழ்'),
+      (Locale('te', 'IN'), 'తెలుగు'),
+      (Locale('mr', 'IN'), 'मराठी'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Select Language',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                ...localeOptions.map((entry) {
+                  final (locale, label) = entry;
+                  final selected = locale.languageCode == currentLocale.languageCode;
+                  return ListTile(
+                    leading: Icon(
+                      selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: selected ? AppColors.primary : AppColors.inkSubtle,
+                    ),
+                    title: Text(label,
+                        style: TextStyle(
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                          color: selected ? AppColors.primary : AppColors.ink,
+                        )),
+                    onTap: () {
+                      ref.read(localeProvider.notifier).setLocale(locale);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildGeneralSection() {
     return SectionCard(
       child: Column(
@@ -260,10 +314,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.language_rounded, color: AppColors.ink),
             title: const Text('Language', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: const Text('English', style: TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+            subtitle: Consumer(
+              builder: (context, ref, _) {
+                final currentLocale = ref.watch(localeProvider);
+                final labels = {
+                  'en': 'English',
+                  'hi': 'हिन्दी',
+                  'bn': 'বাংলা',
+                  'ta': 'தமிழ்',
+                  'te': 'తెలుగు',
+                  'mr': 'मराठी',
+                };
+                return Text(
+                  labels[currentLocale.languageCode] ?? 'English',
+                  style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle),
+                );
+              },
+            ),
             trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.inkSubtle),
             onTap: () {
-              ServiqToast.show(context, message: 'More languages coming soon.', tone: ServiqToastTone.neutral);
+              _showLanguagePicker(context, ref);
             },
           ),
           const Divider(height: 1),

@@ -28,6 +28,8 @@ import { StaggerContainer, StaggerItem } from "@/app/components/motion/StaggerCh
 import { PressScale } from "@/app/components/motion/PressScale";
 import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { appName } from "@/lib/branding";
+import { useLocaleContext } from "@/lib/i18n-context";
+import LocaleSwitcher from "@/app/components/LocaleSwitcher";
 import {
   CROSSINGS_REPUBLIK_COORDS,
   LOCAL_SOCIETIES,
@@ -95,6 +97,7 @@ const CATEGORIES = [
 ];
 
 function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCardData; onContact: (p: ProviderCardData) => void; onSelect: (p: ProviderCardData) => void }) {
+  const { t } = useLocaleContext();
   const priceLabel = provider.priceMin != null
     ? provider.priceMax != null && provider.priceMax > provider.priceMin
       ? `₹${provider.priceMin} - ₹${provider.priceMax}`
@@ -116,7 +119,7 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
               </div>
               {provider.verified && (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">
-                  Verified
+                  {t("landing.verified")}
                 </span>
               )}
             </div>
@@ -168,7 +171,7 @@ function ProviderCard({ provider, onContact, onSelect }: { provider: ProviderCar
               className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand-900)] px-4 min-h-11 py-2.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)]"
             >
               <Phone className="h-3.5 w-3.5" />
-              Contact
+              {t("landing.contact")}
             </button>
           </div>
         </div>
@@ -185,6 +188,7 @@ export function LandingPageClient({
   initialCategory: string | null;
 }) {
   const router = useRouter();
+  const { t } = useLocaleContext();
   const [showAuth, setShowAuth] = useState(initialSignIn);
   const [emailAddress, setEmailAddress] = useState("");
   const [loading, setLoading] = useState(false);
@@ -381,19 +385,20 @@ export function LandingPageClient({
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <ServiQLogo href="/" ariaLabel="ServiQ home" />
+            <ServiQLogo href="/" ariaLabel={t("nav.home")} />
             <div className="hidden sm:flex items-center gap-1.5 rounded-xl bg-[var(--brand-50)] px-3 py-1.5 text-[11px] font-medium text-[var(--brand-700)]">
               <MapPin className="h-3.5 w-3.5" />
               {CROSSINGS_REPUBLIK_COORDS.label}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LocaleSwitcher />
             <Link
               href="/market/crossing-republik"
               className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)]"
             >
               <Store className="h-4 w-4" />
-              Explore
+              {t("nav.explore")}
             </Link>
             <button
               type="button"
@@ -401,7 +406,7 @@ export function LandingPageClient({
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-500)]/40 hover:text-[var(--brand-700)]"
             >
               <LogIn className="h-4 w-4" />
-              Sign In
+              {t("nav.signIn")}
             </button>
           </div>
         </div>
@@ -415,24 +420,24 @@ export function LandingPageClient({
               type="button"
               onClick={() => setShowHowItWorks(false)}
               className="absolute right-3 top-3 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Dismiss"
+              aria-label={t("landing.dismiss")}
             >
               <X className="h-4 w-4" />
             </button>
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-              <span className="text-sm font-bold text-slate-900">How {appName} works</span>
+              <span className="text-sm font-bold text-slate-900">{t("landing.howItWorks", { appName })}</span>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
                 <span className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">1</span>
-                  Browse nearby providers
+                  {t("landing.step1")}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">2</span>
-                  Contact & compare
+                  {t("landing.step2")}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-900)] text-[10px] font-bold text-white">3</span>
-                  Get work done
+                  {t("landing.step3")}
                 </span>
               </div>
             </div>
@@ -442,21 +447,21 @@ export function LandingPageClient({
         {/* ── Hero search ── */}
         <div className="mt-8 text-center sm:mt-12">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            What do you need done?
+            {t("landing.heroTitle")}
           </h1>
           <p className="mt-2 text-sm text-slate-500 sm:text-base">
-            Find trusted providers near you in Crossings Republik
+            {t("landing.heroSubtitle")}
           </p>
           <div className="mx-auto mt-6 max-w-2xl">
-            <AiPromptBar placeholder='Try "AC repair", "electrician", "plumber nearby"...' />
+            <AiPromptBar placeholder={t("landing.searchPlaceholder")} />
           </div>
           <div className="mt-3 flex items-center justify-center gap-3 text-xs text-slate-400">
-            <span>or</span>
+            <span>{t("landing.or")}</span>
             <Link
               href="/market/crossing-republik"
               className="inline-flex items-center gap-1 font-semibold text-[var(--brand-700)] hover:text-[var(--brand-500)]"
             >
-              Browse the full marketplace <ArrowRight className="h-3 w-3" />
+              {t("landing.browseMarketplace")} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
@@ -487,8 +492,8 @@ export function LandingPageClient({
         <div className="mt-8 flex items-center justify-between">
           <p className="text-sm text-slate-500">
             {!selectedCategory && realProviders.length > LANDING_PAGE_PROVIDER_LIMIT
-              ? `Showing ${LANDING_PAGE_PROVIDER_LIMIT} of ${realProviders.length} providers near you`
-              : `${realProviders.length} ${realProviders.length === 1 ? "provider" : "providers"} near you`}
+              ? t("landing.showingProviders", { count: LANDING_PAGE_PROVIDER_LIMIT, total: realProviders.length })
+              : t("landing.providersNearYou", { count: realProviders.length })}
           </p>
           {selectedCategory && (
             <button
@@ -496,7 +501,7 @@ export function LandingPageClient({
               onClick={() => setSelectedCategory(null)}
               className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--brand-700)] hover:bg-[var(--brand-50)]"
             >
-              Clear filter
+              {t("landing.clearFilter")}
             </button>
           )}
         </div>
@@ -525,15 +530,15 @@ export function LandingPageClient({
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-100">
               <SearchX className="h-7 w-7 text-slate-400" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">No providers found</p>
-            <p className="mt-1 text-sm text-slate-500">Try a different search or category above.</p>
+            <p className="text-sm font-semibold text-slate-700">{t("landing.noProviders")}</p>
+            <p className="mt-1 text-sm text-slate-500">{t("landing.noProvidersHint")}</p>
             {selectedCategory && (
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--brand-700)]"
               >
-                Clear all filters
+                {t("landing.clearAllFilters")}
               </button>
             )}
           </div>
@@ -541,40 +546,40 @@ export function LandingPageClient({
 
         {realProvidersError && (
           <div className="mt-12 text-center">
-            <p className="text-sm text-rose-500">Could not load providers. {realProvidersError}</p>
+            <p className="text-sm text-rose-500">{t("landing.couldNotLoad", { error: realProvidersError })}</p>
             <button
               type="button"
               onClick={() => setRetryCount((c) => c + 1)}
               className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-            >Retry</button>
+            >{t("common.retry")}</button>
           </div>
         )}
 
         {realProvidersLoading && (
           <div className="mt-12 flex items-center justify-center gap-2 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading providers...
+            {t("landing.loadingProviders")}
           </div>
         )}
 
         {/* ── CTA: List your business ── */}
         <div className="mt-12 rounded-2xl border border-dashed border-[var(--brand-300)] bg-gradient-to-br from-[var(--brand-50)] to-white p-6 text-center">
           <Store className="mx-auto h-8 w-8 text-[var(--brand-500)]" />
-          <h3 className="mt-3 text-lg font-bold text-slate-900">Are you a service provider?</h3>
-          <p className="mt-1 text-sm text-slate-500">List your business on {appName} and get more customers from your neighborhood.</p>
+          <h3 className="mt-3 text-lg font-bold text-slate-900">{t("landing.areYouProvider")}</h3>
+          <p className="mt-1 text-sm text-slate-500">{t("landing.listBusinessCTA", { appName })}</p>
           <Link
             href="/onboarding/provider/locality"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[var(--brand-900)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
-          ><Store className="h-4 w-4" /> List Your Business</Link>
+          ><Store className="h-4 w-4" /> {t("landing.listYourBusiness")}</Link>
         </div>
 
         {/* ── Location info ── */}
         <div className="mt-12 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Serving Crossings Republik & nearby areas</h3>
+              <h3 className="text-sm font-bold text-slate-900">{t("landing.servingArea", { area: CROSSINGS_REPUBLIK_COORDS.label })}</h3>
               <p className="mt-1 text-xs text-slate-500">
-                {LOCAL_SOCIETIES.slice(0, 5).join(", ")}, and more
+                {LOCAL_SOCIETIES.slice(0, 5).join(", ")}{t("landing.andMore")}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -587,7 +592,7 @@ export function LandingPageClient({
         {/* ── Footer ── */}
         <footer className="mt-12 border-t border-slate-200 pt-8 text-center">
           <p className="text-xs text-slate-400">
-            {appName} &mdash; Crossings Republik&apos;s local marketplace &middot; Built for the community
+            {t("landing.builtForCommunity", { appName, area: "Crossings Republik" })}
           </p>
         </footer>
       </main>
@@ -600,7 +605,7 @@ export function LandingPageClient({
               type="button"
               onClick={() => setSelectedProvider(null)}
               className="absolute right-4 top-4 z-10 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Close"
+              aria-label={t("common.close")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -613,10 +618,10 @@ export function LandingPageClient({
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-slate-900">{selectedProvider.name}</h2>
                     {selectedProvider.verified && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">Verified</span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-200">{t("landing.verified")}</span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500">{selectedProvider.location || "Crossings Republik"}</p>
+                  <p className="mt-0.5 text-sm text-slate-500">{selectedProvider.location || CROSSINGS_REPUBLIK_COORDS.label}</p>
                 </div>
               </div>
 
@@ -626,28 +631,28 @@ export function LandingPageClient({
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                     <Star className="mx-auto h-4 w-4 text-amber-400" fill="currentColor" />
                     <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.avgRating.toFixed(1)}</p>
-                    <p className="text-[10px] text-slate-500">{selectedProvider.reviewCount} reviews</p>
+                    <p className="text-[10px] text-slate-500">{selectedProvider.reviewCount} {t("landing.reviews")}</p>
                   </div>
                 )}
                 {selectedProvider.completedJobs > 0 && (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                     <CheckCircle2 className="mx-auto h-4 w-4 text-slate-500" />
                     <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.completedJobs}</p>
-                    <p className="text-[10px] text-slate-500">jobs done</p>
+                    <p className="text-[10px] text-slate-500">{t("landing.jobsDone")}</p>
                   </div>
                 )}
                 {selectedProvider.responseMinutes != null && (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                     <Zap className="mx-auto h-4 w-4 text-[var(--brand-500)]" />
-                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.responseMinutes} min</p>
-                    <p className="text-[10px] text-slate-500">response</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.responseMinutes} {t("landing.minutes")}</p>
+                    <p className="text-[10px] text-slate-500">{t("landing.response")}</p>
                   </div>
                 )}
                 {selectedProvider.distanceKm != null && (
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                     <MapPin className="mx-auto h-4 w-4 text-slate-500" />
                     <p className="mt-1 text-sm font-bold text-slate-900">{selectedProvider.distanceKm}</p>
-                    <p className="text-[10px] text-slate-500">km away</p>
+                    <p className="text-[10px] text-slate-500">{t("landing.kmAway")}</p>
                   </div>
                 )}
               </div>
@@ -655,7 +660,7 @@ export function LandingPageClient({
               {/* Bio */}
               {selectedProvider.bio && (
                 <div className="mt-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">About</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{t("landing.about")}</p>
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{selectedProvider.bio}</p>
                 </div>
               )}
@@ -663,7 +668,7 @@ export function LandingPageClient({
               {/* Services */}
               {selectedProvider.services && selectedProvider.services.length > 0 && (
                 <div className="mt-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Services</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{t("landing.services")}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {selectedProvider.services.map((s) => (
                       <span key={s} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">{s}</span>
@@ -675,7 +680,7 @@ export function LandingPageClient({
               {/* Listings */}
               {selectedProvider.listings && selectedProvider.listings.length > 0 && (
                 <div className="mt-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Available Listings</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{t("landing.availableListings")}</p>
                   <div className="mt-2 space-y-2">
                     {selectedProvider.listings.map((l) => (
                       <div key={l.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5">
@@ -692,17 +697,17 @@ export function LandingPageClient({
                 <RippleButton
                   onClick={() => { setContactProvider(selectedProvider); setSelectedProvider(null); }}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)]"
-                ><Phone className="h-4 w-4" /> Contact</RippleButton>
+                ><Phone className="h-4 w-4" /> {t("landing.contact")}</RippleButton>
                 <button
                   type="button"
                   onClick={() => { router.push(`/profile/${selectedProvider.id}`); }}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--brand-200)] bg-white px-4 py-3 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-50)]"
-                ><UserIcon className="h-4 w-4" /> View Profile</button>
+                ><UserIcon className="h-4 w-4" /> {t("landing.viewProfile")}</button>
                 <button
                   type="button"
                   onClick={() => setSelectedProvider(null)}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >Close</button>
+                >{t("common.close")}</button>
               </div>
             </div>
           </div>
@@ -717,7 +722,7 @@ export function LandingPageClient({
               type="button"
               onClick={() => { setShowAuth(false); setContactProvider(null); setOtpStep(false); setVerificationCode(""); setErrorMessage(""); setInfoMessage(""); }}
               className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Close"
+              aria-label={t("common.close")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -725,7 +730,7 @@ export function LandingPageClient({
             <div className="p-6 sm:p-8">
               {contactProvider ? (
                 <div className="mb-6">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">Contact Provider</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">{t("auth.contactProvider")}</p>
                   <h2 className="mt-1.5 text-xl font-semibold text-slate-900">
                     {contactProvider.name}
                   </h2>
@@ -733,18 +738,18 @@ export function LandingPageClient({
                     {contactProvider.services?.[0] || contactProvider.role} &middot; {contactProvider.location}
                   </p>
                   <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs text-slate-600">Sign in or create an account to contact this provider.</p>
+                    <p className="text-xs text-slate-600">{t("auth.signInToContact")}</p>
                   </div>
                 </div>
               ) : null}
 
               <div className="mb-5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">Secure Access</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-700)]">{t("auth.secureAccess")}</p>
                 <h2 className="mt-1.5 text-2xl font-semibold text-slate-900">
-                  Welcome to {appName}
+                  {t("auth.welcome", { appName })}
                 </h2>
                 <p className="mt-1.5 text-sm leading-[1.55] text-slate-500">
-                  Sign in or create an account with a one-time login link sent to your email.
+                  {t("auth.signInSubtitle")}
                 </p>
               </div>
 
@@ -755,15 +760,14 @@ export function LandingPageClient({
                       <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">Check Your Email</p>
+                      <p className="text-sm font-semibold text-slate-900">{t("auth.checkEmail")}</p>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        We sent a verification code to{" "}
-                        <span className="font-medium text-slate-700">{emailAddress}</span>
+                        {t("auth.codeSent", { email: emailAddress })}
                       </p>
                     </div>
                     <div className="space-y-2">
                       <input type="text" inputMode="numeric" autoComplete="one-time-code"
-                        placeholder="Enter code from email"
+                        placeholder={t("auth.enterCode")}
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-lg font-mono tracking-widest text-slate-900 placeholder:text-sm placeholder:tracking-normal placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                         value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") void verifyOtpCode(); }}
@@ -772,24 +776,24 @@ export function LandingPageClient({
                       />
                       <button type="button" onClick={verifyOtpCode} disabled={verifying || verificationCode.trim().length < 6}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                      >{verifying ? "Verifying\u2026" : "Verify & Sign In"}{!verifying && <ArrowRight size={15} />}</button>
+                      >{verifying ? t("auth.verifying") : t("auth.verifyAndSignIn")}{!verifying && <ArrowRight size={15} />}</button>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left">
                       <p className="text-xs leading-[1.6] text-slate-500">
-                        Code valid for 24&nbsp;hours.{" "}
+                        {t("auth.codeValid")}{" "}
                          <button type="button" onClick={() => { setOtpStep(false); setInfoMessage(""); setErrorMessage(""); setVerificationCode(""); }}
-                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">Use a different email</button>{" "}
-                        or{" "}
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">{t("auth.differentEmail")}</button>{" "}
+                        {t("common.or")}{" "}
                         <button type="button" onClick={() => { setVerificationCode(""); void sendEmailLink(); }}
-                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">resend code</button>.
+                          className="text-[var(--brand-700)] underline underline-offset-2 transition hover:text-[var(--brand-500)]">{t("auth.resendCode")}</button>.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <>
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-slate-600">Email address</label>
-                      <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com"
+                      <label className="block text-xs font-semibold text-slate-600">{t("auth.emailLabel")}</label>
+                      <input type="email" inputMode="email" autoComplete="email" placeholder={t("auth.emailPlaceholder")}
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-[var(--brand-500)] focus:ring-4 focus:ring-[var(--brand-ring)]"
                         value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") void sendEmailLink(); }}
@@ -797,10 +801,10 @@ export function LandingPageClient({
                     </div>
                     <button type="button" onClick={sendEmailLink} disabled={loading}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-900)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-700)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-                    >{loading ? "Sending\u2026" : "Send Code"}{!loading && <ArrowRight size={15} />}</button>
+                    >{loading ? t("auth.sending") : t("auth.sendCode")}{!loading && <ArrowRight size={15} />}</button>
                     <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                       <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-500)]" />
-                      <p className="text-xs leading-[1.55] text-slate-500">No password needed &mdash; we&apos;ll email you a verification code. First-time users get an account created automatically.</p>
+                      <p className="text-xs leading-[1.55] text-slate-500">{t("auth.noPasswordNote")}</p>
                     </div>
                   </>
                 )}

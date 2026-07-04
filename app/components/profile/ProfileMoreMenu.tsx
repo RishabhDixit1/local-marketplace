@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Flag, MoreVertical, ShieldOff } from "lucide-react";
+import { Flag, MoreVertical, Send, ShieldOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type ProfileMoreMenuProps = {
@@ -144,7 +144,20 @@ export default function ProfileMoreMenu({ profileUserId, displayName }: ProfileM
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+        <div className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-2xl">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              const url = window.location.href;
+              const text = `Check out ${displayName} on ServiQ — trusted local services nearby.`;
+              window.open(`https://wa.me/?text=${encodeURIComponent(text + "\n\n" + url)}`, "_blank", "noopener,noreferrer");
+            }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Send className="h-4 w-4 text-[#25D366]" />
+            Share on WhatsApp
+          </button>
           <button
             type="button"
             onClick={() => { setOpen(false); setDialog("report"); }}

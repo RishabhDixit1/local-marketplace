@@ -4,6 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'l10n_en.dart';
 import 'l10n_hi.dart';
+import 'l10n_bn.dart';
+import 'l10n_ta.dart';
+import 'l10n_te.dart';
+import 'l10n_mr.dart';
 
 final localeProvider = NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
 
@@ -101,6 +105,14 @@ class _AppLocalizationsDelegate
     switch (locale.languageCode) {
       case 'hi':
         return AppLocalizationsHi();
+      case 'bn':
+        return AppLocalizationsBn();
+      case 'ta':
+        return AppLocalizationsTa();
+      case 'te':
+        return AppLocalizationsTe();
+      case 'mr':
+        return AppLocalizationsMr();
       default:
         return AppLocalizationsEn();
     }

@@ -91,23 +91,27 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryDeep,
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDeep,
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: const Center(
+                      child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    ),
                   ),
-                  child: const Center(
-                    child: Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(width: AppSpacing.xs),
+                  const Flexible(
+                    child: Text('ServiQ', overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                const Text('ServiQ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.inkStrong)),
-              ],
+                ],
+              ),
             ),
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 0, maxWidth: 150, minHeight: 0, maxHeight: 48),
@@ -178,7 +182,7 @@ class _LandingPageState extends ConsumerState<MarketplaceLandingPage> {
           child: Center(child: Text(number, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
         ),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle)),
+        Flexible(child: Text(text, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.inkSubtle))),
       ],
     );
   }

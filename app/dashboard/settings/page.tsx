@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Bell, Loader2, LogOut, Moon, Shield, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, Bell, Loader2, LogOut, MessageCircle, Moon, Shield, Sun, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type UserSettings = {
   order_notifications: boolean;
   promo_notifications: boolean;
   message_notifications: boolean;
+  whatsapp_notifications: boolean;
 };
 
 export default function SettingsPage() {
@@ -17,6 +18,7 @@ export default function SettingsPage() {
     order_notifications: true,
     promo_notifications: true,
     message_notifications: true,
+    whatsapp_notifications: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,7 @@ export default function SettingsPage() {
 
         const { data } = await supabase
           .from("user_settings")
-          .select("order_notifications,promo_notifications,message_notifications")
+          .select("order_notifications,promo_notifications,message_notifications,whatsapp_notifications")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -167,6 +169,13 @@ export default function SettingsPage() {
             description="New messages and connection requests"
             checked={settings.message_notifications}
             onChange={(checked) => setSettings((prev) => ({ ...prev, message_notifications: checked }))}
+          />
+          <ToggleRow
+            icon={<MessageCircle className="h-4 w-4" />}
+            label="WhatsApp notifications"
+            description="Receive order and lead updates on WhatsApp (requires phone on profile)"
+            checked={settings.whatsapp_notifications}
+            onChange={(checked) => setSettings((prev) => ({ ...prev, whatsapp_notifications: checked }))}
           />
         </div>
 

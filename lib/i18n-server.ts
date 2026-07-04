@@ -1,11 +1,20 @@
 import { cookies } from "next/headers";
 import type { Locale } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
 import en from "@/messages/en.json";
 import hi from "@/messages/hi.json";
+import bn from "@/messages/bn.json";
+import ta from "@/messages/ta.json";
+import te from "@/messages/te.json";
+import mr from "@/messages/mr.json";
 
 const messages: Record<Locale, Record<string, Record<string, string>>> = {
   en,
   hi,
+  bn,
+  ta,
+  te,
+  mr,
 };
 
 function resolve(locale: Locale, path: string): string | undefined {
@@ -26,7 +35,7 @@ function resolve(locale: Locale, path: string): string | undefined {
 export async function getServerLocale(): Promise<Locale> {
   const cookieStore = await cookies();
   const stored = cookieStore.get("serviq-locale")?.value;
-  if (stored === "hi" || stored === "en") return stored;
+  if (stored && isLocale(stored)) return stored;
   return "en";
 }
 

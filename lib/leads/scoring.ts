@@ -21,6 +21,11 @@ export type LeadScoreBreakdown = {
   total: number;
 };
 
+export type AiEnhancedBreakdown = LeadScoreBreakdown & {
+  aiMatchScore: number;
+  aiReasoning?: string;
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export function scoreLead(input: LeadScoreInput): LeadScoreBreakdown {
@@ -73,6 +78,23 @@ export function scoreLead(input: LeadScoreInput): LeadScoreBreakdown {
     trustScoreComponent: Math.round(trustScoreComponent),
     experienceScore: Math.round(experienceScore),
     total: clamp(total, 0, 100),
+  };
+}
+
+export function mergeAiIntoBreakdown(
+  base: LeadScoreBreakdown,
+  aiScore: number,
+  aiWeight: number = 0.2
+): AiEnhancedBreakdown {
+  const currentTotal = base.total;
+  const adjustedCurrent = Math.round(currentTotal * (1 - aiWeight));
+  const adjustedAi = Math.round(aiScore * aiWeight);
+  const mergedTotal = Math.min(adjustedCurrent + adjustedAi, 100);
+
+  return {
+    ...base,
+    aiMatchScore: Math.round(aiScore),
+    total: mergedTotal,
   };
 }
 

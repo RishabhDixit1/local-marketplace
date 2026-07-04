@@ -5,13 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  BrainCircuit,
   CheckCircle2,
   Clock,
   Eye,
   Loader2,
   MapPin,
   MessageCircle,
-  ThumbsDown,
+  Sparkles,
   TrendingUp,
   XCircle,
   Zap,
@@ -24,7 +25,14 @@ type LeadAssignment = {
   id: string;
   help_request_id: string;
   score: number;
-  score_breakdown: LeadScoreBreakdown;
+  score_breakdown: LeadScoreBreakdown & { aiMatchScore?: number; aiReasoning?: string };
+  metadata?: {
+    aiScore?: number;
+    baseScore?: number;
+    semanticFit?: string;
+    routingPriority?: string;
+    routingReason?: string;
+  };
   status: "assigned" | "viewed" | "responded" | "expired" | "converted" | "lost";
   assigned_at: string;
   responded_at: string | null;
@@ -142,11 +150,13 @@ function LeadCard({
     }
   };
 
+  const hasAiScore = lead.metadata?.aiScore != null || (lead.score_breakdown as Record<string, unknown>)?.aiMatchScore != null;
+
   return (
     <div
       className={`rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-md ${
         highlighted ? "ring-2 ring-[var(--brand-500)] border-[var(--brand-300)]" : "border-slate-200"
-      }`}
+      } ${hasAiScore ? "ring-1 ring-purple-200" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -154,6 +164,12 @@ function LeadCard({
             <h3 className="truncate text-base font-bold text-slate-900">
               {lead.help_requests.title}
             </h3>
+            {hasAiScore && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                <Sparkles className="h-3 w-3" />
+                AI Match
+              </span>
+            )}
             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass}`}>
               {statusLabel}
             </span>
@@ -200,15 +216,27 @@ function LeadCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {Object.entries(lead.score_breakdown).filter(([k]) => k !== "total").map(([key, value]) => (
+        {Object.entries(lead.score_breakdown).filter(([k]) => k !== "total" && k !== "aiReasoning").map(([key, value]) => (
           <span
             key={key}
-            className="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600"
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium ${
+              key === "aiMatchScore"
+                ? "bg-purple-50 text-purple-700"
+                : "bg-slate-50 text-slate-600"
+            }`}
           >
-            {SCORE_LABELS[key] || key}: {Math.round(value)}
+            {key === "aiMatchScore" ? <Sparkles className="h-3 w-3" /> : null}
+            {SCORE_LABELS[key] || key}: {Math.round(value as number)}
           </span>
         ))}
       </div>
+
+      {lead.metadata?.routingReason && (
+        <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5">
+          <BrainCircuit className="h-3 w-3 text-amber-500" />
+          <span className="text-[10px] font-medium text-amber-700">{lead.metadata.routingReason}</span>
+        </div>
+      )}
 
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         <div className="flex items-center gap-2">

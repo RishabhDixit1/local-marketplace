@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useLocaleContext } from "@/lib/i18n-context";
 
 export type MobileNavItem = {
   label: string;
@@ -21,24 +22,10 @@ export type MobileNavItem = {
   isActive?: boolean;
 };
 
-const defaultNavItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/market/crossing-republik", label: "Explore", icon: Store },
-] as const;
-
-const authItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-] as const;
-
-const guestItems = [
-  { href: "/login", label: "Sign In", icon: LogIn },
-] as const;
-
-const ctaItem = { href: "/onboarding/provider/locality", label: "List Business", icon: Plus } as const;
-
 export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
   const pathname = usePathname();
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const { t } = useLocaleContext();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -49,6 +36,21 @@ export function MobileBottomNav({ items }: { items?: MobileNavItem[] }) {
     });
     return () => listener?.subscription.unsubscribe();
   }, []);
+
+  const defaultNavItems = [
+    { href: "/", label: t("nav.home"), icon: Home },
+    { href: "/market/crossing-republik", label: t("nav.explore"), icon: Store },
+  ] as const;
+
+  const authItems = [
+    { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+  ] as const;
+
+  const guestItems = [
+    { href: "/login", label: t("nav.signIn"), icon: LogIn },
+  ] as const;
+
+  const ctaItem = { href: "/onboarding/provider/locality", label: t("nav.listBusiness"), icon: Plus } as const;
 
   const isNavItemActive = (href: string) => {
     if (href === "/") return pathname === "/";
