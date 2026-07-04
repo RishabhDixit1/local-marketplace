@@ -42,7 +42,7 @@ jobs:
           tags: serviq:latest
           build-args: |
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
             SENTRY_DSN=${{ secrets.SENTRY_DSN }}
@@ -71,6 +71,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: serviq-deploy
+          path: ./
+
+      - name: Verify artifact exists
+        run: ls -lh serviq-docker.tar.gz
 
       - name: Copy Docker image to EC2
         uses: appleboy/scp-action@v0.1.7
@@ -111,7 +115,7 @@ jobs:
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
             RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
@@ -155,6 +159,13 @@ jobs:
 
             echo "Disk after cleanup:"
             df -h / | tail -1
+
+            # Verify the image tarball arrived
+            if [ ! -f serviq-docker.tar.gz ]; then
+              echo "ERROR: serviq-docker.tar.gz not found after SCP."
+              ls -la /home/ec2-user/serviq/
+              exit 1
+            fi
 
             # Load the new image
             gzip -d -f serviq-docker.tar.gz
