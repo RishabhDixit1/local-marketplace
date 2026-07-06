@@ -12,6 +12,25 @@ import 'package:serviq_mobile/features/tasks/data/task_repository.dart';
 import 'package:serviq_mobile/features/tasks/domain/task_snapshot.dart';
 import 'package:serviq_mobile/features/tasks/presentation/tasks_page.dart';
 
+class _MockPeopleNotifier extends PeopleListNotifier {
+  @override
+  PeopleListState build() => PeopleListState(
+    people: _peopleSnapshot.people,
+    currentUserId: _peopleSnapshot.currentUserId,
+    isLoading: false,
+    hasMore: true,
+    offset: _peopleSnapshot.people.length,
+    viewerRoleFamily: _peopleSnapshot.viewerRoleFamily,
+  );
+
+  @override
+  Future<void> loadInitial() async {}
+  @override
+  Future<void> loadMore() async {}
+  @override
+  Future<void> refresh() async {}
+}
+
 const _bootstrap = AppBootstrap(
   config: AppConfig(
     appName: 'ServiQ',
@@ -36,7 +55,7 @@ void main() {
       ProviderScope(
         overrides: [
           appBootstrapProvider.overrideWithValue(_bootstrap),
-          peopleSnapshotProvider.overrideWith((ref) async => _peopleSnapshot),
+          peopleListNotifierProvider.overrideWith(() => _MockPeopleNotifier()),
         ],
         child: MaterialApp(theme: AppTheme.light(), home: const PeoplePage()),
       ),

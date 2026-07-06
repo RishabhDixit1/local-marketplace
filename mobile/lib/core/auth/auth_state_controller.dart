@@ -19,6 +19,7 @@ final currentSessionProvider = StreamProvider<Session?>((ref) {
 class AuthStateController extends ChangeNotifier {
   AuthStateController(this._bootstrap) {
     _currentSession = _bootstrap.client?.auth.currentSession;
+    _sessionController.add(_currentSession);
     _subscription = _bootstrap.client?.auth.onAuthStateChange.listen((data) {
       _currentSession = data.session;
       _sessionController.add(_currentSession);
