@@ -29,6 +29,21 @@ import 'package:serviq_mobile/features/welcome/presentation/welcome_page.dart';
 import 'package:serviq_mobile/shared/components/feed_card.dart';
 import 'package:serviq_mobile/shared/components/provider_card.dart';
 
+class _MockPeopleListNotifier extends PeopleListNotifier {
+  _MockPeopleListNotifier(this.mockState);
+  final PeopleListState mockState;
+
+  @override
+  PeopleListState build() => mockState;
+
+  @override
+  Future<void> loadInitial() async {}
+  @override
+  Future<void> loadMore() async {}
+  @override
+  Future<void> refresh() async {}
+}
+
 const _bootstrap = AppBootstrap(
   config: AppConfig(
     appName: 'ServiQ',
@@ -439,41 +454,45 @@ void main() {
 
     _setTestSurface(tester, const Size(320, 640));
 
+    final mockState = PeopleListState(
+      people: const [
+        MobilePersonCard(
+          id: 'provider-noisy',
+          name: longName,
+          avatarUrl: '',
+          headline: longIntro,
+          locationLabel:
+              'Crossing Republik Extension, Ghaziabad Sector 14',
+          isOnline: false,
+          activityLabel: 'Recently active',
+          verificationLabel: 'Growing profile',
+          completionPercent: 64,
+          primaryTags: [
+            'CCTV',
+            'Delivery',
+            'Electrician',
+            'Appliance repair',
+          ],
+          openNeedsCount: 0,
+          postCount: 0,
+          completedJobs: 0,
+          openLeads: 0,
+          averageRating: null,
+          reviewCount: 0,
+          priceLabel: 'Pricing in chat',
+        ),
+      ],
+      currentUserId: 'viewer-1',
+      isLoading: false,
+      hasMore: false,
+    );
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appBootstrapProvider.overrideWithValue(_bootstrap),
-          peopleSnapshotProvider.overrideWith(
-            (ref) async => const MobilePeopleSnapshot(
-              currentUserId: 'viewer-1',
-              people: [
-                MobilePersonCard(
-                  id: 'provider-noisy',
-                  name: longName,
-                  avatarUrl: '',
-                  headline: longIntro,
-                  locationLabel:
-                      'Crossing Republik Extension, Ghaziabad Sector 14',
-                  isOnline: false,
-                  activityLabel: 'Recently active',
-                  verificationLabel: 'Growing profile',
-                  completionPercent: 64,
-                  primaryTags: [
-                    'CCTV',
-                    'Delivery',
-                    'Electrician',
-                    'Appliance repair',
-                  ],
-                  openNeedsCount: 0,
-                  postCount: 0,
-                  completedJobs: 0,
-                  openLeads: 0,
-                  averageRating: null,
-                  reviewCount: 0,
-                  priceLabel: 'Pricing in chat',
-                ),
-              ],
-            ),
+          peopleListNotifierProvider.overrideWith(
+            () => _MockPeopleListNotifier(mockState),
           ),
         ],
         child: MaterialApp(theme: AppTheme.light(), home: const PeoplePage()),

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/design_system/serviq_async_state.dart';
+import '../../../core/design_system/serviq_recovery_banner.dart';
 import '../../../core/error/app_error_mapper.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -34,6 +35,7 @@ class PeoplePage extends ConsumerStatefulWidget {
 
 class _PeoplePageState extends ConsumerState<PeoplePage> {
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   Timer? _localityRetryTimer;
   String _query = '';
@@ -49,15 +51,17 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _lifecycleListener = AppLifecycleListener(
       onResume: () {
-        ref.invalidate(peopleSnapshotProvider);
+        ref.read(peopleListNotifierProvider.notifier).refresh();
         _loadLocalities();
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(analyticsServiceProvider).trackScreen('people');
+        ref.read(peopleListNotifierProvider.notifier).loadInitial();
       }
     });
     _loadLocalities();
@@ -102,14 +106,21 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
     _lifecycleListener?.dispose();
     _localityRetryTimer?.cancel();
     _debounce?.cancel();
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
-    ref.invalidate(peopleSnapshotProvider);
+    await ref.read(peopleListNotifierProvider.notifier).refresh();
     await _loadLocalities();
-    await ref.read(peopleSnapshotProvider.future);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      ref.read(peopleListNotifierProvider.notifier).loadMore();
+    }
   }
 
   int get _activeDiscoveryFilterCount {
@@ -325,7 +336,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
       await ref
           .read(connectionsRepositoryProvider)
           .sendConnectionRequest(person.id);
-      ref.invalidate(peopleSnapshotProvider);
+      ref.read(peopleListNotifierProvider.notifier).refresh();
       if (!mounted) {
         return;
       }
@@ -348,11 +359,11 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = ref.watch(peopleSnapshotProvider);
-    final preview = snapshot.asData?.value;
-    final categories = preview == null
+    final asyncState = ref.watch(peopleListAsyncProvider);
+    final state = asyncState.asData?.value;
+    final categories = state == null
         ? const ['All']
-        : _topCategories(preview.people);
+        : _topCategories(state.people);
 
     return Scaffold(
       appBar: AppBar(
@@ -370,6 +381,7 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
           color: Theme.of(context).colorScheme.primary,
           backgroundColor: Theme.of(context).colorScheme.surface,
           child: ListView(
+            controller: _scrollController,
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 140),
             children: [
               SectionCard(
@@ -449,11 +461,11 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ServiqAsyncBody<MobilePeopleSnapshot>(
-                value: snapshot,
+              ServiqAsyncBody<PeopleListState>(
+                value: asyncState,
                 errorTitle: 'Unable to load people',
                 errorMessageFor: (error, _) => AppErrorMapper.toMessage(error),
-                onRetry: _refresh,
+                onRetry: () => ref.read(peopleListNotifierProvider.notifier).loadInitial(),
                 loadingBuilder: () => const _PeopleLoading(),
                 data: (data) {
                   final filtered =
@@ -510,6 +522,15 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (data.isStale)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ServiqRecoveryBanner(
+                            message: 'Showing previously cached data. Pull to refresh for latest.',
+                            actionLabel: 'Refresh',
+                            onAction: _refresh,
+                          ),
+                        ),
                       if (_mode == _DiscoveryMode.compare &&
                           filtered.isNotEmpty) ...[
                         const SizedBox(height: 14),
@@ -556,6 +577,11 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                               connecting: _busyConnectId == person.id,
                             ),
                           ),
+                        ),
+                      if (data.isLoadingMore)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
                         ),
                     ],
                   );

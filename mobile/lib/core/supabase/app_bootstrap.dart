@@ -55,23 +55,18 @@ class AppBootstrap {
 
     // Pre-flight connectivity checks — fail fast instead of waiting 15s for
     // Supabase.initialize() to time out on an unreachable host.
-    final apiPing = await _checkUrlReachable('API server', config.apiBaseUrl);
-    if (apiPing != null) {
+    final results = await Future.wait([
+      _checkUrlReachable('API server', config.apiBaseUrl),
+      _checkUrlReachable('Supabase', config.supabaseUrl),
+    ]);
+    final apiPing = results[0];
+    final supabasePing = results[1];
+    if (apiPing != null || supabasePing != null) {
       return AppBootstrap(
         config: config,
         client: null,
         supabaseReady: false,
-        initializationError: apiPing,
-      );
-    }
-    final supabasePing =
-        await _checkUrlReachable('Supabase', config.supabaseUrl);
-    if (supabasePing != null) {
-      return AppBootstrap(
-        config: config,
-        client: null,
-        supabaseReady: false,
-        initializationError: supabasePing,
+        initializationError: apiPing ?? supabasePing,
       );
     }
 

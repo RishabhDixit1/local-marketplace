@@ -26,6 +26,17 @@ import { listAcceptedConnectionPeerIds } from "@/lib/server/chatGuards";
 import { getProfileRoleFamily } from "@/lib/profile/utils";
 import { resolveListingImageUrl } from "@/lib/provider/listings";
 
+const IN_FILTER_BATCH_SIZE = 200;
+
+const chunkArray = <T>(arr: T[], size: number): T[][] => {
+  if (size <= 0) return [];
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+};
+
 type FlexibleRow = Record<string, unknown>;
 
 const isFlexibleRow = (value: unknown): value is FlexibleRow =>
@@ -100,6 +111,60 @@ const selectRowsWithFallback = async (
     eqFilters?: Array<{ column: string; value: string }>;
   } = {},
 ): Promise<FlexibleRow[]> => {
+  const shouldBatchInFilter =
+    options.inFilter &&
+    options.inFilter.values.length > IN_FILTER_BATCH_SIZE &&
+    !options.orderBy &&
+    typeof options.limit !== "number";
+
+  if (shouldBatchInFilter) {
+    const chunks = chunkArray(options.inFilter!.values, IN_FILTER_BATCH_SIZE);
+
+    const executeChunk = async (values: string[]): Promise<FlexibleRow[]> => {
+      let q = db.from(table).select(primarySelect);
+      if (options.eqFilters?.length) {
+        for (const f of options.eqFilters) q = q.eq(f.column, f.value);
+      }
+      q = q.in(options.inFilter!.column, values);
+      if (options.orFilter) q = q.or(options.orFilter);
+
+      const result = await q;
+      if (!result.error) return toFlexibleRows(result.data);
+
+      if (
+        options.allowMissingRelation &&
+        isMissingRelationError(result.error.message || "")
+      ) {
+        return [];
+      }
+      if (!isMissingColumnError(result.error.message || "")) {
+        throw new Error(result.error.message);
+      }
+
+      let fq = db.from(table).select("*");
+      if (options.eqFilters?.length) {
+        for (const f of options.eqFilters) fq = fq.eq(f.column, f.value);
+      }
+      fq = fq.in(options.inFilter!.column, values);
+      if (options.orFilter) fq = fq.or(options.orFilter);
+
+      const fr = await fq;
+      if (fr.error) {
+        if (
+          options.allowMissingRelation &&
+          isMissingRelationError(fr.error.message || "")
+        ) {
+          return [];
+        }
+        throw new Error(fr.error.message);
+      }
+      return toFlexibleRows(fr.data);
+    };
+
+    const allResults = await Promise.all(chunks.map(executeChunk));
+    return allResults.flat();
+  }
+
   let primaryQuery = db.from(table).select(primarySelect);
 
   if (options.eqFilters?.length) {

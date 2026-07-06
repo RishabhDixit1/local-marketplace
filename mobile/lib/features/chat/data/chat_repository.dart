@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api/mobile_api_client.dart';
 import '../../../core/api/mobile_api_provider.dart';
 import '../../../core/supabase/app_bootstrap.dart';
+import '../../../core/supabase/batched_query.dart';
 import '../domain/chat_models.dart';
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
@@ -78,8 +79,11 @@ class ChatRepository {
       final results = await Future.wait<Object?>([
         client
             .from('conversation_participants')
-            .select('conversation_id,user_id')
-            .inFilter('conversation_id', conversationIds),
+            .batchedSelect(
+              columns: 'conversation_id,user_id',
+              filterColumn: 'conversation_id',
+              values: conversationIds,
+            ),
         client
             .from('messages')
             .select('id,conversation_id,content,created_at,sender_id')
@@ -98,24 +102,25 @@ class ChatRepository {
 
       final profilesRows = uniqueUserIds.isEmpty
           ? const <Map<String, dynamic>>[]
-          : _rows(
-              await client
-                  .from('profiles')
-                  .select('id,name,avatar_url,bio,location')
-                  .inFilter('id', uniqueUserIds),
-            );
+          : await client
+              .from('profiles')
+              .batchedSelect(
+                columns: 'id,name,avatar_url,bio,location',
+                filterColumn: 'id',
+                values: uniqueUserIds,
+              );
 
       List<Map<String, dynamic>> presenceRows = const [];
       try {
         if (uniqueUserIds.isNotEmpty) {
-          presenceRows = _rows(
-            await client
-                .from('provider_presence')
-                .select(
-                  'provider_id,is_online,availability,rolling_response_minutes',
-                )
-                .inFilter('provider_id', uniqueUserIds),
-          );
+          presenceRows = await client
+              .from('provider_presence')
+              .batchedSelect(
+                columns:
+                    'provider_id,is_online,availability,rolling_response_minutes',
+                filterColumn: 'provider_id',
+                values: uniqueUserIds,
+              );
         }
       } on PostgrestException {
         presenceRows = const [];
